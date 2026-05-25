@@ -46,6 +46,9 @@ graph TD
   - [x] `cargo rullst make:controller <Nome>` - Gera um controller com as ações básicas de CRUD.
   - [x] `cargo rullst make:model <Nome> [-m]` - Gera um model de Active Record e, opcionalmente, uma migration associada.
   - [x] `cargo rullst make:middleware <Nome>` - Gera um middleware customizado compatível com Axum.
+  - [ ] `cargo rullst make:cors` & `make:jwt` - Gera middlewares essenciais em Rust puro direto no seu projeto.
+  - [ ] `cargo rullst generate:openapi` - Geração de OpenAPI/Swagger guiada por IA, sem poluir o código com macros.
+  - [ ] `cargo rullst make:worker` - Scaffold para workers de background tasks.
 - [x] **Ergonomia do Workspace:**
   - [x] Melhorar a velocidade de compilação durante as execuções do CLI.
   - [x] Suporte à flag `--api` para criar scaffolds de APIs REST sem frontend HTML.

@@ -46,6 +46,9 @@ graph TD
   - [x] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
   - [x] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
   - [x] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
+  - [ ] `cargo rullst make:cors` & `make:jwt` - Scaffold essential boilerplate middlewares directly into your project.
+  - [ ] `cargo rullst generate:openapi` - AI-Driven OpenAPI/Swagger generator without heavy macros.
+  - [ ] `cargo rullst make:worker` - Scaffold background task workers.
 - [x] **Workspace Ergonomics:**
   - [x] Improve compilation speeds for CLI runs.
   - [x] Support `--api` flag for scaffolding headless REST APIs instead of full HTML apps.

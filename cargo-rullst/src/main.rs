@@ -16,7 +16,7 @@ enum Commands {
     /// Cria uma nova aplicação Rullst
     New {
         /// Nome do projeto
-        name: String,
+        name: Option<String>,
         /// Opcional: cria uma aplicação REST headless (sem HTML)
         #[arg(long)]
         api: bool,
@@ -87,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match &cli.command {
         Commands::New { name, api, docker } => {
-            create_new_project(name, *api, *docker)?;
+            create_new_project(name.as_deref(), *api, *docker)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
@@ -716,12 +716,53 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     Ok(())
 }
 
-fn create_new_project(name: &str, api: bool, docker: bool) -> Result<(), Box<dyn std::error::Error>> {
-    println!("{}", format!("🚀 Criando nova aplicação Rullst: {}...", name).green().bold());
+fn create_new_project(name_arg: Option<&str>, api_arg: bool, docker: bool) -> Result<(), Box<dyn std::error::Error>> {
+    println!("{}", r#"
+  _____       _ _     _   
+ |  __ \     | | |   | |  
+ | |__) |   _| | |___| |_ 
+ |  _  / | | | | / __| __|
+ | | \ \ |_| | | \__ \ |_ 
+ |_|  \_\__,_|_|_|___/\__|
+    "#.cyan());
+
+    let theme = dialoguer::theme::ColorfulTheme::default();
     
-    let path = Path::new(name);
+    let name = match name_arg {
+        Some(n) => n.to_string(),
+        None => {
+            dialoguer::Input::with_theme(&theme)
+                .with_prompt("App name?")
+                .interact_text()?
+        }
+    };
+
+    let mut api = api_arg;
+    let mut db_provider = "Sqlite".to_string();
+    
+    if name_arg.is_none() {
+        let build_options = &["SaaS App with Server-Side Rendering (html! macro)", "Headless REST API"];
+        let build_selection = dialoguer::Select::with_theme(&theme)
+            .with_prompt("What would you like to build?")
+            .default(0)
+            .items(&build_options[..])
+            .interact()?;
+        api = build_selection == 1;
+
+        let db_options = &["Sqlite", "Postgres", "MySQL"];
+        let db_selection = dialoguer::Select::with_theme(&theme)
+            .with_prompt("Select a DB Provider")
+            .default(0)
+            .items(&db_options[..])
+            .interact()?;
+        db_provider = db_options[db_selection].to_string();
+    }
+
+    println!("{}", format!("🚀 Creating new Rullst app: {}...", name).green().bold());
+    
+    let path = Path::new(&name);
     if path.exists() {
-        println!("{}", format!("❌ Erro: A pasta '{}' já existe.", name).red());
+        println!("{}", format!("❌ Error: Directory '{}' already exists.", name).red());
         std::process::exit(1);
     }
     
@@ -764,11 +805,17 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
     let project_name = path
         .file_name()
         .and_then(|f| f.to_str())
-        .unwrap_or(name)
+        .unwrap_or(&name)
         .replace("\\", "")
         .replace("/", "")
         .replace(".", "")
         .replace("-", "_");
+
+    let sqlx_features = match db_provider.as_str() {
+        "Postgres" => r#"features = ["postgres", "runtime-tokio"]"#,
+        "MySQL" => r#"features = ["mysql", "runtime-tokio"]"#,
+        _ => r#"features = ["sqlite", "runtime-tokio"]"#,
+    };
 
     // Write Cargo.toml
     let cargo_toml = format!(
@@ -783,7 +830,7 @@ rust-eloquent = "1.1.0"
 tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
-sqlx = {{ version = "0.8", features = ["sqlite", "runtime-tokio"] }}
+sqlx = {{ version = "0.8", {sqlx_features} }}
 
 [workspace]
 "#);
@@ -791,9 +838,14 @@ sqlx = {{ version = "0.8", features = ["sqlite", "runtime-tokio"] }}
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
 
     // Write Rullst.toml configuration
-    let rullst_toml = r#"[database]
-url = "sqlite://rullst.db"
-"#;
+    let db_url = match db_provider.as_str() {
+        "Postgres" => "postgres://postgres:password@localhost/rullst",
+        "MySQL" => "mysql://root:password@localhost/rullst",
+        _ => "sqlite://rullst.db",
+    };
+    let rullst_toml = format!(r#"[database]
+url = "{db_url}"
+"#);
     fs::write(path.join("Rullst.toml"), rullst_toml)?;
 
     // Write src/main.rs
@@ -962,12 +1014,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_docker_files(path, &project_name)?;
     }
 
-    println!("{}", format!("✨ Projeto '{}' criado com sucesso!", name).green().bold());
-    println!("{}", "Como rodar:".cyan());
+    println!("{}", format!("✨ Project '{}' created successfully!", name).green().bold());
+    println!("{}", "How to run:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  cargo run".cyan());
     if docker {
-        println!("{}", "\n🐳 Docker files gerados! Para rodar com Docker:".cyan());
+        println!("{}", "\n🐳 Docker files generated! To run with Docker:".cyan());
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  docker compose up --build".cyan());
     }

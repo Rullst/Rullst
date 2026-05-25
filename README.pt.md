@@ -1,6 +1,11 @@
-# Rullst 🚀
+<p align="center">
+  <img src="./Rullst.png" alt="Rullst Logo" width="250">
+</p>
+
+# Rullst - 📜🦀🌐🤖🚀
 ### *"Rust para quem quer construir, não sofrer."*
 
+![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Status: v0.6.0](https://img.shields.io/badge/Status-v0.6.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
@@ -80,6 +85,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+```
+
+---
+
+## ⚡ Comece em 10 Segundos
+
+Gere uma aplicação totalmente operacional com o nosso assistente CLI interativo!
+
+```bash
+# 1. Execute o assistente de linha de comando interativo
+cargo rullst new
+
+# O assistente vai perguntar:
+# 🚀 App name? -> meu-app
+# 🏗️ What would you like to build? -> SaaS App / REST API
+# 🗄️ Select a DB Provider -> Sqlite / Postgres / MySQL
+
+# 2. Entre na pasta do projeto
+cd meu-app
+
+# 3. Inicie sua aplicação full-stack de alta performance imediatamente!
+cargo run
 ```
 
 ---

@@ -1,6 +1,6 @@
-/target
-/target_dev
-/target_dev_test
+target/
+target_dev/
+target_dev_test/
 /meu_teste
 *.db
 *.db-journal

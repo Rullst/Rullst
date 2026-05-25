@@ -1,8 +1,13 @@
-# Rullst 🚀
+<p align="center">
+  <img src="./Rullst.png" alt="Rullst Logo" width="250">
+</p>
+
+# Rullst - 📜🦀🌐🤖🚀
 ### *"Rust for those who want to build, not suffer."*
 
 *Read this in [Português (Brasil)](./README.pt.md).*
 
+![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Status: v0.6.0](https://img.shields.io/badge/Status-v0.6.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
@@ -63,11 +68,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## ⚡ Get Started in 10 Seconds
 
-Scaffold a fully operational application with an in-memory SQLite database, mock migrations, and an Active Record demo model in a single command:
+Scaffold a fully operational application with our interactive CLI wizard!
 
 ```bash
-# 1. Run the CLI scaffolding tool directly from our monorepo workspace
-cargo run -p cargo-rullst -- new my-app
+# 1. Run the interactive CLI scaffolding tool
+cargo rullst new
+
+# The wizard will prompt you:
+# 🚀 App name? -> my-app
+# 🏗️ What would you like to build? -> SaaS App / REST API
+# 🗄️ Select a DB Provider -> Sqlite / Postgres / MySQL
 
 # 2. Enter the project folder
 cd my-app
