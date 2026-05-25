@@ -29,10 +29,10 @@ pub fn parse_variants(s: &str) -> Vec<(String, u32)> {
     let mut parsed = Vec::new();
     for part in s.split(',') {
         let mut split = part.split(':');
-        if let (Some(name), Some(pct_str)) = (split.next(), split.next()) {
-            if let Ok(pct) = pct_str.trim().parse::<u32>() {
-                parsed.push((name.trim().to_string(), pct));
-            }
+        if let (Some(name), Some(pct_str)) = (split.next(), split.next())
+            && let Ok(pct) = pct_str.trim().parse::<u32>()
+        {
+            parsed.push((name.trim().to_string(), pct));
         }
     }
     parsed
@@ -133,7 +133,9 @@ impl Default for MemoryFeatureDriver {
 #[async_trait]
 impl FeatureDriver for MemoryFeatureDriver {
     async fn enabled(&self, flag: &str) -> Option<bool> {
-        self.rules.get(flag).map(|r| r.enabled && r.rollout_percentage.is_none())
+        self.rules
+            .get(flag)
+            .map(|r| r.enabled && r.rollout_percentage.is_none())
     }
 
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
@@ -159,9 +161,17 @@ impl FeatureDriver for MemoryFeatureDriver {
         }
         if let Some(pct) = rule.rollout_percentage {
             let bucket = calculate_hash_bucket(flag, identifier);
-            return Some(if bucket < pct { "enabled".to_string() } else { "disabled".to_string() });
+            return Some(if bucket < pct {
+                "enabled".to_string()
+            } else {
+                "disabled".to_string()
+            });
         }
-        Some(if rule.enabled { "enabled".to_string() } else { "disabled".to_string() })
+        Some(if rule.enabled {
+            "enabled".to_string()
+        } else {
+            "disabled".to_string()
+        })
     }
 }
 
@@ -198,24 +208,28 @@ impl EnvFeatureDriver {
         }
 
         // 2. Check if percentage rollout (e.g., "30%")
-        if cleaned.ends_with('%') {
-            if let Some(pct) = parse_rollout(cleaned) {
-                if let Some(ident) = identifier {
-                    let bucket = calculate_hash_bucket(flag, ident);
-                    return Some(if bucket < pct { "enabled".to_string() } else { "disabled".to_string() });
-                }
-                return Some("disabled".to_string());
+        if cleaned.ends_with('%')
+            && let Some(pct) = parse_rollout(cleaned)
+        {
+            if let Some(ident) = identifier {
+                let bucket = calculate_hash_bucket(flag, ident);
+                return Some(if bucket < pct {
+                    "enabled".to_string()
+                } else {
+                    "disabled".to_string()
+                });
             }
+            return Some("disabled".to_string());
         }
 
         // 3. Check if A/B splits (e.g., "variant-a:50,variant-b:50")
         if cleaned.contains(':') {
             let variants = parse_variants(cleaned);
-            if !variants.is_empty() {
-                if let Some(ident) = identifier {
-                    let bucket = calculate_hash_bucket(flag, ident);
-                    return resolve_variant(&variants, bucket);
-                }
+            if !variants.is_empty()
+                && let Some(ident) = identifier
+            {
+                let bucket = calculate_hash_bucket(flag, ident);
+                return resolve_variant(&variants, bucket);
             }
         }
 
@@ -282,7 +296,7 @@ impl TomlFeatureDriver {
     pub fn reload(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.config.clear();
         let content = std::fs::read_to_string("Rullst.toml")?;
-        
+
         let mut in_features = false;
         for line in content.lines() {
             let trimmed = line.trim();
@@ -319,23 +333,27 @@ impl TomlFeatureDriver {
             return Some("disabled".to_string());
         }
 
-        if cleaned.ends_with('%') {
-            if let Some(pct) = parse_rollout(cleaned) {
-                if let Some(ident) = identifier {
-                    let bucket = calculate_hash_bucket(flag, ident);
-                    return Some(if bucket < pct { "enabled".to_string() } else { "disabled".to_string() });
-                }
-                return Some("disabled".to_string());
+        if cleaned.ends_with('%')
+            && let Some(pct) = parse_rollout(cleaned)
+        {
+            if let Some(ident) = identifier {
+                let bucket = calculate_hash_bucket(flag, ident);
+                return Some(if bucket < pct {
+                    "enabled".to_string()
+                } else {
+                    "disabled".to_string()
+                });
             }
+            return Some("disabled".to_string());
         }
 
         if cleaned.contains(':') {
             let variants = parse_variants(cleaned);
-            if !variants.is_empty() {
-                if let Some(ident) = identifier {
-                    let bucket = calculate_hash_bucket(flag, ident);
-                    return resolve_variant(&variants, bucket);
-                }
+            if !variants.is_empty()
+                && let Some(ident) = identifier
+            {
+                let bucket = calculate_hash_bucket(flag, ident);
+                return resolve_variant(&variants, bucket);
             }
         }
 
@@ -406,21 +424,26 @@ impl DbFeatureDriver {
 
     async fn fetch_flag_from_db(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         use sqlx::Row;
-        
+
         let pool = rust_eloquent::Eloquent::pool();
-        let row = sqlx::query("SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?")
-            .bind(flag)
-            .fetch_optional(pool)
-            .await
-            .ok()
-            .flatten()?;
+        let row = sqlx::query(
+            "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?",
+        )
+        .bind(flag)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()?;
 
         // Resolve enabled column safely (support int 0/1 or boolean)
-        let enabled = row.try_get::<i32, _>("enabled").map(|v| v != 0)
+        let enabled = row
+            .try_get::<i32, _>("enabled")
+            .map(|v| v != 0)
             .or_else(|_| row.try_get::<bool, _>("enabled"))
             .unwrap_or(false);
 
-        let rollout_percentage = row.try_get::<i32, _>("rollout_percentage")
+        let rollout_percentage = row
+            .try_get::<i32, _>("rollout_percentage")
             .map(|v| Some(v as u32))
             .unwrap_or(None);
 
@@ -430,10 +453,14 @@ impl DbFeatureDriver {
     }
 
     async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
-        if let Some(entry) = self.cache.get(flag) {
-            if Instant::now() < entry.expires_at {
-                return Some((entry.enabled, entry.rollout_percentage, entry.variants.clone()));
-            }
+        if let Some(entry) = self.cache.get(flag)
+            && Instant::now() < entry.expires_at
+        {
+            return Some((
+                entry.enabled,
+                entry.rollout_percentage,
+                entry.variants.clone(),
+            ));
         }
 
         // Cache miss or expired — fetch fresh from DB
@@ -451,30 +478,45 @@ impl DbFeatureDriver {
         Some((enabled, rollout, variants))
     }
 
-    fn evaluate(&self, enabled: bool, rollout: Option<u32>, variants: Option<String>, flag: &str, identifier: Option<&str>) -> Option<String> {
+    fn evaluate(
+        &self,
+        enabled: bool,
+        rollout: Option<u32>,
+        variants: Option<String>,
+        flag: &str,
+        identifier: Option<&str>,
+    ) -> Option<String> {
         if !enabled {
             return Some("disabled".to_string());
         }
 
         if let Some(vars_str) = variants {
             let vars = parse_variants(&vars_str);
-            if !vars.is_empty() {
-                if let Some(ident) = identifier {
-                    let bucket = calculate_hash_bucket(flag, ident);
-                    return resolve_variant(&vars, bucket);
-                }
+            if !vars.is_empty()
+                && let Some(ident) = identifier
+            {
+                let bucket = calculate_hash_bucket(flag, ident);
+                return resolve_variant(&vars, bucket);
             }
         }
 
         if let Some(pct) = rollout {
             if let Some(ident) = identifier {
                 let bucket = calculate_hash_bucket(flag, ident);
-                return Some(if bucket < pct { "enabled".to_string() } else { "disabled".to_string() });
+                return Some(if bucket < pct {
+                    "enabled".to_string()
+                } else {
+                    "disabled".to_string()
+                });
             }
             return Some("disabled".to_string());
         }
 
-        Some(if enabled { "enabled".to_string() } else { "disabled".to_string() })
+        Some(if enabled {
+            "enabled".to_string()
+        } else {
+            "disabled".to_string()
+        })
     }
 }
 

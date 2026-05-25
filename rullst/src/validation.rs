@@ -1,24 +1,33 @@
-use std::collections::HashMap;
 use axum::{
-    async_trait,
+    Form, Json, async_trait,
     extract::{FromRequest, Request},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
-    Form, Json,
 };
+use std::collections::HashMap;
 pub use validator::Validate;
 
 #[derive(Debug)]
 pub enum ValidationError {
-    ExtractionError { message: String, is_htmx: bool },
-    ValidationError { errors: validator::ValidationErrors, is_htmx: bool },
+    ExtractionError {
+        message: String,
+        is_htmx: bool,
+    },
+    ValidationError {
+        errors: validator::ValidationErrors,
+        is_htmx: bool,
+    },
 }
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValidationError::ExtractionError { message, .. } => write!(f, "Extraction error: {}", message),
-            ValidationError::ValidationError { errors, .. } => write!(f, "Validation error: {:?}", errors),
+            ValidationError::ExtractionError { message, .. } => {
+                write!(f, "Extraction error: {}", message)
+            }
+            ValidationError::ValidationError { errors, .. } => {
+                write!(f, "Validation error: {:?}", errors)
+            }
         }
     }
 }
@@ -73,7 +82,7 @@ impl IntoResponse for ValidationError {
                             ));
                         }
                     }
-                    
+
                     let html_content = format!(
                         r#"<div class="p-4 mb-4 rounded-lg bg-red-950/50 border border-red-500/30 text-red-200 text-sm animate-pulse-subtle">
                             <div class="flex items-center gap-2 mb-2 font-semibold text-red-400">
@@ -113,23 +122,23 @@ where
     type Rejection = ValidationError;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let is_htmx = req.headers()
+        let is_htmx = req
+            .headers()
             .get("HX-Request")
             .and_then(|v| v.to_str().ok())
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let Form(value) = Form::<T>::from_request(req, state)
-            .await
-            .map_err(|e| ValidationError::ExtractionError {
+        let Form(value) = Form::<T>::from_request(req, state).await.map_err(|e| {
+            ValidationError::ExtractionError {
                 message: e.to_string(),
                 is_htmx,
-            })?;
-
-        value.validate().map_err(|errors| ValidationError::ValidationError {
-            errors,
-            is_htmx,
+            }
         })?;
+
+        value
+            .validate()
+            .map_err(|errors| ValidationError::ValidationError { errors, is_htmx })?;
 
         Ok(ValidatedForm(value))
     }
@@ -148,23 +157,23 @@ where
     type Rejection = ValidationError;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let is_htmx = req.headers()
+        let is_htmx = req
+            .headers()
             .get("HX-Request")
             .and_then(|v| v.to_str().ok())
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let Json(value) = Json::<T>::from_request(req, state)
-            .await
-            .map_err(|e| ValidationError::ExtractionError {
+        let Json(value) = Json::<T>::from_request(req, state).await.map_err(|e| {
+            ValidationError::ExtractionError {
                 message: e.to_string(),
                 is_htmx,
-            })?;
-
-        value.validate().map_err(|errors| ValidationError::ValidationError {
-            errors,
-            is_htmx,
+            }
         })?;
+
+        value
+            .validate()
+            .map_err(|errors| ValidationError::ValidationError { errors, is_htmx })?;
 
         Ok(ValidatedJson(value))
     }
@@ -196,20 +205,28 @@ mod tests {
         let req = Request::builder()
             .method("POST")
             .header("content-type", "application/x-www-form-urlencoded")
-            .body(axum::body::Body::from("username=venelouis&email=vene%40rullst.dev"))
+            .body(axum::body::Body::from(
+                "username=venelouis&email=vene%40rullst.dev",
+            ))
             .unwrap();
 
-        let validated = ValidatedForm::<TestPayload>::from_request(req, &()).await.unwrap();
+        let validated = ValidatedForm::<TestPayload>::from_request(req, &())
+            .await
+            .unwrap();
         assert_eq!(validated.0.username, "venelouis");
         assert_eq!(validated.0.email, "vene@rullst.dev");
 
         // Json success
         let req_json = Request::builder()
             .header("content-type", "application/json")
-            .body(axum::body::Body::from(r#"{"username": "venelouis", "email": "vene@rullst.dev"}"#))
+            .body(axum::body::Body::from(
+                r#"{"username": "venelouis", "email": "vene@rullst.dev"}"#,
+            ))
             .unwrap();
 
-        let validated_json = ValidatedJson::<TestPayload>::from_request(req_json, &()).await.unwrap();
+        let validated_json = ValidatedJson::<TestPayload>::from_request(req_json, &())
+            .await
+            .unwrap();
         assert_eq!(validated_json.0.username, "venelouis");
     }
 
@@ -217,11 +234,15 @@ mod tests {
     async fn test_validation_failure_json() {
         let req = Request::builder()
             .header("content-type", "application/json")
-            .body(axum::body::Body::from(r#"{"username": "ab", "email": "invalid-email"}"#))
+            .body(axum::body::Body::from(
+                r#"{"username": "ab", "email": "invalid-email"}"#,
+            ))
             .unwrap();
 
-        let err = ValidatedJson::<TestPayload>::from_request(req, &()).await.unwrap_err();
-        
+        let err = ValidatedJson::<TestPayload>::from_request(req, &())
+            .await
+            .unwrap_err();
+
         match err {
             ValidationError::ValidationError { errors, is_htmx } => {
                 assert!(!is_htmx);
@@ -244,15 +265,19 @@ mod tests {
             .body(axum::body::Body::from("username=ab&email=invalid-email"))
             .unwrap();
 
-        let err = ValidatedForm::<TestPayload>::from_request(req, &()).await.unwrap_err();
+        let err = ValidatedForm::<TestPayload>::from_request(req, &())
+            .await
+            .unwrap_err();
 
         match err {
             ValidationError::ValidationError { errors, is_htmx } => {
                 assert!(is_htmx);
                 let response = ValidationError::ValidationError { errors, is_htmx }.into_response();
                 assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-                
-                let body_bytes = axum::body::to_bytes(response.into_body(), 10000).await.unwrap();
+
+                let body_bytes = axum::body::to_bytes(response.into_body(), 10000)
+                    .await
+                    .unwrap();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 assert!(body_str.contains("Validation Failed"));
                 assert!(body_str.contains("username"));
@@ -262,4 +287,3 @@ mod tests {
         }
     }
 }
-

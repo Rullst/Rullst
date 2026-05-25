@@ -1,5 +1,5 @@
+use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
-use crate::ai::{AiProvider, AiError, Message};
 
 pub struct OllamaProvider {
     host: String,
@@ -13,7 +13,7 @@ impl OllamaProvider {
         let host_str = host.into();
         // Remove trailing slash if present
         let host_clean = host_str.trim_end_matches('/').to_string();
-        
+
         Self {
             host: host_clean,
             model: model.into(),
@@ -44,7 +44,9 @@ impl AiProvider for OllamaProvider {
             "stream": false,
         });
 
-        let res = self.client.post(&url)
+        let res = self
+            .client
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
@@ -53,13 +55,16 @@ impl AiProvider for OllamaProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("Ollama error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "Ollama error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
-        let content = json["message"]["content"]
-            .as_str()
-            .ok_or_else(|| AiError::ApiError("No content returned from Ollama chat response".to_string()))?;
+        let content = json["message"]["content"].as_str().ok_or_else(|| {
+            AiError::ApiError("No content returned from Ollama chat response".to_string())
+        })?;
 
         Ok(content.to_string())
     }
@@ -72,7 +77,9 @@ impl AiProvider for OllamaProvider {
             "prompt": text,
         });
 
-        let res = self.client.post(&url)
+        let res = self
+            .client
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
@@ -81,13 +88,18 @@ impl AiProvider for OllamaProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("Ollama error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "Ollama error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
         let embedding = json["embedding"]
             .as_array()
-            .ok_or_else(|| AiError::ApiError("No embedding returned from Ollama response".to_string()))?
+            .ok_or_else(|| {
+                AiError::ApiError("No embedding returned from Ollama response".to_string())
+            })?
             .iter()
             .map(|v| v.as_f64().unwrap_or(0.0) as f32)
             .collect();

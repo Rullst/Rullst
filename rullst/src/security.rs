@@ -1,10 +1,10 @@
-use rand::{distributions::Alphanumeric, Rng};
 use axum::{
     extract::Request,
-    middleware::Next,
-    response::{Response, IntoResponse},
     http::{StatusCode, header},
+    middleware::Next,
+    response::{IntoResponse, Response},
 };
+use rand::{Rng, distributions::Alphanumeric};
 
 /// Generates a cryptographically secure 32-character random alphanumeric string.
 pub fn generate_csrf_token() -> String {
@@ -20,10 +20,10 @@ fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
     let body_str = String::from_utf8_lossy(bytes);
     for param in body_str.split('&') {
         let mut parts = param.split('=');
-        if let (Some(key), Some(val)) = (parts.next(), parts.next()) {
-            if key == "_token" {
-                return Some(val.to_string());
-            }
+        if let (Some(key), Some(val)) = (parts.next(), parts.next())
+            && key == "_token"
+        {
+            return Some(val.to_string());
         }
     }
     None
@@ -37,7 +37,8 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
 
     // 1. GET requests: bypass validation but ensure CSRF token cookie is set
     if method == axum::http::Method::GET {
-        let has_cookie = req.headers()
+        let has_cookie = req
+            .headers()
             .get(header::COOKIE)
             .and_then(|v| v.to_str().ok())
             .map(|cookie_str| cookie_str.contains("rullst_csrf="))
@@ -46,13 +47,15 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
         if !has_cookie {
             let token = generate_csrf_token();
             let mut response = next.run(req).await;
-            
+
             // Set cookie for Lax mode
             if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
                 "rullst_csrf={}; Path=/; SameSite=Lax; HttpOnly",
                 token
             )) {
-                response.headers_mut().append(header::SET_COOKIE, cookie_val);
+                response
+                    .headers_mut()
+                    .append(header::SET_COOKIE, cookie_val);
             }
             return response;
         }
@@ -61,14 +64,15 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
     }
 
     // 2. State-modifying requests: validate the token
-    let csrf_cookie = req.headers()
+    let csrf_cookie = req
+        .headers()
         .get(header::COOKIE)
         .and_then(|v| v.to_str().ok())
         .and_then(|cookie_str| {
             for cookie in cookie_str.split(';') {
                 let trimmed = cookie.trim();
-                if trimmed.starts_with("rullst_csrf=") {
-                    return Some(trimmed["rullst_csrf=".len()..].to_string());
+                if let Some(stripped) = trimmed.strip_prefix("rullst_csrf=") {
+                    return Some(stripped.to_string());
                 }
             }
             None
@@ -79,7 +83,8 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
     };
 
     // Check header first (common for AJAX/HTMX)
-    let header_token = req.headers()
+    let header_token = req
+        .headers()
         .get("X-CSRF-Token")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
@@ -93,7 +98,7 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
 
     // If not in header, read urlencoded body
     let (parts, body) = req.into_parts();
-    
+
     // Read request body (limited to 1MB to prevent memory exhaustion)
     let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
         Ok(b) => b,
@@ -105,10 +110,10 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
     // Reconstruct the request so it can be parsed by subsequent handlers
     let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
 
-    if let Some(token) = body_token {
-        if token == cookie_token {
-            return next.run(reconstructed_req).await;
-        }
+    if let Some(token) = body_token
+        && token == cookie_token
+    {
+        return next.run(reconstructed_req).await;
     }
 
     (StatusCode::FORBIDDEN, "Invalid or missing CSRF token").into_response()
@@ -120,10 +125,22 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
     let headers = response.headers_mut();
 
     headers.insert("X-Frame-Options", header::HeaderValue::from_static("DENY"));
-    headers.insert("X-Content-Type-Options", header::HeaderValue::from_static("nosniff"));
-    headers.insert("X-XSS-Protection", header::HeaderValue::from_static("1; mode=block"));
-    headers.insert("Referrer-Policy", header::HeaderValue::from_static("strict-origin-when-cross-origin"));
-    headers.insert("Strict-Transport-Security", header::HeaderValue::from_static("max-age=31536000; includeSubDomains"));
+    headers.insert(
+        "X-Content-Type-Options",
+        header::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        "X-XSS-Protection",
+        header::HeaderValue::from_static("1; mode=block"),
+    );
+    headers.insert(
+        "Referrer-Policy",
+        header::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        "Strict-Transport-Security",
+        header::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
 
     response
 }

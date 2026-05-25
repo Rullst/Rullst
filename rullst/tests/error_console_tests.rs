@@ -1,8 +1,5 @@
-use axum::{routing::get, Router};
-use rullst::{
-    error_console::catch_panic_middleware,
-    testing::TestApp,
-};
+use axum::{Router, routing::get};
+use rullst::{error_console::catch_panic_middleware, testing::TestApp};
 
 // A simple handler that explicitly panics
 async fn panic_handler() {

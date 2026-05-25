@@ -23,6 +23,7 @@ use std::sync::Arc;
 // ─── Scheduled Task ─────────────────────────────────────────────────────────
 
 /// A single scheduled task with a cron expression and an async handler.
+#[allow(clippy::type_complexity)]
 pub struct ScheduledTask {
     /// Human-readable label for logging (derived from cron expression).
     label: String,
@@ -125,7 +126,9 @@ impl Scheduler {
                 loop {
                     let now = chrono::Utc::now();
                     if let Some(next) = schedule.upcoming(chrono::Utc).next() {
-                        let duration = (next - now).to_std().unwrap_or(std::time::Duration::from_secs(60));
+                        let duration = (next - now)
+                            .to_std()
+                            .unwrap_or(std::time::Duration::from_secs(60));
                         tokio::time::sleep(duration).await;
                         handler().await;
                     } else {
@@ -180,10 +183,7 @@ mod tests {
     async fn test_scheduler_cron_parses_correctly() {
         // Verify that a 5-field expression parses to a valid 7-field schedule
         let scheduler = Scheduler::new().task("*/5 * * * *", || async {});
-        let next = scheduler.tasks[0]
-            .schedule
-            .upcoming(chrono::Utc)
-            .next();
+        let next = scheduler.tasks[0].schedule.upcoming(chrono::Utc).next();
         assert!(next.is_some(), "Scheduler should have upcoming executions");
     }
 }

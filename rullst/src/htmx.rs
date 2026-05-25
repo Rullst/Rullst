@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    http::{request::Parts, HeaderValue},
+    http::{HeaderValue, request::Parts},
     response::{Html, IntoResponse, Response},
 };
 
@@ -9,6 +9,7 @@ use crate as rullst;
 
 /// Extract's HTMX request headers to determine context and re-act re-actively.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct HtmxRequest {
     /// True if the request was triggered by HTMX in the browser (`HX-Request: true`).
     pub is_htmx: bool,
@@ -30,28 +31,33 @@ where
     type Rejection = std::convert::Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let is_htmx = parts.headers
+        let is_htmx = parts
+            .headers
             .get("HX-Request")
             .and_then(|v| v.to_str().ok())
             .map(|v| v == "true")
             .unwrap_or(false);
 
-        let trigger = parts.headers
+        let trigger = parts
+            .headers
             .get("HX-Trigger")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
-        let target = parts.headers
+        let target = parts
+            .headers
             .get("HX-Target")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
-        let prompt = parts.headers
+        let prompt = parts
+            .headers
             .get("HX-Prompt")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
-        let current_url = parts.headers
+        let current_url = parts
+            .headers
             .get("HX-Current-URL")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
@@ -68,6 +74,7 @@ where
 
 /// A highly ergonomic, builder-style HTMX responder to set dynamic headers in client side.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct HtmxResponse {
     /// The inner HTML content to be sent in the response body.
     pub content: String,
@@ -114,16 +121,16 @@ impl IntoResponse for HtmxResponse {
         let mut res = Html(self.content).into_response();
         let headers = res.headers_mut();
 
-        if let Some(ref trigger) = self.trigger {
-            if let Ok(val) = HeaderValue::from_str(trigger) {
-                headers.insert("HX-Trigger", val);
-            }
+        if let Some(ref trigger) = self.trigger
+            && let Ok(val) = HeaderValue::from_str(trigger)
+        {
+            headers.insert("HX-Trigger", val);
         }
 
-        if let Some(ref redirect) = self.redirect {
-            if let Ok(val) = HeaderValue::from_str(redirect) {
-                headers.insert("HX-Redirect", val);
-            }
+        if let Some(ref redirect) = self.redirect
+            && let Ok(val) = HeaderValue::from_str(redirect)
+        {
+            headers.insert("HX-Redirect", val);
         }
 
         if self.refresh {
@@ -168,7 +175,9 @@ mod tests {
     async fn test_htmx_request_extractor_empty() {
         let req = Request::builder().body(()).unwrap();
         let (mut parts, _) = req.into_parts();
-        let htmx_req = HtmxRequest::from_request_parts(&mut parts, &()).await.unwrap();
+        let htmx_req = HtmxRequest::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
 
         assert!(!htmx_req.is_htmx);
         assert!(htmx_req.trigger.is_none());
@@ -188,13 +197,18 @@ mod tests {
             .body(())
             .unwrap();
         let (mut parts, _) = req.into_parts();
-        let htmx_req = HtmxRequest::from_request_parts(&mut parts, &()).await.unwrap();
+        let htmx_req = HtmxRequest::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
 
         assert!(htmx_req.is_htmx);
         assert_eq!(htmx_req.trigger.as_deref(), Some("my-btn"));
         assert_eq!(htmx_req.target.as_deref(), Some("content-div"));
         assert_eq!(htmx_req.prompt.as_deref(), Some("hello"));
-        assert_eq!(htmx_req.current_url.as_deref(), Some("http://localhost/home"));
+        assert_eq!(
+            htmx_req.current_url.as_deref(),
+            Some("http://localhost/home")
+        );
     }
 
     #[test]
@@ -247,7 +261,11 @@ mod tests {
         assert_eq!(res_htmx.0, "<div>Fragment</div>");
 
         // Normal request -> wraps in HTML template
-        let res_normal = render_page(&req_normal, "My Page Title", "<div>Body Content</div>".to_string());
+        let res_normal = render_page(
+            &req_normal,
+            "My Page Title",
+            "<div>Body Content</div>".to_string(),
+        );
         assert!(res_normal.0.contains("<!DOCTYPE html>"));
         assert!(res_normal.0.contains("<title>My Page Title</title>"));
         assert!(res_normal.0.contains("<div>Body Content</div>"));
@@ -255,4 +273,3 @@ mod tests {
         assert!(res_normal.0.contains("https://unpkg.com/htmx.org"));
     }
 }
-

@@ -1,9 +1,9 @@
 use axum::{
+    Json, Router,
     extract::Form,
-    http::{header, HeaderValue},
+    http::{HeaderValue, header},
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 use rullst::testing::TestApp;
 use serde::{Deserialize, Serialize};
@@ -95,9 +95,7 @@ async fn test_e2e_post_json_and_cookies() {
         message: "Hello Rust!".to_string(),
     };
 
-    let response = app.post("/echo")
-        .json(&payload)
-        .await;
+    let response = app.post("/echo").json(&payload).await;
 
     response
         .assert_status(200)
@@ -107,7 +105,10 @@ async fn test_e2e_post_json_and_cookies() {
         .assert_cookie("theme", "dark")
         .assert_header("content-type", "application/json");
 
-    assert_eq!(response.cookie_value("session_id"), Some("12345".to_string()));
+    assert_eq!(
+        response.cookie_value("session_id"),
+        Some("12345".to_string())
+    );
     assert_eq!(response.cookie_value("nonexistent_cookie"), None);
 }
 

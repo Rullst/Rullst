@@ -1,0 +1,52 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Code Quality & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust@v1
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      # Run clippy with default features (no feature-exclusive conflicts)
+      - name: Run Clippy (default features)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Separately lint optional redis features
+      - name: Run Clippy (redis features)
+        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis -- -D warnings
+
+      # Separately lint optional mail-smtp feature
+      - name: Run Clippy (mail-smtp feature)
+        run: cargo clippy -p rullst --all-targets --features mail-smtp -- -D warnings
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust@v1
+
+      - name: Run all workspace tests
+        run: cargo test --workspace
+

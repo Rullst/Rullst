@@ -1,8 +1,13 @@
+#![allow(
+    clippy::needless_borrows_for_generic_args,
+    clippy::manual_strip,
+    clippy::collapsible_if
+)]
 use clap::{Parser, Subcommand};
+use colored::*;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use colored::*;
 
 #[derive(Parser)]
 #[command(name = "cargo-rullst")]
@@ -303,7 +308,12 @@ fn pluralize(s: &str) -> String {
         let len = lower.len();
         if len > 1 {
             let before_y = &lower[len - 2..len - 1];
-            if before_y == "a" || before_y == "e" || before_y == "i" || before_y == "o" || before_y == "u" {
+            if before_y == "a"
+                || before_y == "e"
+                || before_y == "i"
+                || before_y == "o"
+                || before_y == "u"
+            {
                 format!("{}s", lower)
             } else {
                 format!("{}ies", &lower[..len - 1])
@@ -311,7 +321,11 @@ fn pluralize(s: &str) -> String {
         } else {
             format!("{}s", lower)
         }
-    } else if lower.ends_with("ch") || lower.ends_with("sh") || lower.ends_with("x") || lower.ends_with("z") {
+    } else if lower.ends_with("ch")
+        || lower.ends_with("sh")
+        || lower.ends_with("x")
+        || lower.ends_with("z")
+    {
         format!("{}es", lower)
     } else {
         format!("{}s", lower)
@@ -367,7 +381,12 @@ fn middleware_to_snake_case(s: &str) -> String {
 fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Validar se está na raiz do projeto Rullst
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
         std::process::exit(1);
     }
@@ -375,7 +394,12 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
     let snake_name = to_snake_case(name);
     let camel_name = to_camel_case(name);
 
-    println!("{}", format!("🛠️ Gerando controller Rullst: {}...", camel_name).cyan().bold());
+    println!(
+        "{}",
+        format!("🛠️ Gerando controller Rullst: {}...", camel_name)
+            .cyan()
+            .bold()
+    );
 
     // 2. Garantir que a pasta src/controllers existe
     let controllers_dir = Path::new("src/controllers");
@@ -404,11 +428,18 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
     // 5. Criar o arquivo do controller
     let controller_path = controllers_dir.join(format!("{}.rs", snake_name));
     if controller_path.exists() {
-        println!("{}", format!("⚠️ Aviso: O controller '{}.rs' já existe. Pulando criação do arquivo.", snake_name).yellow());
+        println!(
+            "{}",
+            format!(
+                "⚠️ Aviso: O controller '{}.rs' já existe. Pulando criação do arquivo.",
+                snake_name
+            )
+            .yellow()
+        );
     } else {
         let template = if api {
             format!(
-r#"use axum::{{extract::{{Path, Form}}, response::IntoResponse, Json}};
+                r#"use axum::{{extract::{{Path, Form}}, response::IntoResponse, Json}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -461,10 +492,11 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
         "message": "Recurso deletado com sucesso"
     }}))
 }}
-"#)
+"#
+            )
         } else {
             format!(
-r#"use rullst::{{html, response::{{Html, IntoResponse}}}};
+                r#"use rullst::{{html, response::{{Html, IntoResponse}}}};
 use axum::extract::{{Path, Form}};
 use serde::Deserialize;
 
@@ -518,7 +550,8 @@ pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> imp
 pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     Html(html! {{ <div>"Recurso "{{id}}" deletado com sucesso"</div> }})
 }}
-"#)
+"#
+            )
         };
         fs::write(&controller_path, template)?;
     }
@@ -527,17 +560,42 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
-        if !main_content.contains("pub mod controllers;") && !main_content.contains("mod controllers;") {
+        if !main_content.contains("pub mod controllers;")
+            && !main_content.contains("mod controllers;")
+        {
             main_content = format!("pub mod controllers;\n{}", main_content);
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod controllers;' ao topo de src/main.rs automaticamente.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod controllers;' ao topo de src/main.rs automaticamente."
+                    .cyan()
+            );
         }
     }
 
-    println!("{}", format!("✨ Controller '{}' criado em '{}' com sucesso!", camel_name, controller_path.display()).green().bold());
+    println!(
+        "{}",
+        format!(
+            "✨ Controller '{}' criado em '{}' com sucesso!",
+            camel_name,
+            controller_path.display()
+        )
+        .green()
+        .bold()
+    );
     println!("{}", "Como mapear nas rotas:".cyan());
-    println!("{}", format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan());
-    println!("{}", format!("  2. Adicione: 'get(\"/url\" => {}::index)' no seu macro routes!.", snake_name).cyan());
+    println!(
+        "{}",
+        format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan()
+    );
+    println!(
+        "{}",
+        format!(
+            "  2. Adicione: 'get(\"/url\" => {}::index)' no seu macro routes!.",
+            snake_name
+        )
+        .cyan()
+    );
 
     Ok(())
 }
@@ -545,7 +603,12 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
 fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Validar se está na raiz do projeto Rullst
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
         std::process::exit(1);
     }
@@ -554,7 +617,12 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
     let pascal_name = model_to_pascal_case(name);
     let plural_name = pluralize(&snake_name);
 
-    println!("{}", format!("🛠️ Gerando model Rullst: {}...", pascal_name).cyan().bold());
+    println!(
+        "{}",
+        format!("🛠️ Gerando model Rullst: {}...", pascal_name)
+            .cyan()
+            .bold()
+    );
 
     // 2. Garantir que a pasta src/models existe
     let models_dir = Path::new("src/models");
@@ -583,10 +651,17 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
     // 5. Criar o arquivo do model
     let model_path = models_dir.join(format!("{}.rs", snake_name));
     if model_path.exists() {
-        println!("{}", format!("⚠️ Aviso: O model '{}.rs' já existe. Pulando criação do arquivo.", snake_name).yellow());
+        println!(
+            "{}",
+            format!(
+                "⚠️ Aviso: O model '{}.rs' já existe. Pulando criação do arquivo.",
+                snake_name
+            )
+            .yellow()
+        );
     } else {
         let template = format!(
-r#"use rust_eloquent::{{Eloquent, EloquentModel, sqlx::{{self, FromRow}}}};
+            r#"use rust_eloquent::{{Eloquent, EloquentModel, sqlx::{{self, FromRow}}}};
 
 #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
 #[eloquent(table = "{plural_name}")]
@@ -594,7 +669,8 @@ pub struct {pascal_name} {{
     pub id: i32,
     // Adicione seus campos aqui (ex: pub name: String)
 }}
-"#);
+"#
+        );
         fs::write(&model_path, template)?;
     }
 
@@ -605,11 +681,23 @@ pub struct {pascal_name} {{
         if !main_content.contains("pub mod models;") && !main_content.contains("mod models;") {
             main_content = format!("pub mod models;\n{}", main_content);
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod models;' ao topo de src/main.rs automaticamente.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod models;' ao topo de src/main.rs automaticamente.".cyan()
+            );
         }
     }
 
-    println!("{}", format!("✨ Model '{}' criado em '{}' com sucesso!", pascal_name, model_path.display()).green().bold());
+    println!(
+        "{}",
+        format!(
+            "✨ Model '{}' criado em '{}' com sucesso!",
+            pascal_name,
+            model_path.display()
+        )
+        .green()
+        .bold()
+    );
 
     // 7. Criar migration se solicitado
     if create_migration {
@@ -624,7 +712,7 @@ pub struct {pascal_name} {{
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
         let template = format!(
-r#"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
+            r#"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
 use rust_eloquent::async_trait;
 
 pub struct MigrationImpl;
@@ -653,15 +741,37 @@ impl Migration for MigrationImpl {{
         );
 
         fs::write(&migration_path, template)?;
-        println!("{}", format!("✨ Migração em Rust criada em '{}' com sucesso!", migration_path.display()).green().bold());
+        println!(
+            "{}",
+            format!(
+                "✨ Migração em Rust criada em '{}' com sucesso!",
+                migration_path.display()
+            )
+            .green()
+            .bold()
+        );
 
         // Regenerar src/migrations/mod.rs
         regenerate_migrations_mod()?;
     }
 
     println!("{}", "Como importar e usar:".cyan());
-    println!("{}", format!("  1. Use: 'use crate::models::{}::{};'", snake_name, pascal_name).cyan());
-    println!("{}", format!("  2. Busque dados: 'let items = {}::all().await?;'", pascal_name).cyan());
+    println!(
+        "{}",
+        format!(
+            "  1. Use: 'use crate::models::{}::{};'",
+            snake_name, pascal_name
+        )
+        .cyan()
+    );
+    println!(
+        "{}",
+        format!(
+            "  2. Busque dados: 'let items = {}::all().await?;'",
+            pascal_name
+        )
+        .cyan()
+    );
 
     Ok(())
 }
@@ -669,14 +779,24 @@ impl Migration for MigrationImpl {{
 fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Validar se está na raiz do projeto Rullst
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
         std::process::exit(1);
     }
 
     let snake_name = middleware_to_snake_case(name);
 
-    println!("{}", format!("🛠️ Gerando middleware Rullst: {}...", snake_name).cyan().bold());
+    println!(
+        "{}",
+        format!("🛠️ Gerando middleware Rullst: {}...", snake_name)
+            .cyan()
+            .bold()
+    );
 
     // 2. Garantir que a pasta src/middlewares existe
     let middlewares_dir = Path::new("src/middlewares");
@@ -705,10 +825,17 @@ fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     // 5. Criar o arquivo do middleware
     let middleware_path = middlewares_dir.join(format!("{}.rs", snake_name));
     if middleware_path.exists() {
-        println!("{}", format!("⚠️ Aviso: O middleware '{}.rs' já existe. Pulando criação do arquivo.", snake_name).yellow());
+        println!(
+            "{}",
+            format!(
+                "⚠️ Aviso: O middleware '{}.rs' já existe. Pulando criação do arquivo.",
+                snake_name
+            )
+            .yellow()
+        );
     } else {
         let template = format!(
-r#"use axum::{{extract::Request, middleware::Next, response::Response}};
+            r#"use axum::{{extract::Request, middleware::Next, response::Response}};
 
 pub async fn {}(req: Request, next: Next) -> Response {{
     // Pre-request logic here
@@ -719,7 +846,9 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     
     response
 }}
-"#, snake_name);
+"#,
+            snake_name
+        );
         fs::write(&middleware_path, template)?;
     }
 
@@ -727,54 +856,95 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
-        if !main_content.contains("pub mod middlewares;") && !main_content.contains("mod middlewares;") {
+        if !main_content.contains("pub mod middlewares;")
+            && !main_content.contains("mod middlewares;")
+        {
             if main_content.contains("pub mod controllers;") {
-                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod middlewares;");
+                main_content = main_content.replace(
+                    "pub mod controllers;",
+                    "pub mod controllers;\npub mod middlewares;",
+                );
             } else if main_content.contains("pub mod models;") {
-                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod middlewares;");
+                main_content = main_content
+                    .replace("pub mod models;", "pub mod models;\npub mod middlewares;");
             } else {
                 main_content = format!("pub mod middlewares;\n{}", main_content);
             }
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs automaticamente.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs automaticamente.".cyan()
+            );
         }
     }
 
-    println!("{}", format!("✨ Middleware '{}' criado em '{}' com sucesso!", snake_name, middleware_path.display()).green().bold());
+    println!(
+        "{}",
+        format!(
+            "✨ Middleware '{}' criado em '{}' com sucesso!",
+            snake_name,
+            middleware_path.display()
+        )
+        .green()
+        .bold()
+    );
     println!("{}", "Como mapear nas rotas usando Axum layers:".cyan());
     println!("{}", "  1. Use: 'use axum::middleware::from_fn;'".cyan());
-    println!("{}", format!("  2. Use: 'use crate::middlewares::{}::{};'", snake_name, snake_name).cyan());
-    println!("{}", format!("  3. Adicione: '.layer(from_fn({}))' no seu router.", snake_name).cyan());
+    println!(
+        "{}",
+        format!(
+            "  2. Use: 'use crate::middlewares::{}::{};'",
+            snake_name, snake_name
+        )
+        .cyan()
+    );
+    println!(
+        "{}",
+        format!(
+            "  3. Adicione: '.layer(from_fn({}))' no seu router.",
+            snake_name
+        )
+        .cyan()
+    );
 
     Ok(())
 }
 
-fn create_new_project(name_arg: Option<&str>, api_arg: bool, docker: bool) -> Result<(), Box<dyn std::error::Error>> {
-    println!("{}", r#"
+fn create_new_project(
+    name_arg: Option<&str>,
+    api_arg: bool,
+    docker: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{}",
+        r#"
   _____       _ _     _   
  |  __ \     | | |   | |  
  | |__) |   _| | |___| |_ 
  |  _  / | | | | / __| __|
  | | \ \ |_| | | \__ \ |_ 
  |_|  \_\__,_|_|_|___/\__|
-    "#.cyan());
+    "#
+        .cyan()
+    );
 
     let theme = dialoguer::theme::ColorfulTheme::default();
-    
+
     let name = match name_arg {
         Some(n) => n.to_string(),
-        None => {
-            dialoguer::Input::with_theme(&theme)
-                .with_prompt("App name?")
-                .interact_text()?
-        }
+        None => dialoguer::Input::with_theme(&theme)
+            .with_prompt("App name?")
+            .interact_text()?,
     };
 
     let mut api = api_arg;
     let mut db_provider = "Sqlite".to_string();
-    
+
     if name_arg.is_none() {
-        let build_options = &["SaaS App with Server-Side Rendering (html! macro)", "Headless REST API"];
+        let build_options = &[
+            "SaaS App with Server-Side Rendering (html! macro)",
+            "Headless REST API",
+        ];
         let build_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("What would you like to build?")
             .default(0)
@@ -791,48 +961,79 @@ fn create_new_project(name_arg: Option<&str>, api_arg: bool, docker: bool) -> Re
         db_provider = db_options[db_selection].to_string();
     }
 
-    println!("{}", format!("🚀 Creating new Rullst app: {}...", name).green().bold());
-    
+    println!(
+        "{}",
+        format!("🚀 Creating new Rullst app: {}...", name)
+            .green()
+            .bold()
+    );
+
     let path = Path::new(&name);
     if path.exists() {
-        println!("{}", format!("❌ Error: Directory '{}' already exists.", name).red());
+        println!(
+            "{}",
+            format!("❌ Error: Directory '{}' already exists.", name).red()
+        );
         std::process::exit(1);
     }
-    
+
     // Create folders
     fs::create_dir_all(path.join("src/pages"))?;
     fs::create_dir_all(path.join("src/models"))?;
-    
+
     // Scaffold initial src/migrations/mod.rs file
     let migrations_dir = path.join("src/migrations");
     fs::create_dir_all(&migrations_dir)?;
-    fs::write(migrations_dir.join("mod.rs"), r#"// Generated by Rullst.
+    fs::write(
+        migrations_dir.join("mod.rs"),
+        r#"// Generated by Rullst.
 
 pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
     vec![]
 }
-"#)?;
-    
+"#,
+    )?;
+
     // Get absolute path to the Rullst framework folder for local referencing
     let current_dir = std::env::current_dir()?;
     let rullst_path = if current_dir.join("rullst").exists() {
-        current_dir.join("rullst").canonicalize()?.display().to_string()
+        current_dir
+            .join("rullst")
+            .canonicalize()?
+            .display()
+            .to_string()
     } else {
         "c:\\Users\\venelouis\\Desktop\\REPOS\\Rullst\\rullst".to_string()
     };
-    
+
     // Get absolute path to rust-eloquent for local referencing
     let _rust_eloquent_path = if current_dir.join("rust-eloquent").exists() {
-        current_dir.join("rust-eloquent/rust-eloquent").canonicalize()?.display().to_string()
-    } else if current_dir.parent().map(|p| p.join("rust-eloquent/rust-eloquent").exists()).unwrap_or(false) {
-        current_dir.parent().unwrap().join("rust-eloquent/rust-eloquent").canonicalize()?.display().to_string()
+        current_dir
+            .join("rust-eloquent/rust-eloquent")
+            .canonicalize()?
+            .display()
+            .to_string()
+    } else if current_dir
+        .parent()
+        .map(|p| p.join("rust-eloquent/rust-eloquent").exists())
+        .unwrap_or(false)
+    {
+        current_dir
+            .parent()
+            .unwrap()
+            .join("rust-eloquent/rust-eloquent")
+            .canonicalize()?
+            .display()
+            .to_string()
     } else {
         "c:\\Users\\venelouis\\Desktop\\REPOS\\rust-eloquent\\rust-eloquent".to_string()
     };
-    
+
     // Fix Windows path escaping in Cargo.toml and strip UNC prefix \\?\ if present
     let rullst_path = rullst_path.trim_start_matches(r"\\?\").replace("\\", "/");
-    let _rust_eloquent_path = _rust_eloquent_path.trim_start_matches(r"\\?\").replace("\\", "/");
+    let _rust_eloquent_path = _rust_eloquent_path
+        .trim_start_matches(r"\\?\")
+        .replace("\\", "/");
 
     // Extract a valid package name from the path (e.g. "..\dummy_test" -> "dummy_test")
     let project_name = path
@@ -852,7 +1053,7 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
 
     // Write Cargo.toml
     let cargo_toml = format!(
-r#"[package]
+        r#"[package]
 name = "{project_name}"
 version = "0.1.0"
 edition = "2024"
@@ -867,7 +1068,8 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
 axum = "0.7"
 
 [workspace]
-"#);
+"#
+    );
 
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
 
@@ -877,9 +1079,11 @@ axum = "0.7"
         "MySQL" => "mysql://root:password@localhost/rullst",
         _ => "sqlite://rullst.db",
     };
-    let rullst_toml = format!(r#"[database]
+    let rullst_toml = format!(
+        r#"[database]
 url = "{db_url}"
-"#);
+"#
+    );
     fs::write(path.join("Rullst.toml"), rullst_toml)?;
 
     // Write src/main.rs
@@ -1048,12 +1252,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_docker_files(path, &project_name)?;
     }
 
-    println!("{}", format!("✨ Project '{}' created successfully!", name).green().bold());
+    println!(
+        "{}",
+        format!("✨ Project '{}' created successfully!", name)
+            .green()
+            .bold()
+    );
     println!("{}", "How to run:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  cargo run".cyan());
     if docker {
-        println!("{}", "\n🐳 Docker files generated! To run with Docker:".cyan());
+        println!(
+            "{}",
+            "\n🐳 Docker files generated! To run with Docker:".cyan()
+        );
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  docker compose up --build".cyan());
     }
@@ -1067,18 +1279,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
-    println!("{}", format!("⏳ Executando 'cargo run -- {}'...", command).cyan().bold());
+    println!(
+        "{}",
+        format!("⏳ Executando 'cargo run -- {}'...", command)
+            .cyan()
+            .bold()
+    );
 
     let status = std::process::Command::new("cargo")
         .args(&["run", "--", command])
         .status()?;
 
     if !status.success() {
-        println!("{}", format!("❌ Falha ao executar o comando db: {}", command).red().bold());
+        println!(
+            "{}",
+            format!("❌ Falha ao executar o comando db: {}", command)
+                .red()
+                .bold()
+        );
         std::process::exit(status.code().unwrap_or(1));
     }
 
@@ -1087,15 +1314,29 @@ fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::Error
 
 fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
-    let snake_name = name.to_lowercase().replace("-", "_").trim_start_matches("m").to_string();
+    let snake_name = name
+        .to_lowercase()
+        .replace("-", "_")
+        .trim_start_matches("m")
+        .to_string();
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_{}", timestamp, snake_name);
-    
-    println!("{}", format!("🛠️ Gerando migração Rullst: {}...", file_stem).cyan().bold());
+
+    println!(
+        "{}",
+        format!("🛠️ Gerando migração Rullst: {}...", file_stem)
+            .cyan()
+            .bold()
+    );
 
     let migrations_dir = Path::new("src/migrations");
     if !migrations_dir.exists() {
@@ -1106,7 +1347,7 @@ fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let table_name = get_table_name_from_migration(&snake_name);
 
     let template = format!(
-r#"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
+        r#"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
 use rust_eloquent::async_trait;
 
 pub struct MigrationImpl;
@@ -1135,7 +1376,15 @@ impl Migration for MigrationImpl {{
     );
 
     fs::write(&migration_path, template)?;
-    println!("{}", format!("✨ Migração em Rust criada em '{}' com sucesso!", migration_path.display()).green().bold());
+    println!(
+        "{}",
+        format!(
+            "✨ Migração em Rust criada em '{}' com sucesso!",
+            migration_path.display()
+        )
+        .green()
+        .bold()
+    );
 
     regenerate_migrations_mod()?;
 
@@ -1181,7 +1430,9 @@ fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     for m in &modules {
         mod_content.push_str(&format!("pub mod {};\n", m));
     }
-    mod_content.push_str("\npub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {\n");
+    mod_content.push_str(
+        "\npub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {\n",
+    );
     mod_content.push_str("    vec![\n");
     for m in &modules {
         mod_content.push_str(&format!("        Box::new({}::MigrationImpl),\n", m));
@@ -1195,11 +1446,21 @@ fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
 
 fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
-    println!("{}", "🛡️  Iniciando scaffolding do sistema de autenticação Rullst...".cyan().bold());
+    println!(
+        "{}",
+        "🛡️  Iniciando scaffolding do sistema de autenticação Rullst..."
+            .cyan()
+            .bold()
+    );
 
     // 1. Criar Migration do Usuário
     let migrations_dir = Path::new("src/migrations");
@@ -1207,9 +1468,9 @@ fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_create_users_table", timestamp);
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
-    
+
     let migration_template = format!(
-r##"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
+        r##"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
 use rust_eloquent::async_trait;
 
 pub struct MigrationImpl;
@@ -1742,7 +2003,10 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
 }
 "##;
     fs::write(&pages_path, pages_template)?;
-    println!("{}", "  ✨ Criadas views HTML em 'src/pages/auth.rs'.".green());
+    println!(
+        "{}",
+        "  ✨ Criadas views HTML em 'src/pages/auth.rs'.".green()
+    );
 
     let mod_pages_path = pages_dir.join("mod.rs");
     if !mod_pages_path.exists() {
@@ -1967,7 +2231,10 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 }
 "##;
     fs::write(&controller_path, controller_template)?;
-    println!("{}", "  ✨ Criado controller 'src/controllers/auth_controller.rs'.".green());
+    println!(
+        "{}",
+        "  ✨ Criado controller 'src/controllers/auth_controller.rs'.".green()
+    );
 
     let mod_controllers_path = controllers_dir.join("mod.rs");
     if !mod_controllers_path.exists() {
@@ -1983,7 +2250,7 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
-        
+
         // Registrar módulos necessários se não estiverem presentes
         for module in &["controllers", "models", "middlewares", "pages"] {
             let declaration = format!("pub mod {};", module);
@@ -2003,7 +2270,11 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
                 let current_dir = std::env::current_dir()?;
                 let sibling_path = current_dir.parent().unwrap().join("rust-socialite");
                 let dep_str = if sibling_path.exists() {
-                    let absolute_path = sibling_path.canonicalize()?.display().to_string().replace("\\", "/");
+                    let absolute_path = sibling_path
+                        .canonicalize()?
+                        .display()
+                        .to_string()
+                        .replace("\\", "/");
                     format!("rust-socialite = {{ path = \"{}\" }}\n", absolute_path)
                 } else {
                     "rust-socialite = \"0.4.0\"\n".to_string()
@@ -2012,7 +2283,11 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {
                     cargo_toml_content.insert_str(pos + 14, &dep_str);
                     fs::write(cargo_toml_path, cargo_toml_content)?;
-                    println!("{}", "  ✨ Adicionada dependência do 'rust-socialite' no seu Cargo.toml.".green());
+                    println!(
+                        "{}",
+                        "  ✨ Adicionada dependência do 'rust-socialite' no seu Cargo.toml."
+                            .green()
+                    );
                 }
             }
         }
@@ -2021,25 +2296,61 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
         println!("{}", "  ✨ Injetadas declarações de módulos ('pub mod controllers/models...') no seu src/main.rs.".green());
     }
 
-    println!("\n{}", "🎉 Sistema de autenticação gerado com extremo sucesso!".green().bold());
+    println!(
+        "\n{}",
+        "🎉 Sistema de autenticação gerado com extremo sucesso!"
+            .green()
+            .bold()
+    );
     println!("{}", "Para concluir a integração:".cyan().bold());
-    println!("{}", "  1. Registre as rotas abaixo no macro routes! de seu 'src/main.rs':".cyan());
+    println!(
+        "{}",
+        "  1. Registre as rotas abaixo no macro routes! de seu 'src/main.rs':".cyan()
+    );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
-    println!("{}", "     get(\"/login\" => controllers::auth_controller::login_view),".yellow());
-    println!("{}", "     post(\"/login\" => controllers::auth_controller::login_submit),".yellow());
-    println!("{}", "     get(\"/register\" => controllers::auth_controller::register_view),".yellow());
-    println!("{}", "     post(\"/register\" => controllers::auth_controller::register_submit),".yellow());
-    println!("{}", "     get(\"/logout\" => controllers::auth_controller::logout),".yellow());
-    println!("{}", "     get(\"/dashboard\" => controllers::auth_controller::dashboard),".yellow());
+    println!(
+        "{}",
+        "     get(\"/login\" => controllers::auth_controller::login_view),".yellow()
+    );
+    println!(
+        "{}",
+        "     post(\"/login\" => controllers::auth_controller::login_submit),".yellow()
+    );
+    println!(
+        "{}",
+        "     get(\"/register\" => controllers::auth_controller::register_view),".yellow()
+    );
+    println!(
+        "{}",
+        "     post(\"/register\" => controllers::auth_controller::register_submit),".yellow()
+    );
+    println!(
+        "{}",
+        "     get(\"/logout\" => controllers::auth_controller::logout),".yellow()
+    );
+    println!(
+        "{}",
+        "     get(\"/dashboard\" => controllers::auth_controller::dashboard),".yellow()
+    );
     println!("{}", "     get(\"/auth/github/redirect\" => controllers::auth_controller::oauth_github_redirect),".yellow());
     println!("{}", "     get(\"/auth/github/callback\" => controllers::auth_controller::oauth_github_callback),".yellow());
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
-    println!("{}", "  2. Para proteger rotas com middleware, aplique a camada no router:".cyan());
+    println!(
+        "{}",
+        "  2. Para proteger rotas com middleware, aplique a camada no router:".cyan()
+    );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!("{}", "     let protected_router = routes![\n         get(\"/dashboard\" => controllers::auth_controller::dashboard)\n     ]".yellow());
-    println!("{}", "     .layer(axum::middleware::from_fn(middlewares::auth_middleware::auth_middleware));".yellow());
+    println!(
+        "{}",
+        "     .layer(axum::middleware::from_fn(middlewares::auth_middleware::auth_middleware));"
+            .yellow()
+    );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
-    println!("{}", "  3. Aplique as proteções CSRF e Security Headers globais no seu router principal:".cyan());
+    println!(
+        "{}",
+        "  3. Aplique as proteções CSRF e Security Headers globais no seu router principal:".cyan()
+    );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!("{}", "     let main_router = routes![...]\n         .layer(axum::middleware::from_fn(rullst::security::csrf_middleware))\n         .layer(axum::middleware::from_fn(rullst::security::headers_middleware));".yellow());
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
@@ -2053,12 +2364,15 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 // DOCKER FILE GENERATION
 // ==========================================
 
-fn generate_docker_files(project_path: &Path, project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_docker_files(
+    project_path: &Path,
+    project_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "🐳 Gerando arquivos Docker...".cyan().bold());
 
     // --- Dockerfile (multi-stage, distroless) ---
     let dockerfile = format!(
-r#"# ══════════════════════════════════════════════════════════════
+        r#"# ══════════════════════════════════════════════════════════════
 # Rullst Production Dockerfile (auto-generated)
 # Multi-stage build: Rust builder → Distroless runtime
 # Final image: ~20MB | Zero CVEs | Ultra-fast cold start
@@ -2092,11 +2406,12 @@ COPY Rullst.toml /app/Rullst.toml
 EXPOSE 3000
 
 ENTRYPOINT ["/app/{project_name}"]
-"#);
+"#
+    );
 
     // --- docker-compose.yml ---
     let docker_compose = format!(
-r#"# ══════════════════════════════════════════════════════════════
+        r#"# ══════════════════════════════════════════════════════════════
 # Rullst Docker Compose (auto-generated)
 # Services: App + PostgreSQL + Redis
 # ══════════════════════════════════════════════════════════════
@@ -2152,7 +2467,8 @@ services:
 volumes:
   pgdata:
   redisdata:
-"#);
+"#
+    );
 
     // --- .dockerignore ---
     let dockerignore = r#"target/
@@ -2171,7 +2487,10 @@ LICENSE
     fs::write(project_path.join(".dockerignore"), dockerignore)?;
 
     println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
-    println!("{}", "  ✅ docker-compose.yml (App + Postgres + Redis)".green());
+    println!(
+        "{}",
+        "  ✅ docker-compose.yml (App + Postgres + Redis)".green()
+    );
     println!("{}", "  ✅ .dockerignore".green());
 
     Ok(())
@@ -2183,7 +2502,12 @@ LICENSE
 
 fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
@@ -2210,7 +2534,10 @@ fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
 
     let middleware_path = middlewares_dir.join("cors_middleware.rs");
     if middleware_path.exists() {
-        println!("{}", "⚠️ Aviso: O middleware 'cors_middleware.rs' já existe. Pulando criação.".yellow());
+        println!(
+            "{}",
+            "⚠️ Aviso: O middleware 'cors_middleware.rs' já existe. Pulando criação.".yellow()
+        );
     } else {
         let template = r#"use axum::{
     extract::Request,
@@ -2271,21 +2598,36 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
-        if !main_content.contains("pub mod middlewares;") && !main_content.contains("mod middlewares;") {
+        if !main_content.contains("pub mod middlewares;")
+            && !main_content.contains("mod middlewares;")
+        {
             if main_content.contains("pub mod controllers;") {
-                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod middlewares;");
+                main_content = main_content.replace(
+                    "pub mod controllers;",
+                    "pub mod controllers;\npub mod middlewares;",
+                );
             } else if main_content.contains("pub mod models;") {
-                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod middlewares;");
+                main_content = main_content
+                    .replace("pub mod models;", "pub mod models;\npub mod middlewares;");
             } else {
                 main_content = format!("pub mod middlewares;\n{}", main_content);
             }
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan()
+            );
         }
     }
 
-    println!("{}", "✨ Middleware CORS criado com sucesso!".green().bold());
-    println!("{}", "Como registrar no seu router principal (src/main.rs):".cyan());
+    println!(
+        "{}",
+        "✨ Middleware CORS criado com sucesso!".green().bold()
+    );
+    println!(
+        "{}",
+        "Como registrar no seu router principal (src/main.rs):".cyan()
+    );
     println!("{}", "  1. Adicione: '.layer(axum::middleware::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
 
     Ok(())
@@ -2293,7 +2635,12 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
 
 fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
@@ -2312,13 +2659,20 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
         }
         if !cargo_toml_content.contains("chrono") {
             if let Some(pos) = cargo_toml_content.find("[dependencies]") {
-                cargo_toml_content.insert_str(pos + 14, "chrono = { version = \"0.4\", features = [\"serde\"] }\n");
+                cargo_toml_content.insert_str(
+                    pos + 14,
+                    "chrono = { version = \"0.4\", features = [\"serde\"] }\n",
+                );
                 modified = true;
             }
         }
         if modified {
             fs::write(cargo_toml_path, cargo_toml_content)?;
-            println!("{}", "  ✨ Adicionadas dependências 'jsonwebtoken' e 'chrono' no seu Cargo.toml.".green());
+            println!(
+                "{}",
+                "  ✨ Adicionadas dependências 'jsonwebtoken' e 'chrono' no seu Cargo.toml."
+                    .green()
+            );
         }
     }
 
@@ -2343,7 +2697,10 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
 
     let middleware_path = middlewares_dir.join("jwt_middleware.rs");
     if middleware_path.exists() {
-        println!("{}", "⚠️ Aviso: O middleware 'jwt_middleware.rs' já existe. Pulando criação.".yellow());
+        println!(
+            "{}",
+            "⚠️ Aviso: O middleware 'jwt_middleware.rs' já existe. Pulando criação.".yellow()
+        );
     } else {
         let template = r#"use axum::{
     extract::Request,
@@ -2419,23 +2776,39 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
-        if !main_content.contains("pub mod middlewares;") && !main_content.contains("mod middlewares;") {
+        if !main_content.contains("pub mod middlewares;")
+            && !main_content.contains("mod middlewares;")
+        {
             if main_content.contains("pub mod controllers;") {
-                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod middlewares;");
+                main_content = main_content.replace(
+                    "pub mod controllers;",
+                    "pub mod controllers;\npub mod middlewares;",
+                );
             } else if main_content.contains("pub mod models;") {
-                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod middlewares;");
+                main_content = main_content
+                    .replace("pub mod models;", "pub mod models;\npub mod middlewares;");
             } else {
                 main_content = format!("pub mod middlewares;\n{}", main_content);
             }
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan()
+            );
         }
     }
 
     println!("{}", "✨ Middleware JWT criado com sucesso!".green().bold());
     println!("{}", "Como utilizar:".cyan());
-    println!("{}", "  1. Adicione a camada ao seu router protegido (src/main.rs):".cyan());
-    println!("{}", "     .layer(axum::middleware::from_fn(middlewares::jwt_middleware::jwt_middleware))".cyan());
+    println!(
+        "{}",
+        "  1. Adicione a camada ao seu router protegido (src/main.rs):".cyan()
+    );
+    println!(
+        "{}",
+        "     .layer(axum::middleware::from_fn(middlewares::jwt_middleware::jwt_middleware))"
+            .cyan()
+    );
     println!("{}", "  2. Acesse os claims no controller:".cyan());
     println!("{}", "     pub async fn meu_endpoint(axum::Extension(claims): axum::Extension<Claims>) -> impl IntoResponse".cyan());
 
@@ -2488,14 +2861,24 @@ fn worker_to_snake_case(s: &str) -> String {
 
 fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
     let snake_name = worker_to_snake_case(name);
     let job_name = snake_name.strip_suffix("_worker").unwrap_or(&snake_name);
 
-    println!("{}", format!("🛠️ Gerando background worker Rullst: {}...", snake_name).cyan().bold());
+    println!(
+        "{}",
+        format!("🛠️ Gerando background worker Rullst: {}...", snake_name)
+            .cyan()
+            .bold()
+    );
 
     let workers_dir = Path::new("src/workers");
     if !workers_dir.exists() {
@@ -2528,17 +2911,27 @@ fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let search_str = "pub fn register_workers(worker: &mut rullst::queue::Worker) {";
         if let Some(pos) = mod_content.find(search_str) {
             let insert_pos = pos + search_str.len() + 1;
-            mod_content.insert_str(insert_pos, &format!("    {}::register(worker);\n", snake_name));
+            mod_content.insert_str(
+                insert_pos,
+                &format!("    {}::register(worker);\n", snake_name),
+            );
         }
     }
     fs::write(&mod_path, mod_content)?;
 
     let worker_path = workers_dir.join(format!("{}.rs", snake_name));
     if worker_path.exists() {
-        println!("{}", format!("⚠️ Aviso: O worker '{}.rs' já existe. Pulando criação.", snake_name).yellow());
+        println!(
+            "{}",
+            format!(
+                "⚠️ Aviso: O worker '{}.rs' já existe. Pulando criação.",
+                snake_name
+            )
+            .yellow()
+        );
     } else {
         let template = format!(
-r#"use rullst::queue::{{Worker, QueueError}};
+            r#"use rullst::queue::{{Worker, QueueError}};
 use serde_json::Value;
 
 /// Registra o processador de tarefas deste worker.
@@ -2551,7 +2944,9 @@ pub fn register(worker: &mut Worker) {{
         Ok(())
     }});
 }}
-"#, job_name = job_name);
+"#,
+            job_name = job_name
+        );
         fs::write(&worker_path, template)?;
     }
 
@@ -2561,22 +2956,47 @@ pub fn register(worker: &mut Worker) {{
         let mut main_content = fs::read_to_string(main_path)?;
         if !main_content.contains("pub mod workers;") && !main_content.contains("mod workers;") {
             if main_content.contains("pub mod controllers;") {
-                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod workers;");
+                main_content = main_content.replace(
+                    "pub mod controllers;",
+                    "pub mod controllers;\npub mod workers;",
+                );
             } else if main_content.contains("pub mod models;") {
-                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod workers;");
+                main_content =
+                    main_content.replace("pub mod models;", "pub mod models;\npub mod workers;");
             } else {
                 main_content = format!("pub mod workers;\n{}", main_content);
             }
             fs::write(main_path, main_content)?;
-            println!("{}", "ℹ️ Adicionado 'pub mod workers;' ao topo de src/main.rs.".cyan());
+            println!(
+                "{}",
+                "ℹ️ Adicionado 'pub mod workers;' ao topo de src/main.rs.".cyan()
+            );
         }
     }
 
-    println!("{}", format!("✨ Worker '{}' criado com sucesso em '{}'!", snake_name, worker_path.display()).green().bold());
-    println!("{}", "Como inicializar o Worker em segundo plano no seu 'src/main.rs':".cyan());
+    println!(
+        "{}",
+        format!(
+            "✨ Worker '{}' criado com sucesso em '{}'!",
+            snake_name,
+            worker_path.display()
+        )
+        .green()
+        .bold()
+    );
+    println!(
+        "{}",
+        "Como inicializar o Worker em segundo plano no seu 'src/main.rs':".cyan()
+    );
     println!("{}", "  1. Crie a fila e inicialize o worker:".cyan());
-    println!("{}", "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan());
-    println!("{}", "     let mut worker = rullst::queue::Worker::new(&queue);".cyan());
+    println!(
+        "{}",
+        "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan()
+    );
+    println!(
+        "{}",
+        "     let mut worker = rullst::queue::Worker::new(&queue);".cyan()
+    );
     println!("{}", "  2. Registre seus workers:".cyan());
     println!("{}", "     workers::register_workers(&mut worker);".cyan());
     println!("{}", "  3. Inicie o loop de processamento:".cyan());
@@ -2592,7 +3012,7 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
     }
     let action = parts.last()?.to_string();
     let controller_module = parts[parts.len() - 2];
-    
+
     // Find in src/controllers/<controller_module>.rs
     let controller_path = Path::new("src/controllers").join(format!("{}.rs", controller_module));
     if !controller_path.exists() {
@@ -2601,7 +3021,7 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
 
     let content = fs::read_to_string(controller_path).ok()?;
     let lines: Vec<&str> = content.lines().collect();
-    
+
     for (i, line) in lines.iter().enumerate() {
         if line.contains(&format!("pub async fn {}", action)) {
             let mut comments = Vec::new();
@@ -2629,11 +3049,21 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
 
 fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
-    println!("{}", "🔍 Escaneando projeto para extrair rotas e gerar especificação OpenAPI...".cyan().bold());
+    println!(
+        "{}",
+        "🔍 Escaneando projeto para extrair rotas e gerar especificação OpenAPI..."
+            .cyan()
+            .bold()
+    );
 
     let main_path = Path::new("src/main.rs");
     if !main_path.exists() {
@@ -2642,19 +3072,23 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let main_content = fs::read_to_string(main_path)?;
-    
+
     // Parses Axum get/post/put/delete routing patterns
-    let route_regex = regex::Regex::new(r#"(get|post|put|delete|patch|options|head)\s*\(\s*"([^"]+)"\s*=>\s*([\w_:]+)\s*\)"#)?;
-    
-    let mut paths_map: std::collections::BTreeMap<String, serde_json::Value> = std::collections::BTreeMap::new();
+    let route_regex = regex::Regex::new(
+        r#"(get|post|put|delete|patch|options|head)\s*\(\s*"([^"]+)"\s*=>\s*([\w_:]+)\s*\)"#,
+    )?;
+
+    let mut paths_map: std::collections::BTreeMap<String, serde_json::Value> =
+        std::collections::BTreeMap::new();
 
     for cap in route_regex.captures_iter(&main_content) {
         let method = cap[1].to_lowercase();
         let path = cap[2].to_string();
         let handler_path = cap[3].to_string();
-        
+
         // Convert route parameters from Axum format (:id) to OpenAPI format ({id})
-        let openapi_path = path.split('/')
+        let openapi_path = path
+            .split('/')
             .map(|segment| {
                 if segment.starts_with(':') {
                     format!("{{{}}}", &segment[1..])
@@ -2692,10 +3126,15 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         if !parameters.as_array().unwrap().is_empty() {
-            operation.as_object_mut().unwrap().insert("parameters".to_string(), parameters);
+            operation
+                .as_object_mut()
+                .unwrap()
+                .insert("parameters".to_string(), parameters);
         }
 
-        let path_item = paths_map.entry(openapi_path).or_insert_with(|| serde_json::json!({}));
+        let path_item = paths_map
+            .entry(openapi_path)
+            .or_insert_with(|| serde_json::json!({}));
         path_item.as_object_mut().unwrap().insert(method, operation);
     }
 
@@ -2712,20 +3151,41 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = Path::new("openapi.json");
     fs::write(output_path, serde_json::to_string_pretty(&openapi)?)?;
 
-    println!("{}", format!("✨ OpenAPI especificação JSON criada com extremo sucesso em '{}'!", output_path.display()).green().bold());
+    println!(
+        "{}",
+        format!(
+            "✨ OpenAPI especificação JSON criada com extremo sucesso em '{}'!",
+            output_path.display()
+        )
+        .green()
+        .bold()
+    );
     Ok(())
 }
 
 fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 
-    println!("{}", "\n🚀 Iniciando a Atualização Segura do Rullst (Self-Healing Upgrades)...\n".cyan().bold());
+    println!(
+        "{}",
+        "\n🚀 Iniciando a Atualização Segura do Rullst (Self-Healing Upgrades)...\n"
+            .cyan()
+            .bold()
+    );
 
     // Step 1: Update the Rullst dependency to the latest compatible non-breaking version
-    println!("{}", "📦 Atualizando as dependências do Rullst no Cargo.toml...".yellow());
+    println!(
+        "{}",
+        "📦 Atualizando as dependências do Rullst no Cargo.toml...".yellow()
+    );
     let update_status = Command::new("cargo")
         .arg("update")
         .arg("-p")
@@ -2733,12 +3193,18 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     if !update_status.success() {
-        println!("{}", "❌ Falha ao atualizar a dependência 'rullst' via cargo update.".red());
+        println!(
+            "{}",
+            "❌ Falha ao atualizar a dependência 'rullst' via cargo update.".red()
+        );
         std::process::exit(1);
     }
 
     // Step 2: Run `cargo fix` to apply codemods based on new deprecations and signatures
-    println!("{}", "\n🔧 Aplicando codemods automáticos baseados nas assinaturas do Rullst...".yellow());
+    println!(
+        "{}",
+        "\n🔧 Aplicando codemods automáticos baseados nas assinaturas do Rullst...".yellow()
+    );
     let fix_status = Command::new("cargo")
         .arg("fix")
         .arg("--allow-no-vcs")
@@ -2746,15 +3212,22 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     if !fix_status.success() {
-        println!("{}", "❌ Falha ao aplicar as migrações de código via cargo fix.".red());
+        println!(
+            "{}",
+            "❌ Falha ao aplicar as migrações de código via cargo fix.".red()
+        );
         std::process::exit(1);
     }
 
     // Wrap up
-    println!("{}", "\n✨ Atualização do Rullst concluída com extremo sucesso!".green().bold());
+    println!(
+        "{}",
+        "\n✨ Atualização do Rullst concluída com extremo sucesso!"
+            .green()
+            .bold()
+    );
     println!("{}", "Seu código foi atualizado automaticamente para refletir as melhores práticas da versão mais recente.".green());
     println!("{}", "Execute `cargo test` ou `cargo check` para garantir que tudo está funcionando perfeitamente.\n".cyan());
 
     Ok(())
 }
-

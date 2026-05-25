@@ -8,7 +8,7 @@ mod html_parser;
 /// A macro for writing HTML inline in Rust.
 /// It compiles down to highly optimized string concatenations at compile time,
 /// and automatically escapes dynamic variables to prevent XSS.
-/// 
+///
 /// # Example
 /// ```rust,ignore
 /// let name = "Mundo";

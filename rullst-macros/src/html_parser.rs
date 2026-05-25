@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::parse::{Parse, ParseStream};
 use syn::ext::IdentExt;
-use syn::{token, Expr, Ident, LitStr, Result, Token};
+use syn::parse::{Parse, ParseStream};
+use syn::{Expr, Ident, LitStr, Result, Token, token};
 
 pub enum HtmlNode {
     Element(HtmlElement),
@@ -47,12 +47,12 @@ impl Parse for HtmlElement {
     fn parse(input: ParseStream) -> Result<Self> {
         input.parse::<Token![<]>()?;
         let tag_name = input.parse::<Ident>()?;
-        
+
         let mut attributes = Vec::new();
-        while !input.peek(Token![>]) && !(input.peek(Token![/]) && input.peek2(Token![>])) {
+        while !(input.peek(Token![>]) || input.peek(Token![/]) && input.peek2(Token![>])) {
             attributes.push(input.parse::<HtmlAttribute>()?);
         }
-        
+
         if input.peek(Token![/]) {
             input.parse::<Token![/]>()?;
             input.parse::<Token![>]>()?;
@@ -62,9 +62,9 @@ impl Parse for HtmlElement {
                 children: Vec::new(),
             });
         }
-        
+
         input.parse::<Token![>]>()?;
-        
+
         let mut children = Vec::new();
         while !input.is_empty() {
             if input.peek(Token![<]) && input.peek2(Token![/]) {
@@ -72,18 +72,21 @@ impl Parse for HtmlElement {
             }
             children.push(input.parse::<HtmlNode>()?);
         }
-        
+
         input.parse::<Token![<]>()?;
         input.parse::<Token![/]>()?;
         let closing_tag = input.parse::<Ident>()?;
         if closing_tag != tag_name {
             return Err(syn::Error::new(
                 closing_tag.span(),
-                format!("Mismatched closing tag: expected </{}>, found </{}>", tag_name, closing_tag),
+                format!(
+                    "Mismatched closing tag: expected </{}>, found </{}>",
+                    tag_name, closing_tag
+                ),
             ));
         }
         input.parse::<Token![>]>()?;
-        
+
         Ok(HtmlElement {
             tag_name,
             attributes,
@@ -96,12 +99,12 @@ impl Parse for HtmlAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut name_parts = Vec::new();
         name_parts.push(Ident::parse_any(input)?.to_string());
-        
+
         while input.peek(Token![-]) {
             input.parse::<Token![-]>()?;
             name_parts.push(Ident::parse_any(input)?.to_string());
         }
-        
+
         let name = name_parts.join("-");
         input.parse::<Token![=]>()?;
         let value = if input.peek(token::Brace) {
@@ -135,7 +138,7 @@ impl HtmlNode {
 impl HtmlElement {
     pub fn to_tokens(&self) -> TokenStream {
         let tag = self.tag_name.to_string();
-        
+
         let mut attr_tokens = Vec::new();
         for attr in &self.attributes {
             let attr_name = attr.name.to_string();
@@ -153,9 +156,9 @@ impl HtmlElement {
                 }
             }
         }
-        
+
         let child_tokens = self.children.iter().map(|child| child.to_tokens());
-        
+
         if self.children.is_empty() {
             quote! {
                 {

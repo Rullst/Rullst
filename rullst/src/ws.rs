@@ -1,6 +1,4 @@
-use axum::{
-    extract::ws::{Message as AxumMessage, WebSocket as AxumWebSocket},
-};
+use axum::extract::ws::{Message as AxumMessage, WebSocket as AxumWebSocket};
 
 #[derive(Debug)]
 pub enum WsError {

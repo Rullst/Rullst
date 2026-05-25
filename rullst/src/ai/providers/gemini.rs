@@ -1,5 +1,5 @@
+use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
-use crate::ai::{AiProvider, AiError, Message};
 
 pub struct GeminiProvider {
     api_key: String,
@@ -66,13 +66,15 @@ impl AiProvider for GeminiProvider {
             "contents": contents,
         });
 
-        if let Some(sys_inst) = system_instruction {
-            if let Some(obj) = body.as_object_mut() {
-                obj.insert("systemInstruction".to_string(), sys_inst);
-            }
+        if let Some(sys_inst) = system_instruction
+            && let Some(obj) = body.as_object_mut()
+        {
+            obj.insert("systemInstruction".to_string(), sys_inst);
         }
 
-        let res = self.client.post(&url)
+        let res = self
+            .client
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
@@ -81,13 +83,18 @@ impl AiProvider for GeminiProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("Gemini error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "Gemini error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
         let content = json["candidates"][0]["content"]["parts"][0]["text"]
             .as_str()
-            .ok_or_else(|| AiError::ApiError("No text returned in Gemini candidate content".to_string()))?;
+            .ok_or_else(|| {
+                AiError::ApiError("No text returned in Gemini candidate content".to_string())
+            })?;
 
         Ok(content.to_string())
     }
@@ -105,7 +112,9 @@ impl AiProvider for GeminiProvider {
             }
         });
 
-        let res = self.client.post(&url)
+        let res = self
+            .client
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
@@ -114,13 +123,18 @@ impl AiProvider for GeminiProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("Gemini error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "Gemini error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
         let embedding = json["embedding"]["values"]
             .as_array()
-            .ok_or_else(|| AiError::ApiError("No embedding returned from Gemini response".to_string()))?
+            .ok_or_else(|| {
+                AiError::ApiError("No embedding returned from Gemini response".to_string())
+            })?
             .iter()
             .map(|v| v.as_f64().unwrap_or(0.0) as f32)
             .collect();

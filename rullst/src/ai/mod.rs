@@ -128,10 +128,15 @@ impl AiClient {
             Ok(Self::new(providers::anthropic::AnthropicProvider::new(key)))
         } else if let Ok(host) = std::env::var("OLLAMA_HOST") {
             let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3".to_string());
-            Ok(Self::new(providers::ollama::OllamaProvider::new(host, model)))
+            Ok(Self::new(providers::ollama::OllamaProvider::new(
+                host, model,
+            )))
         } else {
             // Default check fallback if nothing is present, but try Ollama at localhost
-            Ok(Self::new(providers::ollama::OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string())))
+            Ok(Self::new(providers::ollama::OllamaProvider::new(
+                "http://localhost:11434".to_string(),
+                "llama3".to_string(),
+            )))
         }
     }
 
@@ -151,7 +156,8 @@ impl AiClient {
     where
         T: serde::de::DeserializeOwned,
     {
-        let system_instruction = "Return ONLY valid JSON. Do not write markdown, code blocks, or explanations.";
+        let system_instruction =
+            "Return ONLY valid JSON. Do not write markdown, code blocks, or explanations.";
         let full_prompt = format!("{}\n\nTarget data:\n{}", system_instruction, text);
         let res = self.provider.prompt(&full_prompt).await?;
         let clean_res = clean_json_markdown(&res);
@@ -203,11 +209,14 @@ impl VectorIndex {
 
     pub fn add(&mut self, id: impl Into<String>, vector: Vec<f32>, payload: serde_json::Value) {
         let id_str = id.into();
-        self.documents.insert(id_str.clone(), VectorDocument {
-            id: id_str,
-            vector,
-            payload,
-        });
+        self.documents.insert(
+            id_str.clone(),
+            VectorDocument {
+                id: id_str,
+                vector,
+                payload,
+            },
+        );
     }
 
     pub fn search(&self, query_vector: &[f32], limit: usize) -> Vec<(f32, &VectorDocument)> {
@@ -215,7 +224,8 @@ impl VectorIndex {
             return Vec::new();
         }
 
-        let mut results: Vec<(f32, &VectorDocument)> = self.documents
+        let mut results: Vec<(f32, &VectorDocument)> = self
+            .documents
             .values()
             .map(|doc| {
                 let similarity = cosine_similarity(query_vector, &doc.vector);

@@ -1,22 +1,22 @@
-pub mod html;
-pub mod routing;
-pub mod server;
+pub mod ai;
 pub mod artisan;
 pub mod auth;
-pub mod security;
-pub mod htmx;
-pub mod queue;
 pub mod cache;
-pub mod scheduler;
-pub mod validation;
-pub mod mail;
-pub mod storage;
-pub mod ws;
-pub mod horizon;
-pub mod ai;
-pub mod testing;
-pub mod feature;
 pub mod error_console;
+pub mod feature;
+pub mod horizon;
+pub mod html;
+pub mod htmx;
+pub mod mail;
+pub mod queue;
+pub mod routing;
+pub mod scheduler;
+pub mod security;
+pub mod server;
+pub mod storage;
+pub mod testing;
+pub mod validation;
+pub mod ws;
 
 #[macro_export]
 macro_rules! artisan {
@@ -41,24 +41,29 @@ pub use rust_eloquent::{Eloquent, EloquentModel};
 
 // Re-export axum response types for convenience
 pub mod response {
-    pub use axum::response::{Html, IntoResponse, Response, Redirect};
+    pub use axum::response::{Html, IntoResponse, Redirect, Response};
 }
 
 // Re-export HTMX primitives for convenience
 pub use htmx::{HtmxRequest, HtmxResponse, render_page};
 
 // Re-export Milestone 5: Production Utilities
-pub use queue::{Queue, Worker, QueuedJobDetail};
 pub use cache::Cache;
+pub use queue::{Queue, QueuedJobDetail, Worker};
 pub use scheduler::Scheduler;
 
 // Re-export Milestone 6: Enterprise Features
-pub use validation::{ValidatedForm, ValidatedJson, Validate, ValidationError};
 pub use mail::{Mail, Message as MailMessage};
 pub use storage::{Storage, StorageDriver, StorageError};
+pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
 pub use ws::{WebSocket, WsError};
 
-pub use ai::{AiClient, AiProvider, AiError, Message as AiMessage, ChatBuilder, VectorIndex, VectorDocument};
-pub use testing::{TestApp, TestRequestBuilder, TestResponse};
-pub use feature::{FeatureManager, FeatureDriver, MemoryFeatureDriver, EnvFeatureDriver, TomlFeatureDriver, DbFeatureDriver};
+pub use ai::{
+    AiClient, AiError, AiProvider, ChatBuilder, Message as AiMessage, VectorDocument, VectorIndex,
+};
 pub use async_trait::async_trait;
+pub use feature::{
+    DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
+    TomlFeatureDriver,
+};
+pub use testing::{TestApp, TestRequestBuilder, TestResponse};

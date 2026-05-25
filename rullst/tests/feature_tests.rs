@@ -1,5 +1,6 @@
 use rullst::feature::{
-    self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
+    self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
+    TomlFeatureDriver,
 };
 use rust_eloquent::Eloquent;
 use std::fs;
@@ -21,7 +22,11 @@ async fn test_memory_feature_driver() {
     let mut enabled_count = 0;
     for i in 0..100 {
         let user_id = format!("user_{}", i);
-        if memory_driver.enabled_for("progressive-rollout", &user_id).await.unwrap_or(false) {
+        if memory_driver
+            .enabled_for("progressive-rollout", &user_id)
+            .await
+            .unwrap_or(false)
+        {
             enabled_count += 1;
         }
     }
@@ -63,7 +68,10 @@ async fn test_env_feature_driver() {
     // Percent evaluation
     // Since user_4 hash bucket for "beta-pct" is deterministic, let's verify
     let bucket_user_4 = feature::calculate_hash_bucket("beta-pct", "user_4"); // let's see bucket
-    let user_4_enabled = env_driver.enabled_for("beta-pct", "user_4").await.unwrap_or(false);
+    let user_4_enabled = env_driver
+        .enabled_for("beta-pct", "user_4")
+        .await
+        .unwrap_or(false);
     assert_eq!(user_4_enabled, bucket_user_4 < 30);
 
     // Variants evaluation
@@ -96,7 +104,7 @@ home-ab = "control:40,treatment:60"
     let toml_driver = TomlFeatureDriver::new();
 
     assert_eq!(toml_driver.enabled("billing-v2").await, Some(true));
-    
+
     let bucket = feature::calculate_hash_bucket("admin-redesign", "user_99");
     assert_eq!(
         toml_driver.enabled_for("admin-redesign", "user_99").await,
@@ -113,7 +121,9 @@ home-ab = "control:40,treatment:60"
 #[tokio::test]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database
-    Eloquent::init("sqlite:file:memdb1?mode=memory&cache=shared").await.unwrap();
+    Eloquent::init("sqlite:file:memdb1?mode=memory&cache=shared")
+        .await
+        .unwrap();
     let pool = Eloquent::pool();
 
     // Acquire and hold a connection to keep the in-memory database alive
@@ -126,7 +136,7 @@ async fn test_database_feature_driver() {
             enabled INTEGER NOT NULL DEFAULT 0,
             rollout_percentage INTEGER DEFAULT NULL,
             variants TEXT DEFAULT NULL
-        )"
+        )",
     )
     .execute(pool)
     .await
@@ -138,7 +148,7 @@ async fn test_database_feature_driver() {
          VALUES 
          ('db-dashboard', 1, NULL, NULL),
          ('db-rollout', 1, 40, NULL),
-         ('db-ab-split', 1, NULL, 'variant-a:30,variant-b:70')"
+         ('db-ab-split', 1, NULL, 'variant-a:30,variant-b:70')",
     )
     .execute(pool)
     .await
@@ -180,7 +190,7 @@ async fn test_global_feature_manager_facade() {
     memory_driver.override_enabled("global-toggle", true);
 
     let manager = FeatureManager::new().add_driver(memory_driver);
-    feature::init(manager).unwrap_or_else(|_| ());
+    feature::init(manager).unwrap_or(());
 
     // Verify static wrapper functions evaluate correctly
     assert!(feature::enabled("global-toggle").await);

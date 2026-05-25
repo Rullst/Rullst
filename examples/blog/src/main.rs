@@ -1,6 +1,14 @@
-use rullst::{html, routes, Server, Router, response::{Html, IntoResponse, Redirect}};
-use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+#![allow(unexpected_cfgs)]
 use axum::Form;
+use rullst::{
+    Server, html,
+    response::{Html, IntoResponse, Redirect},
+    routes,
+};
+use rust_eloquent::{
+    Eloquent,
+    sqlx::{self, FromRow},
+};
 
 // 1. Define the Post database model
 #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
@@ -241,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             body TEXT NOT NULL
-        )"
+        )",
     )
     .execute(pool)
     .await?;
@@ -260,9 +268,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         post("/posts" => store),
     ];
 
-    Server::new(router)
-        .run(3000)
-        .await?;
+    Server::new(router).run(3000).await?;
 
     Ok(())
 }

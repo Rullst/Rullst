@@ -1,15 +1,15 @@
-use std::fs;
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2,
-};
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
 };
-use base64::{engine::general_purpose, Engine as _};
-use rand::Rng;
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+};
 use axum::http::HeaderMap;
+use base64::{Engine as _, engine::general_purpose};
+use rand::Rng;
+use std::fs;
 
 /// Default fall-back key for local development when APP_KEY is not configured.
 const DEFAULT_APP_KEY: &[u8] = b"rullst-super-secret-development-key-32bytes!!!";
@@ -45,14 +45,17 @@ pub fn get_app_key() -> Vec<u8> {
     if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
         for line in toml_content.lines() {
             let trimmed = line.trim();
-            if trimmed.starts_with("app_key") || trimmed.starts_with("key") {
-                if let Some(val) = trimmed.split('=').nth(1) {
-                    return val.trim().trim_matches('"').as_bytes().to_vec();
-                }
+            if (trimmed.starts_with("app_key") || trimmed.starts_with("key"))
+                && let Some(val) = trimmed.split('=').nth(1)
+            {
+                return val.trim().trim_matches('"').as_bytes().to_vec();
             }
         }
     }
 
+    eprintln!(
+        "⚠️  Rullst Security Warning: Using the default development APP_KEY. Please set APP_KEY in your environment or Rullst.toml for production."
+    );
     DEFAULT_APP_KEY.to_vec()
 }
 
@@ -63,7 +66,7 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
     key_bytes[..limit].copy_from_slice(&app_key[..limit]);
 
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
-    
+
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -87,7 +90,7 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
     key_bytes[..limit].copy_from_slice(&app_key[..limit]);
 
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
-    
+
     let combined = general_purpose::URL_SAFE_NO_PAD
         .decode(token)
         .map_err(|e| e.to_string())?;
@@ -109,13 +112,14 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
 
 /// Extracts the secure session cookie value from the request's Cookie headers.
 pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
-    headers.get(axum::http::header::COOKIE)
+    headers
+        .get(axum::http::header::COOKIE)
         .and_then(|value| value.to_str().ok())
         .and_then(|cookie_str| {
             for cookie in cookie_str.split(';') {
                 let trimmed = cookie.trim();
-                if trimmed.starts_with("rullst_session=") {
-                    return Some(trimmed["rullst_session=".len()..].to_string());
+                if let Some(stripped) = trimmed.strip_prefix("rullst_session=") {
+                    return Some(stripped.to_string());
                 }
             }
             None
@@ -146,8 +150,14 @@ mod tests {
     fn test_password_hashing() {
         let password = "my-secure-password";
         let hash = hash_password(password).expect("Failed to hash password");
-        assert!(verify_password(password, &hash), "Password verification failed");
-        assert!(!verify_password("wrong-password", &hash), "Password verification succeeded for wrong password");
+        assert!(
+            verify_password(password, &hash),
+            "Password verification failed"
+        );
+        assert!(
+            !verify_password("wrong-password", &hash),
+            "Password verification succeeded for wrong password"
+        );
     }
 
     #[test]
@@ -156,7 +166,9 @@ mod tests {
         let key = b"my-custom-encryption-key-for-test!!!";
         let token = encrypt_session(user_id, key).expect("Failed to encrypt session");
         let decrypted = decrypt_session(&token, key).expect("Failed to decrypt session");
-        assert_eq!(user_id, decrypted, "Decrypted user ID does not match original");
+        assert_eq!(
+            user_id, decrypted,
+            "Decrypted user ID does not match original"
+        );
     }
 }
-

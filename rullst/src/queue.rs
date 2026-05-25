@@ -51,7 +51,9 @@ impl std::fmt::Display for QueueError {
         match self {
             QueueError::Driver(msg) => write!(f, "Queue driver error: {}", msg),
             QueueError::Serialization(msg) => write!(f, "Queue serialization error: {}", msg),
-            QueueError::HandlerNotFound(name) => write!(f, "No handler registered for job: {}", name),
+            QueueError::HandlerNotFound(name) => {
+                write!(f, "No handler registered for job: {}", name)
+            }
             QueueError::JobFailed(msg) => write!(f, "Job execution failed: {}", msg),
         }
     }
@@ -88,7 +90,6 @@ pub struct QueuedJobDetail {
 }
 
 // ─── Queue Driver Trait ─────────────────────────────────────────────────────
-
 
 /// Abstraction over queue storage backends.
 ///
@@ -162,6 +163,7 @@ impl SqliteDriver {
         &self.pool
     }
 
+    #[allow(clippy::type_complexity)]
     pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
         let rows: Vec<(String, String, String, String, Option<String>, i32, String, String)> = sqlx::query_as(
             "SELECT id, name, payload, status, error, attempts, created_at, updated_at FROM rullst_jobs ORDER BY created_at DESC LIMIT ?"
@@ -171,9 +173,23 @@ impl SqliteDriver {
         .await
         .map_err(|e| QueueError::Driver(e.to_string()))?;
 
-        Ok(rows.into_iter().map(|(id, name, payload, status, error, attempts, created_at, updated_at)| {
-            QueuedJobDetail { id, name, payload, status, error, attempts, created_at, updated_at }
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(
+                |(id, name, payload, status, error, attempts, created_at, updated_at)| {
+                    QueuedJobDetail {
+                        id,
+                        name,
+                        payload,
+                        status,
+                        error,
+                        attempts,
+                        created_at,
+                        updated_at,
+                    }
+                },
+            )
+            .collect())
     }
 
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
@@ -193,7 +209,6 @@ impl SqliteDriver {
         Ok(())
     }
 }
-
 
 #[async_trait]
 impl QueueDriver for SqliteDriver {
@@ -307,7 +322,10 @@ pub mod redis_driver {
     #[async_trait]
     impl QueueDriver for RedisDriver {
         async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
             let job_data = serde_json::json!({
                 "id": id,
@@ -325,7 +343,10 @@ pub mod redis_driver {
         }
 
         async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
             let result: Option<String> = redis::cmd("LPOP")
                 .arg(&self.queue_key)
@@ -362,7 +383,10 @@ pub mod redis_driver {
         }
 
         async fn pending_count(&self) -> Result<u64, QueueError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
             let count: i64 = redis::cmd("LLEN")
                 .arg(&self.queue_key)
@@ -465,8 +489,11 @@ impl Queue {
 
 /// Type alias for job handler closures.
 type JobHandler = Box<
-    dyn Fn(Value) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
-        + Send
+    dyn Fn(
+            Value,
+        ) -> Pin<
+            Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>,
+        > + Send
         + Sync,
 >;
 
@@ -530,7 +557,10 @@ impl Worker {
         let poll_interval = self.poll_interval_ms;
 
         tokio::spawn(async move {
-            println!("🔄 Rullst Worker started. Polling every {}ms...", poll_interval);
+            println!(
+                "🔄 Rullst Worker started. Polling every {}ms...",
+                poll_interval
+            );
             loop {
                 match driver.pop().await {
                     Ok(Some(job)) => {
@@ -546,7 +576,10 @@ impl Worker {
                                         let _ = driver.mark_complete(&job_id).await;
                                     }
                                     Err(e) => {
-                                        eprintln!("❌ Job '{}' ({}) failed: {}", job_name, job_id, e);
+                                        eprintln!(
+                                            "❌ Job '{}' ({}) failed: {}",
+                                            job_name, job_id, e
+                                        );
                                         let _ = driver.mark_failed(&job_id, &e.to_string()).await;
                                     }
                                 }
@@ -617,13 +650,13 @@ mod tests {
     #[tokio::test]
     async fn test_sqlite_queue_mark_failed() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
-        driver
-            .push("fail-job", "bad_job", r#"{}"#)
-            .await
-            .unwrap();
+        driver.push("fail-job", "bad_job", r#"{}"#).await.unwrap();
 
         let job = driver.pop().await.unwrap().unwrap();
-        driver.mark_failed(&job.id, "Something went wrong").await.unwrap();
+        driver
+            .mark_failed(&job.id, "Something went wrong")
+            .await
+            .unwrap();
 
         // Job should no longer be pending
         let count = driver.pending_count().await.unwrap();

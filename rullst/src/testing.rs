@@ -1,8 +1,8 @@
 use axum::{
-    body::{Body, Bytes, to_bytes},
-    http::{header, HeaderMap, HeaderName, HeaderValue, Method, Request, StatusCode},
-    response::Response,
     Router,
+    body::{Body, Bytes, to_bytes},
+    http::{HeaderMap, HeaderName, HeaderValue, Method, Request, StatusCode, header},
+    response::Response,
 };
 use serde::Serialize;
 use std::future::{Future, IntoFuture};
@@ -98,7 +98,8 @@ impl TestRequestBuilder {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/x-www-form-urlencoded"),
         );
-        let body_string = serde_urlencoded::to_string(data).expect("Failed to serialize body as form URL-encoded");
+        let body_string = serde_urlencoded::to_string(data)
+            .expect("Failed to serialize body as form URL-encoded");
         self.body = Some(Body::from(body_string));
         self
     }
@@ -111,9 +112,7 @@ impl TestRequestBuilder {
 
     /// Sends the request and returns the response.
     pub async fn send(self) -> TestResponse {
-        let mut req_builder = Request::builder()
-            .method(self.method)
-            .uri(&self.uri);
+        let mut req_builder = Request::builder().method(self.method).uri(&self.uri);
 
         for (k, v) in self.headers {
             if let Some(k) = k {
@@ -122,9 +121,15 @@ impl TestRequestBuilder {
         }
 
         let body = self.body.unwrap_or_else(Body::empty);
-        let req = req_builder.body(body).expect("Failed to build HTTP request");
+        let req = req_builder
+            .body(body)
+            .expect("Failed to build HTTP request");
 
-        let response = self.router.oneshot(req).await.expect("Failed to execute request on Router");
+        let response = self
+            .router
+            .oneshot(req)
+            .await
+            .expect("Failed to execute request on Router");
         TestResponse::new(response).await
     }
 }
@@ -239,7 +244,12 @@ impl TestResponse {
         let header_val = self
             .headers
             .get(name)
-            .unwrap_or_else(|| panic!("Expected header '{}' to be present, but it was missing", name))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected header '{}' to be present, but it was missing",
+                    name
+                )
+            })
             .to_str()
             .unwrap_or_else(|_| panic!("Failed to convert value of header '{}' to a string", name));
 
@@ -252,7 +262,12 @@ impl TestResponse {
     }
 
     /// Asserts that the response body matches the given JSON structure.
-    pub fn assert_json<T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + PartialEq>(&self, expected: &T) -> &Self {
+    pub fn assert_json<
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + PartialEq,
+    >(
+        &self,
+        expected: &T,
+    ) -> &Self {
         let actual: T = self.json();
         assert_eq!(
             actual, *expected,
@@ -264,9 +279,12 @@ impl TestResponse {
 
     /// Asserts that a cookie with the given name is present and matches the expected value.
     pub fn assert_cookie(&self, name: &str, expected: &str) -> &Self {
-        let actual = self
-            .cookie_value(name)
-            .unwrap_or_else(|| panic!("Expected cookie '{}' to be present, but it was missing", name));
+        let actual = self.cookie_value(name).unwrap_or_else(|| {
+            panic!(
+                "Expected cookie '{}' to be present, but it was missing",
+                name
+            )
+        });
 
         assert_eq!(
             actual, expected,

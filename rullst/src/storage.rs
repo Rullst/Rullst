@@ -55,27 +55,27 @@ impl StorageDriver for LocalDriver {
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError> {
         let full_path = self.resolve_path(path);
         if let Some(parent) = full_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
-        std::fs::write(full_path, bytes)?;
+        tokio::fs::write(full_path, bytes).await?;
         Ok(())
     }
 
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError> {
         let full_path = self.resolve_path(path);
-        let data = std::fs::read(full_path)?;
+        let data = tokio::fs::read(full_path).await?;
         Ok(data)
     }
 
     async fn exists(&self, path: &str) -> Result<bool, StorageError> {
         let full_path = self.resolve_path(path);
-        Ok(full_path.exists())
+        Ok(tokio::fs::metadata(full_path).await.is_ok())
     }
 
     async fn delete(&self, path: &str) -> Result<(), StorageError> {
         let full_path = self.resolve_path(path);
-        if full_path.exists() {
-            std::fs::remove_file(full_path)?;
+        if tokio::fs::metadata(&full_path).await.is_ok() {
+            tokio::fs::remove_file(full_path).await?;
         }
         Ok(())
     }
@@ -110,7 +110,8 @@ impl StorageDriver for S3Driver {
     }
 
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError> {
-        let res = self.client
+        let res = self
+            .client
             .get_object()
             .bucket(&self.bucket)
             .key(path)
@@ -129,7 +130,8 @@ impl StorageDriver for S3Driver {
     }
 
     async fn exists(&self, path: &str) -> Result<bool, StorageError> {
-        let res = self.client
+        let res = self
+            .client
             .head_object()
             .bucket(&self.bucket)
             .key(path)
@@ -208,6 +210,30 @@ impl StorageDriver for S3Driver {
     }
 }
 
+/// A fallback driver that always returns an error. Used for gracefully handling unknown disks.
+pub struct ErrorDriver {
+    pub message: String,
+}
+
+#[async_trait]
+impl StorageDriver for ErrorDriver {
+    async fn put(&self, _path: &str, _bytes: &[u8]) -> Result<(), StorageError> {
+        Err(StorageError::DriverError(self.message.clone()))
+    }
+    async fn get(&self, _path: &str) -> Result<Vec<u8>, StorageError> {
+        Err(StorageError::DriverError(self.message.clone()))
+    }
+    async fn exists(&self, _path: &str) -> Result<bool, StorageError> {
+        Err(StorageError::DriverError(self.message.clone()))
+    }
+    async fn delete(&self, _path: &str) -> Result<(), StorageError> {
+        Err(StorageError::DriverError(self.message.clone()))
+    }
+    async fn url(&self, _path: &str) -> Result<String, StorageError> {
+        Err(StorageError::DriverError(self.message.clone()))
+    }
+}
+
 /// The main Storage facade
 pub struct Storage;
 
@@ -235,7 +261,8 @@ impl Storage {
     pub fn disk(name: &str) -> Box<dyn StorageDriver> {
         match name {
             "local" => {
-                let root = std::env::var("STORAGE_ROOT").unwrap_or_else(|_| "storage/app".to_string());
+                let root =
+                    std::env::var("STORAGE_ROOT").unwrap_or_else(|_| "storage/app".to_string());
                 Box::new(LocalDriver::new(root))
             }
             "s3" => {
@@ -258,7 +285,9 @@ impl Storage {
                     Box::new(S3Driver)
                 }
             }
-            other => panic!("Unknown storage disk: {}", other),
+            other => Box::new(ErrorDriver {
+                message: format!("Unknown storage disk: {}", other),
+            }),
         }
     }
 }
@@ -275,7 +304,10 @@ mod tests {
         let driver = LocalDriver::new(temp_dir);
 
         // Put file
-        driver.put("images/avatar.png", b"fake-png-bytes").await.unwrap();
+        driver
+            .put("images/avatar.png", b"fake-png-bytes")
+            .await
+            .unwrap();
 
         // Check exists
         assert!(driver.exists("images/avatar.png").await.unwrap());

@@ -1,11 +1,11 @@
+use crate::queue::Queue;
 use axum::{
+    Router,
     extract::{Path, State},
     response::{Html, IntoResponse},
     routing::{get, post},
-    Router,
 };
 use std::sync::Arc;
-use crate::queue::Queue;
 
 /// Horizon Dashboard App State
 struct HorizonState {
@@ -29,12 +29,13 @@ pub fn router(queue: Queue) -> Router {
 async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
     let jobs = state.queue.list_all_jobs(50).await.unwrap_or_default();
     let pending = state.queue.pending_count().await.unwrap_or(0);
-    
+
     let failed = jobs.iter().filter(|j| j.status == "failed").count();
     let _completed = jobs.iter().filter(|j| j.status == "completed").count(); // completed are deleted, but let's count completed in the session list if any
     let processing = jobs.iter().filter(|j| j.status == "processing").count();
-    
-    let html_content = render_dashboard_layout(pending, failed, processing, render_table_rows(&jobs));
+
+    let html_content =
+        render_dashboard_layout(pending, failed, processing, render_table_rows(&jobs));
     Html(html_content)
 }
 
@@ -48,26 +49,33 @@ async fn retry_job(
     Path(id): Path<String>,
 ) -> impl IntoResponse {
     let _ = state.queue.retry_failed_job(&id).await;
-    
+
     // Return HTMX trigger header to refresh the table and metrics
-    let headers = [
-        ("HX-Trigger", "refresh-jobs"),
-    ];
-    (headers, Html(r#"<span class="text-xs text-teal-400 font-semibold">Retrying...</span>"#))
+    let headers = [("HX-Trigger", "refresh-jobs")];
+    (
+        headers,
+        Html(r#"<span class="text-xs text-teal-400 font-semibold">Retrying...</span>"#),
+    )
 }
 
 async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
     let _ = state.queue.purge_completed_jobs().await;
-    
-    let headers = [
-        ("HX-Trigger", "refresh-jobs"),
-    ];
-    (headers, Html(r#"<span class="text-xs text-rose-400 font-semibold">Purged Failed Jobs</span>"#))
+
+    let headers = [("HX-Trigger", "refresh-jobs")];
+    (
+        headers,
+        Html(r#"<span class="text-xs text-rose-400 font-semibold">Purged Failed Jobs</span>"#),
+    )
 }
 
 // ─── UI Rendering Helpers ───────────────────────────────────────────────────
 
-fn render_dashboard_layout(pending: u64, failed: usize, processing: usize, table_rows: String) -> String {
+fn render_dashboard_layout(
+    pending: u64,
+    failed: usize,
+    processing: usize,
+    table_rows: String,
+) -> String {
     format!(
         r##"<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -249,14 +257,17 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
             <td colspan="6" class="px-6 py-12 text-center text-slate-500 italic">
                 No recent jobs found on this queue. Go dispatch some work! 🚀
             </td>
-        </tr>"#.to_string();
+        </tr>"#
+            .to_string();
     }
 
     let mut rows = String::new();
     for job in jobs {
         let badge_class = match job.status.as_str() {
             "pending" => "bg-yellow-400/10 text-yellow-400 border border-yellow-500/20",
-            "processing" => "bg-indigo-400/10 text-indigo-400 border border-indigo-500/20 animate-pulse",
+            "processing" => {
+                "bg-indigo-400/10 text-indigo-400 border border-indigo-500/20 animate-pulse"
+            }
             "failed" => "bg-rose-400/10 text-rose-400 border border-rose-500/20",
             _ => "bg-emerald-400/10 text-emerald-400 border border-emerald-500/20",
         };
@@ -327,9 +338,9 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::body::Body;
     use axum::http::Request;
     use tower::ServiceExt;
-    use axum::body::Body;
 
     #[tokio::test]
     async fn test_horizon_dashboard_router_compiles() {
@@ -347,7 +358,10 @@ mod tests {
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
         let app = router(queue);
 
-        let req = Request::builder().uri("/jobs-table").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/jobs-table")
+            .body(Body::empty())
+            .unwrap();
         let response = app.oneshot(req).await.unwrap();
 
         assert_eq!(response.status(), 200);

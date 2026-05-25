@@ -107,13 +107,13 @@ impl CacheDriver for MemoryDriver {
     async fn get(&self, key: &str) -> Result<Option<String>, CacheError> {
         if let Some(entry) = self.store.get(key) {
             // Check TTL expiration
-            if let Some(expires_at) = entry.expires_at {
-                if Instant::now() > expires_at {
-                    // Entry has expired — remove it lazily
-                    drop(entry);
-                    self.store.remove(key);
-                    return Ok(None);
-                }
+            if let Some(expires_at) = entry.expires_at
+                && Instant::now() > expires_at
+            {
+                // Entry has expired — remove it lazily
+                drop(entry);
+                self.store.remove(key);
+                return Ok(None);
             }
             Ok(Some(entry.value.clone()))
         } else {
@@ -185,7 +185,10 @@ pub mod redis_driver {
     #[async_trait]
     impl CacheDriver for RedisDriver {
         async fn get(&self, key: &str) -> Result<Option<String>, CacheError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
             let result: Option<String> = redis::cmd("GET")
                 .arg(self.prefixed_key(key))
@@ -195,8 +198,16 @@ pub mod redis_driver {
             Ok(result)
         }
 
-        async fn put(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), CacheError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+        async fn put(
+            &self,
+            key: &str,
+            value: &str,
+            ttl_secs: Option<u64>,
+        ) -> Result<(), CacheError> {
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
             let pk = self.prefixed_key(key);
             if let Some(ttl) = ttl_secs {
@@ -219,7 +230,10 @@ pub mod redis_driver {
         }
 
         async fn forget(&self, key: &str) -> Result<(), CacheError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
             redis::cmd("DEL")
                 .arg(self.prefixed_key(key))
@@ -230,29 +244,47 @@ pub mod redis_driver {
         }
 
         async fn flush(&self) -> Result<(), CacheError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            // Scan and delete all keys with our prefix
-            let pattern = format!("{}*", self.prefix);
-            let keys: Vec<String> = redis::cmd("KEYS")
-                .arg(&pattern)
-                .query_async(&mut con)
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
                 .await
-                .map_err(|e| CacheError::Driver(format!("Redis KEYS failed: {}", e)))?;
-            if !keys.is_empty() {
-                for key in &keys {
-                    redis::cmd("DEL")
-                        .arg(key)
-                        .query_async::<i64>(&mut con)
-                        .await
-                        .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
+                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
+            let pattern = format!("{}*", self.prefix);
+            let mut cursor: u64 = 0;
+            loop {
+                let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                    .arg(cursor)
+                    .arg("MATCH")
+                    .arg(&pattern)
+                    .arg("COUNT")
+                    .arg(100)
+                    .query_async(&mut con)
+                    .await
+                    .map_err(|e| CacheError::Driver(format!("Redis SCAN failed: {}", e)))?;
+
+                if !keys.is_empty() {
+                    for key in &keys {
+                        redis::cmd("DEL")
+                            .arg(key)
+                            .query_async::<i64>(&mut con)
+                            .await
+                            .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
+                    }
+                }
+
+                cursor = next_cursor;
+                if cursor == 0 {
+                    break;
                 }
             }
             Ok(())
         }
 
         async fn has(&self, key: &str) -> Result<bool, CacheError> {
-            let mut con = self.client.get_multiplexed_async_connection().await
+            let mut con = self
+                .client
+                .get_multiplexed_async_connection()
+                .await
                 .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
             let exists: bool = redis::cmd("EXISTS")
                 .arg(self.prefixed_key(key))
@@ -313,7 +345,12 @@ impl Cache {
     /// Store a value with an optional TTL in seconds.
     ///
     /// Pass `None` for TTL to store indefinitely.
-    pub async fn put(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), CacheError> {
+    pub async fn put(
+        &self,
+        key: &str,
+        value: &str,
+        ttl_secs: Option<u64>,
+    ) -> Result<(), CacheError> {
         self.driver.put(key, value, ttl_secs).await
     }
 
@@ -343,7 +380,12 @@ impl Cache {
     ///     Ok(user.bio)
     /// }).await?;
     /// ```
-    pub async fn remember<F, Fut>(&self, key: &str, ttl_secs: u64, f: F) -> Result<String, CacheError>
+    pub async fn remember<F, Fut>(
+        &self,
+        key: &str,
+        ttl_secs: u64,
+        f: F,
+    ) -> Result<String, CacheError>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<String, CacheError>>,
@@ -424,7 +466,10 @@ mod tests {
     #[tokio::test]
     async fn test_memory_cache_remember_hit() {
         let cache = Cache::memory();
-        cache.put("existing", "already_cached", Some(300)).await.unwrap();
+        cache
+            .put("existing", "already_cached", Some(300))
+            .await
+            .unwrap();
         let value = cache
             .remember("existing", 60, || async {
                 panic!("This closure should NOT be called on cache hit");

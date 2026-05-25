@@ -1,5 +1,5 @@
+use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
-use crate::ai::{AiProvider, AiError, Message};
 
 pub struct AnthropicProvider {
     api_key: String,
@@ -56,13 +56,15 @@ impl AiProvider for AnthropicProvider {
             "messages": chat_messages,
         });
 
-        if let Some(sys_prompt) = system_text {
-            if let Some(obj) = body.as_object_mut() {
-                obj.insert("system".to_string(), serde_json::json!(sys_prompt));
-            }
+        if let Some(sys_prompt) = system_text
+            && let Some(obj) = body.as_object_mut()
+        {
+            obj.insert("system".to_string(), serde_json::json!(sys_prompt));
         }
 
-        let res = self.client.post(url)
+        let res = self
+            .client
+            .post(url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -73,13 +75,16 @@ impl AiProvider for AnthropicProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("Anthropic error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "Anthropic error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
-        let content = json["content"][0]["text"]
-            .as_str()
-            .ok_or_else(|| AiError::ApiError("No text returned from Anthropic response".to_string()))?;
+        let content = json["content"][0]["text"].as_str().ok_or_else(|| {
+            AiError::ApiError("No text returned from Anthropic response".to_string())
+        })?;
 
         Ok(content.to_string())
     }

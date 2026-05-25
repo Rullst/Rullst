@@ -1,10 +1,10 @@
 use axum::{
+    Json,
     body::Body,
     extract::Query,
-    http::{header, Request, StatusCode},
+    http::{Request, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -23,18 +23,22 @@ pub struct StackFrame {
 pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
     for line in bt_str.lines() {
         let trimmed = line.trim();
-        if trimmed.contains("at src/") || trimmed.contains("at src\\") || trimmed.contains("at examples/") || trimmed.contains("at examples\\") {
+        if trimmed.contains("at src/")
+            || trimmed.contains("at src\\")
+            || trimmed.contains("at examples/")
+            || trimmed.contains("at examples\\")
+        {
             // Find the location after "at "
             if let Some(pos) = trimmed.find("at ") {
                 let path_part = &trimmed[pos + 3..];
                 let mut parts = path_part.split(':');
-                if let (Some(file), Some(line_str)) = (parts.next(), parts.next()) {
-                    if let Ok(line_num) = line_str.trim().parse::<u32>() {
-                        let path = file.trim().to_string();
-                        // Verify that the file exists before returning it
-                        if Path::new(&path).exists() {
-                            return Some((path, line_num));
-                        }
+                if let (Some(file), Some(line_str)) = (parts.next(), parts.next())
+                    && let Ok(line_num) = line_str.trim().parse::<u32>()
+                {
+                    let path = file.trim().to_string();
+                    // Verify that the file exists before returning it
+                    if Path::new(&path).exists() {
+                        return Some((path, line_num));
                     }
                 }
             }
@@ -46,12 +50,20 @@ pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
 // ─── Source Snippet Extractor ───────────────────────────────────────────────
 
 /// Reads a file and extracts surrounding context lines.
-pub fn extract_source_context(file_path: &str, target_line: u32, range: u32) -> Option<Vec<(u32, String, bool)>> {
+pub fn extract_source_context(
+    file_path: &str,
+    target_line: u32,
+    range: u32,
+) -> Option<Vec<(u32, String, bool)>> {
     let content = fs::read_to_string(file_path).ok()?;
     let lines: Vec<&str> = content.lines().collect();
-    
+
     let total_lines = lines.len() as u32;
-    let start = if target_line > range { target_line - range } else { 1 };
+    let start = if target_line > range {
+        target_line - range
+    } else {
+        1
+    };
     let end = std::cmp::min(target_line + range, total_lines);
 
     let mut context = Vec::new();
@@ -69,9 +81,7 @@ pub fn extract_source_context(file_path: &str, target_line: u32, range: u32) -> 
 
 /// Middleware that catches panic unwinds in dev mode and presents the Self-Healing Console.
 pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
-    let handle = tokio::spawn(async move {
-        next.run(req).await
-    });
+    let handle = tokio::spawn(async move { next.run(req).await });
 
     match handle.await {
         Ok(response) => response,
@@ -88,7 +98,7 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
 
                 let backtrace = std::backtrace::Backtrace::capture();
                 let html_content = render_console_html(&message, &backtrace).await;
-                
+
                 Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
@@ -113,7 +123,7 @@ pub struct ExplainQuery {
 /// Asynchronous endpoint called by the browser to fetch the AI error explanation.
 pub async fn handle_explain(Query(query): Query<ExplainQuery>) -> impl IntoResponse {
     let file_content = fs::read_to_string(&query.file).unwrap_or_default();
-    
+
     let client = match crate::ai::AiClient::auto() {
         Ok(c) => c,
         Err(_) => return "AI Engine offline. Please configure GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY to enable solutions.".to_string(),
@@ -148,12 +158,60 @@ pub struct AutoFixPayload {
 }
 
 /// POST endpoint that prompts the LLM to rewrite the file on disk to fix the panic.
+///
+/// **Security:** This endpoint validates that the target file resides within the
+/// project's working directory to prevent path-traversal attacks.
 pub async fn handle_autofix(Json(payload): Json<AutoFixPayload>) -> impl IntoResponse {
-    // 1. Ensure file exists and is in workspace (simple safety check)
-    if !Path::new(&payload.file_path).exists() {
+    // 1. Resolve the project root (current working directory)
+    let project_root = match std::env::current_dir() {
+        Ok(cwd) => match cwd.canonicalize() {
+            Ok(canonical) => canonical,
+            Err(_) => cwd,
+        },
+        Err(_) => {
+            return Json(serde_json::json!({
+                "success": false,
+                "error": "Unable to determine project root directory"
+            }));
+        }
+    };
+
+    // 2. Ensure file exists
+    let target_path = Path::new(&payload.file_path);
+    if !target_path.exists() {
         return Json(serde_json::json!({
             "success": false,
             "error": format!("File not found: {}", payload.file_path)
+        }));
+    }
+
+    // 3. Canonicalize and verify the file is within the project root (prevents path traversal)
+    let canonical_target = match target_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            return Json(serde_json::json!({
+                "success": false,
+                "error": "Unable to resolve file path"
+            }));
+        }
+    };
+
+    if !canonical_target.starts_with(&project_root) {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Access denied: file is outside the project directory"
+        }));
+    }
+
+    // 4. Additionally restrict to Rust source files only
+    let extension = canonical_target
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    if extension != "rs" && extension != "toml" {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Autofix is restricted to .rs and .toml files only"
         }));
     }
 
@@ -163,11 +221,15 @@ pub async fn handle_autofix(Json(payload): Json<AutoFixPayload>) -> impl IntoRes
     }
 }
 
-async fn perform_autofix(file_path: &str, line: u32, error_message: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn perform_autofix(
+    file_path: &str,
+    line: u32,
+    error_message: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let file_content = fs::read_to_string(file_path)?;
-    
+
     let client = crate::ai::AiClient::auto()?;
-    
+
     let prompt = format!(
         "You are the core AI auto-fix healing engine for the Rullst Rust framework.\n\
         An application panic occurred at line {} in '{}' with the error:\n\
@@ -186,7 +248,7 @@ async fn perform_autofix(file_path: &str, line: u32, error_message: &str) -> Res
     );
 
     let fixed_content = client.prompt(&prompt).await?;
-    
+
     // Clean up accidental markdown code fence wrapping if the LLM hallucinated them
     let mut clean = fixed_content.trim().to_string();
     if clean.starts_with("```rust") {
@@ -213,7 +275,9 @@ async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Ba
     let bt_str = format!("{:#?}", backtrace);
     let source_loc = find_source_location(&bt_str);
 
-    let (file_display, line_display, code_frame_html) = if let Some((file, line)) = source_loc.clone() {
+    let (file_display, line_display, code_frame_html) = if let Some((file, line)) =
+        source_loc.clone()
+    {
         let code_snippet = if let Some(context) = extract_source_context(&file, line, 5) {
             let mut html = String::new();
             for (idx, content, is_target) in context {
@@ -243,7 +307,8 @@ async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Ba
         (
             "Unknown File".to_string(),
             "Unknown Line".to_string(),
-            "<div class='empty-state'>Could not pinpoint developer's frame in stack trace.</div>".to_string(),
+            "<div class='empty-state'>Could not pinpoint developer's frame in stack trace.</div>"
+                .to_string(),
         )
     };
 
@@ -254,15 +319,25 @@ async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Ba
         if trimmed.is_empty() {
             continue;
         }
-        let is_dev_frame = trimmed.contains("src/") || trimmed.contains("src\\") || trimmed.contains("examples/") || trimmed.contains("examples\\");
-        let class = if is_dev_frame { "trace-line dev-frame" } else { "trace-line" };
+        let is_dev_frame = trimmed.contains("src/")
+            || trimmed.contains("src\\")
+            || trimmed.contains("examples/")
+            || trimmed.contains("examples\\");
+        let class = if is_dev_frame {
+            "trace-line dev-frame"
+        } else {
+            "trace-line"
+        };
         trace_html.push_str(&format!(
             "<div class='{}'><span class='trace-idx'>#{}</span><span class='trace-val'>{}</span></div>",
             class, i, trimmed.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
         ));
     }
 
-    let escaped_err = error_message.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let escaped_err = error_message
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;");
 
     format!(
         r#"<!DOCTYPE html>

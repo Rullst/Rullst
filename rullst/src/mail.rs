@@ -9,6 +9,12 @@ pub struct Message {
     pub from: Option<String>,
 }
 
+impl Default for Message {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Message {
     pub fn new() -> Self {
         Message {
@@ -129,8 +135,8 @@ pub struct SmtpDriver {
 impl MailDriver for SmtpDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         use lettre::{
-            transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport,
-            Message as LettreMessage, Tokio1Executor,
+            AsyncSmtpTransport, AsyncTransport, Message as LettreMessage, Tokio1Executor,
+            transport::smtp::authentication::Credentials,
         };
 
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
@@ -140,12 +146,10 @@ impl MailDriver for SmtpDriver {
                     .parse()
                     .map_err(|e| MailError::SendError(format!("{}", e)))?,
             )
-            .to(
-                message
-                    .to
-                    .parse()
-                    .map_err(|e| MailError::SendError(format!("{}", e)))?,
-            )
+            .to(message
+                .to
+                .parse()
+                .map_err(|e| MailError::SendError(format!("{}", e)))?)
             .subject(&message.subject);
 
         let email = if let Some(ref html) = message.body_html {
@@ -172,7 +176,8 @@ impl MailDriver for SmtpDriver {
             return Err(MailError::SendError("No email body provided".to_string()));
         };
 
-        let mut builder = AsyncSmtpTransport::<Tokio1Executor>::builder_1(&self.host).port(self.port);
+        let mut builder =
+            AsyncSmtpTransport::<Tokio1Executor>::builder_1(&self.host).port(self.port);
 
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
             builder = builder.credentials(Credentials::new(user.clone(), pass.clone()));
@@ -289,7 +294,10 @@ impl MailDriver for SendGridDriver {
             Ok(())
         } else {
             let text = res.text().await.unwrap_or_default();
-            Err(MailError::SendError(format!("SendGrid API error: {}", text)))
+            Err(MailError::SendError(format!(
+                "SendGrid API error: {}",
+                text
+            )))
         }
     }
 }
@@ -322,7 +330,8 @@ impl Mail {
             "smtp" => {
                 #[cfg(feature = "mail-smtp")]
                 {
-                    let host = std::env::var("MAIL_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+                    let host =
+                        std::env::var("MAIL_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
                     let port = std::env::var("MAIL_PORT")
                         .ok()
                         .and_then(|p| p.parse().ok())
@@ -344,17 +353,24 @@ impl Mail {
             }
             "resend" => {
                 let api_key = std::env::var("RESEND_API_KEY").map_err(|_| {
-                    MailError::ConfigError("RESEND_API_KEY environment variable is not set".to_string())
+                    MailError::ConfigError(
+                        "RESEND_API_KEY environment variable is not set".to_string(),
+                    )
                 })?;
                 Ok(Box::new(ResendDriver { api_key }))
             }
             "sendgrid" => {
                 let api_key = std::env::var("SENDGRID_API_KEY").map_err(|_| {
-                    MailError::ConfigError("SENDGRID_API_KEY environment variable is not set".to_string())
+                    MailError::ConfigError(
+                        "SENDGRID_API_KEY environment variable is not set".to_string(),
+                    )
                 })?;
                 Ok(Box::new(SendGridDriver { api_key }))
             }
-            other => Err(MailError::ConfigError(format!("Unknown mail driver: {}", other))),
+            other => Err(MailError::ConfigError(format!(
+                "Unknown mail driver: {}",
+                other
+            ))),
         }
     }
 }
@@ -367,7 +383,7 @@ mod tests {
     async fn test_log_driver() {
         // Prepare storage/logs directory
         let _ = std::fs::remove_file("storage/logs/mail.log");
-        
+
         let msg = Message::new()
             .to("test@rullst.dev")
             .subject("Hello Test")

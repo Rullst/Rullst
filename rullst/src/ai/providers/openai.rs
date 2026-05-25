@@ -1,5 +1,5 @@
+use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
-use crate::ai::{AiProvider, AiError, Message};
 
 pub struct OpenAiProvider {
     api_key: String,
@@ -38,13 +38,15 @@ impl AiProvider for OpenAiProvider {
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
         let url = "https://api.openai.com/v1/chat/completions";
-        
+
         let body = serde_json::json!({
             "model": self.model,
             "messages": messages,
         });
 
-        let res = self.client.post(url)
+        let res = self
+            .client
+            .post(url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&body)
@@ -54,26 +56,33 @@ impl AiProvider for OpenAiProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("OpenAI error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "OpenAI error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
         let content = json["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or_else(|| AiError::ApiError("No content returned from OpenAI chat response".to_string()))?;
+            .ok_or_else(|| {
+                AiError::ApiError("No content returned from OpenAI chat response".to_string())
+            })?;
 
         Ok(content.to_string())
     }
 
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         let url = "https://api.openai.com/v1/embeddings";
-        
+
         let body = serde_json::json!({
             "model": self.embedding_model,
             "input": text,
         });
 
-        let res = self.client.post(url)
+        let res = self
+            .client
+            .post(url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&body)
@@ -83,13 +92,18 @@ impl AiProvider for OpenAiProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(AiError::ApiError(format!("OpenAI error status {}: {}", status, err_text)));
+            return Err(AiError::ApiError(format!(
+                "OpenAI error status {}: {}",
+                status, err_text
+            )));
         }
 
         let json: serde_json::Value = res.json().await?;
         let embedding = json["data"][0]["embedding"]
             .as_array()
-            .ok_or_else(|| AiError::ApiError("No embedding returned from OpenAI response".to_string()))?
+            .ok_or_else(|| {
+                AiError::ApiError("No embedding returned from OpenAI response".to_string())
+            })?
             .iter()
             .map(|v| v.as_f64().unwrap_or(0.0) as f32)
             .collect();

@@ -22,6 +22,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Direct local code-snippet lookup pointing to the exact file, module, and line index where the panic occurred.
   - Integrated local AI-healing assistant that resolves runtime errors and can patch files directly back to the physical disk on a single web interface click.
 
+### Security & Quality Audit Fixes (Audit 2026-05-25)
+- **Security Enhancements**:
+  - SEC-1: Removed unsafe `std::env::set_var("RUST_BACKTRACE", "1")` in `server.rs` (unsound in multi-threaded environments) and replaced it with a safe warning prompting the user to set the env var.
+  - SEC-2: Added strict path traversal protection to the `/_rullst/autofix` endpoint in `error_console.rs` (verifies paths are canonicalized and located within the project root, restricts edits to `.rs` and `.toml` files).
+  - SEC-3: Added a startup warning in `auth.rs` when the default development `APP_KEY` is used.
+- **Spec & API Alignments**:
+  - Marked `Server`, `Router`, `HtmxRequest`, and `HtmxResponse` as `#[non_exhaustive]` per Rullst Spec §9.1 to ensure future-proof API stability.
+  - Replaced a `panic!` in `Storage::disk()` with a graceful fallback `ErrorDriver` returning `StorageError::DriverError` on all methods when an unknown disk is requested.
+- **Performance & Reliability**:
+  - Migrated `LocalDriver` in `storage.rs` from blocking `std::fs` to fully asynchronous `tokio::fs` operations.
+  - Optimized Redis `CacheDriver`'s `flush()` method to use a memory-efficient `SCAN` cursor loop instead of the blocking `KEYS *` pattern.
+- **Testing & CI/CD**:
+  - Added full test coverage for the wrapper `Router` in `routing.rs`, the builder in `server.rs`, and argument translation in `artisan.rs`.
+  - Created a GitHub Actions CI pipeline (`.github/workflows/ci.yml`) enforcing automated test suites, clippy lint checks, and rustfmt checks.
+
+
 ## [0.8.0] - 2026-05-25 🛡️
 
 ### Added (Self-Healing Upgrades & Architectures)
