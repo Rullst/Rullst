@@ -176,8 +176,9 @@ impl MailDriver for SmtpDriver {
             return Err(MailError::SendError("No email body provided".to_string()));
         };
 
-        let mut builder =
-            AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host).map_err(|e| MailError::SendError(e.to_string()))?.port(self.port);
+        let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host)
+            .map_err(|e| MailError::SendError(e.to_string()))?
+            .port(self.port);
 
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
             builder = builder.credentials(Credentials::new(user.clone(), pass.clone()));

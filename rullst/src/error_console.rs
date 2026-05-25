@@ -38,11 +38,7 @@ pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
                 if let (Some(file), Some(line_str)) = (parts.next(), parts.next())
                     && let Ok(line_num) = line_str.trim().parse::<u32>()
                 {
-                    let path = file.trim().to_string();
-                    // Verify that the file exists before returning it
-                    if Path::new(&path).exists() {
-                        return Some((path, line_num));
-                    }
+                    return Some((file.trim().to_string(), line_num));
                 }
             }
         }
