@@ -273,6 +273,18 @@ fn create_new_controller(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         let template = format!(
 r#"use rullst::{{html, response::{{Html, IntoResponse}}}};
+use axum::extract::{{Path, Form}};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct CreateDto {{
+    // Adicione os campos para criação
+}}
+
+#[derive(Deserialize)]
+pub struct UpdateDto {{
+    // Adicione os campos para atualização
+}}
 
 /// Retorna a lista de recursos
 pub async fn index() -> impl IntoResponse {{
@@ -294,19 +306,25 @@ pub async fn index() -> impl IntoResponse {{
 }}
 
 /// Retorna um recurso específico
-pub async fn show() -> impl IntoResponse {{
-    Html(html! {{
-        <div style="font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #0f172a; color: #f8fafc; padding: 2rem; box-sizing: border-box;">
-            <div style="max-width: 600px; text-align: center; background: #1e293b; padding: 3rem; border-radius: 1rem; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
-                <h1 style="font-size: 2.5rem; margin: 0 0 1rem 0; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">
-                    "{camel_name} - Detalhes"
-                </h1>
-                <div style="display: inline-block; padding: 0.75rem 1.5rem; background: #0f172a; border-radius: 0.5rem; border: 1px solid #334155; color: #38bdf8; font-family: monospace; font-size: 0.95rem;">
-                    "pub async fn show() -> impl IntoResponse"
-                </div>
-            </div>
-        </div>
+pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
+    Html(html! {{ 
+        <div>"Detalhes do recurso "{{id}}</div> 
     }})
+}}
+
+/// Cria um novo recurso
+pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
+    Html(html! {{ <div>"Recurso criado com sucesso"</div> }})
+}}
+
+/// Atualiza um recurso existente
+pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> impl IntoResponse {{
+    Html(html! {{ <div>"Recurso "{{id}}" atualizado com sucesso"</div> }})
+}}
+
+/// Deleta um recurso
+pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
+    Html(html! {{ <div>"Recurso "{{id}}" deletado com sucesso"</div> }})
 }}
 "#);
         fs::write(&controller_path, template)?;

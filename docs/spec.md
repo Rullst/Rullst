@@ -1,3 +1,5 @@
+<!-- “Antes de gerar qualquer coisa, leia e siga estritamente o arquivo da verdade abaixo.”  -->
+
 # Rullst Specification 📄
 ### *"The Single Source of Truth (SST) for Framework Architecture & Conventions"*
 
@@ -99,3 +101,72 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 * **Controller Scaffolding:**
   `cargo rullst make:controller <Name>`
   * *Behavior:* Generates `src/controllers/<snake_name>_controller.rs` with `index` and `show` actions. Appends declaration to `src/controllers/mod.rs`. Adds `pub mod controllers;` to the top of `src/main.rs`.
+
+---
+
+## 🧱 5. Controller Architecture
+
+Controllers handle business logic and HTTP responses.
+* **Module Structure:** Each controller is a separate module inside `src/controllers/` (e.g., `users_controller.rs`).
+* **Function Signatures:** Functions must be asynchronous and return a type that implements `axum::response::IntoResponse` (or `Result<impl IntoResponse, AppError>`).
+* **Standard Actions:** 
+  * `pub async fn index()`: List all resources.
+  * `pub async fn show(Path(id): Path<i32>)`: Show a specific resource.
+  * `pub async fn store(Form(payload): Form<CreateDto>)`: Create a new resource.
+  * `pub async fn update(Path(id): Path<i32>, Form(payload): Form<UpdateDto>)`: Update a resource.
+  * `pub async fn delete(Path(id): Path<i32>)`: Delete a resource.
+
+---
+
+## 📄 6. HTML Pages & Components
+
+Rullst uses a functional approach for HTML rendering, relying on the `html!` macro.
+* **Organization:** Pages and components reside in `src/pages/`.
+* **Functional Components:** Pages and components are simply Rust functions. They are not structs or classes.
+* **Props/Data:** Pass data into pages and components as regular function arguments.
+* **Return Type:** Components should return a `String` (or `rullst::html::RawHtml`) so they can be embedded in other `html!` calls. Route-level pages should return `axum::response::Html<String>` to be served directly.
+* **Example:**
+  ```rust
+  pub fn button_component(label: &str, url: &str) -> String {
+      html! { <a href={url} class="btn">{label}</a> }
+  }
+  
+  pub fn home_page(user_name: &str) -> axum::response::Html<String> {
+      let content = html! {
+          <div>
+              <h1>"Welcome, "{user_name}</h1>
+              { rullst::html::RawHtml(button_component("Click Me", "/click")) }
+          </div>
+      };
+      axum::response::Html(content)
+  }
+  ```
+
+---
+
+## 🚨 7. Error Handling
+
+Consistent error handling ensures safety and predictable API responses.
+* **Default Error Type:** The framework expects a standard error enum, typically `AppError`, located in `src/error.rs` or similar.
+* **Implementation:** `AppError` must implement `axum::response::IntoResponse`.
+* **Controller Usage:** Controllers that can fail should return `Result<impl IntoResponse, AppError>`.
+* **HTTP Codes:** The `IntoResponse` implementation maps internal errors to appropriate HTTP status codes (e.g., `404 Not Found`, `500 Internal Server Error`).
+
+---
+
+## 🛡️ 8. Middlewares
+
+Middlewares intercept requests for authentication, logging, etc.
+* **Location:** Middlewares are placed in `src/middlewares/`.
+* **Standard Signature:** Following Axum's `from_fn` pattern, a middleware function looks like:
+  ```rust
+  use axum::{extract::Request, middleware::Next, response::Response};
+  
+  pub async fn my_middleware(req: Request, next: Next) -> Response {
+      // Pre-request logic here
+      let response = next.run(req).await;
+      // Post-request logic here
+      response
+  }
+  ```
+* **Registration:** Middlewares are registered on the router using Axum's `.layer()` or through Rullst's server configuration wrapper.

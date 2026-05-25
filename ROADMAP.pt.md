@@ -42,9 +42,9 @@ graph TD
 ## 🛠️ Marco 1: Poder do CLI (`cargo-rullst`)
 **Objetivo:** Permitir scaffold e geração de código em segundos. Desenvolvedores não devem criar arquivos de boilerplate manualmente.
 
-- [ ] **Geradores de Código:**
-  - [ ] `cargo rullst make:controller <Nome>` - Gera um controller com as ações básicas de CRUD.
-  - [ ] `cargo rullst make:model <Nome> [-m]` - Gera um model de Active Record e, opcionalmente, uma migration associada.
+- [/] **Geradores de Código:**
+  - [x] `cargo rullst make:controller <Nome>` - Gera um controller com as ações básicas de CRUD.
+  - [x] `cargo rullst make:model <Nome> [-m]` - Gera um model de Active Record e, opcionalmente, uma migration associada.
   - [ ] `cargo rullst make:middleware <Nome>` - Gera um middleware customizado compatível com Axum.
 - [ ] **Ergonomia do Workspace:**
   - [ ] Melhorar a velocidade de compilação durante as execuções do CLI.

@@ -42,9 +42,9 @@ graph TD
 ## 🛠️ Milestone 1: CLI Empowerment (`cargo-rullst`)
 **Goal:** Enable lightning-fast scaffolding. Developers should never create boilerplate files manually.
 
-- [ ] **Code Generators:**
-  - [ ] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
-  - [ ] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
+- [/] **Code Generators:**
+  - [x] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
+  - [x] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
   - [ ] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
 - [ ] **Workspace Ergonomics:**
   - [ ] Improve compilation speeds for CLI runs.

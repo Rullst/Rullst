@@ -114,6 +114,8 @@ O Rullst é estruturado como um monorepo Cargo Workspace altamente modularizado:
 2. **`rullst-macros` (Compile-time Engine):** Contém a macro procedural `html!` que faz parsing da árvore JSX e gera concatenações estáticas otimizadas na memória em tempo de compilação.
 3. **`cargo-rullst` (Developer CLI):** A ferramenta que cuida de gerar novos projetos com modelos prontos, conexão de banco configurada e páginas de exemplo.
 
+Para convenções técnicas de arquitetura, padrões de pastas e APIs detalhadas, consulte a nossa [Especificação Oficial (SST)](./docs/spec.md).
+
 ---
 
 ## 📝 Licença

@@ -140,6 +140,8 @@ Rullst is structured as a modular monorepo Cargo Workspace to optimize compile t
 2. **`rullst-macros` (Compiler-Engine):** Procedural JSX-like compiler that outputs safe memory-buffer string extensions in compile time.
 3. **`cargo-rullst` (CLI Scaffold):** Scaffolds clean, isolated local-linked workspaces that compile out-of-the-box.
 
+For detailed technical conventions, directory structures, and framework APIs, refer to our [Official Specification (SST)](./docs/spec.md).
+
 ---
 
 ## 📝 License
