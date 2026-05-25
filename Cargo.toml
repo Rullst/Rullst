@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "rullst",
+    "rullst-macros",
+    "cargo-rullst",
+    "examples/blog",
+]
+resolver = "2"

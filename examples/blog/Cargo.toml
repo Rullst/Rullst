@@ -1,0 +1,13 @@
+[package]
+name = "rullst-blog-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rullst = { path = "../../rullst" }
+rust-eloquent = { path = "../../../rust-eloquent/rust-eloquent" }
+tokio = { version = "1.43", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+axum = { version = "0.7", features = ["form"] }

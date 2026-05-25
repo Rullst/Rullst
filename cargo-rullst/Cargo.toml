@@ -1,0 +1,17 @@
+[package]
+name = "cargo-rullst"
+version = "0.1.0"
+edition = "2024"
+description = "A interface de linha de comando (CLI) oficial para gerenciar aplicações Rullst."
+
+[[bin]]
+name = "cargo-rullst"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1.43", features = ["full"] }
+fs_extra = "1.3"
+dialoguer = "0.11"
+indicatif = "0.17"
+colored = "2.1"

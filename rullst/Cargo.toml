@@ -1,0 +1,17 @@
+[package]
+name = "rullst"
+version = "0.1.0"
+edition = "2024"
+description = "O framework fullstack definitivo para Rust, com foco em DX, velocidade e segurança."
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1.43", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rullst-macros = { path = "../rullst-macros" }
+rust-eloquent = { path = "../../rust-eloquent/rust-eloquent" }
+sqlx = { version = "0.8", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["fs", "trace"] }
+async-trait = "0.1"
