@@ -22,6 +22,7 @@ O Rullst redefine essa experiência. Nós oferecemos um ecossistema integrado qu
 * **Chega de Frankenstein:** Um único framework que gerencia seu servidor (Axum), seu banco de dados (`rust-eloquent`) e sua renderização de interface.
 * **Chega de lutar contra o Borrow Checker na UI:** A macro `html!` processa JSX-like puro direto no servidor (SSR). É HTML bruto, seguro e ultra-rápido enviado diretamente para o navegador.
 * **Active Record Real:** Integramos de forma nativa o ORM **`rust-eloquent`**. Salvar e gerenciar registros é tão simples quanto `user.save()`.
+* **Engenharia Nativa para IA & AI-Friendly:** Projetado desde o primeiro dia para pareamento moderno com inteligências artificiais. Tipagem forte, zero mágica dinâmica em tempo de execução, arquivos `.ai-rules` gerados no scaffold e esquemas estruturados evitam alucinações de agentes de IA e permitem correção automática imediata pelo compilador.
 
 ---
 
