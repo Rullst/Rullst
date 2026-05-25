@@ -69,7 +69,18 @@ impl Server {
             scheduler.start();
         }
 
-        let app = self.router.into_axum();
+        let mut app = self.router.into_axum();
+        
+        // ─── AI-Powered Self-Healing Dev Console ─────────────────────────────
+        let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+        if is_dev {
+            unsafe {
+                std::env::set_var("RUST_BACKTRACE", "1");
+            }
+            app = app.route("/_rullst/explain", axum::routing::get(crate::error_console::handle_explain));
+            app = app.route("/_rullst/autofix", axum::routing::post(crate::error_console::handle_autofix));
+            app = app.layer(axum::middleware::from_fn(crate::error_console::catch_panic_middleware));
+        }
         
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
         println!("Rullst framework serving on http://{}", addr);

@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst"
-version = "0.6.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3010,7 +3010,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "0.6.0"
+version = "0.9.0"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -3031,6 +3031,7 @@ dependencies = [
  "rust-eloquent 1.1.0",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
  "tokio",
  "tower 0.4.13",
@@ -3055,7 +3056,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "0.6.0"
+version = "0.9.0"
 dependencies = [
  "proc-macro2",
  "quote",

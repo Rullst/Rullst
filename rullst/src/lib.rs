@@ -14,6 +14,9 @@ pub mod storage;
 pub mod ws;
 pub mod horizon;
 pub mod ai;
+pub mod testing;
+pub mod feature;
+pub mod error_console;
 
 #[macro_export]
 macro_rules! artisan {
@@ -55,6 +58,7 @@ pub use mail::{Mail, Message as MailMessage};
 pub use storage::{Storage, StorageDriver, StorageError};
 pub use ws::{WebSocket, WsError};
 
-// Re-export Milestone 7: AI-Native Core
 pub use ai::{AiClient, AiProvider, AiError, Message as AiMessage, ChatBuilder, VectorIndex, VectorDocument};
+pub use testing::{TestApp, TestRequestBuilder, TestResponse};
+pub use feature::{FeatureManager, FeatureDriver, MemoryFeatureDriver, EnvFeatureDriver, TomlFeatureDriver, DbFeatureDriver};
 pub use async_trait::async_trait;

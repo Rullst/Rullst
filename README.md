@@ -9,7 +9,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.6.0](https://img.shields.io/badge/Status-v0.6.0-emerald)
+![Status: v0.9.0](https://img.shields.io/badge/Status-v0.9.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -155,7 +155,21 @@ Under the hood, these commands are intercepted by the `rullst::artisan!()` macro
 
 ---
 
-## 🎯 Architecture under the hood (v0.6.0)
+## 🛡️ Self-Healing Upgrades
+
+Afraid of breaking changes when upgrading the framework? Don't be. Rullst was built with a "Self-Healing Upgrades" philosophy. 
+
+When a new version of Rullst introduces API changes, we never break your code immediately. Instead, we use `#[deprecated]` warnings. You can update your entire application automatically using our CLI:
+
+```bash
+cargo rullst upgrade
+```
+
+This command will safely update the Rullst dependency and use Rust's powerful `cargo fix` refactoring tools to automatically rewrite your code to match the new API signatures. Stress-free upgrades, forever.
+
+---
+
+## 🎯 Architecture under the hood (v0.9.0)
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 

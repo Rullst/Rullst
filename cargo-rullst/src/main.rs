@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use colored::*;
 
 #[derive(Parser)]
@@ -83,6 +84,8 @@ enum Commands {
         /// Nome do worker (ex: Email ou email_worker)
         name: String,
     },
+    /// Realiza a atualização segura do Rullst aplicando codemods via cargo fix
+    Upgrade,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -142,6 +145,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
+        }
+        Commands::Upgrade => {
+            run_upgrade()?;
         }
     }
 
@@ -2707,6 +2713,48 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(output_path, serde_json::to_string_pretty(&openapi)?)?;
 
     println!("{}", format!("✨ OpenAPI especificação JSON criada com extremo sucesso em '{}'!", output_path.display()).green().bold());
+    Ok(())
+}
+
+fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        std::process::exit(1);
+    }
+
+    println!("{}", "\n🚀 Iniciando a Atualização Segura do Rullst (Self-Healing Upgrades)...\n".cyan().bold());
+
+    // Step 1: Update the Rullst dependency to the latest compatible non-breaking version
+    println!("{}", "📦 Atualizando as dependências do Rullst no Cargo.toml...".yellow());
+    let update_status = Command::new("cargo")
+        .arg("update")
+        .arg("-p")
+        .arg("rullst")
+        .status()?;
+
+    if !update_status.success() {
+        println!("{}", "❌ Falha ao atualizar a dependência 'rullst' via cargo update.".red());
+        std::process::exit(1);
+    }
+
+    // Step 2: Run `cargo fix` to apply codemods based on new deprecations and signatures
+    println!("{}", "\n🔧 Aplicando codemods automáticos baseados nas assinaturas do Rullst...".yellow());
+    let fix_status = Command::new("cargo")
+        .arg("fix")
+        .arg("--allow-no-vcs")
+        .arg("--allow-dirty")
+        .status()?;
+
+    if !fix_status.success() {
+        println!("{}", "❌ Falha ao aplicar as migrações de código via cargo fix.".red());
+        std::process::exit(1);
+    }
+
+    // Wrap up
+    println!("{}", "\n✨ Atualização do Rullst concluída com extremo sucesso!".green().bold());
+    println!("{}", "Seu código foi atualizado automaticamente para refletir as melhores práticas da versão mais recente.".green());
+    println!("{}", "Execute `cargo test` ou `cargo check` para garantir que tudo está funcionando perfeitamente.\n".cyan());
+
     Ok(())
 }
 

@@ -4,6 +4,36 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-05-25 🚀
+
+### Added (The "Unfair Advantage" & Local AI Dev Tooling)
+- **Declarative E2E Testing (`rullst::testing`)**:
+  - Introduced a fluent, high-level testing framework for complete application workflows.
+  - Added `TestClient` to mount and run HTTP routing logic over the Axum application without actual TCP binding.
+  - Implemented standard HTTP builders with convenient `.await` execution via Rust's `IntoFuture` trait.
+  - Provided extensive cookie-based assertions (`.assert_cookie()`) and structured payload assertions (`.assert_json_value()`).
+- **Built-in Feature Flags (`rullst::feature`)**:
+  - Implemented full-stack toggles and dynamic A/B test splits with zero external runtime dependencies.
+  - Support for `EnvDriver`, `MemoryDriver`, `TomlDriver`, and `DatabaseDriver` (backed by SQLx with a thread-safe TTL Cache for near-zero latency DB lookups).
+  - High-performance deterministic consistency hash utilizing a custom MurmurHash3 implementation for stable weighted rollouts.
+- **AI-Powered "Self-Healing" Error Console (`rullst::error_console`)**:
+  - Gorgeous interactive glassmorphic web dashboard (`rullst-ignition`) triggered on application panics.
+  - Seamless tokio panic interception using a custom `std::panic::set_hook` implementation to isolate runtime worker thread crashes.
+  - Direct local code-snippet lookup pointing to the exact file, module, and line index where the panic occurred.
+  - Integrated local AI-healing assistant that resolves runtime errors and can patch files directly back to the physical disk on a single web interface click.
+
+## [0.8.0] - 2026-05-25 🛡️
+
+### Added (Self-Healing Upgrades & Architectures)
+- **Architectural Guidelines (`docs/spec.md`)**:
+  - Enforced the Builder Pattern and `#[non_exhaustive]` on public configurations to prevent struct instantiation breakages.
+  - Formally integrated `#[deprecated]` lifecycle for smooth transition between APIs.
+  - Implemented the "Sealed Traits" pattern for internal interfaces.
+- **Automated CLI Upgrade Command (`cargo-rullst`)**:
+  - Added `cargo rullst upgrade` command.
+  - Safely updates dependencies via `cargo update -p rullst`.
+  - Automatically runs codemods using `cargo fix --allow-no-vcs --allow-dirty` to apply Rust compiler suggestions based on Rullst's deprecation warnings.
+
 ## [0.7.0] - 2026-05-25 🤖
 
 ### Added (AI-Native Core Milestone)

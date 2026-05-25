@@ -170,3 +170,51 @@ Middlewares intercept requests for authentication, logging, etc.
   }
   ```
 * **Registration:** Middlewares are registered on the router using Axum's `.layer()` or through Rullst's server configuration wrapper.
+
+---
+
+## 🛡️ 9. Architectural Guidelines for Backward Compatibility
+
+To guarantee stress-free and self-healing updates for Rullst users, all framework code must strictly adhere to the following backward compatibility rules:
+
+### 9.1. The Builder Pattern and `#[non_exhaustive]`
+Any public configuration struct or extensible enum exposed by the framework **must** use the `#[non_exhaustive]` attribute. This prevents developers from instantiating the struct directly, ensuring that adding new fields in future minor versions will not break user code.
+
+* **Mandatory Usage:** All instantiation must be done via a constructor (`new()`) and the Builder Pattern (`with_...()`).
+
+```rust
+#[non_exhaustive]
+pub struct RullstConfig {
+    pub port: u16,
+}
+
+impl RullstConfig {
+    pub fn new(port: u16) -> Self {
+        Self { port }
+    }
+}
+```
+
+### 9.2. Deprecation Lifecycle (`#[deprecated]`)
+The framework will never abruptly remove or rename a public function, struct, or method. If a breaking change to an API is required, the old API must be kept alive for at least one minor version using the `#[deprecated]` attribute.
+* **Mandatory Usage:** The `note` field must explicitly tell the user what to use instead, enabling `cargo fix` to potentially automate the migration.
+
+```rust
+#[deprecated(since = "0.2.0", note = "Please use `Router::new()` instead")]
+pub fn old_initializer() {
+    Router::new();
+}
+```
+
+### 9.3. Sealed Traits
+If the framework exposes a Trait that is meant to be used by the user but **not implemented** by the user (e.g., core framework behavior), it must use the "Sealed Trait" pattern. This ensures that adding new methods to the trait in the future will not break downstream implementations.
+
+```rust
+mod private {
+    pub trait Sealed {}
+}
+
+pub trait RullstTrait: private::Sealed {
+    fn execute(&self);
+}
+```

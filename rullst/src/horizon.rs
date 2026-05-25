@@ -231,7 +231,7 @@ fn render_dashboard_layout(pending: u64, failed: usize, processing: usize, table
 
     <!-- Footer -->
     <footer class="border-t border-slate-900 bg-slate-950/40 text-center py-6 mt-12 text-xs text-slate-650">
-        Rullst Horizon v0.6.0 &bull; Built in Rust for maximum factory productivity.
+        Rullst Horizon v0.9.0 &bull; Built in Rust for maximum factory productivity.
     </footer>
 
 </body>
