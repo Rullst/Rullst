@@ -809,6 +809,9 @@ dependencies = [
  "clap",
  "colored",
  "dialoguer",
+ "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

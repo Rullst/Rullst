@@ -46,9 +46,9 @@ graph TD
   - [x] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
   - [x] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
   - [x] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
-  - [ ] `cargo rullst make:cors` & `make:jwt` - Scaffold essential boilerplate middlewares directly into your project.
-  - [ ] `cargo rullst generate:openapi` - AI-Driven OpenAPI/Swagger generator without heavy macros.
-  - [ ] `cargo rullst make:worker` - Scaffold background task workers.
+  - [x] `cargo rullst make:cors` & `make:jwt` - Scaffold essential boilerplate middlewares directly into your project.
+  - [x] `cargo rullst generate:openapi` - AI-Driven OpenAPI/Swagger generator without heavy macros.
+  - [x] `cargo rullst make:worker` - Scaffold background task workers.
 - [x] **Workspace Ergonomics:**
   - [x] Improve compilation speeds for CLI runs.
   - [x] Support `--api` flag for scaffolding headless REST APIs instead of full HTML apps.
@@ -142,7 +142,7 @@ graph TD
 **Goal:** Push Rullst beyond what is possible in other languages, making it the undeniable king of modern web development.
 
 - [ ] **Rullst Live (Server-Driven UI):** Similar to Phoenix LiveView or Laravel Livewire. Write stateful Rust components that automatically sync with the browser over WebSockets, giving SPA interactivity without writing a single line of JavaScript.
-- [ ] **AI-Native Core (`rullst::ai`):** Built-in declarative abstractions for LLMs (OpenAI, Gemini), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.
+- [x] **AI-Native Core (`rullst::ai`):** Built-in declarative abstractions for LLMs (OpenAI, Gemini, Anthropic, Ollama), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.
 - [ ] **Rullst Studio:** A built-in visual GUI to inspect, filter, and edit your database records locally (similar to Prisma Studio). Triggered via `cargo rullst studio`.
 - [ ] **Declarative E2E Testing:** A fluent, Laravel-style testing API: `app.get("/login").assert_status(200).assert_see("Welcome");`.
 - [ ] **Built-in Feature Flags:** Native support for toggling features and running A/B tests with zero external dependencies.

@@ -13,6 +13,7 @@ pub mod mail;
 pub mod storage;
 pub mod ws;
 pub mod horizon;
+pub mod ai;
 
 #[macro_export]
 macro_rules! artisan {
@@ -53,3 +54,7 @@ pub use validation::{ValidatedForm, ValidatedJson, Validate, ValidationError};
 pub use mail::{Mail, Message as MailMessage};
 pub use storage::{Storage, StorageDriver, StorageError};
 pub use ws::{WebSocket, WsError};
+
+// Re-export Milestone 7: AI-Native Core
+pub use ai::{AiClient, AiProvider, AiError, Message as AiMessage, ChatBuilder, VectorIndex, VectorDocument};
+pub use async_trait::async_trait;

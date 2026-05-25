@@ -46,9 +46,9 @@ graph TD
   - [x] `cargo rullst make:controller <Nome>` - Gera um controller com as ações básicas de CRUD.
   - [x] `cargo rullst make:model <Nome> [-m]` - Gera um model de Active Record e, opcionalmente, uma migration associada.
   - [x] `cargo rullst make:middleware <Nome>` - Gera um middleware customizado compatível com Axum.
-  - [ ] `cargo rullst make:cors` & `make:jwt` - Gera middlewares essenciais em Rust puro direto no seu projeto.
-  - [ ] `cargo rullst generate:openapi` - Geração de OpenAPI/Swagger guiada por IA, sem poluir o código com macros.
-  - [ ] `cargo rullst make:worker` - Scaffold para workers de background tasks.
+  - [x] `cargo rullst make:cors` & `make:jwt` - Gera middlewares essenciais em Rust puro direto no seu projeto.
+  - [x] `cargo rullst generate:openapi` - Geração de OpenAPI/Swagger guiada por IA, sem poluir o código com macros.
+  - [x] `cargo rullst make:worker` - Scaffold para workers de background tasks.
 - [x] **Ergonomia do Workspace:**
   - [x] Melhorar a velocidade de compilação durante as execuções do CLI.
   - [x] Suporte à flag `--api` para criar scaffolds de APIs REST sem frontend HTML.
@@ -142,7 +142,7 @@ graph TD
 **Objetivo:** Ir além do que é possível em outras linguagens, tornando o Rullst o rei inquestionável do desenvolvimento web moderno.
 
 - [ ] **Rullst Live (Server-Driven UI):** Inspirado no Phoenix LiveView e Laravel Livewire. Escreva componentes Rust com estado que sincronizam automaticamente com o navegador via WebSockets. Interatividade de SPA sem escrever uma única linha de JavaScript.
-- [ ] **Core IA Nativo (`rullst::ai`):** Abstrações declarativas embutidas para LLMs (OpenAI, Gemini), Bancos de Dados Vetoriais e Agentes IA. Crie aplicações com RAG em minutos.
+- [x] **Core IA Nativo (`rullst::ai`):** Abstrações declarativas embutidas para LLMs (OpenAI, Gemini, Anthropic, Ollama), Bancos de Dados Vetoriais e Agentes IA. Crie aplicações com RAG em minutos.
 - [ ] **Rullst Studio:** Uma interface visual nativa para inspecionar, filtrar e editar os registros do seu banco de dados localmente (estilo Prisma Studio). Ativado via `cargo rullst studio`.
 - [ ] **Testes E2E Declarativos:** API fluente de testes no estilo Laravel: `app.get("/login").assert_status(200).assert_see("Bem-vindo");`.
 - [ ] **Feature Flags Nativas:** Suporte embutido para ligar/desligar funcionalidades e realizar Testes A/B sem dependências externas.

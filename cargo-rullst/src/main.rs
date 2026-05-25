@@ -68,6 +68,21 @@ enum Commands {
     },
     /// Cria toda a estrutura de autenticação (login, registro, model User, migrations, middlewares e views)
     Auth,
+    /// Cria e configura o middleware CORS no projeto
+    #[command(name = "make:cors")]
+    MakeCors,
+    /// Cria e configura o middleware de autenticação JWT no projeto
+    #[command(name = "make:jwt")]
+    MakeJwt,
+    /// Escaneia os controllers e gera um arquivo openapi.json/swagger
+    #[command(name = "generate:openapi")]
+    GenerateOpenapi,
+    /// Cria um novo background worker na pasta src/workers/
+    #[command(name = "make:worker")]
+    MakeWorker {
+        /// Nome do worker (ex: Email ou email_worker)
+        name: String,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -115,6 +130,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Auth => {
             scaffold_auth_system()?;
+        }
+        Commands::MakeCors => {
+            create_cors_middleware()?;
+        }
+        Commands::MakeJwt => {
+            create_jwt_middleware()?;
+        }
+        Commands::GenerateOpenapi => {
+            generate_openapi_spec()?;
+        }
+        Commands::MakeWorker { name } => {
+            create_new_worker(name)?;
         }
     }
 
@@ -831,6 +858,7 @@ tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
 sqlx = {{ version = "0.8", {sqlx_features} }}
+axum = "0.7"
 
 [workspace]
 "#);
@@ -2142,3 +2170,543 @@ LICENSE
 
     Ok(())
 }
+
+// ==========================================
+// SCAPE / GENERATE BOILERPLATE MIDDLEWARES
+// ==========================================
+
+fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        std::process::exit(1);
+    }
+
+    println!("{}", "🛠️ Gerando middleware CORS...".cyan().bold());
+
+    let middlewares_dir = Path::new("src/middlewares");
+    if !middlewares_dir.exists() {
+        fs::create_dir_all(middlewares_dir)?;
+    }
+
+    let mod_path = middlewares_dir.join("mod.rs");
+    if !mod_path.exists() {
+        fs::write(&mod_path, "")?;
+    }
+
+    let mut mod_content = fs::read_to_string(&mod_path)?;
+    if !mod_content.contains("pub mod cors_middleware;") {
+        if !mod_content.is_empty() && !mod_content.ends_with('\n') {
+            mod_content.push('\n');
+        }
+        mod_content.push_str("pub mod cors_middleware;\n");
+        fs::write(&mod_path, mod_content)?;
+    }
+
+    let middleware_path = middlewares_dir.join("cors_middleware.rs");
+    if middleware_path.exists() {
+        println!("{}", "⚠️ Aviso: O middleware 'cors_middleware.rs' já existe. Pulando criação.".yellow());
+    } else {
+        let template = r#"use axum::{
+    extract::Request,
+    middleware::Next,
+    response::Response,
+    http::{header, Method, StatusCode},
+};
+
+/// Middleware CORS robusto e de alta performance.
+/// Gerencia cabeçalhos de compartilhamento de recursos de origem cruzada e requisições preflight (OPTIONS).
+pub async fn cors_middleware(req: Request, next: Next) -> Response {
+    let origin = req.headers()
+        .get(header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("*")
+        .to_string();
+
+    // Lida com requisições preflight OPTIONS
+    if req.method() == Method::OPTIONS {
+        return Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &origin)
+            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+            .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
+            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+            .header(header::ACCESS_CONTROL_MAX_AGE, "86400")
+            .body(axum::body::Body::empty())
+            .unwrap();
+    }
+
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        header::HeaderValue::from_str(&origin).unwrap_or_else(|_| header::HeaderValue::from_static("*")),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        header::HeaderValue::from_static("GET, POST, PUT, DELETE, PATCH, OPTIONS"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        header::HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, X-CSRF-Token"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        header::HeaderValue::from_static("true"),
+    );
+
+    response
+}
+"#;
+        fs::write(&middleware_path, template)?;
+    }
+
+    // Tentar injetar "pub mod middlewares;" no src/main.rs se necessário
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        if !main_content.contains("pub mod middlewares;") && !main_content.contains("mod middlewares;") {
+            if main_content.contains("pub mod controllers;") {
+                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod middlewares;");
+            } else if main_content.contains("pub mod models;") {
+                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod middlewares;");
+            } else {
+                main_content = format!("pub mod middlewares;\n{}", main_content);
+            }
+            fs::write(main_path, main_content)?;
+            println!("{}", "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan());
+        }
+    }
+
+    println!("{}", "✨ Middleware CORS criado com sucesso!".green().bold());
+    println!("{}", "Como registrar no seu router principal (src/main.rs):".cyan());
+    println!("{}", "  1. Adicione: '.layer(axum::middleware::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
+
+    Ok(())
+}
+
+fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        std::process::exit(1);
+    }
+
+    println!("{}", "🛠️ Gerando middleware JWT...".cyan().bold());
+
+    // 1. Injetar jsonwebtoken e chrono no Cargo.toml do usuário
+    let cargo_toml_path = Path::new("Cargo.toml");
+    if cargo_toml_path.exists() {
+        let mut cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
+        let mut modified = false;
+        if !cargo_toml_content.contains("jsonwebtoken") {
+            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
+                cargo_toml_content.insert_str(pos + 14, "jsonwebtoken = \"9.3\"\n");
+                modified = true;
+            }
+        }
+        if !cargo_toml_content.contains("chrono") {
+            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
+                cargo_toml_content.insert_str(pos + 14, "chrono = { version = \"0.4\", features = [\"serde\"] }\n");
+                modified = true;
+            }
+        }
+        if modified {
+            fs::write(cargo_toml_path, cargo_toml_content)?;
+            println!("{}", "  ✨ Adicionadas dependências 'jsonwebtoken' e 'chrono' no seu Cargo.toml.".green());
+        }
+    }
+
+    let middlewares_dir = Path::new("src/middlewares");
+    if !middlewares_dir.exists() {
+        fs::create_dir_all(middlewares_dir)?;
+    }
+
+    let mod_path = middlewares_dir.join("mod.rs");
+    if !mod_path.exists() {
+        fs::write(&mod_path, "")?;
+    }
+
+    let mut mod_content = fs::read_to_string(&mod_path)?;
+    if !mod_content.contains("pub mod jwt_middleware;") {
+        if !mod_content.is_empty() && !mod_content.ends_with('\n') {
+            mod_content.push('\n');
+        }
+        mod_content.push_str("pub mod jwt_middleware;\n");
+        fs::write(&mod_path, mod_content)?;
+    }
+
+    let middleware_path = middlewares_dir.join("jwt_middleware.rs");
+    if middleware_path.exists() {
+        println!("{}", "⚠️ Aviso: O middleware 'jwt_middleware.rs' já existe. Pulando criação.".yellow());
+    } else {
+        let template = r#"use axum::{
+    extract::Request,
+    middleware::Next,
+    response::{Response, IntoResponse},
+    http::{header, StatusCode},
+};
+use serde::{Deserialize, Serialize};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String, // Subject (id do usuário)
+    pub exp: usize,  // Timestamp de expiração
+}
+
+/// Middleware de Autenticação JWT.
+/// Extrai o cabeçalho 'Authorization: Bearer <token>', valida e injeta os claims nas extensões da requisição.
+pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
+    let auth_header = req.headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+
+    let Some(auth_str) = auth_header else {
+        return (StatusCode::UNAUTHORIZED, "Missing Authorization Header").into_response();
+    };
+
+    if !auth_str.starts_with("Bearer ") {
+        return (StatusCode::UNAUTHORIZED, "Invalid Authorization Header Format").into_response();
+    }
+
+    let token = &auth_str["Bearer ".len()..];
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret_super_secreto_rullst_key".to_string());
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        Ok(token_data) => {
+            // Insere os claims nas extensões da requisição para acesso nos controllers
+            req.extensions_mut().insert(token_data.claims);
+            next.run(req).await
+        }
+        Err(_) => (StatusCode::UNAUTHORIZED, "Invalid or Expired Token").into_response(),
+    }
+}
+
+/// Helper para gerar um novo token JWT com duração de 1 dia.
+pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret_super_secreto_rullst_key".to_string());
+    let expiration = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::days(1))
+        .expect("valid timestamp")
+        .timestamp() as usize;
+
+    let claims = Claims {
+        sub: user_id.to_string(),
+        exp: expiration,
+    };
+
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+}
+"#;
+        fs::write(&middleware_path, template)?;
+    }
+
+    // Tentar injetar "pub mod middlewares;" no src/main.rs se necessário
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        if !main_content.contains("pub mod middlewares;") && !main_content.contains("mod middlewares;") {
+            if main_content.contains("pub mod controllers;") {
+                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod middlewares;");
+            } else if main_content.contains("pub mod models;") {
+                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod middlewares;");
+            } else {
+                main_content = format!("pub mod middlewares;\n{}", main_content);
+            }
+            fs::write(main_path, main_content)?;
+            println!("{}", "ℹ️ Adicionado 'pub mod middlewares;' ao src/main.rs.".cyan());
+        }
+    }
+
+    println!("{}", "✨ Middleware JWT criado com sucesso!".green().bold());
+    println!("{}", "Como utilizar:".cyan());
+    println!("{}", "  1. Adicione a camada ao seu router protegido (src/main.rs):".cyan());
+    println!("{}", "     .layer(axum::middleware::from_fn(middlewares::jwt_middleware::jwt_middleware))".cyan());
+    println!("{}", "  2. Acesse os claims no controller:".cyan());
+    println!("{}", "     pub async fn meu_endpoint(axum::Extension(claims): axum::Extension<Claims>) -> impl IntoResponse".cyan());
+
+    Ok(())
+}
+
+fn worker_to_snake_case(s: &str) -> String {
+    let mut base = s.to_string();
+    if base.to_lowercase().ends_with("worker") {
+        let len = base.len();
+        base.truncate(len - 6);
+    }
+
+    let mut result = String::new();
+    let mut prev_is_lower = false;
+    for c in base.chars() {
+        if c == '_' || c == '-' {
+            result.push('_');
+            prev_is_lower = false;
+        } else if c.is_uppercase() {
+            if prev_is_lower {
+                result.push('_');
+            }
+            result.push(c.to_ascii_lowercase());
+            prev_is_lower = false;
+        } else {
+            result.push(c);
+            prev_is_lower = true;
+        }
+    }
+
+    result.push_str("_worker");
+
+    // Clean duplicate underscores
+    let mut clean_result = String::new();
+    let mut prev_is_underscore = false;
+    for c in result.chars() {
+        if c == '_' {
+            if !prev_is_underscore {
+                clean_result.push(c);
+            }
+            prev_is_underscore = true;
+        } else {
+            clean_result.push(c);
+            prev_is_underscore = false;
+        }
+    }
+    clean_result.trim_matches('_').to_string()
+}
+
+fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        std::process::exit(1);
+    }
+
+    let snake_name = worker_to_snake_case(name);
+    let job_name = snake_name.strip_suffix("_worker").unwrap_or(&snake_name);
+
+    println!("{}", format!("🛠️ Gerando background worker Rullst: {}...", snake_name).cyan().bold());
+
+    let workers_dir = Path::new("src/workers");
+    if !workers_dir.exists() {
+        fs::create_dir_all(workers_dir)?;
+    }
+
+    let mod_path = workers_dir.join("mod.rs");
+    if !mod_path.exists() {
+        fs::write(&mod_path, "")?;
+    }
+
+    // Add module declaration to mod.rs
+    let mut mod_content = fs::read_to_string(&mod_path)?;
+    let mod_declaration = format!("pub mod {};", snake_name);
+    if !mod_content.contains(&mod_declaration) {
+        if !mod_content.is_empty() && !mod_content.ends_with('\n') {
+            mod_content.push('\n');
+        }
+        mod_content.push_str(&mod_declaration);
+        mod_content.push('\n');
+    }
+
+    // Ensure register_workers function exists in mod.rs
+    if !mod_content.contains("pub fn register_workers") {
+        mod_content.push_str("\npub fn register_workers(worker: &mut rullst::queue::Worker) {\n");
+        mod_content.push_str(&format!("    {}::register(worker);\n", snake_name));
+        mod_content.push_str("}\n");
+    } else {
+        // Inject registration inside register_workers
+        let search_str = "pub fn register_workers(worker: &mut rullst::queue::Worker) {";
+        if let Some(pos) = mod_content.find(search_str) {
+            let insert_pos = pos + search_str.len() + 1;
+            mod_content.insert_str(insert_pos, &format!("    {}::register(worker);\n", snake_name));
+        }
+    }
+    fs::write(&mod_path, mod_content)?;
+
+    let worker_path = workers_dir.join(format!("{}.rs", snake_name));
+    if worker_path.exists() {
+        println!("{}", format!("⚠️ Aviso: O worker '{}.rs' já existe. Pulando criação.", snake_name).yellow());
+    } else {
+        let template = format!(
+r#"use rullst::queue::{{Worker, QueueError}};
+use serde_json::Value;
+
+/// Registra o processador de tarefas deste worker.
+pub fn register(worker: &mut Worker) {{
+    worker.register("{job_name}", |payload: Value| async move {{
+        println!("🚀 [Worker] Processando tarefa '{job_name}' com payload: {{:?}}", payload);
+        
+        // TODO: Escreva a lógica da sua tarefa em segundo plano aqui (ex: enviar e-mail, processar imagem)
+        
+        Ok(())
+    }});
+}}
+"#, job_name = job_name);
+        fs::write(&worker_path, template)?;
+    }
+
+    // Add module declaration to src/main.rs
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        if !main_content.contains("pub mod workers;") && !main_content.contains("mod workers;") {
+            if main_content.contains("pub mod controllers;") {
+                main_content = main_content.replace("pub mod controllers;", "pub mod controllers;\npub mod workers;");
+            } else if main_content.contains("pub mod models;") {
+                main_content = main_content.replace("pub mod models;", "pub mod models;\npub mod workers;");
+            } else {
+                main_content = format!("pub mod workers;\n{}", main_content);
+            }
+            fs::write(main_path, main_content)?;
+            println!("{}", "ℹ️ Adicionado 'pub mod workers;' ao topo de src/main.rs.".cyan());
+        }
+    }
+
+    println!("{}", format!("✨ Worker '{}' criado com sucesso em '{}'!", snake_name, worker_path.display()).green().bold());
+    println!("{}", "Como inicializar o Worker em segundo plano no seu 'src/main.rs':".cyan());
+    println!("{}", "  1. Crie a fila e inicialize o worker:".cyan());
+    println!("{}", "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan());
+    println!("{}", "     let mut worker = rullst::queue::Worker::new(&queue);".cyan());
+    println!("{}", "  2. Registre seus workers:".cyan());
+    println!("{}", "     workers::register_workers(&mut worker);".cyan());
+    println!("{}", "  3. Inicie o loop de processamento:".cyan());
+    println!("{}", "     worker.run();".cyan());
+
+    Ok(())
+}
+
+fn extract_description_from_handler(handler_path: &str) -> Option<String> {
+    let parts: Vec<&str> = handler_path.split("::").collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let action = parts.last()?.to_string();
+    let controller_module = parts[parts.len() - 2];
+    
+    // Find in src/controllers/<controller_module>.rs
+    let controller_path = Path::new("src/controllers").join(format!("{}.rs", controller_module));
+    if !controller_path.exists() {
+        return None;
+    }
+
+    let content = fs::read_to_string(controller_path).ok()?;
+    let lines: Vec<&str> = content.lines().collect();
+    
+    for (i, line) in lines.iter().enumerate() {
+        if line.contains(&format!("pub async fn {}", action)) {
+            let mut comments = Vec::new();
+            let mut j = i;
+            while j > 0 {
+                j -= 1;
+                let prev_line = lines[j].trim();
+                if prev_line.starts_with("///") {
+                    comments.push(prev_line["///".len()..].trim().to_string());
+                } else if prev_line.starts_with("#[") || prev_line.is_empty() {
+                    // skip decorators and empty lines
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            if !comments.is_empty() {
+                comments.reverse();
+                return Some(comments.join(" "));
+            }
+        }
+    }
+    None
+}
+
+fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        std::process::exit(1);
+    }
+
+    println!("{}", "🔍 Escaneando projeto para extrair rotas e gerar especificação OpenAPI...".cyan().bold());
+
+    let main_path = Path::new("src/main.rs");
+    if !main_path.exists() {
+        println!("{}", "❌ Erro: Arquivo src/main.rs não encontrado.".red());
+        std::process::exit(1);
+    }
+
+    let main_content = fs::read_to_string(main_path)?;
+    
+    // Parses Axum get/post/put/delete routing patterns
+    let route_regex = regex::Regex::new(r#"(get|post|put|delete|patch|options|head)\s*\(\s*"([^"]+)"\s*=>\s*([\w_:]+)\s*\)"#)?;
+    
+    let mut paths_map: std::collections::BTreeMap<String, serde_json::Value> = std::collections::BTreeMap::new();
+
+    for cap in route_regex.captures_iter(&main_content) {
+        let method = cap[1].to_lowercase();
+        let path = cap[2].to_string();
+        let handler_path = cap[3].to_string();
+        
+        // Convert route parameters from Axum format (:id) to OpenAPI format ({id})
+        let openapi_path = path.split('/')
+            .map(|segment| {
+                if segment.starts_with(':') {
+                    format!("{{{}}}", &segment[1..])
+                } else {
+                    segment.to_string()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("/");
+
+        let description = extract_description_from_handler(&handler_path)
+            .unwrap_or_else(|| format!("Ação '{}' executada pelo handler.", handler_path));
+
+        let mut parameters = serde_json::json!([]);
+        for segment in path.split('/') {
+            if segment.starts_with(':') {
+                parameters.as_array_mut().unwrap().push(serde_json::json!({
+                    "name": &segment[1..],
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }));
+            }
+        }
+
+        let mut operation = serde_json::json!({
+            "summary": description,
+            "responses": {
+                "200": {
+                    "description": "Sucesso"
+                }
+            }
+        });
+
+        if !parameters.as_array().unwrap().is_empty() {
+            operation.as_object_mut().unwrap().insert("parameters".to_string(), parameters);
+        }
+
+        let path_item = paths_map.entry(openapi_path).or_insert_with(|| serde_json::json!({}));
+        path_item.as_object_mut().unwrap().insert(method, operation);
+    }
+
+    let openapi = serde_json::json!({
+        "openapi": "3.0.0",
+        "info": {
+            "title": "Especificação da API Rullst",
+            "description": "Especificação gerada automaticamente via analisador estático do cargo-rullst.",
+            "version": "1.0.0"
+        },
+        "paths": paths_map
+    });
+
+    let output_path = Path::new("openapi.json");
+    fs::write(output_path, serde_json::to_string_pretty(&openapi)?)?;
+
+    println!("{}", format!("✨ OpenAPI especificação JSON criada com extremo sucesso em '{}'!", output_path.display()).green().bold());
+    Ok(())
+}
+

@@ -4,6 +4,38 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-05-25 🤖
+
+### Added (AI-Native Core Milestone)
+- **Extensible AI Facade (`rullst::ai`):**
+  - Introduced the `AiClient` facade and the `AiProvider` trait (similar to Rullst Storage and Mailer patterns) to build highly extensible AI applications.
+  - Implemented automatic driver resolution via `AiClient::auto()`, which dynamically detects `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or `OLLAMA_HOST` from environment variables.
+- **Multi-Provider Drivers (`rullst::ai::providers`):**
+  - `OpenAiProvider`: Integrates with OpenAI models (e.g. `gpt-4o-mini`) and text embeddings.
+  - `GeminiProvider`: Full integration with Google Gemini models (e.g. `gemini-1.5-flash`), with native support for `systemInstruction` parameters.
+  - `AnthropicProvider`: Claude integration utilizing the Messages API and top-level system prompts.
+  - `OllamaProvider`: Local LLM execution supporting local completions (e.g. `llama3`) and vector embeddings (e.g. `nomic-embed-text`) via Ollama.
+- **Fluent Chat Builder (`ChatBuilder`):**
+  - Fluent builder for multi-turn conversational agents with simple `.system()`, `.user()`, and `.assistant()` methods.
+  - Handles dynamic role mapping per provider transparently (e.g., mapping `assistant` role to `model` role in Gemini).
+- **Strongly Typed Structured Prompts:**
+  - Added `structured_prompt<T>` helper to parse LLM outputs into strongly typed Rust structs, automatically sanitizing markdown wraps (e.g., ` ```json ... ``` `).
+- **In-Memory RAG Engine (`VectorIndex`):**
+  - Zero-dependency, pure Rust in-memory `VectorIndex` for instant vector search.
+  - Utilizes high-performance Cosine Similarity algorithms to let developers build light, instant RAG applications without external vector databases.
+
+## [0.6.1] - 2026-05-25 🛠️
+
+### Added (CLI Empowerment & Generators completions)
+- **Interactive Project Scaffolding (`cargo rullst new`):**
+  - Added a beautiful prompt-based wizard wizard asking for App Name, App Type (Fullstack SSR vs REST API), and Database Provider (SQLite, PostgreSQL, MySQL) using the `dialoguer` crate.
+  - Automatically structures dependencies, configuration database connection strings (`Rullst.toml`), and generated boilerplate templates based on wizard choices.
+- **Milestone 1 CLI Generators:**
+  - `make:cors`: Generates a standard Axum CORS middleware in `src/middlewares/cors_middleware.rs` with OPTIONS preflight handling and safe owned string lifetime parameters.
+  - `make:jwt`: Generates a token-based JWT authentication middleware in `src/middlewares/jwt_middleware.rs` with a `generate_token` helper, injecting `jsonwebtoken` and `chrono` into `Cargo.toml`.
+  - `make:worker`: Generates background task worker modules and registers them inside `src/workers/mod.rs` for processing asynchronous queue tasks.
+  - `generate:openapi`: Zero-magic static analysis OpenAPI generator that scans `src/main.rs` route patterns and `src/controllers/` actions' doc-comments (`///`) to output a high-performance `openapi.json` spec.
+
 ## [0.6.0] - 2026-05-25 🏢
 
 ### Added (Enterprise Features Milestone)
