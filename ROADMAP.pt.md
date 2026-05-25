@@ -143,6 +143,10 @@ graph TD
 - [ ] **Rullst Studio:** Uma interface visual nativa para inspecionar, filtrar e editar os registros do seu banco de dados localmente (estilo Prisma Studio). Ativado via `cargo rullst studio`.
 - [ ] **Testes E2E Declarativos:** API fluente de testes no estilo Laravel: `app.get("/login").assert_status(200).assert_see("Bem-vindo");`.
 - [ ] **Feature Flags Nativas:** Suporte embutido para ligar/desligar funcionalidades e realizar Testes A/B sem dependências externas.
+- [ ] **Wasm Islands (`#[client_component]`):** Escreva componentes frontend interativos diretamente em Rust. O Rullst compilará automaticamente esses blocos específicos para WebAssembly leve e os hidratará no cliente de forma transparente, eliminando a necessidade de qualquer linha de JavaScript!
+- [ ] **Console de Erros "Self-Healing" com IA:** Tela interativa de erro em modo desenvolvimento (estilo Laravel Ignition) integrada a assistentes locais de IA. Quando um erro em runtime ou compilação acontecer, você terá um botão "Auto-Fix com Rullst AI" que aplicará o patch correto diretamente ao seu código-fonte.
+- [ ] **SaaS Multi-Tenancy Nativo (`rullst::multitenant`):** Isolamento nativo de inquilinos (Multi-tenancy por subdomínio, cabeçalho ou esquema de DB) configurado declarativamente por meio de um único decorator/macro.
+- [ ] **Hot Reloading via Dynamic Linking:** Redução drástica dos tempos de compilação em desenvolvimento por meio do carregamento dinâmico de bibliotecas (`dylib` / `.so`), permitindo alterar rotas e templates HTML com feedback instantâneo de sub-segundos.
 
 ---
 
