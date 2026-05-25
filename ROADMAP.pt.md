@@ -153,6 +153,33 @@ graph TD
 
 ---
 
+## 🌍 Marco 8: The Hyper-Edge & Hybrid Deployment
+**Objetivo:** Rodar o Rullst em infraestrutura Edge moderna sem reescrever código e com latência ultra-baixa globalmente.
+
+- [ ] **Rullst Edge (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda) abstraindo as diferenças de Tokio/WASI.
+- [ ] **Sincronização de Estado Distribuído:** Drivers nativos para bancos de dados na borda (Cloudflare D1, Turso/libsql) integrados ao `rust-eloquent` para replicação global.
+
+---
+
+## 📊 Marco 9: Telemetria e Observabilidade de Próxima Geração
+**Objetivo:** Tornar o debug assíncrono e o profiling de performance fluidos, sem depender de setups externos complexos.
+
+- [ ] **Rullst Pulse / Horizon 2.0:** Dashboard visual em tempo real para métricas de hardware/software. Detecte gargalos de CPU por rota, memory leaks em tasks assíncronas e gargalos de I/O de consultas com zero overhead.
+- [ ] **OpenTelemetry Nativo:** Abstração *zero-config* para exportar traces e logs para Datadog, Grafana Loki ou Prometheus através de uma simples flag no `Rullst.toml`.
+
+---
+
+## 🔮 Marco 10: A Expansão Definitiva de IA e DX
+**Objetivo:** Consolidar o Rullst como o backend supremo para agentes de IA e fornecer uma Experiência de Desenvolvedor inigualável também para SPAs tradicionais.
+
+- [ ] **AI Agent Tool-Calling:** Expor rotas e controllers automaticamente como "Tools" executáveis para LLMs externos com esquemas gerados nativamente (`rullst-schema.json`).
+- [ ] **Injeção Dinâmica de Contexto:** Endpoint seguro `/_rullst/ai-context` que fornece documentação e tipos da API em tempo real para agentes de integração de clientes.
+- [ ] **DB Seeding com IA:** `cargo rullst db:seed --ai` usa modelos locais (ex: Ollama) para gerar dados falsos ultra-realistas e contextualizados com seu domínio de negócios.
+- [ ] **Rullst Deploy (O Equivalente ao Forge/Vapor):** `cargo rullst deploy` para deploy com um clique no Render, Fly.io, AWS, lidando automaticamente com banco de dados e certificados SSL.
+- [ ] **Geração Automática de TypeScript:** Geração de tipos TS a partir de structs de requisição/resposta no build, tornando o Rullst o backend perfeito para React/Next.js/Vue.
+
+---
+
 ## 🗺️ Estratégia de Execução
 
 Seguiremos **marco por marco**, começando pelo **Marco 1** para polir nossos geradores de CLI.

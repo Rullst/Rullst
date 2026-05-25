@@ -153,6 +153,33 @@ graph TD
 
 ---
 
+## 🌍 Milestone 8: The Hyper-Edge & Hybrid Deployment
+**Goal:** Run Rullst on modern Edge infrastructure with zero rewrites and ultra-low latency globally.
+
+- [ ] **Rullst Edge (`rullst::edge`):** Native support for compiling and running Rullst apps in WebAssembly infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda) abstracting Toko/WASI differences.
+- [ ] **Distributed State Sync:** Native drivers for edge-distributed databases (Cloudflare D1, Turso/libsql) integrated into `rust-eloquent` for global replication.
+
+---
+
+## 📊 Milestone 9: Next-Gen Telemetry & Observability
+**Goal:** Make asynchronous debugging and performance profiling effortless without relying on complex external setups.
+
+- [ ] **Rullst Pulse / Horizon 2.0:** Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks per route, memory leaks in async tasks, and I/O query bottlenecks with zero overhead.
+- [ ] **Native OpenTelemetry:** Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus via a simple `Rullst.toml` flag.
+
+---
+
+## 🔮 Milestone 10: The Ultimate AI-Native Expansion & DX
+**Goal:** Solidify Rullst as the ultimate backend for AI agents and provide unparalleled Developer Experience for traditional SPAs.
+
+- [ ] **AI Agent Tool-Calling:** Automatically expose Rullst routes/controllers as executable "Tools" for external LLMs with auto-generated schemas (`rullst-schema.json`).
+- [ ] **Dynamic Context Injection:** A secure `/_rullst/ai-context` endpoint that provides real-time API documentation and types for client-integration AI agents.
+- [ ] **AI-Powered DB Seeding:** `cargo rullst db:seed --ai` leverages local LLMs (e.g. Ollama) to generate ultra-realistic, context-aware mock data.
+- [ ] **Rullst Deploy (The Forge/Vapor Equivalent):** `cargo rullst deploy` for one-click deployments to Render, Fly.io, AWS, etc., handling DB and SSL provisioning automatically.
+- [ ] **Automatic TypeScript Generation:** Auto-generate TS types from request/response structs during build, creating the perfect backend for SPA frameworks like React/Next.js/Vue.
+
+---
+
 ## 🗺️ Execution Strategy
 
 We will proceed **milestone by milestone**, starting with **Milestone 1** to polish our CLI generators. 
