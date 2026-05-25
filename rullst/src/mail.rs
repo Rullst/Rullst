@@ -140,7 +140,7 @@ impl MailDriver for SmtpDriver {
         };
 
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
-        let mut email_builder = LettreMessage::builder()
+        let email_builder = LettreMessage::builder()
             .from(
                 from_addr
                     .parse()
@@ -177,7 +177,7 @@ impl MailDriver for SmtpDriver {
         };
 
         let mut builder =
-            AsyncSmtpTransport::<Tokio1Executor>::builder_1(&self.host).port(self.port);
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host).map_err(|e| MailError::SendError(e.to_string()))?.port(self.port);
 
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
             builder = builder.credentials(Credentials::new(user.clone(), pass.clone()));
