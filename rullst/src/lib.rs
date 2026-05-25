@@ -4,7 +4,7 @@ pub mod server;
 pub mod artisan;
 pub mod auth;
 pub mod security;
-
+pub mod htmx;
 
 #[macro_export]
 macro_rules! artisan {
@@ -31,3 +31,7 @@ pub use rust_eloquent::{Eloquent, EloquentModel};
 pub mod response {
     pub use axum::response::{Html, IntoResponse, Response, Redirect};
 }
+
+// Re-export HTMX primitives for convenience
+pub use htmx::{HtmxRequest, HtmxResponse, render_page};
+

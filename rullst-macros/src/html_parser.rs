@@ -17,7 +17,7 @@ pub struct HtmlElement {
 }
 
 pub struct HtmlAttribute {
-    pub name: Ident,
+    pub name: String,
     pub value: HtmlAttrValue,
 }
 
@@ -94,7 +94,15 @@ impl Parse for HtmlElement {
 
 impl Parse for HtmlAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
-        let name = Ident::parse_any(input)?;
+        let mut name_parts = Vec::new();
+        name_parts.push(Ident::parse_any(input)?.to_string());
+        
+        while input.peek(Token![-]) {
+            input.parse::<Token![-]>()?;
+            name_parts.push(Ident::parse_any(input)?.to_string());
+        }
+        
+        let name = name_parts.join("-");
         input.parse::<Token![=]>()?;
         let value = if input.peek(token::Brace) {
             let content;

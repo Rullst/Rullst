@@ -745,7 +745,7 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
     };
     
     // Get absolute path to rust-eloquent for local referencing
-    let rust_eloquent_path = if current_dir.join("rust-eloquent").exists() {
+    let _rust_eloquent_path = if current_dir.join("rust-eloquent").exists() {
         current_dir.join("rust-eloquent/rust-eloquent").canonicalize()?.display().to_string()
     } else if current_dir.parent().map(|p| p.join("rust-eloquent/rust-eloquent").exists()).unwrap_or(false) {
         current_dir.parent().unwrap().join("rust-eloquent/rust-eloquent").canonicalize()?.display().to_string()
@@ -755,7 +755,7 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
     
     // Fix Windows path escaping in Cargo.toml and strip UNC prefix \\?\ if present
     let rullst_path = rullst_path.trim_start_matches(r"\\?\").replace("\\", "/");
-    let rust_eloquent_path = rust_eloquent_path.trim_start_matches(r"\\?\").replace("\\", "/");
+    let _rust_eloquent_path = _rust_eloquent_path.trim_start_matches(r"\\?\").replace("\\", "/");
 
     // Extract a valid package name from the path (e.g. "..\dummy_test" -> "dummy_test")
     let project_name = path
@@ -776,7 +776,7 @@ edition = "2024"
 
 [dependencies]
 rullst = {{ path = "{rullst_path}" }}
-rust-eloquent = {{ path = "{rust_eloquent_path}" }}
+rust-eloquent = "1.1.0"
 tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
@@ -850,8 +850,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 "#
     } else {
-        r#"use rullst::{html, routes, Server, Router, response::{Html, IntoResponse}};
-use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+        r##"use rullst::{html, routes, Server, response::{Html, IntoResponse}};
+use rullst::htmx::{HtmxRequest, render_page};
+use rust_eloquent::sqlx::FromRow;
 
 pub mod migrations;
 
@@ -863,7 +864,8 @@ pub struct User {
     pub name: String,
 }
 
-async fn home() -> impl IntoResponse {
+// Rota principal: usa o SSR híbrido com render_page
+async fn home(htmx: HtmxRequest) -> impl IntoResponse {
     let name = "Rullst";
     
     // Exemplo de uso do ORM: Buscar usuários ativos do banco
@@ -872,17 +874,58 @@ async fn home() -> impl IntoResponse {
         Err(e) => format!("Banco offline ou não configurado: {}", e),
     };
 
-    Html(html! {
-        <div style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc;">
-            <h1 style="font-size: 3rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                "Bem-vindo ao " {name}
-            </h1>
-            <p style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 2rem;">
-                "O framework fullstack definitivo para Rust. Focado em Segurança, Manutenção e Velocidade."
-            </p>
-            <div style="padding: 1rem 2rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155; color: #38bdf8;">
-                {db_status}
+    let content = html! {
+        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+            <div class="max-w-xl text-center space-y-6">
+                <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                    "Bem-vindo ao " {name}
+                </h1>
+                
+                <p class="text-slate-400 text-lg">
+                    "O framework fullstack definitivo para Rust. Focado em Segurança, Manutenção e Velocidade."
+                </p>
+
+                <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
+                    {db_status}
+                </div>
+
+                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-200">"Interatividade HTMX sem JS personalizado!"</h2>
+                    <div id="counter-box" class="flex flex-col items-center gap-3">
+                        <button hx-post="/clicked" 
+                                hx-target="#counter-box" 
+                                hx-swap="outerHTML" 
+                                class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            "Clique aqui para incrementar"
+                        </button>
+                        <p class="text-sm text-slate-400">"Cliques recebidos no servidor: 0"</p>
+                    </div>
+                </div>
             </div>
+        </div>
+    };
+
+    render_page(&htmx, "Bem-vindo ao Rullst", content)
+}
+
+// Estado para o contador
+use std::sync::atomic::{AtomicUsize, Ordering};
+static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+// Endpoint HTMX reativo
+async fn clicked() -> impl IntoResponse {
+    let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+    
+    // Retorna apenas a parcial / fragmento que substitui o elemento counter-box
+    Html(html! {
+        <div id="counter-box" class="flex flex-col items-center gap-3">
+            <button hx-post="/clicked" 
+                    hx-target="#counter-box" 
+                    hx-swap="outerHTML" 
+                    class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                "Clique aqui para incrementar"
+            </button>
+            <p class="text-sm text-emerald-400 font-medium">"Cliques recebidos no servidor: " {current_clicks.to_string()}</p>
         </div>
     })
 }
@@ -897,6 +940,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => home),
+        post("/clicked" => clicked),
     ];
 
     Server::new(router)
@@ -905,7 +949,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-"#
+"##
     };
 
     fs::write(path.join("src/main.rs"), main_rs)?;
