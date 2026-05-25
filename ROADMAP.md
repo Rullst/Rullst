@@ -3,9 +3,20 @@
 
 *Read this in [Português (Brasil)](./ROADMAP.pt.md).*
 
-This roadmap outlines the milestones required to transition **Rullst** from its current MVP (v0.1.0) into a dominant, production-ready, full-stack framework focused on **Emotional Productivity**. 
+This roadmap outlines the milestones required to transition **Rullst** from its current MVP (v0.1.0) into a dominant, production-ready, full-stack framework focused on **Emotional Productivity** and **AI-Native Engineering**.
 
-Our development strategy follows the **"Laravel-like Developer Experience, Rust-like Performance"** philosophy.
+Our development strategy follows the **"Developer Experience like Laravel, Performance like Rust, Architected for Humans and AI"** philosophy.
+
+---
+
+## 🤖 The AI-Native Paradigm (Designed for Humans & AI)
+
+Almost every modern web framework (Laravel, Ruby on Rails, Next.js) was built before the era of LLMs and AI Agents. They rely heavily on runtime magic, dynamic reflection, and complex implicitness that confuses AI coders and leads to hallucinations.
+
+**Rullst is built from the ground up to be the first AI-Native web framework:**
+1. **Zero Runtime Magic, Pure Compilation:** High-level declarative macros (`#[derive(Eloquent)]`, `routes!`) and strict Rust type safety give AI coding assistants extremely explicit structures, resulting in zero API hallucinations and instant compiler self-correction.
+2. **Context-Rich Scaffolding:** `cargo rullst new` will automatically scaffold optimized `.ai-rules` / `.cursorrules` files. Any AI agent opening the project instantly learns Rullst's exact conventions, code style, and API standards, achieving 100% productive pair-programming immediately.
+3. **Structured System Discovery:** In dev mode, Rullst will generate a local structural schema (`rullst-schema.json`) detailing all active routes, controllers, and models. This lets AI agents map out the entire project structure in milliseconds.
 
 ---
 
@@ -13,10 +24,12 @@ Our development strategy follows the **"Laravel-like Developer Experience, Rust-
 
 ```mermaid
 graph TD
-    M1[Milestone 1: CLI Generator Power] --> M2[Milestone 2: Database Supremacy]
+    M0[Pillar: AI-Native Design] --> M1[Milestone 1: CLI Generator Power]
+    M1 --> M2[Milestone 2: Database Supremacy]
     M2 --> M3[Milestone 3: Complete Auth & Security]
     M3 --> M4[Milestone 4: HTMX & Frontend Integration]
     M4 --> M5[Milestone 5: Production Utilities]
+    style M0 fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1 fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
     style M2 fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
     style M3 fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000

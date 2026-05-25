@@ -3,9 +3,20 @@
 
 *Read this in [English](./ROADMAP.md).*
 
-Este roadmap descreve os marcos necessários para transformar o **Rullst** da sua versão MVP atual (v0.1.0) em um framework full-stack dominante, pronto para produção e focado em **Produtividade Emocional**.
+Este roadmap descreve os marcos necessários para transformar o **Rullst** da sua versão MVP atual (v0.1.0) em um framework full-stack dominante, pronto para produção, focado em **Produtividade Emocional** e **Engenharia Nativa para IA**.
 
-Nossa estratégia de desenvolvimento segue a filosofia **"Developer Experience tipo Laravel, Performance tipo Rust"**.
+Nossa estratégia de desenvolvimento segue a filosofia **"Developer Experience de Laravel, Performance de Rust, Arquitetado para Humanos e IA"**.
+
+---
+
+## 🤖 O Paradigma Nativo para IA (Projetado para Humanos e Agentes de IA)
+
+Quase todos os frameworks web modernos (Laravel, Ruby on Rails, Next.js) foram criados antes da era dos LLMs e Agentes de IA. Eles dependem fortemente de "mágica" em tempo de execução, reflexão dinâmica e implicitude complexa que confunde os codificadores de IA e geram alucinações.
+
+**O Rullst foi projetado desde o primeiro dia para ser o primeiro framework web nativo para IA:**
+1. **Zero Mágica em Runtime, Compilação Pura:** Macros declarativas de alto nível (`#[derive(Eloquent)]`, `routes!`) e a tipagem forte do Rust oferecem estruturas extremamente explícitas para assistentes de IA, eliminando alucinações de API e permitindo que a IA se autocorrija instantaneamente com as mensagens de erro do compilador.
+2. **Scaffolding Rico em Contexto:** O comando `cargo rullst new` irá gerar automaticamente arquivos `.ai-rules` / `.cursorrules` otimizados. Qualquer agente de IA que abrir a pasta entenderá imediatamente as convenções exatas, estilo de código e APIs do Rullst, atingindo 100% de produtividade na hora.
+3. **Descoberta Estruturada do Sistema:** Em modo de desenvolvimento, o Rullst gerará um esquema estrutural local (`rullst-schema.json`) detalhando todas as rotas, controllers e models ativos. Isso permite que agentes de IA mapeiem e entendam o projeto inteiro em milissegundos.
 
 ---
 
@@ -13,10 +24,12 @@ Nossa estratégia de desenvolvimento segue a filosofia **"Developer Experience t
 
 ```mermaid
 graph TD
-    M1[Marco 1: CLI e Geradores de Código] --> M2[Marco 2: Supremacia do Banco de Dados]
+    M0[Pilar: Design Nativo para IA] --> M1[Marco 1: CLI e Geradores de Código]
+    M1 --> M2[Marco 2: Supremacia do Banco de Dados]
     M2 --> M3[Marco 3: Autenticação Completa e Segurança]
     M3 --> M4[Marco 4: Integração com HTMX e Frontend]
     M4 --> M5[Marco 5: Utilitários de Produção]
+    style M0 fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1 fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
     style M2 fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
     style M3 fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
