@@ -42,13 +42,13 @@ graph TD
 ## 🛠️ Marco 1: Poder do CLI (`cargo-rullst`)
 **Objetivo:** Permitir scaffold e geração de código em segundos. Desenvolvedores não devem criar arquivos de boilerplate manualmente.
 
-- [/] **Geradores de Código:**
+- [x] **Geradores de Código:**
   - [x] `cargo rullst make:controller <Nome>` - Gera um controller com as ações básicas de CRUD.
   - [x] `cargo rullst make:model <Nome> [-m]` - Gera um model de Active Record e, opcionalmente, uma migration associada.
-  - [ ] `cargo rullst make:middleware <Nome>` - Gera um middleware customizado compatível com Axum.
-- [ ] **Ergonomia do Workspace:**
-  - [ ] Melhorar a velocidade de compilação durante as execuções do CLI.
-  - [ ] Suporte à flag `--api` para criar scaffolds de APIs REST sem frontend HTML.
+  - [x] `cargo rullst make:middleware <Nome>` - Gera um middleware customizado compatível com Axum.
+- [x] **Ergonomia do Workspace:**
+  - [x] Melhorar a velocidade de compilação durante as execuções do CLI.
+  - [x] Suporte à flag `--api` para criar scaffolds de APIs REST sem frontend HTML.
 
 ---
 
@@ -60,19 +60,19 @@ graph TD
 > O trabalho pesado (parsers de esquema SQL, execução de migrations e macros de relacionamento) será desenvolvido diretamente dentro do repositório **`rust-eloquent`** para manter o ORM modular e atraente para toda a comunidade Rust.
 > O **Rullst** irá envelopar essas funcionalidades com comandos amigáveis de CLI e injeção automática de conexões.
 
-- [ ] **Motor de Migrations (no `rust-eloquent`):**
-  - [ ] Definição de migrations em SQL puro ou através de DSL intuitiva.
-  - [ ] Executores CLI integrados no Rullst:
-    - [ ] `cargo rullst db:migrate` - Executa migrations pendentes.
-    - [ ] `cargo rullst db:rollback` - Reverte o último lote de migrations.
-    - [ ] `cargo rullst db:status` - Mostra o histórico de migrações aplicadas.
-- [ ] **Relacionamentos Active Record (no `rust-eloquent`):**
-  - [ ] Macros declarativas de relacionamento como `HasMany` e `BelongsTo`.
-  - [ ] Resolução de associações `BelongsToMany` (Muitos para Muitos).
-  - [ ] Mecanismos de Lazy e Eager loading para evitar problemas de consultas N+1.
-- [ ] **Seeders e Factories:**
-  - [ ] `cargo rullst db:seed` - Popula o banco de dados usando dados fakes pré-configurados.
-  - [ ] Padrão de factories integrado para geração ágil de entidades de teste.
+- [x] **Motor de Migrations (no `rust-eloquent`):**
+  - [x] Definição de migrations em SQL puro ou através de DSL intuitiva.
+  - [x] Executores CLI integrados no Rullst:
+    - [x] `cargo rullst db:migrate` - Executa migrations pendentes.
+    - [x] `cargo rullst db:rollback` - Reverte o último lote de migrations.
+    - [x] `cargo rullst db:status` - Mostra o histórico de migrações aplicadas.
+- [x] **Relacionamentos Active Record (no `rust-eloquent`):**
+  - [x] Macros declarativas de relacionamento como `HasMany` e `BelongsTo`.
+  - [x] Resolução de associações `BelongsToMany` (Muitos para Muitos).
+  - [x] Mecanismos de Lazy e Eager loading para evitar problemas de consultas N+1.
+- [x] **Seeders e Factories:**
+  - [x] `cargo rullst db:seed` - Popula o banco de dados usando dados fakes pré-configurados.
+  - [x] Padrão de factories integrado para geração ágil de entidades de teste.
 
 ---
 
@@ -110,6 +110,10 @@ graph TD
 ## 📦 Marco 5: Utilitários de Produção (Filas, Caching e Scheduler)
 **Objetivo:** Fornecer os recursos fundamentais necessários para escalar aplicações reais em produção.
 
+- [ ] **Docker e Containerização:**
+  - [ ] Flag `cargo rullst new <nome> --docker` para gerar um `Dockerfile` pronto para produção.
+  - [ ] Geração automática de `docker-compose.yml` para desenvolvimento local (App + DB + Redis).
+  - [ ] Builds multi-stage otimizados (`scratch` / `distroless`) para deploys em Rust ultra-leves, rápidos e seguros.
 - [ ] **Filas & Tarefas em Segundo Plano:**
   - [ ] API unificada `rullst::queue` com suporte a SQLite (para dev local) e Redis (para produção).
   - [ ] Executores assíncronos (workers) rodando tarefas pesadas em background.

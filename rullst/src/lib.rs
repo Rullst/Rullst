@@ -1,6 +1,17 @@
 pub mod html;
 pub mod routing;
 pub mod server;
+pub mod artisan;
+
+#[macro_export]
+macro_rules! artisan {
+    ($migrations:expr) => {
+        let _ = $crate::artisan::check_and_run_artisan($migrations, vec![]).await;
+    };
+    ($migrations:expr, $seeders:expr) => {
+        let _ = $crate::artisan::check_and_run_artisan($migrations, $seeders).await;
+    };
+}
 
 // Re-export the html! procedural macro
 pub use rullst_macros::html;

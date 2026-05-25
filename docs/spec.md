@@ -1,4 +1,4 @@
-<!-- “Antes de gerar qualquer coisa, leia e siga estritamente o arquivo da verdade abaixo.”  -->
+<!-- “Antes de gerar qualquer coisa, leia e siga estritamente o arquivo da verdade abaixo. spec.md”  -->
 
 # Rullst Specification 📄
 ### *"The Single Source of Truth (SST) for Framework Architecture & Conventions"*

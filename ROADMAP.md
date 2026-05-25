@@ -42,13 +42,13 @@ graph TD
 ## 🛠️ Milestone 1: CLI Empowerment (`cargo-rullst`)
 **Goal:** Enable lightning-fast scaffolding. Developers should never create boilerplate files manually.
 
-- [/] **Code Generators:**
+- [x] **Code Generators:**
   - [x] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
   - [x] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
-  - [ ] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
-- [ ] **Workspace Ergonomics:**
-  - [ ] Improve compilation speeds for CLI runs.
-  - [ ] Support `--api` flag for scaffolding headless REST APIs instead of full HTML apps.
+  - [x] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
+- [x] **Workspace Ergonomics:**
+  - [x] Improve compilation speeds for CLI runs.
+  - [x] Support `--api` flag for scaffolding headless REST APIs instead of full HTML apps.
 
 ---
 
@@ -60,19 +60,19 @@ graph TD
 > The heavy lifting (database schema parsers, migration execution, and relationship macro builders) will be developed directly inside the **`rust-eloquent`** repository to keep the ORM modular.
 > **Rullst** will wrap these features with CLI commands and smooth dependency injection.
 
-- [ ] **Migration Engine (in `rust-eloquent`):**
-  - [ ] SQL-based or DSL-based migration definitions.
-  - [ ] CLI runner inside Rullst:
-    - [ ] `cargo rullst db:migrate` - Runs pending migrations.
-    - [ ] `cargo rullst db:rollback` - Reverts the last migration batch.
-    - [ ] `cargo rullst db:status` - Shows the migration history.
-- [ ] **Active Record Relationships (in `rust-eloquent`):**
-  - [ ] `HasMany` / `BelongsTo` declarative macros.
-  - [ ] `BelongsToMany` (Many-to-Many) association resolvers.
-  - [ ] Lazy and Eager loading mechanisms to prevent N+1 query problems.
-- [ ] **Seeders and Factories:**
-  - [ ] `cargo rullst db:seed` - Populate databases using pre-configured mock data.
-  - [ ] Integrated factory pattern for mock entity generation.
+- [x] **Migration Engine (in `rust-eloquent`):**
+  - [x] SQL-based or DSL-based migration definitions.
+  - [x] CLI runner inside Rullst:
+    - [x] `cargo rullst db:migrate` - Runs pending migrations.
+    - [x] `cargo rullst db:rollback` - Reverts the last migration batch.
+    - [x] `cargo rullst db:status` - Shows the migration history.
+- [x] **Active Record Relationships (in `rust-eloquent`):**
+  - [x] `HasMany` / `BelongsTo` declarative macros.
+  - [x] `BelongsToMany` (Many-to-Many) association resolvers.
+  - [x] Lazy and Eager loading mechanisms to prevent N+1 query problems.
+- [x] **Seeders and Factories:**
+  - [x] `cargo rullst db:seed` - Populate databases using pre-configured mock data.
+  - [x] Integrated factory pattern for mock entity generation.
 
 ---
 
@@ -110,6 +110,10 @@ graph TD
 ## 📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler)
 **Goal:** Provide the tools needed to scale applications in production environment.
 
+- [ ] **Docker & Containerization:**
+  - [ ] `cargo rullst new <name> --docker` flag to generate a production-ready `Dockerfile`.
+  - [ ] Auto-generated `docker-compose.yml` for local development (App + DB + Redis).
+  - [ ] Optimized multi-stage builds (`scratch` / `distroless`) for ultra-small, fast, and secure Rust deployments.
 - [ ] **Queues & Background Workers:**
   - [ ] `rullst::queue` API supporting SQLite (for local dev) and Redis (for production).
   - [ ] Asynchronous task workers executing jobs in the background.

@@ -104,20 +104,14 @@ async fn home() -> impl IntoResponse {
     })
 }
 
+// 1. Declare the artisan macro here to intercept CLI arguments for migrations
+rullst::artisan!();
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Auto-setup database pool
-    Eloquent::init("sqlite::memory:").await?;
+    // 2. The artisan! macro automatically intercepts `db:*` commands and exits early.
+    // If it's a normal run, it continues server execution here.
 
-    let pool = Eloquent::pool();
-    sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
-        .execute(pool).await?;
-
-    // INSERT with a single Active Record call!
-    let mut admin = User { id: 0, name: "Admin Rullst".to_string() };
-    admin.save().await?;
-
-    // Beautiful centralized Laravel-style routing
     let router = routes![
         get("/" => home),
     ];
@@ -129,6 +123,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+---
+
+## 🗄️ Database Migrations (Artisan CLI)
+
+Rullst includes an embedded, high-performance migration runner. You don't need external binaries. The framework ships with a CLI tool that parses pure Rust closures to construct your schema safely.
+
+```bash
+# Scaffold a new migration using pure Rust DSL
+cargo rullst make:migration create_users_table
+
+# Run all pending migrations against your database
+cargo rullst db:migrate
+
+# Rollback the last batch of migrations
+cargo rullst db:rollback
+```
+
+Under the hood, these commands are intercepted by the `rullst::artisan!()` macro, guaranteeing the server never starts when you only want to migrate your database.
 
 ---
 

@@ -62,19 +62,14 @@ async fn home() -> impl IntoResponse {
     })
 }
 
+// 1. Declare a macro artisan aqui para interceptar argumentos CLI para migrações
+rullst::artisan!();
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 3. Inicializa o banco de dados e insere dados em 1 linha
-    Eloquent::init("sqlite::memory:").await?;
-    
-    // Migração de exemplo
-    sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
-        .execute(Eloquent::pool()).await?;
+    // 2. A macro artisan! intercepta comandos `db:*` automaticamente.
+    // Se for uma execução normal, o servidor continua daqui em diante.
 
-    let mut admin = User { id: 0, name: "Admin".to_string() };
-    admin.save().await?; // INSERT automático!
-
-    // 4. Declaração de rotas centralizada e limpa (Laravel-Style)
     let router = routes![
         get("/" => home),
     ];
@@ -86,6 +81,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+---
+
+## 🗄️ Migrações de Banco de Dados (Artisan CLI)
+
+O Rullst possui um executor de migrações embutido de altíssima performance. Não há necessidade de binários externos, o CLI roda as migrações geradas usando closures de Rust puro!
+
+```bash
+# Cria uma nova migração (Rust DSL)
+cargo rullst make:migration create_users_table
+
+# Roda todas as migrações pendentes no banco
+cargo rullst db:migrate
+
+# Desfaz o último lote de migrações
+cargo rullst db:rollback
+```
+
+Por baixo dos panos, a macro `rullst::artisan!()` cuida de barrar a inicialização do seu servidor web caso o processo tenha sido executado exclusivamente para gerenciar banco de dados.
 
 ---
 

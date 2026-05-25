@@ -22,7 +22,20 @@ impl Server {
     }
 
     /// Start the HTTP server on the specified port
-    pub async fn run(self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+        if self.db_url.is_none() {
+            if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
+                for line in toml_content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("url") {
+                        if let Some(val) = trimmed.split('=').nth(1) {
+                            self.db_url = Some(val.trim().trim_matches('"').to_string());
+                        }
+                    }
+                }
+            }
+        }
+
         if let Some(db_url) = self.db_url {
             println!("Initializing Eloquent database pool...");
             Eloquent::init(&db_url).await?;

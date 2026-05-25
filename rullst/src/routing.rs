@@ -24,6 +24,17 @@ impl Router {
     pub fn into_axum(self) -> AxumRouter {
         self.inner
     }
+
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: tower_layer::Layer<axum::routing::Route> + Send + 'static,
+        L::Service: tower_service::Service<axum::extract::Request, Response = axum::response::Response, Error = std::convert::Infallible> + Clone + Send + 'static,
+        <L::Service as tower_service::Service<axum::extract::Request>>::Future: Send + 'static,
+    {
+        Router {
+            inner: self.inner.layer(layer),
+        }
+    }
 }
 
 pub use axum::routing::get;
