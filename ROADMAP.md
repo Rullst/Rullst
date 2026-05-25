@@ -79,21 +79,21 @@ graph TD
 ## 🔒 Milestone 3: Authentication & Security (Social & Local Auth)
 **Goal:** Implement robust, secure, and instant authentication. Developers should be able to authenticate users securely in minutes.
 
-- [ ] **Social Authentication via `rust-socialite`:**
-  - [ ] Leverage the custom **[`rust-socialite`](https://crates.io/crates/rust-socialite)** crate as the official OAuth engine.
-  - [ ] Out-of-the-box configurations for Google, GitHub, Facebook, Twitter, and custom providers.
-  - [ ] Seamless flow: redirect to provider, parse callbacks, and login/register users via Active Record.
-- [ ] **Local Authentication:**
-  - [ ] Secure password hashing via Argon2/Bcrypt built-in helpers.
-  - [ ] Custom session-based cookie middleware and token-based (JWT) auth middleware.
-- [ ] **The "Auth Magic" Command:**
-  - [ ] `cargo rullst auth` - Instantly scaffold a full-fledged authentication system containing:
+- [x] **Social Authentication via `rust-socialite`:**
+  - [x] Leverage the custom **[`rust-socialite`](https://crates.io/crates/rust-socialite)** crate as the official OAuth engine.
+  - [x] Out-of-the-box configurations for Google, GitHub, Facebook, Twitter, and custom providers.
+  - [x] Seamless flow: redirect to provider, parse callbacks, and login/register users via Active Record.
+- [x] **Local Authentication:**
+  - [x] Secure password hashing via Argon2/Bcrypt built-in helpers.
+  - [x] Custom session-based cookie middleware and token-based (JWT) auth middleware.
+- [x] **The "Auth Magic" Command:**
+  - [x] `cargo rullst auth` - Instantly scaffold a full-fledged authentication system containing:
     - Login/Registration/Password Reset controllers.
     - Beautiful UI screens (`html!` templates) pre-configured with CSS.
     - SQL database migration for the `users` table.
-- [ ] **Security Defaults:**
-  - [ ] Automatic CSRF protection for HTML form submissions.
-  - [ ] Default security headers middleware (CORS, HSTS, X-Content-Type-Options).
+- [x] **Security Defaults:**
+  - [x] Automatic CSRF protection for HTML form submissions.
+  - [x] Default security headers middleware (CORS, HSTS, X-Content-Type-Options).
 
 ---
 

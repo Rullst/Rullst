@@ -1,7 +1,11 @@
 [package]
 name = "rullst-macros"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
+description = "JSX-like compilation macros for Rullst framework"
+license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/venelouis/Rullst"
 
 [lib]
 proc-macro = true

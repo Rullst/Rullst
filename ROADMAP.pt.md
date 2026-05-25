@@ -79,21 +79,21 @@ graph TD
 ## 🔒 Marco 3: Autenticação & Segurança (Social & Local Auth)
 **Objetivo:** Implementar autenticação robusta, segura e instantânea. Qualquer dev deve ser capaz de autenticar usuários de forma segura em minutos.
 
-- [ ] **Autenticação Social via `rust-socialite`:**
-  - [ ] Integrar a crate **[`rust-socialite`](https://crates.io/crates/rust-socialite)** (sua criação!) como o motor oficial de OAuth do framework.
-  - [ ] Configurações out-of-the-box para Google, GitHub, Facebook, Twitter e provedores genéricos de OpenID.
-  - [ ] Fluxo fluido: redirecionar para o provedor, tratar o callback e autenticar/registrar o usuário via Active Record.
-- [ ] **Autenticação Local:**
-  - [ ] Auxiliares embutidos para hashing seguro de senhas via Argon2/Bcrypt.
-  - [ ] Middlewares customizados para sessões seguras baseadas em Cookies e Tokens (JWT).
-- [ ] **O Comando "Mágico" de Auth:**
-  - [ ] `cargo rullst auth` - Cria instantaneamente um sistema completo de login e registro contendo:
+- [x] **Autenticação Social via `rust-socialite`:**
+  - [x] Integrar a crate **[`rust-socialite`](https://crates.io/crates/rust-socialite)** (sua criação!) como o motor oficial de OAuth do framework.
+  - [x] Configurações out-of-the-box para Google, GitHub, Facebook, Twitter e provedores genéricos de OpenID.
+  - [x] Fluxo fluido: redirecionar para o provedor, tratar o callback e autenticar/registrar o usuário via Active Record.
+- [x] **Autenticação Local:**
+  - [x] Auxiliares embutidos para hashing seguro de senhas via Argon2/Bcrypt.
+  - [x] Middlewares customizados para sessões seguras baseadas em Cookies e Tokens (JWT).
+- [x] **O Comando "Mágico" de Auth:**
+  - [x] `cargo rullst auth` - Cria instantaneamente um sistema completo de login e registro contendo:
     - Controllers de Login, Registro e Reset de Senha.
     - Telas bonitas e responsivas (templates `html!`) pré-estilizadas.
     - Migration SQL para a tabela de `users`.
-- [ ] **Padrões de Segurança Robustos:**
-  - [ ] Proteção automática contra ataques CSRF em submissões de formulários HTML.
-  - [ ] Middleware padrão de cabeçalhos de segurança (CORS, HSTS, X-Content-Type-Options).
+- [x] **Padrões de Segurança Robustos:**
+  - [x] Proteção automática contra ataques CSRF em submissões de formulários HTML.
+  - [x] Middleware padrão de cabeçalhos de segurança (CORS, HSTS, X-Content-Type-Options).
 
 ---
 

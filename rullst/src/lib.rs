@@ -2,6 +2,9 @@ pub mod html;
 pub mod routing;
 pub mod server;
 pub mod artisan;
+pub mod auth;
+pub mod security;
+
 
 #[macro_export]
 macro_rules! artisan {

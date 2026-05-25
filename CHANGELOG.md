@@ -4,6 +4,24 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-25 🛡️
+
+### Added (Authentication & Security Milestone)
+- **Local Authentication Primitives (`rullst::auth`):**
+  - High-security password hashing and verification powered by **Argon2id**.
+  - Secure **AES-256-GCM** client-side encrypted cookie sessions (`rullst_session`) valid for 30 days.
+  - Automatic `APP_KEY` cryptographic key resolution from environment variables or `Rullst.toml`.
+- **Double Submit CSRF Validation (`rullst::security::csrf_middleware`):**
+  - Automatic injection of secure CSRF cookies on GET requests.
+  - Validation of state-modifying requests (`POST`, `PUT`, `DELETE`) comparing cookie tokens with HTTP headers (`X-CSRF-Token`) or hidden `_token` fields.
+  - Custom stream re-builder to safely buffer the request body during verification.
+- **Production Security Headers (`rullst::security::headers_middleware`):**
+  - Standard headers injected on all HTTP responses: HSTS, Content-Type-Options (nosniff), Frame-Options (DENY), XSS-Protection, and Referrer-Policy.
+- ** CLI Auth Command (`cargo rullst auth`):**
+  - Scaffold entire authentication systems (local register, login, logout, and GitHub social auth redirect and callback handlers via the dynamic `rust-socialite` sibling dependency).
+  - Scaffold database migrations for `users`, the `User` Active Record model, and restricted route `AuthMiddleware`.
+  - Scaffold beautiful responsive Dark Mode HTML templates (`login_page`, `register_page`, `dashboard_page`) using the procedurally compiled `html!` macro.
+
 ---
 
 ## [0.2.0] - 2026-05-25 🚀

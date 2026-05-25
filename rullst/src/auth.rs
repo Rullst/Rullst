@@ -1,0 +1,162 @@
+use std::fs;
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
+use base64::{engine::general_purpose, Engine as _};
+use rand::Rng;
+use axum::http::HeaderMap;
+
+/// Default fall-back key for local development when APP_KEY is not configured.
+const DEFAULT_APP_KEY: &[u8] = b"rullst-super-secret-development-key-32bytes!!!";
+
+/// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
+pub fn hash_password(password: &str) -> Result<String, String> {
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map(|h| h.to_string())
+        .map_err(|e| e.to_string())
+}
+
+/// Verifies a plain-text password against a hashed Argon2 password.
+pub fn verify_password(password: &str, hash: &str) -> bool {
+    if let Ok(parsed_hash) = PasswordHash::new(hash) {
+        Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok()
+    } else {
+        false
+    }
+}
+
+/// Resolves the application's unique secret key for encryption.
+/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to a development default.
+pub fn get_app_key() -> Vec<u8> {
+    if let Ok(env_key) = std::env::var("APP_KEY") {
+        return env_key.into_bytes();
+    }
+
+    if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
+        for line in toml_content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("app_key") || trimmed.starts_with("key") {
+                if let Some(val) = trimmed.split('=').nth(1) {
+                    return val.trim().trim_matches('"').as_bytes().to_vec();
+                }
+            }
+        }
+    }
+
+    DEFAULT_APP_KEY.to_vec()
+}
+
+/// Encrypts a user_id into a secure base64-encoded string.
+pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
+    let mut key_bytes = [0u8; 32];
+    let limit = app_key.len().min(32);
+    key_bytes[..limit].copy_from_slice(&app_key[..limit]);
+
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
+    
+    let mut nonce_bytes = [0u8; 12];
+    rand::thread_rng().fill(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let payload = user_id.to_string();
+    let ciphertext = cipher
+        .encrypt(nonce, payload.as_bytes())
+        .map_err(|e| e.to_string())?;
+
+    let mut combined = Vec::new();
+    combined.extend_from_slice(&nonce_bytes);
+    combined.extend_from_slice(&ciphertext);
+
+    Ok(general_purpose::URL_SAFE_NO_PAD.encode(&combined))
+}
+
+/// Decrypts a secure base64-encoded string back into a user_id.
+pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
+    let mut key_bytes = [0u8; 32];
+    let limit = app_key.len().min(32);
+    key_bytes[..limit].copy_from_slice(&app_key[..limit]);
+
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
+    
+    let combined = general_purpose::URL_SAFE_NO_PAD
+        .decode(token)
+        .map_err(|e| e.to_string())?;
+
+    if combined.len() < 12 {
+        return Err("Invalid token length".to_string());
+    }
+
+    let nonce = Nonce::from_slice(&combined[..12]);
+    let ciphertext = &combined[12..];
+
+    let plaintext = cipher
+        .decrypt(nonce, ciphertext)
+        .map_err(|e| e.to_string())?;
+
+    let user_id_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
+    user_id_str.parse::<i32>().map_err(|e| e.to_string())
+}
+
+/// Extracts the secure session cookie value from the request's Cookie headers.
+pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
+    headers.get(axum::http::header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|cookie_str| {
+            for cookie in cookie_str.split(';') {
+                let trimmed = cookie.trim();
+                if trimmed.starts_with("rullst_session=") {
+                    return Some(trimmed["rullst_session=".len()..].to_string());
+                }
+            }
+            None
+        })
+}
+
+/// Generates the standard HTTP header string to set the encrypted session cookie on the client.
+pub fn make_login_cookie(user_id: i32) -> Result<String, String> {
+    let app_key = get_app_key();
+    let encrypted = encrypt_session(user_id, &app_key)?;
+    // Set a HttpOnly, Secure (if not local), SameSite=Lax cookie valid for 30 days
+    Ok(format!(
+        "rullst_session={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000",
+        encrypted
+    ))
+}
+
+/// Generates the standard HTTP header string to delete/clear the session cookie on the client.
+pub fn make_logout_cookie() -> String {
+    "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_password_hashing() {
+        let password = "my-secure-password";
+        let hash = hash_password(password).expect("Failed to hash password");
+        assert!(verify_password(password, &hash), "Password verification failed");
+        assert!(!verify_password("wrong-password", &hash), "Password verification succeeded for wrong password");
+    }
+
+    #[test]
+    fn test_session_encryption_decryption() {
+        let user_id = 42;
+        let key = b"my-custom-encryption-key-for-test!!!";
+        let token = encrypt_session(user_id, key).expect("Failed to encrypt session");
+        let decrypted = decrypt_session(&token, key).expect("Failed to decrypt session");
+        assert_eq!(user_id, decrypted, "Decrypted user ID does not match original");
+    }
+}
+
