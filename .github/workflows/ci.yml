@@ -9,13 +9,25 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    working-directory: Rullst
+
 jobs:
   check:
     name: Code Quality & Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout Rullst
         uses: actions/checkout@v4
+        with:
+          path: Rullst
+
+      - name: Checkout rust-eloquent
+        uses: actions/checkout@v4
+        with:
+          repository: venelouis/rust-eloquent
+          path: rust-eloquent
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -41,8 +53,16 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout Rullst
         uses: actions/checkout@v4
+        with:
+          path: Rullst
+
+      - name: Checkout rust-eloquent
+        uses: actions/checkout@v4
+        with:
+          repository: venelouis/rust-eloquent
+          path: rust-eloquent
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
