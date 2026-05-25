@@ -24,6 +24,15 @@ enum Commands {
         /// Nome do Controller (ex: UsersController ou users)
         name: String,
     },
+    /// Cria um novo Model na pasta src/models/
+    #[command(name = "make:model")]
+    MakeModel {
+        /// Nome do Model (ex: BlogPost ou blog_post)
+        name: String,
+        /// Opcional: cria uma migration SQL correspondente para a tabela
+        #[arg(short, long)]
+        migration: bool,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -47,6 +56,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::MakeController { name } => {
             create_new_controller(name)?;
+        }
+        Commands::MakeModel { name, migration } => {
+            create_new_model(name, *migration)?;
         }
     }
 
@@ -127,6 +139,94 @@ fn to_camel_case(s: &str) -> String {
         }
     }
     result
+}
+
+/// Normaliza o nome do model para snake_case
+fn model_to_snake_case(s: &str) -> String {
+    let mut base = s.to_string();
+    // Remove sufixo "Model" ou "model" se presente
+    if base.to_lowercase().ends_with("model") {
+        let len = base.len();
+        base.truncate(len - 5);
+    }
+
+    let mut result = String::new();
+    let mut prev_is_lower = false;
+    for c in base.chars() {
+        if c == '_' || c == '-' {
+            result.push('_');
+            prev_is_lower = false;
+        } else if c.is_uppercase() {
+            if prev_is_lower {
+                result.push('_');
+            }
+            result.push(c.to_ascii_lowercase());
+            prev_is_lower = false;
+        } else {
+            result.push(c);
+            prev_is_lower = true;
+        }
+    }
+
+    // Limpa underscores repetidos
+    let mut clean_result = String::new();
+    let mut prev_is_underscore = false;
+    for c in result.chars() {
+        if c == '_' {
+            if !prev_is_underscore {
+                clean_result.push(c);
+            }
+            prev_is_underscore = true;
+        } else {
+            clean_result.push(c);
+            prev_is_underscore = false;
+        }
+    }
+    clean_result.trim_matches('_').to_string()
+}
+
+/// Converte o nome do model para PascalCase (CamelCase)
+fn model_to_pascal_case(s: &str) -> String {
+    let snake = model_to_snake_case(s);
+    let mut result = String::new();
+    let mut capitalize_next = true;
+    for c in snake.chars() {
+        if c == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(c.to_ascii_uppercase());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+/// Pluraliza o nome da tabela no padrão Active Record
+fn pluralize(s: &str) -> String {
+    let lower = s.to_lowercase();
+    if lower.ends_with("ss") {
+        format!("{}es", lower)
+    } else if lower.ends_with("s") {
+        lower
+    } else if lower.ends_with("y") {
+        let len = lower.len();
+        if len > 1 {
+            let before_y = &lower[len - 2..len - 1];
+            if before_y == "a" || before_y == "e" || before_y == "i" || before_y == "o" || before_y == "u" {
+                format!("{}s", lower)
+            } else {
+                format!("{}ies", &lower[..len - 1])
+            }
+        } else {
+            format!("{}s", lower)
+        }
+    } else if lower.ends_with("ch") || lower.ends_with("sh") || lower.ends_with("x") || lower.ends_with("z") {
+        format!("{}es", lower)
+    } else {
+        format!("{}s", lower)
+    }
 }
 
 fn create_new_controller(name: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -231,6 +331,110 @@ pub async fn show() -> impl IntoResponse {{
     Ok(())
 }
 
+fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Validar se está na raiz do projeto Rullst
+    if !is_rullst_project() {
+        println!("{}", "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido.".red().bold());
+        println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
+        std::process::exit(1);
+    }
+
+    let snake_name = model_to_snake_case(name);
+    let pascal_name = model_to_pascal_case(name);
+    let plural_name = pluralize(&snake_name);
+
+    println!("{}", format!("🛠️ Gerando model Rullst: {}...", pascal_name).cyan().bold());
+
+    // 2. Garantir que a pasta src/models existe
+    let models_dir = Path::new("src/models");
+    if !models_dir.exists() {
+        fs::create_dir_all(models_dir)?;
+    }
+
+    // 3. Garantir que o src/models/mod.rs existe
+    let mod_path = models_dir.join("mod.rs");
+    if !mod_path.exists() {
+        fs::write(&mod_path, "")?;
+    }
+
+    // 4. Registrar o novo model no mod.rs
+    let mut mod_content = fs::read_to_string(&mod_path)?;
+    let mod_declaration = format!("pub mod {};", snake_name);
+    if !mod_content.contains(&mod_declaration) {
+        if !mod_content.is_empty() && !mod_content.ends_with('\n') {
+            mod_content.push('\n');
+        }
+        mod_content.push_str(&mod_declaration);
+        mod_content.push('\n');
+        fs::write(&mod_path, mod_content)?;
+    }
+
+    // 5. Criar o arquivo do model
+    let model_path = models_dir.join(format!("{}.rs", snake_name));
+    if model_path.exists() {
+        println!("{}", format!("⚠️ Aviso: O model '{}.rs' já existe. Pulando criação do arquivo.", snake_name).yellow());
+    } else {
+        let template = format!(
+r#"use rust_eloquent::{{Eloquent, EloquentModel, sqlx::{{self, FromRow}}}};
+
+#[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+#[eloquent(table = "{plural_name}")]
+pub struct {pascal_name} {{
+    pub id: i32,
+    // Adicione seus campos aqui (ex: pub name: String)
+}}
+"#);
+        fs::write(&model_path, template)?;
+    }
+
+    // 6. Tentar injetar "pub mod models;" no src/main.rs se necessário
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        if !main_content.contains("pub mod models;") && !main_content.contains("mod models;") {
+            main_content = format!("pub mod models;\n{}", main_content);
+            fs::write(main_path, main_content)?;
+            println!("{}", "ℹ️ Adicionado 'pub mod models;' ao topo de src/main.rs automaticamente.".cyan());
+        }
+    }
+
+    println!("{}", format!("✨ Model '{}' criado em '{}' com sucesso!", pascal_name, model_path.display()).green().bold());
+
+    // 7. Criar migration se solicitado
+    if create_migration {
+        let migrations_dir = Path::new("migrations");
+        if !migrations_dir.exists() {
+            fs::create_dir_all(migrations_dir)?;
+        }
+
+        // Formata o timestamp usando chrono (ex: YYYYMMDDHHMMSS)
+        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+        let migration_filename = format!("{}_create_{}_table.sql", timestamp, plural_name);
+        let migration_path = migrations_dir.join(&migration_filename);
+
+        let sql_template = format!(
+r#"-- Up
+CREATE TABLE IF NOT EXISTS {plural_name} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Adicione seus campos aqui (ex: name TEXT NOT NULL)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Down
+DROP TABLE IF EXISTS {plural_name};
+"#);
+
+        fs::write(&migration_path, sql_template)?;
+        println!("{}", format!("✨ Migration SQL criada em '{}' com sucesso!", migration_path.display()).green().bold());
+    }
+
+    println!("{}", "Como importar e usar:".cyan());
+    println!("{}", format!("  1. Use: 'use crate::models::{}::{};'", snake_name, pascal_name).cyan());
+    println!("{}", format!("  2. Busque dados: 'let items = {}::all().await?;'", pascal_name).cyan());
+
+    Ok(())
+}
+
 fn create_new_project(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", format!("🚀 Criando nova aplicação Rullst: {}...", name).green().bold());
     
@@ -264,7 +468,6 @@ fn create_new_project(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Fix Windows path escaping in Cargo.toml and strip UNC prefix \\?\ if present
     let rullst_path = rullst_path.trim_start_matches(r"\\?\").replace("\\", "/");
     let rust_eloquent_path = rust_eloquent_path.trim_start_matches(r"\\?\").replace("\\", "/");
-
 
     // Extract a valid package name from the path (e.g. "..\dummy_test" -> "dummy_test")
     let project_name = path
