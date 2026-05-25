@@ -63,10 +63,18 @@ impl Live {
         comp.mount().await;
         let html = comp.render();
         
+        // HTML escape ws_path to prevent path/attribute injection
+        let safe_path = ws_path
+            .replace('&', "&amp;")
+            .replace('"', "&quot;")
+            .replace('\'', "&#x27;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;");
+
         // Encapsula o componente em uma div invisível que instrui o HTMX a abrir o WebSocket
         format!(
             "<div hx-ext=\"ws\" ws-connect=\"{}\">\n{}\n</div>",
-            ws_path, html
+            safe_path, html
         )
     }
 }

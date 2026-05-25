@@ -120,8 +120,36 @@ pub struct ExplainQuery {
 }
 
 /// Asynchronous endpoint called by the browser to fetch the AI error explanation.
+///
+/// **Security:** Validates that the target file resides within the project's working
+/// directory and is a `.rs` or `.toml` file to prevent path-traversal attacks.
 pub async fn handle_explain(Query(query): Query<ExplainQuery>) -> impl IntoResponse {
-    let file_content = fs::read_to_string(&query.file).unwrap_or_default();
+    // H-3: Apply the same path traversal guard as handle_autofix
+    let project_root = match std::env::current_dir() {
+        Ok(cwd) => cwd.canonicalize().unwrap_or(cwd),
+        Err(_) => return "Unable to determine project root directory.".to_string(),
+    };
+
+    let target_path = std::path::Path::new(&query.file);
+    if !target_path.exists() {
+        return format!("File not found: {}", query.file);
+    }
+
+    let canonical = match target_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return "Unable to resolve file path.".to_string(),
+    };
+
+    if !canonical.starts_with(&project_root) {
+        return "Access denied: file is outside the project directory.".to_string();
+    }
+
+    let extension = canonical.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if extension != "rs" && extension != "toml" {
+        return "Access denied: only .rs and .toml files can be inspected.".to_string();
+    }
+
+    let file_content = fs::read_to_string(&canonical).unwrap_or_default();
 
     let client = match crate::ai::AiClient::auto() {
         Ok(c) => c,
@@ -270,7 +298,7 @@ async fn perform_autofix(
 
 // ─── Sleek, Glowing Dark-Theme HTML Console Renderer ──────────────────────────
 
-async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Backtrace) -> String {
+pub(crate) async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Backtrace) -> String {
     let bt_str = format!("{:#?}", backtrace);
     let source_loc = find_source_location(&bt_str);
 

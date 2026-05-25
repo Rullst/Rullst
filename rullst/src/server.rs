@@ -97,6 +97,14 @@ impl Server {
 
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
+        // I-1: Warn when dev-only routes are exposed on a non-loopback address
+        if is_dev && addr.ip().is_unspecified() {
+            eprintln!(
+                "⚠️  Rullst Dev: Self-Healing Console mounted on /_rullst/*\n\
+                   Set APP_ENV=production to disable before deploying."
+            );
+        }
+
         if let Some(lib_path) = self.hot_reload_lib {
             // --- Hot Reloading Mode ---
             println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
@@ -142,22 +150,43 @@ impl Server {
                         continue;
                     }
 
-                    println!("\x1b[33m🔄 Rullst Hot-Reload: Alteração detectada em 'src/'. Recompilando dylib...\x1b[0m");
+                    let (tx, rx_build) = std::sync::mpsc::channel();
+                    let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                    std::thread::spawn(move || {
+                        let res = std::process::Command::new("cargo")
+                            .arg("build")
+                            .arg("--lib")
+                            .current_dir(current_dir)
+                            .status();
+                        let _ = tx.send(res);
+                    });
 
-                    let build_status = std::process::Command::new("cargo")
-                        .arg("build")
-                        .arg("--lib")
-                        .status();
+                    // Timeout of 120 seconds to prevent hanging build processes
+                    let build_success = match rx_build.recv_timeout(std::time::Duration::from_secs(120)) {
+                        Ok(Ok(status)) => status.success(),
+                        Ok(Err(e)) => {
+                            eprintln!("⚠️ Rullst Hot-Reload: failed to execute cargo build: {}", e);
+                            false
+                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                            eprintln!("⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!");
+                            false
+                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,
+                    };
 
-                    if let Ok(status) = build_status && status.success() {
+                    if build_success {
                         println!("\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m");
                         match load_dylib_router(&lib_path_clone, is_dev) {
                             Ok((new_router, new_lib)) => {
-                                // Swap router under lock
-                                *current_router_clone.write().unwrap() = new_router;
-                                
+                                // H-1: Recover from poisoned write lock rather than panicking
+                                match current_router_clone.write() {
+                                    Ok(mut guard) => *guard = new_router,
+                                    Err(poisoned) => *poisoned.into_inner() = new_router,
+                                };
+
                                 // Swap library under lock to keep memory mapped safely
-                                let mut active_lib = active_library_clone.lock().unwrap();
+                                let mut active_lib = active_library_clone.lock().unwrap_or_else(|p| p.into_inner());
                                 *active_lib = Some(new_lib); // Old library is safely dropped here!
 
                                 println!("\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m");
@@ -245,12 +274,49 @@ impl Service<axum::extract::Request> for HotSwapService {
     }
 
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
-        let router = self.current_router.read().unwrap().clone();
+        // H-1: Recover from poisoned RwLock instead of panicking
+        let router = match self.current_router.read() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        };
         use tower::ServiceExt;
         let fut = router.oneshot(req);
         Box::pin(async move {
-            let res = fut.await.unwrap();
-            Ok(res)
+            let handle = tokio::spawn(async move { fut.await });
+            match handle.await {
+                Ok(Ok(res)) => Ok(res),
+                Ok(Err(_)) => {
+                    // H-2: Handle oneshot error gracefully
+                    Ok(axum::response::Response::builder()
+                        .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(axum::body::Body::empty())
+                        .unwrap())
+                }
+                Err(join_err) => {
+                    // I-2: If a panic occurred during the oneshot invocation, catch it and present the Self-Healing Console
+                    let message = if join_err.is_panic() {
+                        let panic_payload = join_err.into_panic();
+                        if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                            s.to_string()
+                        } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                            s.clone()
+                        } else {
+                            "Unhandled application panic".to_string()
+                        }
+                    } else {
+                        "Request task was cancelled or aborted".to_string()
+                    };
+
+                    let backtrace = std::backtrace::Backtrace::capture();
+                    let html_content = crate::error_console::render_console_html(&message, &backtrace).await;
+
+                    Ok(axum::response::Response::builder()
+                        .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                        .header(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")
+                        .body(axum::body::Body::from(html_content))
+                        .unwrap())
+                }
+            }
         })
     }
 }
@@ -293,8 +359,10 @@ fn load_dylib_router(
         }
     }
 
-    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-    let temp_filename = format!("{}_active_{}.{}", filename, ts, lib_extension);
+    // L-1: Use UUID v4 instead of nanosecond timestamp to guarantee filename uniqueness
+    //       even on systems with low-resolution clocks.
+    let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
+    let temp_filename = format!("{}_active_{}.{}", filename, unique_id, lib_extension);
     let temp_path = parent.join(temp_filename);
     
     // Copy the dylib file to prevent locking issues

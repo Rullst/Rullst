@@ -34,12 +34,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - SEC-1: Removed unsafe `std::env::set_var("RUST_BACKTRACE", "1")` in `server.rs` (unsound in multi-threaded environments) and replaced it with a safe warning prompting the user to set the env var.
   - SEC-2: Added strict path traversal protection to the `/_rullst/autofix` endpoint in `error_console.rs` (verifies paths are canonicalized and located within the project root, restricts edits to `.rs` and `.toml` files).
   - SEC-3: Added a startup warning in `auth.rs` when the default development `APP_KEY` is used.
-- **Spec & API Alignments**:
+  - H-3 (Path Traversal in Error Console): Secured the GET `/_rullst/explain` handler in `error_console.rs` with robust path traversal validation, restricting file reads to `.rs` and `.toml` files within the workspace root.
+  - H-1 (Poisoned RwLock Recovery): Added poison-recovery safety logic to `RwLock` reads/writes in `server.rs`, preventing a single dynamic loading thread panic from cascading to crash all request tasks.
+  - H-2 (Graceful Oneshot Error Handling): Gracefully handle `oneshot()` failures inside tower routing, returning an internal server error response instead of panicking.
+- **Spec & API Alignments & Stability**:
   - Marked `Server`, `Router`, `HtmxRequest`, and `HtmxResponse` as `#[non_exhaustive]` per Rullst Spec §9.1 to ensure future-proof API stability.
   - Replaced a `panic!` in `Storage::disk()` with a graceful fallback `ErrorDriver` returning `StorageError::DriverError` on all methods when an unknown disk is requested.
+  - M-2 (Stable Rollout Hashing): Replaced `DefaultHasher` in progressive rollouts (`feature.rs`) with deterministic `FnvHasher` (adding `fnv` to main dependencies) to guarantee bucket stability across Rust upgrades.
+  - L-3 (TOML Path Isolation): Cached `Rullst.toml`'s path during construction in `TomlFeatureDriver` to prevent lookup failure if the runtime working directory changes.
+  - L-4 (Removed Undocumented Tenancy Fallback): Removed the undocumented `"tenant"` parameter fallback in `multitenant.rs` to enforce explicit, predictable tenancy extraction.
 - **Performance & Reliability**:
   - Migrated `LocalDriver` in `storage.rs` from blocking `std::fs` to fully asynchronous `tokio::fs` operations.
   - Optimized Redis `CacheDriver`'s `flush()` method to use a memory-efficient `SCAN` cursor loop instead of the blocking `KEYS *` pattern.
+  - M-1 (Watcher Compilation Timeout): Implemented a `120s` timeout for background `cargo build --lib` compilation using std channel `recv_timeout` to prevent blocking the watcher indefinitely.
+  - M-4 (Configurable Testing Limits): Made the E2E testing request body limit configurable in `TestApp` and `TestRequestBuilder`, and provided comprehensive panic error details if limits are exceeded.
+  - L-1 (Guaranteed Temp DLL Uniqueness): Swapped timestamp suffixes with UUID v4 to completely rule out dynamic library path collision bugs under high concurrent loads.
+- **UX & Diagnostics Improvements**:
+  - I-2 (Hot-Reload Panic Capture Console): Wrapped `HotSwapService`'s execution future in a spawned task, intercepting panic unwinds to render the gorgeous glowing interactive Self-Healing Console during development.
+  - L-2 (HTML Attribute Injection Guard): Implemented robust HTML attribute escaping to `ws_path` before mounting Live component tags inside `live.rs`.
 - **Testing & CI/CD**:
   - Added full test coverage for the wrapper `Router` in `routing.rs`, the builder in `server.rs`, and argument translation in `artisan.rs`.
   - Created a GitHub Actions CI pipeline (`.github/workflows/ci.yml`) enforcing automated test suites, clippy lint checks, and rustfmt checks.

@@ -9,41 +9,55 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use tower::ServiceExt;
 
+const DEFAULT_MAX_BODY: usize = 10 * 1024 * 1024;
+
 /// A fluent testing wrapper around Axum's `Router` to enable declarative E2E assertions.
 #[non_exhaustive]
 pub struct TestApp {
     router: Router,
+    max_body_bytes: usize,
 }
 
 impl TestApp {
     /// Creates a new `TestApp` from the given Axum `Router`.
     pub fn new(router: Router) -> Self {
-        Self { router }
+        Self {
+            router,
+            max_body_bytes: DEFAULT_MAX_BODY,
+        }
+    }
+
+    /// Creates a new `TestApp` with a custom maximum response body limit in bytes.
+    pub fn new_with_limit(router: Router, max_body_bytes: usize) -> Self {
+        Self {
+            router,
+            max_body_bytes,
+        }
     }
 
     /// Initiates a GET request.
     pub fn get(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::GET, uri)
+        TestRequestBuilder::new(self.router.clone(), Method::GET, uri, self.max_body_bytes)
     }
 
     /// Initiates a POST request.
     pub fn post(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::POST, uri)
+        TestRequestBuilder::new(self.router.clone(), Method::POST, uri, self.max_body_bytes)
     }
 
     /// Initiates a PUT request.
     pub fn put(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::PUT, uri)
+        TestRequestBuilder::new(self.router.clone(), Method::PUT, uri, self.max_body_bytes)
     }
 
     /// Initiates a PATCH request.
     pub fn patch(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::PATCH, uri)
+        TestRequestBuilder::new(self.router.clone(), Method::PATCH, uri, self.max_body_bytes)
     }
 
     /// Initiates a DELETE request.
     pub fn delete(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::DELETE, uri)
+        TestRequestBuilder::new(self.router.clone(), Method::DELETE, uri, self.max_body_bytes)
     }
 }
 
@@ -56,17 +70,25 @@ pub struct TestRequestBuilder {
     uri: String,
     headers: HeaderMap,
     body: Option<Body>,
+    max_body_bytes: usize,
 }
 
 impl TestRequestBuilder {
-    pub(crate) fn new(router: Router, method: Method, uri: &str) -> Self {
+    pub(crate) fn new(router: Router, method: Method, uri: &str, max_body_bytes: usize) -> Self {
         Self {
             router,
             method,
             uri: uri.to_string(),
             headers: HeaderMap::new(),
             body: None,
+            max_body_bytes,
         }
+    }
+
+    /// Sets a custom response body limit in bytes for this specific request.
+    pub fn max_body_bytes(mut self, max_body_bytes: usize) -> Self {
+        self.max_body_bytes = max_body_bytes;
+        self
     }
 
     /// Adds a header to the request.
@@ -130,7 +152,7 @@ impl TestRequestBuilder {
             .oneshot(req)
             .await
             .expect("Failed to execute request on Router");
-        TestResponse::new(response).await
+        TestResponse::new_with_limit(response, self.max_body_bytes).await
     }
 }
 
@@ -153,11 +175,19 @@ pub struct TestResponse {
 
 impl TestResponse {
     pub(crate) async fn new(response: Response) -> Self {
+        Self::new_with_limit(response, DEFAULT_MAX_BODY).await
+    }
+
+    pub(crate) async fn new_with_limit(response: Response, max_body_bytes: usize) -> Self {
         let (parts, body) = response.into_parts();
-        // Read up to 10MB limit in testing
-        let body_bytes = to_bytes(body, 10 * 1024 * 1024)
+        let body_bytes = to_bytes(body, max_body_bytes)
             .await
-            .expect("Failed to read response body bytes");
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to read response body bytes: response body exceeds the maximum configured limit of {} bytes (or another stream error occurred: {})",
+                    max_body_bytes, err
+                );
+            });
 
         Self {
             status: parts.status,

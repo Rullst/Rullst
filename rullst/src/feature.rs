@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use dashmap::DashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use fnv::FnvHasher;
+use std::hash::Hasher;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 /// Deterministically calculates a bucket index from 0 to 99 for a given flag and identifier.
 /// This ensures a stable user-to-flag assignment without persistent storage.
 pub fn calculate_hash_bucket(flag: &str, identifier: &str) -> u32 {
-    let mut hasher = DefaultHasher::new();
-    flag.hash(&mut hasher);
-    identifier.hash(&mut hasher);
+    let mut hasher = FnvHasher::default();
+    hasher.write(flag.as_bytes());
+    hasher.write(identifier.as_bytes());
     let hash_val = hasher.finish();
     (hash_val % 100) as u32
 }
@@ -280,13 +280,18 @@ impl FeatureDriver for EnvFeatureDriver {
 #[non_exhaustive]
 pub struct TomlFeatureDriver {
     config: DashMap<String, String>,
+    config_path: std::path::PathBuf,
 }
 
 impl TomlFeatureDriver {
     /// Creates a new `TomlFeatureDriver` and parses `Rullst.toml` if present.
     pub fn new() -> Self {
+        let config_path = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join("Rullst.toml");
         let driver = Self {
             config: DashMap::new(),
+            config_path,
         };
         let _ = driver.reload();
         driver
@@ -295,7 +300,7 @@ impl TomlFeatureDriver {
     /// Reloads the features section from `Rullst.toml`.
     pub fn reload(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.config.clear();
-        let content = std::fs::read_to_string("Rullst.toml")?;
+        let content = std::fs::read_to_string(&self.config_path)?;
 
         let mut in_features = false;
         for line in content.lines() {
@@ -399,6 +404,12 @@ struct DbCacheValue {
 /// Feature flag driver backed by a database table `rullst_feature_flags`.
 ///
 /// Features a high-performance concurrent local cache with custom TTL to ensure sub-millisecond lookups.
+///
+/// # Note on Database Pool Initialization
+/// This driver requires a live database pool to function. If feature flags are evaluated before the
+/// database connection pool has been initialized (e.g., in early application startup or static constructors),
+/// this driver will gracefully return `None` (falling through to subsequent drivers in the chain)
+/// rather than blocking or panicking.
 #[non_exhaustive]
 pub struct DbFeatureDriver {
     cache: DashMap<String, DbCacheValue>,
@@ -600,8 +611,12 @@ impl FeatureManager {
 }
 
 impl Default for FeatureManager {
+    /// Creates a new `FeatureManager` with safe, batteries-included defaults:
+    /// 1. `MemoryFeatureDriver` (programmatic/testing overrides)
+    /// 2. `EnvFeatureDriver` (environment variable configuration)
+    /// 3. `TomlFeatureDriver` (local TOML file configuration via `Rullst.toml`)
+    /// 4. `DbFeatureDriver` (database-backed flags, requires initialized database pool)
     fn default() -> Self {
-        // Safe, batteries-included defaults: overrides -> Env -> TOML -> DB
         Self::new()
             .add_driver(Box::new(MemoryFeatureDriver::new()))
             .add_driver(Box::new(EnvFeatureDriver::new()))

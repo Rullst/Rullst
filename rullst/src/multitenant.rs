@@ -4,6 +4,16 @@ use std::cell::RefCell;
 pub enum TenantStrategy {
     Subdomain,
     Header,
+    /// Extract the tenant ID from query parameters.
+    ///
+    /// # Security Warning
+    /// Using query parameters (`?tenant_id=...`) can cause tenant IDs to leak in:
+    /// - Server access logs (clear-text)
+    /// - Browser history
+    /// - `Referer` headers sent to third-party assets
+    /// - CDN/proxy cache headers
+    ///
+    /// For sensitive or regulated tenant IDs, prefer `TenantStrategy::Header` or `TenantStrategy::Subdomain`.
     Parameter,
 }
 
@@ -157,7 +167,6 @@ where
                         .ok()
                         .and_then(|params| {
                             params.get(&config.parameter_name)
-                                .or_else(|| params.get("tenant"))
                                 .cloned()
                         })
                 }
