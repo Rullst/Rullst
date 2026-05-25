@@ -9,7 +9,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.9.0](https://img.shields.io/badge/Status-v0.9.0-emerald)
+![Status: v0.9.1](https://img.shields.io/badge/Status-v0.9.1-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
