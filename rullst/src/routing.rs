@@ -21,8 +21,30 @@ impl Router {
         }
     }
     
+    pub fn ws<H, T>(self, path: &str, handler: H) -> Self
+    where
+        T: 'static,
+        H: axum::handler::Handler<T, ()>,
+    {
+        Router {
+            inner: self.inner.route(path, axum::routing::get(handler)),
+        }
+    }
+
     pub fn into_axum(self) -> AxumRouter {
         self.inner
+    }
+
+    pub fn nest(self, path: &str, router: Router) -> Self {
+        Router {
+            inner: self.inner.nest(path, router.inner),
+        }
+    }
+
+    pub fn nest_axum(self, path: &str, router: AxumRouter) -> Self {
+        Router {
+            inner: self.inner.nest(path, router),
+        }
     }
 
     pub fn layer<L>(self, layer: L) -> Self
@@ -42,6 +64,15 @@ pub use axum::routing::post;
 pub use axum::routing::put;
 pub use axum::routing::delete;
 pub use axum::routing::patch;
+
+pub fn ws<H, T>(handler: H) -> axum::routing::MethodRouter
+where
+    T: 'static,
+    H: axum::handler::Handler<T, ()>,
+{
+    axum::routing::get(handler)
+}
+
 
 
 #[macro_export]

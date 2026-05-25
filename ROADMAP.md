@@ -124,6 +124,28 @@ graph TD
 
 ---
 
+## 🏢 Milestone 6: Enterprise Features
+**Goal:** Deliver the classic robust features expected from enterprise-grade frameworks.
+
+- [x] **Declarative Validation:** A `#[derive(Validate)]` macro for DTOs/structs that automatically returns 422 JSON for APIs or HTML error partials for HTMX when validation fails.
+- [x] **Mailer System (`rullst::mail`):** Fluent API for sending emails with drivers for SMTP, Resend, and SendGrid, supporting native `html!` templates.
+- [x] **Storage Abstraction (`rullst::storage`):** Unified API for file uploads and management with drivers for Local (Disk), AWS S3, and Cloudflare R2.
+- [x] **WebSockets & Real-Time:** Built-in router support for WebSockets, perfectly integrated with HTMX (`hx-ext="ws"`).
+- [x] **Rullst Horizon:** A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.
+
+---
+
+## 🚀 Milestone 7: The "Unfair Advantage" (Industry Dominance)
+**Goal:** Push Rullst beyond what is possible in other languages, making it the undeniable king of modern web development.
+
+- [ ] **Rullst Live (Server-Driven UI):** Similar to Phoenix LiveView or Laravel Livewire. Write stateful Rust components that automatically sync with the browser over WebSockets, giving SPA interactivity without writing a single line of JavaScript.
+- [ ] **AI-Native Core (`rullst::ai`):** Built-in declarative abstractions for LLMs (OpenAI, Gemini), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.
+- [ ] **Rullst Studio:** A built-in visual GUI to inspect, filter, and edit your database records locally (similar to Prisma Studio). Triggered via `cargo rullst studio`.
+- [ ] **Declarative E2E Testing:** A fluent, Laravel-style testing API: `app.get("/login").assert_status(200).assert_see("Welcome");`.
+- [ ] **Built-in Feature Flags:** Native support for toggling features and running A/B tests with zero external dependencies.
+
+---
+
 ## 🗺️ Execution Strategy
 
 We will proceed **milestone by milestone**, starting with **Milestone 1** to polish our CLI generators. 

@@ -4,7 +4,7 @@
 *Read this in [Português (Brasil)](./README.pt.md).*
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.5.0](https://img.shields.io/badge/Status-v0.5.0-emerald)
+![Status: v0.6.0](https://img.shields.io/badge/Status-v0.6.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -145,11 +145,11 @@ Under the hood, these commands are intercepted by the `rullst::artisan!()` macro
 
 ---
 
-## 🎯 Architecture under the hood (v0.5.0)
+## 🎯 Architecture under the hood (v0.6.0)
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 
-1. **`rullst` (Core Crate):** Wraps and configures Axum, handles life-cycle DB injection, and exposes response types.
+1. **`rullst` (Core Crate):** Wraps and configures Axum, handles life-cycle DB injection, and exposes response types. Also ships with first-class production utilities (Queue, Cache, Scheduler) and enterprise features (Validation, Mailer, Storage, WebSockets, and Horizon).
 2. **`rullst-macros` (Compiler-Engine):** Procedural JSX-like compiler that outputs safe memory-buffer string extensions in compile time.
 3. **`cargo-rullst` (CLI Scaffold):** Scaffolds clean, isolated local-linked workspaces that compile out-of-the-box.
 

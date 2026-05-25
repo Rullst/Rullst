@@ -2,7 +2,7 @@
 ### *"Rust para quem quer construir, não sofrer."*
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.5.0](https://img.shields.io/badge/Status-v0.5.0-emerald)
+![Status: v0.6.0](https://img.shields.io/badge/Status-v0.6.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 O **Rullst** (Rust + Fullstack) é o primeiro framework web opinativo em Rust projetado obsessivamente para a **Produtividade Emocional** do desenvolvedor. 
@@ -120,11 +120,11 @@ cargo run
 
 ---
 
-## 🎯 Arquitetura do Rullst (v0.5.0)
+## 🎯 Arquitetura do Rullst (v0.6.0)
 
 O Rullst é estruturado como um monorepo Cargo Workspace altamente modularizado:
 
-1. **`rullst` (Core Crate):** Abstrai o servidor Axum, gerencia a injeção do ciclo de vida do `rust-eloquent` e re-exporta as dependências de rede e segurança.
+1. **`rullst` (Core Crate):** Abstrai o servidor Axum, gerencia a injeção do ciclo de vida do `rust-eloquent` e re-exporta as dependências de rede e segurança. Também vem com utilitários de produção de primeira classe (Queue, Cache, Scheduler) e funcionalidades corporativas enterprise (Validation, Mailer, Storage, WebSockets e Horizon).
 2. **`rullst-macros` (Compile-time Engine):** Contém a macro procedural `html!` que faz parsing da árvore JSX e gera concatenações estáticas otimizadas na memória em tempo de compilação.
 3. **`cargo-rullst` (Developer CLI):** A ferramenta que cuida de gerar novos projetos com modelos prontos, conexão de banco configurada e páginas de exemplo.
 

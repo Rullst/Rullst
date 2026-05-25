@@ -8,6 +8,11 @@ pub mod htmx;
 pub mod queue;
 pub mod cache;
 pub mod scheduler;
+pub mod validation;
+pub mod mail;
+pub mod storage;
+pub mod ws;
+pub mod horizon;
 
 #[macro_export]
 macro_rules! artisan {
@@ -39,7 +44,12 @@ pub mod response {
 pub use htmx::{HtmxRequest, HtmxResponse, render_page};
 
 // Re-export Milestone 5: Production Utilities
-pub use queue::{Queue, Worker};
+pub use queue::{Queue, Worker, QueuedJobDetail};
 pub use cache::Cache;
 pub use scheduler::Scheduler;
 
+// Re-export Milestone 6: Enterprise Features
+pub use validation::{ValidatedForm, ValidatedJson, Validate, ValidationError};
+pub use mail::{Mail, Message as MailMessage};
+pub use storage::{Storage, StorageDriver, StorageError};
+pub use ws::{WebSocket, WsError};

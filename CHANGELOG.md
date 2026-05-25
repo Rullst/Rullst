@@ -4,6 +4,28 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-25 🏢
+
+### Added (Enterprise Features Milestone)
+- **Declarative Validation (`rullst::validation`):**
+  - Added `ValidatedForm<T>` and `ValidatedJson<T>` Axum extractors that automatically perform validations using the `validator` crate.
+  - Generates beautiful HTMX validation error lists for frontend clients, or redirects, or returns standard `422 Unprocessable Entity` JSON responses automatically based on client negotiation.
+- **Mailer System (`rullst::mail`):**
+  - Added unified `Mail` facade and `MailDriver` trait.
+  - Implemented `LogDriver` for local development, `SmtpDriver` for classic email setups, and highly optimized, async REST-based `ResendDriver` and `SendGridDriver` utilizing `reqwest` and `rustls` (zero-openssl dependency for maximum factory productivity).
+- **Storage Abstraction (`rullst::storage`):**
+  - Unified `Storage` facade and `StorageDriver` trait.
+  - Implemented `LocalDriver` writing files locally under `storage/app`, and AWS-compliant `S3Driver` for cloud storage.
+- **WebSockets & Real-Time (`rullst::ws`):**
+  - High-level `WebSocket` wrapper for real-time messaging.
+  - Seamlessly integrated with Axum, supporting high-level HTMX out-of-band swaps via `.send_html()`.
+  - Added `.ws(path, handler)` and `.nest` routing methods to Rullst `Router` for modular setups.
+- **Rullst Horizon (`rullst::horizon`):**
+  - Gorgeous, premium, high-fidelity dark mode dashboard built entirely in Rust using raw `html!` templates and HTMX polling.
+  - Real-time queue metrics (pending counts, failed jobs, active worker status), failed jobs detail lists, and instant one-click dashboard retries/purges!
+
+---
+
 ## [0.5.0] - 2026-05-25 📦
 
 ### Added (Production Utilities Milestone)

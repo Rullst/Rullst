@@ -124,8 +124,30 @@ graph TD
 
 ---
 
+## 🏢 Marco 6: Funcionalidades Enterprise
+**Objetivo:** Entregar os recursos robustos clássicos esperados de frameworks focados em empresas.
+
+- [x] **Validação Declarativa:** Uma macro `#[derive(Validate)]` para DTOs/structs que retorna automaticamente JSON 422 para APIs ou componentes HTMX com erros para formulários.
+- [x] **Sistema de E-mail (`rullst::mail`):** API fluente para envio de e-mails com drivers para SMTP, Resend e SendGrid, suportando templates nativos com a macro `html!`.
+- [x] **Abstração de Armazenamento (`rullst::storage`):** API unificada para uploads e gerenciamento de arquivos com drivers para Local (Disco), AWS S3 e Cloudflare R2.
+- [x] **WebSockets & Tempo Real:** Suporte nativo a WebSockets no roteador, perfeitamente integrado com a extensão HTMX (`hx-ext="ws"`).
+- [x] **Rullst Horizon:** Um dashboard web embutido lindíssimo para monitorar filas, visualizar jobs que falharam e tentar executá-los novamente.
+
+---
+
+## 🚀 Marco 7: A "Vantagem Injusta" (Domínio Absoluto)
+**Objetivo:** Ir além do que é possível em outras linguagens, tornando o Rullst o rei inquestionável do desenvolvimento web moderno.
+
+- [ ] **Rullst Live (Server-Driven UI):** Inspirado no Phoenix LiveView e Laravel Livewire. Escreva componentes Rust com estado que sincronizam automaticamente com o navegador via WebSockets. Interatividade de SPA sem escrever uma única linha de JavaScript.
+- [ ] **Core IA Nativo (`rullst::ai`):** Abstrações declarativas embutidas para LLMs (OpenAI, Gemini), Bancos de Dados Vetoriais e Agentes IA. Crie aplicações com RAG em minutos.
+- [ ] **Rullst Studio:** Uma interface visual nativa para inspecionar, filtrar e editar os registros do seu banco de dados localmente (estilo Prisma Studio). Ativado via `cargo rullst studio`.
+- [ ] **Testes E2E Declarativos:** API fluente de testes no estilo Laravel: `app.get("/login").assert_status(200).assert_see("Bem-vindo");`.
+- [ ] **Feature Flags Nativas:** Suporte embutido para ligar/desligar funcionalidades e realizar Testes A/B sem dependências externas.
+
+---
+
 ## 🗺️ Estratégia de Execução
 
-Nós avançaremos **marco por marco**, começando pelo **Marco 1** para lapidar nossos geradores no CLI. 
+Seguiremos **marco por marco**, começando pelo **Marco 1** para polir nossos geradores de CLI.
 
-Quando estiver pronto para começar, escolha uma tarefa ou sugira qual componente criar a seguir! 🚀
+Se estiver pronto para começar, selecione uma tarefa ou sugira qual componente construir a seguir! 🚀

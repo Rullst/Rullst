@@ -74,7 +74,21 @@ pub struct QueuedJob {
     pub attempts: u32,
 }
 
+/// Detailed job information, used for dashboard monitoring
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct QueuedJobDetail {
+    pub id: String,
+    pub name: String,
+    pub payload: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub attempts: i32,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 // ─── Queue Driver Trait ─────────────────────────────────────────────────────
+
 
 /// Abstraction over queue storage backends.
 ///
@@ -92,6 +106,18 @@ pub trait QueueDriver: Send + Sync {
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError>;
     /// Return the count of pending jobs.
     async fn pending_count(&self) -> Result<u64, QueueError>;
+    /// List all recent jobs for monitoring
+    async fn list_all_jobs(&self, _limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+        Ok(vec![])
+    }
+    /// Retry a failed job
+    async fn retry_failed_job(&self, _job_id: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+    /// Purge completed or failed jobs
+    async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+        Ok(())
+    }
 }
 
 // ─── SQLite Driver ──────────────────────────────────────────────────────────
@@ -131,7 +157,43 @@ impl SqliteDriver {
 
         Ok(Self { pool })
     }
+
+    pub fn get_pool(&self) -> &sqlx::SqlitePool {
+        &self.pool
+    }
+
+    pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+        let rows: Vec<(String, String, String, String, Option<String>, i32, String, String)> = sqlx::query_as(
+            "SELECT id, name, payload, status, error, attempts, created_at, updated_at FROM rullst_jobs ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(e.to_string()))?;
+
+        Ok(rows.into_iter().map(|(id, name, payload, status, error, attempts, created_at, updated_at)| {
+            QueuedJobDetail { id, name, payload, status, error, attempts, created_at, updated_at }
+        }).collect())
+    }
+
+    pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
+        sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| QueueError::Driver(e.to_string()))?;
+        Ok(())
+    }
+
+    pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+        sqlx::query("DELETE FROM rullst_jobs WHERE status = 'failed'")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| QueueError::Driver(e.to_string()))?;
+        Ok(())
+    }
 }
+
 
 #[async_trait]
 impl QueueDriver for SqliteDriver {
@@ -199,6 +261,18 @@ impl QueueDriver for SqliteDriver {
                 .await
                 .map_err(|e| QueueError::Driver(format!("Failed to count pending jobs: {}", e)))?;
         Ok(count as u64)
+    }
+
+    async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+        self.list_all_jobs(limit).await
+    }
+
+    async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
+        self.retry_failed_job(job_id).await
+    }
+
+    async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+        self.purge_completed_jobs().await
     }
 }
 
@@ -364,6 +438,21 @@ impl Queue {
     /// Return the number of pending jobs in the queue.
     pub async fn pending_count(&self) -> Result<u64, QueueError> {
         self.driver.pending_count().await
+    }
+
+    /// List all recent jobs for visual monitoring
+    pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+        self.driver.list_all_jobs(limit).await
+    }
+
+    /// Retry a failed job in the queue
+    pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
+        self.driver.retry_failed_job(job_id).await
+    }
+
+    /// Purge failed jobs from the queue database
+    pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+        self.driver.purge_completed_jobs().await
     }
 
     /// Get an `Arc` reference to the internal driver (for sharing with `Worker`).

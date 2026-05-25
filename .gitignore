@@ -6,3 +6,4 @@
 *.db-journal
 *.db-shm
 *.db-wal
+storage/

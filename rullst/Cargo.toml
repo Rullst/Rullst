@@ -11,9 +11,11 @@ repository = "https://github.com/venelouis/Rullst"
 default = []
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
+mail-smtp = ["dep:lettre"]
+storage-s3 = ["dep:aws-config", "dep:aws-sdk-s3"]
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "ws"] }
 tokio = { version = "1.43", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -37,5 +39,13 @@ dashmap = "6"
 cron = "0.15"
 chrono = "0.4"
 redis = { version = "0.27", features = ["tokio-comp", "aio"], optional = true }
+
+# Milestone 6: Enterprise Features
+validator = { version = "0.19", features = ["derive"] }
+lettre = { version = "0.11", optional = true, features = ["tokio1", "tokio1-rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+aws-config = { version = "1", optional = true }
+aws-sdk-s3 = { version = "1", optional = true }
+
 
 

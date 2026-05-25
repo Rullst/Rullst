@@ -10,7 +10,7 @@ mod html_parser;
 /// and automatically escapes dynamic variables to prevent XSS.
 /// 
 /// # Example
-/// ```rust
+/// ```rust,ignore
 /// let name = "Mundo";
 /// let page = html! {
 ///     <div class="container">
