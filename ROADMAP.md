@@ -100,10 +100,10 @@ graph TD
 ## ⚡ Milestone 4: HTMX & Interactivity
 **Goal:** Combine the simplicity of Server-Side Rendering (SSR) with the snappy feeling of modern Single-Page Applications (SPAs).
 
-- [ ] **HTMX First-Class Support:**
-  - [ ] Built-in response helpers for checking HTMX headers (`rullst::htmx::is_htmx(req)`).
-  - [ ] Native support for partial template rendering (rendering only the requested component, not the full page layout).
-  - [ ] TailwindCSS auto-integration during project setup.
+- [x] **HTMX First-Class Support:**
+  - [x] Built-in response helpers for checking HTMX headers (`rullst::htmx::is_htmx(req)`).
+  - [x] Native support for partial template rendering (rendering only the requested component, not the full page layout).
+  - [x] TailwindCSS auto-integration during project setup.
 
 ---
 

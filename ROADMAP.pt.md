@@ -100,10 +100,10 @@ graph TD
 ## ⚡ Marco 4: HTMX & Interatividade
 **Objetivo:** Combinar a simplicidade de Server-Side Rendering (SSR) com a fluidez de Single-Page Applications (SPAs).
 
-- [ ] **Suporte de Primeira Classe ao HTMX:**
-  - [ ] Helpers para verificar cabeçalhos de requisição do HTMX (`rullst::htmx::is_htmx(req)`).
-  - [ ] Suporte nativo para renderização de templates parciais (renderizar apenas o componente modificado, sem carregar o layout inteiro).
-  - [ ] Integração nativa e configuração automática do TailwindCSS na inicialização do projeto.
+- [x] **Suporte de Primeira Classe ao HTMX:**
+  - [x] Helpers para verificar cabeçalhos de requisição do HTMX (`rullst::htmx::is_htmx(req)`).
+  - [x] Suporte nativo para renderização de templates parciais (renderizar apenas o componente modificado, sem carregar o layout inteiro).
+  - [x] Integração nativa e configuração automática do TailwindCSS na inicialização do projeto.
 
 ---
 

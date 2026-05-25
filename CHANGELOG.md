@@ -4,6 +4,21 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-25 ⚡
+
+### Added (HTMX & Interactivity Milestone)
+- **HTMX First-Class Support (`rullst::htmx`):**
+  - Added `HtmxRequest` extractor to easily detect `HX-Request` and other HTMX headers in Axum routes.
+  - Added `HtmxResponse` builder for setting HTMX-specific response headers (like `HX-Trigger`, `HX-Redirect`, `HX-Retarget`).
+  - Added `render_page` macro/helper for hybrid SSR rendering, automatically serving partial fragments for HTMX requests or the full HTML layout for standard browser visits.
+- **TailwindCSS Integration:**
+  - `cargo rullst new` now automatically configures TailwindCSS via CDN in the generated templates.
+  - Scaffolded projects include a reactive HTMX counter component to demonstrate immediate interactivity without writing JavaScript.
+- **Hyphenated HTML Attributes (`rullst-macros`):**
+  - Updated the `html!` procedural macro to fully support hyphenated attributes like `hx-post`, `hx-target`, and `hx-swap`.
+
+---
+
 ## [0.3.0] - 2026-05-25 🛡️
 
 ### Added (Authentication & Security Milestone)
