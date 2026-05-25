@@ -23,10 +23,13 @@ pub struct StackFrame {
 pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
     for line in bt_str.lines() {
         let trimmed = line.trim();
-        if trimmed.contains("at src/")
-            || trimmed.contains("at src\\")
-            || trimmed.contains("at examples/")
-            || trimmed.contains("at examples\\")
+        if trimmed.contains("at ")
+            && (trimmed.contains("/src/")
+                || trimmed.contains("\\src\\")
+                || trimmed.contains("/examples/")
+                || trimmed.contains("\\examples\\")
+                || trimmed.contains("/tests/")
+                || trimmed.contains("\\tests\\"))
         {
             // Find the location after "at "
             if let Some(pos) = trimmed.find("at ") {
