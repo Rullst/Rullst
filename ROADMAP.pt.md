@@ -110,17 +110,17 @@ graph TD
 ## 📦 Marco 5: Utilitários de Produção (Filas, Caching e Scheduler)
 **Objetivo:** Fornecer os recursos fundamentais necessários para escalar aplicações reais em produção.
 
-- [ ] **Docker e Containerização:**
-  - [ ] Flag `cargo rullst new <nome> --docker` para gerar um `Dockerfile` pronto para produção.
-  - [ ] Geração automática de `docker-compose.yml` para desenvolvimento local (App + DB + Redis).
-  - [ ] Builds multi-stage otimizados (`scratch` / `distroless`) para deploys em Rust ultra-leves, rápidos e seguros.
-- [ ] **Filas & Tarefas em Segundo Plano:**
-  - [ ] API unificada `rullst::queue` com suporte a SQLite (para dev local) e Redis (para produção).
-  - [ ] Executores assíncronos (workers) rodando tarefas pesadas em background.
-- [ ] **Camada de Cache:**
-  - [ ] API unificada `rullst::cache` com drivers para In-Memory e Redis.
-- [ ] **Agendador de Tarefas (Task Scheduler):**
-  - [ ] Agendamento declarativo tipo Cron diretamente no `main.rs` (ex: `.schedule("0 0 * * *", limpeza_diaria)`).
+- [x] **Docker e Containerização:**
+  - [x] Flag `cargo rullst new <nome> --docker` para gerar um `Dockerfile` pronto para produção.
+  - [x] Geração automática de `docker-compose.yml` para desenvolvimento local (App + DB + Redis).
+  - [x] Builds multi-stage otimizados (`scratch` / `distroless`) para deploys em Rust ultra-leves, rápidos e seguros.
+- [x] **Filas & Tarefas em Segundo Plano:**
+  - [x] API unificada `rullst::queue` com suporte a SQLite (para dev local) e Redis (para produção).
+  - [x] Executores assíncronos (workers) rodando tarefas pesadas em background.
+- [x] **Camada de Cache:**
+  - [x] API unificada `rullst::cache` com drivers para In-Memory e Redis.
+- [x] **Agendador de Tarefas (Task Scheduler):**
+  - [x] Agendamento declarativo tipo Cron diretamente no `main.rs` (ex: `.schedule("0 0 * * *", limpeza_diaria)`).
 
 ---
 

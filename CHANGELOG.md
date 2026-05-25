@@ -4,6 +4,29 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-25 📦
+
+### Added (Production Utilities Milestone)
+- **Docker & Containerization (`cargo rullst new --docker`):**
+  - Multi-stage `Dockerfile` using `rust:1.87-slim` builder → `gcr.io/distroless/cc-debian12` runtime (~20MB final image).
+  - Auto-generated `docker-compose.yml` with App + PostgreSQL 16 + Redis 7 services, health checks, and persistent volumes.
+  - `.dockerignore` to exclude build artifacts and dev files.
+- **Queue & Background Workers (`rullst::queue`):**
+  - `Queue` facade with `dispatch()` for pushing named jobs with JSON payloads.
+  - `Worker` with `register()` for mapping job names to async handler closures and `run()` for background processing.
+  - `SqliteDriver`: Uses auto-created `rullst_jobs` table, zero config, FIFO with atomic pop.
+  - `RedisDriver` (optional, `queue-redis` feature): Uses Redis lists for high-throughput distributed workloads.
+- **Caching Layer (`rullst::cache`):**
+  - `Cache` facade with `get`/`put`/`forget`/`flush`/`has` and the `remember()` cache-aside pattern.
+  - `MemoryDriver`: Lock-free `DashMap`-based concurrent store with lazy TTL expiration.
+  - `RedisDriver` (optional, `cache-redis` feature): Redis-backed with `SETEX` TTL support and `rullst:cache:` key prefix.
+- **Task Scheduler (`rullst::scheduler`):**
+  - `Scheduler` with `.task("cron_expr", handler)` for registering recurring async jobs.
+  - Standard 5-field cron expressions auto-converted to 7-field for the `cron` crate.
+  - Integrated into `Server` via `.schedule(scheduler)` builder method — runs alongside HTTP server.
+
+---
+
 ## [0.4.0] - 2026-05-25 ⚡
 
 ### Added (HTMX & Interactivity Milestone)

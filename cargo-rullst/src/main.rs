@@ -20,6 +20,9 @@ enum Commands {
         /// Opcional: cria uma aplicação REST headless (sem HTML)
         #[arg(long)]
         api: bool,
+        /// Opcional: gera Dockerfile, docker-compose.yml e .dockerignore para produção
+        #[arg(long)]
+        docker: bool,
     },
     /// Cria um novo Controller na pasta src/controllers/
     #[command(name = "make:controller")]
@@ -83,8 +86,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse_from(filtered_args);
 
     match &cli.command {
-        Commands::New { name, api } => {
-            create_new_project(name, *api)?;
+        Commands::New { name, api, docker } => {
+            create_new_project(name, *api, *docker)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
@@ -713,7 +716,7 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     Ok(())
 }
 
-fn create_new_project(name: &str, api: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn create_new_project(name: &str, api: bool, docker: bool) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", format!("🚀 Criando nova aplicação Rullst: {}...", name).green().bold());
     
     let path = Path::new(name);
@@ -954,10 +957,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     fs::write(path.join("src/main.rs"), main_rs)?;
 
+    // Generate Docker files if --docker flag was passed
+    if docker {
+        generate_docker_files(path, &project_name)?;
+    }
+
     println!("{}", format!("✨ Projeto '{}' criado com sucesso!", name).green().bold());
     println!("{}", "Como rodar:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  cargo run".cyan());
+    if docker {
+        println!("{}", "\n🐳 Docker files gerados! Para rodar com Docker:".cyan());
+        println!("{}", format!("  cd {}", name).cyan());
+        println!("{}", "  docker compose up --build".cyan());
+    }
 
     Ok(())
 }
@@ -1950,3 +1963,130 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
     Ok(())
 }
 
+// ==========================================
+// DOCKER FILE GENERATION
+// ==========================================
+
+fn generate_docker_files(project_path: &Path, project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("{}", "🐳 Gerando arquivos Docker...".cyan().bold());
+
+    // --- Dockerfile (multi-stage, distroless) ---
+    let dockerfile = format!(
+r#"# ══════════════════════════════════════════════════════════════
+# Rullst Production Dockerfile (auto-generated)
+# Multi-stage build: Rust builder → Distroless runtime
+# Final image: ~20MB | Zero CVEs | Ultra-fast cold start
+# ══════════════════════════════════════════════════════════════
+
+# ── Stage 1: Builder ─────────────────────────────────────────
+FROM rust:1.87-slim AS builder
+WORKDIR /app
+
+# Install system dependencies for SQLite/Postgres/MySQL linking
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+# Cache dependency compilation
+COPY Cargo.toml Cargo.lock* ./
+RUN mkdir src && echo "fn main() {{}}" > src/main.rs && cargo build --release && rm -rf src
+
+# Build the actual application
+COPY . .
+RUN cargo build --release
+
+# ── Stage 2: Runtime (Distroless) ────────────────────────────
+FROM gcr.io/distroless/cc-debian12 AS runtime
+WORKDIR /app
+
+# Copy only the compiled binary
+COPY --from=builder /app/target/release/{project_name} /app/{project_name}
+
+# Copy configuration files
+COPY Rullst.toml /app/Rullst.toml
+
+EXPOSE 3000
+
+ENTRYPOINT ["/app/{project_name}"]
+"#);
+
+    // --- docker-compose.yml ---
+    let docker_compose = format!(
+r#"# ══════════════════════════════════════════════════════════════
+# Rullst Docker Compose (auto-generated)
+# Services: App + PostgreSQL + Redis
+# ══════════════════════════════════════════════════════════════
+
+services:
+  app:
+    build: .
+    container_name: {project_name}-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://rullst:rullst@db:5432/rullst_db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: {project_name}-db
+    environment:
+      POSTGRES_USER: rullst
+      POSTGRES_PASSWORD: rullst
+      POSTGRES_DB: rullst_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rullst"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: {project_name}-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+"#);
+
+    // --- .dockerignore ---
+    let dockerignore = r#"target/
+.git/
+.gitignore
+*.md
+LICENSE
+.vscode/
+.idea/
+*.db
+*.sqlite
+"#;
+
+    fs::write(project_path.join("Dockerfile"), dockerfile)?;
+    fs::write(project_path.join("docker-compose.yml"), docker_compose)?;
+    fs::write(project_path.join(".dockerignore"), dockerignore)?;
+
+    println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
+    println!("{}", "  ✅ docker-compose.yml (App + Postgres + Redis)".green());
+    println!("{}", "  ✅ .dockerignore".green());
+
+    Ok(())
+}

@@ -1,0 +1,550 @@
+//! # Rullst Queue System (`rullst::queue`)
+//!
+//! Provides a unified API for dispatching and processing background jobs.
+//!
+//! ## Drivers
+//! - **SQLite** (default): Uses an auto-created `rullst_jobs` table. Zero config.
+//! - **Redis** (optional): Requires the `queue-redis` feature flag.
+//!
+//! ## Quick Start
+//! ```rust,ignore
+//! use rullst::queue::{Queue, Worker};
+//!
+//! // Dispatch a job
+//! let queue = Queue::sqlite("sqlite://rullst.db").await?;
+//! queue.dispatch("send_email", serde_json::json!({"to": "user@example.com"})).await?;
+//!
+//! // Process jobs in the background
+//! let mut worker = Worker::new(queue);
+//! worker.register("send_email", |payload| async move {
+//!     println!("Sending email to: {}", payload["to"]);
+//!     Ok(())
+//! });
+//! worker.run().await;
+//! ```
+
+use async_trait::async_trait;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use uuid::Uuid;
+
+// ─── Error Types ────────────────────────────────────────────────────────────
+
+/// Errors that can occur during queue operations.
+#[derive(Debug)]
+pub enum QueueError {
+    /// The underlying database or connection failed.
+    Driver(String),
+    /// Serialization/deserialization of job payloads failed.
+    Serialization(String),
+    /// A job handler was not found for the given job name.
+    HandlerNotFound(String),
+    /// The job execution itself failed.
+    JobFailed(String),
+}
+
+impl std::fmt::Display for QueueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueueError::Driver(msg) => write!(f, "Queue driver error: {}", msg),
+            QueueError::Serialization(msg) => write!(f, "Queue serialization error: {}", msg),
+            QueueError::HandlerNotFound(name) => write!(f, "No handler registered for job: {}", name),
+            QueueError::JobFailed(msg) => write!(f, "Job execution failed: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for QueueError {}
+
+// ─── Queued Job ─────────────────────────────────────────────────────────────
+
+/// A job that has been placed on the queue and is ready for processing.
+#[derive(Debug, Clone)]
+pub struct QueuedJob {
+    /// Unique identifier for this job instance.
+    pub id: String,
+    /// The job type name (used to look up the handler).
+    pub name: String,
+    /// The JSON payload associated with this job.
+    pub payload: Value,
+    /// Number of times this job has been attempted.
+    pub attempts: u32,
+}
+
+// ─── Queue Driver Trait ─────────────────────────────────────────────────────
+
+/// Abstraction over queue storage backends.
+///
+/// Implement this trait to add support for new queue backends.
+/// The framework ships with `SqliteDriver` and (optionally) `RedisDriver`.
+#[async_trait]
+pub trait QueueDriver: Send + Sync {
+    /// Push a new job onto the queue.
+    async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError>;
+    /// Pop the next available job from the queue (FIFO).
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError>;
+    /// Mark a job as successfully completed (removes from queue).
+    async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError>;
+    /// Mark a job as failed, recording the error message.
+    async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError>;
+    /// Return the count of pending jobs.
+    async fn pending_count(&self) -> Result<u64, QueueError>;
+}
+
+// ─── SQLite Driver ──────────────────────────────────────────────────────────
+
+/// Queue driver backed by a SQLite database.
+///
+/// Uses an auto-created `rullst_jobs` table. Perfect for local development
+/// and small-to-medium production workloads. Zero external dependencies.
+pub struct SqliteDriver {
+    pool: sqlx::SqlitePool,
+}
+
+impl SqliteDriver {
+    /// Create a new SQLite queue driver. Automatically creates the `rullst_jobs`
+    /// table if it doesn't exist.
+    pub async fn new(database_url: &str) -> Result<Self, QueueError> {
+        let pool = sqlx::SqlitePool::connect(database_url)
+            .await
+            .map_err(|e| QueueError::Driver(format!("Failed to connect to SQLite: {}", e)))?;
+
+        // Auto-create the jobs table
+        sqlx::query(
+            r#"CREATE TABLE IF NOT EXISTS rullst_jobs (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                error TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"#,
+        )
+        .execute(&pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs table: {}", e)))?;
+
+        Ok(Self { pool })
+    }
+}
+
+#[async_trait]
+impl QueueDriver for SqliteDriver {
+    async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload) VALUES (?, ?, ?)")
+            .bind(id)
+            .bind(job_name)
+            .bind(payload)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| QueueError::Driver(format!("Failed to push job: {}", e)))?;
+        Ok(())
+    }
+
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        // Atomically select and mark the oldest pending job as 'processing'
+        let row: Option<(String, String, String, i32)> = sqlx::query_as(
+            r#"UPDATE rullst_jobs
+               SET status = 'processing', attempts = attempts + 1, updated_at = datetime('now')
+               WHERE id = (
+                   SELECT id FROM rullst_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1
+               )
+               RETURNING id, name, payload, attempts"#,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
+
+        Ok(row.map(|(id, name, payload_str, attempts)| {
+            let payload = serde_json::from_str(&payload_str).unwrap_or(Value::Null);
+            QueuedJob {
+                id,
+                name,
+                payload,
+                attempts: attempts as u32,
+            }
+        }))
+    }
+
+    async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
+        sqlx::query("DELETE FROM rullst_jobs WHERE id = ?")
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| QueueError::Driver(format!("Failed to mark job complete: {}", e)))?;
+        Ok(())
+    }
+
+    async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError> {
+        sqlx::query(
+            "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?",
+        )
+        .bind(error)
+        .bind(job_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to mark job failed: {}", e)))?;
+        Ok(())
+    }
+
+    async fn pending_count(&self) -> Result<u64, QueueError> {
+        let (count,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'pending'")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| QueueError::Driver(format!("Failed to count pending jobs: {}", e)))?;
+        Ok(count as u64)
+    }
+}
+
+// ─── Redis Driver (behind feature flag) ─────────────────────────────────────
+
+#[cfg(feature = "queue-redis")]
+pub mod redis_driver {
+    //! Redis-backed queue driver. Requires the `queue-redis` feature.
+    use super::*;
+
+    /// Queue driver backed by Redis lists.
+    ///
+    /// Uses `RPUSH`/`LPOP` for FIFO ordering on the `rullst:queue:default` key.
+    /// Ideal for high-throughput production workloads with distributed workers.
+    pub struct RedisDriver {
+        client: redis::Client,
+        queue_key: String,
+    }
+
+    impl RedisDriver {
+        /// Create a new Redis queue driver.
+        pub fn new(redis_url: &str) -> Result<Self, QueueError> {
+            let client = redis::Client::open(redis_url)
+                .map_err(|e| QueueError::Driver(format!("Failed to connect to Redis: {}", e)))?;
+            Ok(Self {
+                client,
+                queue_key: "rullst:queue:default".to_string(),
+            })
+        }
+    }
+
+    #[async_trait]
+    impl QueueDriver for RedisDriver {
+        async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
+            let mut con = self.client.get_multiplexed_async_connection().await
+                .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
+            let job_data = serde_json::json!({
+                "id": id,
+                "name": job_name,
+                "payload": payload,
+                "attempts": 0
+            });
+            redis::cmd("RPUSH")
+                .arg(&self.queue_key)
+                .arg(job_data.to_string())
+                .query_async::<i64>(&mut con)
+                .await
+                .map_err(|e| QueueError::Driver(format!("Failed to push to Redis: {}", e)))?;
+            Ok(())
+        }
+
+        async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+            let mut con = self.client.get_multiplexed_async_connection().await
+                .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
+            let result: Option<String> = redis::cmd("LPOP")
+                .arg(&self.queue_key)
+                .query_async(&mut con)
+                .await
+                .map_err(|e| QueueError::Driver(format!("Failed to pop from Redis: {}", e)))?;
+            match result {
+                Some(data) => {
+                    let parsed: serde_json::Value = serde_json::from_str(&data)
+                        .map_err(|e| QueueError::Serialization(e.to_string()))?;
+                    let payload_str = parsed["payload"].as_str().unwrap_or("{}");
+                    let payload = serde_json::from_str(payload_str).unwrap_or(Value::Null);
+                    Ok(Some(QueuedJob {
+                        id: parsed["id"].as_str().unwrap_or("").to_string(),
+                        name: parsed["name"].as_str().unwrap_or("").to_string(),
+                        payload,
+                        attempts: parsed["attempts"].as_u64().unwrap_or(0) as u32 + 1,
+                    }))
+                }
+                None => Ok(None),
+            }
+        }
+
+        async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+            // In Redis list mode, the job is already removed by LPOP.
+            // For advanced use cases, a dead-letter or processing set could be used.
+            Ok(())
+        }
+
+        async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+            // In basic Redis mode, failed jobs are simply logged.
+            // Future: push to a dead-letter queue (rullst:queue:failed).
+            Ok(())
+        }
+
+        async fn pending_count(&self) -> Result<u64, QueueError> {
+            let mut con = self.client.get_multiplexed_async_connection().await
+                .map_err(|e| QueueError::Driver(format!("Redis connection failed: {}", e)))?;
+            let count: i64 = redis::cmd("LLEN")
+                .arg(&self.queue_key)
+                .query_async(&mut con)
+                .await
+                .map_err(|e| QueueError::Driver(format!("Failed to get queue length: {}", e)))?;
+            Ok(count as u64)
+        }
+    }
+}
+
+// ─── Queue Facade ───────────────────────────────────────────────────────────
+
+/// The main queue facade for dispatching background jobs.
+///
+/// Provides a driver-agnostic API. Create with `Queue::sqlite()` or `Queue::redis()`.
+pub struct Queue {
+    driver: Arc<Box<dyn QueueDriver>>,
+}
+
+impl Queue {
+    /// Create a queue backed by SQLite. The `rullst_jobs` table is auto-created.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let queue = Queue::sqlite("sqlite://rullst.db").await?;
+    /// ```
+    pub async fn sqlite(database_url: &str) -> Result<Self, QueueError> {
+        let driver = SqliteDriver::new(database_url).await?;
+        Ok(Self {
+            driver: Arc::new(Box::new(driver)),
+        })
+    }
+
+    /// Create a queue backed by Redis. Requires the `queue-redis` feature.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let queue = Queue::redis("redis://127.0.0.1:6379")?;
+    /// ```
+    #[cfg(feature = "queue-redis")]
+    pub fn redis(redis_url: &str) -> Result<Self, QueueError> {
+        let driver = redis_driver::RedisDriver::new(redis_url)?;
+        Ok(Self {
+            driver: Arc::new(Box::new(driver)),
+        })
+    }
+
+    /// Create a queue from any custom driver implementing `QueueDriver`.
+    pub fn custom(driver: Box<dyn QueueDriver>) -> Self {
+        Self {
+            driver: Arc::new(driver),
+        }
+    }
+
+    /// Dispatch a named job with a JSON payload onto the queue.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// queue.dispatch("send_welcome_email", serde_json::json!({
+    ///     "user_id": 42,
+    ///     "email": "user@example.com"
+    /// })).await?;
+    /// ```
+    pub async fn dispatch(&self, job_name: &str, payload: Value) -> Result<String, QueueError> {
+        let id = Uuid::new_v4().to_string();
+        let payload_str = serde_json::to_string(&payload)
+            .map_err(|e| QueueError::Serialization(e.to_string()))?;
+        self.driver.push(&id, job_name, &payload_str).await?;
+        Ok(id)
+    }
+
+    /// Return the number of pending jobs in the queue.
+    pub async fn pending_count(&self) -> Result<u64, QueueError> {
+        self.driver.pending_count().await
+    }
+
+    /// Get an `Arc` reference to the internal driver (for sharing with `Worker`).
+    pub(crate) fn driver_ref(&self) -> Arc<Box<dyn QueueDriver>> {
+        Arc::clone(&self.driver)
+    }
+}
+
+// ─── Worker ─────────────────────────────────────────────────────────────────
+
+/// Type alias for job handler closures.
+type JobHandler = Box<
+    dyn Fn(Value) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
+        + Send
+        + Sync,
+>;
+
+/// Background worker that polls the queue and executes jobs.
+///
+/// Register handlers by job name, then call `.run()` to start processing.
+///
+/// # Example
+/// ```rust,ignore
+/// let mut worker = Worker::new(queue);
+/// worker.register("send_email", |payload| async move {
+///     let to = payload["to"].as_str().unwrap_or("unknown");
+///     println!("Sending email to {}", to);
+///     Ok(())
+/// });
+/// worker.run().await;
+/// ```
+pub struct Worker {
+    driver: Arc<Box<dyn QueueDriver>>,
+    handlers: HashMap<String, Arc<JobHandler>>,
+    poll_interval_ms: u64,
+}
+
+impl Worker {
+    /// Create a new worker attached to the given queue.
+    pub fn new(queue: &Queue) -> Self {
+        Self {
+            driver: queue.driver_ref(),
+            handlers: HashMap::new(),
+            poll_interval_ms: 1000,
+        }
+    }
+
+    /// Set the polling interval in milliseconds (default: 1000ms).
+    pub fn poll_interval(mut self, ms: u64) -> Self {
+        self.poll_interval_ms = ms;
+        self
+    }
+
+    /// Register a handler for a specific job name.
+    ///
+    /// When a job with this name is popped from the queue, the handler
+    /// closure is called with the job's JSON payload.
+    pub fn register<F, Fut>(&mut self, name: &str, handler: F) -> &mut Self
+    where
+        F: Fn(Value) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send + 'static,
+    {
+        let boxed: JobHandler = Box::new(move |payload| Box::pin(handler(payload)));
+        self.handlers.insert(name.to_string(), Arc::new(boxed));
+        self
+    }
+
+    /// Start processing jobs in the background.
+    ///
+    /// This spawns a Tokio task that continuously polls the queue.
+    /// Call this during server startup (e.g., before `Server::run()`).
+    pub fn run(&self) {
+        let driver = Arc::clone(&self.driver);
+        let handlers = self.handlers.clone();
+        let poll_interval = self.poll_interval_ms;
+
+        tokio::spawn(async move {
+            println!("🔄 Rullst Worker started. Polling every {}ms...", poll_interval);
+            loop {
+                match driver.pop().await {
+                    Ok(Some(job)) => {
+                        if let Some(handler) = handlers.get(&job.name) {
+                            let handler = Arc::clone(handler);
+                            let driver = Arc::clone(&driver);
+                            let job_id = job.id.clone();
+                            let job_name = job.name.clone();
+
+                            tokio::spawn(async move {
+                                match handler(job.payload).await {
+                                    Ok(()) => {
+                                        let _ = driver.mark_complete(&job_id).await;
+                                    }
+                                    Err(e) => {
+                                        eprintln!("❌ Job '{}' ({}) failed: {}", job_name, job_id, e);
+                                        let _ = driver.mark_failed(&job_id, &e.to_string()).await;
+                                    }
+                                }
+                            });
+                        } else {
+                            eprintln!("⚠️ No handler registered for job: {}", job.name);
+                            let _ = driver.mark_failed(&job.id, "No handler registered").await;
+                        }
+                    }
+                    Ok(None) => {
+                        // No jobs available, wait before polling again
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Queue poll error: {}", e);
+                    }
+                }
+                tokio::time::sleep(tokio::time::Duration::from_millis(poll_interval)).await;
+            }
+        });
+    }
+}
+
+// ─── Tests ──────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_sqlite_queue_push_pop() {
+        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+        let job_id = queue
+            .dispatch("test_job", serde_json::json!({"key": "value"}))
+            .await
+            .unwrap();
+        assert!(!job_id.is_empty());
+
+        // After dispatch, pending count should be 1
+        let count = queue.pending_count().await.unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_pop_returns_correct_job() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver
+            .push("job-1", "send_email", r#"{"to":"a@b.com"}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-2", "process_image", r#"{"path":"/img.png"}"#)
+            .await
+            .unwrap();
+
+        // First pop should return job-1 (FIFO)
+        let job = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job.id, "job-1");
+        assert_eq!(job.name, "send_email");
+        assert_eq!(job.payload["to"], "a@b.com");
+
+        // Mark complete and pop next
+        driver.mark_complete("job-1").await.unwrap();
+        let job2 = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job2.id, "job-2");
+        assert_eq!(job2.name, "process_image");
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_mark_failed() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver
+            .push("fail-job", "bad_job", r#"{}"#)
+            .await
+            .unwrap();
+
+        let job = driver.pop().await.unwrap().unwrap();
+        driver.mark_failed(&job.id, "Something went wrong").await.unwrap();
+
+        // Job should no longer be pending
+        let count = driver.pending_count().await.unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_empty_pop() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let result = driver.pop().await.unwrap();
+        assert!(result.is_none());
+    }
+}

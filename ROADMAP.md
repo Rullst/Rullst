@@ -110,17 +110,17 @@ graph TD
 ## 📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler)
 **Goal:** Provide the tools needed to scale applications in production environment.
 
-- [ ] **Docker & Containerization:**
-  - [ ] `cargo rullst new <name> --docker` flag to generate a production-ready `Dockerfile`.
-  - [ ] Auto-generated `docker-compose.yml` for local development (App + DB + Redis).
-  - [ ] Optimized multi-stage builds (`scratch` / `distroless`) for ultra-small, fast, and secure Rust deployments.
-- [ ] **Queues & Background Workers:**
-  - [ ] `rullst::queue` API supporting SQLite (for local dev) and Redis (for production).
-  - [ ] Asynchronous task workers executing jobs in the background.
-- [ ] **Caching Layer:**
-  - [ ] `rullst::cache` unified driver API supporting In-Memory and Redis adapters.
-- [ ] **Task Scheduler:**
-  - [ ] Declarative Cron-like job scheduler directly in `main.rs` (e.g. `.schedule("0 0 * * *", nightly_cleanup)`).
+- [x] **Docker & Containerization:**
+  - [x] `cargo rullst new <name> --docker` flag to generate a production-ready `Dockerfile`.
+  - [x] Auto-generated `docker-compose.yml` for local development (App + DB + Redis).
+  - [x] Optimized multi-stage builds (`scratch` / `distroless`) for ultra-small, fast, and secure Rust deployments.
+- [x] **Queues & Background Workers:**
+  - [x] `rullst::queue` API supporting SQLite (for local dev) and Redis (for production).
+  - [x] Asynchronous task workers executing jobs in the background.
+- [x] **Caching Layer:**
+  - [x] `rullst::cache` unified driver API supporting In-Memory and Redis adapters.
+- [x] **Task Scheduler:**
+  - [x] Declarative Cron-like job scheduler directly in `main.rs` (e.g. `.schedule("0 0 * * *", nightly_cleanup)`).
 
 ---
 

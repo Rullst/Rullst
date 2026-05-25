@@ -1,10 +1,12 @@
 use crate::Router;
+use crate::scheduler::Scheduler;
 use std::net::SocketAddr;
 use rust_eloquent::Eloquent;
 
 pub struct Server {
     router: Router,
     db_url: Option<String>,
+    scheduler: Option<Scheduler>,
 }
 
 impl Server {
@@ -12,12 +14,32 @@ impl Server {
         Server {
             router,
             db_url: None,
+            scheduler: None,
         }
     }
 
     /// Set a database URL to automatically initialize the Eloquent connection pool at startup
     pub fn with_db<S: Into<String>>(mut self, db_url: S) -> Self {
         self.db_url = Some(db_url.into());
+        self
+    }
+
+    /// Attach a task scheduler that runs alongside the HTTP server.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use rullst::scheduler::Scheduler;
+    ///
+    /// let scheduler = Scheduler::new()
+    ///     .task("0 0 * * *", || async { cleanup().await });
+    ///
+    /// Server::new(router)
+    ///     .schedule(scheduler)
+    ///     .run(3000)
+    ///     .await?;
+    /// ```
+    pub fn schedule(mut self, scheduler: Scheduler) -> Self {
+        self.scheduler = Some(scheduler);
         self
     }
 
@@ -42,6 +64,11 @@ impl Server {
             println!("Database initialized successfully.");
         }
 
+        // Start the scheduler if one was attached
+        if let Some(scheduler) = self.scheduler.take() {
+            scheduler.start();
+        }
+
         let app = self.router.into_axum();
         
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -53,3 +80,4 @@ impl Server {
         Ok(())
     }
 }
+

@@ -5,6 +5,9 @@ pub mod artisan;
 pub mod auth;
 pub mod security;
 pub mod htmx;
+pub mod queue;
+pub mod cache;
+pub mod scheduler;
 
 #[macro_export]
 macro_rules! artisan {
@@ -34,4 +37,9 @@ pub mod response {
 
 // Re-export HTMX primitives for convenience
 pub use htmx::{HtmxRequest, HtmxResponse, render_page};
+
+// Re-export Milestone 5: Production Utilities
+pub use queue::{Queue, Worker};
+pub use cache::Cache;
+pub use scheduler::Scheduler;
 

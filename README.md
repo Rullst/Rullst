@@ -4,7 +4,7 @@
 *Read this in [Português (Brasil)](./README.pt.md).*
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.4.0](https://img.shields.io/badge/Status-v0.4.0-emerald)
+![Status: v0.5.0](https://img.shields.io/badge/Status-v0.5.0-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -145,7 +145,7 @@ Under the hood, these commands are intercepted by the `rullst::artisan!()` macro
 
 ---
 
-## 🎯 Architecture under the hood (v0.4.0)
+## 🎯 Architecture under the hood (v0.5.0)
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 
