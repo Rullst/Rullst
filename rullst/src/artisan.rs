@@ -39,7 +39,33 @@ pub async fn check_and_run_artisan(
     seeders: Vec<Box<dyn Seeder>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
+
+    if args.len() >= 2 && args[1] == "studio" {
+        let mut db_url = None;
+        if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
+            for line in toml_content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("url")
+                    && let Some(val) = trimmed.split('=').nth(1)
+                {
+                    db_url = Some(val.trim().trim_matches('"').to_string());
+                }
+            }
+        }
+
+        let url = db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string());
+
+        // Initialize Eloquent database connection pool
+        rust_eloquent::Eloquent::init(&url).await?;
+
+        println!("🚀 Iniciando Rullst Studio em http://localhost:5555");
+        crate::studio::run_studio(&url).await?;
+
+        std::process::exit(0);
+    }
+
     if let Some(translated_args) = translate_artisan_args(&args) {
+
         // 1. Parse database URL from Rullst.toml
         let mut db_url = None;
         if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {

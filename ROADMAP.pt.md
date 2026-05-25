@@ -141,15 +141,15 @@ graph TD
 ## 🚀 Marco 7: A "Vantagem Injusta" (Domínio Absoluto)
 **Objetivo:** Ir além do que é possível em outras linguagens, tornando o Rullst o rei inquestionável do desenvolvimento web moderno.
 
-- [ ] **Rullst Live (Server-Driven UI):** Inspirado no Phoenix LiveView e Laravel Livewire. Escreva componentes Rust com estado que sincronizam automaticamente com o navegador via WebSockets. Interatividade de SPA sem escrever uma única linha de JavaScript.
+- [x] **Rullst Live (Server-Driven UI):** Inspirado no Phoenix LiveView e Laravel Livewire. Escreva componentes Rust com estado que sincronizam automaticamente com o navegador via WebSockets. Interatividade de SPA sem escrever uma única linha de JavaScript.
 - [x] **Core IA Nativo (`rullst::ai`):** Abstrações declarativas embutidas para LLMs (OpenAI, Gemini, Anthropic, Ollama), Bancos de Dados Vetoriais e Agentes IA. Crie aplicações com RAG em minutos.
-- [ ] **Rullst Studio:** Uma interface visual nativa para inspecionar, filtrar e editar os registros do seu banco de dados localmente (estilo Prisma Studio). Ativado via `cargo rullst studio`.
+- [x] **Rullst Studio:** Uma interface visual nativa para inspecionar, filtrar e editar os registros do seu banco de dados localmente (estilo Prisma Studio). Ativado via `cargo rullst studio`.
 - [x] **Testes E2E Declarativos:** API fluente de testes no estilo Laravel: `app.get("/login").assert_status(200).assert_see("Bem-vindo");`.
 - [x] **Feature Flags Nativas:** Suporte embutido para ligar/desligar funcionalidades e realizar Testes A/B sem dependências externas.
-- [ ] **Wasm Islands (`#[client_component]`):** Escreva componentes frontend interativos diretamente em Rust. O Rullst compilará automaticamente esses blocos específicos para WebAssembly leve e os hidratará no cliente de forma transparente, eliminando a necessidade de qualquer linha de JavaScript!
+- [x] **Wasm Islands (`#[client_component]`):** Escreva componentes frontend interativos diretamente em Rust. O Rullst compilará automaticamente esses blocos específicos para WebAssembly leve e os hidratará no cliente de forma transparente, eliminando a necessidade de qualquer linha de JavaScript!
 - [x] **Console de Erros "Self-Healing" com IA:** Tela interativa de erro em modo desenvolvimento (estilo Laravel Ignition) integrada a assistentes locais de IA. Quando um erro em runtime ou compilação acontecer, você terá um botão "Auto-Fix com Rullst AI" que aplicará o patch correto diretamente ao seu código-fonte.
-- [ ] **SaaS Multi-Tenancy Nativo (`rullst::multitenant`):** Isolamento nativo de inquilinos (Multi-tenancy por subdomínio, cabeçalho ou esquema de DB) configurado declarativamente por meio de um único decorator/macro.
-- [ ] **Hot Reloading via Dynamic Linking:** Redução drástica dos tempos de compilação em desenvolvimento por meio do carregamento dinâmico de bibliotecas (`dylib` / `.so`), permitindo alterar rotas e templates HTML com feedback instantâneo de sub-segundos.
+- [x] **SaaS Multi-Tenancy Nativo (`rullst::multitenant`):** Isolamento nativo de inquilinos (Multi-tenancy por subdomínio, cabeçalho ou esquema de DB) configurado declarativamente por meio de um único decorator/macro.
+- [x] **Hot Reloading via Dynamic Linking:** Redução drástica dos tempos de compilação em desenvolvimento por meio do carregamento dinâmico de bibliotecas (`dylib` / `.so`), permitindo alterar rotas e templates HTML com feedback instantâneo de sub-segundos.
 
 ---
 

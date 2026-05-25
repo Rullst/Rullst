@@ -91,6 +91,16 @@ enum Commands {
     },
     /// Realiza a atualização segura do Rullst aplicando codemods via cargo fix
     Upgrade,
+    /// Abre a interface nativa do Rullst Studio para inspecionar o banco de dados
+    #[command(name = "studio")]
+    Studio,
+    /// Compila componentes clientes (Wasm Islands) para WebAssembly
+    #[command(name = "build:client")]
+    BuildClient {
+        /// Opcional: build em modo debug (padrão é release)
+        #[arg(long)]
+        debug: bool,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -153,6 +163,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Upgrade => {
             run_upgrade()?;
+        }
+        Commands::Studio => {
+            run_project_db_command("studio")?;
+        }
+        Commands::BuildClient { debug } => {
+            run_build_client(*debug)?;
         }
     }
 
@@ -3231,3 +3247,187 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}",
+            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        "\n🏝️  Iniciando a compilação do Rullst Wasm Island Client...\n"
+            .cyan()
+            .bold()
+    );
+
+    // 1. Check and inject [lib] crate-type into Cargo.toml if missing
+    let mut cargo_content = fs::read_to_string("Cargo.toml")?;
+    if !cargo_content.contains("[lib]") {
+        cargo_content.push_str("\n\n[lib]\ncrate-type = [\"cdylib\", \"rlib\"]\n");
+        fs::write("Cargo.toml", &cargo_content)?;
+        println!(
+            "{}",
+            "ℹ️ Injetado [lib] crate-type no seu Cargo.toml automaticamente.".cyan()
+        );
+    }
+
+    // 2. Proactively try to add the wasm32 target using rustup
+    println!("{}", "⚙️ Verificando e instalando target wasm32-unknown-unknown...".yellow());
+    let _ = Command::new("rustup")
+        .arg("target")
+        .arg("add")
+        .arg("wasm32-unknown-unknown")
+        .status();
+
+    // 3. Compile the target
+    println!("{}", "📦 Compilando componentes frontend para wasm32-unknown-unknown...".yellow());
+    let mut cargo_cmd = Command::new("cargo");
+    cargo_cmd.arg("build")
+        .arg("--target")
+        .arg("wasm32-unknown-unknown")
+        .arg("--lib");
+    if !debug {
+        cargo_cmd.arg("--release");
+    }
+    let build_status = cargo_cmd.status()?;
+    if !build_status.success() {
+        println!("{}", "❌ Erro na compilação do target wasm32-unknown-unknown.".red());
+        std::process::exit(1);
+    }
+
+    // 4. Extract package name to locate the compiled wasm file
+    let package_name = cargo_content
+        .lines()
+        .find(|line| line.trim().starts_with("name"))
+        .and_then(|line| line.split('=').nth(1))
+        .map(|val| val.trim().trim_matches('"').trim_matches('\'').replace("-", "_"))
+        .unwrap_or_else(|| "app".to_string());
+
+    let profile = if debug { "debug" } else { "release" };
+    let mut wasm_file_path = format!("target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+
+    if !Path::new(&wasm_file_path).exists() {
+        if Path::new("../../target").exists() {
+            wasm_file_path = format!("../../target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+        } else if Path::new("../target").exists() {
+            wasm_file_path = format!("../target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+        }
+    }
+
+    if !Path::new(&wasm_file_path).exists() {
+        println!(
+            "{}",
+            format!("❌ Erro: Arquivo compilado Wasm não foi encontrado em '{}'. O Rullst procurou também em diretórios superiores.", wasm_file_path).red()
+        );
+        std::process::exit(1);
+    }
+
+    // 5. Ensure wasm-bindgen-cli is installed
+    println!("{}", "🔍 Verificando wasm-bindgen-cli...".yellow());
+    let wasm_bindgen_installed = Command::new("wasm-bindgen")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok();
+
+    if !wasm_bindgen_installed {
+        println!("{}", "⚙️ Instalar wasm-bindgen-cli de forma automática... Isso pode levar um instante.".yellow());
+        let install_status = Command::new("cargo")
+            .arg("install")
+            .arg("wasm-bindgen-cli")
+            .status()?;
+        if !install_status.success() {
+            println!("{}", "❌ Falha ao instalar wasm-bindgen-cli automaticamente.".red());
+            std::process::exit(1);
+        }
+    }
+
+    // 6. Ensure static/ directory exists
+    let static_dir = Path::new("static");
+    if !static_dir.exists() {
+        fs::create_dir_all(static_dir)?;
+    }
+
+    // 7. Run wasm-bindgen compiler
+    println!("{}", "⚡ Executando bindings do wasm-bindgen...".yellow());
+    let bindgen_status = Command::new("wasm-bindgen")
+        .arg(&wasm_file_path)
+        .arg("--out-dir")
+        .arg("static")
+        .arg("--target")
+        .arg("web")
+        .arg("--no-typescript")
+        .status()?;
+
+    if !bindgen_status.success() {
+        println!("{}", "❌ Erro ao gerar os bindings com wasm-bindgen.".red());
+        std::process::exit(1);
+    }
+
+    // 8. Append the orchestrator to the generated JS file
+    let js_file_path = format!("static/{}.js", package_name);
+    if Path::new(&js_file_path).exists() {
+        let mut js_content = fs::read_to_string(&js_file_path)?;
+        
+        let orchestrator = format!(r#"
+// ─── Rullst Wasm Island Hydration Loop 🏝️ ────────────────────────────────────
+export function hydrate_all() {{
+    import('./{}.js').then((m) => {{
+        const islands = document.querySelectorAll('[data-island]');
+        for (const island of islands) {{
+            const name = island.getAttribute('data-island');
+            const props = island.getAttribute('data-props');
+            const fn_name = `hydrate_${{name}}`;
+            const hydrate_fn = m[fn_name];
+            if (hydrate_fn) {{
+                try {{
+                    hydrate_fn(island, props);
+                    console.log(`[Rullst] Hydrated island: ${{name}}`);
+                }} catch (e) {{
+                    console.error(`[Rullst] Failed to hydrate island ${{name}}:`, e);
+                }}
+            }} else {{
+                console.warn(`[Rullst] No hydration function found for island: ${{name}}`);
+            }}
+        }}
+    }}).catch(e => console.error("[Rullst] Failed to load Wasm ES module:", e));
+}}
+
+// Automatically hydrate when ready
+if (typeof document !== 'undefined') {{
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', hydrate_all);
+    }} else {{
+        hydrate_all();
+    }}
+}}
+"#, package_name);
+
+        js_content.push_str(&orchestrator);
+        fs::write(&js_file_path, js_content)?;
+    }
+
+    println!(
+        "{}",
+        "✨ Rullst Wasm Islands compilados e gerados com sucesso!".green().bold()
+    );
+    println!("{}", "Como carregar na sua página HTML:".cyan());
+    println!(
+        "{}",
+        format!(
+            "  <script type=\"module\">\n    import init from '/static/{}.js';\n    init();\n  </script>",
+            package_name
+        )
+        .cyan()
+    );
+
+    Ok(())
+}
+

@@ -4,9 +4,16 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0 - 0.9.1] - 2026-05-25 🚀
+## [0.9.0 - 0.9.2] - 2026-05-25 🚀
 
 ### Added (The "Unfair Advantage" & Local AI Dev Tooling)
+- **Hot Reloading via Dynamic Linking (`Server::new_hot`)**:
+  - Implemented `HotSwapService` wrapping `Arc<RwLock<axum::Router>>` for atomic in-flight router replacement without restarting the server or dropping TCP connections.
+  - `Server::new_hot(lib_path)` builder that loads the application router from a `cdylib` (`.dll` / `.so`) at runtime via `libloading`.
+  - Background file-watcher thread (using `notify`) that monitors `src/` for changes, debounces events (300ms), triggers `cargo build --lib`, and hot-swaps the router on success.
+  - Timestamp-based unique DLL naming (`_active_{nanos}.dll`) to prevent Windows OS error 32 (file-locked-by-process), with automatic cleanup of stale copies.
+  - FFI entry point convention: libraries export `#[unsafe(no_mangle)] pub extern "C" fn rullst_router_init() -> *mut rullst::Router`.
+  - Blog example refactored to demonstrate hot-reload mode: `HOT_RELOAD=1 cargo run` for live-editing, default `cargo run` for standard static compilation.
 - **Declarative E2E Testing (`rullst::testing`)**:
   - Introduced a fluent, high-level testing framework for complete application workflows.
   - Added `TestClient` to mount and run HTTP routing logic over the Axum application without actual TCP binding.

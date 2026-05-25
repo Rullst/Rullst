@@ -7,7 +7,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v0.9.1](https://img.shields.io/badge/Status-v0.9.1-emerald)
+![Status: v0.9.2](https://img.shields.io/badge/Status-v0.9.2-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 O **Rullst** (Rust + Fullstack) é o primeiro framework web opinativo em Rust projetado obsessivamente para a **Produtividade Emocional** do desenvolvedor. 
@@ -28,6 +28,22 @@ O Rullst redefine essa experiência. Nós oferecemos um ecossistema integrado qu
 * **Chega de lutar contra o Borrow Checker na UI:** A macro `html!` processa JSX-like puro direto no servidor (SSR). É HTML bruto, seguro e ultra-rápido enviado diretamente para o navegador.
 * **Active Record Real:** Integramos de forma nativa o ORM **`rust-eloquent`**. Salvar e gerenciar registros é tão simples quanto `user.save()`.
 * **Engenharia Nativa para IA & AI-Friendly:** Projetado desde o primeiro dia para pareamento moderno com inteligências artificiais. Tipagem forte, zero mágica dinâmica em tempo de execução, arquivos `.ai-rules` gerados no scaffold e esquemas estruturados evitam alucinações de agentes de IA e permitem correção automática imediata pelo compilador.
+
+---
+
+## 🏆 Tudo Que Você Precisa, Incluso (v0.9.2)
+
+O Rullst entrega **7 marcos completos** cobrindo todas as camadas do desenvolvimento web moderno:
+
+| Categoria | Funcionalidades |
+|---|---|
+| 🛠️ **CLI & DX** | Wizard `cargo rullst new`, `make:controller`, `make:model -m`, `make:middleware`, `make:worker`, `generate:openapi`, `cargo rullst upgrade` (auto-cura) |
+| 🗄️ **Banco de Dados** | ORM Active Record, Migrations (`db:migrate`, `db:rollback`, `db:status`), Seeders & Factories, HasMany / BelongsTo / BelongsToMany, Eager Loading |
+| 🔒 **Auth & Segurança** | Hashing Argon2, Sessões JWT & Cookie, Proteção CSRF, OAuth Social (Google, GitHub, Facebook, Twitter via `rust-socialite`), `cargo rullst auth` |
+| ⚡ **Frontend** | Suporte HTMX de primeira classe, TailwindCSS integrado, renderização parcial, **Rullst Live** (UI server-driven inspirada no Phoenix LiveView), **Wasm Islands** (`#[client_component]`) |
+| 📦 **Produção** | Filas (SQLite/Redis), Cache (Memory/Redis), Task Scheduler (Cron), Docker multi-stage builds, Dashboard **Rullst Horizon** |
+| 🏢 **Enterprise** | Validação Declarativa, Mailer (SMTP/Resend/SendGrid), Storage (Local/S3/R2), WebSockets, Multi-Tenancy, Feature Flags, Testes E2E |
+| 🚀 **Vantagem Injusta** | **AI Core** (`rullst::ai` — OpenAI/Gemini/Anthropic/Ollama + RAG), **Rullst Studio** (GUI visual de DB), **Console Self-Healing com IA** (auto-fix), **Hot Reloading via `dylib`** |
 
 ---
 
@@ -107,6 +123,9 @@ cd meu-app
 
 # 3. Inicie sua aplicação full-stack de alta performance imediatamente!
 cargo run
+
+# 🔥 Ou ative o Hot Reloading instantâneo (sem reiniciar o servidor!):
+HOT_RELOAD=1 cargo run
 ```
 
 ---
@@ -161,11 +180,28 @@ Este comando atualizará a dependência do Rullst de forma segura e utilizará a
 
 ---
 
-## 🎯 Arquitetura do Rullst (v0.9.0)
+## 🔥 Hot Reloading (Loop de Dev Sem Downtime)
+
+O Rullst suporta **Hot Reloading via Dynamic Linking** — altere suas rotas, handlers e templates e veja as mudanças refletidas **instantaneamente** sem reiniciar o servidor ou perder conexões:
+
+```bash
+# Inicie sua aplicação em modo hot-reload
+HOT_RELOAD=1 cargo run
+
+# ⚡ Edite qualquer handler em src/ → Rullst detecta a mudança
+# 🔄 Recompilação de fundo da cdylib
+# 🚀 Router trocado atomicamente — zero downtime!
+```
+
+Por baixo dos panos, o Rullst compila suas rotas como biblioteca dinâmica (`cdylib`), carrega via `libloading`, e usa um file-watcher (`notify`) para detectar mudanças e disparar rebuilds em background. O router é trocado atomicamente via `Arc<RwLock<Router>>` — o servidor HTTP nunca reinicia e conexões TCP nunca são derrubadas.
+
+---
+
+## 🎯 Arquitetura do Rullst (v0.9.2)
 
 O Rullst é estruturado como um monorepo Cargo Workspace altamente modularizado:
 
-1. **`rullst` (Core Crate):** Abstrai o servidor Axum, gerencia a injeção do ciclo de vida do `rust-eloquent` e re-exporta as dependências de rede e segurança. Também vem com utilitários de produção de primeira classe (Queue, Cache, Scheduler) e funcionalidades corporativas enterprise (Validation, Mailer, Storage, WebSockets e Horizon).
+1. **`rullst` (Core Crate):** Abstrai o servidor Axum, gerencia a injeção do ciclo de vida do `rust-eloquent` e re-exporta as dependências de rede e segurança. Inclui utilitários de produção (Queue, Cache, Scheduler), funcionalidades enterprise (Validation, Mailer, Storage, WebSockets, Horizon), Core IA (`rullst::ai`), Rullst Live (UI server-driven), Wasm Islands, e Hot Reloading via dynamic linking.
 2. **`rullst-macros` (Compile-time Engine):** Contém a macro procedural `html!` que faz parsing da árvore JSX e gera concatenações estáticas otimizadas na memória em tempo de compilação.
 3. **`cargo-rullst` (Developer CLI):** A ferramenta que cuida de gerar novos projetos com modelos prontos, conexão de banco configurada e páginas de exemplo.
 
