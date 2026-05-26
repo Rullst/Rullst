@@ -164,7 +164,7 @@ impl StorageDriver for S3Driver {
             Ok(_) => Ok(true),
             Err(e) => {
                 let service_err = e.into_service_error();
-                if service_err.is_no_such_key() {
+                if service_err.is_not_found() {
                     Ok(false)
                 } else {
                     Err(StorageError::DriverError(format!("{}", service_err)))
@@ -293,6 +293,7 @@ impl Storage {
                     let bucket = std::env::var("AWS_BUCKET").unwrap_or_default();
                     let endpoint = std::env::var("AWS_ENDPOINT").ok();
                     let config = tokio::task::block_in_place(|| {
+                        #[allow(deprecated)]
                         tokio::runtime::Handle::current().block_on(aws_config::load_from_env())
                     });
                     let client = aws_sdk_s3::Client::new(&config);
