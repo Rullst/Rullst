@@ -65,7 +65,6 @@ pub async fn check_and_run_artisan(
     }
 
     if let Some(translated_args) = translate_artisan_args(&args) {
-
         // 1. Parse database URL from Rullst.toml
         let mut db_url = None;
         if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {

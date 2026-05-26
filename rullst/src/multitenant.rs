@@ -66,7 +66,9 @@ tokio::task_local! {
 
 /// Retrieve the active request's tenant ID if configured.
 pub fn current_tenant_id() -> Option<String> {
-    TENANT_CONTEXT.try_with(|ctx| ctx.borrow().clone()).unwrap_or(None)
+    TENANT_CONTEXT
+        .try_with(|ctx| ctx.borrow().clone())
+        .unwrap_or(None)
 }
 
 /// Dynamically sets or replaces the tenant ID for the duration of the current task context.
@@ -123,59 +125,64 @@ pub struct TenantService<S> {
 
 impl<S, ReqBody, ResBody> tower_service::Service<axum::http::Request<ReqBody>> for TenantService<S>
 where
-    S: tower_service::Service<axum::http::Request<ReqBody>, Response = axum::http::Response<ResBody>> + Clone + Send + 'static,
+    S: tower_service::Service<
+            axum::http::Request<ReqBody>,
+            Response = axum::http::Response<ResBody>,
+        > + Clone
+        + Send
+        + 'static,
     S::Future: Send + 'static,
     ReqBody: Send + 'static,
     ResBody: Send + 'static,
 {
     type Response = axum::http::Response<ResBody>;
     type Error = S::Error;
-    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
 
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 
     fn call(&mut self, req: axum::http::Request<ReqBody>) -> Self::Future {
         let config = self.config.clone();
         let mut inner = self.inner.clone();
-        
+
         Box::pin(async move {
             let tenant_id = match config.strategy {
-                TenantStrategy::Header => {
-                    req.headers()
-                        .get(&config.header_name)
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.to_string())
-                }
-                TenantStrategy::Subdomain => {
-                    req.headers()
-                        .get(axum::http::header::HOST)
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|host| {
-                            let sub = extract_subdomain(host);
-                            if sub.is_none() {
-                                config.domain_fallback.clone()
-                            } else {
-                                sub
-                            }
-                        })
-                }
+                TenantStrategy::Header => req
+                    .headers()
+                    .get(&config.header_name)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string()),
+                TenantStrategy::Subdomain => req
+                    .headers()
+                    .get(axum::http::header::HOST)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|host| {
+                        let sub = extract_subdomain(host);
+                        if sub.is_none() {
+                            config.domain_fallback.clone()
+                        } else {
+                            sub
+                        }
+                    }),
                 TenantStrategy::Parameter => {
                     let query = req.uri().query().unwrap_or("");
                     serde_urlencoded::from_str::<std::collections::HashMap<String, String>>(query)
                         .ok()
-                        .and_then(|params| {
-                            params.get(&config.parameter_name)
-                                .cloned()
-                        })
+                        .and_then(|params| params.get(&config.parameter_name).cloned())
                 }
             };
 
             let cell = RefCell::new(tenant_id);
-            TENANT_CONTEXT.scope(cell, async move {
-                inner.call(req).await
-            }).await
+            TENANT_CONTEXT
+                .scope(cell, async move { inner.call(req).await })
+                .await
         })
     }
 }
@@ -191,8 +198,14 @@ mod tests {
 
     #[test]
     fn test_extract_subdomain() {
-        assert_eq!(extract_subdomain("tenant1.example.com"), Some("tenant1".to_string()));
-        assert_eq!(extract_subdomain("tenant-a.app.co.uk"), Some("tenant-a".to_string()));
+        assert_eq!(
+            extract_subdomain("tenant1.example.com"),
+            Some("tenant1".to_string())
+        );
+        assert_eq!(
+            extract_subdomain("tenant-a.app.co.uk"),
+            Some("tenant-a".to_string())
+        );
         assert_eq!(extract_subdomain("localhost:3000"), None);
         assert_eq!(extract_subdomain("127.0.0.1"), None);
     }
@@ -213,17 +226,19 @@ mod tests {
     #[tokio::test]
     async fn test_task_local_storage() {
         let cell = RefCell::new(Some("tenant123".to_string()));
-        
-        TENANT_CONTEXT.scope(cell, async {
-            assert_eq!(current_tenant_id(), Some("tenant123".to_string()));
-            
-            // Set dynamic value mid-request
-            set_tenant_id(Some("super-tenant".to_string()));
-            assert_eq!(current_tenant_id(), Some("super-tenant".to_string()));
-            
-            set_tenant_id(None);
-            assert_eq!(current_tenant_id(), None);
-        }).await;
+
+        TENANT_CONTEXT
+            .scope(cell, async {
+                assert_eq!(current_tenant_id(), Some("tenant123".to_string()));
+
+                // Set dynamic value mid-request
+                set_tenant_id(Some("super-tenant".to_string()));
+                assert_eq!(current_tenant_id(), Some("super-tenant".to_string()));
+
+                set_tenant_id(None);
+                assert_eq!(current_tenant_id(), None);
+            })
+            .await;
 
         // Outside scope, it should return None
         assert_eq!(current_tenant_id(), None);

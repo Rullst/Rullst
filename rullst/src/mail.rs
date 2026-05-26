@@ -327,7 +327,8 @@ impl Mail {
                     if in_mail && trimmed.starts_with("driver") {
                         if let Some(val) = trimmed.split('=').nth(1) {
                             let clean_val = val.split('#').next().unwrap_or(val).trim();
-                            found_driver = Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
+                            found_driver =
+                                Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
                         }
                     }
                 }

@@ -1,13 +1,12 @@
 use crate::Router;
 use crate::scheduler::Scheduler;
 use rust_eloquent::Eloquent;
-use std::net::SocketAddr;
-use std::sync::{Arc, RwLock, Mutex};
-use tower_service::Service;
-use std::task::{Context, Poll};
 use std::future::Future;
+use std::net::SocketAddr;
 use std::pin::Pin;
-
+use std::sync::{Arc, Mutex, RwLock};
+use std::task::{Context, Poll};
+use tower_service::Service;
 
 #[non_exhaustive]
 pub struct Server {
@@ -35,7 +34,6 @@ impl Server {
             hot_reload_lib: Some(lib_path.into()),
         }
     }
-
 
     /// Set a database URL to automatically initialize the Eloquent connection pool at startup
     pub fn with_db<S: Into<String>>(mut self, db_url: S) -> Self {
@@ -88,7 +86,8 @@ impl Server {
             scheduler.start();
         }
 
-        let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+        let is_dev =
+            std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
         if is_dev && std::env::var("RUST_BACKTRACE").is_err() {
             eprintln!(
                 "⚠️  Rullst Dev: Set RUST_BACKTRACE=1 in your environment for richer error traces."
@@ -113,7 +112,10 @@ impl Server {
             let (initial_router, library) = match load_dylib_router(&lib_path, is_dev) {
                 Ok(r) => r,
                 Err(e) => {
-                    println!("\x1b[31m❌ Falha ao carregar dylib inicial: {}. Certifique-se de que a biblioteca dinâmica foi compilada rodando 'cargo build --lib'.\x1b[0m", e);
+                    println!(
+                        "\x1b[31m❌ Falha ao carregar dylib inicial: {}. Certifique-se de que a biblioteca dinâmica foi compilada rodando 'cargo build --lib'.\x1b[0m",
+                        e
+                    );
                     return Err(e);
                 }
             };
@@ -123,12 +125,15 @@ impl Server {
 
             // Setup file watcher
             let (tx, rx) = std::sync::mpsc::channel();
-            use notify::{Watcher, RecommendedWatcher, RecursiveMode};
-            let mut watcher = RecommendedWatcher::new(move |res| {
-                if let Ok(event) = res {
-                    let _ = tx.send(event);
-                }
-            }, notify::Config::default())?;
+            use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+            let mut watcher = RecommendedWatcher::new(
+                move |res| {
+                    if let Ok(event) = res {
+                        let _ = tx.send(event);
+                    }
+                },
+                notify::Config::default(),
+            )?;
 
             if std::path::Path::new("src").exists() {
                 watcher.watch(std::path::Path::new("src"), RecursiveMode::Recursive)?;
@@ -151,7 +156,8 @@ impl Server {
                     }
 
                     let (tx, rx_build) = std::sync::mpsc::channel();
-                    let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                    let current_dir =
+                        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                     std::thread::spawn(move || {
                         let res = std::process::Command::new("cargo")
                             .arg("build")
@@ -162,21 +168,27 @@ impl Server {
                     });
 
                     // Timeout of 120 seconds to prevent hanging build processes
-                    let build_success = match rx_build.recv_timeout(std::time::Duration::from_secs(120)) {
+                    let build_success = match rx_build
+                        .recv_timeout(std::time::Duration::from_secs(120))
+                    {
                         Ok(Ok(status)) => status.success(),
                         Ok(Err(e)) => {
                             eprintln!("⚠️ Rullst Hot-Reload: failed to execute cargo build: {}", e);
                             false
                         }
                         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                            eprintln!("⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!");
+                            eprintln!(
+                                "⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!"
+                            );
                             false
                         }
                         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,
                     };
 
                     if build_success {
-                        println!("\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m");
+                        println!(
+                            "\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m"
+                        );
                         match load_dylib_router(&lib_path_clone, is_dev) {
                             Ok((new_router, new_lib)) => {
                                 // H-1: Recover from poisoned write lock rather than panicking
@@ -185,19 +197,28 @@ impl Server {
                                     Err(poisoned) => *poisoned.into_inner() = new_router,
                                 };
 
-                                // Keep all loaded libraries in memory to prevent segmentation faults 
+                                // Keep all loaded libraries in memory to prevent segmentation faults
                                 // for concurrent requests executing handlers from older versions
-                                let mut active_libs = active_libraries_clone.lock().unwrap_or_else(|p| p.into_inner());
+                                let mut active_libs = active_libraries_clone
+                                    .lock()
+                                    .unwrap_or_else(|p| p.into_inner());
                                 active_libs.push(new_lib);
 
-                                println!("\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m");
+                                println!(
+                                    "\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m"
+                                );
                             }
                             Err(e) => {
-                                println!("\x1b[31m❌ Rullst Hot-Reload: Erro ao carregar dylib recém-compilada: {}\x1b[0m", e);
+                                println!(
+                                    "\x1b[31m❌ Rullst Hot-Reload: Erro ao carregar dylib recém-compilada: {}\x1b[0m",
+                                    e
+                                );
                             }
                         }
                     } else {
-                        println!("\x1b[31m❌ Rullst Hot-Reload: Falha ao compilar o código fonte. Corrija os erros para aplicar o hot-swap.\x1b[0m");
+                        println!(
+                            "\x1b[31m❌ Rullst Hot-Reload: Falha ao compilar o código fonte. Corrija os erros para aplicar o hot-swap.\x1b[0m"
+                        );
                     }
 
                     last_build = std::time::Instant::now();
@@ -205,7 +226,10 @@ impl Server {
             });
 
             let hotswap_service = HotSwapService { current_router };
-            println!("Rullst framework serving on http://{} (Hot-Reload Ativo)", addr);
+            println!(
+                "Rullst framework serving on http://{} (Hot-Reload Ativo)",
+                addr
+            );
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, hotswap_service).await?;
@@ -215,10 +239,7 @@ impl Server {
 
             // Serve static files from "static" directory if it exists
             if std::path::Path::new("static").exists() {
-                app = app.nest_service(
-                    "/static",
-                    tower_http::services::ServeDir::new("static"),
-                );
+                app = app.nest_service("/static", tower_http::services::ServeDir::new("static"));
             }
 
             if is_dev {
@@ -309,7 +330,8 @@ impl Service<axum::extract::Request> for HotSwapService {
                     };
 
                     let backtrace = std::backtrace::Backtrace::capture();
-                    let html_content = crate::error_console::render_console_html(&message, &backtrace).await;
+                    let html_content =
+                        crate::error_console::render_console_html(&message, &backtrace).await;
 
                     Ok(axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -333,8 +355,11 @@ fn load_dylib_router(
     } else {
         "so"
     };
-    
-    let full_lib_path = if lib_path.ends_with(".dll") || lib_path.ends_with(".so") || lib_path.ends_with(".dylib") {
+
+    let full_lib_path = if lib_path.ends_with(".dll")
+        || lib_path.ends_with(".so")
+        || lib_path.ends_with(".dylib")
+    {
         lib_path.to_string()
     } else {
         format!("{}.{}", lib_path, lib_extension)
@@ -361,7 +386,10 @@ fn load_dylib_router(
         for entry in entries.flatten() {
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with(filename) && name.contains("_active_") && name.ends_with(lib_extension) {
+                if name.starts_with(filename)
+                    && name.contains("_active_")
+                    && name.ends_with(lib_extension)
+                {
                     let _ = std::fs::remove_file(path);
                 }
             }
@@ -373,26 +401,25 @@ fn load_dylib_router(
     let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
     let temp_filename = format!("{}_active_{}.{}", filename, unique_id, lib_extension);
     let temp_path = parent.join(temp_filename);
-    
+
     // Copy the dylib file to prevent locking issues
     std::fs::copy(&full_lib_path, &temp_path)?;
-    
+
     let lib = unsafe { libloading::Library::new(temp_path)? };
-    let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> = unsafe { lib.get(b"rullst_router_init")? };
+    let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> =
+        unsafe { lib.get(b"rullst_router_init")? };
     let router_ptr = unsafe { init_fn() };
-    
+
     // Convert *mut Router back to Router box and extract it
     let rullst_router = unsafe { *Box::from_raw(router_ptr) };
-    
+
     // Convert Rullst Router to Axum Router
     let mut axum_router = rullst_router.into_axum();
-    
+
     // Serve static files from "static" directory if it exists
     if std::path::Path::new("static").exists() {
-        axum_router = axum_router.nest_service(
-            "/static",
-            tower_http::services::ServeDir::new("static"),
-        );
+        axum_router =
+            axum_router.nest_service("/static", tower_http::services::ServeDir::new("static"));
     }
 
     // Attach development explain / console routes
@@ -410,10 +437,9 @@ fn load_dylib_router(
                 crate::error_console::catch_panic_middleware,
             ));
     }
-    
+
     Ok((axum_router, lib))
 }
-
 
 #[cfg(test)]
 mod tests {

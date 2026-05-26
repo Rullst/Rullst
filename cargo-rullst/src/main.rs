@@ -3278,7 +3278,10 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 2. Proactively try to add the wasm32 target using rustup
-    println!("{}", "⚙️ Verificando e instalando target wasm32-unknown-unknown...".yellow());
+    println!(
+        "{}",
+        "⚙️ Verificando e instalando target wasm32-unknown-unknown...".yellow()
+    );
     let _ = Command::new("rustup")
         .arg("target")
         .arg("add")
@@ -3286,9 +3289,13 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .status();
 
     // 3. Compile the target
-    println!("{}", "📦 Compilando componentes frontend para wasm32-unknown-unknown...".yellow());
+    println!(
+        "{}",
+        "📦 Compilando componentes frontend para wasm32-unknown-unknown...".yellow()
+    );
     let mut cargo_cmd = Command::new("cargo");
-    cargo_cmd.arg("build")
+    cargo_cmd
+        .arg("build")
         .arg("--target")
         .arg("wasm32-unknown-unknown")
         .arg("--lib");
@@ -3297,7 +3304,10 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
     let build_status = cargo_cmd.status()?;
     if !build_status.success() {
-        println!("{}", "❌ Erro na compilação do target wasm32-unknown-unknown.".red());
+        println!(
+            "{}",
+            "❌ Erro na compilação do target wasm32-unknown-unknown.".red()
+        );
         std::process::exit(1);
     }
 
@@ -3306,17 +3316,31 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .lines()
         .find(|line| line.trim().starts_with("name"))
         .and_then(|line| line.split('=').nth(1))
-        .map(|val| val.trim().trim_matches('"').trim_matches('\'').replace("-", "_"))
+        .map(|val| {
+            val.trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .replace("-", "_")
+        })
         .unwrap_or_else(|| "app".to_string());
 
     let profile = if debug { "debug" } else { "release" };
-    let mut wasm_file_path = format!("target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+    let mut wasm_file_path = format!(
+        "target/wasm32-unknown-unknown/{}/{}.wasm",
+        profile, package_name
+    );
 
     if !Path::new(&wasm_file_path).exists() {
         if Path::new("../../target").exists() {
-            wasm_file_path = format!("../../target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+            wasm_file_path = format!(
+                "../../target/wasm32-unknown-unknown/{}/{}.wasm",
+                profile, package_name
+            );
         } else if Path::new("../target").exists() {
-            wasm_file_path = format!("../target/wasm32-unknown-unknown/{}/{}.wasm", profile, package_name);
+            wasm_file_path = format!(
+                "../target/wasm32-unknown-unknown/{}/{}.wasm",
+                profile, package_name
+            );
         }
     }
 
@@ -3338,13 +3362,20 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .is_ok();
 
     if !wasm_bindgen_installed {
-        println!("{}", "⚙️ Instalar wasm-bindgen-cli de forma automática... Isso pode levar um instante.".yellow());
+        println!(
+            "{}",
+            "⚙️ Instalar wasm-bindgen-cli de forma automática... Isso pode levar um instante."
+                .yellow()
+        );
         let install_status = Command::new("cargo")
             .arg("install")
             .arg("wasm-bindgen-cli")
             .status()?;
         if !install_status.success() {
-            println!("{}", "❌ Falha ao instalar wasm-bindgen-cli automaticamente.".red());
+            println!(
+                "{}",
+                "❌ Falha ao instalar wasm-bindgen-cli automaticamente.".red()
+            );
             std::process::exit(1);
         }
     }
@@ -3375,8 +3406,9 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     let js_file_path = format!("static/{}.js", package_name);
     if Path::new(&js_file_path).exists() {
         let mut js_content = fs::read_to_string(&js_file_path)?;
-        
-        let orchestrator = format!(r#"
+
+        let orchestrator = format!(
+            r#"
 // ─── Rullst Wasm Island Hydration Loop 🏝️ ────────────────────────────────────
 export function hydrate_all() {{
     import('./{}.js').then((m) => {{
@@ -3408,7 +3440,9 @@ if (typeof document !== 'undefined') {{
         hydrate_all();
     }}
 }}
-"#, package_name);
+"#,
+            package_name
+        );
 
         js_content.push_str(&orchestrator);
         fs::write(&js_file_path, js_content)?;
@@ -3416,7 +3450,9 @@ if (typeof document !== 'undefined') {{
 
     println!(
         "{}",
-        "✨ Rullst Wasm Islands compilados e gerados com sucesso!".green().bold()
+        "✨ Rullst Wasm Islands compilados e gerados com sucesso!"
+            .green()
+            .bold()
     );
     println!("{}", "Como carregar na sua página HTML:".cyan());
     println!(
@@ -3430,4 +3466,3 @@ if (typeof document !== 'undefined') {{
 
     Ok(())
 }
-

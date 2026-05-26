@@ -130,7 +130,7 @@ impl Scheduler {
                             .to_std()
                             .unwrap_or(std::time::Duration::from_secs(60));
                         tokio::time::sleep(duration).await;
-                        
+
                         let handler_clone = Arc::clone(&handler);
                         tokio::spawn(async move {
                             handler_clone().await;

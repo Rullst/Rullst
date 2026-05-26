@@ -2,7 +2,6 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
-use sha2::Digest;
 use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
@@ -10,6 +9,7 @@ use argon2::{
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
 use rand::Rng;
+use sha2::Digest;
 use std::fs;
 
 /// Default fall-back key for local development when APP_KEY is not configured.

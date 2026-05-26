@@ -57,7 +57,12 @@ impl TestApp {
 
     /// Initiates a DELETE request.
     pub fn delete(&self, uri: &str) -> TestRequestBuilder {
-        TestRequestBuilder::new(self.router.clone(), Method::DELETE, uri, self.max_body_bytes)
+        TestRequestBuilder::new(
+            self.router.clone(),
+            Method::DELETE,
+            uri,
+            self.max_body_bytes,
+        )
     }
 }
 
@@ -174,6 +179,7 @@ pub struct TestResponse {
 }
 
 impl TestResponse {
+    #[allow(dead_code)]
     pub(crate) async fn new(response: Response) -> Self {
         Self::new_with_limit(response, DEFAULT_MAX_BODY).await
     }

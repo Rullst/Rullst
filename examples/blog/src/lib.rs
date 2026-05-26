@@ -5,13 +5,13 @@ pub mod live_counter;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod app {
+    use crate::live_counter::CounterComponent;
     use axum::Form;
     use rullst::{
         html,
         response::{Html, IntoResponse, Redirect},
     };
     use rust_eloquent::sqlx::FromRow;
-    use crate::live_counter::CounterComponent;
 
     // --- Post model & query builder ---
     #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
@@ -239,7 +239,8 @@ pub mod app {
         if !form.title.trim().is_empty() && !form.body.trim().is_empty() {
             let mut post = Post {
                 id: 0,
-                tenant_id: rullst::multitenant::current_tenant_id().unwrap_or_else(|| "default".to_string()),
+                tenant_id: rullst::multitenant::current_tenant_id()
+                    .unwrap_or_else(|| "default".to_string()),
                 title: form.title,
                 body: form.body,
             };
@@ -275,7 +276,7 @@ pub mod app {
             </head>
             <body style="background: #0b0f19; margin: 0; padding: 2rem;">
                 { rullst::html::RawHtml(component_mount) }
-                
+
                 <script type="module">
                     "import init from '/static/rullst_blog_example.js'; init();"
                 </script>
@@ -292,11 +293,11 @@ pub mod app {
 #[cfg(not(target_arch = "wasm32"))]
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
-    use rullst::routes;
     use app::*;
+    use rullst::routes;
 
-    let config = rullst::TenantConfig::new(rullst::TenantStrategy::Header)
-        .with_header_name("X-Tenant-ID");
+    let config =
+        rullst::TenantConfig::new(rullst::TenantStrategy::Header).with_header_name("X-Tenant-ID");
 
     let router = routes![
         get("/" => index),

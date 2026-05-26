@@ -8,6 +8,7 @@ pub mod artisan;
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
+pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,6 +23,8 @@ pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod mail;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod multitenant;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod routing;
@@ -34,19 +37,13 @@ pub mod server;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod studio;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod validation;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod ws;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod studio;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod multitenant;
-pub mod client;
-
-
-
 
 #[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
@@ -60,8 +57,7 @@ macro_rules! artisan {
 }
 
 // Re-export the html! and client_component procedural macros
-pub use rullst_macros::{html, client_component};
-
+pub use rullst_macros::{client_component, html};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]
@@ -114,7 +110,7 @@ pub use feature::{
     TomlFeatureDriver,
 };
 #[cfg(not(target_arch = "wasm32"))]
-pub use multitenant::{TenantConfig, TenantStrategy, tenant_layer, TenantLayer, TenantService};
+pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, tenant_layer};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use testing::{TestApp, TestRequestBuilder, TestResponse};

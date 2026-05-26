@@ -28,7 +28,7 @@ pub async fn live_ws_handler<C: LiveComponent>(ws: WebSocketUpgrade) -> impl Int
     ws.on_upgrade(|socket| async move {
         let mut rullst_ws = WebSocket::new(socket);
         let mut component = C::default();
-        
+
         // Monta o estado inicial na sessão do WebSocket
         component.mount().await;
 
@@ -38,10 +38,10 @@ pub async fn live_ws_handler<C: LiveComponent>(ws: WebSocketUpgrade) -> impl Int
             if let Ok(payload) = serde_json::from_str::<Value>(&msg) {
                 // Repassa o evento para o ciclo de vida do componente
                 component.handle_event(payload).await;
-                
+
                 // Re-renderiza o HTML após a possível mutação de estado
                 let html = component.render();
-                
+
                 // Dispara o novo HTML via WebSocket. O HTMX fará o hot-swap automaticamente usando o ID do root.
                 if let Err(e) = rullst_ws.send_html(html).await {
                     eprintln!("Rullst Live WS Error: {}", e);
@@ -62,7 +62,7 @@ impl Live {
         let mut comp = C::default();
         comp.mount().await;
         let html = comp.render();
-        
+
         // HTML escape ws_path to prevent path/attribute injection
         let safe_path = ws_path
             .replace('&', "&amp;")

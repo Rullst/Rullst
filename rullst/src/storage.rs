@@ -47,7 +47,7 @@ impl LocalDriver {
 
     fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
         let joined = self.root.join(path.trim_start_matches('/'));
-        
+
         let mut normalized = PathBuf::new();
         for component in joined.components() {
             match component {
@@ -61,11 +61,13 @@ impl LocalDriver {
                 other => normalized.push(other.as_os_str()),
             }
         }
-        
+
         if normalized.starts_with(&self.root) {
             Ok(normalized)
         } else {
-            Err(StorageError::DriverError("Access denied: path traversal attempt detected".to_string()))
+            Err(StorageError::DriverError(
+                "Access denied: path traversal attempt detected".to_string(),
+            ))
         }
     }
 }

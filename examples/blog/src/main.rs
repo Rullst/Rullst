@@ -1,7 +1,7 @@
 #![allow(unexpected_cfgs)]
 use rullst::{Server, multitenant};
-use rust_eloquent::Eloquent;
 use rullst_blog_example::app::Post;
+use rust_eloquent::Eloquent;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }).await;
 
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
-    
+
     let server = if is_hot {
         let lib_path = if cfg!(target_os = "windows") {
             if std::path::Path::new("target/debug/rullst_blog_example.dll").exists() {
@@ -60,8 +60,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "../../target/debug/rullst_blog_example"
             }
         } else {
-            if std::path::Path::new("target/debug/librullst_blog_example.so").exists() 
-                || std::path::Path::new("target/debug/librullst_blog_example.dylib").exists() 
+            if std::path::Path::new("target/debug/librullst_blog_example.so").exists()
+                || std::path::Path::new("target/debug/librullst_blog_example.dylib").exists()
             {
                 "target/debug/librullst_blog_example"
             } else {

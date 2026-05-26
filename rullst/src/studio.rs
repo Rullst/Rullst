@@ -1,11 +1,11 @@
+use crate::html::RawHtml;
 use axum::{
+    Router,
     extract::{Path, Query},
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use rullst_macros::html;
-use crate::html::RawHtml;
 use rust_eloquent::Eloquent;
 use serde::Deserialize;
 use sqlx::Row;
@@ -73,8 +73,10 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
     let pool = Eloquent::pool();
     let clean_table = sanitize_identifier(table);
-    
-    let query_str = if let Some(search) = search_query && !search.is_empty() {
+
+    let query_str = if let Some(search) = search_query
+        && !search.is_empty()
+    {
         format!("SELECT COUNT(*) FROM \"{}\"", clean_table)
     } else {
         format!("SELECT COUNT(*) FROM \"{}\"", clean_table)
@@ -95,7 +97,7 @@ fn sanitize_identifier(id: &str) -> String {
 /// Base visual template wrapper
 fn studio_layout(content: String, active_table: Option<&str>, tables: &[String]) -> String {
     let mut sidebar_links = String::new();
-    
+
     for t in tables {
         let is_active = Some(t.as_str()) == active_table;
         let active_classes = if is_active {
@@ -103,7 +105,7 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
         } else {
             "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-4 border-transparent"
         };
-        
+
         let path = format!("/tables/{}", t);
         let link_html = html! {
             <a href="#"

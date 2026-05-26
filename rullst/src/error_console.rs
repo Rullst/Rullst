@@ -298,7 +298,10 @@ async fn perform_autofix(
 
 // ─── Sleek, Glowing Dark-Theme HTML Console Renderer ──────────────────────────
 
-pub(crate) async fn render_console_html(error_message: &str, backtrace: &std::backtrace::Backtrace) -> String {
+pub(crate) async fn render_console_html(
+    error_message: &str,
+    backtrace: &std::backtrace::Backtrace,
+) -> String {
     let bt_str = format!("{:#?}", backtrace);
     let source_loc = find_source_location(&bt_str);
 
