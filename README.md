@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Rullst.png" alt="Rullst Logo" width="500">
+  <img src="./Rullst.png" alt="Rullst Logo" width="400">
 </p>
 
 # Rullst - 📜🦀🌐🤖🚀
