@@ -7,7 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [1.0.4] - 2026-05-26 🛠️
 
 ### Fixed
-- **Conditional Scaffolding for Database-Disabled Apps**: Fixes a compilation error (`E0433: cannot find module or crate rust_eloquent`) that occurred when creating a project with database support disabled ("no" database selected). It makes the generation of the `src/migrations` folder, `pub mod migrations` module declaration, and `rullst::artisan!` macro call strictly conditional on enabling database support.
+- **Conditional Scaffolding for Database-Disabled Apps**: Fixes a compilation error (`E0433: cannot find module or crate rust_eloquent`) that occurred when creating a project with database support disabled ("no" database selected). The generation of the `src/migrations` folder, `pub mod migrations` module declaration, and `rullst::artisan!` macro call are now strictly conditional on enabling database support during `cargo rullst new`.
+
+### Added
+- **`sync-badges` Automation Tool**: A new internal binary (`cargo-rullst/src/bin/sync_badges.rs`) and cargo alias (`cargo sync`) that automatically reads the current version from `cargo-rullst/Cargo.toml` and updates the status badge in `README.md` and `README.pt.md`. This prevents version badges from becoming stale after releases.
+- **Dependabot Configuration**: Added `.github/dependabot.yml` to automatically monitor and open Pull Requests for outdated Cargo dependencies every Monday at 08:00 (America/Sao_Paulo). PRs will be tested by CI before merging, ensuring dependencies are always up to date without breaking the build.
+- **Automated Release Pipeline (`release.yml`)**: Added a dedicated GitHub Actions workflow that triggers exclusively when a version tag (e.g. `v1.0.5`) is pushed. It runs the full test suite as a mandatory gate before publishing `rullst-macros`, `rullst`, and `cargo-rullst` to crates.io in sequence. This prevents publishing broken releases.
+- **CI Extended to `dev` Branch**: The existing CI workflow (`ci.yml`) now also runs on every push to `dev`, providing continuous feedback during active development — not just on `main`.
+
+### Documentation
+- **`RELEASE_GUIDE.md`**: Added a comprehensive guide documenting the official development and release workflow, including the `dev` → `main` branching strategy, step-by-step release instructions, CI/CD automation details, and the one-time GitHub Secret setup required for automatic crates.io publishing.
 
 ## [1.0.3] - 2026-05-26 🛠️
 
