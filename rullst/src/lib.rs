@@ -1,4 +1,8 @@
-#![allow(clippy::collapsible_if, clippy::unnecessary_map_or, clippy::redundant_async_block)]
+#![allow(
+    clippy::collapsible_if,
+    clippy::unnecessary_map_or,
+    clippy::redundant_async_block
+)]
 extern crate self as rullst;
 
 #[cfg(not(target_arch = "wasm32"))]
