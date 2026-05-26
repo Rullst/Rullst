@@ -31,6 +31,7 @@ pub fn html(input: TokenStream) -> TokenStream {
 /// - On native server compiles, it wraps the component's HTML output in a `<div data-island="..." data-props="...">`
 /// - On wasm32-unknown-unknown compiles, it generates structural props parsing and registers a hydration function
 #[proc_macro_attribute]
+#[allow(clippy::collapsible_if)]
 pub fn client_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
     let vis = &input_fn.vis;
