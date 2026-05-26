@@ -14,7 +14,7 @@ async-trait = "0.1"
 rust-eloquent = "1.1.0"
 tokio = { version = "1.43", features = ["full"] }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
-axum = { version = "0.7", features = ["form"] }
+axum = { version = "0.8", features = ["form"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
