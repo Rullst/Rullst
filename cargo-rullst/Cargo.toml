@@ -17,7 +17,7 @@ path = "src/bin/sync_badges.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-colored = "2.1"
+colored = "3.1"
 chrono = "0.4"
 dialoguer = "0.12.0"
 regex = "1.10"
