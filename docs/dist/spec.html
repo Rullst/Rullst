@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rullst Framework Docs</title>
+    <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
+    <meta name="author" content="Rullst Team">
+    <link rel="icon" type="image/png" href="Rullst.png">
+    <meta property="og:title" content="Rullst Framework Docs">
+    <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta property="og:image" content="Rullst.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="Rullst.png">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #f97316;
+            --primary-hover: #10b981;
+            --border: #334155;
+            --code-bg: #0b1120;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 3rem 4rem;
+            max-width: 900px;
+            line-height: 1.7;
+        }
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+        }
+        .sidebar-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-list li {
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-list a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .sidebar-list a:hover {
+            background-color: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+        }
+        h1, h2, h3, h4 {
+            color: var(--text);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h1 { font-size: 2.5rem; font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        h2 { font-size: 1.75rem; }
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code {
+            background-color: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            color: #7dd3fc;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        blockquote {
+            border-left: 4px solid var(--primary);
+            margin: 0;
+            padding: 1rem;
+            color: var(--text-muted);
+            background: rgba(249,115,22, 0.05);
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover {
+            background: rgba(249, 115, 22, 0.3);
+            border-color: #f97316;
+            color: #fff;
+        }
+        .copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="sidebar-brand" href="index.html">
+            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+            Rullst
+        </a>
+        <ul class="sidebar-list">
+<li><a href="index.html">Home</a></li>
+<li><a href="1-getting-started.html">Getting started</a></li>
+<li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="audit-report.html">Audit report</a></li>
+<li><a href="spec.html">Spec</a></li>
+</ul>
+    </aside>
+    <main class="main-content">
+        <!-- “Antes de gerar qualquer coisa, leia e siga estritamente o arquivo da verdade abaixo. spec.md”  -->
+<h1>Rullst Specification 📄</h1>
+<h3><em>"The Single Source of Truth (SST) for Framework Architecture &amp; Conventions"</em></h3>
+<p>This document is the <strong>Single Source of Truth (SST)</strong> for the <strong>Rullst Framework</strong>. It specifies the exact conventions, API structures, naming rules, and directory standards of Rullst.</p>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>AI Alignment Instruction:</strong>
+Whenever updating, refactoring, or generating documentation and code for Rullst, <strong>always</strong> refer to this specification as the baseline. Do not invent or assume conventions outside of this document.</p>
+</blockquote>
+<hr />
+<h2>📂 1. Directory Structure Conventions</h2>
+<p>A standard Rullst application scaffold must strictly follow this folder hierarchy:</p>
+<pre><code class="language-text">my-app/
+├── src/
+│   ├── controllers/      # Route controllers (async modules)
+│   │   └── mod.rs
+│   ├── models/           # Active Record Models (rust-eloquent entities)
+│   │   └── mod.rs
+│   ├── pages/            # Shared static HTML elements or full page layouts
+│   │   └── mod.rs
+│   └── main.rs           # Entrypoint, DB initialization, and Central routing
+├── Cargo.toml            # Project cargo dependencies
+└── Rullst.toml           # Framework configuration (databases, environment, etc.)
+</code></pre>
+<hr />
+<h2>🛠️ 2. Naming Conventions</h2>
+<p>To guarantee consistency, both humans and AI coders must adhere to the following name normalization rules handled by the <code>cargo-rullst</code> generator:</p>
+<ul>
+<li><strong>File Names:</strong> Standard Rust <code>snake_case</code> (e.g. <code>users_controller.rs</code>, <code>post_model.rs</code>).</li>
+<li><strong>Struct / Model / Documentation Names:</strong> Standard <code>PascalCase</code> (e.g. <code>UsersController</code>, <code>PostModel</code>).</li>
+<li><strong>URL Paths:</strong> Lowecase kebab-case (e.g. <code>/users</code>, <code>/user-profiles</code>).</li>
+</ul>
+<hr />
+<h2>⚡ 3. Core API Specifications</h2>
+<h3>3.1. Server &amp; Routing (<code>rullst::routing</code>)</h3>
+<ul>
+<li><strong>Routing Macro:</strong> central routing declared via the <code>routes!</code> macro, wrapping Axum routing handlers.
+<pre><code class="language-rust">let router = routes![
+    get("/" =&gt; home),
+    post("/posts" =&gt; posts_controller::store),
+];
+</code></pre>
+</li>
+<li><strong>Server Lifecycle:</strong>
+<pre><code class="language-rust">Server::new(router: Router)
+    .run(port: u16) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt;
+</code></pre>
+</li>
+</ul>
+<h3>3.2. Server-Side Rendering (<code>rullst::macros</code>)</h3>
+<ul>
+<li><strong>Macro:</strong> <code>html!</code> procedural macro compiles HTML trees directly into static memory string concat builders.</li>
+<li><strong>XSS Protection:</strong> Automatic HTML escaping on all dynamic variables wrapped in <code>{expr}</code>.</li>
+<li><strong>Raw Unescaped HTML:</strong> Explicitly bypassed using the wrapper <code>rullst::html::RawHtml(String)</code>.</li>
+<li><strong>Lists/Iterators:</strong>
+<pre><code class="language-rust">let mut list_builder = String::new();
+for item in items {
+    list_builder.push_str(&amp;html! { &lt;li&gt;{item}&lt;/li&gt; });
+}
+html! { &lt;ul&gt;{ rullst::html::RawHtml(list_builder) }&lt;/ul&gt; }
+</code></pre>
+</li>
+</ul>
+<h3>3.3. Active Record ORM (<code>rust-eloquent</code>)</h3>
+<ul>
+<li><strong>Model definition:</strong>
+<pre><code class="language-rust">#[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+#[eloquent(table = "table_name")]
+pub struct Model {
+    pub id: i32,
+    // ... fields
+}
+</code></pre>
+</li>
+<li><strong>Static queries:</strong>
+<ul>
+<li><code>Model::all().await</code> -&gt; <code>Result&lt;Vec&lt;Model&gt;, sqlx::Error&gt;</code></li>
+<li><code>Model::find(id).await</code> -&gt; <code>Result&lt;Model, sqlx::Error&gt;</code></li>
+</ul>
+</li>
+<li><strong>Instance Operations:</strong>
+<ul>
+<li><code>let mut instance = Model { ... };</code></li>
+<li><code>instance.save().await</code> -&gt; <code>Result&lt;(), sqlx::Error&gt;</code> (handles auto-incrementing inserts or updates).</li>
+<li><code>instance.delete().await</code> -&gt; <code>Result&lt;(), sqlx::Error&gt;</code></li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2>💻 4. CLI Specifications (<code>cargo-rullst</code>)</h2>
+<ul>
+<li><strong>Project Creation:</strong>
+<code>cargo rullst new &lt;name&gt;</code>
+<ul>
+<li><em>Convention:</em> Automatically extracts the package name from path expressions (e.g., <code>..\dummy_test</code> -&gt; <code>dummy_test</code>).</li>
+</ul>
+</li>
+<li><strong>Controller Scaffolding:</strong>
+<code>cargo rullst make:controller &lt;Name&gt;</code>
+<ul>
+<li><em>Behavior:</em> Generates <code>src/controllers/&lt;snake_name&gt;_controller.rs</code> with <code>index</code> and <code>show</code> actions. Appends declaration to <code>src/controllers/mod.rs</code>. Adds <code>pub mod controllers;</code> to the top of <code>src/main.rs</code>.</li>
+</ul>
+</li>
+<li><strong>Documentation SSG (RullstPress):</strong>
+<code>cargo rullst docs build</code> and <code>cargo rullst docs dev</code>
+<ul>
+<li><em>Behavior:</em> Compiles markdown files in <code>docs/</code> into a static site inside <code>docs/dist/</code>.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2>🧱 5. Controller Architecture</h2>
+<p>Controllers handle business logic and HTTP responses.</p>
+<ul>
+<li><strong>Module Structure:</strong> Each controller is a separate module inside <code>src/controllers/</code> (e.g., <code>users_controller.rs</code>).</li>
+<li><strong>Function Signatures:</strong> Functions must be asynchronous and return a type that implements <code>axum::response::IntoResponse</code> (or <code>Result&lt;impl IntoResponse, AppError&gt;</code>).</li>
+<li><strong>Standard Actions:</strong>
+<ul>
+<li><code>pub async fn index()</code>: List all resources.</li>
+<li><code>pub async fn show(Path(id): Path&lt;i32&gt;)</code>: Show a specific resource.</li>
+<li><code>pub async fn store(Form(payload): Form&lt;CreateDto&gt;)</code>: Create a new resource.</li>
+<li><code>pub async fn update(Path(id): Path&lt;i32&gt;, Form(payload): Form&lt;UpdateDto&gt;)</code>: Update a resource.</li>
+<li><code>pub async fn delete(Path(id): Path&lt;i32&gt;)</code>: Delete a resource.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2>📄 6. HTML Pages &amp; Components</h2>
+<p>Rullst uses a functional approach for HTML rendering, relying on the <code>html!</code> macro.</p>
+<ul>
+<li><strong>Organization:</strong> Pages and components reside in <code>src/pages/</code>.</li>
+<li><strong>Functional Components:</strong> Pages and components are simply Rust functions. They are not structs or classes.</li>
+<li><strong>Props/Data:</strong> Pass data into pages and components as regular function arguments.</li>
+<li><strong>Return Type:</strong> Components should return a <code>String</code> (or <code>rullst::html::RawHtml</code>) so they can be embedded in other <code>html!</code> calls. Route-level pages should return <code>axum::response::Html&lt;String&gt;</code> to be served directly.</li>
+<li><strong>Example:</strong>
+<pre><code class="language-rust">pub fn button_component(label: &amp;str, url: &amp;str) -&gt; String {
+    html! { &lt;a href={url} class="btn"&gt;{label}&lt;/a&gt; }
+}
+
+pub fn home_page(user_name: &amp;str) -&gt; axum::response::Html&lt;String&gt; {
+    let content = html! {
+        &lt;div&gt;
+            &lt;h1&gt;"Welcome, "{user_name}&lt;/h1&gt;
+            { rullst::html::RawHtml(button_component("Click Me", "/click")) }
+        &lt;/div&gt;
+    };
+    axum::response::Html(content)
+}
+</code></pre>
+</li>
+</ul>
+<hr />
+<h2>🚨 7. Error Handling</h2>
+<p>Consistent error handling ensures safety and predictable API responses.</p>
+<ul>
+<li><strong>Default Error Type:</strong> The framework expects a standard error enum, typically <code>AppError</code>, located in <code>src/error.rs</code> or similar.</li>
+<li><strong>Implementation:</strong> <code>AppError</code> must implement <code>axum::response::IntoResponse</code>.</li>
+<li><strong>Controller Usage:</strong> Controllers that can fail should return <code>Result&lt;impl IntoResponse, AppError&gt;</code>.</li>
+<li><strong>HTTP Codes:</strong> The <code>IntoResponse</code> implementation maps internal errors to appropriate HTTP status codes (e.g., <code>404 Not Found</code>, <code>500 Internal Server Error</code>).</li>
+</ul>
+<hr />
+<h2>🛡️ 8. Middlewares</h2>
+<p>Middlewares intercept requests for authentication, logging, etc.</p>
+<ul>
+<li><strong>Location:</strong> Middlewares are placed in <code>src/middlewares/</code>.</li>
+<li><strong>Standard Signature:</strong> Following Axum's <code>from_fn</code> pattern, a middleware function looks like:
+<pre><code class="language-rust">use axum::{extract::Request, middleware::Next, response::Response};
+
+pub async fn my_middleware(req: Request, next: Next) -&gt; Response {
+    // Pre-request logic here
+    let response = next.run(req).await;
+    // Post-request logic here
+    response
+}
+</code></pre>
+</li>
+<li><strong>Registration:</strong> Middlewares are registered on the router using Axum's <code>.layer()</code> or through Rullst's server configuration wrapper.</li>
+</ul>
+<hr />
+<h2>🛡️ 9. Architectural Guidelines for Backward Compatibility</h2>
+<p>To guarantee stress-free and self-healing updates for Rullst users, all framework code must strictly adhere to the following backward compatibility rules:</p>
+<h3>9.1. The Builder Pattern and <code>#[non_exhaustive]</code></h3>
+<p>Any public configuration struct or extensible enum exposed by the framework <strong>must</strong> use the <code>#[non_exhaustive]</code> attribute. This prevents developers from instantiating the struct directly, ensuring that adding new fields in future minor versions will not break user code.</p>
+<ul>
+<li><strong>Mandatory Usage:</strong> All instantiation must be done via a constructor (<code>new()</code>) and the Builder Pattern (<code>with_...()</code>).</li>
+</ul>
+<pre><code class="language-rust">#[non_exhaustive]
+pub struct RullstConfig {
+    pub port: u16,
+}
+
+impl RullstConfig {
+    pub fn new(port: u16) -&gt; Self {
+        Self { port }
+    }
+}
+</code></pre>
+<h3>9.2. Deprecation Lifecycle (<code>#[deprecated]</code>)</h3>
+<p>The framework will never abruptly remove or rename a public function, struct, or method. If a breaking change to an API is required, the old API must be kept alive for at least one minor version using the <code>#[deprecated]</code> attribute.</p>
+<ul>
+<li><strong>Mandatory Usage:</strong> The <code>note</code> field must explicitly tell the user what to use instead, enabling <code>cargo fix</code> to potentially automate the migration.</li>
+</ul>
+<pre><code class="language-rust">#[deprecated(since = "0.2.0", note = "Please use `Router::new()` instead")]
+pub fn old_initializer() {
+    Router::new();
+}
+</code></pre>
+<h3>9.3. Sealed Traits</h3>
+<p>If the framework exposes a Trait that is meant to be used by the user but <strong>not implemented</strong> by the user (e.g., core framework behavior), it must use the "Sealed Trait" pattern. This ensures that adding new methods to the trait in the future will not break downstream implementations.</p>
+<pre><code class="language-rust">mod private {
+    pub trait Sealed {}
+}
+
+pub trait RullstTrait: private::Sealed {
+    fn execute(&amp;self);
+}
+</code></pre>
+
+    </main>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre').forEach(function (pre) {
+            // Wrap in relative container
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            // Create copy button
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.setAttribute('aria-label', 'Copy code to clipboard');
+            wrapper.appendChild(btn);
+
+            btn.addEventListener('click', function () {
+                const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+                navigator.clipboard.writeText(code).then(function () {
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(function () {
+                    // Fallback for older browsers
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+    });
+</script>
+</body>
+</html>

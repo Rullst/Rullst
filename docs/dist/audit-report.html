@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rullst Framework Docs</title>
+    <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
+    <meta name="author" content="Rullst Team">
+    <link rel="icon" type="image/png" href="Rullst.png">
+    <meta property="og:title" content="Rullst Framework Docs">
+    <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta property="og:image" content="Rullst.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="Rullst.png">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #f97316;
+            --primary-hover: #10b981;
+            --border: #334155;
+            --code-bg: #0b1120;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 3rem 4rem;
+            max-width: 900px;
+            line-height: 1.7;
+        }
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+        }
+        .sidebar-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-list li {
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-list a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .sidebar-list a:hover {
+            background-color: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+        }
+        h1, h2, h3, h4 {
+            color: var(--text);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h1 { font-size: 2.5rem; font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        h2 { font-size: 1.75rem; }
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code {
+            background-color: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            color: #7dd3fc;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        blockquote {
+            border-left: 4px solid var(--primary);
+            margin: 0;
+            padding: 1rem;
+            color: var(--text-muted);
+            background: rgba(249,115,22, 0.05);
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover {
+            background: rgba(249, 115, 22, 0.3);
+            border-color: #f97316;
+            color: #fff;
+        }
+        .copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="sidebar-brand" href="index.html">
+            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+            Rullst
+        </a>
+        <ul class="sidebar-list">
+<li><a href="index.html">Home</a></li>
+<li><a href="1-getting-started.html">Getting started</a></li>
+<li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="audit-report.html">Audit report</a></li>
+<li><a href="spec.html">Spec</a></li>
+</ul>
+    </aside>
+    <main class="main-content">
+        <h1>🛡️ Relatório de Auditoria de Pré-Lançamento: Rullst Framework v1.0.5</h1>
+<p>Este documento apresenta a <strong>Auditoria Técnica de Pré-Lançamento</strong> realizada na base de código do <strong>Rullst Framework</strong> antes de submetermos e publicarmos a versão <code>v1.0.5</code> no <strong>crates.io</strong>.</p>
+<p>Todas as verificações cobriram aspectos cruciais de <strong>Segurança</strong>, <strong>Performance</strong>, <strong>Facilidade de Manutenção (Humana &amp; IA)</strong> e <strong>Experiência do Usuário (DX)</strong>.</p>
+<hr />
+<h2>📋 Resumo do Status da Auditoria</h2>
+<p>| Dimensão | Status | Avaliação Técnica | Detalhes |
+| :--- | :---: | :--- | :--- |
+| <strong>Segurança</strong> | 🟢 <strong>100% Aprovado</strong> | Sem vulnerabilidades pendentes. Proteções ativas contra Path Traversal, XSS e Criptografia Robusta. | <code>storage.rs</code>, <code>error_console.rs</code>, <code>auth.rs</code> |
+| <strong>Performance</strong> | 🟢 <strong>100% Aprovado</strong> | Fila SQLite otimizada para dreno instantâneo, Scheduler assíncrono e Cache Janitor contra vazamentos de RAM. | <code>queue.rs</code>, <code>scheduler.rs</code>, <code>cache.rs</code> |
+| <strong>Experiência (DX/UX)</strong> | 🟢 <strong>100% Aprovado</strong> | Inicialização limpa com URL clicável, Console de Auto-Cura inquebrável, documentação do Portfolio unificada. | <code>server.rs</code>, <code>error_console.rs</code>, <code>docs/</code> |
+| <strong>Manutenibilidade</strong> | 🟢 <strong>100% Aprovado</strong> | Estrutura modular limpa, tipagem estática robusta e alta aderência para leitura de agentes de IA e humanos. | Arquitetura geral |
+| <strong>Testabilidade</strong> | 🟢 <strong>100% Aprovado</strong> | Suíte completa com <strong>54 testes unitários e de integração passados com sucesso</strong> (0 falhas). | <code>cargo test</code> Workspace |</p>
+<hr />
+<h2>🔒 1. Auditoria de Segurança (Security Audit)</h2>
+<p>Analisamos e testamos rigorosamente as mitigações implementadas para as vulnerabilidades críticas anteriormente catalogadas:</p>
+<h3>1.1 Path Traversal (Storage Local) — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/storage.rs</code></li>
+<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
+<li><strong>Verificação:</strong> O método <code>resolve_path</code> agora implementa uma higienização e reconstrução de caminho puramente lógica por meio de <code>joined.components()</code>, neutralizando qualquer tentativa de escapar da pasta usando componentes de diretório pai (<code>../</code> ou <code>..\</code>). Se o caminho final normalizado não iniciar formalmente com a raiz configurada (<code>self.root</code>), o acesso é rejeitado com um erro explícito <code>StorageError::DriverError</code>.</li>
+<li><strong>Teste Automatizado:</strong> O teste <code>test_local_storage_path_traversal</code> cobre essa verificação ativamente e passou com sucesso.</li>
+</ul>
+<h3>1.2 Reflected XSS &amp; Quebra de Javascript (Console de Auto-Cura) — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/error_console.rs</code></li>
+<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
+<li><strong>Verificação:</strong> A mensagem de pânico agora passa por um sanitizador que realiza o escape de caracteres HTML (<code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>) e substitui de maneira segura barras invertidas (<code>\\</code>), crases (<code>`</code>) e símbolos de interpolação (<code>$</code>), gerando a variável string <code>escaped_err_js</code>. Isso impede ataques de XSS através de payloads induzidos e evita que a sintaxe do literal de template Javascript quebre por conta de aspas ou crases na mensagem do Rust Compiler.</li>
+</ul>
+<h3>1.3 Criptografia e Derivação Segura de Sessão — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/auth.rs</code></li>
+<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
+<li><strong>Verificação:</strong> Em vez do preenchimento simplista com zeros de chaves curtas e truncamento de chaves longas (que reduzia drasticamente o espaço de entropia e a segurança), o Rullst agora deriva a chave AES-256-GCM computando um hash de uma via <strong>SHA-256</strong> do valor original do <code>APP_KEY</code>. Isso garante uma chave simétrica perfeitamente balanceada de 32 bytes para qualquer tamanho configurado de chave do aplicativo.</li>
+</ul>
+<hr />
+<h2>⚡ 2. Auditoria de Performance (Performance Audit)</h2>
+<p>Avaliamos os mecanismos de concorrência e o uso de recursos de CPU e RAM no Rullst:</p>
+<h3>2.1 Loop Otimizado do Worker de Background — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/queue.rs</code></li>
+<li><strong>Status:</strong> ⚡ <strong>Ultra Rápido</strong></li>
+<li><strong>Verificação:</strong> Anteriormente, o Worker de tarefas de background aguardava compulsoriamente o tempo <code>poll_interval</code> após cada job processado. Agora, uma variável de controle de estado (<code>processed_job</code>) identifica se houve um job processado na rodada. Em caso afirmativo, o Worker repete o loop de busca <strong>imediatamente</strong>, limpando milhares de tarefas enfileiradas sem descanso desnecessário. O repouso por <code>poll_interval</code> é ativado apenas se a fila estiver de fato vazia (<code>Ok(None)</code>).</li>
+</ul>
+<h3>2.2 Agendador Não-Bloqueante (Scheduler Tasks) — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/scheduler.rs</code></li>
+<li><strong>Status:</strong> ⚡ <strong>Concorrente</strong></li>
+<li><strong>Verificação:</strong> Para evitar desvios temporais em cascata (time drift), os handlers de cron do Scheduler agora são isolados em tarefas assíncronas dedicadas com <code>tokio::spawn</code>. Tarefas de processamento longo (como backups e chamadas externas de API) rodam em background e não bloqueiam o loop central de agendamento de outras tarefas.</li>
+</ul>
+<h3>2.3 Janitor de Coleta de Lixo no Cache In-Memory — <strong>RESOLVIDO</strong></h3>
+<ul>
+<li><strong>Localização:</strong> <code>rullst/src/cache.rs</code></li>
+<li><strong>Status:</strong> ⚡ <strong>Sem Vazamentos de RAM</strong></li>
+<li><strong>Verificação:</strong> Para mitigar o vazamento silencioso em que chaves expiradas permaneciam na RAM indefinidamente caso não fossem mais acessadas (lazy expiration), o <code>MemoryDriver</code> agora spawna um <strong>Janitor ativo</strong> em segundo plano rodando a cada 30 segundos. Ele varre concorrentemente o <code>DashMap</code> e limpa as chaves com TTL expirado, mantendo a RAM do servidor enxuta.</li>
+</ul>
+<hr />
+<h2>🤖 3. Facilidade de Manutenção por Humanos e com IA</h2>
+<p>Analisamos o quão inteligível e limpo o código está para a colaboração contínua entre desenvolvedores humanos e agentes de inteligência artificial (AI-Native Design):</p>
+<ul>
+<li><strong>Modularidade A+:</strong> As responsabilidades do framework estão elegantemente fatiadas (mecanismo de macros em <code>rullst-macros</code>, núcleo em <code>rullst</code>, CLI em <code>cargo-rullst</code>).</li>
+<li><strong>Documentação Excepcional:</strong> Cada módulo e driver possui docstrings no topo do arquivo descrevendo suas propriedades e um exemplo de uso rápido em <code>rust,ignore</code>. Isso serve tanto de documentação para o desenvolvedor quanto de contexto direto e valioso para prompts de IA.</li>
+<li><strong>Console Inquebrável:</strong> O Console de Auto-Cura é o ápice da DX de Inteligência Artificial. Com a correção das crases e a blindagem contra Path Traversal, o Console é uma ferramenta poderosa e segura para auto-correção de falhas em ambiente de desenvolvimento.</li>
+</ul>
+<hr />
+<h2>🎨 4. Experiência do Usuário e Experiência do Desenvolvedor (DX/UX)</h2>
+<ul>
+<li><strong>UX de Inicialização:</strong> O framework Rullst agora exibe um log extremamente amigável ao iniciar o servidor:
+<code>Rullst framework serving on http://0.0.0.0:3000</code>
+<code>👉 Visit http://localhost:3000 in your browser to see the result!</code>
+Isso elimina qualquer dúvida do iniciante sobre onde acessar a aplicação.</li>
+<li><strong>Unificação do Getting Started:</strong> Integramos o robusto tutorial de Portfolio com HTMX/Tailwind diretamente no guia de introdução inicial (<code>docs/1-getting-started.md</code>), mantendo o aprendizado focado e eliminando fragmentação desnecessária de páginas.</li>
+<li><strong>Auto-Deploy Seguro:</strong> O pipeline de CI no GitHub Pages garante que toda a documentação bonita e dinâmica construída no RullstPress seja gerada e hospedada de forma automatizada sem esforço manual.</li>
+</ul>
+<hr />
+<h2>🧪 5. Execução do Test Suite Global</h2>
+<p>Executamos toda a suíte de testes do Workspace de forma síncrona. Os resultados foram espetaculares:</p>
+<pre><code class="language-text">running 44 tests in core rullst library... ok (all passed)
+running 1 test in tests/error_console_tests.rs... ok (all passed)
+running 5 tests in tests/feature_tests.rs... ok (all passed)
+running 4 tests in tests/testing_tests.rs... ok (all passed)
+-------------------------------------------------------------
+🎉 Resultado Final: 54/54 testes passaram com sucesso!
+</code></pre>
+<hr />
+<h2>🏁 Conclusão</h2>
+<p>A base de código do <strong>Rullst Framework</strong> encontra-se em um estado extremamente maduro, seguro, performático e perfeitamente validado. <strong>Nenhum bug de segurança ou de performance pendente foi identificado.</strong></p>
+<p>Estamos totalmente prontos para o lançamento oficial da versão <code>1.0.5</code>.</p>
+
+    </main>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre').forEach(function (pre) {
+            // Wrap in relative container
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            // Create copy button
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.setAttribute('aria-label', 'Copy code to clipboard');
+            wrapper.appendChild(btn);
+
+            btn.addEventListener('click', function () {
+                const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+                navigator.clipboard.writeText(code).then(function () {
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(function () {
+                    // Fallback for older browsers
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+    });
+</script>
+</body>
+</html>

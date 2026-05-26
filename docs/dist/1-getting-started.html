@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rullst Framework Docs</title>
+    <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
+    <meta name="author" content="Rullst Team">
+    <link rel="icon" type="image/png" href="Rullst.png">
+    <meta property="og:title" content="Rullst Framework Docs">
+    <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta property="og:image" content="Rullst.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="Rullst.png">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #f97316;
+            --primary-hover: #10b981;
+            --border: #334155;
+            --code-bg: #0b1120;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 3rem 4rem;
+            max-width: 900px;
+            line-height: 1.7;
+        }
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+        }
+        .sidebar-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-list li {
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-list a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: block;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .sidebar-list a:hover {
+            background-color: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+        }
+        h1, h2, h3, h4 {
+            color: var(--text);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h1 { font-size: 2.5rem; font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        h2 { font-size: 1.75rem; }
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code {
+            background-color: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            color: #7dd3fc;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        blockquote {
+            border-left: 4px solid var(--primary);
+            margin: 0;
+            padding: 1rem;
+            color: var(--text-muted);
+            background: rgba(249,115,22, 0.05);
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover {
+            background: rgba(249, 115, 22, 0.3);
+            border-color: #f97316;
+            color: #fff;
+        }
+        .copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="sidebar-brand" href="index.html">
+            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+            Rullst
+        </a>
+        <ul class="sidebar-list">
+<li><a href="index.html">Home</a></li>
+<li><a href="1-getting-started.html">Getting started</a></li>
+<li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="audit-report.html">Audit report</a></li>
+<li><a href="spec.html">Spec</a></li>
+</ul>
+    </aside>
+    <main class="main-content">
+        <h1>Getting Started</h1>
+<p>Welcome to the Rullst initial tutorial.</p>
+<h2>1. Installation</h2>
+<p>First, you'll need Rust installed. The official and recommended way is to visit <a href="https://rust-lang.org/tools/install/">https://rust-lang.org/tools/install/</a>.</p>
+<p><strong>For macOS and Linux:</strong>
+You can install via <code>rustup</code> by running the following command in your terminal:</p>
+<pre><code class="language-bash">curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+</code></pre>
+<p><strong>For Windows:</strong>
+Download and run the <code>rustup-init.exe</code> from the official website mentioned above. Follow the on-screen instructions.</p>
+<p>Next, install the Rullst CLI:</p>
+<pre><code class="language-bash">cargo install cargo-rullst
+</code></pre>
+<h2>2. Creating Your First Project</h2>
+<p>With the CLI installed, you can generate a complete project using our interactive wizard:</p>
+<pre><code class="language-bash">cargo rullst new
+
+# The wizard will prompt you with a few options:
+# 🚀 App name? (no spaces allowed) -&gt; my_portfolio
+# 🏗️ What would you like to build? -&gt; Full-Stack Web App (SaaS, Portfolio, Blog)
+# 🔥 Enable Hot Reloading by default? -&gt; Yes
+# 🗄️ Will your project need a Data Base? -&gt; Yes (or No for simple projects)
+# 💾 Select a DB Provider -&gt; Sqlite / Postgres / MySQL/MariaDB
+
+cd my_portfolio
+cargo run
+</code></pre>
+<blockquote>
+<p><strong>Note about Cargo:</strong> The first time you run <code>cargo run</code>, Cargo will download and compile all the necessary dependencies (like Tokio, Axum, SQLx). This is completely normal in Rust and might take a few minutes. However, it will cache everything, so the next times you run <code>cargo run</code> it will take only a second!</p>
+</blockquote>
+<blockquote>
+<p><strong>Note:</strong> The project name cannot contain spaces (use <code>my_portfolio</code> instead of <code>my portfolio</code>).</p>
+</blockquote>
+<p>Done! Go to <code>http://localhost:3000</code> to see your framework running.</p>
+<p>After doing this, you can already put in your portfolio that you've started learning Rullst, the best Full-Stack web framework! :)</p>
+<hr />
+<h2>3. Creating a Developer Portfolio</h2>
+<p>This section will guide you step-by-step through creating a lightning-fast, highly-reactive Developer Portfolio using <strong>Rullst</strong>, <strong>Tailwind CSS</strong>, and <strong>HTMX</strong>.</p>
+<p>By the end of this tutorial, you will have a beautiful dark-mode portfolio that renders in under 5 milliseconds!</p>
+<h3>Using Tailwind CSS with the <code>html!</code> macro</h3>
+<p>Open your project in your code editor.
+Since this is a Web App, Rullst automatically configured a frontend entry point for you in <code>src/lib.rs</code>.</p>
+<p>Rullst has a powerful <code>html!</code> macro that allows you to write standard HTML5 directly inside Rust.
+It supports dynamic Rust variables natively, escaping them automatically to prevent XSS attacks.</p>
+<p>Let's create an incredible Hero Section using Tailwind CSS classes. Replace the <code>home</code> function in <code>src/lib.rs</code> with this:</p>
+<pre><code class="language-rust">use rullst::{html, response::IntoResponse, htmx::{HtmxRequest, render_page}};
+
+pub async fn home(htmx: HtmxRequest) -&gt; impl IntoResponse {
+    let name = "Alex Developer";
+    let role = "Full-Stack Rust Engineer";
+    let description = "I build blazingly fast and highly scalable applications.";
+
+    let content = html! {
+        &lt;div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans selection:bg-sky-500/30"&gt;
+            
+            &lt;div class="max-w-3xl text-center space-y-8 animate-fade-in-up"&gt;
+                
+                &lt;div class="inline-block px-4 py-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-400 text-sm font-semibold tracking-wide backdrop-blur-md"&gt;
+                    "Available for hire"
+                &lt;/div&gt;
+
+                &lt;h1 class="text-6xl md:text-7xl font-extrabold tracking-tight"&gt;
+                    "Hi, I'm " 
+                    &lt;span class="bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent"&gt;
+                        {name}
+                    &lt;/span&gt;
+                &lt;/h1&gt;
+                
+                &lt;p class="text-2xl font-medium text-slate-300"&gt;
+                    {role}
+                &lt;/p&gt;
+
+                &lt;p class="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed"&gt;
+                    {description}
+                &lt;/p&gt;
+
+                &lt;!-- Project Loader Section --&gt;
+                &lt;div id="projects-container" class="pt-8"&gt;
+                    &lt;button hx-get="/projects" 
+                            hx-target="#projects-container" 
+                            hx-swap="outerHTML" 
+                            class="px-8 py-3.5 bg-slate-100 text-slate-900 font-bold rounded-xl shadow-lg shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"&gt;
+                        "View My Projects"
+                    &lt;/button&gt;
+                &lt;/div&gt;
+
+            &lt;/div&gt;
+        &lt;/div&gt;
+    };
+
+    render_page(&amp;htmx, "Alex's Portfolio", content)
+}
+</code></pre>
+<p>Notice the <code>&lt;button hx-get="/projects"&gt;</code>! We are using <strong>HTMX</strong> to fetch projects directly from the backend without writing a single line of JavaScript!</p>
+<h3>Creating the HTMX Interactive Route</h3>
+<p>Now, let's create the <code>/projects</code> route that will respond to the button click and render a beautiful grid of projects.</p>
+<p>Add this new handler below the <code>home</code> function in <code>src/lib.rs</code>:</p>
+<pre><code class="language-rust">// A simple struct to represent a project
+struct Project {
+    title: &amp;'static str,
+    tech: &amp;'static str,
+}
+
+pub async fn load_projects() -&gt; impl IntoResponse {
+    let projects = vec![
+        Project { title: "Rullst CLI", tech: "Rust, clap" },
+        Project { title: "E-Commerce API", tech: "Rust, Axum, PostgreSQL" },
+        Project { title: "Social Dashboard", tech: "React, Tailwind, HTMX" },
+    ];
+
+    rullst::response::Html(html! {
+        &lt;div id="projects-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 w-full animate-fade-in"&gt;
+            { 
+                projects.into_iter().map(|p| html! {
+                    &lt;div class="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/50 transition-all duration-300 hover:-translate-y-1"&gt;
+                        &lt;h3 class="text-xl font-bold text-slate-200 group-hover:text-sky-400 transition-colors"&gt;
+                            {p.title}
+                        &lt;/h3&gt;
+                        &lt;p class="text-sm font-mono text-slate-500 mt-2"&gt;
+                            {p.tech}
+                        &lt;/p&gt;
+                    &lt;/div&gt;
+                }).collect::&lt;String&gt;()
+            }
+        &lt;/div&gt;
+    })
+}
+</code></pre>
+<h3>Adding the Route</h3>
+<p>Finally, don't forget to register this new route in your <code>rullst_router_init</code> function at the bottom of the file:</p>
+<pre><code class="language-rust">#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -&gt; *mut rullst::Router {
+    let router = rullst::routes![
+        get("/" =&gt; home),
+        get("/projects" =&gt; load_projects),
+    ];
+    Box::into_raw(Box::new(router))
+}
+</code></pre>
+<h3>Run and Enjoy!</h3>
+<p>If you generated your project with <strong>Hot-Reloading</strong> enabled, your server has already recompiled and updated the routes dynamically!
+Just visit <a href="http://localhost:3000">http://localhost:3000</a> and click the "View My Projects" button!</p>
+<p>You now have an incredibly robust, SEO-friendly, and blazing-fast portfolio powered by Rust!</p>
+
+    </main>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre').forEach(function (pre) {
+            // Wrap in relative container
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            // Create copy button
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.setAttribute('aria-label', 'Copy code to clipboard');
+            wrapper.appendChild(btn);
+
+            btn.addEventListener('click', function () {
+                const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+                navigator.clipboard.writeText(code).then(function () {
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(function () {
+                    // Fallback for older browsers
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+    });
+</script>
+</body>
+</html>
