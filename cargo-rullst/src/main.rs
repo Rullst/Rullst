@@ -1159,7 +1159,7 @@ rullst = {{ path = "{rullst_path}" }}
 tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
-axum = "0.7"
+axum = "0.8"
 "#,
         rullst_path = rullst_path
     ));

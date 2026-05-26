@@ -19,7 +19,7 @@ pub fn router(queue: Queue) -> Router {
     Router::new()
         .route("/", get(dashboard_home))
         .route("/jobs-table", get(jobs_table))
-        .route("/retry/:id", post(retry_job))
+        .route("/retry/{id}", post(retry_job))
         .route("/purge", post(purge_failed_jobs))
         .with_state(state)
 }

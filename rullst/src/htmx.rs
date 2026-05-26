@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{HeaderValue, request::Parts},
     response::{Html, IntoResponse, Response},
@@ -23,7 +22,6 @@ pub struct HtmxRequest {
     pub current_url: Option<String>,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for HtmxRequest
 where
     S: Send + Sync,

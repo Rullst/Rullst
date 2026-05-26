@@ -4,9 +4,12 @@ Rullst is an extremely fast, modular, and friendly Full-Stack web framework for 
 
 > "Pragmatic, Built for Developer Happiness, and Production-Ready."
 
-## Where to start?
+## Tutorials
 
-[Go to Getting Started](/getting-started.html)
+- [Tutorial 1: Getting Started](./1-getting-started.html)
+- [Tutorial 2: Documenting with RullstPress](./2-tutorial-rullstpress.html)
+- [🛡️ Pre-Release Audit Report](./audit-report.html)
+- [📦 View on Crates.io](https://crates.io/crates/rullst)
 
 ### Why Rullst?
 - 🚀 **Extreme Speed:** Built in Rust, using `tokio` and `axum`.

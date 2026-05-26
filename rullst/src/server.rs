@@ -235,6 +235,7 @@ impl Server {
                 "Rullst framework serving on http://{} (Hot-Reload Ativo)",
                 addr
             );
+            println!("🚀 Visit: http://localhost:{} to see the result!", addr.port());
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, hotswap_service).await?;
@@ -263,6 +264,7 @@ impl Server {
             }
 
             println!("Rullst framework serving on http://{}", addr);
+            println!("🚀 Visit: http://localhost:{} to see the result!", addr.port());
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, app).await?;
@@ -277,7 +279,7 @@ pub struct HotSwapService {
     current_router: Arc<RwLock<axum::Router>>,
 }
 
-impl<'a> Service<axum::serve::IncomingStream<'a>> for HotSwapService {
+impl<'a, L: axum::serve::Listener> Service<axum::serve::IncomingStream<'a, L>> for HotSwapService {
     type Response = HotSwapService;
     type Error = std::convert::Infallible;
     type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
@@ -286,7 +288,7 @@ impl<'a> Service<axum::serve::IncomingStream<'a>> for HotSwapService {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _req: axum::serve::IncomingStream<'a>) -> Self::Future {
+    fn call(&mut self, _req: axum::serve::IncomingStream<'a, L>) -> Self::Future {
         std::future::ready(Ok(self.clone()))
     }
 }

@@ -56,13 +56,14 @@ impl Router {
 
     pub fn layer<L>(self, layer: L) -> Self
     where
-        L: tower_layer::Layer<axum::routing::Route> + Clone + Send + 'static,
+        L: tower_layer::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
         L::Service: tower_service::Service<
                 axum::extract::Request,
                 Response = axum::response::Response,
                 Error = std::convert::Infallible,
             > + Clone
             + Send
+            + Sync
             + 'static,
         <L::Service as tower_service::Service<axum::extract::Request>>::Future: Send + 'static,
     {

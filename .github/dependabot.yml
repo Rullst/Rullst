@@ -3,6 +3,9 @@ updates:
   # Enable Cargo updates for the Rust workspace
   - package-ecosystem: "cargo"
     directory: "/"
+    # All dependency PRs target dev, NOT main.
+    # Review and test on dev first, then release to main via the normal process.
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -12,3 +15,10 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    # Group minor and patch updates together in a single PR to reduce noise.
+    # Breaking (major) updates will still be individual PRs.
+    groups:
+      safe-updates:
+        update-types:
+          - "minor"
+          - "patch"
