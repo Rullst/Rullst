@@ -366,6 +366,13 @@ pub(crate) async fn render_console_html(error_message: &str, backtrace: &std::ba
         .replace('<', "&lt;")
         .replace('>', "&gt;");
 
+    let escaped_err_js = escaped_err
+        .replace('\\', "\\\\")
+        .replace('`', "\\`")
+        .replace('$', "\\$");
+
+    let file_display_js = file_display.replace('\\', "\\\\").replace('"', "\\\"");
+
     format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -858,8 +865,8 @@ pub(crate) async fn render_console_html(error_message: &str, backtrace: &std::ba
     </script>
 </body>
 </html>"#,
-        escaped_err = escaped_err,
-        file_display = file_display,
+        escaped_err = escaped_err_js,
+        file_display = file_display_js,
         line_display = line_display,
         code_frame_html = code_frame_html,
         trace_html = trace_html

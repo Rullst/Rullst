@@ -119,7 +119,7 @@ impl Server {
             };
 
             let current_router = Arc::new(RwLock::new(initial_router));
-            let active_library = Arc::new(Mutex::new(Some(library)));
+            let active_libraries = Arc::new(Mutex::new(vec![library]));
 
             // Setup file watcher
             let (tx, rx) = std::sync::mpsc::channel();
@@ -136,7 +136,7 @@ impl Server {
 
             // Spawn dynamic loader watch thread
             let current_router_clone = current_router.clone();
-            let active_library_clone = active_library.clone();
+            let active_libraries_clone = active_libraries.clone();
             let lib_path_clone = lib_path.clone();
 
             std::thread::spawn(move || {
@@ -185,9 +185,10 @@ impl Server {
                                     Err(poisoned) => *poisoned.into_inner() = new_router,
                                 };
 
-                                // Swap library under lock to keep memory mapped safely
-                                let mut active_lib = active_library_clone.lock().unwrap_or_else(|p| p.into_inner());
-                                *active_lib = Some(new_lib); // Old library is safely dropped here!
+                                // Keep all loaded libraries in memory to prevent segmentation faults 
+                                // for concurrent requests executing handlers from older versions
+                                let mut active_libs = active_libraries_clone.lock().unwrap_or_else(|p| p.into_inner());
+                                active_libs.push(new_lib);
 
                                 println!("\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m");
                             }
@@ -345,7 +346,15 @@ fn load_dylib_router(
     }
 
     let parent = path_buf.parent().unwrap_or(std::path::Path::new("."));
-    let filename = path_buf.file_stem().unwrap().to_str().unwrap();
+    let filename = path_buf
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Caminho da dylib inválido ou caracteres não UTF-8 detectados",
+            )
+        })?;
 
     // Clean up older active files that are no longer locked by any process
     if let Ok(entries) = std::fs::read_dir(parent) {

@@ -4,7 +4,24 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-05-26 🛡️
+
+### Security & Quality Fixes
+- **Security Enhancements**:
+  - Implemented SHA-256 key derivation in `auth.rs` to securely stretch `APP_KEY` for AES-256-GCM.
+  - Added safe `serde_urlencoded` parser to `security.rs` to guarantee CSRF tokens are safely extracted and compared from deeply nested url-encoded forms.
+  - Restored strict HTML template string sanitization via template literals inside `error_console.rs` to prevent JS injection vectors.
+- **Stability & Performance Fixes**:
+  - Eliminated `.unwrap()` calls in `server.rs`, migrating `HotSwapService` to use graceful fallbacks that prevent runtime panics when dylibs are missing or file handles are locked.
+  - Migrated dynamic library historical handles to `Mutex<Vec<Library>>` to safely retain historical pointers, preventing `libloading` Drop implementations from immediately freeing hot-swapped memory boundaries resulting in Segmentation Faults.
+  - Refactored `scheduler.rs` loop to use `tokio::spawn` instead of blocking `await` on cron jobs, avoiding scheduler deadlock.
+  - Migrated `queue.rs` SQLite worker to decouple popping from the database driver and loop latency, removing sleep-based latency blocks.
+  - Fixed TOML parser bug in `mail.rs` resolving arbitrary `.unwrap()` when casting integer ports to unsigned integers.
+  - Enabled inline comment stripping for `feature.rs` file reads to support `#` comments inside `Rullst.toml`.
+  - Added background Cache Janitor to `cache.rs` via `tokio::spawn` using interval loops to actively prune expired DashMap keys.
+
 ## [1.0.0] - 2026-05-25 🚀
+
 
 ### Added (The "Unfair Advantage" & Local AI Dev Tooling)
 - **Hot Reloading via Dynamic Linking (`Server::new_hot`)**:

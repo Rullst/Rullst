@@ -2,6 +2,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
+use sha2::Digest;
 use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
@@ -61,9 +62,11 @@ pub fn get_app_key() -> Vec<u8> {
 
 /// Encrypts a user_id into a secure base64-encoded string.
 pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(app_key);
+    let key_hash = hasher.finalize();
     let mut key_bytes = [0u8; 32];
-    let limit = app_key.len().min(32);
-    key_bytes[..limit].copy_from_slice(&app_key[..limit]);
+    key_bytes.copy_from_slice(&key_hash);
 
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
 
@@ -85,9 +88,11 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
 
 /// Decrypts a secure base64-encoded string back into a user_id.
 pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(app_key);
+    let key_hash = hasher.finalize();
     let mut key_bytes = [0u8; 32];
-    let limit = app_key.len().min(32);
-    key_bytes[..limit].copy_from_slice(&app_key[..limit]);
+    key_bytes.copy_from_slice(&key_hash);
 
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
 

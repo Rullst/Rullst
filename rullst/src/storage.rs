@@ -45,15 +45,35 @@ impl LocalDriver {
         LocalDriver { root: root.into() }
     }
 
-    fn resolve_path(&self, path: &str) -> PathBuf {
-        self.root.join(path.trim_start_matches('/'))
+    fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
+        let joined = self.root.join(path.trim_start_matches('/'));
+        
+        let mut normalized = PathBuf::new();
+        for component in joined.components() {
+            match component {
+                std::path::Component::ParentDir => {
+                    normalized.pop();
+                }
+                std::path::Component::Normal(c) => {
+                    normalized.push(c);
+                }
+                std::path::Component::CurDir => {}
+                other => normalized.push(other.as_os_str()),
+            }
+        }
+        
+        if normalized.starts_with(&self.root) {
+            Ok(normalized)
+        } else {
+            Err(StorageError::DriverError("Access denied: path traversal attempt detected".to_string()))
+        }
     }
 }
 
 #[async_trait]
 impl StorageDriver for LocalDriver {
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError> {
-        let full_path = self.resolve_path(path);
+        let full_path = self.resolve_path(path)?;
         if let Some(parent) = full_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
@@ -62,18 +82,18 @@ impl StorageDriver for LocalDriver {
     }
 
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError> {
-        let full_path = self.resolve_path(path);
+        let full_path = self.resolve_path(path)?;
         let data = tokio::fs::read(full_path).await?;
         Ok(data)
     }
 
     async fn exists(&self, path: &str) -> Result<bool, StorageError> {
-        let full_path = self.resolve_path(path);
+        let full_path = self.resolve_path(path)?;
         Ok(tokio::fs::metadata(full_path).await.is_ok())
     }
 
     async fn delete(&self, path: &str) -> Result<(), StorageError> {
-        let full_path = self.resolve_path(path);
+        let full_path = self.resolve_path(path)?;
         if tokio::fs::metadata(&full_path).await.is_ok() {
             tokio::fs::remove_file(full_path).await?;
         }
@@ -325,6 +345,22 @@ mod tests {
         assert!(!driver.exists("images/avatar.png").await.unwrap());
 
         // Clean up
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[tokio::test]
+    async fn test_local_storage_path_traversal() {
+        let temp_dir = "storage/test_traversal";
+        let _ = std::fs::remove_dir_all(temp_dir);
+        let driver = LocalDriver::new(temp_dir);
+
+        // Try path traversal
+        let res_put = driver.put("../traversal.txt", b"hack").await;
+        assert!(res_put.is_err());
+
+        let res_get = driver.get("../traversal.txt").await;
+        assert!(res_get.is_err());
+
         let _ = std::fs::remove_dir_all(temp_dir);
     }
 }

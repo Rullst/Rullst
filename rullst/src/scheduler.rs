@@ -130,7 +130,11 @@ impl Scheduler {
                             .to_std()
                             .unwrap_or(std::time::Duration::from_secs(60));
                         tokio::time::sleep(duration).await;
-                        handler().await;
+                        
+                        let handler_clone = Arc::clone(&handler);
+                        tokio::spawn(async move {
+                            handler_clone().await;
+                        });
                     } else {
                         // No more upcoming executions — this shouldn't happen with standard cron
                         break;

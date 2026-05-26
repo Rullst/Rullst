@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use dashmap::DashMap;
-use fnv::FnvHasher;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 /// Deterministically calculates a bucket index from 0 to 99 for a given flag and identifier.
 /// This ensures a stable user-to-flag assignment without persistent storage.
 pub fn calculate_hash_bucket(flag: &str, identifier: &str) -> u32 {
-    let mut hasher = FnvHasher::default();
+    let mut hasher = DefaultHasher::new();
     hasher.write(flag.as_bytes());
     hasher.write(identifier.as_bytes());
     let hash_val = hasher.finish();
@@ -321,7 +321,8 @@ impl TomlFeatureDriver {
                 let mut parts = trimmed.splitn(2, '=');
                 if let (Some(key), Some(val)) = (parts.next(), parts.next()) {
                     let k = key.trim().to_string();
-                    let v = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                    let clean_val = val.split('#').next().unwrap_or(val).trim();
+                    let v = clean_val.trim_matches('"').trim_matches('\'').to_string();
                     self.config.insert(k, v);
                 }
             }

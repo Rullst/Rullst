@@ -15,18 +15,16 @@ pub fn generate_csrf_token() -> String {
         .collect()
 }
 
+#[derive(serde::Deserialize)]
+struct CsrfForm {
+    _token: Option<String>,
+}
+
 /// Helper to extract the token from form-encoded body bytes.
 fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
-    let body_str = String::from_utf8_lossy(bytes);
-    for param in body_str.split('&') {
-        let mut parts = param.split('=');
-        if let (Some(key), Some(val)) = (parts.next(), parts.next())
-            && key == "_token"
-        {
-            return Some(val.to_string());
-        }
-    }
-    None
+    serde_urlencoded::from_bytes::<CsrfForm>(bytes)
+        .ok()
+        .and_then(|form| form._token)
 }
 
 /// Middleware that enforces CSRF protection using the Double Submit Cookie pattern.

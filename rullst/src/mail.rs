@@ -315,15 +315,24 @@ impl Mail {
 
     fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         let driver_name = std::env::var("MAIL_DRIVER").unwrap_or_else(|_| {
+            let mut found_driver = None;
             if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
+                let mut in_mail = false;
                 for line in toml_content.lines() {
                     let trimmed = line.trim();
-                    if trimmed.starts_with("driver") && trimmed.contains("mail") {
-                        // basic toml parse
+                    if trimmed.starts_with('[') {
+                        in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
+                        continue;
+                    }
+                    if in_mail && trimmed.starts_with("driver") {
+                        if let Some(val) = trimmed.split('=').nth(1) {
+                            let clean_val = val.split('#').next().unwrap_or(val).trim();
+                            found_driver = Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
+                        }
                     }
                 }
             }
-            "log".to_string()
+            found_driver.unwrap_or_else(|| "log".to_string())
         });
 
         match driver_name.as_str() {

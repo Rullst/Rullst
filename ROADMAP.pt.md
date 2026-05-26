@@ -153,30 +153,80 @@ graph TD
 
 ---
 
-## 🌍 Marco 8: The Hyper-Edge & Hybrid Deployment
+## 🌍 Marco 8: Distribuição de Dados e Fusão com a Borda (Edge Fusion)
 **Objetivo:** Rodar o Rullst em infraestrutura Edge moderna sem reescrever código e com latência ultra-baixa globalmente.
 
-- [ ] **Rullst Edge (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda) abstraindo as diferenças de Tokio/WASI.
-- [ ] **Sincronização de Estado Distribuído:** Drivers nativos para bancos de dados na borda (Cloudflare D1, Turso/libsql) integrados ao `rust-eloquent` para replicação global.
+- [ ] **Rullst Edge Runtime (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstraindo as diferenças de Tokio/WASI.
+- [ ] **Replicação SQLite Zero-Config:** Drivers nativos para bancos de dados distribuídos na borda (Turso/libsql, Cloudflare D1) integrados ao `rust-eloquent`. Leia e grave localmente com 1ms de latência enquanto o framework sincroniza globalmente em background.
 
 ---
 
-## 📊 Marco 9: Telemetria e Observabilidade de Próxima Geração
+## 🤖 Marco 9: DevOps Agêntico e Infraestrutura Autônoma
+**Objetivo:** Alavancar o conhecimento profundo que o compilador do Rullst tem sobre o projeto para gerenciar não apenas o código, mas a infraestrutura e o CI/CD.
+
+- [ ] **Provisionamento Autônomo (`cargo rullst deploy --autonomous`):** O compilador analisa os recursos utilizados no código (ex: usa `rullst::storage::S3`, cria um bucket) e conversa com os provedores de nuvem para provisionar a infraestrutura exata, eliminando arquivos complexos de Terraform.
+- [ ] **Análise de Gargalos em CI/CD com IA:** Uma esteira de testes que usa LLMs locais para avaliar regressões de performance. Se um commit deixar uma rota mais lenta, a IA analisa o profiling da stack do Tokio e sugere a linha exata que está causando o gargalo.
+
+---
+
+## 📊 Marco 10: Telemetria de Hardware e Pulse
 **Objetivo:** Tornar o debug assíncrono e o profiling de performance fluidos, sem depender de setups externos complexos.
 
-- [ ] **Rullst Pulse / Horizon 2.0:** Dashboard visual em tempo real para métricas de hardware/software. Detecte gargalos de CPU por rota, memory leaks em tasks assíncronas e gargalos de I/O de consultas com zero overhead.
-- [ ] **OpenTelemetry Nativo:** Abstração *zero-config* para exportar traces e logs para Datadog, Grafana Loki ou Prometheus através de uma simples flag no `Rullst.toml`.
+- [ ] **Rullst Pulse (Telemetria a Nível de Kernel):** Dashboard visual em tempo real para métricas de hardware/software. Detecte gargalos de CPU, contenção de Mutex, memory leaks e gargalos de I/O com zero overhead.
+- [ ] **Time-Travel Debugging no Console de Erros:** Adição de um histórico com os últimos 50 eventos, cliques (HTMX) e queries SQL à tela de "Self-Healing". Permite dar "replay" no cenário exato que causou o "panic" no servidor.
+- [ ] **OpenTelemetry Nativo:** Abstração *zero-config* para exportar traces e logs para Datadog, Grafana Loki ou Prometheus.
 
 ---
 
-## 🔮 Marco 10: A Expansão Definitiva de IA e DX
-**Objetivo:** Consolidar o Rullst como o backend supremo para agentes de IA e fornecer uma Experiência de Desenvolvedor inigualável também para SPAs tradicionais.
+## 🔮 Marco 11: Protocolo Omni-Frontend e Expansão de IA
+**Objetivo:** Consolidar o Rullst como o backend supremo para agentes de IA, SPAs tradicionais e Aplicativos Mobile Nativos.
 
+- [ ] **Geração Automática de SDK TypeScript:** Para rotas exportadas via REST/JSON ou WebSockets, gerar automaticamente um cliente TS 100% tipado, eliminando ferramentas como tRPC ou OpenAPI manuais.
+- [ ] **Hyper-Media Mobile Bridge:** Protocolo que permite aplicativos mobile híbridos (iOS/Android) consumirem as respostas parciais (HTMX/JSON) do Rullst para renderizar telas nativas instantaneamente (Server-Driven UI para mobile).
 - [ ] **AI Agent Tool-Calling:** Expor rotas e controllers automaticamente como "Tools" executáveis para LLMs externos com esquemas gerados nativamente (`rullst-schema.json`).
-- [ ] **Injeção Dinâmica de Contexto:** Endpoint seguro `/_rullst/ai-context` que fornece documentação e tipos da API em tempo real para agentes de integração de clientes.
-- [ ] **DB Seeding com IA:** `cargo rullst db:seed --ai` usa modelos locais (ex: Ollama) para gerar dados falsos ultra-realistas e contextualizados com seu domínio de negócios.
-- [ ] **Rullst Deploy (O Equivalente ao Forge/Vapor):** `cargo rullst deploy` para deploy com um clique no Render, Fly.io, AWS, lidando automaticamente com banco de dados e certificados SSL.
-- [ ] **Geração Automática de TypeScript:** Geração de tipos TS a partir de structs de requisição/resposta no build, tornando o Rullst o backend perfeito para React/Next.js/Vue.
+- [ ] **Injeção Dinâmica de Contexto:** Endpoint seguro `/_rullst/ai-context` que fornece documentação da API em tempo real para agentes de integração.
+- [ ] **DB Seeding com IA:** `cargo rullst db:seed --ai` usa modelos locais (ex: Ollama) para gerar dados falsos ultra-realistas e contextualizados.
+
+---
+
+## 💎 Marco 12: Zero-Copy Event Streaming e Arquitetura Time-Travel
+**Objetivo:** Unificar nativamente o ciclo de vida dos dados e eliminar a necessidade de infraestruturas pesadas de mensageria de terceiros.
+
+- [ ] **Rullst Ledger (`rullst::ledger`):** Um motor de Event Sourcing integrado diretamente no `rust-eloquent`. Em vez de apenas salvar o estado atual no banco, o framework grava o histórico imutável de eventos por padrão usando persistência Zero-Copy (memória mapeada em disco / mmap).
+- [ ] **Built-in Event Streaming:** O próprio binário do Rullst atua como um micro-broker de mensageria assíncrona distribuída entre diferentes instâncias do app via WebSockets/QUIC, eliminando a dependência obrigatória de Kafka ou RabbitMQ.
+
+---
+
+## 🛠️ Marco 13: Compilação Incremental Instantânea e Linker Hacking
+**Objetivo:** Erradicar o atrito de tempo de compilação em projetos massivos de Rust, atingindo velocidade de resposta de linguagens interpretadas.
+
+- [ ] **Integração Profunda Mold/Cranelift:** Configurar o scaffolding do framework para forçar o uso de linkers ultra-rápidos (como o `mold`) e usar o backend de compilação `Cranelift` no ambiente de desenvolvimento.
+- [ ] **Feedback Loop de Sub-100ms:** Garantir que qualquer alteração em um controller ou modelo recompile apenas um micro-módulo isolado na memória, mantendo o Hot Reloading instantâneo mesmo em projetos com milhares de rotas.
+
+---
+
+## 🌐 Marco 14: Migrações Autônomas com IA e Banco de Dados Baseado em Intenção
+**Objetivo:** Inverter o fluxo de design do banco de dados, deixando a IA gerar esquemas e índices perfeitamente otimizados a partir de descrições naturais.
+
+- [ ] **Modelagem Baseada em Intenção (Intent-Based Modeling):** O desenvolvedor descreve a entidade com comentários ricos em Rust. A IA nativa lê, entende a intenção de negócio e gera automaticamente a migration perfeitamente otimizada para o banco (PostgreSQL/MySQL/SQLite).
+- [ ] **Índices Auto-Otimizáveis:** Em produção, o Rullst monitora queries lentas (usando a telemetria do Marco 10) e sugere ou cria automaticamente índices secundários seguros para eliminar Table Scans lentos em tempo real.
+
+---
+
+## 🔬 Marco 15: Arquitetura Web Pronta para o Futuro Quântico (A Era Pós-Quântica)
+**Objetivo:** Preparar a segurança e a infraestrutura do framework para o dia em que a computação quântica se tornar o padrão de mercado.
+
+- [ ] **Criptografia Pós-Quântica Nativa (PQC):** Substituir gradualmente os algoritmos padrão do framework (JWT, Cookies, Sessões) por algoritmos resistentes a ataques quânticos, como Kyber e Dilithium (padrões NIST).
+- [ ] **Abstração de Segurança Híbrida:** Implementar uma camada de transporte híbrida (TLS clássico + TLS quântico) por padrão, blindando a aplicação contra ataques de "Harvest Now, Decrypt Later".
+- [ ] **Rullst QLink (`rullst::quantum`):** Camada de abstração de drivers para comunicação com processadores quânticos na nuvem (IBM Quantum, AWS Braket). Uma API fluida para despachar tarefas (quantum tasks) complexas da mesma forma que hoje se despacha tarefas para o Redis.
+
+---
+
+## 🧬 Marco 16: O Núcleo Auto-Evolutivo e Polimórfico (O Framework Mutável)
+**Objetivo:** Transformar o framework de uma ferramenta estática em um organismo vivo de software que aprende, se otimiza e se cura sozinho em produção.
+
+- [ ] **Compilação Polimórfica (Polymorphic Code Generation):** Usando telemetria e IA local, o framework analisa o tráfego em produção. Se perceber padrões de dados específicos, ele mesmo reescreve e recompila trechos da sua própria lógica em background (gerando novos .so/.dll) para criar caminhos de execução ultra-otimizados em tempo real.
+- [ ] **Autonomous Error Auto-Healing em Produção:** Se o sistema detectar um pânico inédito em produção, a IA analisa o log, gera um patch corretivo, roda a suíte de testes em background e aplica o hot-swap do router em menos de 1 segundo — tudo sem intervenção humana. O dev apenas recebe um relatório informando que o bug foi resolvido enquanto ele dormia.
 
 ---
 

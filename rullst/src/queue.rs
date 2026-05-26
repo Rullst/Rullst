@@ -562,8 +562,10 @@ impl Worker {
                 poll_interval
             );
             loop {
+                let mut processed_job = false;
                 match driver.pop().await {
                     Ok(Some(job)) => {
+                        processed_job = true;
                         if let Some(handler) = handlers.get(&job.name) {
                             let handler = Arc::clone(handler);
                             let driver = Arc::clone(&driver);
@@ -596,7 +598,9 @@ impl Worker {
                         eprintln!("❌ Queue poll error: {}", e);
                     }
                 }
-                tokio::time::sleep(tokio::time::Duration::from_millis(poll_interval)).await;
+                if !processed_job {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(poll_interval)).await;
+                }
             }
         });
     }

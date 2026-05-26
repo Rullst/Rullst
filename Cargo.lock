@@ -3079,7 +3079,6 @@ dependencies = [
  "cookie",
  "cron",
  "dashmap",
- "fnv",
  "getrandom 0.2.17",
  "lettre",
  "libloading",
@@ -3088,11 +3087,12 @@ dependencies = [
  "redis",
  "reqwest",
  "rullst-macros",
- "rust-eloquent 1.1.0",
+ "rust-eloquent",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
  "serde_urlencoded",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
  "tower 0.4.13",
@@ -3113,7 +3113,7 @@ dependencies = [
  "axum",
  "getrandom 0.2.17",
  "rullst",
- "rust-eloquent 1.0.0",
+ "rust-eloquent",
  "serde",
  "serde_json",
  "sqlx",
@@ -3133,39 +3133,17 @@ dependencies = [
 
 [[package]]
 name = "rust-eloquent"
-version = "1.0.0"
-dependencies = [
- "async-trait",
- "futures",
- "rust-eloquent-macros 1.0.0",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
-]
-
-[[package]]
-name = "rust-eloquent"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "639c0e6e759cc377d44e598dab7243b3ebc247792b09d05969ac53f05cc6769b"
 dependencies = [
  "async-trait",
  "futures",
- "rust-eloquent-macros 1.1.0",
+ "rust-eloquent-macros",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
-]
-
-[[package]]
-name = "rust-eloquent-macros"
-version = "1.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

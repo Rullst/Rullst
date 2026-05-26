@@ -74,6 +74,7 @@ pub trait CacheDriver: Send + Sync {
 // ─── In-Memory Driver ───────────────────────────────────────────────────────
 
 /// Cache entry holding the value and optional expiration time.
+#[derive(Clone)]
 struct CacheEntry {
     value: String,
     expires_at: Option<Instant>,
@@ -90,9 +91,23 @@ pub struct MemoryDriver {
 impl MemoryDriver {
     /// Create a new in-memory cache driver.
     pub fn new() -> Self {
-        Self {
-            store: DashMap::new(),
+        let store: DashMap<String, CacheEntry> = DashMap::new();
+
+        // Spawn active background janitor task to clean up expired cache entries from memory
+        if tokio::runtime::Handle::try_current().is_ok() {
+            let store_clone = store.clone();
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+                    // Retain only unexpired or eternal entries
+                    store_clone.retain(|_, entry| {
+                        entry.expires_at.map_or(true, |exp| Instant::now() < exp)
+                    });
+                }
+            });
         }
+
+        Self { store }
     }
 }
 
