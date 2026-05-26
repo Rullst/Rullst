@@ -235,7 +235,10 @@ impl Server {
                 "Rullst framework serving on http://{} (Hot-Reload Ativo)",
                 addr
             );
-            println!("🚀 Visit: http://localhost:{} to see the result!", addr.port());
+            println!(
+                "🚀 Visit: http://localhost:{} to see the result!",
+                addr.port()
+            );
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, hotswap_service).await?;
@@ -264,7 +267,10 @@ impl Server {
             }
 
             println!("Rullst framework serving on http://{}", addr);
-            println!("🚀 Visit: http://localhost:{} to see the result!", addr.port());
+            println!(
+                "🚀 Visit: http://localhost:{} to see the result!",
+                addr.port()
+            );
 
             let listener = tokio::net::TcpListener::bind(addr).await?;
             axum::serve(listener, app).await?;

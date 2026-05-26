@@ -159,7 +159,10 @@ impl HtmlElement {
 
         let child_tokens = self.children.iter().map(|child| child.to_tokens());
 
-        let void_elements = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"];
+        let void_elements = [
+            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
+            "source", "track", "wbr",
+        ];
         let is_void = void_elements.contains(&tag.as_str());
 
         if self.children.is_empty() && is_void {
