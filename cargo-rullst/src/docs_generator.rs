@@ -41,7 +41,7 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
             if path.extension().and_then(|e| e.to_str()) == Some("md") {
                 pages.push(path.to_path_buf());
             } else {
-                // Copy static assets
+                // Copy static assets (images, etc.)
                 if let Ok(rel_path) = path.strip_prefix(docs_dir) {
                     let out_path = dist_dir.join(rel_path);
                     if let Some(parent) = out_path.parent() {
@@ -98,7 +98,8 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
-    let mut html = String::from("<ul class=\"sidebar-list\">\n<li><a href=\"/\">Home</a></li>\n");
+    // Use relative paths — no leading slash — so GitHub Pages sub-path works correctly
+    let mut html = String::from("<ul class=\"sidebar-list\">\n<li><a href=\"index.html\">Home</a></li>\n");
 
     let mut sorted_pages = pages.to_vec();
     sorted_pages.sort();
@@ -145,11 +146,95 @@ fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
                 .replace("rullst", "Rullst")
                 .replace("blog", "Blog");
 
-            html.push_str(&format!("<li><a href=\"/{}\">{}</a></li>\n", link, title));
+            // Relative link — no leading slash
+            html.push_str(&format!("<li><a href=\"{}\">{}</a></li>\n", link, title));
         }
     }
     html.push_str("</ul>");
     html
+}
+
+/// JavaScript block for copy-to-clipboard on code blocks
+fn copy_code_script() -> &'static str {
+    r#"<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre').forEach(function (pre) {
+            // Wrap in relative container
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            // Create copy button
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.setAttribute('aria-label', 'Copy code to clipboard');
+            wrapper.appendChild(btn);
+
+            btn.addEventListener('click', function () {
+                const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+                navigator.clipboard.writeText(code).then(function () {
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(function () {
+                    // Fallback for older browsers
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    btn.textContent = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function () {
+                        btn.textContent = 'Copy';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+    });
+</script>"#
+}
+
+/// Shared CSS for the copy button
+fn copy_btn_css() -> &'static str {
+    r#"
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            font-family: 'Inter', system-ui, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover {
+            background: rgba(249, 115, 22, 0.3);
+            border-color: #f97316;
+            color: #fff;
+        }
+        .copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+"#
 }
 
 fn render_layout(content: &str, sidebar: &str) -> String {
@@ -163,20 +248,20 @@ fn render_layout(content: &str, sidebar: &str) -> String {
     <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
     <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
     <meta name="author" content="Rullst Team">
-    <link rel="icon" type="image/png" href="/Rullst.png">
+    <link rel="icon" type="image/png" href="Rullst.png">
     <meta property="og:title" content="Rullst Framework Docs">
     <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
-    <meta property="og:image" content="/Rullst.png">
+    <meta property="og:image" content="Rullst.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="/Rullst.png">
+    <meta name="twitter:image" content="Rullst.png">
     <style>
         :root {{
             --bg: #0f172a;
             --sidebar-bg: #1e293b;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --primary: #f97316; /* Logo orange */
-            --primary-hover: #10b981; /* Logo emerald green */
+            --primary: #f97316;
+            --primary-hover: #10b981;
             --border: #334155;
             --code-bg: #0b1120;
         }}
@@ -215,6 +300,7 @@ fn render_layout(content: &str, sidebar: &str) -> String {
             background: linear-gradient(to right, var(--primary), var(--primary-hover));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-decoration: none;
         }}
         .sidebar-brand img {{
             width: 32px;
@@ -239,7 +325,7 @@ fn render_layout(content: &str, sidebar: &str) -> String {
             transition: all 0.2s;
         }}
         .sidebar-list a:hover {{
-            background-color: rgba(56, 189, 248, 0.1);
+            background-color: rgba(249, 115, 22, 0.1);
             color: var(--primary);
         }}
         h1, h2, h3, h4 {{
@@ -274,28 +360,32 @@ fn render_layout(content: &str, sidebar: &str) -> String {
         blockquote {{
             border-left: 4px solid var(--primary);
             margin: 0;
-            padding-left: 1rem;
-            color: var(--text-muted);
-            background: rgba(56,189,248, 0.05);
             padding: 1rem;
+            color: var(--text-muted);
+            background: rgba(249,115,22, 0.05);
             border-radius: 0 0.5rem 0.5rem 0;
         }}
+        {}
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <div class="sidebar-brand">
-            <img src="/Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+        <a class="sidebar-brand" href="index.html">
+            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
             Rullst
-        </div>
+        </a>
         {}
     </aside>
     <main class="main-content">
         {}
     </main>
+    {}
 </body>
 </html>"#,
-        sidebar, content
+        copy_btn_css(),
+        sidebar,
+        content,
+        copy_code_script()
     )
 }
 
@@ -304,7 +394,8 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
     let subtitle =
         "The most productive Full-Stack web framework in Rust. Built for developer happiness.";
     let btn_start = "Learn how to begin";
-    let btn_link = "/1-getting-started.html";
+    // Relative path — no leading slash — works on GitHub Pages sub-path
+    let btn_link = "1-getting-started.html";
 
     let f1_title = "Extremely Fast";
     let f1_desc = "Built on Tokio and Axum. Enjoy the insane speed of Rust without giving up a high-level API.";
@@ -321,24 +412,24 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rullst Framework Docs</title>
+    <title>Rullst — Full-Stack Web Framework for Rust</title>
     <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
     <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
     <meta name="author" content="Rullst Team">
-    <link rel="icon" type="image/png" href="/Rullst.png">
-    <meta property="og:title" content="Rullst Framework Docs">
+    <link rel="icon" type="image/png" href="Rullst.png">
+    <meta property="og:title" content="Rullst Framework">
     <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
-    <meta property="og:image" content="/Rullst.png">
+    <meta property="og:image" content="Rullst.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="/Rullst.png">
+    <meta name="twitter:image" content="Rullst.png">
     <style>
         :root {{
             --bg: #0f172a;
             --sidebar-bg: #1e293b;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --primary: #f97316; /* Orange */
-            --primary-hover: #10b981; /* Emerald */
+            --primary: #f97316;
+            --primary-hover: #10b981;
             --border: #334155;
             --card-bg: #1e293b;
         }}
@@ -355,6 +446,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 1rem 4rem;
             border-bottom: 1px solid var(--border);
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(12px);
@@ -367,10 +459,16 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
             font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 0.3rem;
+            gap: 0.5rem;
             background: linear-gradient(to right, var(--primary), var(--primary-hover));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }}
+        .brand img {{
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
         }}
         .nav-links {{
             display: flex;
@@ -380,6 +478,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         .nav-links a {{
             color: var(--text-muted);
             font-weight: 500;
+            text-decoration: none;
             transition: color 0.2s;
         }}
         .nav-links a:hover {{
@@ -391,12 +490,23 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
             margin: 0 auto;
             padding: 5rem 2rem 1rem;
         }}
+        .hero-logo {{
+            width: 140px;
+            margin-bottom: 1.5rem;
+            border-radius: 28px;
+            box-shadow: 0 20px 60px rgba(249,115,22,0.25), 0 0 0 1px rgba(249,115,22,0.1);
+            animation: float 4s ease-in-out infinite;
+        }}
+        @keyframes float {{
+            0%, 100% {{ transform: translateY(0); }}
+            50% {{ transform: translateY(-10px); }}
+        }}
         .hero h1 {{
             font-size: 4.5rem;
             line-height: 1.1;
             margin-bottom: 1.5rem;
             border: none;
-            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }}
@@ -409,59 +519,98 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
             display: flex;
             gap: 1rem;
             justify-content: center;
-            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
         }}
         .btn {{
-            padding: 1rem 2.5rem;
+            padding: 0.85rem 2.2rem;
             border-radius: 9999px;
-            font-size: 1.25rem;
+            font-size: 1.05rem;
             font-weight: 700;
             text-decoration: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
         }}
         .btn-primary {{
             background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
-            box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4), 0 8px 10px -6px rgba(249, 115, 22, 0.1);
+            box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4);
             animation: pulse-btn 2.5s infinite;
         }}
         .btn-primary:hover {{
-            background: linear-gradient(135deg, #fb923c, #34d399);
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(249, 115, 22, 0.5), 0 8px 10px -6px rgba(249, 115, 22, 0.2);
+            box-shadow: 0 20px 35px -5px rgba(249, 115, 22, 0.5);
             animation: none;
+            text-decoration: none;
         }}
-        
+        .btn-secondary {{
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }}
+        .btn-secondary:hover {{
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            border-color: var(--primary);
+            text-decoration: none;
+        }}
         @keyframes pulse-btn {{
             0% {{ box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6); }}
             70% {{ box-shadow: 0 0 0 15px rgba(249, 115, 22, 0); }}
             100% {{ box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }}
         }}
-
-        /* Features */
+        .install-snippet {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(11, 17, 32, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            color: #7dd3fc;
+            margin-bottom: 3rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }}
+        .install-snippet:hover {{
+            border-color: var(--primary);
+        }}
+        .install-snippet .copy-icon {{
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }}
+        .install-snippet:hover .copy-icon {{
+            color: var(--primary);
+        }}
         .features {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            padding: 0 4rem 6rem;
-            max-width: 1200px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem 4rem 6rem;
+            max-width: 1100px;
             margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }}
         .feature-card {{
             background: var(--card-bg);
             padding: 2rem;
             border-radius: 1rem;
             border: 1px solid var(--border);
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }}
         .feature-card:hover {{
             transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+            border-color: rgba(249,115,22,0.3);
         }}
         .feature-icon {{
-            font-size: 2rem;
+            font-size: 1.75rem;
             margin-bottom: 1rem;
             background: rgba(249, 115, 22, 0.1);
-            color: var(--primary);
             width: 3rem;
             height: 3rem;
             display: flex;
@@ -471,36 +620,44 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         }}
         .feature-card h3 {{
             margin: 0 0 0.75rem 0;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
+            color: var(--text);
         }}
         .feature-card p {{
             color: var(--text-muted);
             margin: 0;
             line-height: 1.6;
+            font-size: 0.95rem;
         }}
-        
-        /* Markdown overrides for home */
         .content-hidden {{ display: none; }}
+        {}
     </style>
 </head>
 <body>
-    <nav class="navbar" style="padding: 1rem 4rem;">
-        <div class="brand">
-            <img src="/Rullst.png" alt="Rullst Logo" style="width: 40px; height: 40px; margin-right: 0.5rem;" />
+    <nav class="navbar">
+        <a class="brand" href="index.html">
+            <img src="Rullst.png" alt="Rullst Logo" />
             Rullst
-        </div>
+        </a>
         <div class="nav-links">
-            <a href="/1-getting-started.html">Docs</a>
+            <a href="1-getting-started.html">Docs</a>
+            <a href="spec.html">Spec</a>
+            <a href="https://crates.io/crates/rullst" target="_blank">Crates.io</a>
             <a href="https://github.com/venelouis/Rullst" target="_blank">GitHub</a>
         </div>
     </nav>
     <main>
-        <div class="hero" style="padding: 4rem 2rem 1rem;">
-            <img src="/Rullst.png" alt="Rullst" style="width: 200px; margin-bottom: 0.5rem; border-radius: 32px; box-shadow: 0 20px 40px rgba(249,115,22,0.2);" />
+        <div class="hero">
+            <img src="Rullst.png" alt="Rullst" class="hero-logo" />
             <h1>{}</h1>
             <p>{}</p>
             <div class="hero-buttons">
                 <a href="{}" class="btn btn-primary">{}</a>
+                <a href="https://crates.io/crates/rullst" target="_blank" class="btn btn-secondary">View on Crates.io ↗</a>
+            </div>
+            <div class="install-snippet" id="install-snippet" title="Click to copy">
+                <span>cargo add rullst</span>
+                <span class="copy-icon" id="install-copy-icon">📋 Copy</span>
             </div>
         </div>
 
@@ -522,13 +679,32 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
             </div>
         </div>
 
-        <!-- Render hidden markdown content if present, or ignore it on the homepage -->
+        <!-- Markdown content hidden on homepage -->
         <div class="content-hidden">
             {}
         </div>
     </main>
+    <script>
+        // Install snippet copy
+        var snippet = document.getElementById('install-snippet');
+        var copyIcon = document.getElementById('install-copy-icon');
+        if (snippet) {{
+            snippet.addEventListener('click', function () {{
+                navigator.clipboard.writeText('cargo add rullst').then(function () {{
+                    copyIcon.textContent = '✓ Copied!';
+                    copyIcon.style.color = '#10b981';
+                    setTimeout(function () {{
+                        copyIcon.textContent = '📋 Copy';
+                        copyIcon.style.color = '';
+                    }}, 2000);
+                }});
+            }});
+        }}
+    </script>
+    {}
 </body>
 </html>"#,
+        copy_btn_css(),
         title,
         subtitle,
         btn_link,
@@ -539,7 +715,8 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         f2_desc,
         f3_title,
         f3_desc,
-        content
+        content,
+        copy_code_script()
     )
 }
 

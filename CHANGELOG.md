@@ -4,6 +4,21 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-05-26 🌐
+
+### Fixed
+- **RullstPress GitHub Pages Paths**: Fixed a critical routing bug where all internal links and image sources used absolute paths (e.g. `/Rullst.png`, `/1-getting-started.html`) that resolved to the GitHub Pages root (`venelouis.github.io/`) instead of the repository sub-path (`venelouis.github.io/Rullst/`). All paths in `docs_generator.rs` have been converted to relative URLs, making the site work correctly regardless of deployment base path.
+- **Broken Navigation Buttons**: The "Learn how to begin" CTA button and all Navbar links were directing users to 404 pages. Fixed by using relative paths (`1-getting-started.html` instead of `/1-getting-started.html`).
+- **Broken Sidebar Links**: Sidebar navigation links used a leading slash that caused 404 errors on GitHub Pages. Now uses bare relative paths (e.g. `spec.html` instead of `/spec.html`).
+- **Broken Logo & Favicon**: The `<img src="/Rullst.png">` and `<link rel="icon" href="/Rullst.png">` failed to load on GitHub Pages. Fixed to use relative path `Rullst.png`.
+
+### Added
+- **Copy-to-Clipboard for Code Blocks**: All `<pre>` code blocks in the RullstPress documentation site now feature a floating "Copy" button (top-right corner). On click, the code is copied to the clipboard and the button changes to "✓ Copied!" with green feedback, reverting after 2 seconds. Includes a textarea-based fallback for older browsers without Clipboard API support.
+- **One-Click Install Snippet**: The home page now features a clickable `cargo add rullst` snippet that copies the command to the clipboard on click, with animated ✓ Copied! feedback.
+- **Crates.io Navigation Link**: Added a direct "Crates.io ↗" link in the home page hero and the navbar, pointing to https://crates.io/crates/rullst.
+- **Spec Page Link**: Added "Spec" link to the homepage navbar for quick access to the framework specification page.
+- **Floating Logo Animation**: The hero logo now uses a smooth CSS `float` keyframe animation for a more premium, dynamic first impression.
+
 ## [1.0.5] - 2026-05-26 🚀
 
 ### Fixed
