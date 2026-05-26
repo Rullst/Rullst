@@ -1,6 +1,6 @@
 [package]
 name = "rullst"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2024"
 description = "O framework fullstack definitivo para Rust, com foco em DX, velocidade e segurança."
 license = "MIT"
@@ -17,7 +17,7 @@ storage-s3 = ["dep:aws-config", "dep:aws-sdk-s3"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rullst-macros = { version = "1.0.3", path = "../rullst-macros" }
+rullst-macros = { version = "1.0.4", path = "../rullst-macros" }
 # Optional features dependencies
 redis = { version = "0.27", features = ["tokio-comp", "aio"], optional = true }
 lettre = { version = "0.11", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
