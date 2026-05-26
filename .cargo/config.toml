@@ -1,0 +1,3 @@
+[alias]
+sync-badges = "run --bin sync-badges"
+sync = "run --bin sync-badges"
