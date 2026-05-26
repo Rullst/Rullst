@@ -101,6 +101,9 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 * **Controller Scaffolding:**
   `cargo rullst make:controller <Name>`
   * *Behavior:* Generates `src/controllers/<snake_name>_controller.rs` with `index` and `show` actions. Appends declaration to `src/controllers/mod.rs`. Adds `pub mod controllers;` to the top of `src/main.rs`.
+* **Documentation SSG (RullstPress):**
+  `cargo rullst docs build` and `cargo rullst docs dev`
+  * *Behavior:* Compiles markdown files in `docs/` into a static site inside `docs/dist/`.
 
 ---
 

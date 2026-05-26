@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rullst Framework Docs</title>
+    <meta name="description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta name="keywords" content="Rust, Web Framework, Full-Stack, Rullst, Tokio, Axum, WebAssembly">
+    <meta name="author" content="Rullst Team">
+    <link rel="icon" type="image/png" href="/Rullst.png">
+    <meta property="og:title" content="Rullst Framework Docs">
+    <meta property="og:description" content="The most productive Full-Stack web framework in Rust. Built for developer happiness.">
+    <meta property="og:image" content="/Rullst.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="/Rullst.png">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #f97316; /* Laranja */
+            --primary-hover: #10b981; /* Esmeralda */
+            --border: #334155;
+            --card-bg: #1e293b;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-muted);
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        .hero {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 5rem 2rem 1rem;
+        }
+        .hero h1 {
+            font-size: 4.5rem;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            border: none;
+            background: linear-gradient(to right, var(--primary), var(--primary-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .btn {
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4), 0 8px 10px -6px rgba(249, 115, 22, 0.1);
+            animation: pulse-btn 2.5s infinite;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #fb923c, #34d399);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(249, 115, 22, 0.5), 0 8px 10px -6px rgba(249, 115, 22, 0.2);
+            animation: none;
+        }
+        
+        @keyframes pulse-btn {
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(249, 115, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+
+        /* Features */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 0 4rem 6rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .feature-card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.75rem;
+        }
+        .feature-card h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1.25rem;
+        }
+        .feature-card p {
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        /* Markdown overrides for home */
+        .content-hidden { display: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar" style="padding: 1rem 4rem;">
+        <div class="brand">
+            <img src="/Rullst.png" alt="Rullst Logo" style="width: 40px; height: 40px; margin-right: 0.5rem;" />
+            Rullst
+        </div>
+        <div class="nav-links">
+            <a href="/1-getting-started.html">Docs</a>
+            <a href="https://github.com/venelouis/Rullst" target="_blank">GitHub</a>
+        </div>
+    </nav>
+    <main>
+        <div class="hero" style="padding: 4rem 2rem 1rem;">
+            <img src="/Rullst.png" alt="Rullst" style="width: 200px; margin-bottom: 0.5rem; border-radius: 32px; box-shadow: 0 20px 40px rgba(249,115,22,0.2);" />
+            <h1>Develop fast.<br>Scale forever.</h1>
+            <p>The most productive Full-Stack web framework in Rust. Built for developer happiness.</p>
+            <div class="hero-buttons">
+                <a href="/1-getting-started.html" class="btn btn-primary">Learn how to begin</a>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Extremely Fast</h3>
+                <p>Built on Tokio and Axum. Enjoy the insane speed of Rust without giving up a high-level API.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔋</div>
+                <h3>Batteries Included</h3>
+                <p>ORM, Authentication, Background Jobs, Mailer, Cache, and WebSocket all built-in and ready to use.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3>AI-Native</h3>
+                <p>Designed from the ground up to be manipulated by AI Agents. Predictable, clear, and strongly typed architecture.</p>
+            </div>
+        </div>
+
+        <!-- Renderizamos o conteúdo do markdown oculto caso haja algo, ou podemos ignorá-lo na home -->
+        <div class="content-hidden">
+            <h1>Welcome to Rullst Framework!</h1>
+<p>Rullst is an extremely fast, modular, and friendly Full-Stack web framework for Rust. It includes everything you need to take your application from scratch to production without headaches.</p>
+<blockquote>
+<p>"Pragmatic, Built for Developer Happiness, and Production-Ready."</p>
+</blockquote>
+<h2>Where to start?</h2>
+<p><a href="/getting-started.html">Go to Getting Started</a></p>
+<h3>Why Rullst?</h3>
+<ul>
+<li>🚀 <strong>Extreme Speed:</strong> Built in Rust, using <code>tokio</code> and <code>axum</code>.</li>
+<li>🧩 <strong>Wasm Islands:</strong> Write client-side components in Rust.</li>
+<li>📦 <strong>Batteries Included:</strong> ORM (rust-eloquent), Jobs, Mail, Scheduler, Cache.</li>
+<li>🛡️ <strong>Strong Typing:</strong> Compile-time checking.</li>
+</ul>
+
+        </div>
+    </main>
+</body>
+</html>

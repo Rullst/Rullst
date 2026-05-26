@@ -7,7 +7,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v1.0.0](https://img.shields.io/badge/Status-v1.0.0-emerald)
+![Status: v1.0.2](https://img.shields.io/badge/Status-v1.0.2-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 O **Rullst** (Rust + Fullstack) é o primeiro framework web opinativo em Rust projetado obsessivamente para a **Produtividade Emocional** do desenvolvedor. 
@@ -114,9 +114,11 @@ Gere uma aplicação totalmente operacional com o nosso assistente CLI interativ
 cargo rullst new
 
 # O assistente vai perguntar:
-# 🚀 App name? -> meu-app
-# 🏗️ What would you like to build? -> SaaS App / REST API
-# 🗄️ Select a DB Provider -> Sqlite / Postgres / MySQL
+# 🚀 App name? (no spaces allowed) -> meu-app
+# 🏗️ What would you like to build? -> Full-Stack Web App (SaaS, Portfolio, Blog) / REST API
+# 🔥 Enable Hot Reloading by default? -> Yes / No
+# 🗄️ Will your project need a Data Base? -> Yes / No
+# 💾 Select a DB Provider -> Sqlite / Postgres / MySQL/MariaDB
 
 # 2. Entre na pasta do projeto
 cd meu-app
@@ -197,7 +199,7 @@ Por baixo dos panos, o Rullst compila suas rotas como biblioteca dinâmica (`cdy
 
 ---
 
-## 🎯 Arquitetura do Rullst (v1.0.0)
+## 🎯 Arquitetura do Rullst (v1.0.2)
 
 O Rullst é estruturado como um monorepo Cargo Workspace altamente modularizado:
 

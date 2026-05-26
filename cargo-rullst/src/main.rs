@@ -19,94 +19,94 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Cria uma nova aplicação Rullst
+    /// Creates a new Rullst application
     New {
-        /// Nome do projeto
+        /// Project name
         name: Option<String>,
-        /// Opcional: cria uma aplicação REST headless (sem HTML)
+        /// Optional: creates a headless REST API (no HTML)
         #[arg(long)]
         api: bool,
-        /// Opcional: gera Dockerfile, docker-compose.yml e .dockerignore para produção
+        /// Optional: generates Dockerfile, docker-compose.yml, and .dockerignore for production
         #[arg(long)]
         docker: bool,
     },
-    /// Cria um novo Controller na pasta src/controllers/
+    /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
     MakeController {
-        /// Nome do Controller (ex: UsersController ou users)
+        /// Name of the Controller (e.g. UsersController or users)
         name: String,
-        /// Opcional: gera as rotas e respostas em formato JSON (API REST headless) em vez de HTML
+        /// Optional: generates JSON routes and responses (headless REST API) instead of HTML
         #[arg(long)]
         api: bool,
     },
-    /// Cria um novo Model na pasta src/models/
+    /// Creates a new Model in the src/models/ folder
     #[command(name = "make:model")]
     MakeModel {
-        /// Nome do Model (ex: BlogPost ou blog_post)
+        /// Name of the Model (e.g. BlogPost or blog_post)
         name: String,
-        /// Opcional: cria uma migration correspondente para a tabela
+        /// Optional: creates a corresponding database migration for the table
         #[arg(short, long)]
         migration: bool,
     },
-    /// Cria um novo Middleware na pasta src/middlewares/
+    /// Creates a new Middleware in the src/middlewares/ folder
     #[command(name = "make:middleware")]
     MakeMiddleware {
-        /// Nome do Middleware (ex: Auth ou auth_middleware)
+        /// Name of the Middleware (e.g. Auth or auth_middleware)
         name: String,
     },
-    /// Executa as migrações pendentes no banco de dados
+    /// Runs pending database migrations
     #[command(name = "db:migrate")]
     DbMigrate,
-    /// Reverte o último lote de migrações aplicadas
+    /// Rolls back the last batch of applied migrations
     #[command(name = "db:rollback")]
     DbRollback,
-    /// Mostra o status atual das migrações do projeto
+    /// Displays the current status of project migrations
     #[command(name = "db:status")]
     DbStatus,
-    /// Popula o banco de dados usando seeders pré-configurados
+    /// Seeds the database using pre-configured seeders
     #[command(name = "db:seed")]
     DbSeed,
-    /// Cria uma nova migração vazia na pasta src/migrations/
+    /// Creates a new empty migration in the src/migrations/ folder
     #[command(name = "make:migration")]
     MakeMigration {
-        /// Nome da migração (ex: create_users_table)
+        /// Name of the migration (e.g. create_users_table)
         name: String,
     },
-    /// Cria toda a estrutura de autenticação (login, registro, model User, migrations, middlewares e views)
+    /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
-    /// Cria e configura o middleware CORS no projeto
+    /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
-    /// Cria e configura o middleware de autenticação JWT no projeto
+    /// Scaffolds and configures JWT authentication middleware
     #[command(name = "make:jwt")]
     MakeJwt,
-    /// Escaneia os controllers e gera um arquivo openapi.json/swagger
+    /// Scans controllers and generates an openapi.json/swagger specification
     #[command(name = "generate:openapi")]
     GenerateOpenapi,
-    /// Cria um novo background worker na pasta src/workers/
+    /// Creates a new background worker in the src/workers/ folder
     #[command(name = "make:worker")]
     MakeWorker {
-        /// Nome do worker (ex: Email ou email_worker)
+        /// Name of the worker (e.g. Email or email_worker)
         name: String,
     },
-    /// Realiza a atualização segura do Rullst aplicando codemods via cargo fix
+    /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
-    /// Abre a interface nativa do Rullst Studio para inspecionar o banco de dados
+    /// Opens the Rullst Studio dashboard to inspect the database
     #[command(name = "studio")]
     Studio,
-    /// Compila componentes clientes (Wasm Islands) para WebAssembly
+    /// Compiles client-side components (Wasm Islands) to WebAssembly
     #[command(name = "build:client")]
     BuildClient {
-        /// Opcional: build em modo debug (padrão é release)
+        /// Optional: compile in debug mode (default is release)
         #[arg(long)]
         debug: bool,
     },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Se executado como um subcomando do cargo (ex: 'cargo rullst new'),
-    // o cargo passa "rullst" como o primeiro argumento real.
-    // Nós removemos ele da lista de argumentos para que o Clap consiga fazer o parse uniformemente.
+    // If executed as a cargo subcommand (e.g. 'cargo rullst new'),
+    // cargo passes "rullst" as the first real argument.
+    // We remove it from the argument list so that Clap can parse uniformly.
     let args: Vec<String> = std::env::args().collect();
     let filtered_args = if args.len() > 1 && args[1] == "rullst" {
         let mut new_args = vec![args[0].clone()];
@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Verifica se o diretório de execução atual é um projeto Rullst válido
+/// Verifies if the current execution directory is a valid Rullst project
 fn is_rullst_project() -> bool {
     let cargo_toml_path = Path::new("Cargo.toml");
     if !cargo_toml_path.exists() {
@@ -187,10 +187,10 @@ fn is_rullst_project() -> bool {
     }
 }
 
-/// Normaliza o nome do controller para snake_case com sufixo "_controller"
+/// Normalizes the controller name to snake_case with the "_controller" suffix
 fn to_snake_case(s: &str) -> String {
     let mut base = s.to_string();
-    // Remove sufixo case-insensitive se já existir
+    // Remove the case-insensitive suffix if it already exists
     if base.to_lowercase().ends_with("controller") {
         let len = base.len();
         base.truncate(len - 10);
@@ -233,7 +233,7 @@ fn to_snake_case(s: &str) -> String {
     clean_result
 }
 
-/// Converte o nome do controller para CamelCase (PascalCase) com sufixo "Controller"
+/// Converts the controller name to CamelCase (PascalCase) with the "Controller" suffix
 fn to_camel_case(s: &str) -> String {
     let snake = to_snake_case(s);
     let mut result = String::new();
@@ -251,10 +251,10 @@ fn to_camel_case(s: &str) -> String {
     result
 }
 
-/// Normaliza o nome do model para snake_case
+/// Normalizes the model name to snake_case
 fn model_to_snake_case(s: &str) -> String {
     let mut base = s.to_string();
-    // Remove sufixo "Model" ou "model" se presente
+    // Remove the "Model" or "model" suffix if present
     if base.to_lowercase().ends_with("model") {
         let len = base.len();
         base.truncate(len - 5);
@@ -295,7 +295,7 @@ fn model_to_snake_case(s: &str) -> String {
     clean_result.trim_matches('_').to_string()
 }
 
-/// Converte o nome do model para PascalCase (CamelCase)
+/// Converts the model name to PascalCase (CamelCase)
 fn model_to_pascal_case(s: &str) -> String {
     let snake = model_to_snake_case(s);
     let mut result = String::new();
@@ -313,7 +313,7 @@ fn model_to_pascal_case(s: &str) -> String {
     result
 }
 
-/// Pluraliza o nome da tabela no padrão Active Record
+/// Pluralizes the table name following the Active Record convention
 fn pluralize(s: &str) -> String {
     let lower = s.to_lowercase();
     if lower.ends_with("ss") {
@@ -348,10 +348,10 @@ fn pluralize(s: &str) -> String {
     }
 }
 
-/// Normaliza o nome do middleware para snake_case com sufixo "_middleware"
+/// Normalizes the middleware name to snake_case with the "_middleware" suffix
 fn middleware_to_snake_case(s: &str) -> String {
     let mut base = s.to_string();
-    // Remove sufixo case-insensitive se já existir
+    // Remove the case-insensitive suffix if it already exists
     if base.to_lowercase().ends_with("middleware") {
         let len = base.len();
         base.truncate(len - 10);
@@ -377,7 +377,7 @@ fn middleware_to_snake_case(s: &str) -> String {
 
     result.push_str("_middleware");
 
-    // Limpa possíveis underscores repetidos (ex: auth__middleware)
+    // Clean up potential duplicate underscores (e.g., auth__middleware)
     let mut clean_result = String::new();
     let mut prev_is_underscore = false;
     for c in result.chars() {
@@ -395,15 +395,15 @@ fn middleware_to_snake_case(s: &str) -> String {
 }
 
 fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Validar se está na raiz do projeto Rullst
+    // 1. Validate if we are in the root of the Rullst project
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
-        println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
+        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
         std::process::exit(1);
     }
 
@@ -412,12 +412,12 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
 
     println!(
         "{}",
-        format!("🛠️ Gerando controller Rullst: {}...", camel_name)
+        format!("🛠️ Generating Rullst controller: {}...", camel_name)
             .cyan()
             .bold()
     );
 
-    // 2. Garantir que a pasta src/controllers existe
+    // 2. Ensure src/controllers directory exists
     let controllers_dir = Path::new("src/controllers");
     if !controllers_dir.exists() {
         fs::create_dir_all(controllers_dir)?;
@@ -429,7 +429,7 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
         fs::write(&mod_path, "")?;
     }
 
-    // 4. Registrar o novo controller no mod.rs
+    // 4. Register new controller in mod.rs
     let mut mod_content = fs::read_to_string(&mod_path)?;
     let mod_declaration = format!("pub mod {};", snake_name);
     if !mod_content.contains(&mod_declaration) {
@@ -441,13 +441,13 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
         fs::write(&mod_path, mod_content)?;
     }
 
-    // 5. Criar o arquivo do controller
+    // 5. Create controller file
     let controller_path = controllers_dir.join(format!("{}.rs", snake_name));
     if controller_path.exists() {
         println!(
             "{}",
             format!(
-                "⚠️ Aviso: O controller '{}.rs' já existe. Pulando criação do arquivo.",
+                "⚠️ Warning: Controller '{}.rs' already exists. Skipping file creation.",
                 snake_name
             )
             .yellow()
@@ -460,12 +460,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct CreateDto {{
-    // Adicione os campos para criação
+    // Add fields for creation
 }}
 
 #[derive(Deserialize)]
 pub struct UpdateDto {{
-    // Adicione os campos para atualização
+    // Add fields for update
 }}
 
 /// Retorna a lista de recursos
@@ -473,7 +473,7 @@ pub async fn index() -> impl IntoResponse {{
     Json(serde_json::json!({{
         "controller": "{camel_name}",
         "action": "index",
-        "message": "Este controller foi gerado automaticamente pelo Rullst CLI. Ele é 100% amigável para humanos e agentes de IA."
+        "message": "This controller was automatically generated by the Rullst CLI. It is 100% friendly for humans and AI agents."
     }}))
 }}
 
@@ -486,10 +486,10 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
     }}))
 }}
 
-/// Cria um novo recurso
+/// Creates a new resource
 pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
     Json(serde_json::json!({{
-        "message": "Recurso criado com sucesso"
+        "message": "Resource created successfully"
     }}))
 }}
 
@@ -497,7 +497,7 @@ pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
 pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "id": id,
-        "message": "Recurso atualizado com sucesso"
+        "message": "Resource updated successfully"
     }}))
 }}
 
@@ -505,7 +505,7 @@ pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> imp
 pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     Json(serde_json::json!({{
         "id": id,
-        "message": "Recurso deletado com sucesso"
+        "message": "Resource deleted successfully"
     }}))
 }}
 "#
@@ -518,12 +518,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct CreateDto {{
-    // Adicione os campos para criação
+    // Add fields for creation
 }}
 
 #[derive(Deserialize)]
 pub struct UpdateDto {{
-    // Adicione os campos para atualização
+    // Add fields for update
 }}
 
 /// Retorna a lista de recursos
@@ -535,7 +535,7 @@ pub async fn index() -> impl IntoResponse {{
                     "{camel_name}"
                 </h1>
                 <p style="color: #94a3b8; font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem;">
-                    "Este controller foi gerado automaticamente pelo Rullst CLI. Ele é 100% amigável para humanos e agentes de IA."
+                    "This controller was automatically generated by the Rullst CLI. It is 100% friendly for humans and AI agents."
                 </p>
                 <div style="display: inline-block; padding: 0.75rem 1.5rem; background: #0f172a; border-radius: 0.5rem; border: 1px solid #334155; color: #38bdf8; font-family: monospace; font-size: 0.95rem;">
                     "pub async fn index() -> impl IntoResponse"
@@ -552,19 +552,19 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {{
     }})
 }}
 
-/// Cria um novo recurso
+/// Creates a new resource
 pub async fn store(Form(_payload): Form<CreateDto>) -> impl IntoResponse {{
-    Html(html! {{ <div>"Recurso criado com sucesso"</div> }})
+    Html(html! {{ <div>"Resource created successfully"</div> }})
 }}
 
 /// Atualiza um recurso existente
 pub async fn update(Path(id): Path<i32>, Form(_payload): Form<UpdateDto>) -> impl IntoResponse {{
-    Html(html! {{ <div>"Recurso "{{id}}" atualizado com sucesso"</div> }})
+    Html(html! {{ <div>"Resource "{{id}}" updated successfully"</div> }})
 }}
 
 /// Deleta um recurso
 pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
-    Html(html! {{ <div>"Recurso "{{id}}" deletado com sucesso"</div> }})
+    Html(html! {{ <div>"Resource "{{id}}" deleted successfully"</div> }})
 }}
 "#
             )
@@ -572,7 +572,7 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
         fs::write(&controller_path, template)?;
     }
 
-    // 6. Tentar injetar "pub mod controllers;" no src/main.rs se necessário
+    // 6. Attempt to inject "pub mod controllers;" into src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -583,7 +583,7 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod controllers;' ao topo de src/main.rs automaticamente."
+                "ℹ️ Automatically added 'pub mod controllers;' to the top of src/main.rs."
                     .cyan()
             );
         }
@@ -592,14 +592,14 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     println!(
         "{}",
         format!(
-            "✨ Controller '{}' criado em '{}' com sucesso!",
+            "✨ Controller '{}' successfully created at '{}'!",
             camel_name,
             controller_path.display()
         )
         .green()
         .bold()
     );
-    println!("{}", "Como mapear nas rotas:".cyan());
+    println!("{}", "How to map in your routes:".cyan());
     println!(
         "{}",
         format!("  1. Use: 'use crate::controllers::{};'", snake_name).cyan()
@@ -607,7 +607,7 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
     println!(
         "{}",
         format!(
-            "  2. Adicione: 'get(\"/url\" => {}::index)' no seu macro routes!.",
+            "  2. Add: 'get(\"/url\" => {}::index)' inside your routes! macro.",
             snake_name
         )
         .cyan()
@@ -617,15 +617,15 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
 }
 
 fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Validar se está na raiz do projeto Rullst
+    // 1. Validate if we are in the root of the Rullst project
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
-        println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
+        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
         std::process::exit(1);
     }
 
@@ -635,12 +635,12 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
 
     println!(
         "{}",
-        format!("🛠️ Gerando model Rullst: {}...", pascal_name)
+        format!("🛠️ Generating Rullst model: {}...", pascal_name)
             .cyan()
             .bold()
     );
 
-    // 2. Garantir que a pasta src/models existe
+    // 2. Ensure src/models directory exists
     let models_dir = Path::new("src/models");
     if !models_dir.exists() {
         fs::create_dir_all(models_dir)?;
@@ -652,7 +652,7 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
         fs::write(&mod_path, "")?;
     }
 
-    // 4. Registrar o novo model no mod.rs
+    // 4. Register new model in mod.rs
     let mut mod_content = fs::read_to_string(&mod_path)?;
     let mod_declaration = format!("pub mod {};", snake_name);
     if !mod_content.contains(&mod_declaration) {
@@ -664,13 +664,13 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
         fs::write(&mod_path, mod_content)?;
     }
 
-    // 5. Criar o arquivo do model
+    // 5. Create model file
     let model_path = models_dir.join(format!("{}.rs", snake_name));
     if model_path.exists() {
         println!(
             "{}",
             format!(
-                "⚠️ Aviso: O model '{}.rs' já existe. Pulando criação do arquivo.",
+                "⚠️ Warning: Model '{}.rs' already exists. Skipping file creation.",
                 snake_name
             )
             .yellow()
@@ -683,14 +683,14 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
 #[eloquent(table = "{plural_name}")]
 pub struct {pascal_name} {{
     pub id: i32,
-    // Adicione seus campos aqui (ex: pub name: String)
+    // Add your fields here (e.g. pub name: String)
 }}
 "#
         );
         fs::write(&model_path, template)?;
     }
 
-    // 6. Tentar injetar "pub mod models;" no src/main.rs se necessário
+    // 6. Attempt to inject "pub mod models;" into src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -699,7 +699,7 @@ pub struct {pascal_name} {{
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod models;' ao topo de src/main.rs automaticamente.".cyan()
+                "ℹ️ Automatically added 'pub mod models;' to the top of src/main.rs.".cyan()
             );
         }
     }
@@ -707,7 +707,7 @@ pub struct {pascal_name} {{
     println!(
         "{}",
         format!(
-            "✨ Model '{}' criado em '{}' com sucesso!",
+            "✨ Model '{}' successfully created at '{}'!",
             pascal_name,
             model_path.display()
         )
@@ -715,7 +715,7 @@ pub struct {pascal_name} {{
         .bold()
     );
 
-    // 7. Criar migration se solicitado
+    // 7. Create migration if requested
     if create_migration {
         let migrations_dir = Path::new("src/migrations");
         if !migrations_dir.exists() {
@@ -742,7 +742,7 @@ impl Migration for MigrationImpl {{
     async fn up(&self) -> Result<(), rust_eloquent::sqlx::Error> {{
         Schema::create("{plural_name}", |table| {{
             table.id();
-            // Adicione seus campos aqui (ex: table.string("title");)
+            // Add your fields here (e.g. table.string("title");)
             table.timestamps();
         }}).await
     }}
@@ -760,7 +760,7 @@ impl Migration for MigrationImpl {{
         println!(
             "{}",
             format!(
-                "✨ Migração em Rust criada em '{}' com sucesso!",
+                "✨ Rust migration successfully created at '{}'!",
                 migration_path.display()
             )
             .green()
@@ -771,7 +771,7 @@ impl Migration for MigrationImpl {{
         regenerate_migrations_mod()?;
     }
 
-    println!("{}", "Como importar e usar:".cyan());
+    println!("{}", "How to import and use:".cyan());
     println!(
         "{}",
         format!(
@@ -783,7 +783,7 @@ impl Migration for MigrationImpl {{
     println!(
         "{}",
         format!(
-            "  2. Busque dados: 'let items = {}::all().await?;'",
+            "  2. Fetch data: 'let items = {}::all().await?;'",
             pascal_name
         )
         .cyan()
@@ -793,15 +793,15 @@ impl Migration for MigrationImpl {{
 }
 
 fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Validar se está na raiz do projeto Rullst
+    // 1. Validate if we are in the root of the Rullst project
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
-        println!("{}", "Certifique-se de que a pasta atual contém um arquivo 'Cargo.toml' com dependência do 'rullst'.".yellow());
+        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
         std::process::exit(1);
     }
 
@@ -809,12 +809,12 @@ fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        format!("🛠️ Gerando middleware Rullst: {}...", snake_name)
+        format!("🛠️ Generating Rullst middleware: {}...", snake_name)
             .cyan()
             .bold()
     );
 
-    // 2. Garantir que a pasta src/middlewares existe
+    // 2. Ensure src/middlewares directory exists
     let middlewares_dir = Path::new("src/middlewares");
     if !middlewares_dir.exists() {
         fs::create_dir_all(middlewares_dir)?;
@@ -826,7 +826,7 @@ fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         fs::write(&mod_path, "")?;
     }
 
-    // 4. Registrar o novo middleware no mod.rs
+    // 4. Register new middleware in mod.rs
     let mut mod_content = fs::read_to_string(&mod_path)?;
     let mod_declaration = format!("pub mod {};", snake_name);
     if !mod_content.contains(&mod_declaration) {
@@ -838,13 +838,13 @@ fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         fs::write(&mod_path, mod_content)?;
     }
 
-    // 5. Criar o arquivo do middleware
+    // 5. Create middleware file
     let middleware_path = middlewares_dir.join(format!("{}.rs", snake_name));
     if middleware_path.exists() {
         println!(
             "{}",
             format!(
-                "⚠️ Aviso: O middleware '{}.rs' já existe. Pulando criação do arquivo.",
+                "⚠️ Warning: Middleware '{}.rs' already exists. Skipping file creation.",
                 snake_name
             )
             .yellow()
@@ -868,7 +868,7 @@ pub async fn {}(req: Request, next: Next) -> Response {{
         fs::write(&middleware_path, template)?;
     }
 
-    // 6. Tentar injetar "pub mod middlewares;" no src/main.rs se necessário
+    // 6. Attempt to inject "pub mod middlewares;" into src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -897,14 +897,14 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     println!(
         "{}",
         format!(
-            "✨ Middleware '{}' criado em '{}' com sucesso!",
+            "✨ Middleware '{}' successfully created at '{}'!",
             snake_name,
             middleware_path.display()
         )
         .green()
         .bold()
     );
-    println!("{}", "Como mapear nas rotas usando Axum layers:".cyan());
+    println!("{}", "How to map in your routes using Axum layers:".cyan());
     println!("{}", "  1. Use: 'use axum::middleware::from_fn;'".cyan());
     println!(
         "{}",
@@ -917,7 +917,7 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     println!(
         "{}",
         format!(
-            "  3. Adicione: '.layer(from_fn({}))' no seu router.",
+            "  3. Add: '.layer(from_fn({}))' on your router.",
             snake_name
         )
         .cyan()
@@ -1110,7 +1110,7 @@ use serde::Serialize;
 
 pub mod migrations;
 
-// 1. Defina o seu modelo de banco de dados usando o ORM rust-eloquent embutido!
+// 1. Define your database model using the built-in rust-eloquent ORM!
 #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
 #[eloquent(table = "users")]
 pub struct User {
@@ -1144,7 +1144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Intercepta comandos do Artisan (ex: cargo rullst db:migrate) antes de inicializar o servidor
     rullst::artisan!(crate::migrations::get_migrations());
 
-    // O Rullst inicializa a conexão com o banco de dados especificado em Rullst.toml
+    // Rullst automatically initializes the database connection specified in Rullst.toml
     // automaticamente em tempo de execução quando Server::run é chamado!
 
     let router = routes![
@@ -1165,7 +1165,7 @@ use rust_eloquent::sqlx::FromRow;
 
 pub mod migrations;
 
-// 1. Defina o seu modelo de banco de dados usando o ORM rust-eloquent embutido!
+// 1. Define your database model using the built-in rust-eloquent ORM!
 #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
 #[eloquent(table = "users")]
 pub struct User {
@@ -1191,7 +1191,7 @@ async fn home(htmx: HtmxRequest) -> impl IntoResponse {
                 </h1>
                 
                 <p class="text-slate-400 text-lg">
-                    "O framework fullstack definitivo para Rust. Focado em Segurança, Manutenção e Velocidade."
+                    "The ultimate full-stack framework for Rust. Focused on Security, Maintainability, and Speed."
                 </p>
 
                 <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
@@ -1244,7 +1244,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Intercepta comandos do Artisan (ex: cargo rullst db:migrate) antes de inicializar o servidor
     rullst::artisan!(crate::migrations::get_migrations());
 
-    // O Rullst inicializa a conexão com o banco de dados especificado em Rullst.toml
+    // Rullst automatically initializes the database connection specified in Rullst.toml
     // automaticamente em tempo de execução quando Server::run é chamado!
 
     let router = routes![
@@ -1297,7 +1297,7 @@ fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::Error
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -1306,7 +1306,7 @@ fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::Error
 
     println!(
         "{}",
-        format!("⏳ Executando 'cargo run -- {}'...", command)
+        format!("⏳ Running 'cargo run -- {}'...", command)
             .cyan()
             .bold()
     );
@@ -1318,7 +1318,7 @@ fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::Error
     if !status.success() {
         println!(
             "{}",
-            format!("❌ Falha ao executar o comando db: {}", command)
+            format!("❌ Failed to execute db command: {}", command)
                 .red()
                 .bold()
         );
@@ -1332,7 +1332,7 @@ fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -1377,7 +1377,7 @@ impl Migration for MigrationImpl {{
     async fn up(&self) -> Result<(), rust_eloquent::sqlx::Error> {{
         Schema::create("{table_name}", |table| {{
             table.id();
-            // Adicione seus campos aqui (ex: table.string("title");)
+            // Add your fields here (e.g. table.string("title");)
             table.timestamps();
         }}).await
     }}
@@ -1395,7 +1395,7 @@ impl Migration for MigrationImpl {{
     println!(
         "{}",
         format!(
-            "✨ Migração em Rust criada em '{}' com sucesso!",
+            "✨ Rust migration successfully created at '{}'!",
             migration_path.display()
         )
         .green()
@@ -1464,7 +1464,7 @@ fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -1473,12 +1473,12 @@ fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "🛡️  Iniciando scaffolding do sistema de autenticação Rullst..."
+        "🛡️  Starting scaffolding of Rullst authentication system..."
             .cyan()
             .bold()
     );
 
-    // 1. Criar Migration do Usuário
+    // 1. Create User Migration
     let migrations_dir = Path::new("src/migrations");
     fs::create_dir_all(migrations_dir)?;
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
@@ -1517,10 +1517,10 @@ impl Migration for MigrationImpl {{
         file_stem = file_stem
     );
     fs::write(&migration_path, migration_template)?;
-    println!("{}", "  ✨ Criada migration da tabela 'users'.".green());
+    println!("{}", "  ✨ Created 'users' table migration.".green());
     regenerate_migrations_mod()?;
 
-    // 2. Criar Model do Usuário
+    // 2. Create User Model
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
@@ -1540,7 +1540,7 @@ pub struct User {
 }
 "##;
     fs::write(&model_path, model_template)?;
-    println!("{}", "  ✨ Criado model 'User'.".green());
+    println!("{}", "  ✨ Created 'User' model.".green());
 
     let mod_models_path = models_dir.join("mod.rs");
     if !mod_models_path.exists() {
@@ -1552,7 +1552,7 @@ pub struct User {
         fs::write(&mod_models_path, mod_models_content)?;
     }
 
-    // 3. Criar Middleware de Autenticação
+    // 3. Create Authentication Middleware
     let middlewares_dir = Path::new("src/middlewares");
     fs::create_dir_all(middlewares_dir)?;
     let middleware_path = middlewares_dir.join("auth_middleware.rs");
@@ -1577,12 +1577,12 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
         }
     }
     
-    // 4. Redireciona para o login se não estiver autenticado
+    // 4. Redirect to login if not authenticated
     Redirect::to("/login").into_response()
 }
 "##;
     fs::write(&middleware_path, middleware_template)?;
-    println!("{}", "  ✨ Criado middleware 'auth_middleware'.".green());
+    println!("{}", "  ✨ Created 'auth_middleware' middleware.".green());
 
     let mod_middlewares_path = middlewares_dir.join("mod.rs");
     if !mod_middlewares_path.exists() {
@@ -1594,7 +1594,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
         fs::write(&mod_middlewares_path, mod_middlewares_content)?;
     }
 
-    // 4. Criar Telas HTML (Pages)
+    // 4. Create HTML Pages
     let pages_dir = Path::new("src/pages");
     fs::create_dir_all(pages_dir)?;
     let pages_path = pages_dir.join("auth.rs");
@@ -1616,7 +1616,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
         <html lang="pt-BR">
             <head>
                 <meta charset="utf-8" />
-                <title>"Entrar - Rullst"</title>
+                <title>"Login - Rullst"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
                     "
@@ -1752,21 +1752,21 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
             <body>
                 <div class="card">
                     <h1>"Bem-vindo de volta"</h1>
-                    <p class="subtitle">"Entre na sua conta Rullst"</p>
+                    <p class="subtitle">"Log in to your Rullst account"</p>
                     
                     { rullst::html::RawHtml(error_html) }
 
                     <form method="post" action="/login">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
-                            <label htmlFor="email">"E-mail"</label>
+                            <label htmlFor="email">"Email"</label>
                             <input type="email" id="email" name="email" placeholder="seu@email.com" required="required" />
                         </div>
                         <div class="form-group">
-                            <label htmlFor="password">"Senha"</label>
+                            <label htmlFor="password">"Password"</label>
                             <input type="password" id="password" name="password" placeholder="••••••••" required="required" />
                         </div>
-                        <button type="submit" class="btn-primary">"Entrar"</button>
+                        <button type="submit" class="btn-primary">"Sign In"</button>
                     </form>
 
                     <div class="divider">"ou continuar com"</div>
@@ -1779,8 +1779,8 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                     </a>
 
                     <div class="footer-link">
-                        "Não tem uma conta? "
-                        <a href="/register">"Cadastre-se"</a>
+                        "Don't have an account? "
+                        <a href="/register">"Sign up"</a>
                     </div>
                 </div>
             </body>
@@ -1803,7 +1803,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
         <html lang="pt-BR">
             <head>
                 <meta charset="utf-8" />
-                <title>"Criar Conta - Rullst"</title>
+                <title>"Create Account - Rullst"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
                     "
@@ -1904,30 +1904,30 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
             <body>
                 <div class="card">
                     <h1>"Crie sua conta"</h1>
-                    <p class="subtitle">"Cadastre-se e aproveite o Rullst"</p>
+                    <p class="subtitle">"Sign up and start building with Rullst"</p>
                     
                     { rullst::html::RawHtml(error_html) }
 
                     <form method="post" action="/register">
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
-                            <label htmlFor="name">"Nome Completo"</label>
-                            <input type="text" id="name" name="name" placeholder="Seu Nome" required="required" />
+                            <label htmlFor="name">"Full Name"</label>
+                            <input type="text" id="name" name="name" placeholder="Your Name" required="required" />
                         </div>
                         <div class="form-group">
-                            <label htmlFor="email">"E-mail"</label>
+                            <label htmlFor="email">"Email"</label>
                             <input type="email" id="email" name="email" placeholder="seu@email.com" required="required" />
                         </div>
                         <div class="form-group">
-                            <label htmlFor="password">"Senha"</label>
-                            <input type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required="required" />
+                            <label htmlFor="password">"Password"</label>
+                            <input type="password" id="password" name="password" placeholder="Minimum 6 characters" required="required" />
                         </div>
                         <button type="submit" class="btn-primary">"Registrar"</button>
                     </form>
 
                     <div class="footer-link">
-                        "Já tem uma conta? "
-                        <a href="/login">"Entrar"</a>
+                        "Already have an account? "
+                        <a href="/login">"Sign In"</a>
                     </div>
                 </div>
             </body>
@@ -1940,7 +1940,7 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
         <html lang="pt-BR">
             <head>
                 <meta charset="utf-8" />
-                <title>"Painel de Controle - Rullst"</title>
+                <title>"Dashboard - Rullst"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
                     "
@@ -2008,10 +2008,10 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
             </head>
             <body>
                 <div class="container">
-                    <span class="badge">"Rullst Autenticação Ativa"</span>
-                    <h1>"Olá, "{user_name}"! 👋"</h1>
-                    <p class="lead">"Você está em uma área restrita e segura de alta performance. Este painel e toda a sua infraestrutura foram montados automaticamente via CLI."</p>
-                    <a href="/logout" class="btn-logout">"Sair da Conta"</a>
+                    <span class="badge">"Rullst Active Authentication"</span>
+                    <h1>"Hello, "{user_name}"! 👋"</h1>
+                    <p class="lead">"You are in a high-performance, secure restricted area. This dashboard and its entire infrastructure were built automatically via the CLI."</p>
+                    <a href="/logout" class="btn-logout">"Sign Out"</a>
                 </div>
             </body>
         </html>
@@ -2021,7 +2021,7 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
     fs::write(&pages_path, pages_template)?;
     println!(
         "{}",
-        "  ✨ Criadas views HTML em 'src/pages/auth.rs'.".green()
+        "  ✨ Created HTML views in 'src/pages/auth.rs'.".green()
     );
 
     let mod_pages_path = pages_dir.join("mod.rs");
@@ -2034,7 +2034,7 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
         fs::write(&mod_pages_path, mod_pages_content)?;
     }
 
-    // 5. Criar Auth Controller
+    // 5. Create Auth Controller
     let controllers_dir = Path::new("src/controllers");
     let controller_path = controllers_dir.join("auth_controller.rs");
     let controller_template = r##"use axum::{
@@ -2090,18 +2090,18 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
     
     let users = match User::all().await {
         Ok(u) => u,
-        Err(_) => return auth::login_page(&token, Some("Erro interno ao buscar usuário")).into_response(),
+        Err(_) => return auth::login_page(&token, Some("Internal error fetching user")).into_response(),
     };
     
     let user = users.into_iter().find(|u| u.email == payload.email);
     
     let Some(u) = user else {
-        return auth::login_page(&token, Some("E-mail ou senha incorretos")).into_response();
+        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
     };
 
     let hash = u.password_hash.as_deref().unwrap_or("");
     if !rullst_auth::verify_password(&payload.password, hash) {
-        return auth::login_page(&token, Some("E-mail ou senha incorretos")).into_response();
+        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
     }
 
     match rullst_auth::make_login_cookie(u.id) {
@@ -2113,7 +2113,7 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
             );
             res
         }
-        Err(_) => auth::login_page(&token, Some("Erro ao iniciar sessão")).into_response(),
+        Err(_) => auth::login_page(&token, Some("Error starting session")).into_response(),
     }
 }
 
@@ -2126,18 +2126,18 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
     let token = get_csrf_token(&headers);
     
     if payload.password.len() < 6 {
-        return auth::register_page(&token, Some("A senha deve ter no mínimo 6 caracteres")).into_response();
+        return auth::register_page(&token, Some("Password must be at least 6 characters")).into_response();
     }
 
     if let Ok(users) = User::all().await {
         if users.iter().any(|u| u.email == payload.email) {
-            return auth::register_page(&token, Some("Este endereço de e-mail já está cadastrado")).into_response();
+            return auth::register_page(&token, Some("This email address is already registered")).into_response();
         }
     }
 
     let hash = match rullst_auth::hash_password(&payload.password) {
         Ok(h) => h,
-        Err(_) => return auth::register_page(&token, Some("Erro ao processar senha")).into_response(),
+        Err(_) => return auth::register_page(&token, Some("Error processing password")).into_response(),
     };
 
     let mut user = User {
@@ -2152,7 +2152,7 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
     };
 
     if let Err(e) = user.save().await {
-        return auth::register_page(&token, Some(&format!("Erro ao criar conta: {}", e))).into_response();
+        return auth::register_page(&token, Some(&format!("Error creating account: {}", e))).into_response();
     }
 
     match rullst_auth::make_login_cookie(user.id) {
@@ -2249,7 +2249,7 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
     fs::write(&controller_path, controller_template)?;
     println!(
         "{}",
-        "  ✨ Criado controller 'src/controllers/auth_controller.rs'.".green()
+        "  ✨ Created 'src/controllers/auth_controller.rs' controller.".green()
     );
 
     let mod_controllers_path = controllers_dir.join("mod.rs");
@@ -2262,12 +2262,12 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
         fs::write(&mod_controllers_path, mod_controllers_content)?;
     }
 
-    // 6. Registrar módulos em src/main.rs se necessário
+    // 6. Register modules in src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
 
-        // Registrar módulos necessários se não estiverem presentes
+        // Register required modules if not present
         for module in &["controllers", "models", "middlewares", "pages"] {
             let declaration = format!("pub mod {};", module);
             let alt_declaration = format!("mod {};", module);
@@ -2276,13 +2276,13 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
             }
         }
 
-        // Tentar injetar automaticamente as dependências necessárias no Cargo.toml do usuário (como o rust-socialite)
+        // Auto-inject required dependencies in Cargo.toml if needed (like rust-socialite)
         let cargo_toml_path = Path::new("Cargo.toml");
         if cargo_toml_path.exists() {
             let mut cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
             if !cargo_toml_content.contains("rust-socialite") {
-                // Tenta achar [dependencies] e injeta a dependência do rust-socialite como caminho local
-                // se estivermos na pasta REPOS (procura a pasta rust-socialite no nível irmão)
+                // Attempt to inject the rust-socialite dependency into Cargo.toml
+                // sibling search or crates.io fallback
                 let current_dir = std::env::current_dir()?;
                 let sibling_path = current_dir.parent().unwrap().join("rust-socialite");
                 let dep_str = if sibling_path.exists() {
@@ -2314,14 +2314,14 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 
     println!(
         "\n{}",
-        "🎉 Sistema de autenticação gerado com extremo sucesso!"
+        "🎉 Authentication system generated successfully!"
             .green()
             .bold()
     );
-    println!("{}", "Para concluir a integração:".cyan().bold());
+    println!("{}", "To complete the integration:".cyan().bold());
     println!(
         "{}",
-        "  1. Registre as rotas abaixo no macro routes! de seu 'src/main.rs':".cyan()
+        "  1. Register the routes below in the routes! macro of your 'src/main.rs':".cyan()
     );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!(
@@ -2353,7 +2353,7 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!(
         "{}",
-        "  2. Para proteger rotas com middleware, aplique a camada no router:".cyan()
+        "  2. To protect routes with a middleware, apply the layer to your router:".cyan()
     );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!("{}", "     let protected_router = routes![\n         get(\"/dashboard\" => controllers::auth_controller::dashboard)\n     ]".yellow());
@@ -2384,7 +2384,7 @@ fn generate_docker_files(
     project_path: &Path,
     project_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("{}", "🐳 Gerando arquivos Docker...".cyan().bold());
+    println!("{}", "🐳 Generating Docker files...".cyan().bold());
 
     // --- Dockerfile (multi-stage, distroless) ---
     let dockerfile = format!(
@@ -2520,14 +2520,14 @@ fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
         std::process::exit(1);
     }
 
-    println!("{}", "🛠️ Gerando middleware CORS...".cyan().bold());
+    println!("{}", "🛠️ Generating CORS middleware...".cyan().bold());
 
     let middlewares_dir = Path::new("src/middlewares");
     if !middlewares_dir.exists() {
@@ -2552,7 +2552,7 @@ fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if middleware_path.exists() {
         println!(
             "{}",
-            "⚠️ Aviso: O middleware 'cors_middleware.rs' já existe. Pulando criação.".yellow()
+            "⚠️ Warning: CORS middleware 'cors_middleware.rs' already exists. Skipping creation.".yellow()
         );
     } else {
         let template = r#"use axum::{
@@ -2610,7 +2610,7 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
         fs::write(&middleware_path, template)?;
     }
 
-    // Tentar injetar "pub mod middlewares;" no src/main.rs se necessário
+    // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -2638,13 +2638,13 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
 
     println!(
         "{}",
-        "✨ Middleware CORS criado com sucesso!".green().bold()
+        "✨ CORS middleware successfully created!".green().bold()
     );
     println!(
         "{}",
-        "Como registrar no seu router principal (src/main.rs):".cyan()
+        "How to register in your main router (src/main.rs):".cyan()
     );
-    println!("{}", "  1. Adicione: '.layer(axum::middleware::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
+    println!("{}", "  1. Add: '.layer(axum::middleware::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
 
     Ok(())
 }
@@ -2653,14 +2653,14 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
         std::process::exit(1);
     }
 
-    println!("{}", "🛠️ Gerando middleware JWT...".cyan().bold());
+    println!("{}", "🛠️ Generating JWT middleware...".cyan().bold());
 
     // 1. Injetar jsonwebtoken e chrono no Cargo.toml do usuário
     let cargo_toml_path = Path::new("Cargo.toml");
@@ -2686,7 +2686,7 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(cargo_toml_path, cargo_toml_content)?;
             println!(
                 "{}",
-                "  ✨ Adicionadas dependências 'jsonwebtoken' e 'chrono' no seu Cargo.toml."
+                "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml."
                     .green()
             );
         }
@@ -2715,7 +2715,7 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if middleware_path.exists() {
         println!(
             "{}",
-            "⚠️ Aviso: O middleware 'jwt_middleware.rs' já existe. Pulando criação.".yellow()
+            "⚠️ Warning: JWT middleware 'jwt_middleware.rs' already exists. Skipping creation.".yellow()
         );
     } else {
         let template = r#"use axum::{
@@ -2733,7 +2733,7 @@ pub struct Claims {
     pub exp: usize,  // Timestamp de expiração
 }
 
-/// Middleware de Autenticação JWT.
+/// JWT Authentication Middleware.
 /// Extrai o cabeçalho 'Authorization: Bearer <token>', valida e injeta os claims nas extensões da requisição.
 pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
     let auth_header = req.headers()
@@ -2788,7 +2788,7 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
         fs::write(&middleware_path, template)?;
     }
 
-    // Tentar injetar "pub mod middlewares;" no src/main.rs se necessário
+    // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -2814,11 +2814,11 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
         }
     }
 
-    println!("{}", "✨ Middleware JWT criado com sucesso!".green().bold());
-    println!("{}", "Como utilizar:".cyan());
+    println!("{}", "✨ JWT middleware successfully created!".green().bold());
+    println!("{}", "How to use:".cyan());
     println!(
         "{}",
-        "  1. Adicione a camada ao seu router protegido (src/main.rs):".cyan()
+        "  1. Add the layer to your protected router (src/main.rs):".cyan()
     );
     println!(
         "{}",
@@ -2879,7 +2879,7 @@ fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -2891,7 +2891,7 @@ fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        format!("🛠️ Gerando background worker Rullst: {}...", snake_name)
+        format!("🛠️ Generating background worker Rullst: {}...", snake_name)
             .cyan()
             .bold()
     );
@@ -2940,7 +2940,7 @@ fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "{}",
             format!(
-                "⚠️ Aviso: O worker '{}.rs' já existe. Pulando criação.",
+                "⚠️ Warning: Worker '{}.rs' already exists. Skipping creation.",
                 snake_name
             )
             .yellow()
@@ -2985,7 +2985,7 @@ pub fn register(worker: &mut Worker) {{
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Adicionado 'pub mod workers;' ao topo de src/main.rs.".cyan()
+                "ℹ️ Automatically added 'pub mod workers;' to src/main.rs.".cyan()
             );
         }
     }
@@ -2993,7 +2993,7 @@ pub fn register(worker: &mut Worker) {{
     println!(
         "{}",
         format!(
-            "✨ Worker '{}' criado com sucesso em '{}'!",
+            "✨ Worker '{}' successfully created at '{}'!",
             snake_name,
             worker_path.display()
         )
@@ -3002,9 +3002,9 @@ pub fn register(worker: &mut Worker) {{
     );
     println!(
         "{}",
-        "Como inicializar o Worker em segundo plano no seu 'src/main.rs':".cyan()
+        "How to initialize the background Worker in your 'src/main.rs':".cyan()
     );
-    println!("{}", "  1. Crie a fila e inicialize o worker:".cyan());
+    println!("{}", "  1. Create the queue and initialize the worker:".cyan());
     println!(
         "{}",
         "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan()
@@ -3013,9 +3013,9 @@ pub fn register(worker: &mut Worker) {{
         "{}",
         "     let mut worker = rullst::queue::Worker::new(&queue);".cyan()
     );
-    println!("{}", "  2. Registre seus workers:".cyan());
+    println!("{}", "  2. Register your workers:".cyan());
     println!("{}", "     workers::register_workers(&mut worker);".cyan());
-    println!("{}", "  3. Inicie o loop de processamento:".cyan());
+    println!("{}", "  3. Start the processing loop:".cyan());
     println!("{}", "     worker.run();".cyan());
 
     Ok(())
@@ -3067,7 +3067,7 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -3076,14 +3076,14 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "🔍 Escaneando projeto para extrair rotas e gerar especificação OpenAPI..."
+        "🔍 Scanning project to extract routes and generate OpenAPI specification..."
             .cyan()
             .bold()
     );
 
     let main_path = Path::new("src/main.rs");
     if !main_path.exists() {
-        println!("{}", "❌ Erro: Arquivo src/main.rs não encontrado.".red());
+        println!("{}", "❌ Error: File src/main.rs not found.".red());
         std::process::exit(1);
     }
 
@@ -3136,7 +3136,7 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             "summary": description,
             "responses": {
                 "200": {
-                    "description": "Sucesso"
+                    "description": "Success"
                 }
             }
         });
@@ -3158,7 +3158,7 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         "openapi": "3.0.0",
         "info": {
             "title": "Especificação da API Rullst",
-            "description": "Especificação gerada automaticamente via analisador estático do cargo-rullst.",
+            "description": "Specification automatically generated via the cargo-rullst static analyzer.",
             "version": "1.0.0"
         },
         "paths": paths_map
@@ -3170,7 +3170,7 @@ fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         format!(
-            "✨ OpenAPI especificação JSON criada com extremo sucesso em '{}'!",
+            "✨ OpenAPI JSON specification successfully created at '{}'!",
             output_path.display()
         )
         .green()
@@ -3183,7 +3183,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -3192,7 +3192,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "\n🚀 Iniciando a Atualização Segura do Rullst (Self-Healing Upgrades)...\n"
+        "\n🚀 Starting Rullst Safe Upgrade (Self-Healing Upgrades)...\n"
             .cyan()
             .bold()
     );
@@ -3211,7 +3211,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if !update_status.success() {
         println!(
             "{}",
-            "❌ Falha ao atualizar a dependência 'rullst' via cargo update.".red()
+            "❌ Failed to update the 'rullst' dependency via cargo update.".red()
         );
         std::process::exit(1);
     }
@@ -3230,7 +3230,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if !fix_status.success() {
         println!(
             "{}",
-            "❌ Falha ao aplicar as migrações de código via cargo fix.".red()
+            "❌ Failed to apply code migrations via cargo fix.".red()
         );
         std::process::exit(1);
     }
@@ -3238,12 +3238,12 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     // Wrap up
     println!(
         "{}",
-        "\n✨ Atualização do Rullst concluída com extremo sucesso!"
+        "\n✨ Rullst upgrade completed successfully!"
             .green()
             .bold()
     );
-    println!("{}", "Seu código foi atualizado automaticamente para refletir as melhores práticas da versão mais recente.".green());
-    println!("{}", "Execute `cargo test` ou `cargo check` para garantir que tudo está funcionando perfeitamente.\n".cyan());
+    println!("{}", "Your code was automatically updated to reflect the best practices of the latest version.".green());
+    println!("{}", "Run `cargo test` or `cargo check` to ensure everything is functioning perfectly.\n".cyan());
 
     Ok(())
 }
@@ -3252,7 +3252,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
-            "❌ Erro: Comando deve ser executado na raiz de um projeto Rullst válido."
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
                 .red()
                 .bold()
         );
@@ -3273,7 +3273,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         fs::write("Cargo.toml", &cargo_content)?;
         println!(
             "{}",
-            "ℹ️ Injetado [lib] crate-type no seu Cargo.toml automaticamente.".cyan()
+            "ℹ️ Automatically injected [lib] crate-type into your Cargo.toml.".cyan()
         );
     }
 
@@ -3306,7 +3306,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !build_status.success() {
         println!(
             "{}",
-            "❌ Erro na compilação do target wasm32-unknown-unknown.".red()
+            "❌ Error compiling wasm32-unknown-unknown target.".red()
         );
         std::process::exit(1);
     }
@@ -3347,13 +3347,13 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !Path::new(&wasm_file_path).exists() {
         println!(
             "{}",
-            format!("❌ Erro: Arquivo compilado Wasm não foi encontrado em '{}'. O Rullst procurou também em diretórios superiores.", wasm_file_path).red()
+            format!("❌ Error: Compiled Wasm file not found at '{}'. Rullst also searched in parent directories.", wasm_file_path).red()
         );
         std::process::exit(1);
     }
 
     // 5. Ensure wasm-bindgen-cli is installed
-    println!("{}", "🔍 Verificando wasm-bindgen-cli...".yellow());
+    println!("{}", "🔍 Checking wasm-bindgen-cli...".yellow());
     let wasm_bindgen_installed = Command::new("wasm-bindgen")
         .arg("--version")
         .stdout(std::process::Stdio::null())
@@ -3364,7 +3364,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !wasm_bindgen_installed {
         println!(
             "{}",
-            "⚙️ Instalar wasm-bindgen-cli de forma automática... Isso pode levar um instante."
+            "⚙️ Automatically installing wasm-bindgen-cli... This might take a moment."
                 .yellow()
         );
         let install_status = Command::new("cargo")
@@ -3374,7 +3374,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         if !install_status.success() {
             println!(
                 "{}",
-                "❌ Falha ao instalar wasm-bindgen-cli automaticamente.".red()
+                "❌ Failed to automatically install wasm-bindgen-cli.".red()
             );
             std::process::exit(1);
         }
@@ -3387,7 +3387,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 7. Run wasm-bindgen compiler
-    println!("{}", "⚡ Executando bindings do wasm-bindgen...".yellow());
+    println!("{}", "⚡ Running wasm-bindgen bindings...".yellow());
     let bindgen_status = Command::new("wasm-bindgen")
         .arg(&wasm_file_path)
         .arg("--out-dir")
@@ -3398,7 +3398,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     if !bindgen_status.success() {
-        println!("{}", "❌ Erro ao gerar os bindings com wasm-bindgen.".red());
+        println!("{}", "❌ Error generating bindings with wasm-bindgen.".red());
         std::process::exit(1);
     }
 
@@ -3450,11 +3450,11 @@ if (typeof document !== 'undefined') {{
 
     println!(
         "{}",
-        "✨ Rullst Wasm Islands compilados e gerados com sucesso!"
+        "✨ Rullst Wasm Islands successfully compiled and generated!"
             .green()
             .bold()
     );
-    println!("{}", "Como carregar na sua página HTML:".cyan());
+    println!("{}", "How to load in your HTML page:".cyan());
     println!(
         "{}",
         format!(

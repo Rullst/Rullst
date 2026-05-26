@@ -9,7 +9,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v1.0.1](https://img.shields.io/badge/Status-v1.0.1-emerald)
+![Status: v1.0.2](https://img.shields.io/badge/Status-v1.0.2-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -91,9 +91,11 @@ Scaffold a fully operational application with our interactive CLI wizard!
 cargo rullst new
 
 # The wizard will prompt you:
-# 🚀 App name? -> my-app
-# 🏗️ What would you like to build? -> SaaS App / REST API
-# 🗄️ Select a DB Provider -> Sqlite / Postgres / MySQL
+# 🚀 App name? (no spaces allowed) -> my-app
+# 🏗️ What would you like to build? -> Full-Stack Web App (SaaS, Portfolio, Blog) / REST API
+# 🔥 Enable Hot Reloading by default? -> Yes / No
+# 🗄️ Will your project need a Data Base? -> Yes / No
+# 💾 Select a DB Provider -> Sqlite / Postgres / MySQL/MariaDB
 
 # 2. Enter the project folder
 cd my-app
@@ -205,7 +207,7 @@ Under the hood, Rullst compiles your routes as a dynamic library (`cdylib`), loa
 
 ---
 
-## 🎯 Architecture under the hood (v1.0.1)
+## 🎯 Architecture under the hood (v1.0.2)
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 

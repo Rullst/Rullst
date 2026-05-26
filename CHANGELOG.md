@@ -4,7 +4,29 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-05-26 🚀
+
+### Added
+- **Rullst CLI Interactive Wizard (`cargo rullst new`) Improvements**:
+  - Restricts application names to contain "no spaces allowed".
+  - Adds descriptive options to select application type ("What would you like to build?": Full-Stack Web App vs Headless REST API).
+  - Prompts to enable/disable Hot Reloading by default during scaffolding.
+  - Prompts to configure database support ("Will your project need a Data Base?").
+  - Adds "MySQL/MariaDB" provider selection option alongside SQLite and PostgreSQL.
+- **RullstPress General-Purpose SSG**:
+  - Capitalized CLI command descriptions and help menus to correctly read "RullstPress".
+  - Updated documentation tutorial in `docs/2-tutorial-rullstpress.md` to introduce RullstPress as a general-purpose, high-performance, and multi-purpose Static Site Generator perfect for SaaS landing pages, wikis, blogs, and personal portfolios, rather than just documentation.
+
+### Documentation
+- Updated `README.pt.md` and `README.md` to reflect the new interactive CLI wizard questions and choices.
+
 ## [1.0.1] - 2026-05-26 🛡️
+
+### Added
+- **RullstPress (Native SSG)**:
+  - `cargo rullst docs build`: Compiles all `.md` files in the `docs/` folder into static HTML files inside `docs/dist/`.
+  - `cargo rullst docs dev`: Starts a live-preview local server for your documentation powered by Axum.
+  - Automatically parses Markdown (via `pulldown-cmark`) and renders a premium dark-mode sidebar layout.
 
 ### Security & Quality Fixes
 - **Security Enhancements**:

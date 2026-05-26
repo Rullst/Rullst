@@ -77,8 +77,10 @@ impl Server {
 
         if let Some(db_url) = self.db_url {
             println!("Initializing Eloquent database pool...");
-            Eloquent::init(&db_url).await?;
-            println!("Database initialized successfully.");
+            match Eloquent::init(&db_url).await {
+                Ok(_) => println!("Database initialized successfully."),
+                Err(e) => eprintln!("⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.", e),
+            }
         }
 
         // Start the scheduler if one was attached
