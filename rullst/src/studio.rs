@@ -251,7 +251,7 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
 
             let pool = Eloquent::pool();
             let clean_table = sanitize_identifier(&table_name);
-            
+
             // Retrieve columns schema
             let schema_query = format!("PRAGMA table_info(\"{}\")", clean_table);
             let columns_rows = match sqlx::query(&schema_query).fetch_all(pool).await {
@@ -353,7 +353,7 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
 
             let prev_page = if page > 1 { page - 1 } else { 1 };
             let next_page = if page < total_pages { page + 1 } else { total_pages };
-            
+
             let prev_hx = format!("/tables/{}?page={}&search={}", table_name, prev_page, escape_html_attr(search));
             let next_hx = format!("/tables/{}?page={}&search={}", table_name, next_page, escape_html_attr(search));
 

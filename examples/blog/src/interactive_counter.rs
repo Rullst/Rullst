@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use rullst::{client_component, html};
 
 #[client_component]

@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 pub mod interactive_counter;
 
 #[cfg(not(target_arch = "wasm32"))]
