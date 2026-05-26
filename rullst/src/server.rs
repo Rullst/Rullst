@@ -79,7 +79,10 @@ impl Server {
             println!("Initializing Eloquent database pool...");
             match Eloquent::init(&db_url).await {
                 Ok(_) => println!("Database initialized successfully."),
-                Err(e) => eprintln!("⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.", e),
+                Err(e) => eprintln!(
+                    "⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.",
+                    e
+                ),
             }
         }
 

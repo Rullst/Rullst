@@ -9,7 +9,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v1.0.2](https://img.shields.io/badge/Status-v1.0.2-emerald)
+![Status: v1.0.3](https://img.shields.io/badge/Status-v1.0.2-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -207,7 +207,7 @@ Under the hood, Rullst compiles your routes as a dynamic library (`cdylib`), loa
 
 ---
 
-## 🎯 Architecture under the hood (v1.0.2)
+## 🎯 Architecture under the hood (v1.0.3)
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 

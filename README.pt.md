@@ -7,7 +7,7 @@
 
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Status: v1.0.2](https://img.shields.io/badge/Status-v1.0.2-emerald)
+![Status: v1.0.3](https://img.shields.io/badge/Status-v1.0.2-emerald)
 ![Built with: Axum & Rust Eloquent](https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue)
 
 O **Rullst** (Rust + Fullstack) é o primeiro framework web opinativo em Rust projetado obsessivamente para a **Produtividade Emocional** do desenvolvedor. 
@@ -199,7 +199,7 @@ Por baixo dos panos, o Rullst compila suas rotas como biblioteca dinâmica (`cdy
 
 ---
 
-## 🎯 Arquitetura do Rullst (v1.0.2)
+## 🎯 Arquitetura do Rullst (v1.0.3)
 
 O Rullst é estruturado como um monorepo Cargo Workspace altamente modularizado:
 

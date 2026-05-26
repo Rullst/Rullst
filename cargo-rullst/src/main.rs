@@ -185,12 +185,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::BuildClient { debug } => {
             run_build_client(*debug)?;
         }
-        Commands::Docs { action } => {
-            match action {
-                DocsCommands::Dev => docs_generator::run_dev_server()?,
-                DocsCommands::Build => docs_generator::run_build()?,
-            }
-        }
+        Commands::Docs { action } => match action {
+            DocsCommands::Dev => docs_generator::run_dev_server()?,
+            DocsCommands::Build => docs_generator::run_build()?,
+        },
     }
 
     Ok(())
@@ -424,7 +422,11 @@ fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::error
                 .red()
                 .bold()
         );
-        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
+        println!(
+            "{}",
+            "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
         std::process::exit(1);
     }
 
@@ -604,8 +606,7 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
             fs::write(main_path, main_content)?;
             println!(
                 "{}",
-                "ℹ️ Automatically added 'pub mod controllers;' to the top of src/main.rs."
-                    .cyan()
+                "ℹ️ Automatically added 'pub mod controllers;' to the top of src/main.rs.".cyan()
             );
         }
     }
@@ -646,7 +647,11 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
                 .red()
                 .bold()
         );
-        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
+        println!(
+            "{}",
+            "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
         std::process::exit(1);
     }
 
@@ -822,7 +827,11 @@ fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
                 .red()
                 .bold()
         );
-        println!("{}", "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency.".yellow());
+        println!(
+            "{}",
+            "Make sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
         std::process::exit(1);
     }
 
@@ -963,7 +972,9 @@ fn create_new_project(
  |_|  \_\__,_|_|_|___/\__|
     "#
         .cyan(),
-        "\nWelcome to the official Rullst application wizard!\n".white().bold()
+        "\nWelcome to the official Rullst application wizard!\n"
+            .white()
+            .bold()
     );
 
     let theme = dialoguer::theme::ColorfulTheme::default();
@@ -977,7 +988,10 @@ fn create_new_project(
                     .with_prompt("App name? (no spaces allowed)")
                     .interact_text()?;
                 if val.contains(' ') {
-                    println!("{}", "❌ Spaces are not allowed in the project name. Please try again.".red());
+                    println!(
+                        "{}",
+                        "❌ Spaces are not allowed in the project name. Please try again.".red()
+                    );
                 }
             }
             val
@@ -1132,7 +1146,7 @@ edition = "2024"
             r#"
 [lib]
 crate-type = ["cdylib", "rlib"]
-"#
+"#,
         );
     }
 
@@ -1160,7 +1174,7 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
     cargo_toml.push_str(
         r#"
 [workspace]
-"#
+"#,
     );
 
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
@@ -2794,7 +2808,8 @@ fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if middleware_path.exists() {
         println!(
             "{}",
-            "⚠️ Warning: CORS middleware 'cors_middleware.rs' already exists. Skipping creation.".yellow()
+            "⚠️ Warning: CORS middleware 'cors_middleware.rs' already exists. Skipping creation."
+                .yellow()
         );
     } else {
         let template = r#"use axum::{
@@ -2928,8 +2943,7 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(cargo_toml_path, cargo_toml_content)?;
             println!(
                 "{}",
-                "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml."
-                    .green()
+                "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml.".green()
             );
         }
     }
@@ -2957,7 +2971,8 @@ fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if middleware_path.exists() {
         println!(
             "{}",
-            "⚠️ Warning: JWT middleware 'jwt_middleware.rs' already exists. Skipping creation.".yellow()
+            "⚠️ Warning: JWT middleware 'jwt_middleware.rs' already exists. Skipping creation."
+                .yellow()
         );
     } else {
         let template = r#"use axum::{
@@ -3056,7 +3071,10 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
         }
     }
 
-    println!("{}", "✨ JWT middleware successfully created!".green().bold());
+    println!(
+        "{}",
+        "✨ JWT middleware successfully created!".green().bold()
+    );
     println!("{}", "How to use:".cyan());
     println!(
         "{}",
@@ -3246,7 +3264,10 @@ pub fn register(worker: &mut Worker) {{
         "{}",
         "How to initialize the background Worker in your 'src/main.rs':".cyan()
     );
-    println!("{}", "  1. Create the queue and initialize the worker:".cyan());
+    println!(
+        "{}",
+        "  1. Create the queue and initialize the worker:".cyan()
+    );
     println!(
         "{}",
         "     let queue = rullst::Queue::sqlite(\"sqlite://rullst.db\").await?;".cyan()
@@ -3480,12 +3501,17 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     // Wrap up
     println!(
         "{}",
-        "\n✨ Rullst upgrade completed successfully!"
-            .green()
-            .bold()
+        "\n✨ Rullst upgrade completed successfully!".green().bold()
     );
-    println!("{}", "Your code was automatically updated to reflect the best practices of the latest version.".green());
-    println!("{}", "Run `cargo test` or `cargo check` to ensure everything is functioning perfectly.\n".cyan());
+    println!(
+        "{}",
+        "Your code was automatically updated to reflect the best practices of the latest version."
+            .green()
+    );
+    println!(
+        "{}",
+        "Run `cargo test` or `cargo check` to ensure everything is functioning perfectly.\n".cyan()
+    );
 
     Ok(())
 }
@@ -3606,8 +3632,7 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !wasm_bindgen_installed {
         println!(
             "{}",
-            "⚙️ Automatically installing wasm-bindgen-cli... This might take a moment."
-                .yellow()
+            "⚙️ Automatically installing wasm-bindgen-cli... This might take a moment.".yellow()
         );
         let install_status = Command::new("cargo")
             .arg("install")
@@ -3640,7 +3665,10 @@ fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .status()?;
 
     if !bindgen_status.success() {
-        println!("{}", "❌ Error generating bindings with wasm-bindgen.".red());
+        println!(
+            "{}",
+            "❌ Error generating bindings with wasm-bindgen.".red()
+        );
         std::process::exit(1);
     }
 

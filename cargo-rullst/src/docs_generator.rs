@@ -1,6 +1,6 @@
-use axum::{routing::get_service, Router};
+use axum::{Router, routing::get_service};
 use colored::*;
-use pulldown_cmark::{html, Parser};
+use pulldown_cmark::{Parser, html};
 use std::fs;
 use std::path::Path;
 use tower_http::services::ServeDir;
@@ -9,9 +9,7 @@ use walkdir::WalkDir;
 pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
-        "📚 Building static site with RullstPress..."
-            .cyan()
-            .bold()
+        "📚 Building static site with RullstPress...".cyan().bold()
     );
     let docs_dir = Path::new("docs");
     let dist_dir = docs_dir.join("dist");
@@ -19,7 +17,8 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
     if !docs_dir.exists() {
         println!(
             "{}",
-            "❌ 'docs/' directory not found. Please create the folder and add Markdown files.".red()
+            "❌ 'docs/' directory not found. Please create the folder and add Markdown files."
+                .red()
         );
         std::process::exit(1);
     }
@@ -37,7 +36,7 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
         if path.starts_with(&dist_dir) {
             continue;
         }
-        
+
         if path.is_file() {
             if path.extension().and_then(|e| e.to_str()) == Some("md") {
                 pages.push(path.to_path_buf());
@@ -100,7 +99,7 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
 
 fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
     let mut html = String::from("<ul class=\"sidebar-list\">\n<li><a href=\"/\">Home</a></li>\n");
-    
+
     let mut sorted_pages = pages.to_vec();
     sorted_pages.sort();
 
@@ -116,13 +115,13 @@ fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
-                
+
             if name == "index" {
                 continue;
             }
 
             let mut title = name.replace("-", " ");
-            
+
             // Remove num prefix (e.g., "1 getting started" -> "getting started")
             if let Some(first_char) = title.chars().next() {
                 if first_char.is_ascii_digit() {
@@ -132,7 +131,7 @@ fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
                     }
                 }
             }
-            
+
             // Capitalize title
             let mut chars = title.chars();
             if let Some(first) = chars.next() {
@@ -146,10 +145,7 @@ fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
                 .replace("rullst", "Rullst")
                 .replace("blog", "Blog");
 
-            html.push_str(&format!(
-                "<li><a href=\"/{}\">{}</a></li>\n",
-                link, title
-            ));
+            html.push_str(&format!("<li><a href=\"/{}\">{}</a></li>\n", link, title));
         }
     }
     html.push_str("</ul>");
@@ -305,16 +301,17 @@ fn render_layout(content: &str, sidebar: &str) -> String {
 
 fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Path) -> String {
     let title = "Develop fast.<br>Scale forever.";
-    let subtitle = "The most productive Full-Stack web framework in Rust. Built for developer happiness.";
+    let subtitle =
+        "The most productive Full-Stack web framework in Rust. Built for developer happiness.";
     let btn_start = "Learn how to begin";
     let btn_link = "/1-getting-started.html";
-    
+
     let f1_title = "Extremely Fast";
     let f1_desc = "Built on Tokio and Axum. Enjoy the insane speed of Rust without giving up a high-level API.";
-    
+
     let f2_title = "Batteries Included";
     let f2_desc = "ORM, Authentication, Background Jobs, Mailer, Cache, and WebSocket all built-in and ready to use.";
-    
+
     let f3_title = "AI-Native";
     let f3_desc = "Designed from the ground up to be manipulated by AI Agents. Predictable, clear, and strongly typed architecture.";
 
@@ -532,7 +529,17 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
     </main>
 </body>
 </html>"#,
-        title, subtitle, btn_link, btn_start, f1_title, f1_desc, f2_title, f2_desc, f3_title, f3_desc, content
+        title,
+        subtitle,
+        btn_link,
+        btn_start,
+        f1_title,
+        f1_desc,
+        f2_title,
+        f2_desc,
+        f3_title,
+        f3_desc,
+        content
     )
 }
 
