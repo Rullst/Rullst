@@ -45,7 +45,7 @@ uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
 cron = "0.16"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-validator = { version = "0.19", features = ["derive"] }
+validator = { version = "0.20", features = ["derive"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 libloading = "0.8"
 notify = "6.1.1"
