@@ -30,7 +30,7 @@ impl WebSocket {
     /// Send a text message to the WebSocket client
     pub async fn send_text(&mut self, text: impl Into<String>) -> Result<(), WsError> {
         self.inner
-            .send(AxumMessage::Text(text.into()))
+            .send(AxumMessage::Text(text.into().into()))
             .await
             .map_err(|e| WsError::SendError(e.to_string()))
     }
@@ -44,7 +44,7 @@ impl WebSocket {
     pub async fn recv(&mut self) -> Option<Result<String, WsError>> {
         match self.inner.recv().await {
             Some(Ok(msg)) => match msg {
-                AxumMessage::Text(t) => Some(Ok(t)),
+                AxumMessage::Text(t) => Some(Ok(t.to_string())),
                 AxumMessage::Binary(b) => Some(Ok(String::from_utf8_lossy(&b).to_string())),
                 AxumMessage::Close(_) => None,
                 _ => Some(Err(WsError::RecvError(

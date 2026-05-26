@@ -4,6 +4,24 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-05-26 🚀
+
+### Fixed
+- **Macro `html!` Self-Closing Bug**: Fixed a critical HTML parsing bug in `rullst-macros` where empty elements (like `<script src="..."></script>`) were incorrectly compiled into self-closing tags (`<script src="..." />`). Now the macro enforces self-closing tags *only* for valid HTML5 void elements (e.g. `<img>`, `<br>`, `<meta>`), preventing complete page collapse in web browsers.
+
+### Added
+- **Startup Diagnostic Links**: Added a friendly `🚀 Visit: http://localhost:3000 to see the result!` message to the `rullst::Server` boot logs.
+- **RullstPress Tutorials**: Merged the advanced Developer Portfolio HTMX/Tailwind tutorial directly into the end of `1-getting-started.md` to streamline the onboarding experience for new users, removing the redundant blog tutorial.
+- **Automated Documentation Deployment (`pages.yml`)**: Added a GitHub Actions workflow to automatically build and deploy the RullstPress documentation to GitHub Pages on every push to the `main` branch.
+- **Official Links**: Added official Crates.io and GitHub Pages Documentation links to the project's English and Portuguese READMEs.
+- **Pre-Release Technical Audit (`audit-report.md`)**: Conducted a rigorous technical audit covering security, performance, maintainability, and DX. Documented all active framework mitigations (Path Traversal, XSS, insecure APP_KEY hashing, queue worker polling latency, decoupled task scheduler, and memory-driver active cache janitor) and archived the official report at `docs/audit-report.md` for complete version transparency.
+
+### Changed
+- **Axum 0.8 Upgrade**: Fully migrated the core framework, `cargo-rullst` scaffolding templates, and internal examples to `axum = "0.8"` and `tower-http = "0.6"`.
+- **WebSocket Updates**: Updated internal WebSocket message handling to use `Utf8Bytes` according to the new `axum 0.8` requirements.
+- **Routing Syntax**: Updated Horizon dashboard route definitions from `:id` to `{id}` to match the new Axum 0.8 path parameter syntax.
+- **Async Trait**: Removed `#[async_trait]` from `FromRequest` implementations as Axum 0.8 natively supports `async fn` in traits.
+
 ## [1.0.4] - 2026-05-26 🛠️
 
 ### Fixed

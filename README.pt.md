@@ -5,6 +5,14 @@
 # Rullst - 📜🦀🌐🤖🚀
 ### *"Rust para quem quer construir, não sofrer."*
 
+> 📖 **[Veja todas as mudanças no nosso Changelog!](./CHANGELOG.md)**  
+> 📚 **[Leia a Documentação Oficial!](https://venelouis.github.io/Rullst/)**  
+> 📦 **[Veja no Crates.io!](https://crates.io/crates/rullst)**
+
+> [!WARNING]  
+> **Em construção! 🚧**  
+> O Rullst está em **desenvolvimento constante e melhoria rápida**. Como estamos estabilizando o framework e atualizando dependências vitais, você pode eventualmente encontrar bugs ou "crashes". Pedimos perdão sincero por qualquer inconveniência! Por favor, considere tornar-se um **contribuinte** para nos ajudar a construir talvez o melhor framework web de toda a internet. 🦀❤️
+
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Status: v1.0.4](https://img.shields.io/badge/Status-v1.0.4-emerald)

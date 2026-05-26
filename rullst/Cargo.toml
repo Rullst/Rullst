@@ -23,14 +23,13 @@ redis = { version = "0.27", features = ["tokio-comp", "aio"], optional = true }
 lettre = { version = "0.11", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
 aws-config = { version = "1", optional = true }
 aws-sdk-s3 = { version = "1", optional = true }
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum = { version = "0.7", features = ["macros", "ws"] }
+axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1.43", features = ["rt-multi-thread", "macros", "time"] }
 rust-eloquent = "1.1.0"
 sqlx = { version = "0.8", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros"] }
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.5", features = ["fs", "trace"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 async-trait = "0.1"

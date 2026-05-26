@@ -17,14 +17,14 @@ path = "src/bin/sync_badges.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-colored = "2.1"
+colored = "3"
 chrono = "0.4"
 dialoguer = "0.12.0"
 regex = "1.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-pulldown-cmark = "0.10"
+pulldown-cmark = "0.13"
 walkdir = "2.5"
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1.37", features = ["full"] }
-tower-http = { version = "0.5", features = ["fs"] }
+tower-http = { version = "0.6", features = ["fs"] }

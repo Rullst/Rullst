@@ -1,5 +1,5 @@
 use axum::{
-    Form, Json, async_trait,
+    Form, Json,
     extract::{FromRequest, Request},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
@@ -113,7 +113,6 @@ impl IntoResponse for ValidationError {
 #[derive(Debug)]
 pub struct ValidatedForm<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedForm<T>
 where
     T: validator::Validate + serde::de::DeserializeOwned + 'static,
@@ -148,7 +147,6 @@ where
 #[derive(Debug)]
 pub struct ValidatedJson<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
     T: validator::Validate + serde::de::DeserializeOwned + 'static,

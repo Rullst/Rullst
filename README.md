@@ -7,6 +7,14 @@
 
 *Read this in [Português (Brasil)](./README.pt.md).*
 
+> 📖 **[See all the changes in our Changelog!](./CHANGELOG.md)**  
+> 📚 **[Read the Official Documentation!](https://venelouis.github.io/Rullst/)**  
+> 📦 **[View on Crates.io!](https://crates.io/crates/rullst)**
+
+> [!WARNING]  
+> **Pardon our dust! 🚧**  
+> Rullst is under **constant development and rapid improvement**. As we stabilize the framework and update core dependencies, you might occasionally encounter bugs or breaking changes. We sincerely apologize for any crashes! Please consider becoming a **contributor** to help us build the best web framework on the internet. 🦀❤️
+
 ![Crates.io](https://img.shields.io/crates/v/rullst?style=flat-square&color=orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Status: v1.0.4](https://img.shields.io/badge/Status-v1.0.4-emerald)
