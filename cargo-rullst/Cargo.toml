@@ -27,4 +27,4 @@ pulldown-cmark = "0.10"
 walkdir = "2.5"
 axum = "0.7"
 tokio = { version = "1.37", features = ["full"] }
-tower-http = { version = "0.5", features = ["fs"] }
+tower-http = { version = "0.6", features = ["fs"] }
