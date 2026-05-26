@@ -9,6 +9,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+pub mod docs_generator;
+
 #[derive(Parser)]
 #[command(name = "cargo-rullst")]
 #[command(about = "CLI oficial do Rullst Framework", long_about = None)]
@@ -101,6 +103,19 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+    /// RullstPress: Native Static Site Generator (SSG) for websites and documentation
+    Docs {
+        #[command(subcommand)]
+        action: DocsCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DocsCommands {
+    /// Starts the local live-preview server for RullstPress
+    Dev,
+    /// Compiles Markdown files into static HTML pages
+    Build,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -169,6 +184,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::BuildClient { debug } => {
             run_build_client(*debug)?;
+        }
+        Commands::Docs { action } => {
+            match action {
+                DocsCommands::Dev => docs_generator::run_dev_server()?,
+                DocsCommands::Build => docs_generator::run_build()?,
+            }
         }
     }
 
