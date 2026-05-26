@@ -159,6 +159,29 @@ graph TD
 - [ ] **Rullst Edge Runtime (`rullst::edge`):** Native support for compiling and running Rullst apps in WebAssembly infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstracting Tokio/WASI differences.
 - [ ] **Zero-Config SQLite Replication:** Native drivers for edge-distributed databases (Turso/libsql, Cloudflare D1) integrated into `rust-eloquent`. Read/write locally at 1ms latency while the framework syncs globally in the background.
 
+### 🔄 Autonomous Upgrade System (`cargo rullst upgrade`)
+
+> One of the biggest DX challenges in any full-stack framework is keeping dependencies updated without breaking user code. Rust makes this even more critical — minor/patch version bumps in low-level crates can cause hard compile-time errors. This system makes Rullst upgrades nearly invisible.
+
+- [ ] **Non-Intrusive Background Version Check:** Every time the user runs frequent commands like `cargo rullst new` or `cargo rullst dev`, the CLI performs a lightweight async HTTP request (in a background thread, never blocking the terminal) to the Crates.io public API (`https://crates.io/api/v1/crates/rullst`) and compares the latest remote version with the version pinned in the user's `Cargo.toml`. The result is cached in a local temp file and refreshed at most once per day, so there is zero network overhead on repeated commands.
+
+- [ ] **Elegant Terminal Notification Box:** If a new version is detected, the CLI renders a non-blocking info box directly in the terminal output — styled with `colored` — immediately after the command completes:
+  ```
+  ┌────────────────────────────────────────────────────────────┐
+  │  🚀 New Rullst version available: 1.0.5 → 1.1.0            │
+  │  Run 'cargo rullst upgrade' to update safely with           │
+  │  automatic code fixes (codemods).                           │
+  └────────────────────────────────────────────────────────────┘
+  ```
+
+- [ ] **Automated Codemods (Zero-Breaking Upgrades):** Expand `cargo rullst upgrade` into a full autonomous refactoring pipeline:
+  1. **Manifest update:** The CLI rewrites the `rullst`, `rullst-macros`, and `rust-eloquent` version strings in the user's `Cargo.toml` to the latest release.
+  2. **Codemod execution:** A versioned registry of regex-based (or lightweight AST) search-and-replace rules is shipped with each CLI release. If a public API changed between versions (e.g., `.render()` renamed to `.render_page()`), the CLI automatically rewrites all matching occurrences inside `src/**/*.rs` before the user even sees a compile error.
+  3. **Validation gate (`cargo check`):** After applying codemods, the CLI runs `cargo check` in background. If the compiler exits cleanly, the user sees: `"✅ Rullst updated successfully. No breaking changes detected."` If errors remain, a diff of the codemod changes is shown so the developer can review.
+
+- [ ] **Dependency Shielding (Internal Abstraction Casca):** Enforce the architectural rule that all heavy transitive dependencies (e.g. `sqlx`, `axum`, `tokio`, `lettre`) are always re-exported or wrapped inside Rullst's own public API surface. User code must never `use sqlx::*` directly — only `use rullst::db::*`. This shields user apps from upstream breakage: when `sqlx` releases a breaking version, only Rullst's internal adapter changes, and the user's code compiles untouched.
+
+
 ---
 
 ## 🤖 Milestone 9: Agentic DevOps & Autonomous Infrastructure
