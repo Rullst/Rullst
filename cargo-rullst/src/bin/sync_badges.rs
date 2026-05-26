@@ -1,6 +1,6 @@
+use regex::Regex;
 use std::fs;
 use std::path::Path;
-use regex::Regex;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Locate the workspace root (parent of cargo-rullst directory)
@@ -41,13 +41,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔎 Detected version: {}", version.cyan().bold());
 
     // 3. Define target README paths
-    let readmes = vec![
-        root_dir.join("README.md"),
-        root_dir.join("README.pt.md"),
-    ];
+    let readmes = vec![root_dir.join("README.md"), root_dir.join("README.pt.md")];
 
-    let badge_regex = Regex::new(r#"!\[Status:\s*v[^\]]+\]\(https://img\.shields\.io/badge/Status-v[^-]+-emerald\)"#)?;
-    let new_badge = format!("![Status: v{}](https://img.shields.io/badge/Status-v{}-emerald)", version, version);
+    let badge_regex = Regex::new(
+        r#"!\[Status:\s*v[^\]]+\]\(https://img\.shields\.io/badge/Status-v[^-]+-emerald\)"#,
+    )?;
+    let new_badge = format!(
+        "![Status: v{}](https://img.shields.io/badge/Status-v{}-emerald)",
+        version, version
+    );
 
     let mut updated_count = 0;
 
@@ -61,15 +63,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if badge_regex.is_match(&content) {
             let updated_content = badge_regex.replace_all(&content, &new_badge);
             fs::write(&readme_path, updated_content.as_ref())?;
-            println!("✅ Updated badges in {:?}", readme_path.file_name().unwrap());
+            println!(
+                "✅ Updated badges in {:?}",
+                readme_path.file_name().unwrap()
+            );
             updated_count += 1;
         } else {
-            println!("ℹ️ No status badge found or already up to date in {:?}", readme_path.file_name().unwrap());
+            println!(
+                "ℹ️ No status badge found or already up to date in {:?}",
+                readme_path.file_name().unwrap()
+            );
         }
     }
 
     if updated_count > 0 {
-        println!("🚀 All README badges successfully updated to v{}!", version.green().bold());
+        println!(
+            "🚀 All README badges successfully updated to v{}!",
+            version.green().bold()
+        );
     } else {
         println!("✨ No badges needed updating.");
     }
