@@ -19,8 +19,8 @@
             --sidebar-bg: #1e293b;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --primary: #f97316; /* Laranja da logo */
-            --primary-hover: #10b981; /* Verde Esmeralda da logo */
+            --primary: #f97316; /* Logo orange */
+            --primary-hover: #10b981; /* Logo emerald green */
             --border: #334155;
             --code-bg: #0b1120;
         }
@@ -135,39 +135,85 @@
         <ul class="sidebar-list">
 <li><a href="/">Home</a></li>
 <li><a href="/1-getting-started.html">Getting started</a></li>
-<li><a href="/2-tutorial-rullstpress.html">Tutorial rullstpress</a></li>
-<li><a href="/3-tutorial-blog.html">Tutorial blog</a></li>
+<li><a href="/2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="/3-tutorial-blog.html">Tutorial Blog</a></li>
 <li><a href="/spec.html">Spec</a></li>
 </ul>
     </aside>
     <main class="main-content">
-        <h1>Tutorial: Creating Documentation with RullstPress</h1>
-<p>RullstPress is the native Static Site Generator (SSG) built into the Rullst CLI. If you know how to write Markdown files, you already know how to use RullstPress.</p>
-<h2>1. Folder Structure</h2>
-<p>To start writing documentation for your Rullst project (or any other project), just create a <code>docs/</code> folder at the root of your repository:</p>
+        <h1>Introduction to RullstPress: The Native SSG</h1>
+<p><strong>RullstPress</strong> is a lightning-fast, zero-dependency <strong>Static Site Generator (SSG)</strong> built directly into the Rullst CLI (<code>cargo-rullst</code>). It compiles standard Markdown files (<code>.md</code>) into highly-optimized, premium, SEO-friendly HTML files.</p>
+<hr />
+<h2>🌟 What is RullstPress and What is it For?</h2>
+<p>A common misconception is that RullstPress is <em>only</em> for writing framework documentation. In reality, RullstPress is a <strong>general-purpose high-fidelity publishing engine</strong>.</p>
+<p>You can use it to build:</p>
+<ol>
+<li><strong>Technical Documentation &amp; Wikis</strong>: Leverage the automatically generated, responsive sidebar navigation that structure your guides and specifications.</li>
+<li><strong>SaaS &amp; Product Landing Pages</strong>: Use the special <code>index.md</code> template to render beautiful hero headers, call-to-action buttons, and gorgeous interactive grids without writing a single line of CSS.</li>
+<li><strong>Personal Portfolios &amp; Content Sites</strong>: Fast, lightweight personal pages that showcase your projects with premium typography and glassmorphic elements.</li>
+<li><strong>Blogs &amp; News Platforms</strong>: Organize articles into folders and generate clean, readable content sheets with beautiful syntax highlighting.</li>
+</ol>
+<h3>Why use RullstPress?</h3>
+<ul>
+<li><strong>Zero JS Overhead</strong>: Generates pure static HTML and CSS. Pages load in microseconds with a guaranteed 100/100 Google PageSpeed score.</li>
+<li><strong>First-Class SEO &amp; Meta-Tags</strong>: Automatically injects semantic metadata, OpenGraph previews (Facebook/LinkedIn), and Twitter cards.</li>
+<li><strong>No Extra Tooling</strong>: You don't need <code>npm</code>, Node.js, Ruby, or external CLI binaries. If you have Rust and the Rullst CLI, you are ready to compile.</li>
+</ul>
+<hr />
+<h2>📂 1. Folder Structure</h2>
+<p>To start building a static website or documentation hub, simply create a <code>docs/</code> folder at the root of your project:</p>
 <pre><code class="language-text">my_project/
 ├── docs/
-│   ├── index.md           # Your Landing Page (Special Hero section)
-│   ├── getting-started.md # A starter guide
-│   └── architecture.md    # Technical documentation
-├── src/
+│   ├── index.md           # The Home Page (special Hero &amp; Feature layout)
+│   ├── 1-getting-started.md # A guide (number prefix determines sidebar order)
+│   ├── 2-architecture.md  # A guide about architecture
+│   └──pt/                 # For multi-language translations (optional)
+│       ├── index.md
+│       └── 1-getting-started.md
+├── src/                   # Your main Rust source code
 ├── Cargo.toml
 └── Rullst.toml
 </code></pre>
-<h2>2. Local Development Server</h2>
-<p>To preview your documentation in real-time as you write, open your terminal at the project root and run:</p>
+<blockquote>
+<p>[!TIP]
+<strong>Sidebar Ordering</strong>: By default, RullstPress sorts pages alphabetically. You can use numeric prefixes like <code>1-getting-started.md</code> to force a specific reading order. The prefixes are automatically stripped from the rendered titles!</p>
+</blockquote>
+<hr />
+<h2>💻 2. Local Development Server</h2>
+<p>To preview your website in real-time as you write and edit Markdown files, open your terminal and run:</p>
 <pre><code class="language-bash">cargo rullst docs dev
 </code></pre>
-<p>This will compile your <code>.md</code> files and start a fast, secure server on port <code>4000</code>. Go to <code>http://localhost:4000</code> in your browser. The server automatically maps routes based on your file names. For example, <code>getting-started.md</code> becomes <code>/getting-started.html</code>.</p>
-<h2>3. The Landing Page (index.md)</h2>
-<p>RullstPress has a special rule: the <code>index.md</code> file is treated differently!</p>
-<p>Instead of getting a sidebar navigation, it renders a special <strong>Landing Page</strong> layout. The Markdown content you write in <code>index.md</code> will be hidden in the HTML, and in its place, a beautiful Hero (Titles, Subtitles, and CTA Buttons) and a Features list will appear.</p>
-<h2>4. Production Build</h2>
-<p>When you finish writing and want to publish your site (like on GitHub Pages, Vercel, or Netlify), simply run:</p>
+<h3>What happens under the hood?</h3>
+<ol>
+<li>RullstPress scans your <code>docs/</code> directory.</li>
+<li>It compiles all <code>.md</code> files into optimized HTML.</li>
+<li>It boots a high-performance local server at <code>http://localhost:4000</code>.</li>
+<li>It copies static assets like images (<code>Rullst.png</code>) to the output path automatically.</li>
+</ol>
+<p>Open your browser to <code>http://localhost:4000</code> to preview. The routing matches your file structure exactly:</p>
+<ul>
+<li><code>docs/1-getting-started.md</code> → <code>http://localhost:4000/1-getting-started.html</code></li>
+<li><code>docs/pt/1-getting-started.md</code> → <code>http://localhost:4000/pt/1-getting-started.html</code></li>
+</ul>
+<hr />
+<h2>🚀 3. The Special Landing Page (<code>index.md</code>)</h2>
+<p>RullstPress implements a <strong>Landing Page Mode</strong> specifically for the root <code>index.md</code> file.</p>
+<p>Instead of rendering a classic reading layout with a sidebar, the root <code>index.md</code> generates a <strong>SaaS-style Hero page</strong>. It automatically structures:</p>
+<ul>
+<li>A beautiful centered visual logo.</li>
+<li>A large glowing headline title with smooth gradient text.</li>
+<li>A descriptive subtitle.</li>
+<li>A prominent call-to-action button pulsing with elegant animations.</li>
+<li>A beautiful 3-column features card grid.</li>
+</ul>
+<p>This layout is automatically rendered when RullstPress detects the <code>index.md</code> name, creating a spectacular first impression for your visitors.</p>
+<hr />
+<h2>📦 4. Production Build</h2>
+<p>When you are ready to deploy your site to production hosting (such as GitHub Pages, Netlify, Vercel, or a simple Apache/Nginx web server), run:</p>
 <pre><code class="language-bash">cargo rullst docs build
 </code></pre>
-<p>This will generate all final production-ready HTML files in the <code>docs/dist/</code> folder. Just grab this folder and host it wherever you like!</p>
-<p>It's that simple. Focus on the content, and let Rullst handle the Premium design.</p>
+<p>This compiles your entire static site with maximum production optimizations and deposits all final assets into the <code>docs/dist/</code> directory.</p>
+<p>To publish, simply upload the contents of <code>docs/dist/</code> to your static hosting provider. It's completely self-contained!</p>
 
     </main>
 </body>

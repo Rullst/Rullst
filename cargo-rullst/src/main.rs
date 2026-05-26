@@ -953,7 +953,7 @@ fn create_new_project(
     docker: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
-        "{}",
+        "{}{}",
         r#"
   _____       _ _     _   
  |  __ \     | | |   | |  
@@ -962,24 +962,36 @@ fn create_new_project(
  | | \ \ |_| | | \__ \ |_ 
  |_|  \_\__,_|_|_|___/\__|
     "#
-        .cyan()
+        .cyan(),
+        "\nWelcome to the official Rullst application wizard!\n".white().bold()
     );
 
     let theme = dialoguer::theme::ColorfulTheme::default();
 
     let name = match name_arg {
         Some(n) => n.to_string(),
-        None => dialoguer::Input::with_theme(&theme)
-            .with_prompt("App name?")
-            .interact_text()?,
+        None => {
+            let mut val = String::new();
+            while val.trim().is_empty() || val.contains(' ') {
+                val = dialoguer::Input::with_theme(&theme)
+                    .with_prompt("App name? (no spaces allowed)")
+                    .interact_text()?;
+                if val.contains(' ') {
+                    println!("{}", "❌ Spaces are not allowed in the project name. Please try again.".red());
+                }
+            }
+            val
+        }
     };
 
     let mut api = api_arg;
     let mut db_provider = "Sqlite".to_string();
+    let mut db_needed = true;
+    let mut hot_reload = false;
 
     if name_arg.is_none() {
         let build_options = &[
-            "SaaS App with Server-Side Rendering (html! macro)",
+            "Full-Stack Web App (SaaS, Portfolio, Blog)",
             "Headless REST API",
         ];
         let build_selection = dialoguer::Select::with_theme(&theme)
@@ -989,13 +1001,28 @@ fn create_new_project(
             .interact()?;
         api = build_selection == 1;
 
-        let db_options = &["Sqlite", "Postgres", "MySQL"];
-        let db_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("Select a DB Provider")
-            .default(0)
-            .items(&db_options[..])
+        hot_reload = dialoguer::Confirm::with_theme(&theme)
+            .with_prompt("Enable Hot Reloading by default?")
+            .default(false)
             .interact()?;
-        db_provider = db_options[db_selection].to_string();
+
+        db_needed = dialoguer::Confirm::with_theme(&theme)
+            .with_prompt("Will your project need a Data Base?")
+            .default(true)
+            .interact()?;
+
+        if db_needed {
+            let db_options = &["Sqlite", "Postgres", "MySQL/MariaDB"];
+            let db_selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("Select a DB Provider")
+                .default(0)
+                .items(&db_options[..])
+                .interact()?;
+            db_provider = match db_options[db_selection] {
+                "MySQL/MariaDB" => "MySQL".to_string(),
+                other => other.to_string(),
+            };
+        }
     }
 
     println!(
@@ -1082,6 +1109,8 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
         .replace(".", "")
         .replace("-", "_");
 
+    let project_name_safe = project_name.replace("-", "_");
+
     let sqlx_features = match db_provider.as_str() {
         "Postgres" => r#"features = ["postgres", "runtime-tokio"]"#,
         "MySQL" => r#"features = ["mysql", "runtime-tokio"]"#,
@@ -1089,21 +1118,47 @@ pub fn get_migrations() -> Vec<Box<dyn rust_eloquent::schema::Migration>> {
     };
 
     // Write Cargo.toml
-    let cargo_toml = format!(
+    let mut cargo_toml = format!(
         r#"[package]
 name = "{project_name}"
 version = "0.1.0"
 edition = "2024"
+"#,
+        project_name = project_name
+    );
 
+    if hot_reload {
+        cargo_toml.push_str(
+            r#"
+[lib]
+crate-type = ["cdylib", "rlib"]
+"#
+        );
+    }
+
+    cargo_toml.push_str(&format!(
+        r#"
 [dependencies]
 rullst = {{ path = "{rullst_path}" }}
-rust-eloquent = "1.1.0"
 tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
-sqlx = {{ version = "0.8", {sqlx_features} }}
 axum = "0.7"
+"#,
+        rullst_path = rullst_path
+    ));
 
+    if db_needed {
+        cargo_toml.push_str(&format!(
+            r#"rust-eloquent = "1.1.0"
+sqlx = {{ version = "0.8", {sqlx_features} }}
+"#,
+            sqlx_features = sqlx_features
+        ));
+    }
+
+    cargo_toml.push_str(
+        r#"
 [workspace]
 "#
     );
@@ -1111,25 +1166,23 @@ axum = "0.7"
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
 
     // Write Rullst.toml configuration
-    let db_url = match db_provider.as_str() {
-        "Postgres" => "postgres://postgres:password@localhost/rullst",
-        "MySQL" => "mysql://root:password@localhost/rullst",
-        _ => "sqlite://rullst.db",
-    };
-    let rullst_toml = format!(
-        r#"[database]
+    if db_needed {
+        let db_url = match db_provider.as_str() {
+            "Postgres" => "postgres://postgres:password@localhost/rullst",
+            "MySQL" => "mysql://root:password@localhost/rullst",
+            _ => "sqlite://rullst.db",
+        };
+        let rullst_toml = format!(
+            r#"[database]
 url = "{db_url}"
 "#
-    );
-    fs::write(path.join("Rullst.toml"), rullst_toml)?;
+        );
+        fs::write(path.join("Rullst.toml"), rullst_toml)?;
+    }
 
-    // Write src/main.rs
-    let main_rs = if api {
-        r#"use rullst::{routes, Server, Router, response::IntoResponse};
-use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
-use serde::Serialize;
-
-pub mod migrations;
+    // Write src code templates
+    let db_model_code = if db_needed {
+        r#"use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
 
 // 1. Define your database model using the built-in rust-eloquent ORM!
 #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
@@ -1138,35 +1191,208 @@ pub struct User {
     pub id: i32,
     pub name: String,
 }
-
-#[derive(Serialize)]
-struct HomeResponse {
-    message: String,
-    database_status: String,
-}
-
-async fn home() -> impl IntoResponse {
-    let name = "Rullst";
-    
-    // Exemplo de uso do ORM: Buscar usuários ativos do banco
-    let db_status = match User::all().await {
-        Ok(users) => format!("Banco conectado! Total de usuários cadastrados: {}", users.len()),
-        Err(e) => format!("Banco offline ou não configurado: {}", e),
+"#
+    } else {
+        ""
     };
 
-    axum::Json(HomeResponse {
-        message: format!("Bem-vindo à API REST Rullst: {}", name),
+    let db_status_code = if db_needed {
+        r#"    // ORM usage example: Fetch active users from database
+    let db_status = match User::all().await {
+        Ok(users) => format!("Database connected! Total users: {}", users.len()),
+        Err(e) => format!("Database offline or not configured: {}", e),
+    };"#
+    } else {
+        r#"    let db_status = "Database features are disabled for this project.".to_string();"#
+    };
+
+    if hot_reload {
+        // Scaffold lib.rs and launcher main.rs
+        let lib_rs = if api {
+            format!(
+                r##"use rullst::{{routes, Router, response::IntoResponse}};
+use serde::Serialize;
+
+pub mod migrations;
+
+{db_model_code}
+
+#[derive(Serialize)]
+struct HomeResponse {{
+    message: String,
+    database_status: String,
+}}
+
+pub async fn home() -> impl IntoResponse {{
+    let name = "Rullst";
+{db_status_code}
+
+    axum::Json(HomeResponse {{
+        message: format!("Welcome to Rullst REST API: {{}}", name),
         database_status: db_status,
-    })
-}
+    }})
+}}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    let router = routes![
+        get("/" => home),
+    ];
+    Box::into_raw(Box::new(router))
+}}
+"##,
+                db_model_code = db_model_code,
+                db_status_code = db_status_code
+            )
+        } else {
+            format!(
+                r##"use rullst::{{html, routes, Router, response::{{Html, IntoResponse}}}};
+use rullst::htmx::{{HtmxRequest, render_page}};
+
+pub mod migrations;
+
+{db_model_code}
+
+// Main route: uses hybrid SSR with render_page
+pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
+    let name = "Rullst";
+{db_status_code}
+
+    let content = html! {{
+        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+            <div class="max-w-xl text-center space-y-6">
+                <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                    "Welcome to " {{name}}
+                </h1>
+                
+                <p class="text-slate-400 text-lg">
+                    "The ultimate full-stack framework for Rust. Focused on Security, Maintainability, and Speed."
+                </p>
+
+                <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
+                    {{db_status}}
+                </div>
+
+                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
+                    <div id="counter-box" class="flex flex-col items-center gap-3">
+                        <button hx-post="/clicked" 
+                                hx-target="#counter-box" 
+                                hx-swap="outerHTML" 
+                                class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            "Click here to increment"
+                        </button>
+                        <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }};
+
+    render_page(&htmx, "Welcome to Rullst", content)
+}}
+
+// State for counter
+use std::sync::atomic::{{AtomicUsize, Ordering}};
+static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+// Reactive HTMX endpoint
+pub async fn clicked() -> impl IntoResponse {{
+    let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+    
+    Html(html! {{
+        <div id="counter-box" class="flex flex-col items-center gap-3">
+            <button hx-post="/clicked" 
+                    hx-target="#counter-box" 
+                    hx-swap="outerHTML" 
+                    class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                "Click here to increment"
+            </button>
+            <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
+        </div>
+    }})
+}}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    let router = routes![
+        get("/" => home),
+        post("/clicked" => clicked),
+    ];
+    Box::into_raw(Box::new(router))
+}}
+"##,
+                db_model_code = db_model_code,
+                db_status_code = db_status_code
+            )
+        };
+
+        fs::write(path.join("src/lib.rs"), lib_rs)?;
+
+        let main_rs = format!(
+            r##"pub mod migrations;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Intercepta comandos do Artisan (ex: cargo rullst db:migrate) antes de inicializar o servidor
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+    // 1. Intercept Artisan commands (e.g. cargo rullst db:migrate) before starting server
     rullst::artisan!(crate::migrations::get_migrations());
 
-    // Rullst automatically initializes the database connection specified in Rullst.toml
-    // automaticamente em tempo de execução quando Server::run é chamado!
+    let is_hot = std::env::var("HOT_RELOAD").is_ok();
+
+    let server = if is_hot {{
+        let lib_path = if cfg!(target_os = "windows") {{
+            "target/debug/{project_name}"
+        }} else {{
+            "target/debug/lib{project_name}"
+        }};
+        rullst::Server::new_hot(lib_path)
+    }} else {{
+        let router_ptr = {project_name_safe}::rullst_router_init();
+        let router = unsafe {{ *Box::from_raw(router_ptr) }};
+        rullst::Server::new(router)
+    }};
+
+    server.run(3000).await?;
+
+    Ok(())
+}}
+"##,
+            project_name = project_name,
+            project_name_safe = project_name_safe
+        );
+
+        fs::write(path.join("src/main.rs"), main_rs)?;
+    } else {
+        // Standard non-hot-reloaded single binary scaffold
+        let main_rs = if api {
+            format!(
+                r##"use rullst::{{routes, Server, Router, response::IntoResponse}};
+use serde::Serialize;
+
+pub mod migrations;
+
+{db_model_code}
+
+#[derive(Serialize)]
+struct HomeResponse {{
+    message: String,
+    database_status: String,
+}}
+
+async fn home() -> impl IntoResponse {{
+    let name = "Rullst";
+{db_status_code}
+
+    axum::Json(HomeResponse {{
+        message: format!("Welcome to Rullst REST API: {{}}", name),
+        database_status: db_status,
+    }})
+}}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+    // 1. Intercept Artisan commands (e.g. cargo rullst db:migrate) before starting server
+    rullst::artisan!(crate::migrations::get_migrations());
 
     let router = routes![
         get("/" => home),
@@ -1177,38 +1403,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-"#
-    } else {
-        r##"use rullst::{html, routes, Server, response::{Html, IntoResponse}};
-use rullst::htmx::{HtmxRequest, render_page};
-use rust_eloquent::sqlx::FromRow;
+}}
+"##,
+                db_model_code = db_model_code,
+                db_status_code = db_status_code
+            )
+        } else {
+            format!(
+                r##"use rullst::{{html, routes, Server, response::{{Html, IntoResponse}}}};
+use rullst::htmx::{{HtmxRequest, render_page}};
 
 pub mod migrations;
 
-// 1. Define your database model using the built-in rust-eloquent ORM!
-#[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
-#[eloquent(table = "users")]
-pub struct User {
-    pub id: i32,
-    pub name: String,
-}
+{db_model_code}
 
-// Rota principal: usa o SSR híbrido com render_page
-async fn home(htmx: HtmxRequest) -> impl IntoResponse {
+async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
     let name = "Rullst";
-    
-    // Exemplo de uso do ORM: Buscar usuários ativos do banco
-    let db_status = match User::all().await {
-        Ok(users) => format!("Banco conectado! Total de usuários cadastrados: {}", users.len()),
-        Err(e) => format!("Banco offline ou não configurado: {}", e),
-    };
+{db_status_code}
 
-    let content = html! {
+    let content = html! {{
         <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
             <div class="max-w-xl text-center space-y-6">
                 <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
-                    "Bem-vindo ao " {name}
+                    "Welcome to " {{name}}
                 </h1>
                 
                 <p class="text-slate-400 text-lg">
@@ -1216,57 +1433,53 @@ async fn home(htmx: HtmxRequest) -> impl IntoResponse {
                 </p>
 
                 <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
-                    {db_status}
+                    {{db_status}}
                 </div>
 
                 <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
-                    <h2 class="text-xl font-bold text-slate-200">"Interatividade HTMX sem JS personalizado!"</h2>
+                    <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
                     <div id="counter-box" class="flex flex-col items-center gap-3">
                         <button hx-post="/clicked" 
                                 hx-target="#counter-box" 
                                 hx-swap="outerHTML" 
                                 class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
-                            "Clique aqui para incrementar"
+                            "Click here to increment"
                         </button>
-                        <p class="text-sm text-slate-400">"Cliques recebidos no servidor: 0"</p>
+                        <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
                     </div>
                 </div>
             </div>
         </div>
-    };
+    }};
 
-    render_page(&htmx, "Bem-vindo ao Rullst", content)
-}
+    render_page(&htmx, "Welcome to Rullst", content)
+}}
 
-// Estado para o contador
-use std::sync::atomic::{AtomicUsize, Ordering};
+// State for counter
+use std::sync::atomic::{{AtomicUsize, Ordering}};
 static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-// Endpoint HTMX reativo
-async fn clicked() -> impl IntoResponse {
+// Reactive HTMX endpoint
+async fn clicked() -> impl IntoResponse {{
     let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
     
-    // Retorna apenas a parcial / fragmento que substitui o elemento counter-box
-    Html(html! {
+    Html(html! {{
         <div id="counter-box" class="flex flex-col items-center gap-3">
             <button hx-post="/clicked" 
                     hx-target="#counter-box" 
                     hx-swap="outerHTML" 
                     class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
-                "Clique aqui para incrementar"
+                "Click here to increment"
             </button>
-            <p class="text-sm text-emerald-400 font-medium">"Cliques recebidos no servidor: " {current_clicks.to_string()}</p>
+            <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
         </div>
-    })
-}
+    }})
+}}
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Intercepta comandos do Artisan (ex: cargo rullst db:migrate) antes de inicializar o servidor
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+    // 1. Intercept Artisan commands (e.g. cargo rullst db:migrate) before starting server
     rullst::artisan!(crate::migrations::get_migrations());
-
-    // Rullst automatically initializes the database connection specified in Rullst.toml
-    // automaticamente em tempo de execução quando Server::run é chamado!
 
     let router = routes![
         get("/" => home),
@@ -1278,11 +1491,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-"##
-    };
+}}
+"##,
+                db_model_code = db_model_code,
+                db_status_code = db_status_code
+            )
+        };
 
-    fs::write(path.join("src/main.rs"), main_rs)?;
+        fs::write(path.join("src/main.rs"), main_rs)?;
+    }
 
     // Generate Docker files if --docker flag was passed
     if docker {
@@ -1297,7 +1514,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("{}", "How to run:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
-    println!("{}", "  cargo run".cyan());
+    if hot_reload {
+        println!("{}", "  HOT_RELOAD=1 cargo run".cyan());
+    } else {
+        println!("{}", "  cargo run".cyan());
+    }
     if docker {
         println!(
             "{}",

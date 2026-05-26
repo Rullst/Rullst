@@ -19,8 +19,8 @@
             --sidebar-bg: #1e293b;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --primary: #f97316; /* Laranja da logo */
-            --primary-hover: #10b981; /* Verde Esmeralda da logo */
+            --primary: #f97316; /* Logo orange */
+            --primary-hover: #10b981; /* Logo emerald green */
             --border: #334155;
             --code-bg: #0b1120;
         }
@@ -135,8 +135,8 @@
         <ul class="sidebar-list">
 <li><a href="/">Home</a></li>
 <li><a href="/1-getting-started.html">Getting started</a></li>
-<li><a href="/2-tutorial-rullstpress.html">Tutorial rullstpress</a></li>
-<li><a href="/3-tutorial-blog.html">Tutorial blog</a></li>
+<li><a href="/2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="/3-tutorial-blog.html">Tutorial Blog</a></li>
 <li><a href="/spec.html">Spec</a></li>
 </ul>
     </aside>
@@ -155,11 +155,22 @@ Download and run the <code>rustup-init.exe</code> from the official website ment
 <pre><code class="language-bash">cargo install cargo-rullst
 </code></pre>
 <h2>2. Creating Your First Project</h2>
-<p>With the CLI installed, you can generate a complete project in seconds:</p>
-<pre><code class="language-bash">cargo rullst new my_portfolio
+<p>With the CLI installed, you can generate a complete project using our interactive wizard:</p>
+<pre><code class="language-bash">cargo rullst new
+
+# The wizard will prompt you with a few options:
+# 🚀 App name? (no spaces allowed) -&gt; my_portfolio
+# 🏗️ What would you like to build? -&gt; Full-Stack Web App (SaaS, Portfolio, Blog)
+# 🔥 Enable Hot Reloading by default? -&gt; Yes
+# 🗄️ Will your project need a Data Base? -&gt; Yes (or No for simple projects)
+# 💾 Select a DB Provider -&gt; Sqlite / Postgres / MySQL/MariaDB
+
 cd my_portfolio
 cargo run
 </code></pre>
+<blockquote>
+<p><strong>Note about Cargo:</strong> The first time you run <code>cargo run</code>, Cargo will download and compile all the necessary dependencies (like Tokio, Axum, SQLx). This is completely normal in Rust and might take a few minutes. However, it will cache everything, so the next times you run <code>cargo run</code> it will take only a second!</p>
+</blockquote>
 <blockquote>
 <p><strong>Note:</strong> The project name cannot contain spaces (use <code>my_portfolio</code> instead of <code>my portfolio</code>).</p>
 </blockquote>
