@@ -38,7 +38,7 @@ argon2 = "0.5"
 cookie = { version = "0.18", features = ["percent-encoding"] }
 rand = "0.8"
 aes-gcm = "0.10"
-sha2 = "0.10"
+sha2 = "0.11"
 base64 = "0.22"
 serde_urlencoded = "0.7"
 uuid = { version = "1", features = ["v4"] }
