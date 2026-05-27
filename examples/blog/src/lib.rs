@@ -1,3 +1,4 @@
+#![allow(clippy::needless_update)]
 #![allow(unexpected_cfgs)]
 
 pub mod interactive_counter;
