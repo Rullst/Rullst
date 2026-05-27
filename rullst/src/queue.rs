@@ -675,6 +675,75 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_sqlite_queue_list_all_jobs_happy_path() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Initially empty
+        let jobs = driver.list_all_jobs(10).await.unwrap();
+        assert_eq!(jobs.len(), 0);
+
+        // Manually insert jobs with specific timestamps to guarantee order
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, created_at) VALUES (?, ?, ?, ?)")
+            .bind("job-1")
+            .bind("test_job_1")
+            .bind(r#"{"test": 1}"#)
+            .bind("2020-01-01 10:00:00")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, created_at) VALUES (?, ?, ?, ?)")
+            .bind("job-2")
+            .bind("test_job_2")
+            .bind(r#"{"test": 2}"#)
+            .bind("2020-01-01 11:00:00")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, created_at) VALUES (?, ?, ?, ?)")
+            .bind("job-3")
+            .bind("test_job_3")
+            .bind(r#"{"test": 3}"#)
+            .bind("2020-01-01 12:00:00")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        // Limit works, ordering works (DESC means newest first)
+        let jobs = driver.list_all_jobs(2).await.unwrap();
+        assert_eq!(jobs.len(), 2);
+        assert_eq!(jobs[0].id, "job-3");
+        assert_eq!(jobs[1].id, "job-2");
+
+        let all_jobs = driver.list_all_jobs(10).await.unwrap();
+        assert_eq!(all_jobs.len(), 3);
+        assert_eq!(all_jobs[0].id, "job-3");
+        assert_eq!(all_jobs[1].id, "job-2");
+        assert_eq!(all_jobs[2].id, "job-1");
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_list_all_jobs_error() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Drop the table to simulate DB error
+        sqlx::query("DROP TABLE rullst_jobs")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        let result = driver.list_all_jobs(10).await;
+        assert!(result.is_err());
+        match result {
+            Err(QueueError::Driver(msg)) => {
+                assert!(msg.contains("no such table"));
+            }
+            _ => panic!("Expected Driver error"),
+        }
+    }
+
+    #[tokio::test]
     async fn test_custom_queue_driver() {
         // Since we need to check was_push_called, we'll share state via Arc.
         let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
