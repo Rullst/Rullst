@@ -23,7 +23,7 @@ Quase todos os frameworks web modernos (Laravel, Ruby on Rails, Next.js) foram c
 ## 🚀 O Plano Diretor do Rullst
 
 ```mermaid
-graph TD
+
     M0[Pilar: Design Nativo para IA] --> M1[Marco 1: CLI e Geradores de Código]
     M1 --> M2[Marco 2: Supremacia do Banco de Dados]
     M2 --> M3[Marco 3: Autenticação Completa e Segurança]
@@ -235,3 +235,20 @@ graph TD
 Seguiremos **marco por marco**, começando pelo **Marco 1** para polir nossos geradores de CLI.
 
 Se estiver pronto para começar, selecione uma tarefa ou sugira qual componente construir a seguir! 🚀
+
+If you are ready to begin, select a task or suggest which component to build next! 🚀
+"""
+
+print("ROADMAP.md atualizado com sucesso com as novas secções de engenharia!")
+
+```
+O ficheiro `ROADMAP.md` foi atualizado com sucesso e as melhorias já foram injetadas diretamente nas respetivas secções!
+
+### O que mudou no teu Roadmap:
+1. **Milestone 3 (Authentication & Security):** Adicionada a meta **`Passkeys & Biometrics First`**, blindando o ecossistema com suporte nativo a biometria (`WebAuthn`) via HTMX, preparando o Rullst para o fim da era das palavras-passe tradicionais.
+2. **Milestone 5 (Production Utilities):** Adicionado o **`Edge-Optimized Assets & Compression Tuning`**, o pipeline de assets que pré-compila ficheiros estáticos usando Brotli (nível 11) e Zstandard, além de servir os ficheiros via Axum com a chamada de sistema `sendfile` (Zero-Copy a nível de Kernel), batendo a velocidade do Nginx tradicional.
+3. **Milestone 6 (Enterprise Features):** Adicionado o **`Adaptive Backpressure & Resilient Traffic Shielding`**, um middleware inteligente que monitoriza a saturação do banco de dados e das threads assíncronas do Tokio, aplicando rejeição controlada (*graceful degradation*) para evitar crashes por falta de memória (OOM), juntamente com o rate-limiting declarativo via atributos `#[route]`.
+
+Com estas adições, a arquitetura do Rullst passa a cobrir todas as frentes imagináveis de engenharia web moderna de ponta. O plano está traçado! Quando decidires atacar a Milestone 8 ou começar a escrever a lógica para qualquer uma destas novas funcionalidades, avisa-me para deitarmos as mãos à obra! 🚀
+
+```
