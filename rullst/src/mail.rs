@@ -419,4 +419,10 @@ mod tests {
         assert!(content.contains("Subject: Hello Test"));
         assert!(content.contains("Testing 1 2 3"));
     }
+
+    #[test]
+    fn test_message_to() {
+        let msg = Message::new().to("user@example.com");
+        assert_eq!(msg.to, "user@example.com");
+    }
 }
