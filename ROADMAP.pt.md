@@ -102,7 +102,7 @@ graph TD
 
 ---
 
-## 🔒 Marco 3: Autenticação & Segurança (Social & Local Auth)
+## 🔒 Marco 3: Autenticação & Segurança (Social, Local & Passkeys)
 **Objetivo:** Implementar autenticação robusta, segura e instantânea. Qualquer dev deve ser capaz de autenticar usuários de forma segura em minutos.
 
 - [x] **Autenticação Social via `rust-socialite`:**
@@ -112,6 +112,7 @@ graph TD
 - [x] **Autenticação Local:**
   - [x] Auxiliares embutidos para hashing seguro de senhas via Argon2/Bcrypt.
   - [x] Middlewares customizados para sessões seguras baseadas em Cookies e Tokens (JWT).
+- [ ] **Passkeys & Biometrics First (`rullst::auth::passkey`):** Abstração nativa de WebAuthn para autenticação biométrica (FaceID, TouchID, Windows Hello) integrada ao `cargo rullst auth`. Cadastros e logins sem senha (Passwordless) usando criptografia de chave pública via HTMX/WebAuthn, com fallback fluído para chaves de segurança físicas.
 - [x] **O Comando "Mágico" de Auth:**
   - [x] `cargo rullst auth` - Cria instantaneamente um sistema completo de login e registro contendo:
     - Controllers de Login, Registro e Reset de Senha.
@@ -133,7 +134,7 @@ graph TD
 
 ---
 
-## 📦 Marco 5: Utilitários de Produção (Filas, Caching e Scheduler)
+## 📦 Marco 5: Utilitários de Produção (Filas, Caching, Scheduler & Assets)
 **Objetivo:** Fornecer os recursos fundamentais necessários para escalar aplicações reais em produção.
 
 - [x] **Docker e Containerização:**
@@ -147,10 +148,11 @@ graph TD
   - [x] API unificada `rullst::cache` com drivers para In-Memory e Redis.
 - [x] **Agendador de Tarefas (Task Scheduler):**
   - [x] Agendamento declarativo tipo Cron diretamente no `main.rs` (ex: `.schedule("0 0 * * *", limpeza_diaria)`).
+- [ ] **Edge-Optimized Assets & Compression Tuning:** Durante o build de produção (`cargo rullst build --release`), o framework pré-comprime assets estáticos usando **Brotli (nível 11)** e **Zstandard**. Arquivos estáticos são servidos pelo Axum via chamadas `sendfile` (Zero-Copy direto pelo Kernel), superando a velocidade do Nginx puro.
 
 ---
 
-## 🏢 Marco 6: Funcionalidades Enterprise
+## 🏢 Marco 6: Funcionalidades Enterprise (Validação, E-mail, Storage & Proteção)
 **Objetivo:** Entregar os recursos robustos clássicos esperados de frameworks focados em empresas.
 
 - [x] **Validação Declarativa:** Uma macro `#[derive(Validate)]` para DTOs/structs que retorna automaticamente JSON 422 para APIs ou componentes HTMX com erros para formulários.
@@ -158,6 +160,8 @@ graph TD
 - [x] **Abstração de Armazenamento (`rullst::storage`):** API unificada para uploads e gerenciamento de arquivos com drivers para Local (Disco), AWS S3 e Cloudflare R2.
 - [x] **WebSockets & Tempo Real:** Suporte nativo a WebSockets no roteador, perfeitamente integrado com a extensão HTMX (`hx-ext="ws"`).
 - [x] **Rullst Horizon:** Um dashboard web embutido lindíssimo para monitorar filas, visualizar jobs que falharam e tentar executá-los novamente.
+- [ ] **Adaptive Backpressure & Resilient Traffic Shielding:** Middleware de proteção no roteador que monitora as threads assíncronas do Tokio e os tempos de resposta do banco de dados. Caso o sistema atinja saturação iminente, ele graciosamente rejeita (graceful degradation) ou enfileira requisições excedentes, evitando crashes por falta de memória (OOM).
+- [ ] **Token-Bucket Rate Limiting Nativo:** Configuração declarativa de limites de taxa (ex: `#[route(get, "/api", rate_limit = "100/m")]`) com suporte a armazenamento distribuído via Redis ou memória compartilhada (`DashMap`).
 
 ---
 
