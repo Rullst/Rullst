@@ -9,7 +9,7 @@ use rullst_macros::html;
 use rust_eloquent::Eloquent;
 use serde::Deserialize;
 use sqlx::Row;
-use sqlx::{QueryBuilder, Any};
+use sqlx::{Any, QueryBuilder};
 use std::net::SocketAddr;
 
 #[derive(Deserialize, Debug)]
@@ -75,7 +75,8 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     let pool = Eloquent::pool();
     let clean_table = sanitize_identifier(table);
 
-    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
+    let mut qb: QueryBuilder<Any> =
+        QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
 
     if let Some(search) = search_query {
         if !search.is_empty() {
