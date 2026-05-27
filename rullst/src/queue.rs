@@ -679,8 +679,14 @@ mod tests {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
 
         // Push two jobs
-        driver.push("job-to-fail", "fail_job", r#"{}"#).await.unwrap();
-        driver.push("job-pending", "pending_job", r#"{}"#).await.unwrap();
+        driver
+            .push("job-to-fail", "fail_job", r#"{}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-pending", "pending_job", r#"{}"#)
+            .await
+            .unwrap();
 
         // Pop the first job and mark it failed
         let job = driver.pop().await.unwrap().unwrap();
@@ -714,7 +720,11 @@ mod tests {
         let result = driver.purge_completed_jobs().await;
         assert!(result.is_err());
         if let Err(QueueError::Driver(msg)) = result {
-            assert!(msg.contains("PoolClosed") || msg.contains("closed"), "Unexpected error message: {}", msg);
+            assert!(
+                msg.contains("PoolClosed") || msg.contains("closed"),
+                "Unexpected error message: {}",
+                msg
+            );
         } else {
             panic!("Expected QueueError::Driver, got {:?}", result);
         }
