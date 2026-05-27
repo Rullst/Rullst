@@ -848,4 +848,50 @@ mod tests {
 
         assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
     }
+
+    struct MockPendingCountDriver {
+        should_fail: bool,
+    }
+
+    #[async_trait]
+    impl QueueDriver for MockPendingCountDriver {
+        async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> {
+            Ok(())
+        }
+        async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+            Ok(None)
+        }
+        async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+            Ok(())
+        }
+        async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+            Ok(())
+        }
+        async fn pending_count(&self) -> Result<u64, QueueError> {
+            if self.should_fail {
+                Err(QueueError::Driver("mock failure".to_string()))
+            } else {
+                Ok(42)
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_queue_pending_count_ok() {
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let count = queue.pending_count().await.unwrap();
+        assert_eq!(count, 42);
+    }
+
+    #[tokio::test]
+    async fn test_queue_pending_count_err() {
+        let driver = Box::new(MockPendingCountDriver { should_fail: true });
+        let queue = Queue::custom(driver);
+        let err = queue.pending_count().await.unwrap_err();
+        match err {
+            QueueError::Driver(msg) => assert_eq!(msg, "mock failure"),
+            _ => panic!("Expected QueueError::Driver"),
+        }
+    }
 }
