@@ -112,7 +112,7 @@ graph TD
 - [x] **Autenticação Local:**
   - [x] Auxiliares embutidos para hashing seguro de senhas via Argon2/Bcrypt.
   - [x] Middlewares customizados para sessões seguras baseadas em Cookies e Tokens (JWT).
-- [ ] **Passkeys & Biometrics First (`rullst::auth::passkey`):** Abstração nativa de WebAuthn para autenticação biométrica (FaceID, TouchID, Windows Hello) integrada ao `cargo rullst auth`. Cadastros e logins sem senha (Passwordless) usando criptografia de chave pública via HTMX/WebAuthn, com fallback fluído para chaves de segurança físicas.
+- [x] **Passkeys & Biometrics First (`rullst::auth::passkey`):** Abstração nativa de WebAuthn para autenticação biométrica (FaceID, TouchID, Windows Hello) integrada ao `cargo rullst auth`. Cadastros e logins sem senha (Passwordless) usando criptografia de chave pública via HTMX/WebAuthn, com fallback fluído para chaves de segurança físicas.
 - [x] **O Comando "Mágico" de Auth:**
   - [x] `cargo rullst auth` - Cria instantaneamente um sistema completo de login e registro contendo:
     - Controllers de Login, Registro e Reset de Senha.
@@ -148,7 +148,7 @@ graph TD
   - [x] API unificada `rullst::cache` com drivers para In-Memory e Redis.
 - [x] **Agendador de Tarefas (Task Scheduler):**
   - [x] Agendamento declarativo tipo Cron diretamente no `main.rs` (ex: `.schedule("0 0 * * *", limpeza_diaria)`).
-- [ ] **Edge-Optimized Assets & Compression Tuning:** Durante o build de produção (`cargo rullst build --release`), o framework pré-comprime assets estáticos usando **Brotli (nível 11)** e **Zstandard**. Arquivos estáticos são servidos pelo Axum via chamadas `sendfile` (Zero-Copy direto pelo Kernel), superando a velocidade do Nginx puro.
+- [x] **Edge-Optimized Assets & Compression Tuning:** Durante o build de produção (`cargo rullst build --release`), o framework pré-comprime assets estáticos usando **Brotli (nível 11)** e **Zstandard**. Arquivos estáticos são servidos pelo Axum via chamadas `sendfile` (Zero-Copy direto pelo Kernel), superando a velocidade do Nginx puro.
 
 ---
 
@@ -160,8 +160,8 @@ graph TD
 - [x] **Abstração de Armazenamento (`rullst::storage`):** API unificada para uploads e gerenciamento de arquivos com drivers para Local (Disco), AWS S3 e Cloudflare R2.
 - [x] **WebSockets & Tempo Real:** Suporte nativo a WebSockets no roteador, perfeitamente integrado com a extensão HTMX (`hx-ext="ws"`).
 - [x] **Rullst Horizon:** Um dashboard web embutido lindíssimo para monitorar filas, visualizar jobs que falharam e tentar executá-los novamente.
-- [ ] **Adaptive Backpressure & Resilient Traffic Shielding:** Middleware de proteção no roteador que monitora as threads assíncronas do Tokio e os tempos de resposta do banco de dados. Caso o sistema atinja saturação iminente, ele graciosamente rejeita (graceful degradation) ou enfileira requisições excedentes, evitando crashes por falta de memória (OOM).
-- [ ] **Token-Bucket Rate Limiting Nativo:** Configuração declarativa de limites de taxa (ex: `#[route(get, "/api", rate_limit = "100/m")]`) com suporte a armazenamento distribuído via Redis ou memória compartilhada (`DashMap`).
+- [x] **Adaptive Backpressure & Resilient Traffic Shielding:** Middleware de proteção no roteador que monitora as threads assíncronas do Tokio e os tempos de resposta do banco de dados. Caso o sistema atinja saturação iminente, ele graciosamente rejeita (graceful degradation) ou enfileira requisições excedentes, evitando crashes por falta de memória (OOM).
+- [x] **Token-Bucket Rate Limiting Nativo:** Configuração declarativa de limites de taxa (ex: `#[route(get, "/api", rate_limit = "100/m")]`) com suporte a armazenamento distribuído via Redis ou memória compartilhada (`DashMap`).
 
 ---
 
@@ -183,16 +183,16 @@ graph TD
 ## 🌍 Marco 8: Distribuição de Dados e Fusão com a Borda (Edge Fusion)
 **Objetivo:** Rodar o Rullst em infraestrutura Edge moderna sem reescrever código e com latência ultra-baixa globalmente.
 
-- [ ] **Rullst Edge Runtime (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstraindo as diferenças de Tokio/WASI.
-- [ ] **Replicação SQLite Zero-Config:** Drivers nativos para bancos de dados distribuídos na borda (Turso/libsql, Cloudflare D1) integrados ao `rust-eloquent`. Leia e grave localmente com 1ms de latência enquanto o framework sincroniza globalmente em background.
+- [x] **Rullst Edge Runtime (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstraindo as diferenças de Tokio/WASI.
+- [x] **Replicação SQLite Zero-Config:** Drivers nativos para bancos de dados distribuídos na borda (Turso/libsql, Cloudflare D1) integrados ao `rust-eloquent`. Leia e grave localmente com 1ms de latência enquanto o framework sincroniza globalmente em background.
 
 ### 🔄 Sistema de Atualização Autônoma (`cargo rullst upgrade`)
 
 > Um dos maiores desafios de DX em qualquer framework full-stack é manter as dependências atualizadas sem quebrar o código do usuário. No ecossistema Rust, isso é ainda mais crítico — mudanças de versão mesmo minor/patch em crates de baixo nível podem causar erros rígidos de compilação. Este sistema torna as atualizações do Rullst praticamente invisíveis.
 
-- [ ] **Verificação de Versão em Background (Não-Intrusiva):** Toda vez que o usuário rodar comandos frequentes como `cargo rullst new` ou `cargo rullst dev`, a CLI realiza uma requisição HTTP leve e assíncrona (numa thread separada, nunca bloqueando o terminal) para a API pública do Crates.io (`https://crates.io/api/v1/crates/rullst`) e compara a versão mais recente com a versão fixada no `Cargo.toml` do usuário. O resultado é salvo em um arquivo temporário local e renovado no máximo uma vez por dia, garantindo zero overhead de rede em execuções repetidas.
+- [x] **Verificação de Versão em Background (Não-Intrusiva):** Toda vez que o usuário rodar comandos frequentes como `cargo rullst new` ou `cargo rullst dev`, a CLI realiza uma requisição HTTP leve e assíncrona (numa thread separada, nunca bloqueando o terminal) para a API pública do Crates.io (`https://crates.io/api/v1/crates/rullst`) e compara a versão mais recente com a versão fixada no `Cargo.toml` do usuário. O resultado é salvo em um arquivo temporário local e renovado no máximo uma vez por dia, garantindo zero overhead de rede em execuções repetidas.
 
-- [ ] **Box Visual Elegante no Terminal:** Se uma nova versão for detectada, a CLI exibe um box informativo não-bloqueante direto no terminal — estilizado com `colored` — imediatamente após o comando ser concluído:
+- [x] **Box Visual Elegante no Terminal:** Se uma nova versão for detectada, a CLI exibe um box informativo não-bloqueante direto no terminal — estilizado com `colored` — imediatamente após o comando ser concluído:
   ```
   ┌────────────────────────────────────────────────────────────┐
   │  🚀 Nova versão do Rullst disponível: 1.0.5 → 1.1.0        │
@@ -201,12 +201,12 @@ graph TD
   └────────────────────────────────────────────────────────────┘
   ```
 
-- [ ] **Codemods Automatizados (Atualizações Sem Quebras):** Expandir o `cargo rullst upgrade` em um pipeline autônomo completo de refatoração:
+- [x] **Codemods Automatizados (Atualizações Sem Quebras):** Expandir o `cargo rullst upgrade` em um pipeline autônomo completo de refatoração:
   1. **Atualização do manifest:** A CLI reescreve as strings de versão do `rullst`, `rullst-macros` e `rust-eloquent` no `Cargo.toml` do usuário para o release mais recente.
   2. **Execução de codemods:** Um registro versionado de regras de busca-e-substituição baseadas em regex (ou AST leve) é distribuído junto de cada release da CLI. Se uma API pública mudou entre versões (ex: `.render()` renomeado para `.render_page()`), a CLI reescreve automaticamente todas as ocorrências em `src/**/*.rs` antes que o usuário veja qualquer erro de compilação.
   3. **Portão de validação (`cargo check`):** Após aplicar os codemods, a CLI roda `cargo check` em background. Se o compilador sair limpo, o usuário vê: `"✅ Rullst atualizado com sucesso. Nenhuma quebra detectada."` Se restarem erros, um diff das alterações dos codemods é exibido para revisão do dev.
 
-- [ ] **Blindagem de Dependências (Casca de Abstração Interna):** Enforçar a regra arquitetural de que todas as dependências pesadas de terceiros (ex: `sqlx`, `axum`, `tokio`, `lettre`) são sempre re-exportadas ou encapsuladas dentro da superfície de API pública do Rullst. O código do usuário nunca deve usar `use sqlx::*` diretamente — apenas `use rullst::db::*`. Isso blinda os apps dos usuários contra quebras upstream: quando o `sqlx` lança uma versão breaking, apenas o adaptador interno do Rullst muda, e o código do usuário continua compilando intacto.
+- [x] **Blindagem de Dependências (Casca de Abstração Interna):** Enforçar a regra arquitetural de que todas as dependências pesadas de terceiros (ex: `sqlx`, `axum`, `tokio`, `lettre`) são sempre re-exportadas ou encapsuladas dentro da superfície de API pública do Rullst. O código do usuário nunca deve usar `use sqlx::*` diretamente — apenas `use rullst::db::*`. Isso blinda os apps dos usuários contra quebras upstream: quando o `sqlx` lança uma versão breaking, apenas o adaptador interno do Rullst muda, e o código do usuário continua compilando intacto.
 
 
 

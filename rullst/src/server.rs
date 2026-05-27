@@ -14,6 +14,8 @@ pub struct Server {
     db_url: Option<String>,
     scheduler: Option<Scheduler>,
     hot_reload_lib: Option<String>,
+    shield: Option<crate::resilience::TrafficShield>,
+    limiter: Option<crate::resilience::RateLimiter>,
 }
 
 impl Server {
@@ -23,6 +25,8 @@ impl Server {
             db_url: None,
             scheduler: None,
             hot_reload_lib: None,
+            shield: None,
+            limiter: None,
         }
     }
 
@@ -32,6 +36,8 @@ impl Server {
             db_url: None,
             scheduler: None,
             hot_reload_lib: Some(lib_path.into()),
+            shield: None,
+            limiter: None,
         }
     }
 
@@ -57,6 +63,18 @@ impl Server {
     /// ```
     pub fn schedule(mut self, scheduler: Scheduler) -> Self {
         self.scheduler = Some(scheduler);
+        self
+    }
+
+    /// Attaches an adaptive TrafficShield to the server to protect against CPU/DB saturation.
+    pub fn shield(mut self, shield: crate::resilience::TrafficShield) -> Self {
+        self.shield = Some(shield);
+        self
+    }
+
+    /// Attaches a global RateLimiter to the server.
+    pub fn rate_limit(mut self, limiter: crate::resilience::RateLimiter) -> Self {
+        self.limiter = Some(limiter);
         self
     }
 
@@ -230,7 +248,12 @@ impl Server {
                 }
             });
 
-            let hotswap_service = HotSwapService { current_router };
+            let hotswap_service = HotSwapService {
+                current_router,
+                shield: self.shield.clone(),
+                limiter: self.limiter.clone(),
+            };
+
             println!(
                 "Rullst framework serving on http://{} (Hot-Reload Ativo)",
                 addr
@@ -248,7 +271,12 @@ impl Server {
 
             // Serve static files from "static" directory if it exists
             if std::path::Path::new("static").exists() {
-                app = app.nest_service("/static", tower_http::services::ServeDir::new("static"));
+                app = app
+                    .nest_service(
+                        "/static",
+                        tower_http::services::ServeDir::new("static").precompressed_br(),
+                    )
+                    .layer(axum::middleware::from_fn(zstd_static_middleware));
             }
 
             if is_dev {
@@ -264,6 +292,18 @@ impl Server {
                     .layer(axum::middleware::from_fn(
                         crate::error_console::catch_panic_middleware,
                     ));
+            }
+
+            if let Some(limiter) = self.limiter {
+                app = app.layer(axum::middleware::from_fn(move |req, next| {
+                    crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
+                }));
+            }
+
+            if let Some(shield) = self.shield {
+                app = app.layer(axum::middleware::from_fn(move |req, next| {
+                    crate::resilience::backpressure_middleware(shield.clone(), req, next)
+                }));
             }
 
             println!("Rullst framework serving on http://{}", addr);
@@ -283,6 +323,8 @@ impl Server {
 #[derive(Clone)]
 pub struct HotSwapService {
     current_router: Arc<RwLock<axum::Router>>,
+    shield: Option<crate::resilience::TrafficShield>,
+    limiter: Option<crate::resilience::RateLimiter>,
 }
 
 impl<'a, L: axum::serve::Listener> Service<axum::serve::IncomingStream<'a, L>> for HotSwapService {
@@ -310,10 +352,24 @@ impl Service<axum::extract::Request> for HotSwapService {
 
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
         // H-1: Recover from poisoned RwLock instead of panicking
-        let router = match self.current_router.read() {
+        let mut router = match self.current_router.read() {
             Ok(guard) => guard.clone(),
             Err(poisoned) => poisoned.into_inner().clone(),
         };
+
+        if let Some(ref limiter) = self.limiter {
+            let lim = limiter.clone();
+            router = router.layer(axum::middleware::from_fn(move |req, next| {
+                crate::resilience::rate_limit_middleware(lim.clone(), req, next)
+            }));
+        }
+
+        if let Some(ref shield) = self.shield {
+            let sh = shield.clone();
+            router = router.layer(axum::middleware::from_fn(move |req, next| {
+                crate::resilience::backpressure_middleware(sh.clone(), req, next)
+            }));
+        }
         use tower::ServiceExt;
         let fut = router.oneshot(req);
         Box::pin(async move {
@@ -431,8 +487,12 @@ fn load_dylib_router(
 
     // Serve static files from "static" directory if it exists
     if std::path::Path::new("static").exists() {
-        axum_router =
-            axum_router.nest_service("/static", tower_http::services::ServeDir::new("static"));
+        axum_router = axum_router
+            .nest_service(
+                "/static",
+                tower_http::services::ServeDir::new("static").precompressed_br(),
+            )
+            .layer(axum::middleware::from_fn(zstd_static_middleware));
     }
 
     // Attach development explain / console routes
@@ -452,6 +512,68 @@ fn load_dylib_router(
     }
 
     Ok((axum_router, lib))
+}
+
+async fn zstd_static_middleware(
+    mut req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let path = req.uri().path().to_string();
+    if path.starts_with("/static/") {
+        if let Some(accept_encoding) = req.headers().get(axum::http::header::ACCEPT_ENCODING) {
+            if let Ok(accept_str) = accept_encoding.to_str() {
+                if accept_str.contains("zstd") {
+                    let local_path_str = format!("{}.zst", &path[1..]);
+                    let local_path = std::path::Path::new(&local_path_str);
+                    if local_path.exists() && local_path.is_file() {
+                        let original_ext = std::path::Path::new(&path)
+                            .extension()
+                            .and_then(|ext| ext.to_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        let new_uri = format!("{}.zst", path);
+                        if let Ok(uri) = new_uri.parse::<axum::http::Uri>() {
+                            *req.uri_mut() = uri;
+
+                            let mut response = next.run(req).await;
+
+                            response.headers_mut().insert(
+                                axum::http::header::CONTENT_ENCODING,
+                                axum::http::header::HeaderValue::from_static("zstd"),
+                            );
+
+                            let mime_type = match original_ext.as_str() {
+                                "html" => "text/html; charset=utf-8",
+                                "css" => "text/css; charset=utf-8",
+                                "js" => "application/javascript; charset=utf-8",
+                                "json" => "application/json; charset=utf-8",
+                                "svg" => "image/svg+xml",
+                                "wasm" => "application/wasm",
+                                "xml" => "application/xml; charset=utf-8",
+                                "txt" => "text/plain; charset=utf-8",
+                                _ => "",
+                            };
+
+                            if !mime_type.is_empty() {
+                                if let Ok(val) =
+                                    axum::http::header::HeaderValue::from_str(mime_type)
+                                {
+                                    response
+                                        .headers_mut()
+                                        .insert(axum::http::header::CONTENT_TYPE, val);
+                                }
+                            }
+
+                            return response;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    next.run(req).await
 }
 
 #[cfg(test)]

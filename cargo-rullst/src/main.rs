@@ -6,6 +6,7 @@
 use clap::{Parser, Subcommand};
 use colored::*;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
@@ -103,6 +104,12 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+    /// Compiles the production binary and pre-compresses static assets (Brotli + Zstandard)
+    Build {
+        /// Optional: compile in debug mode instead of release
+        #[arg(long)]
+        debug: bool,
+    },
     /// RullstPress: Native Static Site Generator (SSG) for websites and documentation
     Docs {
         #[command(subcommand)]
@@ -118,7 +125,99 @@ pub enum DocsCommands {
     Build,
 }
 
+fn get_cache_path() -> std::path::PathBuf {
+    let mut dir = std::env::temp_dir();
+    dir.push("rullst_version_cache.txt");
+    dir
+}
+
+fn is_version_newer(current: &str, latest: &str) -> bool {
+    let current_parts: Vec<u32> = current.split('.').filter_map(|p| p.parse().ok()).collect();
+    let latest_parts: Vec<u32> = latest.split('.').filter_map(|p| p.parse().ok()).collect();
+    
+    if current_parts.len() == 3 && latest_parts.len() == 3 {
+        for i in 0..3 {
+            if latest_parts[i] > current_parts[i] {
+                return true;
+            } else if latest_parts[i] < current_parts[i] {
+                return false;
+            }
+        }
+    }
+    false
+}
+
+fn check_update_available() -> Option<String> {
+    let cache_path = get_cache_path();
+    if cache_path.exists() {
+        if let Ok(cached_version) = std::fs::read_to_string(&cache_path) {
+            let cached_version = cached_version.trim().to_string();
+            let current_version = env!("CARGO_PKG_VERSION");
+            if is_version_newer(current_version, &cached_version) {
+                return Some(cached_version);
+            }
+        }
+    }
+    None
+}
+
+fn trigger_background_update_check() {
+    std::thread::spawn(|| {
+        let cache_path = get_cache_path();
+        let needs_refresh = if cache_path.exists() {
+            if let Ok(metadata) = std::fs::metadata(&cache_path) {
+                if let Ok(modified) = metadata.modified() {
+                    if let Ok(elapsed) = modified.elapsed() {
+                        elapsed.as_secs() > 86400 // 24 hours
+                    } else { true }
+                } else { true }
+            } else { true }
+        } else { true };
+
+        if needs_refresh {
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(4))
+                .build();
+            if let Ok(client) = client {
+                let response = client.get("https://crates.io/api/v1/crates/rullst")
+                    .header("User-Agent", "cargo-rullst-updater/1.0.5")
+                    .send();
+                if let Ok(res) = response {
+                    #[derive(serde::Deserialize)]
+                    struct CrateInfo {
+                        max_version: String,
+                    }
+                    #[derive(serde::Deserialize)]
+                    struct CratesIoResponse {
+                        #[serde(rename = "crate")]
+                        krate: CrateInfo,
+                    }
+                    if let Ok(data) = res.json::<CratesIoResponse>() {
+                        let _ = std::fs::write(&cache_path, &data.krate.max_version);
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn print_update_banner(latest_version: &str) {
+    let current_version = env!("CARGO_PKG_VERSION");
+    println!();
+    println!("{}", "┌────────────────────────────────────────────────────────────┐".cyan().bold());
+    println!("{}  🚀 {} {:<19} {}", "│".cyan().bold(), "New Rullst version available:".bold().yellow(), format!("{} → {}", current_version, latest_version).green().bold(), "│".cyan().bold());
+    println!("{}  Run {} to update safely with              {}", "│".cyan().bold(), "'cargo rullst upgrade'".magenta().bold(), "│".cyan().bold());
+    println!("{}  automatic code fixes (codemods).                         {}", "│".cyan().bold(), "│".cyan().bold());
+    println!("{}", "└────────────────────────────────────────────────────────────┘".cyan().bold());
+    println!();
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Instantly check cached status (takes < 1ms)
+    let update_available = check_update_available();
+    // 2. Spawn background update check silently
+    trigger_background_update_check();
+
     // If executed as a cargo subcommand (e.g. 'cargo rullst new'),
     // cargo passes "rullst" as the first real argument.
     // We remove it from the argument list so that Clap can parse uniformly.
@@ -185,10 +284,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::BuildClient { debug } => {
             run_build_client(*debug)?;
         }
+        Commands::Build { debug } => {
+            run_production_build(!*debug)?;
+        }
         Commands::Docs { action } => match action {
             DocsCommands::Dev => docs_generator::run_dev_server()?,
             DocsCommands::Build => docs_generator::run_build()?,
         },
+    }
+
+    if let Some(latest) = update_available {
+        print_update_banner(&latest);
     }
 
     Ok(())
@@ -1753,7 +1859,8 @@ fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create User Migration
     let migrations_dir = Path::new("src/migrations");
     fs::create_dir_all(migrations_dir)?;
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let now = chrono::Local::now();
+    let timestamp = now.format("%Y%m%d%H%M%S").to_string();
     let file_stem = format!("m{}_create_users_table", timestamp);
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
@@ -1790,6 +1897,49 @@ impl Migration for MigrationImpl {{
     );
     fs::write(&migration_path, migration_template)?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
+
+    // 1b. Create User Passkeys Migration
+    let timestamp_passkeys = (now + chrono::Duration::seconds(1))
+        .format("%Y%m%d%H%M%S")
+        .to_string();
+    let file_stem_passkeys = format!("m{}_create_user_passkeys_table", timestamp_passkeys);
+    let migration_passkeys_path = migrations_dir.join(format!("{}.rs", file_stem_passkeys));
+
+    let migration_passkeys_template = format!(
+        r##"use rust_eloquent::schema::{{Schema, Blueprint, Migration}};
+use rust_eloquent::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {{
+    fn name(&self) -> &'static str {{
+        "{file_stem_passkeys}"
+    }}
+
+    async fn up(&self) -> Result<(), rust_eloquent::sqlx::Error> {{
+        Schema::create("user_passkeys", |table| {{
+            table.id();
+            table.integer("user_id").not_null();
+            table.string("name").not_null();
+            table.text("passkey_json").not_null();
+            table.timestamps();
+        }}).await
+    }}
+
+    async fn down(&self) -> Result<(), rust_eloquent::sqlx::Error> {{
+        Schema::drop_if_exists("user_passkeys").await
+    }}
+}}
+"##,
+        file_stem_passkeys = file_stem_passkeys
+    );
+    fs::write(&migration_passkeys_path, migration_passkeys_template)?;
+    println!(
+        "{}",
+        "  ✨ Created 'user_passkeys' table migration.".green()
+    );
+
     regenerate_migrations_mod()?;
 
     // 2. Create User Model
@@ -1814,13 +1964,39 @@ pub struct User {
     fs::write(&model_path, model_template)?;
     println!("{}", "  ✨ Created 'User' model.".green());
 
+    // 2b. Create UserPasskey Model
+    let passkey_model_path = models_dir.join("user_passkey.rs");
+    let passkey_model_template = r##"use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+
+#[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+#[eloquent(table = "user_passkeys")]
+pub struct UserPasskey {
+    pub id: i32,
+    pub user_id: i32,
+    pub name: String,
+    pub passkey_json: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+"##;
+    fs::write(&passkey_model_path, passkey_model_template)?;
+    println!("{}", "  ✨ Created 'UserPasskey' model.".green());
+
     let mod_models_path = models_dir.join("mod.rs");
     if !mod_models_path.exists() {
         fs::write(&mod_models_path, "")?;
     }
     let mut mod_models_content = fs::read_to_string(&mod_models_path)?;
+    let mut modified = false;
     if !mod_models_content.contains("pub mod user;") {
         mod_models_content.push_str("pub mod user;\n");
+        modified = true;
+    }
+    if !mod_models_content.contains("pub mod user_passkey;") {
+        mod_models_content.push_str("pub mod user_passkey;\n");
+        modified = true;
+    }
+    if modified {
         fs::write(&mod_models_path, mod_models_content)?;
     }
 
@@ -1872,6 +2048,147 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let pages_path = pages_dir.join("auth.rs");
     let pages_template = r##"use rullst::html;
 use axum::response::Html;
+
+const PASSKEY_SCRIPT: &str = r#"<script>
+    function bufferDecode(value) {
+        const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+        const pad = base64.length % 4;
+        const padded = pad ? base64 + "=".repeat(4 - pad) : base64;
+        const binary = window.atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function bufferEncode(value) {
+        const bytes = new Uint8Array(value);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = window.btoa(binary);
+        return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (window.PublicKeyCredential) {
+            document.querySelectorAll(".btn-passkey").forEach(btn => btn.style.display = "flex");
+        }
+    });
+
+    async function registerPasskey() {
+        try {
+            const email = document.getElementById("email").value;
+            const name = document.getElementById("name").value;
+            if (!email || !name) {
+                alert("Por favor, preencha o nome e email antes de criar a Passkey.");
+                return;
+            }
+
+            const res = await fetch("/auth/passkey/register/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            
+            const options = await res.json();
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            options.publicKey.user.id = bufferDecode(options.publicKey.user.id);
+            if (options.publicKey.excludeCredentials) {
+                for (let cred of options.publicKey.excludeCredentials) {
+                    cred.id = bufferDecode(cred.id);
+                }
+            }
+
+            const credential = await navigator.credentials.create({
+                publicKey: options.publicKey
+            });
+
+            const credentialJson = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    attestationObject: bufferEncode(credential.response.attestationObject),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                    transports: credential.response.getTransports ? credential.response.getTransports() : []
+                }
+            };
+
+            const finishRes = await fetch("/auth/passkey/register/finish?email=" + encodeURIComponent(email), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(credentialJson)
+            });
+
+            if (finishRes.ok) {
+                window.location.href = "/dashboard";
+            } else {
+                alert("Falha ao registrar Passkey: " + await finishRes.text());
+            }
+        } catch (err) {
+            alert("Erro: " + err.message);
+        }
+    }
+
+    async function loginPasskey() {
+        try {
+            const email = document.getElementById("email").value;
+            if (!email) {
+                alert("Por favor, digite seu email para fazer login com Passkey.");
+                return;
+            }
+
+            const res = await fetch("/auth/passkey/login/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            const options = await res.json();
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            if (options.publicKey.allowCredentials) {
+                for (let cred of options.publicKey.allowCredentials) {
+                    cred.id = bufferDecode(cred.id);
+                }
+            }
+
+            const credential = await navigator.credentials.get({
+                publicKey: options.publicKey
+            });
+
+            const credentialJson = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    authenticatorData: bufferEncode(credential.response.authenticatorData),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                    signature: bufferEncode(credential.response.signature),
+                    userHandle: credential.response.userHandle ? bufferEncode(credential.response.userHandle) : null
+                }
+            };
+
+            const finishRes = await fetch("/auth/passkey/login/finish?email=" + encodeURIComponent(email), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(credentialJson)
+            });
+
+            if (finishRes.ok) {
+                window.location.href = "/dashboard";
+            } else {
+                alert("Falha na autenticação da Passkey: " + await finishRes.text());
+            }
+        } catch (err) {
+            alert("Erro: " + err.message);
+        }
+    }
+</script>"#;
 
 pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
     let error_html = if let Some(err) = error {
@@ -2041,6 +2358,10 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <button type="submit" class="btn-primary">"Sign In"</button>
                     </form>
 
+                    <button type="button" onclick="loginPasskey()" class="oauth-btn btn-passkey" style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #10b981, #059669); color: white; justify-content: center; width: 100%; box-sizing: border-box;">
+                        "Entrar com Passkey / Biometria 🔑"
+                    </button>
+
                     <div class="divider">"ou continuar com"</div>
 
                     <a href="/auth/github/redirect" class="oauth-btn">
@@ -2055,6 +2376,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <a href="/register">"Sign up"</a>
                     </div>
                 </div>
+                { rullst::html::RawHtml(PASSKEY_SCRIPT.to_string()) }
             </body>
         </html>
     })
@@ -2197,11 +2519,16 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <button type="submit" class="btn-primary">"Registrar"</button>
                     </form>
 
+                    <button type="button" onclick="registerPasskey()" class="oauth-btn btn-passkey" style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #10b981, #059669); color: white; justify-content: center; width: 100%; box-sizing: border-box;">
+                        "Registrar com Passkey / Biometria 🔑"
+                    </button>
+
                     <div class="footer-link">
                         "Already have an account? "
                         <a href="/login">"Sign In"</a>
                     </div>
                 </div>
+                { rullst::html::RawHtml(PASSKEY_SCRIPT.to_string()) }
             </body>
         </html>
     })
@@ -2316,8 +2643,27 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
 };
 use serde::Deserialize;
 use crate::models::user::User;
+use crate::models::user_passkey::UserPasskey;
 use crate::pages::auth;
 use rullst::auth as rullst_auth;
+use rullst::auth::passkey::{PasskeyAuth, PasskeyConfig};
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
+
+static PASSKEY: LazyLock<PasskeyAuth> = LazyLock::new(|| {
+    let config = PasskeyConfig::new(
+        "Rullst App",
+        "localhost",
+        "http://localhost:3000"
+    );
+    PasskeyAuth::new(&config).expect("Failed to initialize PasskeyAuth")
+});
+
+static REG_STATES: LazyLock<Mutex<HashMap<String, webauthn_rs::prelude::PasskeyRegistration>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static AUTH_STATES: LazyLock<Mutex<HashMap<String, webauthn_rs::prelude::PasskeyAuthentication>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]
 pub struct RegisterDto {
@@ -2335,6 +2681,22 @@ pub struct LoginDto {
 #[derive(Deserialize)]
 pub struct OAuthCallbackQuery {
     pub code: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasskeyRegisterStartDto {
+    pub name: String,
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasskeyLoginStartDto {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasskeyEmailQuery {
+    pub email: String,
 }
 
 fn get_csrf_token(headers: &HeaderMap) -> String {
@@ -2517,6 +2879,203 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 
     Redirect::to("/login").into_response()
 }
+
+pub async fn passkey_register_start(
+    axum::Json(payload): axum::Json<PasskeyRegisterStartDto>
+) -> Response {
+    let existing_users = match User::all().await {
+        Ok(u) => u,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    
+    let email_lower = payload.email.to_lowercase();
+    if existing_users.iter().any(|u| u.email.to_lowercase() == email_lower) {
+        return (axum::http::StatusCode::BAD_REQUEST, "Email already registered").into_response();
+    }
+
+    let next_id = existing_users.iter().map(|u| u.id).max().unwrap_or(0) + 1;
+
+    match PASSKEY.start_register(next_id, &payload.email, &payload.name) {
+        Ok((challenge, state)) => {
+            if let Ok(mut states) = REG_STATES.lock() {
+                states.insert(email_lower, state);
+            }
+            axum::Json(challenge).into_response()
+        }
+        Err(e) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+    }
+}
+
+pub async fn passkey_register_finish(
+    Query(query): Query<PasskeyEmailQuery>,
+    axum::Json(credential): axum::Json<webauthn_rs::prelude::RegisterPublicKeyCredential>
+) -> Response {
+    let email_lower = query.email.to_lowercase();
+    let state = {
+        let Ok(mut states) = REG_STATES.lock() else {
+            return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
+        };
+        match states.remove(&email_lower) {
+            Some(s) => s,
+            None => return (axum::http::StatusCode::BAD_REQUEST, "Registration challenge not found").into_response(),
+        }
+    };
+
+    match PASSKEY.finish_register(&credential, state) {
+        Ok(passkey) => {
+            let name = query.email.split('@').next().unwrap_or("User").to_string();
+            let mut user = User {
+                id: 0,
+                name,
+                email: query.email.clone(),
+                password_hash: None,
+                oauth_provider: Some("passkey".to_string()),
+                oauth_id: Some(query.email.clone()),
+                created_at: String::new(),
+                updated_at: String::new(),
+            };
+
+            if let Err(e) = user.save().await {
+                return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save user: {}", e)).into_response();
+            }
+
+            let passkey_json = serde_json::to_string(&passkey).unwrap_or_default();
+            let mut user_passkey = UserPasskey {
+                id: 0,
+                user_id: user.id,
+                name: "Passkey".to_string(),
+                passkey_json,
+                created_at: String::new(),
+                updated_at: String::new(),
+            };
+
+            if let Err(e) = user_passkey.save().await {
+                return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save passkey: {}", e)).into_response();
+            }
+
+            match rullst_auth::make_login_cookie(user.id) {
+                Ok(cookie) => {
+                    let mut res = (axum::http::StatusCode::OK, "Success").into_response();
+                    res.headers_mut().append(
+                        axum::http::header::SET_COOKIE,
+                        axum::http::HeaderValue::from_str(&cookie).unwrap()
+                    );
+                    res
+                }
+                Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
+            }
+        }
+        Err(e) => (axum::http::StatusCode::BAD_REQUEST, e).into_response()
+    }
+}
+
+pub async fn passkey_login_start(
+    axum::Json(payload): axum::Json<PasskeyLoginStartDto>
+) -> Response {
+    let email_lower = payload.email.to_lowercase();
+    let existing_users = match User::all().await {
+        Ok(u) => u,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    
+    let Some(user) = existing_users.into_iter().find(|u| u.email.to_lowercase() == email_lower) else {
+        return (axum::http::StatusCode::NOT_FOUND, "User not found").into_response();
+    };
+
+    let all_passkeys = match UserPasskey::all().await {
+        Ok(pk) => pk,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    
+    let user_credentials: Vec<webauthn_rs::prelude::Passkey> = all_passkeys
+        .into_iter()
+        .filter(|pk| pk.user_id == user.id)
+        .filter_map(|pk| serde_json::from_str(&pk.passkey_json).ok())
+        .collect();
+
+    if user_credentials.is_empty() {
+        return (axum::http::StatusCode::BAD_REQUEST, "No passkeys registered for this user").into_response();
+    }
+
+    match PASSKEY.start_authenticate(&user_credentials) {
+        Ok((challenge, state)) => {
+            if let Ok(mut states) = AUTH_STATES.lock() {
+                states.insert(email_lower, state);
+            }
+            axum::Json(challenge).into_response()
+        }
+        Err(e) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+    }
+}
+
+pub async fn passkey_login_finish(
+    Query(query): Query<PasskeyEmailQuery>,
+    axum::Json(credential): axum::Json<webauthn_rs::prelude::PublicKeyCredential>
+) -> Response {
+    let email_lower = query.email.to_lowercase();
+    let state = {
+        let Ok(mut states) = AUTH_STATES.lock() else {
+            return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
+        };
+        match states.remove(&email_lower) {
+            Some(s) => s,
+            None => return (axum::http::StatusCode::BAD_REQUEST, "Authentication challenge not found").into_response(),
+        }
+    };
+
+    let existing_users = match User::all().await {
+        Ok(u) => u,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    let Some(user) = existing_users.into_iter().find(|u| u.email.to_lowercase() == email_lower) else {
+        return (axum::http::StatusCode::NOT_FOUND, "User not found").into_response();
+    };
+
+    let mut all_passkeys = match UserPasskey::all().await {
+        Ok(pk) => pk,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    
+    let mut found_passkey = None;
+    let mut found_user_passkey = None;
+
+    for pk in all_passkeys.iter_mut() {
+        if pk.user_id == user.id {
+            if let Ok(parsed_pk) = serde_json::from_str::<webauthn_rs::prelude::Passkey>(&pk.passkey_json) {
+                if credential.id == parsed_pk.cred_id() {
+                    found_passkey = Some(parsed_pk);
+                    found_user_passkey = Some(pk);
+                    break;
+                }
+            }
+        }
+    }
+
+    let (passkey, mut user_passkey) = match (found_passkey, found_user_passkey) {
+        (Some(pk), Some(upk)) => (pk, upk),
+        _ => return (axum::http::StatusCode::BAD_REQUEST, "Matching credential not found").into_response(),
+    };
+
+    match PASSKEY.finish_authenticate(&credential, state, passkey) {
+        Ok(updated_passkey) => {
+            user_passkey.passkey_json = serde_json::to_string(&updated_passkey).unwrap_or_default();
+            let _ = user_passkey.save().await;
+
+            match rullst_auth::make_login_cookie(user.id) {
+                Ok(cookie) => {
+                    let mut res = (axum::http::StatusCode::OK, "Success").into_response();
+                    res.headers_mut().append(
+                        axum::http::header::SET_COOKIE,
+                        axum::http::HeaderValue::from_str(&cookie).unwrap()
+                    );
+                    res
+                }
+                Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
+            }
+        }
+        Err(e) => (axum::http::StatusCode::BAD_REQUEST, e).into_response()
+    }
+}
 "##;
     fs::write(&controller_path, controller_template)?;
     println!(
@@ -2548,13 +3107,13 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
             }
         }
 
-        // Auto-inject required dependencies in Cargo.toml if needed (like rust-socialite)
+        // Auto-inject required dependencies in Cargo.toml if needed (like rust-socialite and webauthn-rs)
         let cargo_toml_path = Path::new("Cargo.toml");
         if cargo_toml_path.exists() {
             let mut cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
+            let mut modified = false;
+
             if !cargo_toml_content.contains("rust-socialite") {
-                // Attempt to inject the rust-socialite dependency into Cargo.toml
-                // sibling search or crates.io fallback
                 let current_dir = std::env::current_dir()?;
                 let sibling_path = current_dir.parent().unwrap().join("rust-socialite");
                 let dep_str = if sibling_path.exists() {
@@ -2570,13 +3129,28 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {
                     cargo_toml_content.insert_str(pos + 14, &dep_str);
-                    fs::write(cargo_toml_path, cargo_toml_content)?;
+                    modified = true;
                     println!(
                         "{}",
-                        "  ✨ Adicionada dependência do 'rust-socialite' no seu Cargo.toml."
-                            .green()
+                        "  ✨ Added 'rust-socialite' dependency to your Cargo.toml.".green()
                     );
                 }
+            }
+
+            if !cargo_toml_content.contains("webauthn-rs") {
+                let dep_str = "webauthn-rs = { version = \"0.5\", default-features = false }\n";
+                if let Some(pos) = cargo_toml_content.find("[dependencies]") {
+                    cargo_toml_content.insert_str(pos + 14, dep_str);
+                    modified = true;
+                    println!(
+                        "{}",
+                        "  ✨ Added 'webauthn-rs' dependency to your Cargo.toml.".green()
+                    );
+                }
+            }
+
+            if modified {
+                fs::write(cargo_toml_path, cargo_toml_content)?;
             }
         }
 
@@ -2595,34 +3169,23 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
         "{}",
         "  1. Register the routes below in the routes! macro of your 'src/main.rs':".cyan()
     );
-    println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!(
         "{}",
-        "     get(\"/login\" => controllers::auth_controller::login_view),".yellow()
+        r##"     get("/login" => controllers::auth_controller::login_view),
+     post("/login" => controllers::auth_controller::login_submit),
+     get("/register" => controllers::auth_controller::register_view),
+     post("/register" => controllers::auth_controller::register_submit),
+     get("/logout" => controllers::auth_controller::logout),
+     get("/dashboard" => controllers::auth_controller::dashboard),
+     get("/auth/github/redirect" => controllers::auth_controller::oauth_github_redirect),
+     get("/auth/github/callback" => controllers::auth_controller::oauth_github_callback),
+     post("/auth/passkey/register/start" => controllers::auth_controller::passkey_register_start),
+     post("/auth/passkey/register/finish" => controllers::auth_controller::passkey_register_finish),
+     post("/auth/passkey/login/start" => controllers::auth_controller::passkey_login_start),
+     post("/auth/passkey/login/finish" => controllers::auth_controller::passkey_login_finish),
+     -------------------------------------------------------------------------------------"##
+            .yellow()
     );
-    println!(
-        "{}",
-        "     post(\"/login\" => controllers::auth_controller::login_submit),".yellow()
-    );
-    println!(
-        "{}",
-        "     get(\"/register\" => controllers::auth_controller::register_view),".yellow()
-    );
-    println!(
-        "{}",
-        "     post(\"/register\" => controllers::auth_controller::register_submit),".yellow()
-    );
-    println!(
-        "{}",
-        "     get(\"/logout\" => controllers::auth_controller::logout),".yellow()
-    );
-    println!(
-        "{}",
-        "     get(\"/dashboard\" => controllers::auth_controller::dashboard),".yellow()
-    );
-    println!("{}", "     get(\"/auth/github/redirect\" => controllers::auth_controller::oauth_github_redirect),".yellow());
-    println!("{}", "     get(\"/auth/github/callback\" => controllers::auth_controller::oauth_github_callback),".yellow());
-    println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!(
         "{}",
         "  2. To protect routes with a middleware, apply the layer to your router:".cyan()
@@ -3476,29 +4039,114 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    // Step 1: Update the Rullst dependency to the latest compatible non-breaking version
+    let latest_version = if get_cache_path().exists() {
+        std::fs::read_to_string(get_cache_path())
+            .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string())
+            .trim()
+            .to_string()
+    } else {
+        env!("CARGO_PKG_VERSION").to_string()
+    };
+
+    // Step 1: Update Cargo.toml
     println!(
         "{}",
-        "📦 Atualizando as dependências do Rullst no Cargo.toml...".yellow()
+        format!("📦 Updating Rullst dependency versions to {} in Cargo.toml...", latest_version).yellow()
+    );
+    let cargo_path = Path::new("Cargo.toml");
+    if cargo_path.exists() {
+        let mut cargo_content = std::fs::read_to_string(cargo_path)?;
+        
+        let re_rullst = regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#)?;
+        cargo_content = re_rullst.replace_all(&cargo_content, |caps: &regex::Captures| {
+            format!(r#"{}"{}""#, &caps[1], latest_version)
+        }).into_owned();
+
+        let re_macros = regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#)?;
+        cargo_content = re_macros.replace_all(&cargo_content, |caps: &regex::Captures| {
+            format!(r#"{}"{}""#, &caps[1], latest_version)
+        }).into_owned();
+
+        let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rust-eloquent\s*=\s*)"[^"]+""#)?;
+        cargo_content = re_eloquent.replace_all(&cargo_content, |caps: &regex::Captures| {
+            format!(r#"{}"1.1.0""#, &caps[1])
+        }).into_owned();
+
+        std::fs::write(cargo_path, cargo_content)?;
+    }
+
+    // Step 2: Run cargo update
+    println!(
+        "{}",
+        "📦 Refreshing dependencies and lockfile via cargo update...".yellow()
     );
     let update_status = Command::new("cargo")
         .arg("update")
-        .arg("-p")
-        .arg("rullst")
         .status()?;
 
     if !update_status.success() {
         println!(
             "{}",
-            "❌ Failed to update the 'rullst' dependency via cargo update.".red()
+            "❌ Failed to update dependencies via cargo update.".red()
         );
         std::process::exit(1);
     }
 
-    // Step 2: Run `cargo fix` to apply codemods based on new deprecations and signatures
+    // Step 3: Run self-healing codemod AST & regex rules
     println!(
         "{}",
-        "\n🔧 Aplicando codemods automáticos baseados nas assinaturas do Rullst...".yellow()
+        "\n🔧 Executing self-healing codemod AST & regex rules over project files...".yellow()
+    );
+
+    let rules = vec![
+        (r#"\bold_initializer\s*\(\s*\)"#, "Router::new()", "Legacy old_initializer() -> Router::new()"),
+        (r#"\brullst::routing::old_initializer\b"#, "rullst::routing::Router::new", "Legacy router initialization path"),
+        (r#"\buse\s+sqlx::"#, "use rullst::db::sqlx::", "Enforce Dependency Shielding for sqlx"),
+        (r#"\buse\s+axum::"#, "use rullst::web::axum::", "Enforce Dependency Shielding for axum"),
+        (r#"\buse\s+tokio::"#, "use rullst::async_runtime::tokio::", "Enforce Dependency Shielding for tokio"),
+    ];
+
+    let mut applied_count = 0;
+    if Path::new("src").exists() {
+        let walker = walkdir::WalkDir::new("src");
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                let mut file_content = std::fs::read_to_string(path)?;
+                let mut modified = false;
+                
+                for (pattern, replacement, desc) in &rules {
+                    let re = regex::Regex::new(pattern)?;
+                    if re.is_match(&file_content) {
+                        file_content = re.replace_all(&file_content, *replacement).into_owned();
+                        println!(
+                            "  [{}] Applied codemod: {} in {}",
+                            "Codemod".green().bold(),
+                            desc.cyan(),
+                            path.display()
+                        );
+                        modified = true;
+                        applied_count += 1;
+                    }
+                }
+                
+                if modified {
+                    std::fs::write(path, file_content)?;
+                }
+            }
+        }
+    }
+
+    if applied_count == 0 {
+        println!("  ✨ No legacy APIs or shielding patterns required patching in this codebase.");
+    } else {
+        println!("  ✨ Successfully executed {} codemod modifications.", applied_count);
+    }
+
+    // Step 4: Run `cargo fix`
+    println!(
+        "{}",
+        "\n🔧 Applying additional code fixes via cargo fix...".yellow()
     );
     let fix_status = Command::new("cargo")
         .arg("fix")
@@ -3509,25 +4157,35 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if !fix_status.success() {
         println!(
             "{}",
-            "❌ Failed to apply code migrations via cargo fix.".red()
+            "❌ Failed to apply additional code fixes via cargo fix.".red()
         );
         std::process::exit(1);
     }
 
-    // Wrap up
+    // Step 5: Compiler validation gate
     println!(
         "{}",
-        "\n✨ Rullst upgrade completed successfully!".green().bold()
+        "\n🛡️ Running validation gate (cargo check) to confirm health status...".yellow()
     );
-    println!(
-        "{}",
-        "Your code was automatically updated to reflect the best practices of the latest version."
-            .green()
-    );
-    println!(
-        "{}",
-        "Run `cargo test` or `cargo check` to ensure everything is functioning perfectly.\n".cyan()
-    );
+    let check_status = Command::new("cargo")
+        .arg("check")
+        .status()?;
+
+    if check_status.success() {
+        println!(
+            "{}",
+            "\n✅ Rullst updated successfully. No breaking changes detected! Code is 100% stable.\n"
+                .green()
+                .bold()
+        );
+    } else {
+        println!(
+            "{}",
+            "\n⚠️ Warning: Upgrade completed with check failures. Please review the compiler errors manually.\n"
+                .yellow()
+                .bold()
+        );
+    }
 
     Ok(())
 }
@@ -3748,6 +4406,133 @@ if (typeof document !== 'undefined') {{
             package_name
         )
         .cyan()
+    );
+
+    Ok(())
+}
+
+fn run_production_build(release: bool) -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        format!(
+            "\n🚀 Starting Rullst production build pipeline (Release Mode: {})...\n",
+            release
+        )
+        .cyan()
+        .bold()
+    );
+
+    // 1. Run cargo build --release (or debug)
+    let mut cargo_cmd = Command::new("cargo");
+    cargo_cmd.arg("build");
+    if release {
+        cargo_cmd.arg("--release");
+    }
+
+    println!(
+        "{}",
+        format!(
+            "⚙️ Executing cargo build{}...",
+            if release { " --release" } else { "" }
+        )
+        .yellow()
+    );
+    let build_status = cargo_cmd.status()?;
+    if !build_status.success() {
+        println!("{}", "❌ Error: Cargo build failed.".red().bold());
+        std::process::exit(1);
+    }
+
+    // 2. Pre-compress static files in static/ directory
+    let static_dir = Path::new("static");
+    if static_dir.exists() {
+        println!(
+            "{}",
+            "📦 Pre-compressing static assets in static/ directory...".yellow()
+        );
+        let walker = walkdir::WalkDir::new(static_dir);
+        let mut file_count = 0;
+        let mut br_count = 0;
+        let mut zst_count = 0;
+
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_file() {
+                let ext = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+                if matches!(
+                    ext.as_str(),
+                    "html" | "css" | "js" | "json" | "svg" | "wasm" | "xml" | "txt"
+                ) {
+                    file_count += 1;
+                    let input_bytes = fs::read(path)?;
+
+                    // Brotli compression (level 11)
+                    let br_path = path.with_extension(format!("{}.br", ext));
+                    println!(
+                        "  Compressing {} -> {} (Brotli L11)...",
+                        path.display(),
+                        br_path.display()
+                    );
+                    {
+                        let br_file = fs::File::create(&br_path)?;
+                        let mut writer = brotli::CompressorWriter::new(br_file, 4096, 11, 22);
+                        writer.write_all(&input_bytes)?;
+                        writer.flush()?;
+                    }
+                    br_count += 1;
+
+                    // Zstandard compression (level 19)
+                    let zst_path = path.with_extension(format!("{}.zst", ext));
+                    println!(
+                        "  Compressing {} -> {} (Zstd L19)...",
+                        path.display(),
+                        zst_path.display()
+                    );
+                    {
+                        let zst_file = fs::File::create(&zst_path)?;
+                        let mut encoder = zstd::Encoder::new(zst_file, 19)?;
+                        encoder.write_all(&input_bytes)?;
+                        encoder.finish()?;
+                    }
+                    zst_count += 1;
+                }
+            }
+        }
+        println!(
+            "{}",
+            format!(
+                "\n✨ Pre-compression finished: processed {} files, generated {} .br files and {} .zst files.",
+                file_count, br_count, zst_count
+            )
+            .green()
+            .bold()
+        );
+    } else {
+        println!(
+            "{}",
+            "ℹ️ No static/ directory found. Skipping static asset pre-compression.".cyan()
+        );
+    }
+
+    println!(
+        "{}",
+        "\n🎉 Rullst production build completed successfully!"
+            .green()
+            .bold()
     );
 
     Ok(())

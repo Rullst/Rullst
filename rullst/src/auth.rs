@@ -12,6 +12,8 @@ use rand::Rng;
 use sha2::Digest;
 use std::fs;
 
+pub mod passkey;
+
 /// Default fall-back key for local development when APP_KEY is not configured.
 const DEFAULT_APP_KEY: &[u8] = b"rullst-super-secret-development-key-32bytes!!!";
 

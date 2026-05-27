@@ -5,6 +5,9 @@
 )]
 extern crate self as rullst;
 
+pub mod db;
+pub mod edge;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub mod ai;
 #[cfg(not(target_arch = "wasm32"))]
@@ -31,6 +34,8 @@ pub mod mail;
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod routing;
 #[cfg(not(target_arch = "wasm32"))]
@@ -103,6 +108,13 @@ pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use ws::{WebSocket, WsError};
 
+// Re-export Milestone 6 Resilience Features
+#[cfg(not(target_arch = "wasm32"))]
+pub use resilience::{
+    RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, backpressure_middleware,
+    rate_limit_middleware,
+};
+
 #[cfg(not(target_arch = "wasm32"))]
 pub use ai::{
     AiClient, AiError, AiProvider, ChatBuilder, Message as AiMessage, VectorDocument, VectorIndex,
@@ -119,3 +131,25 @@ pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, 
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use testing::{TestApp, TestRequestBuilder, TestResponse};
+
+// ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
+
+pub mod web {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use axum;
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tower;
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tower_http;
+}
+
+pub mod async_runtime {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tokio;
+}
+
+pub mod email_client {
+    #[cfg(feature = "mail-smtp")]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use lettre;
+}
