@@ -14,9 +14,6 @@ use std::fs;
 
 pub mod passkey;
 
-/// Default fall-back key for local development when APP_KEY is not configured.
-const DEFAULT_APP_KEY: &[u8] = b"rullst-super-secret-development-key-32bytes!!!";
-
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
     let salt = SaltString::generate(&mut OsRng);
@@ -39,7 +36,7 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 }
 
 /// Resolves the application's unique secret key for encryption.
-/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to a development default.
+/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`. Panics if not found.
 pub fn get_app_key() -> Vec<u8> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
         return env_key.into_bytes();
@@ -56,10 +53,7 @@ pub fn get_app_key() -> Vec<u8> {
         }
     }
 
-    eprintln!(
-        "⚠️  Rullst Security Warning: Using the default development APP_KEY. Please set APP_KEY in your environment or Rullst.toml for production."
-    );
-    DEFAULT_APP_KEY.to_vec()
+    panic!("FATAL: APP_KEY is not configured. For security reasons, a default fallback key is no longer provided. Please set APP_KEY in your environment or Rullst.toml.");
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
