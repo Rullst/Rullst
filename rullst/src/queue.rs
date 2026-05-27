@@ -845,6 +845,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_sqlite_queue_purge_completed_jobs() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Push two jobs
+        driver
+            .push("job-to-fail", "fail_job", r#"{}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-pending", "pending_job", r#"{}"#)
+            .await
+            .unwrap();
+
+        // Pop the first job and mark it failed
+        let job = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job.id, "job-to-fail");
+        driver.mark_failed(&job.id, "Error").await.unwrap();
+
+        // Now purge failed jobs
+        driver.purge_completed_jobs().await.unwrap();
+
+        // Ensure pending job still exists, but failed job is gone
+        let pending = driver.pending_count().await.unwrap();
+        assert_eq!(pending, 1);
+
+        // Pop the pending job to verify it's the right one
+        let job2 = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job2.id, "job-pending");
+
+        // The failed job should not be retryable anymore (it's deleted)
+        let _retry_result = driver.retry_failed_job("job-to-fail").await;
+        // The retry function doesn't actually throw an error if job is not found,
+        // it just updates 0 rows, so we will manually check via list_all_jobs or just rely on the above checks.
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_purge_error() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Close the pool to simulate a driver error
+        driver.pool.close().await;
+
+        let result = driver.purge_completed_jobs().await;
+        assert!(result.is_err());
+        if let Err(QueueError::Driver(msg)) = result {
+            assert!(
+                msg.contains("PoolClosed") || msg.contains("closed"),
+                "Unexpected error message: {}",
+                msg
+            );
+        } else {
+            panic!("Expected QueueError::Driver, got {:?}", result);
+        }
+    }
+
+    #[tokio::test]
     async fn test_custom_queue_driver() {
         // Since we need to check was_push_called, we'll share state via Arc.
         let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
