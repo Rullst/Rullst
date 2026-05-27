@@ -53,7 +53,9 @@ pub fn get_app_key() -> Vec<u8> {
         }
     }
 
-    panic!("FATAL: APP_KEY is not configured. For security reasons, a default fallback key is no longer provided. Please set APP_KEY in your environment or Rullst.toml.");
+    panic!(
+        "FATAL: APP_KEY is not configured. For security reasons, a default fallback key is no longer provided. Please set APP_KEY in your environment or Rullst.toml."
+    );
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
