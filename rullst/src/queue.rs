@@ -685,14 +685,28 @@ mod tests {
 
         #[async_trait]
         impl QueueDriver for ArcMockDriver {
-            async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> {
-                self.push_called.store(true, std::sync::atomic::Ordering::SeqCst);
+            async fn push(
+                &self,
+                _id: &str,
+                _job_name: &str,
+                _payload: &str,
+            ) -> Result<(), QueueError> {
+                self.push_called
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
                 Ok(())
             }
-            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> { Ok(None) }
-            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> { Ok(()) }
-            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> { Ok(()) }
-            async fn pending_count(&self) -> Result<u64, QueueError> { Ok(0) }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+                Ok(None)
+            }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pending_count(&self) -> Result<u64, QueueError> {
+                Ok(0)
+            }
         }
 
         let driver = Box::new(ArcMockDriver {
@@ -700,7 +714,10 @@ mod tests {
         });
 
         let queue = Queue::custom(driver);
-        let _id = queue.dispatch("test_custom_job", serde_json::json!({})).await.unwrap();
+        let _id = queue
+            .dispatch("test_custom_job", serde_json::json!({}))
+            .await
+            .unwrap();
 
         assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
     }
