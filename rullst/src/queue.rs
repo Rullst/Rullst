@@ -651,6 +651,30 @@ mod tests {
         assert_eq!(job2.name, "process_image");
     }
 
+
+    #[tokio::test]
+    async fn test_sqlite_driver_get_pool() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let pool = driver.get_pool();
+
+        // Ensure the pool is valid and connected to the correct database schema
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+
+        assert_eq!(row.0, 0);
+
+        // Add a job and check the count again
+        driver.push("test-job", "test_handler", "{}").await.unwrap();
+        let row_after: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+
+        assert_eq!(row_after.0, 1);
+    }
+
     #[tokio::test]
     async fn test_sqlite_queue_mark_failed() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
