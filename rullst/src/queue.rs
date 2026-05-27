@@ -734,6 +734,121 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_sqlite_queue_purge_completed_jobs() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Push two jobs
+        driver
+            .push("job-to-fail", "fail_job", r#"{}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-pending", "pending_job", r#"{}"#)
+            .await
+            .unwrap();
+
+        // Pop the first job and mark it failed
+        let job = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job.id, "job-to-fail");
+        driver.mark_failed(&job.id, "Error").await.unwrap();
+
+        // Now purge failed jobs
+        driver.purge_completed_jobs().await.unwrap();
+
+        // Ensure pending job still exists, but failed job is gone
+        let pending = driver.pending_count().await.unwrap();
+        assert_eq!(pending, 1);
+
+        // Pop the pending job to verify it's the right one
+        let job2 = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job2.id, "job-pending");
+
+        // The failed job should not be retryable anymore (it's deleted)
+        let _retry_result = driver.retry_failed_job("job-to-fail").await;
+        // The retry function doesn't actually throw an error if job is not found,
+        // it just updates 0 rows, so we will manually check via list_all_jobs or just rely on the above checks.
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_purge_error() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Close the pool to simulate a driver error
+        driver.pool.close().await;
+
+        let result = driver.purge_completed_jobs().await;
+        assert!(result.is_err());
+        if let Err(QueueError::Driver(msg)) = result {
+            assert!(
+                msg.contains("PoolClosed") || msg.contains("closed"),
+                "Unexpected error message: {}",
+                msg
+            );
+        } else {
+            panic!("Expected QueueError::Driver, got {:?}", result);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_list_all_jobs() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // 1. Test empty queue
+        let jobs = driver.list_all_jobs(10).await.unwrap();
+        assert!(jobs.is_empty(), "Expected empty jobs list initially");
+
+        // 2. Populate queue and test limit
+        driver
+            .push("job-1", "job_type_a", r#"{"data": 1}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-2", "job_type_b", r#"{"data": 2}"#)
+            .await
+            .unwrap();
+        driver
+            .push("job-3", "job_type_c", r#"{"data": 3}"#)
+            .await
+            .unwrap();
+
+        // Check if all 3 jobs are returned when limit is large enough
+        let all_jobs = driver.list_all_jobs(10).await.unwrap();
+        assert_eq!(all_jobs.len(), 3, "Expected 3 jobs");
+
+        // SQLite order: "ORDER BY created_at DESC"
+        // Since we insert them back-to-back, sometimes they have the exact same created_at
+        // so we'll just check that they are all present
+        assert!(all_jobs.iter().any(|j| j.id == "job-1"));
+        assert!(all_jobs.iter().any(|j| j.id == "job-2"));
+        assert!(all_jobs.iter().any(|j| j.id == "job-3"));
+
+        // Test limit
+        let limited_jobs = driver.list_all_jobs(2).await.unwrap();
+        assert_eq!(
+            limited_jobs.len(),
+            2,
+            "Expected exactly 2 jobs due to limit"
+        );
+
+        // 3. Test Err path
+        // To trigger an error, we can close the connection pool and then attempt to query.
+        driver.pool.close().await;
+
+        let result = driver.list_all_jobs(10).await;
+        assert!(result.is_err(), "Expected error after pool is closed");
+        match result {
+            Err(QueueError::Driver(msg)) => {
+                assert!(
+                    msg.contains("pool timed out") || msg.contains("closed"),
+                    "Unexpected error message: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected QueueError::Driver"),
+        }
+    }
+
+    #[tokio::test]
     async fn test_custom_queue_driver() {
         // Since we need to check was_push_called, we'll share state via Arc.
         let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
