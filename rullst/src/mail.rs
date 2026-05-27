@@ -406,6 +406,15 @@ mod tests {
         assert_eq!(msg.body_html.unwrap(), "<p>Hello World!</p>");
     }
 
+    #[test]
+    fn test_message_subject() {
+        let msg = Message::new().subject("Test Subject");
+        assert_eq!(msg.subject, "Test Subject");
+
+        let msg2 = Message::new().subject(String::from("Another Subject"));
+        assert_eq!(msg2.subject, "Another Subject");
+    }
+
     #[tokio::test]
     async fn test_log_driver() {
         // Prepare storage/logs directory
@@ -425,5 +434,11 @@ mod tests {
         assert!(content.contains("To: test@rullst.dev"));
         assert!(content.contains("Subject: Hello Test"));
         assert!(content.contains("Testing 1 2 3"));
+    }
+
+    #[test]
+    fn test_message_to() {
+        let msg = Message::new().to("user@example.com");
+        assert_eq!(msg.to, "user@example.com");
     }
 }
