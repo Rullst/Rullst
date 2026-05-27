@@ -410,4 +410,57 @@ mod tests {
         assert!(content.contains("Subject: Hello Test"));
         assert!(content.contains("Testing 1 2 3"));
     }
+
+    use std::sync::Mutex;
+
+    // We can use std::sync::OnceLock which is in standard library now
+    static ENV_MUTEX: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+
+    // Run sequentially to avoid mutating `MAIL_DRIVER` which fails test_mail_send_log randomly.
+    #[tokio::test]
+    async fn test_mail_send_log() {
+        let mutex = ENV_MUTEX.get_or_init(|| Mutex::new(()));
+        let _lock = mutex.lock().unwrap();
+        // Force the mail driver to log to avoid test side-effects if env var is missing or different
+        unsafe {
+            std::env::set_var("MAIL_DRIVER", "log");
+        }
+        let _ = std::fs::remove_file("storage/logs/mail.log");
+
+        let msg = Message::new()
+            .to("test-send@rullst.dev")
+            .subject("Test Send Method")
+            .text("Send method testing");
+
+        Mail::send(msg).await.expect("Failed to send mail using log driver");
+
+        assert!(std::path::Path::new("storage/logs/mail.log").exists());
+        let content = std::fs::read_to_string("storage/logs/mail.log").unwrap();
+        assert!(content.contains("To: test-send@rullst.dev"));
+        assert!(content.contains("Subject: Test Send Method"));
+        assert!(content.contains("Send method testing"));
+    }
+
+    #[tokio::test]
+    async fn test_mail_send_invalid_driver() {
+        let mutex = ENV_MUTEX.get_or_init(|| Mutex::new(()));
+        let _lock = mutex.lock().unwrap();
+        unsafe {
+            std::env::set_var("MAIL_DRIVER", "invalid_test_driver");
+        }
+
+        let msg = Message::new()
+            .to("test@example.com")
+            .subject("Test Error")
+            .text("This should fail");
+
+        let result = Mail::send(msg).await;
+
+        assert!(result.is_err());
+        if let Err(MailError::ConfigError(e)) = result {
+            assert_eq!(e, "Unknown mail driver: invalid_test_driver");
+        } else {
+            panic!("Expected ConfigError, got {:?}", result.err().unwrap());
+        }
+    }
 }
