@@ -47,7 +47,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 validator = { version = "0.20", features = ["derive"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 libloading = "0.9"
-notify = "6.1.1"
+notify = "8.2.0"
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
