@@ -802,6 +802,49 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_sqlite_queue_list_all_jobs() {
+        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+
+        // Dispatch some jobs
+        queue.dispatch("job1", serde_json::json!({"data": 1})).await.unwrap();
+        queue.dispatch("job2", serde_json::json!({"data": 2})).await.unwrap();
+
+        // List jobs
+        let jobs = queue.list_all_jobs(10).await.unwrap();
+        assert_eq!(jobs.len(), 2);
+
+        // Verify both jobs are retrieved successfully
+        assert!(jobs.iter().any(|j| j.name == "job1"));
+        assert!(jobs.iter().any(|j| j.name == "job2"));
+    }
+
+    #[tokio::test]
+    async fn test_queue_list_all_jobs_error() {
+        struct ErrorMockDriver;
+
+        #[async_trait]
+        impl QueueDriver for ErrorMockDriver {
+            async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> { Ok(()) }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> { Ok(None) }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> { Ok(()) }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> { Ok(()) }
+            async fn pending_count(&self) -> Result<u64, QueueError> { Ok(0) }
+            async fn list_all_jobs(&self, _limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+                Err(QueueError::Driver("simulated db error".into()))
+            }
+        }
+
+        let queue = Queue::custom(Box::new(ErrorMockDriver));
+        let result = queue.list_all_jobs(10).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            QueueError::Driver(msg) => assert_eq!(msg, "simulated db error"),
+            _ => panic!("Expected QueueError::Driver"),
+        }
+    }
+
+    #[tokio::test]
     async fn test_custom_queue_driver() {
         // Since we need to check was_push_called, we'll share state via Arc.
         let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
