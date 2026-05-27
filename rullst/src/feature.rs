@@ -293,15 +293,21 @@ impl TomlFeatureDriver {
             config: DashMap::new(),
             config_path,
         };
-        let _ = driver.reload();
+        if let Ok(content) = std::fs::read_to_string(&driver.config_path) {
+            driver.load_from_str(&content);
+        }
         driver
     }
 
     /// Reloads the features section from `Rullst.toml`.
-    pub fn reload(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.config.clear();
-        let content = std::fs::read_to_string(&self.config_path)?;
+    pub async fn reload(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let content = tokio::fs::read_to_string(&self.config_path).await?;
+        self.load_from_str(&content);
+        Ok(())
+    }
 
+    fn load_from_str(&self, content: &str) {
+        self.config.clear();
         let mut in_features = false;
         for line in content.lines() {
             let trimmed = line.trim();
@@ -327,7 +333,6 @@ impl TomlFeatureDriver {
                 }
             }
         }
-        Ok(())
     }
 
     fn evaluate(&self, value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
