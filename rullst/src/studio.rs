@@ -9,6 +9,7 @@ use rullst_macros::html;
 use rust_eloquent::Eloquent;
 use serde::Deserialize;
 use sqlx::Row;
+use sqlx::{QueryBuilder, Any};
 use std::net::SocketAddr;
 
 #[derive(Deserialize, Debug)]
@@ -74,15 +75,31 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     let pool = Eloquent::pool();
     let clean_table = sanitize_identifier(table);
 
-    let query_str = if let Some(search) = search_query
-        && !search.is_empty()
-    {
-        format!("SELECT COUNT(*) FROM \"{}\"", clean_table)
-    } else {
-        format!("SELECT COUNT(*) FROM \"{}\"", clean_table)
-    };
+    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
 
-    let row = sqlx::query(&query_str).fetch_one(pool).await?;
+    if let Some(search) = search_query {
+        if !search.is_empty() {
+            let schema_query = format!("PRAGMA table_info(\"{}\")", clean_table);
+            if let Ok(columns_rows) = sqlx::query(&schema_query).fetch_all(pool).await {
+                let mut col_names = Vec::new();
+                for r in columns_rows {
+                    if let Ok(name) = r.try_get::<String, _>("name") {
+                        col_names.push(name);
+                    }
+                }
+                if !col_names.is_empty() {
+                    qb.push(" WHERE ");
+                    let mut separated = qb.separated(" OR ");
+                    for col in &col_names {
+                        separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+                        separated.push_bind_unseparated(format!("%{}%", search));
+                    }
+                }
+            }
+        }
+    }
+
+    let row = qb.build().fetch_one(pool).await?;
     let count: i64 = row.try_get(0).unwrap_or(0);
     Ok(count as usize)
 }
@@ -273,31 +290,23 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
             }
 
             // Dynamic records list
-            let select_query = if !search.is_empty() && !col_names.is_empty() {
-                let mut filter_clause = String::new();
-                for (i, col) in col_names.iter().enumerate() {
-                    if i > 0 {
-                        filter_clause.push_str(" OR ");
-                    }
-                    filter_clause.push_str(&format!("\"{}\" LIKE ?", sanitize_identifier(col)));
-                }
-                format!(
-                    "SELECT * FROM \"{}\" WHERE {} LIMIT {} OFFSET {}",
-                    clean_table, filter_clause, page_size, offset
-                )
-            } else {
-                format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", clean_table, page_size, offset)
-            };
+            let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM \"{}\"", clean_table));
 
-            let mut q = sqlx::query(&select_query);
-            if !search.is_empty() {
-                let pattern = format!("%{}%", search);
-                for _ in &col_names {
-                    q = q.bind(pattern.clone());
+            if !search.is_empty() && !col_names.is_empty() {
+                qb.push(" WHERE ");
+                let mut separated = qb.separated(" OR ");
+                for col in &col_names {
+                    separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+                    separated.push_bind_unseparated(format!("%{}%", search));
                 }
             }
 
-            let records = match q.fetch_all(pool).await {
+            qb.push(" LIMIT ");
+            qb.push_bind(page_size as i64);
+            qb.push(" OFFSET ");
+            qb.push_bind(offset as i64);
+
+            let records = match qb.build().fetch_all(pool).await {
                 Ok(recs) => recs,
                 Err(e) => return Html(format!("Error loading records: {}", e)).into_response(),
             };
