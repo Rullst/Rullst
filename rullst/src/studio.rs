@@ -217,226 +217,226 @@ async fn handle_dashboard() -> impl IntoResponse {
     Html(studio_layout(dash_content, None, &tables)).into_response()
 }
 
+pub async fn handle_table(
+    headers: axum::http::HeaderMap,
+    path: Path<String>,
+    query: Query<TableQuery>,
+) -> impl IntoResponse {
+    let is_htmx = headers.contains_key("hx-request");
+    let table_name = path.0;
+    let tables = match fetch_tables().await {
+        Ok(t) => t,
+        Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
+    };
+
+    if !tables.contains(&table_name) {
+        return Html(format!("Table '{}' not found.", table_name)).into_response();
+    }
+
+    let page = query.page.unwrap_or(1);
+    let page_size = 15;
+    let offset = (page - 1) * page_size;
+    let search = query.search.as_deref().unwrap_or("");
+
+    let total_rows = match count_table_rows(&table_name, query.search.as_deref()).await {
+        Ok(c) => c,
+        Err(e) => return Html(format!("Error counting rows: {}", e)).into_response(),
+    };
+
+    let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
+    let pool = Eloquent::pool();
+    let clean_table = sanitize_identifier(&table_name);
+
+    let columns_query = format!("PRAGMA table_info(\"{}\")", clean_table);
+    let columns_rows = match sqlx::query(&columns_query).fetch_all(pool).await {
+        Ok(r) => r,
+        Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
+    };
+
+    let mut col_names = Vec::new();
+    let mut primary_keys = Vec::new();
+    for r in &columns_rows {
+        if let Ok(name) = r.try_get::<String, _>("name") {
+            col_names.push(name.clone());
+            if let Ok(pk) = r.try_get::<i32, _>("pk") {
+                if pk > 0 {
+                    primary_keys.push(name);
+                }
+            }
+        }
+    }
+
+    // Dynamic records list
+    let select_query = if !search.is_empty() && !col_names.is_empty() {
+        let mut filter_clause = String::new();
+        for (i, col) in col_names.iter().enumerate() {
+            if i > 0 {
+                filter_clause.push_str(" OR ");
+            }
+            filter_clause.push_str(&format!("\"{}\" LIKE ?", sanitize_identifier(col)));
+        }
+        format!(
+            "SELECT * FROM \"{}\" WHERE {} LIMIT {} OFFSET {}",
+            clean_table, filter_clause, page_size, offset
+        )
+    } else {
+        format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", clean_table, page_size, offset)
+    };
+
+    let mut q = sqlx::query(&select_query);
+    if !search.is_empty() {
+        let pattern = format!("%{}%", search);
+        for _ in &col_names {
+            q = q.bind(pattern.clone());
+        }
+    }
+
+    let records = match q.fetch_all(pool).await {
+        Ok(recs) => recs,
+        Err(e) => return Html(format!("Error loading records: {}", e)).into_response(),
+    };
+
+    // Build headers HTML
+    let mut headers_html = String::new();
+    for col in &col_names {
+        let is_pk = primary_keys.contains(col);
+        let pk_badge = if is_pk {
+            "<span class=\"ml-1.5 text-[9px] font-extrabold tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1 py-0.2 rounded font-mono\">PK</span>"
+        } else {
+            ""
+        };
+        headers_html.push_str(&format!(
+            "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">
+                <div class=\"flex items-center\">{} {}</div>
+            </th>",
+            escape_html_attr(col), pk_badge
+        ));
+    }
+
+    // Build rows HTML
+    let mut rows_html = String::new();
+    if records.is_empty() {
+        let cols_len = col_names.len().max(1);
+        rows_html.push_str(&format!(
+            "<tr>
+                <td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">
+                    No records found inside this table.
+                </td>
+            </tr>",
+            cols_len
+        ));
+    } else {
+        for row in records {
+            rows_html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
+            for i in 0..col_names.len() {
+                let cell_val = get_any_value_as_string(&row, i);
+                let is_null = cell_val == "NULL";
+                let text_class = if is_null {
+                    "text-slate-600 font-mono italic"
+                } else {
+                    "text-slate-300"
+                };
+                rows_html.push_str(&format!(
+                    "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
+                    text_class, escape_html_attr(&cell_val)
+                ));
+            }
+            rows_html.push_str("</tr>");
+        }
+    }
+
+    let prev_page = if page > 1 { page - 1 } else { 1 };
+    let next_page = if page < total_pages { page + 1 } else { total_pages };
+
+    let prev_hx = format!("/tables/{}?page={}&search={}", table_name, prev_page, escape_html_attr(search));
+    let next_hx = format!("/tables/{}?page={}&search={}", table_name, next_page, escape_html_attr(search));
+
+    let prev_disabled = if page <= 1 { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
+    let next_disabled = if page >= total_pages { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
+
+    let table_main_html = html! {
+        <div class="flex-grow flex flex-col overflow-hidden h-full">
+            <div class="flex-shrink-0 bg-slate-900/30 border-b border-slate-800/80 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2.5">
+                        <h1 class="text-xl font-extrabold text-white tracking-tight">{table_name.as_str()}</h1>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-850 border border-slate-700/60 text-slate-400 font-mono font-medium shadow-sm">
+                            {total_rows} " rows"
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 font-medium">"Displaying up to 15 records per page."</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text"
+                               name="search"
+                               value={search}
+                               placeholder="Search records..."
+                               hx-get={format!("/tables/{}", table_name).as_str()}
+                               hx-trigger="keyup[target.value.length == 0 || target.value.length > 2] delay:400ms, search"
+                               hx-target="#studio-content"
+                               class="w-64 pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/80 focus:ring-1 focus:ring-sky-500/50 transition-all duration-200" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-auto p-6">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-800 table-fixed">
+                            <thead class="bg-slate-900/70">
+                                <tr>
+                                    { RawHtml(headers_html) }
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/30">
+                                { RawHtml(rows_html) }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-shrink-0 bg-slate-900/20 border-t border-slate-800/80 px-6 py-4 flex items-center justify-between">
+                <div class="text-xs text-slate-400 font-medium">
+                    "Page " <span class="text-slate-200 font-bold">{page}</span> " of " <span class="text-slate-200 font-bold">{total_pages.max(1)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button hx-get={prev_hx.as_str()}
+                            hx-target="#studio-content"
+                            disabled={page <= 1}
+                            class={format!("px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg shadow transition duration-150 cursor-pointer {}", prev_disabled).as_str()}>
+                        "Previous"
+                    </button>
+                    <button hx-get={next_hx.as_str()}
+                            hx-target="#studio-content"
+                            disabled={page >= total_pages}
+                            class={format!("px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg shadow transition duration-150 cursor-pointer {}", next_disabled).as_str()}>
+                        "Next"
+                    </button>
+                </div>
+            </div>
+        </div>
+    };
+
+    if is_htmx {
+        Html(table_main_html).into_response()
+    } else {
+        Html(studio_layout(table_main_html, Some(&table_name), &tables)).into_response()
+    }
+}
+
 /// Actual clean routes wrapper
 pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(handle_dashboard))
-        .route("/tables/:table_name", get(|
-            headers: axum::http::HeaderMap,
-            path: Path<String>,
-            query: Query<TableQuery>
-        | async move {
-            let is_htmx = headers.contains_key("hx-request");
-            let table_name = path.0;
-            let tables = match fetch_tables().await {
-                Ok(t) => t,
-                Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
-            };
-
-            if !tables.contains(&table_name) {
-                return Html(format!("Table '{}' not found.", table_name)).into_response();
-            }
-
-            let page = query.page.unwrap_or(1);
-            let page_size = 15;
-            let offset = (page - 1) * page_size;
-            let search = query.search.as_deref().unwrap_or("");
-
-            let total_rows = match count_table_rows(&table_name, query.search.as_deref()).await {
-                Ok(c) => c,
-                Err(e) => return Html(format!("Error counting rows: {}", e)).into_response(),
-            };
-
-            let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-
-            let pool = Eloquent::pool();
-            let clean_table = sanitize_identifier(&table_name);
-
-            // Retrieve columns schema
-            let schema_query = format!("PRAGMA table_info(\"{}\")", clean_table);
-            let columns_rows = match sqlx::query(&schema_query).fetch_all(pool).await {
-                Ok(rows) => rows,
-                Err(e) => return Html(format!("Error retrieving column schema: {}", e)).into_response(),
-            };
-
-            let mut col_names = Vec::new();
-            let mut primary_keys = Vec::new();
-            for r in &columns_rows {
-                if let Ok(name) = r.try_get::<String, _>("name") {
-                    col_names.push(name.clone());
-                    if let Ok(pk) = r.try_get::<i32, _>("pk") {
-                        if pk > 0 {
-                            primary_keys.push(name);
-                        }
-                    }
-                }
-            }
-
-            // Dynamic records list
-            let select_query = if !search.is_empty() && !col_names.is_empty() {
-                let mut filter_clause = String::new();
-                for (i, col) in col_names.iter().enumerate() {
-                    if i > 0 {
-                        filter_clause.push_str(" OR ");
-                    }
-                    filter_clause.push_str(&format!("\"{}\" LIKE ?", sanitize_identifier(col)));
-                }
-                format!(
-                    "SELECT * FROM \"{}\" WHERE {} LIMIT {} OFFSET {}",
-                    clean_table, filter_clause, page_size, offset
-                )
-            } else {
-                format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", clean_table, page_size, offset)
-            };
-
-            let mut q = sqlx::query(&select_query);
-            if !search.is_empty() {
-                let pattern = format!("%{}%", search);
-                for _ in &col_names {
-                    q = q.bind(pattern.clone());
-                }
-            }
-
-            let records = match q.fetch_all(pool).await {
-                Ok(recs) => recs,
-                Err(e) => return Html(format!("Error loading records: {}", e)).into_response(),
-            };
-
-            // Build headers HTML
-            let mut headers_html = String::new();
-            for col in &col_names {
-                let is_pk = primary_keys.contains(col);
-                let pk_badge = if is_pk {
-                    "<span class=\"ml-1.5 text-[9px] font-extrabold tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1 py-0.2 rounded font-mono\">PK</span>"
-                } else {
-                    ""
-                };
-                headers_html.push_str(&format!(
-                    "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">
-                        <div class=\"flex items-center\">{} {}</div>
-                    </th>",
-                    escape_html_attr(col), pk_badge
-                ));
-            }
-
-            // Build rows HTML
-            let mut rows_html = String::new();
-            if records.is_empty() {
-                let cols_len = col_names.len().max(1);
-                rows_html.push_str(&format!(
-                    "<tr>
-                        <td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">
-                            No records found inside this table.
-                        </td>
-                    </tr>",
-                    cols_len
-                ));
-            } else {
-                for row in records {
-                    rows_html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
-                    for i in 0..col_names.len() {
-                        let cell_val = get_any_value_as_string(&row, i);
-                        let is_null = cell_val == "NULL";
-                        let text_class = if is_null {
-                            "text-slate-600 font-mono italic"
-                        } else {
-                            "text-slate-300"
-                        };
-                        rows_html.push_str(&format!(
-                            "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
-                            text_class, escape_html_attr(&cell_val)
-                        ));
-                    }
-                    rows_html.push_str("</tr>");
-                }
-            }
-
-            let prev_page = if page > 1 { page - 1 } else { 1 };
-            let next_page = if page < total_pages { page + 1 } else { total_pages };
-
-            let prev_hx = format!("/tables/{}?page={}&search={}", table_name, prev_page, escape_html_attr(search));
-            let next_hx = format!("/tables/{}?page={}&search={}", table_name, next_page, escape_html_attr(search));
-
-            let prev_disabled = if page <= 1 { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
-            let next_disabled = if page >= total_pages { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
-
-            let table_main_html = html! {
-                <div class="flex-grow flex flex-col overflow-hidden h-full">
-                    <div class="flex-shrink-0 bg-slate-900/30 border-b border-slate-800/80 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2.5">
-                                <h1 class="text-xl font-extrabold text-white tracking-tight">{table_name.as_str()}</h1>
-                                <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-850 border border-slate-700/60 text-slate-400 font-mono font-medium shadow-sm">
-                                    {total_rows} " rows"
-                                </span>
-                            </div>
-                            <p class="text-[11px] text-slate-500 font-medium">"Displaying up to 15 records per page."</p>
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input type="text"
-                                       name="search"
-                                       value={search}
-                                       placeholder="Search records..."
-                                       hx-get={format!("/tables/{}", table_name).as_str()}
-                                       hx-trigger="keyup[target.value.length == 0 || target.value.length > 2] delay:400ms, search"
-                                       hx-target="#studio-content"
-                                       class="w-64 pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/80 focus:ring-1 focus:ring-sky-500/50 transition-all duration-200" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex-grow overflow-auto p-6">
-                        <div class="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden shadow-xl">
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-slate-800 table-fixed">
-                                    <thead class="bg-slate-900/70">
-                                        <tr>
-                                            { RawHtml(headers_html) }
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-800/30">
-                                        { RawHtml(rows_html) }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex-shrink-0 bg-slate-900/20 border-t border-slate-800/80 px-6 py-4 flex items-center justify-between">
-                        <div class="text-xs text-slate-400 font-medium">
-                            "Page " <span class="text-slate-200 font-bold">{page}</span> " of " <span class="text-slate-200 font-bold">{total_pages.max(1)}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button hx-get={prev_hx.as_str()}
-                                    hx-target="#studio-content"
-                                    disabled={page <= 1}
-                                    class={format!("px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg shadow transition duration-150 cursor-pointer {}", prev_disabled).as_str()}>
-                                "Previous"
-                            </button>
-                            <button hx-get={next_hx.as_str()}
-                                    hx-target="#studio-content"
-                                    disabled={page >= total_pages}
-                                    class={format!("px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg shadow transition duration-150 cursor-pointer {}", next_disabled).as_str()}>
-                                "Next"
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            };
-
-            if is_htmx {
-                Html(table_main_html).into_response()
-            } else {
-                Html(studio_layout(table_main_html, Some(&table_name), &tables)).into_response()
-            }
-        }));
+        .route("/tables/:table_name", get(handle_table));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 5555));
     let listener = tokio::net::TcpListener::bind(addr).await?;
