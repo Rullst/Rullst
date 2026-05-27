@@ -280,7 +280,10 @@ pub async fn handle_table(
             clean_table, filter_clause, page_size, offset
         )
     } else {
-        format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", clean_table, page_size, offset)
+        format!(
+            "SELECT * FROM \"{}\" LIMIT {} OFFSET {}",
+            clean_table, page_size, offset
+        )
     };
 
     let mut q = sqlx::query(&select_query);
@@ -338,7 +341,8 @@ pub async fn handle_table(
                 };
                 rows_html.push_str(&format!(
                     "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
-                    text_class, escape_html_attr(&cell_val)
+                    text_class,
+                    escape_html_attr(&cell_val)
                 ));
             }
             rows_html.push_str("</tr>");
@@ -346,13 +350,35 @@ pub async fn handle_table(
     }
 
     let prev_page = if page > 1 { page - 1 } else { 1 };
-    let next_page = if page < total_pages { page + 1 } else { total_pages };
+    let next_page = if page < total_pages {
+        page + 1
+    } else {
+        total_pages
+    };
 
-    let prev_hx = format!("/tables/{}?page={}&search={}", table_name, prev_page, escape_html_attr(search));
-    let next_hx = format!("/tables/{}?page={}&search={}", table_name, next_page, escape_html_attr(search));
+    let prev_hx = format!(
+        "/tables/{}?page={}&search={}",
+        table_name,
+        prev_page,
+        escape_html_attr(search)
+    );
+    let next_hx = format!(
+        "/tables/{}?page={}&search={}",
+        table_name,
+        next_page,
+        escape_html_attr(search)
+    );
 
-    let prev_disabled = if page <= 1 { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
-    let next_disabled = if page >= total_pages { "opacity-50 cursor-not-allowed" } else { "hover:bg-slate-800 hover:text-white" };
+    let prev_disabled = if page <= 1 {
+        "opacity-50 cursor-not-allowed"
+    } else {
+        "hover:bg-slate-800 hover:text-white"
+    };
+    let next_disabled = if page >= total_pages {
+        "opacity-50 cursor-not-allowed"
+    } else {
+        "hover:bg-slate-800 hover:text-white"
+    };
 
     let table_main_html = html! {
         <div class="flex-grow flex flex-col overflow-hidden h-full">
