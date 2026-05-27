@@ -673,4 +673,60 @@ mod tests {
         let result = driver.pop().await.unwrap();
         assert!(result.is_none());
     }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_retry_failed_job() {
+        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+
+        let job_id = queue
+            .dispatch("fail_then_retry", serde_json::json!({}))
+            .await
+            .unwrap();
+
+        let driver = queue.driver_ref();
+
+        // Pop the job to make it in-progress
+        let job = driver.pop().await.unwrap().unwrap();
+        assert_eq!(job.id, job_id);
+
+        // Mark it as failed
+        driver.mark_failed(&job_id, "Temporary error").await.unwrap();
+
+        // Queue pending count should be 0 since it's failed
+        let count = queue.pending_count().await.unwrap();
+        assert_eq!(count, 0);
+
+        // Retry the failed job
+        queue.retry_failed_job(&job_id).await.unwrap();
+
+        // Queue pending count should be 1 again
+        let count_after_retry = queue.pending_count().await.unwrap();
+        assert_eq!(count_after_retry, 1);
+
+        // We can pop it again
+        let retried_job = driver.pop().await.unwrap().unwrap();
+        assert_eq!(retried_job.id, job_id);
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_retry_failed_job_db_error() {
+        // Create the pool and table using the standard new method
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        // Drop the table to force a DB error during retry_failed_job
+        sqlx::query("DROP TABLE rullst_jobs")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        let result = driver.retry_failed_job("some_job_id").await;
+
+        assert!(result.is_err());
+        match result {
+            Err(QueueError::Driver(msg)) => {
+                assert!(msg.contains("no such table"));
+            }
+            _ => panic!("Expected QueueError::Driver"),
+        }
+    }
 }
