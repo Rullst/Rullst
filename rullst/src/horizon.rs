@@ -261,8 +261,9 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
             .to_string();
     }
 
-    let mut rows = String::new();
-    for job in jobs {
+    use std::fmt::Write;
+
+    jobs.iter().fold(String::with_capacity(jobs.len() * 1024), |mut acc, job| {
         let badge_class = match job.status.as_str() {
             "pending" => "bg-yellow-400/10 text-yellow-400 border border-yellow-500/20",
             "processing" => {
@@ -296,7 +297,7 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
             "".to_string()
         };
 
-        rows.push_str(&format!(
+        let _ = write!(acc,
             r#"<tr class="hover:bg-slate-900/30 transition-all duration-150">
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="font-mono text-xs text-slate-500 font-bold">{}</span>
@@ -330,9 +331,10 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
             job.created_at,
             error_log,
             action_button
-        ));
-    }
-    rows
+        );
+
+        acc
+    })
 }
 
 #[cfg(test)]
