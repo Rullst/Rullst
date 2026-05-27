@@ -454,13 +454,11 @@ mod tests {
             .subject("Test Error")
             .text("This should fail");
 
-        let result = Mail::send(msg).await;
+        let err = Mail::send(msg).await.unwrap_err();
 
-        assert!(result.is_err());
-        if let Err(MailError::ConfigError(e)) = result {
-            assert_eq!(e, "Unknown mail driver: invalid_test_driver");
-        } else {
-            panic!("Expected ConfigError, got {:?}", result.err().unwrap());
+        match err {
+            MailError::ConfigError(e) => assert_eq!(e, "Unknown mail driver: invalid_test_driver"),
+            other => panic!("Expected ConfigError, got {:?}", other),
         }
     }
 }
