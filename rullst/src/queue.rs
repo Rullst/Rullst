@@ -651,7 +651,6 @@ mod tests {
         assert_eq!(job2.name, "process_image");
     }
 
-
     #[tokio::test]
     async fn test_sqlite_driver_get_pool() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
