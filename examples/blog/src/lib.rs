@@ -216,16 +216,14 @@ pub mod app {
                                         </div>
                                     }
                                 } else {
-                                    let mut post_list = String::new();
-                                    for post in posts.iter().rev() {
-                                        let content = html! {
+                                    let post_list: String = posts.iter().rev().map(|post| {
+                                        html! {
                                             <div class="post-card">
                                                 <h3 class="post-title">{post.title}</h3>
                                                 <p class="post-body">{post.body}</p>
                                             </div>
-                                        };
-                                        post_list.push_str(&content);
-                                    }
+                                        }
+                                    }).collect();
                                     html! {
                                         { rullst::html::RawHtml(post_list) }
                                     }

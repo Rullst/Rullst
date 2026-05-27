@@ -88,7 +88,7 @@ impl MailDriver for LogDriver {
         }
         let log_path = log_dir.join("mail.log");
         let formatted = format!(
-            "========================================\n\
+            "========================================\
              [MAIL SENT] {}\n\
              To: {}\n\
              From: {}\n\
@@ -99,7 +99,7 @@ impl MailDriver for LogDriver {
              ----------------------------------------\n\
              [HTML BODY]\n\
              {}\n\
-             ========================================\n\n",
+             ========================================\n",
             chrono::Local::now().to_rfc3339(),
             message.to,
             message.from.as_deref().unwrap_or("noreply@rullst.dev"),
@@ -391,6 +391,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_message_subject() {
+        let msg = Message::new().subject("Test Subject");
+        assert_eq!(msg.subject, "Test Subject");
+
+        let msg2 = Message::new().subject(String::from("Another Subject"));
+        assert_eq!(msg2.subject, "Another Subject");
+    }
+
+    #[test]
     fn test_message_builder() {
         let msg = Message::new()
             .to("test@example.com")
@@ -425,5 +434,11 @@ mod tests {
         assert!(content.contains("To: test@rullst.dev"));
         assert!(content.contains("Subject: Hello Test"));
         assert!(content.contains("Testing 1 2 3"));
+    }
+
+    #[test]
+    fn test_message_to() {
+        let msg = Message::new().to("user@example.com");
+        assert_eq!(msg.to, "user@example.com");
     }
 }
