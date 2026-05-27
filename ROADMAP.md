@@ -24,17 +24,40 @@ Almost every modern web framework (Laravel, Ruby on Rails, Next.js) was built be
 
 ```mermaid
 graph TD
-    M0[Pillar: AI-Native Design] --> M1[Milestone 1: CLI Generator Power]
-    M1 --> M2[Milestone 2: Database Supremacy]
-    M2 --> M3[Milestone 3: Complete Auth & Security]
-    M3 --> M4[Milestone 4: HTMX & Frontend Integration]
-    M4 --> M5[Milestone 5: Production Utilities]
-    style M0 fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
-    style M1 fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
-    style M2 fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
-    style M3 fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
-    style M4 fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
-    style M5 fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    M0["🤖 Pillar: AI-Native Design"] --> M1["🛠️ M1: CLI Generator Power"]
+    M1 --> M2["🗄️ M2: Database Supremacy"]
+    M2 --> M3["🔒 M3: Auth & Security"]
+    M3 --> M4["⚡ M4: HTMX & Frontend"]
+    M4 --> M5["📦 M5: Production Utilities"]
+    M5 --> M6["🏢 M6: Enterprise Features"]
+    M6 --> M7["🚀 M7: The Unfair Advantage"]
+    M7 --> M8["🌍 M8: Edge Fusion & Auto-Upgrade"]
+    M8 --> M9["🤖 M9: Agentic DevOps"]
+    M9 --> M10["📊 M10: Telemetry & Pulse"]
+    M10 --> M11["🔮 M11: Omni-Frontend & AI"]
+    M11 --> M12["💎 M12: Zero-Copy Streaming"]
+    M12 --> M13["🛠️ M13: Incremental Compilation"]
+    M13 --> M14["🌐 M14: Intent-Based DB"]
+    M14 --> M15["🔬 M15: Quantum-Ready"]
+    M15 --> M16["🧬 M16: Self-Evolving Core"]
+
+    style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
+    style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
+    style M2  fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
+    style M3  fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
+    style M4  fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
+    style M5  fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    style M6  fill:#b5ffd9,stroke:#fff,stroke-width:2px,color:#000
+    style M7  fill:#ffe57f,stroke:#fff,stroke-width:2px,color:#000
+    style M8  fill:#e1bee7,stroke:#fff,stroke-width:2px,color:#000
+    style M9  fill:#b3e5fc,stroke:#fff,stroke-width:2px,color:#000
+    style M10 fill:#ffccbc,stroke:#fff,stroke-width:2px,color:#000
+    style M11 fill:#c8e6c9,stroke:#fff,stroke-width:2px,color:#000
+    style M12 fill:#f8bbd0,stroke:#fff,stroke-width:2px,color:#000
+    style M13 fill:#dcedc8,stroke:#fff,stroke-width:2px,color:#000
+    style M14 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
+    style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
+    style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
 ```
 
 ---

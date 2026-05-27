@@ -24,17 +24,40 @@ Quase todos os frameworks web modernos (Laravel, Ruby on Rails, Next.js) foram c
 
 ```mermaid
 graph TD
-    M0[Pilar: Design Nativo para IA] --> M1[Marco 1: CLI e Geradores de Código]
-    M1 --> M2[Marco 2: Supremacia do Banco de Dados]
-    M2 --> M3[Marco 3: Autenticação Completa e Segurança]
-    M3 --> M4[Marco 4: Integração com HTMX e Frontend]
-    M4 --> M5[Marco 5: Utilitários de Produção]
-    style M0 fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
-    style M1 fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
-    style M2 fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
-    style M3 fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
-    style M4 fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
-    style M5 fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    M0["🤖 Pilar: Design Nativo para IA"] --> M1["🛠️ Marco 1: CLI e Geradores"]
+    M1 --> M2["🗄️ Marco 2: Supremacia do DB"]
+    M2 --> M3["🔒 Marco 3: Auth & Segurança"]
+    M3 --> M4["⚡ Marco 4: HTMX & Frontend"]
+    M4 --> M5["📦 Marco 5: Utilitários de Produção"]
+    M5 --> M6["🏢 Marco 6: Recursos Enterprise"]
+    M6 --> M7["🚀 Marco 7: A Vantagem Injusta"]
+    M7 --> M8["🌍 Marco 8: Edge Fusion & Auto-Upgrade"]
+    M8 --> M9["🤖 Marco 9: DevOps Agêntico"]
+    M9 --> M10["📊 Marco 10: Telemetria & Pulse"]
+    M10 --> M11["🔮 Marco 11: Omni-Frontend & IA"]
+    M11 --> M12["💎 Marco 12: Zero-Copy Streaming"]
+    M12 --> M13["🛠️ Marco 13: Compilação Incremental"]
+    M13 --> M14["🌐 Marco 14: DB Baseado em Intenção"]
+    M14 --> M15["🔬 Marco 15: Pronto para Quantum"]
+    M15 --> M16["🧬 Marco 16: Núcleo Auto-Evolutivo"]
+
+    style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
+    style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
+    style M2  fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
+    style M3  fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
+    style M4  fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
+    style M5  fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    style M6  fill:#b5ffd9,stroke:#fff,stroke-width:2px,color:#000
+    style M7  fill:#ffe57f,stroke:#fff,stroke-width:2px,color:#000
+    style M8  fill:#e1bee7,stroke:#fff,stroke-width:2px,color:#000
+    style M9  fill:#b3e5fc,stroke:#fff,stroke-width:2px,color:#000
+    style M10 fill:#ffccbc,stroke:#fff,stroke-width:2px,color:#000
+    style M11 fill:#c8e6c9,stroke:#fff,stroke-width:2px,color:#000
+    style M12 fill:#f8bbd0,stroke:#fff,stroke-width:2px,color:#000
+    style M13 fill:#dcedc8,stroke:#fff,stroke-width:2px,color:#000
+    style M14 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
+    style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
+    style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
 ```
 
 ---
@@ -159,7 +182,29 @@ graph TD
 - [ ] **Rullst Edge Runtime (`rullst::edge`):** Suporte nativo para compilar e rodar aplicações Rullst em infraestrutura WebAssembly (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstraindo as diferenças de Tokio/WASI.
 - [ ] **Replicação SQLite Zero-Config:** Drivers nativos para bancos de dados distribuídos na borda (Turso/libsql, Cloudflare D1) integrados ao `rust-eloquent`. Leia e grave localmente com 1ms de latência enquanto o framework sincroniza globalmente em background.
 
----
+### 🔄 Sistema de Atualização Autônoma (`cargo rullst upgrade`)
+
+> Um dos maiores desafios de DX em qualquer framework full-stack é manter as dependências atualizadas sem quebrar o código do usuário. No ecossistema Rust, isso é ainda mais crítico — mudanças de versão mesmo minor/patch em crates de baixo nível podem causar erros rígidos de compilação. Este sistema torna as atualizações do Rullst praticamente invisíveis.
+
+- [ ] **Verificação de Versão em Background (Não-Intrusiva):** Toda vez que o usuário rodar comandos frequentes como `cargo rullst new` ou `cargo rullst dev`, a CLI realiza uma requisição HTTP leve e assíncrona (numa thread separada, nunca bloqueando o terminal) para a API pública do Crates.io (`https://crates.io/api/v1/crates/rullst`) e compara a versão mais recente com a versão fixada no `Cargo.toml` do usuário. O resultado é salvo em um arquivo temporário local e renovado no máximo uma vez por dia, garantindo zero overhead de rede em execuções repetidas.
+
+- [ ] **Box Visual Elegante no Terminal:** Se uma nova versão for detectada, a CLI exibe um box informativo não-bloqueante direto no terminal — estilizado com `colored` — imediatamente após o comando ser concluído:
+  ```
+  ┌────────────────────────────────────────────────────────────┐
+  │  🚀 Nova versão do Rullst disponível: 1.0.5 → 1.1.0        │
+  │  Rode 'cargo rullst upgrade' para atualizar com segurança  │
+  │  e correções automáticas de código (codemods).             │
+  └────────────────────────────────────────────────────────────┘
+  ```
+
+- [ ] **Codemods Automatizados (Atualizações Sem Quebras):** Expandir o `cargo rullst upgrade` em um pipeline autônomo completo de refatoração:
+  1. **Atualização do manifest:** A CLI reescreve as strings de versão do `rullst`, `rullst-macros` e `rust-eloquent` no `Cargo.toml` do usuário para o release mais recente.
+  2. **Execução de codemods:** Um registro versionado de regras de busca-e-substituição baseadas em regex (ou AST leve) é distribuído junto de cada release da CLI. Se uma API pública mudou entre versões (ex: `.render()` renomeado para `.render_page()`), a CLI reescreve automaticamente todas as ocorrências em `src/**/*.rs` antes que o usuário veja qualquer erro de compilação.
+  3. **Portão de validação (`cargo check`):** Após aplicar os codemods, a CLI roda `cargo check` em background. Se o compilador sair limpo, o usuário vê: `"✅ Rullst atualizado com sucesso. Nenhuma quebra detectada."` Se restarem erros, um diff das alterações dos codemods é exibido para revisão do dev.
+
+- [ ] **Blindagem de Dependências (Casca de Abstração Interna):** Enforçar a regra arquitetural de que todas as dependências pesadas de terceiros (ex: `sqlx`, `axum`, `tokio`, `lettre`) são sempre re-exportadas ou encapsuladas dentro da superfície de API pública do Rullst. O código do usuário nunca deve usar `use sqlx::*` diretamente — apenas `use rullst::db::*`. Isso blinda os apps dos usuários contra quebras upstream: quando o `sqlx` lança uma versão breaking, apenas o adaptador interno do Rullst muda, e o código do usuário continua compilando intacto.
+
+
 
 ## 🤖 Marco 9: DevOps Agêntico e Infraestrutura Autônoma
 **Objetivo:** Alavancar o conhecimento profundo que o compilador do Rullst tem sobre o projeto para gerenciar não apenas o código, mas a infraestrutura e o CI/CD.
