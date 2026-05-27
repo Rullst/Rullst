@@ -99,7 +99,8 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
 
 fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
     // Use relative paths — no leading slash — so GitHub Pages sub-path works correctly
-    let mut html = String::from("<ul class=\"sidebar-list\">\n<li><a href=\"index.html\">Home</a></li>\n");
+    let mut html =
+        String::from("<ul class=\"sidebar-list\">\n<li><a href=\"index.html\">Home</a></li>\n");
 
     let mut sorted_pages = pages.to_vec();
     sorted_pages.sort();
