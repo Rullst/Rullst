@@ -179,11 +179,6 @@ pub struct TestResponse {
 }
 
 impl TestResponse {
-    #[allow(dead_code)]
-    pub(crate) async fn new(response: Response) -> Self {
-        Self::new_with_limit(response, DEFAULT_MAX_BODY).await
-    }
-
     pub(crate) async fn new_with_limit(response: Response, max_body_bytes: usize) -> Self {
         let (parts, body) = response.into_parts();
         let body_bytes = to_bytes(body, max_body_bytes)
