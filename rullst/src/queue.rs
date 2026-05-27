@@ -721,4 +721,106 @@ mod tests {
 
         assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
     }
+
+    #[tokio::test]
+    async fn test_dispatch_success() {
+        let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let captured_job_name = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+        let captured_payload = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+
+        struct SuccessMockDriver {
+            push_called: std::sync::Arc<std::sync::atomic::AtomicBool>,
+            captured_job_name: std::sync::Arc<std::sync::Mutex<String>>,
+            captured_payload: std::sync::Arc<std::sync::Mutex<String>>,
+        }
+
+        #[async_trait]
+        impl QueueDriver for SuccessMockDriver {
+            async fn push(
+                &self,
+                _id: &str,
+                job_name: &str,
+                payload: &str,
+            ) -> Result<(), QueueError> {
+                self.push_called
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                *self.captured_job_name.lock().unwrap() = job_name.to_string();
+                *self.captured_payload.lock().unwrap() = payload.to_string();
+                Ok(())
+            }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+                Ok(None)
+            }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pending_count(&self) -> Result<u64, QueueError> {
+                Ok(0)
+            }
+        }
+
+        let driver = Box::new(SuccessMockDriver {
+            push_called: push_called.clone(),
+            captured_job_name: captured_job_name.clone(),
+            captured_payload: captured_payload.clone(),
+        });
+
+        let queue = Queue::custom(driver);
+        let payload = serde_json::json!({"user_id": 42});
+        let id = queue
+            .dispatch("test_dispatch_job", payload.clone())
+            .await
+            .unwrap();
+
+        assert!(!id.is_empty());
+        assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
+        assert_eq!(*captured_job_name.lock().unwrap(), "test_dispatch_job");
+        let expected_payload = serde_json::to_string(&payload).unwrap();
+        assert_eq!(*captured_payload.lock().unwrap(), expected_payload);
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_driver_error() {
+        struct ErrorMockDriver;
+
+        #[async_trait]
+        impl QueueDriver for ErrorMockDriver {
+            async fn push(
+                &self,
+                _id: &str,
+                _job_name: &str,
+                _payload: &str,
+            ) -> Result<(), QueueError> {
+                Err(QueueError::Driver("simulated driver failure".to_string()))
+            }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+                Ok(None)
+            }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pending_count(&self) -> Result<u64, QueueError> {
+                Ok(0)
+            }
+        }
+
+        let driver = Box::new(ErrorMockDriver);
+        let queue = Queue::custom(driver);
+        let result = queue
+            .dispatch("failing_job", serde_json::json!({}))
+            .await;
+
+        assert!(result.is_err());
+        if let Err(QueueError::Driver(msg)) = result {
+            assert_eq!(msg, "simulated driver failure");
+        } else {
+            panic!("Expected QueueError::Driver, got {:?}", result);
+        }
+    }
 }
