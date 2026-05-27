@@ -125,51 +125,57 @@ where
     /// Serves request handling either natively as an emulator or natively in WASM edge runtimes.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
-        use axum::extract::Request;
-        use axum::response::IntoResponse;
-        use axum::routing::any;
         use axum::Router;
+        use axum::extract::Request;
+        use axum::routing::any;
 
         let handler = self.handler.clone();
-        let app = Router::new().route("/*path", any(move |req: Request| {
-            let handler = handler.clone();
-            async move {
-                let (parts, body) = req.into_parts();
-                let method = parts.method.to_string();
-                let path = parts.uri.path().to_string();
-                let mut headers = HashMap::new();
-                for (k, v) in parts.headers.iter() {
-                    if let Ok(val) = v.to_str() {
-                        headers.insert(k.as_str().to_string(), val.to_string());
+        let app = Router::new().route(
+            "/*path",
+            any(move |req: Request| {
+                let handler = handler.clone();
+                async move {
+                    let (parts, body) = req.into_parts();
+                    let method = parts.method.to_string();
+                    let path = parts.uri.path().to_string();
+                    let mut headers = HashMap::new();
+                    for (k, v) in parts.headers.iter() {
+                        if let Ok(val) = v.to_str() {
+                            headers.insert(k.as_str().to_string(), val.to_string());
+                        }
                     }
+
+                    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+                        Ok(bytes) => bytes.to_vec(),
+                        Err(_) => Vec::new(),
+                    };
+
+                    let edge_req = EdgeRequest {
+                        method,
+                        path,
+                        headers,
+                        body: body_bytes,
+                    };
+
+                    let edge_resp = handler(edge_req).await;
+
+                    let mut res_builder = axum::http::Response::builder().status(edge_resp.status);
+                    for (k, v) in edge_resp.headers.iter() {
+                        res_builder = res_builder.header(k, v);
+                    }
+                    res_builder
+                        .body(axum::body::Body::from(edge_resp.body))
+                        .unwrap()
                 }
-
-                let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
-                    Ok(bytes) => bytes.to_vec(),
-                    Err(_) => Vec::new(),
-                };
-
-                let edge_req = EdgeRequest {
-                    method,
-                    path,
-                    headers,
-                    body: body_bytes,
-                };
-
-                let edge_resp = handler(edge_req).await;
-
-                let mut res_builder = axum::http::Response::builder()
-                    .status(edge_resp.status);
-                for (k, v) in edge_resp.headers.iter() {
-                    res_builder = res_builder.header(k, v);
-                }
-                res_builder.body(axum::body::Body::from(edge_resp.body)).unwrap()
-            }
-        }));
+            }),
+        );
 
         let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", self.port)).await?;
-        println!("🚀 Edge local emulator running on http://localhost:{}", self.port);
-        
+        println!(
+            "🚀 Edge local emulator running on http://localhost:{}",
+            self.port
+        );
+
         // Spawn serving loop
         axum::serve(listener, app).await?;
         Ok(())

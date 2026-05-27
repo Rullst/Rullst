@@ -60,7 +60,7 @@ impl ReplicationManager {
                 "🔄 Zero-Config SQLite replication initialized: syncing local replica {} with master...",
                 config.replica_path
             );
-            
+
             // Spawn periodic replication routine environment-agnostically
             crate::edge::spawn(async move {
                 let interval = Duration::from_secs(config.sync_interval_secs);
@@ -76,11 +76,7 @@ impl ReplicationManager {
                         let mut ticks = 0;
                         while ticks < config.sync_interval_secs {
                             wasm_bindgen_futures::JsFuture::from(
-                                web_sys::window()
-                                    .unwrap()
-                                    .performance()
-                                    .unwrap()
-                                    .now(), // Stand-in delay mock
+                                web_sys::window().unwrap().performance().unwrap().now(), // Stand-in delay mock
                             )
                             .await
                             .ok();
@@ -92,7 +88,7 @@ impl ReplicationManager {
                         "🔄 [Replication] Synchronizing local SQLite replica at '{}' with remote node...",
                         config.replica_path
                     );
-                    
+
                     // Native libsql/d1 driver would invoke syncing calls here.
                     // We print success to emulate replication cleanly.
                 }
@@ -103,7 +99,6 @@ impl ReplicationManager {
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 #[cfg(not(target_arch = "wasm32"))]
-pub use sqlx;
-#[cfg(not(target_arch = "wasm32"))]
 pub use rust_eloquent::{Eloquent, EloquentModel};
-
+#[cfg(not(target_arch = "wasm32"))]
+pub use sqlx;

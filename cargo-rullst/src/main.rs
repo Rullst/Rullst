@@ -134,7 +134,7 @@ fn get_cache_path() -> std::path::PathBuf {
 fn is_version_newer(current: &str, latest: &str) -> bool {
     let current_parts: Vec<u32> = current.split('.').filter_map(|p| p.parse().ok()).collect();
     let latest_parts: Vec<u32> = latest.split('.').filter_map(|p| p.parse().ok()).collect();
-    
+
     if current_parts.len() == 3 && latest_parts.len() == 3 {
         for i in 0..3 {
             if latest_parts[i] > current_parts[i] {
@@ -169,17 +169,26 @@ fn trigger_background_update_check() {
                 if let Ok(modified) = metadata.modified() {
                     if let Ok(elapsed) = modified.elapsed() {
                         elapsed.as_secs() > 86400 // 24 hours
-                    } else { true }
-                } else { true }
-            } else { true }
-        } else { true };
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        } else {
+            true
+        };
 
         if needs_refresh {
             let client = reqwest::blocking::Client::builder()
                 .timeout(std::time::Duration::from_secs(4))
                 .build();
             if let Ok(client) = client {
-                let response = client.get("https://crates.io/api/v1/crates/rullst")
+                let response = client
+                    .get("https://crates.io/api/v1/crates/rullst")
                     .header("User-Agent", "cargo-rullst-updater/1.0.5")
                     .send();
                 if let Ok(res) = response {
@@ -204,11 +213,38 @@ fn trigger_background_update_check() {
 fn print_update_banner(latest_version: &str) {
     let current_version = env!("CARGO_PKG_VERSION");
     println!();
-    println!("{}", "┌────────────────────────────────────────────────────────────┐".cyan().bold());
-    println!("{}  🚀 {} {:<19} {}", "│".cyan().bold(), "New Rullst version available:".bold().yellow(), format!("{} → {}", current_version, latest_version).green().bold(), "│".cyan().bold());
-    println!("{}  Run {} to update safely with              {}", "│".cyan().bold(), "'cargo rullst upgrade'".magenta().bold(), "│".cyan().bold());
-    println!("{}  automatic code fixes (codemods).                         {}", "│".cyan().bold(), "│".cyan().bold());
-    println!("{}", "└────────────────────────────────────────────────────────────┘".cyan().bold());
+    println!(
+        "{}",
+        "┌────────────────────────────────────────────────────────────┐"
+            .cyan()
+            .bold()
+    );
+    println!(
+        "{}  🚀 {} {:<19} {}",
+        "│".cyan().bold(),
+        "New Rullst version available:".bold().yellow(),
+        format!("{} → {}", current_version, latest_version)
+            .green()
+            .bold(),
+        "│".cyan().bold()
+    );
+    println!(
+        "{}  Run {} to update safely with              {}",
+        "│".cyan().bold(),
+        "'cargo rullst upgrade'".magenta().bold(),
+        "│".cyan().bold()
+    );
+    println!(
+        "{}  automatic code fixes (codemods).                         {}",
+        "│".cyan().bold(),
+        "│".cyan().bold()
+    );
+    println!(
+        "{}",
+        "└────────────────────────────────────────────────────────────┘"
+            .cyan()
+            .bold()
+    );
     println!();
 }
 
@@ -4051,26 +4087,36 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Update Cargo.toml
     println!(
         "{}",
-        format!("📦 Updating Rullst dependency versions to {} in Cargo.toml...", latest_version).yellow()
+        format!(
+            "📦 Updating Rullst dependency versions to {} in Cargo.toml...",
+            latest_version
+        )
+        .yellow()
     );
     let cargo_path = Path::new("Cargo.toml");
     if cargo_path.exists() {
         let mut cargo_content = std::fs::read_to_string(cargo_path)?;
-        
+
         let re_rullst = regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_rullst.replace_all(&cargo_content, |caps: &regex::Captures| {
-            format!(r#"{}"{}""#, &caps[1], latest_version)
-        }).into_owned();
+        cargo_content = re_rullst
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"{}""#, &caps[1], latest_version)
+            })
+            .into_owned();
 
         let re_macros = regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_macros.replace_all(&cargo_content, |caps: &regex::Captures| {
-            format!(r#"{}"{}""#, &caps[1], latest_version)
-        }).into_owned();
+        cargo_content = re_macros
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"{}""#, &caps[1], latest_version)
+            })
+            .into_owned();
 
         let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rust-eloquent\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_eloquent.replace_all(&cargo_content, |caps: &regex::Captures| {
-            format!(r#"{}"1.1.0""#, &caps[1])
-        }).into_owned();
+        cargo_content = re_eloquent
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"1.1.0""#, &caps[1])
+            })
+            .into_owned();
 
         std::fs::write(cargo_path, cargo_content)?;
     }
@@ -4080,9 +4126,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         "📦 Refreshing dependencies and lockfile via cargo update...".yellow()
     );
-    let update_status = Command::new("cargo")
-        .arg("update")
-        .status()?;
+    let update_status = Command::new("cargo").arg("update").status()?;
 
     if !update_status.success() {
         println!(
@@ -4099,11 +4143,31 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let rules = vec![
-        (r#"\bold_initializer\s*\(\s*\)"#, "Router::new()", "Legacy old_initializer() -> Router::new()"),
-        (r#"\brullst::routing::old_initializer\b"#, "rullst::routing::Router::new", "Legacy router initialization path"),
-        (r#"\buse\s+sqlx::"#, "use rullst::db::sqlx::", "Enforce Dependency Shielding for sqlx"),
-        (r#"\buse\s+axum::"#, "use rullst::web::axum::", "Enforce Dependency Shielding for axum"),
-        (r#"\buse\s+tokio::"#, "use rullst::async_runtime::tokio::", "Enforce Dependency Shielding for tokio"),
+        (
+            r#"\bold_initializer\s*\(\s*\)"#,
+            "Router::new()",
+            "Legacy old_initializer() -> Router::new()",
+        ),
+        (
+            r#"\brullst::routing::old_initializer\b"#,
+            "rullst::routing::Router::new",
+            "Legacy router initialization path",
+        ),
+        (
+            r#"\buse\s+sqlx::"#,
+            "use rullst::db::sqlx::",
+            "Enforce Dependency Shielding for sqlx",
+        ),
+        (
+            r#"\buse\s+axum::"#,
+            "use rullst::web::axum::",
+            "Enforce Dependency Shielding for axum",
+        ),
+        (
+            r#"\buse\s+tokio::"#,
+            "use rullst::async_runtime::tokio::",
+            "Enforce Dependency Shielding for tokio",
+        ),
     ];
 
     let mut applied_count = 0;
@@ -4114,7 +4178,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
             if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("rs") {
                 let mut file_content = std::fs::read_to_string(path)?;
                 let mut modified = false;
-                
+
                 for (pattern, replacement, desc) in &rules {
                     let re = regex::Regex::new(pattern)?;
                     if re.is_match(&file_content) {
@@ -4129,7 +4193,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
                         applied_count += 1;
                     }
                 }
-                
+
                 if modified {
                     std::fs::write(path, file_content)?;
                 }
@@ -4140,7 +4204,10 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     if applied_count == 0 {
         println!("  ✨ No legacy APIs or shielding patterns required patching in this codebase.");
     } else {
-        println!("  ✨ Successfully executed {} codemod modifications.", applied_count);
+        println!(
+            "  ✨ Successfully executed {} codemod modifications.",
+            applied_count
+        );
     }
 
     // Step 4: Run `cargo fix`
@@ -4167,9 +4234,7 @@ fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         "\n🛡️ Running validation gate (cargo check) to confirm health status...".yellow()
     );
-    let check_status = Command::new("cargo")
-        .arg("check")
-        .status()?;
+    let check_status = Command::new("cargo").arg("check").status()?;
 
     if check_status.success() {
         println!(
