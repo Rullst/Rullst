@@ -390,6 +390,15 @@ impl Mail {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_message_subject() {
+        let msg = Message::new().subject("Test Subject");
+        assert_eq!(msg.subject, "Test Subject");
+
+        let msg2 = Message::new().subject(String::from("Another Subject"));
+        assert_eq!(msg2.subject, "Another Subject");
+    }
+
     #[tokio::test]
     async fn test_log_driver() {
         // Prepare storage/logs directory
