@@ -21,6 +21,13 @@ Next, install the Rullst CLI:
 cargo install cargo-rullst
 ```
 
+> **Adding to an existing project?**
+> If you already have a Rust project and just want to install the framework package without the CLI, you can simply run:
+> ```bash
+> cargo add rullst
+> ```
+> This command tells Cargo (Rust's package manager) to download the `rullst` library and add it as a dependency in your `Cargo.toml` file.
+
 ## 2. Creating Your First Project
 
 With the CLI installed, you can generate a complete project using our interactive wizard:
