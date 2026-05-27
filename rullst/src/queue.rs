@@ -673,4 +673,35 @@ mod tests {
         let result = driver.pop().await.unwrap();
         assert!(result.is_none());
     }
+
+    #[tokio::test]
+    async fn test_custom_queue_driver() {
+        // Since we need to check was_push_called, we'll share state via Arc.
+        let push_called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        struct ArcMockDriver {
+            push_called: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        }
+
+        #[async_trait]
+        impl QueueDriver for ArcMockDriver {
+            async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> {
+                self.push_called.store(true, std::sync::atomic::Ordering::SeqCst);
+                Ok(())
+            }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> { Ok(None) }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> { Ok(()) }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> { Ok(()) }
+            async fn pending_count(&self) -> Result<u64, QueueError> { Ok(0) }
+        }
+
+        let driver = Box::new(ArcMockDriver {
+            push_called: push_called.clone(),
+        });
+
+        let queue = Queue::custom(driver);
+        let _id = queue.dispatch("test_custom_job", serde_json::json!({})).await.unwrap();
+
+        assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
+    }
 }
