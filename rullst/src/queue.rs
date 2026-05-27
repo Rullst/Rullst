@@ -690,7 +690,10 @@ mod tests {
         assert_eq!(job.id, job_id);
 
         // Mark it as failed
-        driver.mark_failed(&job_id, "Temporary error").await.unwrap();
+        driver
+            .mark_failed(&job_id, "Temporary error")
+            .await
+            .unwrap();
 
         // Queue pending count should be 0 since it's failed
         let count = queue.pending_count().await.unwrap();
