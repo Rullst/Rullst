@@ -812,9 +812,7 @@ mod tests {
 
         let driver = Box::new(ErrorMockDriver);
         let queue = Queue::custom(driver);
-        let result = queue
-            .dispatch("failing_job", serde_json::json!({}))
-            .await;
+        let result = queue.dispatch("failing_job", serde_json::json!({})).await;
 
         assert!(result.is_err());
         if let Err(QueueError::Driver(msg)) = result {
