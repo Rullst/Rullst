@@ -697,6 +697,41 @@ mod tests {
         assert!(result.is_none());
     }
 
+    #[test]
+    #[cfg(feature = "queue-redis")]
+    fn test_queue_redis_creation() {
+        // Happy path
+        // `redis::Client::open` does not actually connect to the server, it only parses the URL
+        let valid_result = Queue::redis("redis://127.0.0.1:6379");
+        assert!(
+            valid_result.is_ok(),
+            "Failed to create Redis queue with valid URL"
+        );
+
+        // Error path
+        let invalid_result = Queue::redis("invalid_url");
+        assert!(
+            invalid_result.is_err(),
+            "Expected error for invalid Redis URL"
+        );
+
+        match invalid_result {
+            Err(QueueError::Driver(msg)) => {
+                assert!(
+                    msg.contains("Failed to connect to Redis"),
+                    "Unexpected error message: {}",
+                    msg
+                );
+                assert!(
+                    msg.contains("Redis URL did not parse"),
+                    "Unexpected error message details: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected QueueError::Driver, got something else"),
+        }
+    }
+
     #[tokio::test]
     async fn test_sqlite_queue_list_all_jobs_happy_path() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
