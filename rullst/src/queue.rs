@@ -709,7 +709,11 @@ mod tests {
 
         // Test limit
         let limited_jobs = driver.list_all_jobs(2).await.unwrap();
-        assert_eq!(limited_jobs.len(), 2, "Expected exactly 2 jobs due to limit");
+        assert_eq!(
+            limited_jobs.len(),
+            2,
+            "Expected exactly 2 jobs due to limit"
+        );
 
         // 3. Test Err path
         // To trigger an error, we can close the connection pool and then attempt to query.
@@ -719,7 +723,11 @@ mod tests {
         assert!(result.is_err(), "Expected error after pool is closed");
         match result {
             Err(QueueError::Driver(msg)) => {
-                assert!(msg.contains("pool timed out") || msg.contains("closed"), "Unexpected error message: {}", msg);
+                assert!(
+                    msg.contains("pool timed out") || msg.contains("closed"),
+                    "Unexpected error message: {}",
+                    msg
+                );
             }
             _ => panic!("Expected QueueError::Driver"),
         }
