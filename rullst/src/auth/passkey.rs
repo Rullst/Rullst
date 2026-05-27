@@ -54,6 +54,7 @@ impl PasskeyConfig {
 pub struct PasskeyAuth {
     rp_name: String,
     rp_id: String,
+    #[allow(dead_code)]
     rp_origin: String,
 }
 
@@ -171,6 +172,7 @@ pub struct Passkey {
 }
 
 // Custom lightweight CBOR parser for WebAuthn payload decoding
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum CborValue {
     Integer(i64),
@@ -180,6 +182,7 @@ enum CborValue {
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum CborKey {
     Integer(i64),
