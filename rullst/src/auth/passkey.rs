@@ -180,10 +180,11 @@ enum CborValue {
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
 
+/// Represents keys used in CBOR maps.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum CborKey {
-    Integer(i64),
     TextString(String),
+    Integer(i64),
 }
 
 fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
