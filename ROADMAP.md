@@ -102,7 +102,7 @@ graph TD
 
 ---
 
-## 🔒 Milestone 3: Authentication & Security (Social & Local Auth)
+## 🔒 Milestone 3: Authentication & Security (Social, Local & Passkeys)
 **Goal:** Implement robust, secure, and instant authentication. Developers should be able to authenticate users securely in minutes.
 
 - [x] **Social Authentication via `rust-socialite`:**
@@ -112,6 +112,7 @@ graph TD
 - [x] **Local Authentication:**
   - [x] Secure password hashing via Argon2/Bcrypt built-in helpers.
   - [x] Custom session-based cookie middleware and token-based (JWT) auth middleware.
+- [ ] **Passkeys & Biometrics First (`rullst::auth::passkey`):** Native WebAuthn abstraction for biometric authentication (FaceID, TouchID, Windows Hello) bundled into `cargo rullst auth`. Passwordless signups and logins using public-key cryptography via HTMX/WebAuthn with smooth security key fallbacks.
 - [x] **The "Auth Magic" Command:**
   - [x] `cargo rullst auth` - Instantly scaffold a full-fledged authentication system containing:
     - Login/Registration/Password Reset controllers.
@@ -133,7 +134,7 @@ graph TD
 
 ---
 
-## 📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler)
+## 📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler & Assets)
 **Goal:** Provide the tools needed to scale applications in production environment.
 
 - [x] **Docker & Containerization:**
@@ -147,10 +148,11 @@ graph TD
   - [x] `rullst::cache` unified driver API supporting In-Memory and Redis adapters.
 - [x] **Task Scheduler:**
   - [x] Declarative Cron-like job scheduler directly in `main.rs` (e.g. `.schedule("0 0 * * *", nightly_cleanup)`).
+- [ ] **Edge-Optimized Assets & Compression Tuning:** Automatically generate pre-compiled assets compressed via **Brotli (level 11)** and **Zstandard** during `cargo rullst build --release`. Zero-copy static file serving via Axum using `sendfile` system calls directly at the kernel level, outperforming standalone Nginx serving speeds.
 
 ---
 
-## 🏢 Milestone 6: Enterprise Features
+## 🏢 Milestone 6: Enterprise Features (Validation, Mail, Storage & Protection)
 **Goal:** Deliver the classic robust features expected from enterprise-grade frameworks.
 
 - [x] **Declarative Validation:** A `#[derive(Validate)]` macro for DTOs/structs that automatically returns 422 JSON for APIs or HTML error partials for HTMX when validation fails.
@@ -158,6 +160,8 @@ graph TD
 - [x] **Storage Abstraction (`rullst::storage`):** Unified API for file uploads and management with drivers for Local (Disk), AWS S3, and Cloudflare R2.
 - [x] **WebSockets & Real-Time:** Built-in router support for WebSockets, perfectly integrated with HTMX (`hx-ext="ws"`).
 - [x] **Rullst Horizon:** A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.
+- [ ] **Adaptive Backpressure & Resilient Traffic Shielding:** Router-level protection middleware that tracks async Tokio thread pools and database response timings. Smoothly degrades traffic or queues excessive loads when database exhaustion or CPU saturation is imminent, preventing out-of-memory (OOM) crashes.
+- [ ] **Token-Bucket Rate Limiting:** Native rate limiting attributes (e.g., `#[route(get, "/api", rate_limit = "100/m")]`) with Shared-Memory (`DashMap`) or Redis engines.
 
 ---
 
