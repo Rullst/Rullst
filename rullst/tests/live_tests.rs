@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use futures_util::{SinkExt, StreamExt};
-use rullst::live::{live_ws_handler, Live, LiveComponent};
+use rullst::live::{Live, LiveComponent, live_ws_handler};
 use serde_json::Value;
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::Message;
@@ -48,7 +48,9 @@ async fn test_live_mount_html() {
 async fn test_live_mount_safe_path() {
     let html = Live::mount::<CounterComponent>("/live?param=\"hack\"&other='<>'").await;
 
-    assert!(html.contains("ws-connect=\"/live?param=&quot;hack&quot;&amp;other=&#x27;&lt;&gt;&#x27;\""));
+    assert!(
+        html.contains("ws-connect=\"/live?param=&quot;hack&quot;&amp;other=&#x27;&lt;&gt;&#x27;\"")
+    );
 }
 
 #[tokio::test]
@@ -95,7 +97,9 @@ async fn test_live_ws_handler() {
     });
 
     ws_stream
-        .send(Message::Text(serde_json::to_string(&event2).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&event2).unwrap().into(),
+        ))
         .await
         .expect("Failed to send message");
 
