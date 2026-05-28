@@ -81,7 +81,7 @@ impl Server {
     /// Start the HTTP server on the specified port
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
         if self.db_url.is_none()
-            && let Ok(toml_content) = std::fs::read_to_string("Rullst.toml")
+            && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
         {
             for line in toml_content.lines() {
                 let trimmed = line.trim();
