@@ -42,9 +42,9 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
             let token = generate_csrf_token();
             let mut response = next.run(req).await;
 
-            // Set cookie for Lax mode
+            // Set cookie for Strict mode
             if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-                "rullst_csrf={}; Path=/; SameSite=Lax; HttpOnly",
+                "rullst_csrf={}; Path=/; SameSite=Strict; HttpOnly",
                 token
             )) {
                 response
@@ -90,24 +90,32 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
     }
 
-    // If not in header, read urlencoded body
-    let (parts, body) = req.into_parts();
+    // If not in header, check if it's a form-urlencoded request before buffering the body
+    let content_type = req
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
 
-    // Read request body (limited to 1MB to prevent memory exhaustion)
-    let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
-        Ok(b) => b,
-        Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
-    };
+    if content_type.contains("application/x-www-form-urlencoded") {
+        let (parts, body) = req.into_parts();
 
-    let body_token = extract_token_from_body(&bytes);
+        // Read request body (limited to 1MB to prevent memory exhaustion)
+        let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
+            Ok(b) => b,
+            Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+        };
 
-    // Reconstruct the request so it can be parsed by subsequent handlers
-    let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
+        let body_token = extract_token_from_body(&bytes);
 
-    if let Some(token) = body_token
-        && token == cookie_token
-    {
-        return next.run(reconstructed_req).await;
+        // Reconstruct the request so it can be parsed by subsequent handlers
+        let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
+
+        if let Some(token) = body_token
+            && token == cookie_token
+        {
+            return next.run(reconstructed_req).await;
+        }
     }
 
     (StatusCode::FORBIDDEN, "Invalid or missing CSRF token").into_response()

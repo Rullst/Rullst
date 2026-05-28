@@ -4,8 +4,9 @@ use aes_gcm::{
 };
 use argon2::{
     Argon2,
-    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
+use rand_core::OsRng;
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
 use sha2::Digest;
@@ -20,9 +21,10 @@ static DEV_APP_KEY: OnceLock<Vec<u8>> = OnceLock::new();
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
+    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     argon2
-        .hash_password(password.as_bytes())
+        .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())
         .map_err(|e| e.to_string())
 }
