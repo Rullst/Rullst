@@ -254,21 +254,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Spawn background update check silently
     trigger_background_update_check();
 
+    let filtered_args = prepare_args();
+    let cli = Cli::parse_from(filtered_args);
+
+    execute_command(&cli.command)?;
+
+    if let Some(latest) = update_available {
+        print_update_banner(&latest);
+    }
+
+    Ok(())
+}
+
+fn prepare_args() -> Vec<String> {
     // If executed as a cargo subcommand (e.g. 'cargo rullst new'),
     // cargo passes "rullst" as the first real argument.
     // We remove it from the argument list so that Clap can parse uniformly.
     let args: Vec<String> = std::env::args().collect();
-    let filtered_args = if args.len() > 1 && args[1] == "rullst" {
+    if args.len() > 1 && args[1] == "rullst" {
         let mut new_args = vec![args[0].clone()];
         new_args.extend_from_slice(&args[2..]);
         new_args
     } else {
         args
-    };
+    }
+}
 
-    let cli = Cli::parse_from(filtered_args);
-
-    match &cli.command {
+fn execute_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
         Commands::New { name, api, docker } => {
             create_new_project(name.as_deref(), *api, *docker)?;
         }
@@ -328,11 +341,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             DocsCommands::Build => docs_generator::run_build()?,
         },
     }
-
-    if let Some(latest) = update_available {
-        print_update_banner(&latest);
-    }
-
     Ok(())
 }
 
