@@ -921,7 +921,6 @@ mod tests {
         }
     }
 
-
     #[tokio::test]
     async fn test_custom_queue_driver() {
         // Since we need to check was_push_called, we'll share state via Arc.
