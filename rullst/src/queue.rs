@@ -802,7 +802,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_queue_list_all_jobs() {
+    async fn test_sqlite_queue_list_all_jobs_wrapper() {
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
 
         // Dispatch some jobs
