@@ -3830,7 +3830,7 @@ pub fn register(worker: &mut Worker) {{
     worker.register("{job_name}", |payload: Value| async move {{
         println!("🚀 [Worker] Processando tarefa '{job_name}' com payload: {{:?}}", payload);
         
-        // TODO: Escreva a lógica da sua tarefa em segundo plano aqui (ex: enviar e-mail, processar imagem)
+        // Escreva a lógica da sua tarefa em segundo plano aqui (ex: enviar e-mail, processar imagem)
         
         Ok(())
     }});
