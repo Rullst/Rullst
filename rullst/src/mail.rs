@@ -88,7 +88,7 @@ impl MailDriver for LogDriver {
         }
         let log_path = log_dir.join("mail.log");
         let formatted = format!(
-            "========================================\
+            "=====\
              [MAIL SENT] {}\n\
              To: {}\n\
              From: {}\n\
@@ -99,7 +99,7 @@ impl MailDriver for LogDriver {
              ----------------------------------------\n\
              [HTML BODY]\n\
              {}\n\
-             ========================================\n",
+             =====\n",
             chrono::Local::now().to_rfc3339(),
             message.to,
             message.from.as_deref().unwrap_or("noreply@rullst.dev"),
@@ -399,6 +399,7 @@ mod tests {
         assert_eq!(msg2.subject, "Another Subject");
     }
 
+
     #[test]
     fn test_message_builder() {
         let msg = Message::new()
@@ -414,6 +415,8 @@ mod tests {
         assert_eq!(msg.body_text, Some("Test Text".to_string()));
         assert_eq!(msg.body_html, Some("Test HTML".to_string()));
     }
+
+
 
     #[tokio::test]
     async fn test_log_driver() {
