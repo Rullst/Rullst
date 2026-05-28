@@ -806,8 +806,14 @@ mod tests {
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
 
         // Dispatch some jobs
-        queue.dispatch("job1", serde_json::json!({"data": 1})).await.unwrap();
-        queue.dispatch("job2", serde_json::json!({"data": 2})).await.unwrap();
+        queue
+            .dispatch("job1", serde_json::json!({"data": 1}))
+            .await
+            .unwrap();
+        queue
+            .dispatch("job2", serde_json::json!({"data": 2}))
+            .await
+            .unwrap();
 
         // List jobs
         let jobs = queue.list_all_jobs(10).await.unwrap();
@@ -824,11 +830,26 @@ mod tests {
 
         #[async_trait]
         impl QueueDriver for ErrorMockDriver {
-            async fn push(&self, _id: &str, _job_name: &str, _payload: &str) -> Result<(), QueueError> { Ok(()) }
-            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> { Ok(None) }
-            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> { Ok(()) }
-            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> { Ok(()) }
-            async fn pending_count(&self) -> Result<u64, QueueError> { Ok(0) }
+            async fn push(
+                &self,
+                _id: &str,
+                _job_name: &str,
+                _payload: &str,
+            ) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+                Ok(None)
+            }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pending_count(&self) -> Result<u64, QueueError> {
+                Ok(0)
+            }
             async fn list_all_jobs(&self, _limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
                 Err(QueueError::Driver("simulated db error".into()))
             }
@@ -901,7 +922,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_queue_list_all_jobs() {
+    async fn test_sqlite_driver_list_all_jobs() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
 
         // 1. Test empty queue
