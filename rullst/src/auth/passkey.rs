@@ -1,7 +1,5 @@
 use base64::Engine as _;
 use rand::RngCore;
-#[allow(dead_code)]
-use ring::signature;
 use sha2::Digest;
 
 /// Configuration for the WebAuthn/Passkey authentication manager.
@@ -180,10 +178,11 @@ enum CborValue {
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
 
+/// Represents keys used in CBOR maps.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum CborKey {
-    Integer(i64),
     TextString(String),
+    Integer(i64),
 }
 
 fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
@@ -491,8 +490,8 @@ impl PasskeyAuth {
         msg.extend_from_slice(&auth_data_bytes);
         msg.extend_from_slice(&client_hash);
 
-        let peer_public_key = signature::UnparsedPublicKey::new(
-            &signature::ECDSA_P256_SHA256_ASN1,
+        let peer_public_key = ring::signature::UnparsedPublicKey::new(
+            &ring::signature::ECDSA_P256_SHA256_ASN1,
             &passkey.public_key,
         );
         peer_public_key
