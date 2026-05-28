@@ -479,9 +479,15 @@ mod tests {
     fn test_escape_html_attr() {
         assert_eq!(escape_html_attr("hello"), "hello");
         assert_eq!(escape_html_attr("hello & world"), "hello &amp; world");
-        assert_eq!(escape_html_attr("<script>alert('xss')</script>"), "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+        assert_eq!(
+            escape_html_attr("<script>alert('xss')</script>"),
+            "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
+        );
         assert_eq!(escape_html_attr("user\"name\""), "user&quot;name&quot;");
-        assert_eq!(escape_html_attr("foo & bar < baz > qux ' quux \" quuz"), "foo &amp; bar &lt; baz &gt; qux &#x27; quux &quot; quuz");
+        assert_eq!(
+            escape_html_attr("foo & bar < baz > qux ' quux \" quuz"),
+            "foo &amp; bar &lt; baz &gt; qux &#x27; quux &quot; quuz"
+        );
     }
 
     #[test]
