@@ -124,6 +124,32 @@
             background: rgba(249,115,22, 0.05);
             border-radius: 0 0.5rem 0.5rem 0;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        th, td {
+            padding: 0.85rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
         
         .copy-btn {
             position: absolute;
@@ -152,22 +178,148 @@
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.4);
         }
+        {}
 
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, iframe, svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            -webkit-overflow-scrolling: touch;
+        }
+        .main-content {
+            overflow-wrap: anywhere;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .sidebar-panel {
+            margin-top: 1.5rem;
+        }
+        .sidebar-toggle {
+            display: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--text);
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }
+            .sidebar-header {
+                align-items: flex-start;
+            }
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar-panel {
+                margin-top: 1rem;
+                overflow: hidden;
+                transition: max-height 0.25s ease, opacity 0.2s ease;
+                max-height: 1000px;
+                opacity: 1;
+            }
+            .sidebar.is-collapsed .sidebar-panel {
+                max-height: 0;
+                opacity: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 1.5rem 1rem 2rem;
+            }
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.75rem 1rem;
+            }
+            .hero {
+                padding: 3rem 1rem 1rem;
+            }
+            .hero h1 {
+                font-size: clamp(2.25rem, 8vw, 4.5rem);
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 320px;
+            }
+            .install-snippet {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                padding: 1.5rem 1rem 4rem;
+            }
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <a class="sidebar-brand" href="index.html">
-            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
-            Rullst
-        </a>
-        <ul class="sidebar-list">
+        <div class="sidebar-header">
+            <a class="sidebar-brand" href="index.html">
+                <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+                Rullst
+            </a>
+            <button class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar-links">Menu</button>
+        </div>
+        <div class="sidebar-panel">
+            <ul class="sidebar-list" id="sidebar-links">
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
 <li><a href="audit-report.html">Audit report</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
+        </div>
     </aside>
     <main class="main-content">
         <h1>Getting Started</h1>
@@ -183,6 +335,13 @@ Download and run the <code>rustup-init.exe</code> from the official website ment
 <p>Next, install the Rullst CLI:</p>
 <pre><code class="language-bash">cargo install cargo-rullst
 </code></pre>
+<blockquote>
+<p><strong>Adding to an existing project?</strong>
+If you already have a Rust project and just want to install the framework package without the CLI, you can simply run:</p>
+<pre><code class="language-bash">cargo add rullst
+</code></pre>
+<p>This command tells Cargo (Rust's package manager) to download the <code>rullst</code> library and add it as a dependency in your <code>Cargo.toml</code> file.</p>
+</blockquote>
 <h2>2. Creating Your First Project</h2>
 <p>With the CLI installed, you can generate a complete project using our interactive wizard:</p>
 <pre><code class="language-bash">cargo rullst new
@@ -359,6 +518,36 @@ Just visit <a href="http://localhost:3000">http://localhost:3000</a> and click t
                 });
             });
         });
+    });
+</script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebar = document.querySelector('.sidebar');
+        var button = document.querySelector('.sidebar-toggle');
+        if (!sidebar || !button) {
+            return;
+        }
+
+        var mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function syncState() {
+            var shouldCollapse = mobileQuery.matches;
+            sidebar.classList.toggle('is-collapsed', shouldCollapse);
+            button.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+        }
+
+        button.addEventListener('click', function () {
+            var collapsed = sidebar.classList.toggle('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+
+        if (mobileQuery.addEventListener) {
+            mobileQuery.addEventListener('change', syncState);
+        } else if (mobileQuery.addListener) {
+            mobileQuery.addListener(syncState);
+        }
+
+        syncState();
     });
 </script>
 </body>

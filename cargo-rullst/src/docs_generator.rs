@@ -1,6 +1,6 @@
 use axum::{Router, routing::get_service};
 use colored::*;
-use pulldown_cmark::{Parser, html};
+use pulldown_cmark::{Options, Parser, html};
 use std::fs;
 use std::path::Path;
 use tower_http::services::ServeDir;
@@ -66,7 +66,10 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
         let sidebar_html = generate_sidebar(&filtered_pages, docs_dir);
 
         let content = fs::read_to_string(page)?;
-        let parser = Parser::new(&content);
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_TABLES);
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        let parser = Parser::new_ext(&content, options);
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
@@ -99,8 +102,9 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
 
 fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
     // Use relative paths — no leading slash — so GitHub Pages sub-path works correctly
-    let mut html =
-        String::from("<ul class=\"sidebar-list\">\n<li><a href=\"index.html\">Home</a></li>\n");
+    let mut html = String::from(
+        "<ul class=\"sidebar-list\" id=\"sidebar-links\">\n<li><a href=\"index.html\">Home</a></li>\n",
+    );
 
     let mut sorted_pages = pages.to_vec();
     sorted_pages.sort();
@@ -205,6 +209,39 @@ fn copy_code_script() -> &'static str {
 </script>"#
 }
 
+fn sidebar_toggle_script() -> &'static str {
+    r#"<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebar = document.querySelector('.sidebar');
+        var button = document.querySelector('.sidebar-toggle');
+        if (!sidebar || !button) {
+            return;
+        }
+
+        var mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function syncState() {
+            var shouldCollapse = mobileQuery.matches;
+            sidebar.classList.toggle('is-collapsed', shouldCollapse);
+            button.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+        }
+
+        button.addEventListener('click', function () {
+            var collapsed = sidebar.classList.toggle('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+
+        if (mobileQuery.addEventListener) {
+            mobileQuery.addEventListener('change', syncState);
+        } else if (mobileQuery.addListener) {
+            mobileQuery.addListener(syncState);
+        }
+
+        syncState();
+    });
+</script>"#
+}
+
 /// Shared CSS for the copy button
 fn copy_btn_css() -> &'static str {
     r#"
@@ -235,7 +272,131 @@ fn copy_btn_css() -> &'static str {
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.4);
         }
+        {}
 "#
+}
+
+fn responsive_css() -> &'static str {
+    r#"
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, iframe, svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            -webkit-overflow-scrolling: touch;
+        }
+        .main-content {
+            overflow-wrap: anywhere;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .sidebar-panel {
+            margin-top: 1.5rem;
+        }
+        .sidebar-toggle {
+            display: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--text);
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }
+            .sidebar-header {
+                align-items: flex-start;
+            }
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar-panel {
+                margin-top: 1rem;
+                overflow: hidden;
+                transition: max-height 0.25s ease, opacity 0.2s ease;
+                max-height: 1000px;
+                opacity: 1;
+            }
+            .sidebar.is-collapsed .sidebar-panel {
+                max-height: 0;
+                opacity: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 1.5rem 1rem 2rem;
+            }
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.75rem 1rem;
+            }
+            .hero {
+                padding: 3rem 1rem 1rem;
+            }
+            .hero h1 {
+                font-size: clamp(2.25rem, 8vw, 4.5rem);
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 320px;
+            }
+            .install-snippet {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                padding: 1.5rem 1rem 4rem;
+            }
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    "#
 }
 
 fn render_layout(content: &str, sidebar: &str) -> String {
@@ -366,27 +527,62 @@ fn render_layout(content: &str, sidebar: &str) -> String {
             background: rgba(249,115,22, 0.05);
             border-radius: 0 0.5rem 0.5rem 0;
         }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }}
+        th, td {{
+            padding: 0.85rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }}
+        th {{
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }}
+        tr:last-child td {{
+            border-bottom: none;
+        }}
+        {}
         {}
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <a class="sidebar-brand" href="index.html">
-            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
-            Rullst
-        </a>
-        {}
+        <div class="sidebar-header">
+            <a class="sidebar-brand" href="index.html">
+                <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+                Rullst
+            </a>
+            <button class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar-links">Menu</button>
+        </div>
+        <div class="sidebar-panel">
+            {}
+        </div>
     </aside>
     <main class="main-content">
         {}
     </main>
     {}
+    {}
 </body>
 </html>"#,
         copy_btn_css(),
+        responsive_css(),
         sidebar,
         content,
-        copy_code_script()
+        copy_code_script(),
+        sidebar_toggle_script()
     )
 }
 
@@ -632,6 +828,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         }}
         .content-hidden {{ display: none; }}
         {}
+        {}
     </style>
 </head>
 <body>
@@ -656,10 +853,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
                 <a href="{}" class="btn btn-primary">{}</a>
                 <a href="https://crates.io/crates/rullst" target="_blank" class="btn btn-secondary">View on Crates.io ↗</a>
             </div>
-            <div class="install-snippet" id="install-snippet" title="Click to copy">
-                <span>cargo add rullst</span>
-                <span class="copy-icon" id="install-copy-icon">📋 Copy</span>
-            </div>
+
         </div>
 
         <div class="features">
@@ -686,26 +880,13 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         </div>
     </main>
     <script>
-        // Install snippet copy
-        var snippet = document.getElementById('install-snippet');
-        var copyIcon = document.getElementById('install-copy-icon');
-        if (snippet) {{
-            snippet.addEventListener('click', function () {{
-                navigator.clipboard.writeText('cargo add rullst').then(function () {{
-                    copyIcon.textContent = '✓ Copied!';
-                    copyIcon.style.color = '#10b981';
-                    setTimeout(function () {{
-                        copyIcon.textContent = '📋 Copy';
-                        copyIcon.style.color = '';
-                    }}, 2000);
-                }});
-            }});
-        }}
+
     </script>
     {}
 </body>
 </html>"#,
         copy_btn_css(),
+        responsive_css(),
         title,
         subtitle,
         btn_link,

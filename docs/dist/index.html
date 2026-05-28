@@ -249,7 +249,128 @@
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.4);
         }
+        {}
 
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, iframe, svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            -webkit-overflow-scrolling: touch;
+        }
+        .main-content {
+            overflow-wrap: anywhere;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .sidebar-panel {
+            margin-top: 1.5rem;
+        }
+        .sidebar-toggle {
+            display: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--text);
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }
+            .sidebar-header {
+                align-items: flex-start;
+            }
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar-panel {
+                margin-top: 1rem;
+                overflow: hidden;
+                transition: max-height 0.25s ease, opacity 0.2s ease;
+                max-height: 1000px;
+                opacity: 1;
+            }
+            .sidebar.is-collapsed .sidebar-panel {
+                max-height: 0;
+                opacity: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 1.5rem 1rem 2rem;
+            }
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.75rem 1rem;
+            }
+            .hero {
+                padding: 3rem 1rem 1rem;
+            }
+            .hero h1 {
+                font-size: clamp(2.25rem, 8vw, 4.5rem);
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 320px;
+            }
+            .install-snippet {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                padding: 1.5rem 1rem 4rem;
+            }
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    
     </style>
 </head>
 <body>
@@ -274,10 +395,7 @@
                 <a href="1-getting-started.html" class="btn btn-primary">Learn how to begin</a>
                 <a href="https://crates.io/crates/rullst" target="_blank" class="btn btn-secondary">View on Crates.io ↗</a>
             </div>
-            <div class="install-snippet" id="install-snippet" title="Click to copy">
-                <span>cargo add rullst</span>
-                <span class="copy-icon" id="install-copy-icon">📋 Copy</span>
-            </div>
+
         </div>
 
         <div class="features">
@@ -323,21 +441,7 @@
         </div>
     </main>
     <script>
-        // Install snippet copy
-        var snippet = document.getElementById('install-snippet');
-        var copyIcon = document.getElementById('install-copy-icon');
-        if (snippet) {
-            snippet.addEventListener('click', function () {
-                navigator.clipboard.writeText('cargo add rullst').then(function () {
-                    copyIcon.textContent = '✓ Copied!';
-                    copyIcon.style.color = '#10b981';
-                    setTimeout(function () {
-                        copyIcon.textContent = '📋 Copy';
-                        copyIcon.style.color = '';
-                    }, 2000);
-                });
-            });
-        }
+
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {

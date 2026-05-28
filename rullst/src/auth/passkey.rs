@@ -1,5 +1,7 @@
 use base64::Engine as _;
-use rand::RngCore;
+use rand::distr::{Alphanumeric, SampleString};
+#[allow(dead_code)]
+use ring::signature;
 use sha2::Digest;
 
 /// Configuration for the WebAuthn/Passkey authentication manager.
@@ -52,6 +54,8 @@ impl PasskeyConfig {
 pub struct PasskeyAuth {
     rp_name: String,
     rp_id: String,
+    #[allow(dead_code)]
+    rp_origin: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -168,21 +172,21 @@ pub struct Passkey {
 }
 
 // Custom lightweight CBOR parser for WebAuthn payload decoding
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum CborValue {
     Integer(i64),
     ByteString(Vec<u8>),
     TextString(String),
-    #[allow(dead_code)]
     Array(Vec<CborValue>),
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
 
-/// Represents keys used in CBOR maps.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum CborKey {
-    TextString(String),
     Integer(i64),
+    TextString(String),
 }
 
 fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
@@ -282,9 +286,7 @@ fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
 }
 
 fn generate_challenge() -> String {
-    let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+    Alphanumeric.sample_string(&mut rand::rng(), 32)
 }
 
 impl PasskeyAuth {
@@ -293,6 +295,7 @@ impl PasskeyAuth {
         Ok(Self {
             rp_name: config.rp_name.clone(),
             rp_id: config.rp_id.clone(),
+            rp_origin: config.rp_origin.clone(),
         })
     }
 
@@ -490,8 +493,8 @@ impl PasskeyAuth {
         msg.extend_from_slice(&auth_data_bytes);
         msg.extend_from_slice(&client_hash);
 
-        let peer_public_key = ring::signature::UnparsedPublicKey::new(
-            &ring::signature::ECDSA_P256_SHA256_ASN1,
+        let peer_public_key = signature::UnparsedPublicKey::new(
+            &signature::ECDSA_P256_SHA256_ASN1,
             &passkey.public_key,
         );
         peer_public_key

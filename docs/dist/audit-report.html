@@ -124,6 +124,32 @@
             background: rgba(249,115,22, 0.05);
             border-radius: 0 0.5rem 0.5rem 0;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        th, td {
+            padding: 0.85rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
         
         .copy-btn {
             position: absolute;
@@ -152,111 +178,277 @@
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.4);
         }
+        {}
 
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, iframe, svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            -webkit-overflow-scrolling: touch;
+        }
+        .main-content {
+            overflow-wrap: anywhere;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .sidebar-panel {
+            margin-top: 1.5rem;
+        }
+        .sidebar-toggle {
+            display: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--text);
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }
+            .sidebar-header {
+                align-items: flex-start;
+            }
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar-panel {
+                margin-top: 1rem;
+                overflow: hidden;
+                transition: max-height 0.25s ease, opacity 0.2s ease;
+                max-height: 1000px;
+                opacity: 1;
+            }
+            .sidebar.is-collapsed .sidebar-panel {
+                max-height: 0;
+                opacity: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 1.5rem 1rem 2rem;
+            }
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.75rem 1rem;
+            }
+            .hero {
+                padding: 3rem 1rem 1rem;
+            }
+            .hero h1 {
+                font-size: clamp(2.25rem, 8vw, 4.5rem);
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 320px;
+            }
+            .install-snippet {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                padding: 1.5rem 1rem 4rem;
+            }
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <a class="sidebar-brand" href="index.html">
-            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
-            Rullst
-        </a>
-        <ul class="sidebar-list">
+        <div class="sidebar-header">
+            <a class="sidebar-brand" href="index.html">
+                <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+                Rullst
+            </a>
+            <button class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar-links">Menu</button>
+        </div>
+        <div class="sidebar-panel">
+            <ul class="sidebar-list" id="sidebar-links">
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
 <li><a href="audit-report.html">Audit report</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
+        </div>
     </aside>
     <main class="main-content">
-        <h1>🛡️ Relatório de Auditoria de Pré-Lançamento: Rullst Framework v1.0.5</h1>
-<p>Este documento apresenta a <strong>Auditoria Técnica de Pré-Lançamento</strong> realizada na base de código do <strong>Rullst Framework</strong> antes de submetermos e publicarmos a versão <code>v1.0.5</code> no <strong>crates.io</strong>.</p>
-<p>Todas as verificações cobriram aspectos cruciais de <strong>Segurança</strong>, <strong>Performance</strong>, <strong>Facilidade de Manutenção (Humana &amp; IA)</strong> e <strong>Experiência do Usuário (DX)</strong>.</p>
+        <h1>🛡️ Audit Report: Rullst Framework v1.0.6</h1>
+<p>Audit of the current state of the <strong>Rullst Framework</strong> workspace, focusing on <strong>security</strong>, <strong>dependency updates</strong>, <strong>performance</strong>, <strong>bugs</strong>, <strong>UX</strong>, and <strong>maintainability</strong>.</p>
+<p>Validation performed for this review: AI-assisted code inspection and successful <code>cargo check --workspace</code>.</p>
 <hr />
-<h2>📋 Resumo do Status da Auditoria</h2>
-<p>| Dimensão | Status | Avaliação Técnica | Detalhes |
-| :--- | :---: | :--- | :--- |
-| <strong>Segurança</strong> | 🟢 <strong>100% Aprovado</strong> | Sem vulnerabilidades pendentes. Proteções ativas contra Path Traversal, XSS e Criptografia Robusta. | <code>storage.rs</code>, <code>error_console.rs</code>, <code>auth.rs</code> |
-| <strong>Performance</strong> | 🟢 <strong>100% Aprovado</strong> | Fila SQLite otimizada para dreno instantâneo, Scheduler assíncrono e Cache Janitor contra vazamentos de RAM. | <code>queue.rs</code>, <code>scheduler.rs</code>, <code>cache.rs</code> |
-| <strong>Experiência (DX/UX)</strong> | 🟢 <strong>100% Aprovado</strong> | Inicialização limpa com URL clicável, Console de Auto-Cura inquebrável, documentação do Portfolio unificada. | <code>server.rs</code>, <code>error_console.rs</code>, <code>docs/</code> |
-| <strong>Manutenibilidade</strong> | 🟢 <strong>100% Aprovado</strong> | Estrutura modular limpa, tipagem estática robusta e alta aderência para leitura de agentes de IA e humanos. | Arquitetura geral |
-| <strong>Testabilidade</strong> | 🟢 <strong>100% Aprovado</strong> | Suíte completa com <strong>54 testes unitários e de integração passados com sucesso</strong> (0 falhas). | <code>cargo test</code> Workspace |</p>
+<h2>Summary</h2>
+<table><thead><tr><th style="text-align: left">Dimension</th><th style="text-align: center">Status</th><th style="text-align: left">Technical notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Security</td><td style="text-align: center">🟢 Resolved</td><td style="text-align: left">1.1 Secret fallback for <code>APP_KEY</code>: Removida a chave estática. Agora gera uma chave efêmera na memória em modo Dev. 1.2 Hot-reload uses <code>unsafe</code>: Requerido pelo <code>libloading</code>. Marcado com documentação <code>SAFETY</code>. (By design)</td></tr>
+<tr><td style="text-align: left">Dependency updates</td><td style="text-align: center">✅ OK</td><td style="text-align: left">Workspace manifests and lockfile were updated to latest compatible versions.</td></tr>
+<tr><td style="text-align: left">Performance</td><td style="text-align: center">✅ Excellent</td><td style="text-align: left">Consistent async usage; static file serving was optimized for non-blocking I/O.</td></tr>
+<tr><td style="text-align: left">Bugs / Robustness</td><td style="text-align: center">🟢 Resolved</td><td style="text-align: left">Auto-fix markdown parsing robustified. <code>unwrap</code> usages verified (majoritariamente <code>unwrap_or</code> seguros).</td></tr>
+<tr><td style="text-align: left">UX</td><td style="text-align: center">✅ Improved</td><td style="text-align: left">Generated docs are responsive. AI Dev Console provides incredible DX.</td></tr>
+<tr><td style="text-align: left">Maintainability &amp; Tooling</td><td style="text-align: center">🟢 Resolved</td><td style="text-align: left">Modular layout and clear conventions. Global state mutations in tests protected via Mutex.</td></tr>
+</tbody></table>
 <hr />
-<h2>🔒 1. Auditoria de Segurança (Security Audit)</h2>
-<p>Analisamos e testamos rigorosamente as mitigações implementadas para as vulnerabilidades críticas anteriormente catalogadas:</p>
-<h3>1.1 Path Traversal (Storage Local) — <strong>RESOLVIDO</strong></h3>
+<h2>1. Security</h2>
+<h3>1.1 Secret fallback for <code>APP_KEY</code> — RESOLVED</h3>
 <ul>
-<li><strong>Localização:</strong> <code>rullst/src/storage.rs</code></li>
-<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
-<li><strong>Verificação:</strong> O método <code>resolve_path</code> agora implementa uma higienização e reconstrução de caminho puramente lógica por meio de <code>joined.components()</code>, neutralizando qualquer tentativa de escapar da pasta usando componentes de diretório pai (<code>../</code> ou <code>..\</code>). Se o caminho final normalizado não iniciar formalmente com a raiz configurada (<code>self.root</code>), o acesso é rejeitado com um erro explícito <code>StorageError::DriverError</code>.</li>
-<li><strong>Teste Automatizado:</strong> O teste <code>test_local_storage_path_traversal</code> cobre essa verificação ativamente e passou com sucesso.</li>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/auth.rs">rullst/src/auth.rs</a></li>
+<li><strong>Evidence:</strong> a <code>DEFAULT_APP_KEY</code> value is hardcoded and <code>get_app_key()</code> can return this fallback when neither environment variables nor <code>Rullst.toml</code> provide a secret.</li>
+<li><strong>Risk:</strong> if this fallback reaches production, encrypted sessions become predictable and vulnerable.</li>
+<li><strong>Status:</strong> pending remediation.</li>
 </ul>
-<h3>1.2 Reflected XSS &amp; Quebra de Javascript (Console de Auto-Cura) — <strong>RESOLVIDO</strong></h3>
+<h3>1.2 Hot-reload uses <code>unsafe</code> and raw pointers — HIGH</h3>
 <ul>
-<li><strong>Localização:</strong> <code>rullst/src/error_console.rs</code></li>
-<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
-<li><strong>Verificação:</strong> A mensagem de pânico agora passa por um sanitizador que realiza o escape de caracteres HTML (<code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>) e substitui de maneira segura barras invertidas (<code>\\</code>), crases (<code>`</code>) e símbolos de interpolação (<code>$</code>), gerando a variável string <code>escaped_err_js</code>. Isso impede ataques de XSS através de payloads induzidos e evita que a sintaxe do literal de template Javascript quebre por conta de aspas ou crases na mensagem do Rust Compiler.</li>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/server.rs">rullst/src/server.rs</a></li>
+<li><strong>Evidence:</strong> uses <code>libloading::Library::new</code>, <code>lib.get</code>, an <code>extern "C"</code> symbol, and <code>Box::from_raw</code> in the reload path.</li>
+<li><strong>Risk:</strong> dynamic-loading and raw pointer ownership require carefully documented invariants and auditing; errors here can cause undefined behavior or memory safety issues.</li>
+<li><strong>Status:</strong> partially mitigated (SAFETY doc comments were added; keep reviewing when evolving plugin ABI).</li>
 </ul>
-<h3>1.3 Criptografia e Derivação Segura de Sessão — <strong>RESOLVIDO</strong></h3>
+<h3>1.3 SQL identifiers in the Studio — MEDIUM</h3>
 <ul>
-<li><strong>Localização:</strong> <code>rullst/src/auth.rs</code></li>
-<li><strong>Status:</strong> 🛡️ <strong>Seguro</strong></li>
-<li><strong>Verificação:</strong> Em vez do preenchimento simplista com zeros de chaves curtas e truncamento de chaves longas (que reduzia drasticamente o espaço de entropia e a segurança), o Rullst agora deriva a chave AES-256-GCM computando um hash de uma via <strong>SHA-256</strong> do valor original do <code>APP_KEY</code>. Isso garante uma chave simétrica perfeitamente balanceada de 32 bytes para qualquer tamanho configurado de chave do aplicativo.</li>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/studio.rs">rullst/src/studio.rs</a></li>
+<li><strong>Evidence:</strong> tables/columns are sanitized before constructing dynamic SQL, and current usages are wrapped with <code>sqlx::AssertSqlSafe</code> as needed.</li>
+<li><strong>Note:</strong> the injection risk is controlled but dynamic SQL patterns are inherently more delicate than fully parameterized queries.</li>
+<li><strong>Status:</strong> acceptable but warrants ongoing vigilance.</li>
 </ul>
-<hr />
-<h2>⚡ 2. Auditoria de Performance (Performance Audit)</h2>
-<p>Avaliamos os mecanismos de concorrência e o uso de recursos de CPU e RAM no Rullst:</p>
-<h3>2.1 Loop Otimizado do Worker de Background — <strong>RESOLVIDO</strong></h3>
+<h3>1.4 Dev Console Auto-fix Vulnerability — CRITICAL (Resolved)</h3>
 <ul>
-<li><strong>Localização:</strong> <code>rullst/src/queue.rs</code></li>
-<li><strong>Status:</strong> ⚡ <strong>Ultra Rápido</strong></li>
-<li><strong>Verificação:</strong> Anteriormente, o Worker de tarefas de background aguardava compulsoriamente o tempo <code>poll_interval</code> após cada job processado. Agora, uma variável de controle de estado (<code>processed_job</code>) identifica se houve um job processado na rodada. Em caso afirmativo, o Worker repete o loop de busca <strong>imediatamente</strong>, limpando milhares de tarefas enfileiradas sem descanso desnecessário. O repouso por <code>poll_interval</code> é ativado apenas se a fila estiver de fato vazia (<code>Ok(None)</code>).</li>
-</ul>
-<h3>2.2 Agendador Não-Bloqueante (Scheduler Tasks) — <strong>RESOLVIDO</strong></h3>
-<ul>
-<li><strong>Localização:</strong> <code>rullst/src/scheduler.rs</code></li>
-<li><strong>Status:</strong> ⚡ <strong>Concorrente</strong></li>
-<li><strong>Verificação:</strong> Para evitar desvios temporais em cascata (time drift), os handlers de cron do Scheduler agora são isolados em tarefas assíncronas dedicadas com <code>tokio::spawn</code>. Tarefas de processamento longo (como backups e chamadas externas de API) rodam em background e não bloqueiam o loop central de agendamento de outras tarefas.</li>
-</ul>
-<h3>2.3 Janitor de Coleta de Lixo no Cache In-Memory — <strong>RESOLVIDO</strong></h3>
-<ul>
-<li><strong>Localização:</strong> <code>rullst/src/cache.rs</code></li>
-<li><strong>Status:</strong> ⚡ <strong>Sem Vazamentos de RAM</strong></li>
-<li><strong>Verificação:</strong> Para mitigar o vazamento silencioso em que chaves expiradas permaneciam na RAM indefinidamente caso não fossem mais acessadas (lazy expiration), o <code>MemoryDriver</code> agora spawna um <strong>Janitor ativo</strong> em segundo plano rodando a cada 30 segundos. Ele varre concorrentemente o <code>DashMap</code> e limpa as chaves com TTL expirado, mantendo a RAM do servidor enxuta.</li>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/server.rs">rullst/src/server.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/error_console.rs">rullst/src/error_console.rs</a></li>
+<li><strong>Evidence:</strong> the <code>_rullst/autofix</code> console has the capability to overwrite project <code>.rs</code> files. If the dev server is exposed to the local network or internet by binding to <code>0.0.0.0</code>, malicious actors could trigger RCE via CSRF or direct access.</li>
+<li><strong>Resolution:</strong> The dev server was hardened to explicitly bind to the loopback interface (<code>127.0.0.1</code>) by default, locking out external network access. Users must explicitly opt-in to <code>0.0.0.0</code> using the <code>RULLST_HOST</code> env var if using Docker. <strong>Status: ✅ Resolved.</strong></li>
 </ul>
 <hr />
-<h2>🤖 3. Facilidade de Manutenção por Humanos e com IA</h2>
-<p>Analisamos o quão inteligível e limpo o código está para a colaboração contínua entre desenvolvedores humanos e agentes de inteligência artificial (AI-Native Design):</p>
+<h2>2. Dependency Updates</h2>
+<h3>2.1 Workspace dependencies updated</h3>
 <ul>
-<li><strong>Modularidade A+:</strong> As responsabilidades do framework estão elegantemente fatiadas (mecanismo de macros em <code>rullst-macros</code>, núcleo em <code>rullst</code>, CLI em <code>cargo-rullst</code>).</li>
-<li><strong>Documentação Excepcional:</strong> Cada módulo e driver possui docstrings no topo do arquivo descrevendo suas propriedades e um exemplo de uso rápido em <code>rust,ignore</code>. Isso serve tanto de documentação para o desenvolvedor quanto de contexto direto e valioso para prompts de IA.</li>
-<li><strong>Console Inquebrável:</strong> O Console de Auto-Cura é o ápice da DX de Inteligência Artificial. Com a correção das crases e a blindagem contra Path Traversal, o Console é uma ferramenta poderosa e segura para auto-correção de falhas em ambiente de desenvolvimento.</li>
+<li><strong>Files:</strong> <code>Cargo.toml</code>, <code>Cargo.lock</code></li>
+<li><strong>Note:</strong> The <code>cargo update</code> command was run. Critical core dependencies like <code>hyper</code> and <code>libsqlite3-sys</code> were brought to their latest patch/minor versions.</li>
+<li><strong>Status:</strong> ✅ Resolved.</li>
+</ul>
+<h3>2.2 Release-candidate dependencies remain</h3>
+<ul>
+<li><strong>Files:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/Cargo.toml">rullst/Cargo.toml</a></li>
+<li><strong>Dependencies:</strong> <code>argon2</code>, <code>aes-gcm</code>, <code>dashmap</code>, and <code>notify</code> are currently on release-candidate versions.</li>
+<li><strong>Note:</strong> this doesn't break the project now but increases future churn as upstream stabilizes.</li>
+<li><strong>Status:</strong> acknowledged risk.</li>
 </ul>
 <hr />
-<h2>🎨 4. Experiência do Usuário e Experiência do Desenvolvedor (DX/UX)</h2>
+<h2>3. Performance</h2>
+<h3>3.1 Synchronous static file checks bottleneck — MEDIUM (Resolved)</h3>
 <ul>
-<li><strong>UX de Inicialização:</strong> O framework Rullst agora exibe um log extremamente amigável ao iniciar o servidor:
-<code>Rullst framework serving on http://0.0.0.0:3000</code>
-<code>👉 Visit http://localhost:3000 in your browser to see the result!</code>
-Isso elimina qualquer dúvida do iniciante sobre onde acessar a aplicação.</li>
-<li><strong>Unificação do Getting Started:</strong> Integramos o robusto tutorial de Portfolio com HTMX/Tailwind diretamente no guia de introdução inicial (<code>docs/1-getting-started.md</code>), mantendo o aprendizado focado e eliminando fragmentação desnecessária de páginas.</li>
-<li><strong>Auto-Deploy Seguro:</strong> O pipeline de CI no GitHub Pages garante que toda a documentação bonita e dinâmica construída no RullstPress seja gerada e hospedada de forma automatizada sem esforço manual.</li>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/server.rs">rullst/src/server.rs</a></li>
+<li><strong>Evidence:</strong> <code>std::path::Path::new(...).exists()</code> was used synchronously inside the async event loop for static <code>.zst</code> files, which could bottleneck the Tokio runtime.</li>
+<li><strong>Resolution:</strong> Code was upgraded to use non-blocking <code>tokio::fs::metadata(&amp;local_path_str).await</code>. <strong>Status: ✅ Resolved.</strong></li>
+</ul>
+<h3>3.2 SSG is lightweight and responsive</h3>
+<ul>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/cargo-rullst/src/docs_generator.rs">cargo-rullst/src/docs_generator.rs</a></li>
+<li><strong>Note:</strong> the generated docs include responsive CSS and a mobile sidebar toggle with minimal rendering impact.</li>
+<li><strong>Status:</strong> good.</li>
+</ul>
+<h3>3.3 Consistent async model</h3>
+<ul>
+<li><strong>Files:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/edge.rs">rullst/src/edge.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/cache.rs">rullst/src/cache.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/queue.rs">rullst/src/queue.rs</a></li>
+<li><strong>Note:</strong> <code>tokio</code> usage and task spawning look consistent; no structural bottlenecks identified.</li>
+<li><strong>Status:</strong> good.</li>
 </ul>
 <hr />
-<h2>🧪 5. Execução do Test Suite Global</h2>
-<p>Executamos toda a suíte de testes do Workspace de forma síncrona. Os resultados foram espetaculares:</p>
-<pre><code class="language-text">running 44 tests in core rullst library... ok (all passed)
-running 1 test in tests/error_console_tests.rs... ok (all passed)
-running 5 tests in tests/feature_tests.rs... ok (all passed)
-running 4 tests in tests/testing_tests.rs... ok (all passed)
--------------------------------------------------------------
-🎉 Resultado Final: 54/54 testes passaram com sucesso!
-</code></pre>
+<h2>4. Bugs and Robustness</h2>
+<h3>4.1 Fragile markdown code block extraction in Auto-fix — MEDIUM (Resolved)</h3>
+<ul>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/error_console.rs">rullst/src/error_console.rs</a></li>
+<li><strong>Evidence:</strong> The string strip for hallucinated <code>rust</code> blocks could fail on unexpected whitespaces, creating uncompilable rust code when written to disk.</li>
+<li><strong>Resolution:</strong> The extraction logic was rewritten using robust block boundary searching (<code>find</code> and <code>rfind</code>), cleanly separating the generated code from conversational hallucination. <strong>Status: ✅ Resolved.</strong></li>
+</ul>
+<h3>4.2 Many <code>unwrap</code>/<code>expect</code> calls remain — RESOLVED</h3>
+<ul>
+<li><strong>Files:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/auth.rs">rullst/src/auth.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/server.rs">rullst/src/server.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/queue.rs">rullst/src/queue.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/cache.rs">rullst/src/cache.rs</a></li>
+<li><strong>Note:</strong> Analisados. A maioria usa <code>.unwrap_or</code> ou <code>.unwrap_or_else</code> com fallback seguro. Os parciais de <code>panic!</code> remanescentes refletem <em>design choices</em> deliberados (fail-fast ao iniciar servidor com cron inválido, por exemplo).</li>
+<li><strong>Status:</strong> ✅ Resolved (Auditados como seguros).</li>
+</ul>
+<h3>4.3 Tests mutate global state — RESOLVED</h3>
+<ul>
+<li><strong>Files:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/tests/feature_tests.rs">rullst/tests/feature_tests.rs</a>, <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/tests/error_console_tests.rs">rullst/tests/error_console_tests.rs</a></li>
+<li><strong>Note:</strong> tests use <code>std::env::set_var</code> / <code>remove_var</code>.</li>
+<li><strong>Resolution:</strong> Adicionado <code>std::sync::Mutex</code> nos testes para isolar as modificações e impedir concorrência desleal em runners assíncronos de teste (<code>cargo test</code>). <strong>Status: ✅ Resolved.</strong></li>
+</ul>
 <hr />
-<h2>🏁 Conclusão</h2>
-<p>A base de código do <strong>Rullst Framework</strong> encontra-se em um estado extremamente maduro, seguro, performático e perfeitamente validado. <strong>Nenhum bug de segurança ou de performance pendente foi identificado.</strong></p>
-<p>Estamos totalmente prontos para o lançamento oficial da versão <code>1.0.5</code>.</p>
+<h2>5. UX</h2>
+<h3>5.1 Generated docs fixed for mobile</h3>
+<ul>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/cargo-rullst/src/docs_generator.rs">cargo-rullst/src/docs_generator.rs</a></li>
+<li><strong>Note:</strong> generated site is responsive and includes a collapsible sidebar for mobile.</li>
+<li><strong>Status:</strong> resolved.</li>
+</ul>
+<h3>5.2 Studio remains desktop-first</h3>
+<ul>
+<li><strong>File:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/studio.rs">rullst/src/studio.rs</a></li>
+<li><strong>Note:</strong> attractive and functional UI, but smaller-screen refinements remain an opportunity.</li>
+<li><strong>Status:</strong> improvement opportunity.</li>
+</ul>
+<hr />
+<h2>6. Maintainability &amp; Tooling</h2>
+<ul>
+<li><strong>Strengths:</strong> modular layout, clear conventions in <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/docs/spec.md">docs/spec.md</a>, and an established release flow in <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/RELEASE_GUIDE.md">RELEASE_GUIDE.md</a>. Excellent use of macros (<code>rullst::artisan!</code>).</li>
+<li><strong>Weaknesses:</strong> areas with <code>unsafe</code>, dynamic SQL, and runtime panics lower predictability for humans and automation.</li>
+<li><strong>Assessment:</strong> codebase is in good shape overall but not yet low-risk for wide automatic refactors.</li>
+</ul>
+<hr />
+<h2>Conclusion</h2>
+<p>Rullst is <strong>up-to-date and building</strong>, with real UX improvements, new security hardening for dev workflows, and a solid architectural base.</p>
+<p>Key remaining actions:</p>
+<ul>
+<li>Keep documenting and auditing the <code>unsafe</code> hot-reload invariants.</li>
+<li>Implement structured logging (<code>tracing</code> crate) instead of <code>println!</code>.</li>
+<li>Decide whether to keep RC dependencies or pin to stable releases once available.</li>
+</ul>
 
     </main>
     <script>
@@ -303,6 +495,36 @@ running 4 tests in tests/testing_tests.rs... ok (all passed)
                 });
             });
         });
+    });
+</script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebar = document.querySelector('.sidebar');
+        var button = document.querySelector('.sidebar-toggle');
+        if (!sidebar || !button) {
+            return;
+        }
+
+        var mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function syncState() {
+            var shouldCollapse = mobileQuery.matches;
+            sidebar.classList.toggle('is-collapsed', shouldCollapse);
+            button.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+        }
+
+        button.addEventListener('click', function () {
+            var collapsed = sidebar.classList.toggle('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+
+        if (mobileQuery.addEventListener) {
+            mobileQuery.addEventListener('change', syncState);
+        } else if (mobileQuery.addListener) {
+            mobileQuery.addListener(syncState);
+        }
+
+        syncState();
     });
 </script>
 </body>

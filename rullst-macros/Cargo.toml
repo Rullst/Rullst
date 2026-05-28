@@ -1,6 +1,6 @@
 [package]
 name = "rullst-macros"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2024"
 description = "JSX-like compilation macros for Rullst framework"
 license = "MIT"
@@ -11,6 +11,6 @@ repository = "https://github.com/venelouis/Rullst"
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0", features = ["full", "extra-traits"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+syn = { version = "2.0.117", features = ["full", "extra-traits"] }
+quote = "1.0.45"
+proc-macro2 = "1.0.106"

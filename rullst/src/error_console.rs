@@ -278,13 +278,18 @@ async fn perform_autofix(
 
     // Clean up accidental markdown code fence wrapping if the LLM hallucinated them
     let mut clean = fixed_content.trim().to_string();
-    if clean.starts_with("```rust") {
-        clean = clean["```rust".len()..].to_string();
-    } else if clean.starts_with("```") {
-        clean = clean["```".len()..].to_string();
-    }
-    if clean.ends_with("```") {
-        clean = clean[..clean.len() - "```".len()].to_string();
+    if let Some(start) = clean.find("```rust") {
+        if let Some(end) = clean.rfind("```") {
+            if end > start + 7 {
+                clean = clean[start + 7..end].trim().to_string();
+            }
+        }
+    } else if let Some(start) = clean.find("```") {
+        if let Some(end) = clean.rfind("```") {
+            if end > start + 3 {
+                clean = clean[start + 3..end].trim().to_string();
+            }
+        }
     }
     let clean = clean.trim().to_string();
 
