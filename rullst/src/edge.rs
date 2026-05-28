@@ -191,3 +191,42 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_edge_request_builder() {
+        let req = EdgeRequest::new("POST", "/api/data")
+            .with_header("Content-Type", "application/json")
+            .with_body(b"{\"key\":\"value\"}".to_vec());
+
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.path, "/api/data");
+        assert_eq!(req.headers.get("Content-Type").unwrap(), "application/json");
+        assert_eq!(req.body, b"{\"key\":\"value\"}");
+    }
+
+    #[test]
+    fn test_edge_response_builder() {
+        let res = EdgeResponse::new(201)
+            .with_header("X-Custom-Header", "test-value")
+            .with_body(b"Created".to_vec());
+
+        assert_eq!(res.status, 201);
+        assert_eq!(res.headers.get("X-Custom-Header").unwrap(), "test-value");
+        assert_eq!(res.body, b"Created");
+    }
+
+    #[test]
+    fn test_edge_server_builder() {
+        // A dummy handler for the EdgeServer
+        async fn dummy_handler(_req: EdgeRequest) -> EdgeResponse {
+            EdgeResponse::new(200)
+        }
+
+        let server = EdgeServer::new(dummy_handler).with_port(8080);
+        assert_eq!(server.port, 8080);
+    }
+}
