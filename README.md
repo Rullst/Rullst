@@ -5,7 +5,7 @@
 # Rullst - 📜🦀🌐🤖🚀
 ### *"Rust for those who want to build, not suffer."*
 
-> 📖 **[See all the changes in our Changelog!](./CHANGELOG.md)**  
+> 📖 **[See all the changes in our Changelog!](https://github.com/venelouis/Rullst/blob/main/CHANGELOG.md)**  
 > 📚 **[Read the Official Documentation!](https://venelouis.github.io/Rullst/)**  
 > 📦 **[View on Crates.io!](https://crates.io/crates/rullst)**
 
