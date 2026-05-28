@@ -350,7 +350,7 @@
             }
             .hero-buttons {
                 flex-direction: column;
-                align-items: stretch;
+                align-items: center;
             }
             .btn {
                 width: 100%;
@@ -395,10 +395,7 @@
                 <a href="1-getting-started.html" class="btn btn-primary">Learn how to begin</a>
                 <a href="https://crates.io/crates/rullst" target="_blank" class="btn btn-secondary">View on Crates.io ↗</a>
             </div>
-            <div class="install-snippet" id="install-snippet" title="Click to copy">
-                <span>cargo add rullst</span>
-                <span class="copy-icon" id="install-copy-icon">📋 Copy</span>
-            </div>
+
         </div>
 
         <div class="features">
@@ -444,21 +441,7 @@
         </div>
     </main>
     <script>
-        // Install snippet copy
-        var snippet = document.getElementById('install-snippet');
-        var copyIcon = document.getElementById('install-copy-icon');
-        if (snippet) {
-            snippet.addEventListener('click', function () {
-                navigator.clipboard.writeText('cargo add rullst').then(function () {
-                    copyIcon.textContent = '✓ Copied!';
-                    copyIcon.style.color = '#10b981';
-                    setTimeout(function () {
-                        copyIcon.textContent = '📋 Copy';
-                        copyIcon.style.color = '';
-                    }, 2000);
-                });
-            });
-        }
+
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {

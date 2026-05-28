@@ -548,7 +548,11 @@ async fn zstd_static_middleware(
             if let Ok(accept_str) = accept_encoding.to_str() {
                 if accept_str.contains("zstd") {
                     let local_path_str = format!("{}.zst", &path[1..]);
-                    if tokio::fs::metadata(&local_path_str).await.map(|m| m.is_file()).unwrap_or(false) {
+                    if tokio::fs::metadata(&local_path_str)
+                        .await
+                        .map(|m| m.is_file())
+                        .unwrap_or(false)
+                    {
                         let original_ext = std::path::Path::new(&path)
                             .extension()
                             .and_then(|ext| ext.to_str())

@@ -9,8 +9,8 @@ use argon2::{
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
 use sha2::Digest;
-use std::fs;
 use std::convert::TryInto;
+use std::fs;
 
 pub mod passkey;
 
@@ -22,7 +22,7 @@ static DEV_APP_KEY: OnceLock<Vec<u8>> = OnceLock::new();
 pub fn hash_password(password: &str) -> Result<String, String> {
     let argon2 = Argon2::default();
     argon2
-    .hash_password(password.as_bytes())
+        .hash_password(password.as_bytes())
         .map(|h| h.to_string())
         .map_err(|e| e.to_string())
 }
@@ -68,12 +68,14 @@ pub fn get_app_key() -> Vec<u8> {
     eprintln!(
         "⚠️  Rullst Security Warning: Using an ephemeral random APP_KEY. Sessions will invalidate on restart. Set APP_KEY to avoid this."
     );
-    DEV_APP_KEY.get_or_init(|| {
-        use rand::Rng;
-        let mut key = [0u8; 32];
-        rand::rng().fill_bytes(&mut key);
-        key.to_vec()
-    }).clone()
+    DEV_APP_KEY
+        .get_or_init(|| {
+            use rand::Rng;
+            let mut key = [0u8; 32];
+            rand::rng().fill_bytes(&mut key);
+            key.to_vec()
+        })
+        .clone()
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.

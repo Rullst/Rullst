@@ -1,6 +1,6 @@
 use axum::{Router, routing::get_service};
 use colored::*;
-use pulldown_cmark::{Parser, Options, html};
+use pulldown_cmark::{Options, Parser, html};
 use std::fs;
 use std::path::Path;
 use tower_http::services::ServeDir;
@@ -552,7 +552,7 @@ fn render_layout(content: &str, sidebar: &str) -> String {
 </body>
 </html>"#,
         copy_btn_css(),
-    responsive_css(),
+        responsive_css(),
         sidebar,
         content,
         copy_code_script(),
@@ -860,7 +860,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
 </body>
 </html>"#,
         copy_btn_css(),
-    responsive_css(),
+        responsive_css(),
         title,
         subtitle,
         btn_link,
