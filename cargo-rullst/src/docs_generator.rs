@@ -527,6 +527,32 @@ fn render_layout(content: &str, sidebar: &str) -> String {
             background: rgba(249,115,22, 0.05);
             border-radius: 0 0.5rem 0.5rem 0;
         }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }}
+        th, td {{
+            padding: 0.85rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }}
+        th {{
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }}
+        tr:last-child td {{
+            border-bottom: none;
+        }}
         {}
         {}
     </style>
