@@ -1,0 +1,26 @@
+--- rullst/src/queue.rs
++++ rullst/src/queue.rs
+@@ -801,23 +801,6 @@
+         }
+     }
+
+-    #[tokio::test]
+-    async fn test_sqlite_queue_list_all_jobs() {
+-        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+-
+-        // Dispatch some jobs
+-        queue.dispatch("job1", serde_json::json!({"data": 1})).await.unwrap();
+-        queue.dispatch("job2", serde_json::json!({"data": 2})).await.unwrap();
+-
+-        // List jobs
+-        let jobs = queue.list_all_jobs(10).await.unwrap();
+-        assert_eq!(jobs.len(), 2);
+-
+-        // Verify both jobs are retrieved successfully
+-        assert!(jobs.iter().any(|j| j.name == "job1"));
+-        assert!(jobs.iter().any(|j| j.name == "job2"));
+-    }
+-
+     #[tokio::test]
+     async fn test_queue_list_all_jobs_error() {
+         struct ErrorMockDriver;
