@@ -470,3 +470,28 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_html_attr() {
+        assert_eq!(escape_html_attr("hello"), "hello");
+        assert_eq!(escape_html_attr("hello & world"), "hello &amp; world");
+        assert_eq!(escape_html_attr("<script>alert('xss')</script>"), "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+        assert_eq!(escape_html_attr("user\"name\""), "user&quot;name&quot;");
+        assert_eq!(escape_html_attr("foo & bar < baz > qux ' quux \" quuz"), "foo &amp; bar &lt; baz &gt; qux &#x27; quux &quot; quuz");
+    }
+
+    #[test]
+    fn test_sanitize_identifier() {
+        assert_eq!(sanitize_identifier("users"), "users");
+        assert_eq!(sanitize_identifier("user_profiles"), "user_profiles");
+        assert_eq!(sanitize_identifier("drop table users;--"), "droptableusers");
+        assert_eq!(sanitize_identifier("123_abc"), "123_abc");
+        assert_eq!(sanitize_identifier("invalid space"), "invalidspace");
+        assert_eq!(sanitize_identifier("my-table-name"), "mytablename");
+        assert_eq!(sanitize_identifier("table'name"), "tablename");
+    }
+}
