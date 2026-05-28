@@ -33,10 +33,11 @@ tower-http = { version = "0.6.11", features = ["fs", "trace"] }
 tower-layer = "0.3.3"
 tower-service = "0.3.3"
 async-trait = "0.1.89"
-argon2 = "0.6.0-rc.8"
+argon2 = "0.5.3"
 cookie = { version = "0.18.1", features = ["percent-encoding"] }
 rand = "0.10.1"
-aes-gcm = "0.11.0-rc.4"
+rand_core = { version = "0.6.4", features = ["std"] }
+aes-gcm = "0.10.3"
 sha2 = "0.11.0"
 base64 = "0.22.1"
 serde_urlencoded = "0.7"
