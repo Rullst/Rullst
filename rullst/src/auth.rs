@@ -36,7 +36,7 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 }
 
 /// Resolves the application's unique secret key for encryption.
-/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`. Panics if not found.
+/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to a development default.
 pub fn get_app_key() -> Vec<u8> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
         return env_key.into_bytes();
