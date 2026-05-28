@@ -117,7 +117,12 @@ impl Server {
             );
         }
 
-        let addr = SocketAddr::from(([0, 0, 0, 0], port));
+        let host = if is_dev && std::env::var("RULLST_HOST").is_err() {
+            [127, 0, 0, 1]
+        } else {
+            [0, 0, 0, 0]
+        };
+        let addr = SocketAddr::from((host, port));
 
         // I-1: Warn when dev-only routes are exposed on a non-loopback address
         if is_dev && addr.ip().is_unspecified() {
@@ -474,6 +479,25 @@ fn load_dylib_router(
     // Copy the dylib file to prevent locking issues
     std::fs::copy(&full_lib_path, &temp_path)?;
 
+    // SAFETY: The code below performs dynamic library loading and raw pointer extraction.
+    // Invariant requirements for safety:
+    //  - The dynamically loaded library must expose a symbol `rullst_router_init`
+    //    with signature `unsafe extern "C" fn() -> *mut Router`.
+    //  - The `rullst_router_init` function must allocate a `Box<Router>` and return
+    //    the raw pointer produced by `Box::into_raw`. The caller here uses
+    //    `Box::from_raw` to take ownership of that pointer; therefore the
+    //    library MUST NOT keep or free that pointer after returning it.
+    //  - The loaded library must be ABI-compatible with the host Router layout.
+    //  - The `temp_path` copy must remain available on disk for the lifetime of
+    //    any references into the loaded library. We keep the returned `Library`
+    //    object to ensure the library remains mapped until dropped by the caller.
+    //  - Calls into the plugin must be synchronized appropriately by the host if
+    //    the plugin is not internally thread-safe.
+    //
+    // This block is `unsafe` because it relies on the above invariants; any
+    // future changes to router ABI or plugin implementations must be reflected
+    // here and documented. Review and audit this section when upgrading
+    // `libloading`, `Router` types, or changing the plugin API.
     let lib = unsafe { libloading::Library::new(temp_path)? };
     let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> =
         unsafe { lib.get(b"rullst_router_init")? };
@@ -524,8 +548,7 @@ async fn zstd_static_middleware(
             if let Ok(accept_str) = accept_encoding.to_str() {
                 if accept_str.contains("zstd") {
                     let local_path_str = format!("{}.zst", &path[1..]);
-                    let local_path = std::path::Path::new(&local_path_str);
-                    if local_path.exists() && local_path.is_file() {
+                    if tokio::fs::metadata(&local_path_str).await.map(|m| m.is_file()).unwrap_or(false) {
                         let original_ext = std::path::Path::new(&path)
                             .extension()
                             .and_then(|ext| ext.to_str())

@@ -1,8 +1,6 @@
 # Rullst Roadmap 🗺️
 ### *"The Path to the Ultimate Full-Stack Rust Framework"*
 
-*Read this in [Português (Brasil)](./ROADMAP.pt.md).*
-
 This roadmap outlines the milestones required to transition **Rullst** from its current MVP (v0.1.0) into a dominant, production-ready, full-stack framework focused on **Emotional Productivity** and **AI-Native Engineering**.
 
 Our development strategy follows the **"Developer Experience like Laravel, Performance like Rust, Architected for Humans and AI"** philosophy.

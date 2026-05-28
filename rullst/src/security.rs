@@ -4,15 +4,11 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use rand::{Rng, distributions::Alphanumeric};
+use rand::distr::{Alphanumeric, SampleString};
 
 /// Generates a cryptographically secure 32-character random alphanumeric string.
 pub fn generate_csrf_token() -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect()
+    Alphanumeric.sample_string(&mut rand::rng(), 32)
 }
 
 #[derive(serde::Deserialize)]

@@ -53,8 +53,12 @@ async fn test_memory_feature_driver() {
     assert_eq!(red_count + blue_count, 100);
 }
 
+use std::sync::Mutex;
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
 #[tokio::test]
 async fn test_env_feature_driver() {
+    let _guard = ENV_LOCK.lock().unwrap();
     let env_driver = EnvFeatureDriver::new();
 
     unsafe {

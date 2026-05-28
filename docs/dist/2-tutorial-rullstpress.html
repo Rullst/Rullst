@@ -152,97 +152,239 @@
             color: #10b981;
             border-color: rgba(16, 185, 129, 0.4);
         }
+        {}
 
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, iframe, svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            -webkit-overflow-scrolling: touch;
+        }
+        .main-content {
+            overflow-wrap: anywhere;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .sidebar-panel {
+            margin-top: 1.5rem;
+        }
+        .sidebar-toggle {
+            display: none;
+            appearance: none;
+            border: 1px solid var(--border);
+            background: rgba(249, 115, 22, 0.08);
+            color: var(--text);
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .sidebar-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 1rem;
+            }
+            .sidebar-header {
+                align-items: flex-start;
+            }
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar-panel {
+                margin-top: 1rem;
+                overflow: hidden;
+                transition: max-height 0.25s ease, opacity 0.2s ease;
+                max-height: 1000px;
+                opacity: 1;
+            }
+            .sidebar.is-collapsed .sidebar-panel {
+                max-height: 0;
+                opacity: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 1.5rem 1rem 2rem;
+            }
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.75rem 1rem;
+            }
+            .hero {
+                padding: 3rem 1rem 1rem;
+            }
+            .hero h1 {
+                font-size: clamp(2.25rem, 8vw, 4.5rem);
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn {
+                width: 100%;
+                max-width: 320px;
+            }
+            .install-snippet {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                padding: 1.5rem 1rem 4rem;
+            }
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <a class="sidebar-brand" href="index.html">
-            <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
-            Rullst
-        </a>
-        <ul class="sidebar-list">
+        <div class="sidebar-header">
+            <a class="sidebar-brand" href="index.html">
+                <img src="Rullst.png" alt="Rullst Logo" style="width: 24px; height: 24px;" />
+                Rullst
+            </a>
+            <button class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar-links">Menu</button>
+        </div>
+        <div class="sidebar-panel">
+            <ul class="sidebar-list" id="sidebar-links">
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
 <li><a href="audit-report.html">Audit report</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
+        </div>
     </aside>
     <main class="main-content">
-        <h1>Introduction to RullstPress: The Native SSG</h1>
+        <h1>📝 RullstPress: The Native Static Site Generator</h1>
 <p><strong>RullstPress</strong> is a lightning-fast, zero-dependency <strong>Static Site Generator (SSG)</strong> built directly into the Rullst CLI (<code>cargo-rullst</code>). It compiles standard Markdown files (<code>.md</code>) into highly-optimized, premium, SEO-friendly HTML files.</p>
-<hr />
-<h2>🌟 What is RullstPress and What is it For?</h2>
+<h2>🌟 What can I build with it?</h2>
 <p>A common misconception is that RullstPress is <em>only</em> for writing framework documentation. In reality, RullstPress is a <strong>general-purpose high-fidelity publishing engine</strong>.</p>
 <p>You can use it to build:</p>
 <ol>
-<li><strong>Technical Documentation &amp; Wikis</strong>: Leverage the automatically generated, responsive sidebar navigation that structure your guides and specifications.</li>
-<li><strong>SaaS &amp; Product Landing Pages</strong>: Use the special <code>index.md</code> template to render beautiful hero headers, call-to-action buttons, and gorgeous interactive grids without writing a single line of CSS.</li>
-<li><strong>Personal Portfolios &amp; Content Sites</strong>: Fast, lightweight personal pages that showcase your projects with premium typography and glassmorphic elements.</li>
-<li><strong>Blogs &amp; News Platforms</strong>: Organize articles into folders and generate clean, readable content sheets with beautiful syntax highlighting.</li>
+<li><strong>Technical Documentation &amp; Wikis</strong>: Leverage the automatically generated, responsive sidebar navigation.</li>
+<li><strong>SaaS &amp; Product Landing Pages</strong>: Use the special <code>index.md</code> template to render beautiful hero headers and gorgeous interactive grids without writing CSS.</li>
+<li><strong>Personal Portfolios &amp; Content Sites</strong>: Fast, lightweight personal pages showcasing your projects with premium typography and glassmorphic elements.</li>
+<li><strong>Blogs &amp; News Platforms</strong>: Organize articles into folders and generate clean, readable content sheets.</li>
 </ol>
-<h3>Why use RullstPress?</h3>
-<ul>
-<li><strong>Zero JS Overhead</strong>: Generates pure static HTML and CSS. Pages load in microseconds with a guaranteed 100/100 Google PageSpeed score.</li>
-<li><strong>First-Class SEO &amp; Meta-Tags</strong>: Automatically injects semantic metadata, OpenGraph previews (Facebook/LinkedIn), and Twitter cards.</li>
-<li><strong>No Extra Tooling</strong>: You don't need <code>npm</code>, Node.js, Ruby, or external CLI binaries. If you have Rust and the Rullst CLI, you are ready to compile.</li>
-</ul>
 <hr />
-<h2>📂 1. Folder Structure</h2>
-<p>To start building a static website or documentation hub, simply create a <code>docs/</code> folder at the root of your project:</p>
-<pre><code class="language-text">my_project/
-├── docs/
-│   ├── index.md           # The Home Page (special Hero &amp; Feature layout)
-│   ├── 1-getting-started.md # A guide (number prefix determines sidebar order)
-│   ├── 2-architecture.md  # A guide about architecture
-│   └──pt/                 # For multi-language translations (optional)
-│       ├── index.md
-│       └── 1-getting-started.md
-├── src/                   # Your main Rust source code
-├── Cargo.toml
-└── Rullst.toml
+<h2>🛠️ Step 1: Installation</h2>
+<p>RullstPress is bundled inside the Rullst CLI. If you haven't installed the CLI yet, run:</p>
+<pre><code class="language-bash">cargo install cargo-rullst
+</code></pre>
+<p><em>(You must have Rust and Cargo installed on your system. If not, visit <a href="https://rustup.rs/">rustup.rs</a>)</em></p>
+<hr />
+<h2>📂 Step 2: Project Structure</h2>
+<p>To start building a static website or documentation hub, create a new directory for your project and add a <code>docs/</code> folder inside it.</p>
+<pre><code class="language-bash">mkdir my-awesome-site
+cd my-awesome-site
+mkdir docs
+</code></pre>
+<p>Inside the <code>docs/</code> folder, create your markdown files:</p>
+<pre><code class="language-text">my-awesome-site/
+└── docs/
+    ├── index.md             # The Home Page (special Hero &amp; Feature layout)
+    ├── 1-getting-started.md # A guide (number prefix determines sidebar order)
+    ├── 2-architecture.md    # Another guide
+    └── logo.png             # Your custom logo
 </code></pre>
 <blockquote>
 <p>[!TIP]
-<strong>Sidebar Ordering</strong>: By default, RullstPress sorts pages alphabetically. You can use numeric prefixes like <code>1-getting-started.md</code> to force a specific reading order. The prefixes are automatically stripped from the rendered titles!</p>
+<strong>Sidebar Ordering</strong>: By default, RullstPress sorts pages alphabetically. Use numeric prefixes like <code>1-getting-started.md</code> to force a specific reading order in the sidebar. The prefixes are automatically hidden from the rendered titles!</p>
 </blockquote>
+<h3>The Magic <code>index.md</code></h3>
+<p>RullstPress has a <strong>Landing Page Mode</strong>. If you name a file <code>index.md</code>, instead of rendering a classic reading layout with a sidebar, it generates a <strong>SaaS-style Hero page</strong>. It automatically structures:</p>
+<ul>
+<li>A centered visual logo (looks for an image link in the markdown).</li>
+<li>A large glowing headline title with smooth gradient text.</li>
+<li>A prominent call-to-action button pulsing with elegant animations.</li>
+</ul>
 <hr />
-<h2>💻 2. Local Development Server</h2>
-<p>To preview your website in real-time as you write and edit Markdown files, open your terminal and run:</p>
+<h2>💻 Step 3: Local Development Server</h2>
+<p>To preview your website in real-time as you write, run the development server at the root of your project (<code>my-awesome-site/</code>):</p>
 <pre><code class="language-bash">cargo rullst docs dev
 </code></pre>
-<h3>What happens under the hood?</h3>
+<p><strong>What happens under the hood?</strong></p>
 <ol>
 <li>RullstPress scans your <code>docs/</code> directory.</li>
 <li>It compiles all <code>.md</code> files into optimized HTML.</li>
+<li>It copies your images and static assets to a temporary output folder.</li>
 <li>It boots a high-performance local server at <code>http://localhost:4000</code>.</li>
-<li>It copies static assets like images (<code>Rullst.png</code>) to the output path automatically.</li>
 </ol>
-<p>Open your browser to <code>http://localhost:4000</code> to preview. The routing matches your file structure exactly:</p>
+<p>Open your browser to <a href="http://localhost:4000">http://localhost:4000</a> to see your site.
+The URLs match your file structure:</p>
 <ul>
 <li><code>docs/1-getting-started.md</code> → <code>http://localhost:4000/1-getting-started.html</code></li>
-<li><code>docs/pt/1-getting-started.md</code> → <code>http://localhost:4000/pt/1-getting-started.html</code></li>
 </ul>
 <hr />
-<h2>🚀 3. The Special Landing Page (<code>index.md</code>)</h2>
-<p>RullstPress implements a <strong>Landing Page Mode</strong> specifically for the root <code>index.md</code> file.</p>
-<p>Instead of rendering a classic reading layout with a sidebar, the root <code>index.md</code> generates a <strong>SaaS-style Hero page</strong>. It automatically structures:</p>
-<ul>
-<li>A beautiful centered visual logo.</li>
-<li>A large glowing headline title with smooth gradient text.</li>
-<li>A descriptive subtitle.</li>
-<li>A prominent call-to-action button pulsing with elegant animations.</li>
-<li>A beautiful 3-column features card grid.</li>
-</ul>
-<p>This layout is automatically rendered when RullstPress detects the <code>index.md</code> name, creating a spectacular first impression for your visitors.</p>
-<hr />
-<h2>📦 4. Production Build</h2>
-<p>When you are ready to deploy your site to production hosting (such as GitHub Pages, Netlify, Vercel, or a simple Apache/Nginx web server), run:</p>
+<h2>📦 Step 4: Production Build</h2>
+<p>When you are ready to deploy your site, stop the development server (<code>Ctrl+C</code>) and run:</p>
 <pre><code class="language-bash">cargo rullst docs build
 </code></pre>
-<p>This compiles your entire static site with maximum production optimizations and deposits all final assets into the <code>docs/dist/</code> directory.</p>
-<p>To publish, simply upload the contents of <code>docs/dist/</code> to your static hosting provider. It's completely self-contained!</p>
+<p>This command compiles your entire static site with maximum production optimizations and deposits all final, minified HTML/CSS assets into the <code>docs/dist/</code> directory.</p>
+<p>You can upload the contents of the <code>docs/dist/</code> folder to any static hosting provider (Vercel, Netlify, Apache, Nginx).</p>
+<hr />
+<h2>🌍 Step 5: Hosting on GitHub Pages (Free)</h2>
+<p>Hosting your RullstPress site on GitHub Pages is incredibly easy and completely free.</p>
+<h3>1. Push your code to GitHub</h3>
+<p>Initialize a git repository, commit your <code>docs/</code> folder, and push it to a GitHub repository.</p>
+<blockquote>
+<p>[!IMPORTANT]
+Don't forget to push the <code>docs/dist/</code> folder! Run <code>cargo rullst docs build</code> before pushing so the <code>dist/</code> folder has your latest changes.</p>
+</blockquote>
+<h3>2. Configure GitHub Pages</h3>
+<ol>
+<li>Open your repository on GitHub.</li>
+<li>Go to the <strong>Settings</strong> tab.</li>
+<li>On the left sidebar, click on <strong>Pages</strong>.</li>
+<li>Under <strong>Build and deployment</strong>, set the <strong>Source</strong> to <code>Deploy from a branch</code>.</li>
+<li>Under <strong>Branch</strong>, select your <code>main</code> (or <code>master</code>) branch, and change the folder dropdown from <code>/(root)</code> to <code>/docs/dist</code>.</li>
+<li>Click <strong>Save</strong>.</li>
+</ol>
+<h3>3. Wait a minute</h3>
+<p>GitHub will start a background action to deploy your site. In about a minute, your website will be live at:
+<code>https://&lt;your-username&gt;.github.io/&lt;your-repo-name&gt;/</code></p>
+<p><strong>Congratulations! Your premium, high-speed website is now live!</strong></p>
 
     </main>
     <script>
@@ -289,6 +431,36 @@
                 });
             });
         });
+    });
+</script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebar = document.querySelector('.sidebar');
+        var button = document.querySelector('.sidebar-toggle');
+        if (!sidebar || !button) {
+            return;
+        }
+
+        var mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function syncState() {
+            var shouldCollapse = mobileQuery.matches;
+            sidebar.classList.toggle('is-collapsed', shouldCollapse);
+            button.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+        }
+
+        button.addEventListener('click', function () {
+            var collapsed = sidebar.classList.toggle('is-collapsed');
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+
+        if (mobileQuery.addEventListener) {
+            mobileQuery.addEventListener('change', syncState);
+        } else if (mobileQuery.addListener) {
+            mobileQuery.addListener(syncState);
+        }
+
+        syncState();
     });
 </script>
 </body>

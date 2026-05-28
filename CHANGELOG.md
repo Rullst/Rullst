@@ -4,6 +4,18 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-05-28 🛡️
+
+### Security & Quality Audits
+- **APP_KEY Hardcoded Fallback Removed**: Deleted the insecure static `DEFAULT_APP_KEY` from `auth.rs`. In development mode, the framework now generates an ephemeral, cryptographically secure random key in memory (using `rand::RngCore` and `OnceLock`), perfectly retaining the "Zero-Config" local DX while preventing predictable session secrets. Production environments still strictly require `APP_KEY` to be defined.
+- **Local Network RCE Prevention**: Bound the development server's default port (`3000`) exclusively to the local loopback interface (`127.0.0.1`) instead of `0.0.0.0`. This hardens the Self-Healing Auto-Fix console from being exposed to the local network by default.
+- **Test Isolation & Mutex Locks**: Added thread-safe `std::sync::Mutex` (`ENV_LOCK`) blocks to `feature_tests.rs` and `error_console_tests.rs`. This correctly isolates `unsafe { std::env::set_var }` calls, preventing flaky failures and race conditions when `cargo test` executes asynchronous runners in parallel.
+
+### Performance & Stability
+- **Non-Blocking Static Assets**: Upgraded the `serve_static_zst` middleware inside `server.rs` to use fully asynchronous `tokio::fs::metadata(path).await` instead of the synchronous `std::path::Path::exists()`, eliminating CPU I/O wait blocking on the Tokio thread pool.
+- **Auto-Fix Regex Hardening**: Rewrote the AI Code Extraction parser in `error_console.rs` using robust string boundary searches (`rfind` and `find`), resolving uncompilable rust code crashes caused by hallucinated whitespace and markdown fence variations from LLMs.
+- **Core Dependency Updates**: Ran `cargo update` on the workspace, pulling in upstream security patches for `hyper` (v1.10.0), `libsqlite3-sys` (v0.37.0), and other core dependencies.
+
 ## [1.0.6] - 2026-05-26 🌐
 
 ### Fixed

@@ -12,8 +12,12 @@ fn build_panic_router() -> Router {
         .layer(axum::middleware::from_fn(catch_panic_middleware))
 }
 
+use std::sync::Mutex;
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
 #[tokio::test]
 async fn test_error_console_catches_panic_and_renders_html() {
+    let _guard = ENV_LOCK.lock().unwrap();
     // Enable backtraces so frame capture works across all environments
     unsafe {
         std::env::set_var("RUST_BACKTRACE", "1");

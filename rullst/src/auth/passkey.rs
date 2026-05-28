@@ -1,5 +1,5 @@
 use base64::Engine as _;
-use rand::RngCore;
+use rand::distr::{Alphanumeric, SampleString};
 #[allow(dead_code)]
 use ring::signature;
 use sha2::Digest;
@@ -286,9 +286,7 @@ fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
 }
 
 fn generate_challenge() -> String {
-    let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+    Alphanumeric.sample_string(&mut rand::rng(), 32)
 }
 
 impl PasskeyAuth {

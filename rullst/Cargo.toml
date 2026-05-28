@@ -1,6 +1,6 @@
 [package]
 name = "rullst"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2024"
 description = "O framework fullstack definitivo para Rust, com foco em DX, velocidade e segurança."
 license = "MIT"
@@ -15,49 +15,49 @@ mail-smtp = ["dep:lettre"]
 storage-s3 = ["dep:aws-config", "dep:aws-sdk-s3"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-rullst-macros = { version = "1.0.6", path = "../rullst-macros" }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+rullst-macros = { version = "1.0.7", path = "../rullst-macros" }
 # Optional features dependencies
-redis = { version = "1.2", features = ["tokio-comp", "aio"], optional = true }
-lettre = { version = "0.11", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
-aws-config = { version = "1", optional = true }
-aws-sdk-s3 = { version = "1", optional = true }
+redis = { version = "1.2.1", features = ["tokio-comp", "aio"], optional = true }
+lettre = { version = "0.11.22", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
+aws-config = { version = "1.8.17", optional = true }
+aws-sdk-s3 = { version = "1.133.0", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum = { version = "0.8", features = ["macros", "ws"] }
-tokio = { version = "1.43", features = ["rt-multi-thread", "macros", "time"] }
-rust-eloquent = "1.1.0"
-sqlx = { version = "0.8", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros"] }
-tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["fs", "trace"] }
-tower-layer = "0.3"
-tower-service = "0.3"
-async-trait = "0.1"
-argon2 = "0.5"
-cookie = { version = "0.18", features = ["percent-encoding"] }
-rand = "0.8"
-aes-gcm = "0.10"
-sha2 = "0.11"
-base64 = "0.22"
+axum = { version = "0.8.9", features = ["macros", "ws"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time"] }
+rust-eloquent = "1.1.9"
+sqlx = { version = "0.9.0", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.6.11", features = ["fs", "trace"] }
+tower-layer = "0.3.3"
+tower-service = "0.3.3"
+async-trait = "0.1.89"
+argon2 = "0.6.0-rc.8"
+cookie = { version = "0.18.1", features = ["percent-encoding"] }
+rand = "0.10.1"
+aes-gcm = "0.11.0-rc.4"
+sha2 = "0.11.0"
+base64 = "0.22.1"
 serde_urlencoded = "0.7"
-uuid = { version = "1", features = ["v4"] }
-dashmap = "6"
-cron = "0.16"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-validator = { version = "0.20", features = ["derive"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-libloading = "0.9"
-notify = "8.2.0"
-ring = { version = "0.17", features = ["std"] }
+uuid = { version = "1.23.1", features = ["v4"] }
+dashmap = "7.0.0-rc2"
+cron = "0.16.0"
+chrono = { version = "0.4.44", default-features = false, features = ["clock"] }
+validator = { version = "0.20.0", features = ["derive"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
+libloading = "0.9.0"
+notify = "9.0.0-rc.4"
+ring = { version = "0.17.14", features = ["std"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console"] }
-serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2.122"
+wasm-bindgen-futures = "0.4.72"
+web-sys = { version = "0.3.99", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console"] }
+serde-wasm-bindgen = "0.6.5"
 console_error_panic_hook = "0.1.7"
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 
 

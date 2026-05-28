@@ -4,25 +4,25 @@ use aes_gcm::{
 };
 use argon2::{
     Argon2,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
-use rand::Rng;
 use sha2::Digest;
 use std::fs;
+use std::convert::TryInto;
 
 pub mod passkey;
 
-/// Default fall-back key for local development when APP_KEY is not configured.
-const DEFAULT_APP_KEY: &[u8] = b"rullst-super-secret-development-key-32bytes!!!";
+use std::sync::OnceLock;
+
+static DEV_APP_KEY: OnceLock<Vec<u8>> = OnceLock::new();
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
-    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     argon2
-        .hash_password(password.as_bytes(), &salt)
+    .hash_password(password.as_bytes())
         .map(|h| h.to_string())
         .map_err(|e| e.to_string())
 }
@@ -39,7 +39,7 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 }
 
 /// Resolves the application's unique secret key for encryption.
-/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to a development default.
+/// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
 pub fn get_app_key() -> Vec<u8> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
         return env_key.into_bytes();
@@ -56,10 +56,24 @@ pub fn get_app_key() -> Vec<u8> {
         }
     }
 
+    // Enforce explicit APP_KEY when running in production.
+    let env = std::env::var("RULLST_ENV").unwrap_or_default();
+    if env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod") {
+        eprintln!(
+            "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret."
+        );
+        panic!("Missing APP_KEY in production environment");
+    }
+
     eprintln!(
-        "⚠️  Rullst Security Warning: Using the default development APP_KEY. Please set APP_KEY in your environment or Rullst.toml for production."
+        "⚠️  Rullst Security Warning: Using an ephemeral random APP_KEY. Sessions will invalidate on restart. Set APP_KEY to avoid this."
     );
-    DEFAULT_APP_KEY.to_vec()
+    DEV_APP_KEY.get_or_init(|| {
+        use rand::RngCore;
+        let mut key = vec![0u8; 32];
+        rand::rng().fill_bytes(&mut key);
+        key
+    }).clone()
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
@@ -73,12 +87,12 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
 
     let mut nonce_bytes = [0u8; 12];
-    rand::thread_rng().fill(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    rand::fill(&mut nonce_bytes);
+    let nonce = Nonce::from(nonce_bytes);
 
     let payload = user_id.to_string();
     let ciphertext = cipher
-        .encrypt(nonce, payload.as_bytes())
+        .encrypt(&nonce, payload.as_bytes())
         .map_err(|e| e.to_string())?;
 
     let mut combined = Vec::new();
@@ -106,11 +120,14 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
         return Err("Invalid token length".to_string());
     }
 
-    let nonce = Nonce::from_slice(&combined[..12]);
+    let nonce_bytes: [u8; 12] = combined[..12]
+        .try_into()
+        .map_err(|_| "Invalid token length".to_string())?;
+    let nonce = Nonce::from(nonce_bytes);
     let ciphertext = &combined[12..];
 
     let plaintext = cipher
-        .decrypt(nonce, ciphertext)
+        .decrypt(&nonce, ciphertext)
         .map_err(|e| e.to_string())?;
 
     let user_id_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
