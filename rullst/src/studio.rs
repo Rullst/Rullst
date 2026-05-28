@@ -82,7 +82,7 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
         format!("SELECT COUNT(*) FROM \"{}\"", clean_table)
     };
 
-    let row = sqlx::query(&query_str).fetch_one(pool).await?;
+    let row = sqlx::query(sqlx::AssertSqlSafe(query_str)).fetch_one(pool).await?;
     let count: i64 = row.try_get(0).unwrap_or(0);
     Ok(count as usize)
 }
@@ -248,7 +248,7 @@ pub async fn handle_table(
     let clean_table = sanitize_identifier(&table_name);
 
     let columns_query = format!("PRAGMA table_info(\"{}\")", clean_table);
-    let columns_rows = match sqlx::query(&columns_query).fetch_all(pool).await {
+    let columns_rows = match sqlx::query(sqlx::AssertSqlSafe(columns_query)).fetch_all(pool).await {
         Ok(r) => r,
         Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
     };
@@ -286,7 +286,7 @@ pub async fn handle_table(
         )
     };
 
-    let mut q = sqlx::query(&select_query);
+    let mut q = sqlx::query(sqlx::AssertSqlSafe(select_query));
     if !search.is_empty() {
         let pattern = format!("%{}%", search);
         for _ in &col_names {

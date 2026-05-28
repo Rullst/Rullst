@@ -69,10 +69,10 @@ pub fn get_app_key() -> Vec<u8> {
         "⚠️  Rullst Security Warning: Using an ephemeral random APP_KEY. Sessions will invalidate on restart. Set APP_KEY to avoid this."
     );
     DEV_APP_KEY.get_or_init(|| {
-        use rand::RngCore;
-        let mut key = vec![0u8; 32];
+        use rand::Rng;
+        let mut key = [0u8; 32];
         rand::rng().fill_bytes(&mut key);
-        key
+        key.to_vec()
     }).clone()
 }
 
