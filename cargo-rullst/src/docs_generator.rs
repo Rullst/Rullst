@@ -1,6 +1,6 @@
 use axum::{Router, routing::get_service};
 use colored::*;
-use pulldown_cmark::{Parser, html};
+use pulldown_cmark::{Parser, Options, html};
 use std::fs;
 use std::path::Path;
 use tower_http::services::ServeDir;
@@ -66,7 +66,10 @@ pub fn run_build() -> Result<(), Box<dyn std::error::Error>> {
         let sidebar_html = generate_sidebar(&filtered_pages, docs_dir);
 
         let content = fs::read_to_string(page)?;
-        let parser = Parser::new(&content);
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_TABLES);
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        let parser = Parser::new_ext(&content, options);
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
@@ -373,7 +376,7 @@ fn responsive_css() -> &'static str {
             }
             .hero-buttons {
                 flex-direction: column;
-                align-items: stretch;
+                align-items: center;
             }
             .btn {
                 width: 100%;
@@ -824,10 +827,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
                 <a href="{}" class="btn btn-primary">{}</a>
                 <a href="https://crates.io/crates/rullst" target="_blank" class="btn btn-secondary">View on Crates.io ↗</a>
             </div>
-            <div class="install-snippet" id="install-snippet" title="Click to copy">
-                <span>cargo add rullst</span>
-                <span class="copy-icon" id="install-copy-icon">📋 Copy</span>
-            </div>
+
         </div>
 
         <div class="features">
@@ -854,21 +854,7 @@ fn render_home_layout(content: &str, _sidebar: &str, _page_path: &std::path::Pat
         </div>
     </main>
     <script>
-        // Install snippet copy
-        var snippet = document.getElementById('install-snippet');
-        var copyIcon = document.getElementById('install-copy-icon');
-        if (snippet) {{
-            snippet.addEventListener('click', function () {{
-                navigator.clipboard.writeText('cargo add rullst').then(function () {{
-                    copyIcon.textContent = '✓ Copied!';
-                    copyIcon.style.color = '#10b981';
-                    setTimeout(function () {{
-                        copyIcon.textContent = '📋 Copy';
-                        copyIcon.style.color = '';
-                    }}, 2000);
-                }});
-            }});
-        }}
+
     </script>
     {}
 </body>
