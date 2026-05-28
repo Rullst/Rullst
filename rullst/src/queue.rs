@@ -901,7 +901,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_queue_list_all_jobs() {
+    async fn test_sqlite_queue_list_all_jobs_driver() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
 
         // 1. Test empty queue
