@@ -399,6 +399,22 @@ mod tests {
         assert_eq!(msg2.subject, "Another Subject");
     }
 
+    #[test]
+    fn test_message_builder() {
+        let msg = Message::new()
+            .to("recipient@rullst.dev")
+            .from("sender@rullst.dev")
+            .subject("Test Subject")
+            .text("Plain text body")
+            .html("<p>HTML body</p>");
+
+        assert_eq!(msg.to, "recipient@rullst.dev");
+        assert_eq!(msg.from, Some("sender@rullst.dev".to_string()));
+        assert_eq!(msg.subject, "Test Subject");
+        assert_eq!(msg.body_text, Some("Plain text body".to_string()));
+        assert_eq!(msg.body_html, Some("<p>HTML body</p>".to_string()));
+    }
+
     #[tokio::test]
     async fn test_log_driver() {
         // Prepare storage/logs directory
