@@ -102,6 +102,4 @@ async fn test_replication_manager_mock_start() {
 }
 
 #[tokio::test]
-async fn test_edge_module_exists() {
-
-}
+async fn test_edge_module_exists() {}

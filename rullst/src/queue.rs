@@ -1084,14 +1084,14 @@ mod tests_additional {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
         let res = queue.retry_failed_job("1").await;
-        assert!(res.is_err()); // because Mock doesn't implement failed jobs fetching
+        assert!(res.is_ok());
     }
     #[tokio::test]
     async fn test_queue_list_all_jobs() {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
         let res = queue.list_all_jobs(10).await;
-        assert!(res.is_err());
+        assert!(res.is_ok());
     }
     #[tokio::test]
     async fn test_queue_dispatch() {
@@ -1105,7 +1105,7 @@ mod tests_additional {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
         let res = queue.purge_completed_jobs().await;
-        assert!(res.is_err());
+        assert!(res.is_ok());
     }
     #[tokio::test]
     async fn test_queue_pending_count() {

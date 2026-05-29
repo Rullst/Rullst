@@ -117,6 +117,4 @@ async fn test_live_ws_handler() {
 }
 
 #[tokio::test]
-async fn test_live_module_exists() {
-
-}
+async fn test_live_module_exists() {}
