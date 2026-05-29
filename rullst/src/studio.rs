@@ -133,7 +133,7 @@ fn build_rows_html(records: &[sqlx::any::AnyRow], col_names: &[String]) -> Strin
         for row in records {
             rows_html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
             for i in 0..col_names.len() {
-                let cell_val = get_any_value_as_string(&row, i);
+                let cell_val = get_any_value_as_string(row, i);
                 let is_null = cell_val == "NULL";
                 let text_class = if is_null {
                     "text-slate-600 font-mono italic"

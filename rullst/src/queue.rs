@@ -1078,6 +1078,7 @@ mod tests {
 #[cfg(test)]
 mod tests_additional {
     use super::*;
+    use super::tests::MockPendingCountDriver;
     #[tokio::test]
     async fn test_queue_retry_failed_job() {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
