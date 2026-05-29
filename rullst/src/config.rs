@@ -18,15 +18,11 @@ pub struct AppConfig {
     pub port: Option<u16>,
 }
 
-
-
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
 pub struct DatabaseConfig {
     pub url: Option<String>,
 }
-
-
 
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
@@ -49,8 +45,6 @@ impl Default for SecurityConfig {
         }
     }
 }
-
-
 
 impl RullstConfig {
     pub fn new() -> Self {
