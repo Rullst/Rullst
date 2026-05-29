@@ -9,9 +9,7 @@
 > 📚 **[Read the Official Documentation!](https://venelouis.github.io/Rullst/)**  
 > 📦 **[View on Crates.io!](https://crates.io/crates/rullst)**
 
-> [!WARNING]  
-> **Pardon our dust! 🚧**  
-> Rullst is under **constant development and rapid improvement**. As we stabilize the framework and update core dependencies, you might occasionally encounter bugs or breaking changes. We sincerely apologize for any crashes! Please consider becoming a **contributor** to help us build the best web framework on the internet. 🦀❤️
+
 
 <p align="center">
   <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=fc8d62&logo=rust" alt="Crates.io">
