@@ -73,7 +73,8 @@ pub fn get_app_key() -> Vec<u8> {
     }
 
     // Enforce explicit APP_KEY when running in production.
-    let env = std::env::var("RULLST_ENV").unwrap_or_default();
+    let env = std::env::var("RULLST_ENV")
+        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
     if env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod") {
         eprintln!(
             "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret."

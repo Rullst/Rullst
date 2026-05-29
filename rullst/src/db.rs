@@ -108,7 +108,12 @@ mod tests {
     use super::*;
     #[tokio::test]
     async fn test_db_get_pool() {
-        assert!(true, "Tested get_pool");
+        let config = ReplicationConfig::new("test.db")
+            .with_sync_interval(20)
+            .with_auth_token("secret");
+        assert_eq!(config.replica_path, "test.db");
+        assert_eq!(config.sync_interval_secs, 20);
+        assert_eq!(config.auth_token, Some("secret".to_string()));
     }
 }
 

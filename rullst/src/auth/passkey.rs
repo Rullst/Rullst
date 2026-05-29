@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use base64::Engine as _;
 use rand::distr::{Alphanumeric, SampleString};
 use ring::signature;

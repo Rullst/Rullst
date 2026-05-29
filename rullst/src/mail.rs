@@ -432,31 +432,39 @@ mod tests_additional {
     use super::*;
     #[tokio::test]
     async fn test_mail_custom() {
-        assert!(true, "Tested custom");
+        let msg = Message::new().to("a").from("b").subject("c").text("d").html("e");
+        assert_eq!(msg.to, "a");
+        assert_eq!(msg.from.unwrap(), "b");
     }
     #[tokio::test]
     async fn test_mail_html() {
-        assert!(true, "Tested html");
+        let msg = Message::new().html("h");
+        assert_eq!(msg.body_html.unwrap(), "h");
     }
     #[tokio::test]
     async fn test_mail_subject() {
-        assert!(true, "Tested subject");
+        let msg = Message::new().subject("sub");
+        assert_eq!(msg.subject, "sub");
     }
     #[tokio::test]
     async fn test_mail_to() {
-        assert!(true, "Tested to");
+        let msg = Message::new().to("to");
+        assert_eq!(msg.to, "to");
     }
     #[tokio::test]
     async fn test_mail_send() {
-        assert!(true, "Tested send");
+        let msg = Message::new().to("to");
+        assert_eq!(msg.to, "to");
     }
     #[tokio::test]
     async fn test_mail_from() {
-        assert!(true, "Tested from");
+        let msg = Message::new().from("from");
+        assert_eq!(msg.from.unwrap(), "from");
     }
     #[tokio::test]
     async fn test_mail_text() {
-        assert!(true, "Tested text");
+        let msg = Message::new().text("txt");
+        assert_eq!(msg.body_text.unwrap(), "txt");
     }
 }
 

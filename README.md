@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=fc8d62&logo=rust" alt="Crates.io">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-  <img src="https://img.shields.io/badge/Status-v1.0.8-emerald?style=for-the-badge" alt="Status">
+  <img src="https://img.shields.io/badge/Status-v1.0.9-emerald?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/docsrs/rullst?style=for-the-badge&color=4d76ae" alt="Docs">
   <img src="https://img.shields.io/crates/d/rullst?style=for-the-badge&color=8da0cb" alt="Downloads">
   <img src="https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue?style=for-the-badge" alt="Stack">
@@ -41,7 +41,7 @@ Rullst redefines this experience. We offer an integrated, cohesive developer exp
 
 ---
 
-## 🏆 Everything You Need, Built-In (v1.0.7)
+## 🏆 Everything You Need, Built-In (v1.0.9)
 
 Rullst ships with **8 completed milestones** covering every layer of modern web development:
 

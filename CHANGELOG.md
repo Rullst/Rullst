@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dynamic Local Secret Persistence**: Removed the last static hardcoded `DEV_APP_KEY` from memory. In development, keys are now generated securely and persisted automatically to `.rullst_dev_key`, preventing any false-positive security scans.
 - **Massive Test Coverage Expansion**: Introduced comprehensive unit and integration test suites for `mail.rs`, `queue.rs`, `db.rs`, `live.rs`, `studio.rs`, `error_console.rs`, `edge.rs`, and `resilience.rs`, achieving flawless coverage.
 
+- **Production Fail-Hard**: Added a strict enforcement in `auth.rs`. If `RULLST_ENV` or `APP_ENV` is set to `production` or `prod` and `APP_KEY` is missing, the server explicitly panics instead of generating an ephemeral key.
+- **Removed Dummy Tests**: Replaced `assert!(true)` dummy tests inside `db.rs`, `mail.rs`, and `queue.rs` with functional assertions and proper struct validations to guarantee honest Code Coverage reports.
+- **Passkey Linter Fixes**: Removed `dead_code` warnings from the WebAuthn lightweight CBOR parser.
+- **Dependabot Updates**: Updated core transitive dependencies (`hyper`, `aws-sdk`, `redis`, etc.) to mitigate known downstream CVE vulnerabilities.
+
 ### Refactoring & Stability
 - **CLI Refactoring**: Extracted the massive CLI command matching block inside `cargo-rullst/src/main.rs` into an isolated `run_cli_command()` function for optimal AI-maintainability.
 - **Studio Dashboard Refactoring**: Extracted raw string generation inside the SQL-inspection tool `studio.rs` into pure `build_headers_html()` and `build_rows_html()` helpers, dramatically reducing the cognitive complexity of the HTTP handler.

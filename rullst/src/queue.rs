@@ -1080,23 +1080,38 @@ mod tests_additional {
     use super::*;
     #[tokio::test]
     async fn test_queue_retry_failed_job() {
-        assert!(true, "Tested retry_failed_job");
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let res = queue.retry_failed_job("1").await;
+        assert!(res.is_err()); // because Mock doesn't implement failed jobs fetching
     }
     #[tokio::test]
     async fn test_queue_list_all_jobs() {
-        assert!(true, "Tested list_all_jobs");
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let res = queue.list_all_jobs().await;
+        assert!(res.is_err());
     }
     #[tokio::test]
     async fn test_queue_dispatch() {
-        assert!(true, "Tested dispatch");
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let res = queue.dispatch("job", serde_json::json!({})).await;
+        assert!(res.is_ok());
     }
     #[tokio::test]
     async fn test_queue_purge_completed_jobs() {
-        assert!(true, "Tested purge_completed_jobs");
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let res = queue.purge_completed_jobs().await;
+        assert!(res.is_err());
     }
     #[tokio::test]
     async fn test_queue_pending_count() {
-        assert!(true, "Tested pending_count");
+        let driver = Box::new(MockPendingCountDriver { should_fail: false });
+        let queue = Queue::custom(driver);
+        let res = queue.pending_count().await;
+        assert_eq!(res.unwrap(), 42);
     }
 }
 
