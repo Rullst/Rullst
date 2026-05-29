@@ -94,5 +94,5 @@ async fn test_traffic_shield_backpressure() {
 
 #[tokio::test]
 async fn test_resilience_module_exists() {
-    assert!(true);
+
 }
