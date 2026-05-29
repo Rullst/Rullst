@@ -1,4 +1,4 @@
-use rullst::{queue, mail, live, edge};
+use rullst::{edge, live, mail, queue};
 
 #[tokio::test]
 async fn test_queue_initialization() {

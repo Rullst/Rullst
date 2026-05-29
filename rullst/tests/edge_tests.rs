@@ -105,4 +105,3 @@ async fn test_replication_manager_mock_start() {
 async fn test_edge_module_exists() {
     assert!(true);
 }
-

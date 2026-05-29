@@ -47,4 +47,3 @@ async fn test_error_console_catches_panic_and_renders_html() {
 async fn test_error_console_module_exists() {
     assert!(true);
 }
-

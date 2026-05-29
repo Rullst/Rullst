@@ -116,4 +116,3 @@ mod tests {
         assert_eq!(config.auth_token, Some("secret".to_string()));
     }
 }
-

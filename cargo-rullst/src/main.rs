@@ -4607,4 +4607,3 @@ fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>>
     }
     Ok(())
 }
-

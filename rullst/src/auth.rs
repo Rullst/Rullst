@@ -15,7 +15,6 @@ use std::fs;
 
 pub mod passkey;
 
-
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
     let salt = SaltString::generate(&mut OsRng);
@@ -94,14 +93,14 @@ pub fn get_app_key() -> Vec<u8> {
     eprintln!(
         "⚠️  Rullst Security Warning: Generating a random APP_KEY in .rullst_dev_key. Set APP_KEY environment variable for production."
     );
-    
+
     use rand::Rng;
     let mut key = [0u8; 32];
     rand::rng().fill_bytes(&mut key);
     let key_vec = key.to_vec();
-    
+
     let _ = fs::write(dev_key_path, general_purpose::STANDARD.encode(&key_vec));
-    
+
     key_vec
 }
 

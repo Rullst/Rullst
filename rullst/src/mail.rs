@@ -432,7 +432,12 @@ mod tests_additional {
     use super::*;
     #[tokio::test]
     async fn test_mail_custom() {
-        let msg = Message::new().to("a").from("b").subject("c").text("d").html("e");
+        let msg = Message::new()
+            .to("a")
+            .from("b")
+            .subject("c")
+            .text("d")
+            .html("e");
         assert_eq!(msg.to, "a");
         assert_eq!(msg.from.unwrap(), "b");
     }
@@ -467,4 +472,3 @@ mod tests_additional {
         assert_eq!(msg.body_text.unwrap(), "txt");
     }
 }
-

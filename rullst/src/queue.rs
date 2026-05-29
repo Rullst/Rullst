@@ -1028,8 +1028,8 @@ mod tests {
         assert!(push_called.load(std::sync::atomic::Ordering::SeqCst));
     }
 
-    struct MockPendingCountDriver {
-        should_fail: bool,
+    pub struct MockPendingCountDriver {
+        pub should_fail: bool,
     }
 
     #[async_trait]
@@ -1089,7 +1089,7 @@ mod tests_additional {
     async fn test_queue_list_all_jobs() {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
-        let res = queue.list_all_jobs().await;
+        let res = queue.list_all_jobs(10).await;
         assert!(res.is_err());
     }
     #[tokio::test]
@@ -1114,4 +1114,3 @@ mod tests_additional {
         assert_eq!(res.unwrap(), 42);
     }
 }
-
