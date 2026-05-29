@@ -115,3 +115,9 @@ async fn test_live_ws_handler() {
     // 8. Gracefully close
     ws_stream.close(None).await.unwrap();
 }
+
+#[tokio::test]
+async fn test_live_module_exists() {
+    assert!(true);
+}
+

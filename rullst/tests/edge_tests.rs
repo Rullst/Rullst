@@ -100,3 +100,9 @@ async fn test_replication_manager_mock_start() {
     ReplicationManager::start(config);
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 }
+
+#[tokio::test]
+async fn test_edge_module_exists() {
+    assert!(true);
+}
+

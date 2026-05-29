@@ -82,7 +82,7 @@ impl Server {
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
         let mut app_config = crate::config::RullstConfig::new();
         if std::path::Path::new("Rullst.toml").exists() {
-            match crate::config::RullstConfig::load_from_file("Rullst.toml") {
+            match crate::config::RullstConfig::load_from_file("Rullst.toml").await {
                 Ok(c) => app_config = c,
                 Err(e) => eprintln!("⚠️ Rullst Warning: Failed to parse Rullst.toml: {}", e),
             }

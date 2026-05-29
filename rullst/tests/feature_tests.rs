@@ -90,7 +90,7 @@ async fn test_env_feature_driver() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_toml_feature_driver() {
     // Mock a Rullst.toml file
     let toml_mock = r#"

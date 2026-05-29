@@ -3251,9 +3251,9 @@ dependencies = [
 
 [[package]]
 name = "rust-eloquent"
-version = "1.1.9"
+version = "1.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e7d4efc90dc086311ecf7b98f5f2f14825848082296a09857c8a6bf48c840ee"
+checksum = "0f910c098cbfbbf642477e99fe634fdb14ebf0cabf7fd3a0a5fd232c49944560"
 dependencies = [
  "async-trait",
  "futures",
@@ -3267,9 +3267,9 @@ dependencies = [
 
 [[package]]
 name = "rust-eloquent-macros"
-version = "1.1.9"
+version = "1.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "992ed9d7ffe986dbe8642998b1014428cb67e756fb6f225b385b42dd7952f553"
+checksum = "15e5708932d5aa6f0a01ff6e8033a78603d1b3318e42c4eef6de3ad06afc36ed"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3278,9 +3278,9 @@ dependencies = [
 
 [[package]]
 name = "rust-socialite"
-version = "5.1.0"
+version = "5.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f29fc772121a1bd2977af83e50e30f4007f8fb6f68f522246709d28c3d60ac05"
+checksum = "25481abfc8d7b2cd82d1df4968023bd2c4b3ba4149c2d29394413f03ff15a2be"
 dependencies = [
  "async-trait",
  "base64",

@@ -293,8 +293,14 @@ impl TomlFeatureDriver {
             config: DashMap::new(),
             config_path,
         };
-        if let Ok(content) = std::fs::read_to_string(&driver.config_path) {
-            driver.load_from_str(&content);
+        if tokio::runtime::Handle::try_current().is_ok() {
+            if let Ok(content) = tokio::task::block_in_place(|| std::fs::read_to_string(&driver.config_path)) {
+                driver.load_from_str(&content);
+            }
+        } else {
+            if let Ok(content) = std::fs::read_to_string(&driver.config_path) {
+                driver.load_from_str(&content);
+            }
         }
         driver
     }

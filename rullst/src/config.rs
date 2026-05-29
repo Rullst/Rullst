@@ -51,8 +51,8 @@ impl RullstConfig {
         Self::default()
     }
 
-    pub fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = std::fs::read_to_string(path)?;
+    pub async fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = tokio::fs::read_to_string(path).await?;
         let config: RullstConfig = toml::from_str(&content)?;
         Ok(config)
     }

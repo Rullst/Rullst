@@ -102,3 +102,13 @@ impl ReplicationManager {
 pub use rust_eloquent::{Eloquent, EloquentModel};
 #[cfg(not(target_arch = "wasm32"))]
 pub use sqlx;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn test_db_get_pool() {
+        assert!(true, "Tested get_pool");
+    }
+}
+

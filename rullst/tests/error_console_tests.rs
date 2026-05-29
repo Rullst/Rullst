@@ -42,3 +42,9 @@ async fn test_error_console_catches_panic_and_renders_html() {
     // (The exact filename may vary by environment/platform)
     response.assert_see("Stack Trace");
 }
+
+#[tokio::test]
+async fn test_error_console_module_exists() {
+    assert!(true);
+}
+

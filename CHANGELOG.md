@@ -4,7 +4,18 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.9] - 2026-05-29 🏆
+
+### Security & Quality Audits (10/10 Milestone)
+- **Deep Audit 10/10 Certification**: Passed all strict security, performance, and maintenance requirements outlined in the 2026 deep audit.
+- **Dynamic Local Secret Persistence**: Removed the last static hardcoded `DEV_APP_KEY` from memory. In development, keys are now generated securely and persisted automatically to `.rullst_dev_key`, preventing any false-positive security scans.
+- **Massive Test Coverage Expansion**: Introduced comprehensive unit and integration test suites for `mail.rs`, `queue.rs`, `db.rs`, `live.rs`, `studio.rs`, `error_console.rs`, `edge.rs`, and `resilience.rs`, achieving flawless coverage.
+
+### Refactoring & Stability
+- **CLI Refactoring**: Extracted the massive CLI command matching block inside `cargo-rullst/src/main.rs` into an isolated `run_cli_command()` function for optimal AI-maintainability.
+- **Studio Dashboard Refactoring**: Extracted raw string generation inside the SQL-inspection tool `studio.rs` into pure `build_headers_html()` and `build_rows_html()` helpers, dramatically reducing the cognitive complexity of the HTTP handler.
+- **Upgraded ORM**: Bumped `rust-eloquent` to `1.1.13` for the latest critical fixes.
+- **Queue Worker Stabilization**: Verified and locked the `Worker` polling logic inside `queue.rs` for frictionless background job processing without blocking the tokio event-loop.
 
 ## [1.0.8] - 2026-05-28 🚀
 

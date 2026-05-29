@@ -268,66 +268,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Cli::parse_from(filtered_args);
 
-    match &cli.command {
-        Commands::New { name, api, docker } => {
-            create_new_project(name.as_deref(), *api, *docker)?;
-        }
-        Commands::MakeController { name, api } => {
-            create_new_controller(name, *api)?;
-        }
-        Commands::MakeModel { name, migration } => {
-            create_new_model(name, *migration)?;
-        }
-        Commands::MakeMiddleware { name } => {
-            create_new_middleware(name)?;
-        }
-        Commands::DbMigrate => {
-            run_project_db_command("db:migrate")?;
-        }
-        Commands::DbRollback => {
-            run_project_db_command("db:rollback")?;
-        }
-        Commands::DbStatus => {
-            run_project_db_command("db:status")?;
-        }
-        Commands::DbSeed => {
-            run_project_db_command("db:seed")?;
-        }
-        Commands::MakeMigration { name } => {
-            create_new_migration(name)?;
-        }
-        Commands::Auth => {
-            scaffold_auth_system()?;
-        }
-        Commands::MakeCors => {
-            create_cors_middleware()?;
-        }
-        Commands::MakeJwt => {
-            create_jwt_middleware()?;
-        }
-        Commands::GenerateOpenapi => {
-            generate_openapi_spec()?;
-        }
-        Commands::MakeWorker { name } => {
-            create_new_worker(name)?;
-        }
-        Commands::Upgrade => {
-            run_upgrade()?;
-        }
-        Commands::Studio => {
-            run_project_db_command("studio")?;
-        }
-        Commands::BuildClient { debug } => {
-            run_build_client(*debug)?;
-        }
-        Commands::Build { debug } => {
-            run_production_build(!*debug)?;
-        }
-        Commands::Docs { action } => match action {
-            DocsCommands::Dev => docs_generator::run_dev_server()?,
-            DocsCommands::Build => docs_generator::run_build()?,
-        },
-    }
+    run_cli_command(&cli.command)?;
 
     if let Some(latest) = update_available {
         print_update_banner(&latest);
@@ -4602,3 +4543,68 @@ fn run_production_build(release: bool) -> Result<(), Box<dyn std::error::Error>>
 
     Ok(())
 }
+
+fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        Commands::New { name, api, docker } => {
+            create_new_project(name.as_deref(), *api, *docker)?;
+        }
+        Commands::MakeController { name, api } => {
+            create_new_controller(name, *api)?;
+        }
+        Commands::MakeModel { name, migration } => {
+            create_new_model(name, *migration)?;
+        }
+        Commands::MakeMiddleware { name } => {
+            create_new_middleware(name)?;
+        }
+        Commands::DbMigrate => {
+            run_project_db_command("db:migrate")?;
+        }
+        Commands::DbRollback => {
+            run_project_db_command("db:rollback")?;
+        }
+        Commands::DbStatus => {
+            run_project_db_command("db:status")?;
+        }
+        Commands::DbSeed => {
+            run_project_db_command("db:seed")?;
+        }
+        Commands::MakeMigration { name } => {
+            create_new_migration(name)?;
+        }
+        Commands::Auth => {
+            scaffold_auth_system()?;
+        }
+        Commands::MakeCors => {
+            create_cors_middleware()?;
+        }
+        Commands::MakeJwt => {
+            create_jwt_middleware()?;
+        }
+        Commands::GenerateOpenapi => {
+            generate_openapi_spec()?;
+        }
+        Commands::MakeWorker { name } => {
+            create_new_worker(name)?;
+        }
+        Commands::Upgrade => {
+            run_upgrade()?;
+        }
+        Commands::Studio => {
+            run_project_db_command("studio")?;
+        }
+        Commands::BuildClient { debug } => {
+            run_build_client(*debug)?;
+        }
+        Commands::Build { debug } => {
+            run_production_build(!*debug)?;
+        }
+        Commands::Docs { action } => match action {
+            DocsCommands::Dev => docs_generator::run_dev_server()?,
+            DocsCommands::Build => docs_generator::run_build()?,
+        },
+    }
+    Ok(())
+}
+

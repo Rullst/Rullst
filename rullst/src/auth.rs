@@ -15,9 +15,6 @@ use std::fs;
 
 pub mod passkey;
 
-use std::sync::OnceLock;
-
-static DEV_APP_KEY: OnceLock<Vec<u8>> = OnceLock::new();
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
@@ -84,17 +81,27 @@ pub fn get_app_key() -> Vec<u8> {
         panic!("Missing APP_KEY in production environment");
     }
 
+    let dev_key_path = ".rullst_dev_key";
+    if let Ok(key_hex) = fs::read_to_string(dev_key_path) {
+        if let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim()) {
+            if key_bytes.len() == 32 {
+                return key_bytes;
+            }
+        }
+    }
+
     eprintln!(
-        "⚠️  Rullst Security Warning: Using an ephemeral random APP_KEY. Sessions will invalidate on restart. Set APP_KEY to avoid this."
+        "⚠️  Rullst Security Warning: Generating a random APP_KEY in .rullst_dev_key. Set APP_KEY environment variable for production."
     );
-    DEV_APP_KEY
-        .get_or_init(|| {
-            use rand::Rng;
-            let mut key = [0u8; 32];
-            rand::rng().fill_bytes(&mut key);
-            key.to_vec()
-        })
-        .clone()
+    
+    use rand::Rng;
+    let mut key = [0u8; 32];
+    rand::rng().fill_bytes(&mut key);
+    let key_vec = key.to_vec();
+    
+    let _ = fs::write(dev_key_path, general_purpose::STANDARD.encode(&key_vec));
+    
+    key_vec
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.

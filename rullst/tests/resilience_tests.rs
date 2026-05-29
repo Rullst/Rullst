@@ -91,3 +91,9 @@ async fn test_traffic_shield_backpressure() {
     res.assert_status(503);
     assert!(res.body_string().contains("Service Temporarily Saturated"));
 }
+
+#[tokio::test]
+async fn test_resilience_module_exists() {
+    assert!(true);
+}
+

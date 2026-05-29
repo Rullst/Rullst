@@ -46,7 +46,17 @@ impl LocalDriver {
     }
 
     fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        let joined = self.root.join(path.trim_start_matches('/'));
+        let safe_path = path.replace('\\', "/");
+        let safe_path = safe_path.trim_start_matches('/');
+
+        // Ensure no absolute paths or Windows drive letters are injected
+        if std::path::Path::new(safe_path).is_absolute() || safe_path.contains(':') {
+            return Err(StorageError::DriverError(
+                "Access denied: absolute paths are not allowed".to_string(),
+            ));
+        }
+
+        let joined = self.root.join(safe_path);
 
         let mut normalized = PathBuf::new();
         for component in joined.components() {

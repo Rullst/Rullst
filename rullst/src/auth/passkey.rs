@@ -1,6 +1,5 @@
 use base64::Engine as _;
 use rand::distr::{Alphanumeric, SampleString};
-#[allow(dead_code)]
 use ring::signature;
 use sha2::Digest;
 
@@ -54,7 +53,6 @@ impl PasskeyConfig {
 pub struct PasskeyAuth {
     rp_name: String,
     rp_id: String,
-    #[allow(dead_code)]
     rp_origin: String,
 }
 
@@ -172,7 +170,6 @@ pub struct Passkey {
 }
 
 // Custom lightweight CBOR parser for WebAuthn payload decoding
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum CborValue {
     Integer(i64),
@@ -182,7 +179,6 @@ enum CborValue {
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum CborKey {
     Integer(i64),
@@ -365,6 +361,15 @@ impl PasskeyAuth {
             return Err("Challenge mismatch".to_string());
         }
 
+        let origin = client_data
+            .get("origin")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Origin missing in clientDataJSON".to_string())?;
+
+        if origin != self.rp_origin {
+            return Err("Origin mismatch".to_string());
+        }
+
         let attestation_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.attestation_object)
             .map_err(|e| format!("Failed to decode attestationObject: {}", e))?;
@@ -475,6 +480,15 @@ impl PasskeyAuth {
 
         if challenge != expected_challenge {
             return Err("Challenge mismatch".to_string());
+        }
+
+        let origin = client_data
+            .get("origin")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Origin missing in clientDataJSON".to_string())?;
+
+        if origin != self.rp_origin {
+            return Err("Origin mismatch".to_string());
         }
 
         let auth_data_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
