@@ -80,16 +80,20 @@ impl Server {
 
     /// Start the HTTP server on the specified port
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
-        if self.db_url.is_none()
-            && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
-        {
-            for line in toml_content.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("url")
-                    && let Some(val) = trimmed.split('=').nth(1)
-                {
-                    self.db_url = Some(val.trim().trim_matches('"').to_string());
-                }
+        let mut app_config = crate::config::RullstConfig::new();
+        if std::path::Path::new("Rullst.toml").exists() {
+            match crate::config::RullstConfig::load_from_file("Rullst.toml") {
+                Ok(c) => app_config = c,
+                Err(e) => eprintln!("⚠️ Rullst Warning: Failed to parse Rullst.toml: {}", e),
+            }
+        }
+
+        if self.db_url.is_none() {
+            if let Some(ref url) = app_config.database.url {
+                self.db_url = Some(url.clone());
+            } else {
+                // SQLite by default para produção local
+                self.db_url = Some("sqlite://rullst.db?mode=rwc".to_string());
             }
         }
 
@@ -273,6 +277,16 @@ impl Server {
         } else {
             // --- Standard Static Routing Mode ---
             let mut app = self.router.into_axum();
+
+            // Inject Security Config for middlewares to extract
+            app = app.layer(axum::Extension(app_config.security.clone()));
+            
+            // Apply CORS if configured
+            if !app_config.security.cors_allow_origins.is_empty() {
+                use tower_http::cors::{CorsLayer, Any};
+                // NOTE: This is a basic CORS setup. You may want to expose more options via config.
+                app = app.layer(CorsLayer::new().allow_origin(Any));
+            }
 
             // Serve static files from "static" directory if it exists
             if std::path::Path::new("static").exists() {

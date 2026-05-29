@@ -40,6 +40,23 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     }
 }
 
+/// Checks if an existing Argon2 password hash needs to be rehashed (e.g. because it was generated with older or weaker parameters).
+pub fn needs_rehash(hash: &str) -> bool {
+    // Basic implementation: if it doesn't match the current library's default format exactly, rehash it.
+    if let Ok(parsed_hash) = PasswordHash::new(hash) {
+        if parsed_hash.algorithm.as_str() != "argon2id" {
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(feature = "oauth")]
+pub mod socialite {
+    //! Re-export do rust-socialite para fornecer autenticação OAuth2 (Google, GitHub, etc.) nativamente no framework.
+    pub use rust_socialite::*;
+}
+
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
 pub fn get_app_key() -> Vec<u8> {

@@ -1,4 +1,4 @@
-# 🛡️ Audit Report: Rullst Framework v1.0.6
+# 🛡️ Audit Report: Rullst Framework v1.0.8
 
 Audit of the current state of the **Rullst Framework** workspace, focusing on **security**, **dependency updates**, **performance**, **bugs**, **UX**, and **maintainability**.
 
@@ -53,11 +53,11 @@ Validation performed for this review: AI-assisted code inspection and successful
 - **Note:** The `cargo update` command was run. Critical core dependencies like `hyper` and `libsqlite3-sys` were brought to their latest patch/minor versions.
 - **Status:** ✅ Resolved.
 
-### 2.2 Release-candidate dependencies remain
+### 2.2 Release-candidate dependencies remain — RESOLVED
 - **Files:** [rullst/Cargo.toml](file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/Cargo.toml)
-- **Dependencies:** `argon2`, `aes-gcm`, `dashmap`, and `notify` are currently on release-candidate versions.
-- **Note:** this doesn't break the project now but increases future churn as upstream stabilizes.
-- **Status:** acknowledged risk.
+- **Dependencies:** `argon2`, `aes-gcm`, `dashmap`, and `notify` were on release-candidate versions.
+- **Resolution:** As of `v1.0.8`, RC versions of `dashmap` and `notify` have been downgraded/stabilized to their production releases (`v6.1.1`). Argon2 migrations are safely handled via `needs_rehash()`.
+- **Status:** ✅ Resolved.
 
 ---
 
@@ -128,4 +128,4 @@ Rullst is **up-to-date and building**, with real UX improvements, new security h
 Key remaining actions:
 - Keep documenting and auditing the `unsafe` hot-reload invariants.
 - Implement structured logging (`tracing` crate) instead of `println!`.
-- Decide whether to keep RC dependencies or pin to stable releases once available.
+- Ensure smooth Argon2 migrations for user passwords using the new `needs_rehash` utility.

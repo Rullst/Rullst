@@ -40,12 +40,18 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
 
         if !has_cookie {
             let token = generate_csrf_token();
+            let same_site = req
+                .extensions()
+                .get::<crate::config::SecurityConfig>()
+                .map(|cfg| cfg.csrf_same_site.clone())
+                .unwrap_or_else(|| "Lax".to_string());
+
             let mut response = next.run(req).await;
 
-            // Set cookie for Strict mode
+            // Set cookie for CSRF
             if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-                "rullst_csrf={}; Path=/; SameSite=Strict; HttpOnly",
-                token
+                "rullst_csrf={}; Path=/; SameSite={}; HttpOnly",
+                token, same_site
             )) {
                 response
                     .headers_mut()

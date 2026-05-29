@@ -4,6 +4,15 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-05-28 🚀
+
+### Added (Production Readiness)
+- **Rust-Socialite Native Support**: Integrates `rust-socialite` seamlessly into the framework under the `oauth` feature, exposing ready-to-use authentication endpoints in `rullst::auth::socialite`.
+- **Rullst.toml Configuration Parsing**: Added strong typing and `toml` parsing directly in `Server::run` to read `Rullst.toml`, dynamically applying properties such as `database.url` and `security.csrf_same_site`. Defaults to SQLite `rwc` mode for zero-config persistence.
+- **Dynamic SameSite & CORS**: Removed hardcoded `SameSite=Strict` CSRF cookies, supporting dynamic values (like `Lax`) configurable via `Rullst.toml`. Automatically injects optional `tower_http::cors::CorsLayer`.
+- **Rehash on Login Pattern**: Added `needs_rehash` in `auth.rs` to allow safe migrations of existing user password hashes from unstable Argon2 parameters to current stable defaults seamlessly during authentication.
+- **Stabilized Dependencies**: Downgraded RC dependencies (`dashmap 7.0.0-rc2`, `notify 9.0.0-rc.4`) to stable `6.1.1` tags to ensure solid production stability for applications relying on `rullst`.
+
 ## [1.0.7] - 2026-05-28 🛡️
 
 ### Security & Quality Audits

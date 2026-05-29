@@ -1,6 +1,6 @@
 [package]
 name = "rullst-macros"
-version = "1.0.7"
+version = "1.0.8"
 edition = "2024"
 description = "JSX-like compilation macros for Rullst framework"
 license = "MIT"
