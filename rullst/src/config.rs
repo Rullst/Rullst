@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
 pub struct RullstConfig {
     #[serde(default)]
@@ -11,33 +11,22 @@ pub struct RullstConfig {
     pub security: SecurityConfig,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
 pub struct AppConfig {
     pub env: Option<String>,
     pub port: Option<u16>,
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            env: None,
-            port: None,
-        }
-    }
-}
 
-#[derive(Debug, Clone, Deserialize)]
+
+#[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
 pub struct DatabaseConfig {
     pub url: Option<String>,
 }
 
-impl Default for DatabaseConfig {
-    fn default() -> Self {
-        Self { url: None }
-    }
-}
+
 
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
@@ -61,15 +50,7 @@ impl Default for SecurityConfig {
     }
 }
 
-impl Default for RullstConfig {
-    fn default() -> Self {
-        Self {
-            app: AppConfig::default(),
-            database: DatabaseConfig::default(),
-            security: SecurityConfig::default(),
-        }
-    }
-}
+
 
 impl RullstConfig {
     pub fn new() -> Self {
