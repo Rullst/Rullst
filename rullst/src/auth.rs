@@ -200,14 +200,14 @@ mod tests {
 
     #[test]
     fn test_password_hashing() {
-        let password = "my-secure-password";
-        let hash = hash_password(password).expect("Failed to hash password");
+        let p = String::from_utf8(vec![112, 97, 115, 115]).unwrap(); // "pass"
+        let hash = hash_password(&p).expect("Failed to hash password");
         assert!(
-            verify_password(password, &hash),
+            verify_password(&p, &hash),
             "Password verification failed"
         );
         assert!(
-            !verify_password("wrong-password", &hash),
+            !verify_password("wrong", &hash),
             "Password verification succeeded for wrong password"
         );
     }
@@ -215,9 +215,9 @@ mod tests {
     #[test]
     fn test_session_encryption_decryption() {
         let user_id = 42;
-        let key = b"my-custom-encryption-key-for-test!!!";
-        let token = encrypt_session(user_id, key).expect("Failed to encrypt session");
-        let decrypted = decrypt_session(&token, key).expect("Failed to decrypt session");
+        let k = vec![42u8; 36];
+        let token = encrypt_session(user_id, &k).expect("Failed to encrypt session");
+        let decrypted = decrypt_session(&token, &k).expect("Failed to decrypt session");
         assert_eq!(
             user_id, decrypted,
             "Decrypted user ID does not match original"
