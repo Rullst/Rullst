@@ -109,7 +109,9 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
         // Read request body (limited to 1MB to prevent memory exhaustion)
         let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
             Ok(b) => b,
-            Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+            Err(_) => {
+                return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+            }
         };
 
         let body_token = extract_token_from_body(&bytes);

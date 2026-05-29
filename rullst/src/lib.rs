@@ -5,9 +5,9 @@
 )]
 extern crate self as rullst;
 
+pub mod config;
 pub mod db;
 pub mod edge;
-pub mod config;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod ai;
@@ -82,7 +82,7 @@ pub use server::Server;
 pub use rust_eloquent::{Eloquent, EloquentModel};
 
 // Re-export Configuration types
-pub use config::{RullstConfig, AppConfig, DatabaseConfig, SecurityConfig};
+pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
 
 // Re-export axum response types for convenience
 #[cfg(not(target_arch = "wasm32"))]

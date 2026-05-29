@@ -20,7 +20,10 @@ pub struct AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self { env: None, port: None }
+        Self {
+            env: None,
+            port: None,
+        }
     }
 }
 
@@ -72,7 +75,7 @@ impl RullstConfig {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         let config: RullstConfig = toml::from_str(&content)?;

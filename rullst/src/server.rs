@@ -280,10 +280,10 @@ impl Server {
 
             // Inject Security Config for middlewares to extract
             app = app.layer(axum::Extension(app_config.security.clone()));
-            
+
             // Apply CORS if configured
             if !app_config.security.cors_allow_origins.is_empty() {
-                use tower_http::cors::{CorsLayer, Any};
+                use tower_http::cors::{Any, CorsLayer};
                 // NOTE: This is a basic CORS setup. You may want to expose more options via config.
                 app = app.layer(CorsLayer::new().allow_origin(Any));
             }
