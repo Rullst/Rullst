@@ -4,7 +4,14 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.10] - 2026-05-29 🏆
+## [1.0.11] - 2026-05-29 🏆
+
+### Community Health
+- **Community Standards**: Added `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant).
+- **Issue Templates**: Added structured GitHub templates for Bug Reports and Feature Requests.
+- **PR Checklists**: Added strict `PULL_REQUEST_TEMPLATE.md` to ensure code quality prior to review.
+
+## [1.0.10] - 2026-05-29 🛡️
 
 ### Security & Quality Audits (10/10 Milestone)
 - **Deep Audit 10/10 Certification**: Passed all strict security, performance, and maintenance requirements outlined in the 2026 deep audit.

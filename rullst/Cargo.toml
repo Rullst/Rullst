@@ -1,6 +1,6 @@
 [package]
 name = "rullst"
-version = "1.0.10"
+version = "1.0.11"
 edition = "2024"
 description = "O framework fullstack definitivo para Rust, com foco em DX, velocidade e segurança."
 license = "MIT"
