@@ -20,7 +20,7 @@ my-app/
 ├── src/
 │   ├── controllers/      # Route controllers (async modules)
 │   │   └── mod.rs
-│   ├── models/           # Active Record Models (rust-eloquent entities)
+│   ├── models/           # Active Record Models (rullst-orm entities)
 │   │   └── mod.rs
 │   ├── pages/            # Shared static HTML elements or full page layouts
 │   │   └── mod.rs
@@ -72,11 +72,11 @@ To guarantee consistency, both humans and AI coders must adhere to the following
   html! { <ul>{ rullst::html::RawHtml(list_builder) }</ul> }
   ```
 
-### 3.3. Active Record ORM (`rust-eloquent`)
+### 3.3. Active Record ORM (`rullst-orm`)
 
 * **Model definition:**
   ```rust
-  #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+  #[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
   #[eloquent(table = "table_name")]
   pub struct Model {
       pub id: i32,

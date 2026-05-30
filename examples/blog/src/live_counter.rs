@@ -12,7 +12,7 @@ pub struct CounterComponent {
 #[async_trait]
 impl LiveComponent for CounterComponent {
     async fn mount(&mut self) {
-        // Inicializa o estado. Você poderia até buscar coisas do DB aqui usando o rust-eloquent!
+        // Inicializa o estado. Você poderia até buscar coisas do DB aqui usando o rullst-orm!
         self.count = 0;
     }
 

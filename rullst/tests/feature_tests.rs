@@ -2,7 +2,7 @@ use rullst::feature::{
     self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
     TomlFeatureDriver,
 };
-use rust_eloquent::Eloquent;
+use rullst_orm::Eloquent;
 use std::fs;
 use std::time::Duration;
 

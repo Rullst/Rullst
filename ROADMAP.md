@@ -30,14 +30,15 @@ graph TD
     M5 --> M6["🏢 M6: Enterprise Features"]
     M6 --> M7["🚀 M7: The Unfair Advantage"]
     M7 --> M8["🌍 M8: Edge Fusion & Auto-Upgrade"]
-    M8 --> M9["🤖 M9: Agentic DevOps"]
-    M9 --> M10["📊 M10: Telemetry & Pulse"]
-    M10 --> M11["🔮 M11: Omni-Frontend & AI"]
+    M8 --> M9["🆓 M9: The Free Enterprise Revolution"]
+    M9 --> M10["🛠️ M10: Incremental Compilation"]
+    M10 --> M11["📊 M11: Telemetry & Radar"]
     M11 --> M12["💎 M12: Zero-Copy Streaming"]
-    M12 --> M13["🛠️ M13: Incremental Compilation"]
-    M13 --> M14["🌐 M14: Intent-Based DB"]
-    M14 --> M15["🔬 M15: Quantum-Ready"]
+    M12 --> M13["🔮 M13: Omni-Frontend & AI"]
+    M13 --> M14["🤖 M14: Agentic DevOps"]
+    M14 --> M15["🌐 M15: Intent-Based DB"]
     M15 --> M16["🧬 M16: Self-Evolving Core"]
+    M16 --> M17["🔬 M17: Quantum-Ready"]
 
     style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
@@ -56,6 +57,7 @@ graph TD
     style M14 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
     style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
     style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
+    style M17 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
 ```
 
 ---
@@ -77,20 +79,20 @@ graph TD
 ---
 
 ## 🗄️ Milestone 2: Database Supremacy (Migrations & Relationships)
-**Goal:** Empower `rust-eloquent` and `Rullst` to handle enterprise-grade relational schemas seamlessly.
+**Goal:** Empower `rullst-orm` and `Rullst` to handle enterprise-grade relational schemas seamlessly.
 
 > [!NOTE]
 > **Division of Responsibilities:**
-> The heavy lifting (database schema parsers, migration execution, and relationship macro builders) will be developed directly inside the **`rust-eloquent`** repository to keep the ORM modular.
+> The heavy lifting (database schema parsers, migration execution, and relationship macro builders) will be developed directly inside the **`rullst-orm`** repository to keep the ORM modular.
 > **Rullst** will wrap these features with CLI commands and smooth dependency injection.
 
-- [x] **Migration Engine (in `rust-eloquent`):**
+- [x] **Migration Engine (in `rullst-orm`):**
   - [x] SQL-based or DSL-based migration definitions.
   - [x] CLI runner inside Rullst:
     - [x] `cargo rullst db:migrate` - Runs pending migrations.
     - [x] `cargo rullst db:rollback` - Reverts the last migration batch.
     - [x] `cargo rullst db:status` - Shows the migration history.
-- [x] **Active Record Relationships (in `rust-eloquent`):**
+- [x] **Active Record Relationships (in `rullst-orm`):**
   - [x] `HasMany` / `BelongsTo` declarative macros.
   - [x] `BelongsToMany` (Many-to-Many) association resolvers.
   - [x] Lazy and Eager loading mechanisms to prevent N+1 query problems.
@@ -103,8 +105,8 @@ graph TD
 ## 🔒 Milestone 3: Authentication & Security (Social, Local & Passkeys)
 **Goal:** Implement robust, secure, and instant authentication. Developers should be able to authenticate users securely in minutes.
 
-- [x] **Social Authentication via `rust-socialite`:**
-  - [x] Leverage the custom **[`rust-socialite`](https://crates.io/crates/rust-socialite)** crate as the official OAuth engine.
+- [x] **Social Authentication via `rullst-connect`:**
+  - [x] Leverage the custom **[`rullst-connect`](https://crates.io/crates/rullst-connect)** crate as the official OAuth engine.
   - [x] Out-of-the-box configurations for Google, GitHub, Facebook, Twitter, and custom providers.
   - [x] Seamless flow: redirect to provider, parse callbacks, and login/register users via Active Record.
 - [x] **Local Authentication:**
@@ -157,7 +159,7 @@ graph TD
 - [x] **Mailer System (`rullst::mail`):** Fluent API for sending emails with drivers for SMTP, Resend, and SendGrid, supporting native `html!` templates.
 - [x] **Storage Abstraction (`rullst::storage`):** Unified API for file uploads and management with drivers for Local (Disk), AWS S3, and Cloudflare R2.
 - [x] **WebSockets & Real-Time:** Built-in router support for WebSockets, perfectly integrated with HTMX (`hx-ext="ws"`).
-- [x] **Rullst Horizon:** A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.
+- [x] **Rullst Zenith:** A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.
 - [x] **Adaptive Backpressure & Resilient Traffic Shielding:** Router-level protection middleware that tracks async Tokio thread pools and database response timings. Smoothly degrades traffic or queues excessive loads when database exhaustion or CPU saturation is imminent, preventing out-of-memory (OOM) crashes.
 - [x] **Token-Bucket Rate Limiting:** Native rate limiting attributes (e.g., `#[route(get, "/api", rate_limit = "100/m")]`) with Shared-Memory (`DashMap`) or Redis engines.
 
@@ -166,13 +168,13 @@ graph TD
 ## 🚀 Milestone 7: The "Unfair Advantage" (Industry Dominance)
 **Goal:** Push Rullst beyond what is possible in other languages, making it the undeniable king of modern web development.
 
-- [x] **Rullst Live (Server-Driven UI):** Inspired by Phoenix LiveView and Laravel Livewire. Write stateful Rust components that automatically sync with the browser via WebSockets. SPA interactivity without writing a single line of JavaScript.
+- [x] **Rullst Live (Server-Driven UI):** Write stateful Rust components that automatically sync with the browser via WebSockets. SPA interactivity without writing a single line of JavaScript.
 - [x] **AI-Native Core (`rullst::ai`):** Built-in declarative abstractions for LLMs (OpenAI, Gemini, Anthropic, Ollama), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.
-- [x] **Rullst Studio:** A built-in visual GUI to inspect, filter, and edit your database records locally (similar to Prisma Studio). Triggered via `cargo rullst studio`.
-- [x] **Declarative E2E Testing:** A fluent, Laravel-style testing API: `app.get("/login").assert_status(200).assert_see("Welcome");`.
+- [x] **Rullst Studio:** A built-in visual GUI to inspect, filter, and edit your database records locally. Triggered via `cargo rullst studio`.
+- [x] **Declarative E2E Testing:** A fluent testing API: `app.get("/login").assert_status(200).assert_see("Welcome");`.
 - [x] **Built-in Feature Flags:** Native support for toggling features and running A/B tests with zero external dependencies.
 - [x] **Wasm Islands (`#[client_component]`):** Write frontend interactive components directly in Rust. Rullst will automatically compile these specific components to lightweight WebAssembly and hydrate them on the client side, eliminating the need to write any JavaScript!
-- [x] **AI-Powered "Self-Healing" Error Console:** An interactive development error page (similar to Laravel Ignition) with integrated local AI assistants. When a runtime or compilation error occurs, you will have an "Auto-Fix with Rullst AI" button that patches the correct code directly on your file system.
+- [x] **AI-Powered "Self-Healing" Error Console:** An interactive development error page with integrated local AI assistants. When a runtime or compilation error occurs, you will have an "Auto-Fix with Rullst AI" button that patches the correct code directly on your file system.
 - [x] **Native SaaS Multi-Tenancy (`rullst::multitenant`):** Out-of-the-box tenant isolation (multi-tenancy by subdomain, header, or DB schema) configured declaratively with a single decorator/macro.
 - [x] **Hot Reloading via Dynamic Linking:** Drastically reduce development compile times using dynamic library loading (`dylib` / `.so`), allowing route and template changes with instant sub-second feedback loop.
 
@@ -182,7 +184,7 @@ graph TD
 **Goal:** Run Rullst on modern Edge infrastructure with zero rewrites and ultra-low latency globally.
 
 - [x] **Rullst Edge Runtime (`rullst::edge`):** Native support for compiling and running Rullst apps in WebAssembly infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstracting Tokio/WASI differences.
-- [x] **Zero-Config SQLite Replication:** Native drivers for edge-distributed databases (Turso/libsql, Cloudflare D1) integrated into `rust-eloquent`. Read/write locally at 1ms latency while the framework syncs globally in the background.
+- [x] **Zero-Config SQLite Replication:** Native drivers for edge-distributed databases (Turso/libsql, Cloudflare D1) integrated into `rullst-orm`. Read/write locally at 1ms latency while the framework syncs globally in the background.
 
 ### 🔄 Autonomous Upgrade System (`cargo rullst upgrade`)
 
@@ -200,7 +202,7 @@ graph TD
   ```
 
 - [x] **Automated Codemods (Zero-Breaking Upgrades):** Expand `cargo rullst upgrade` into a full autonomous refactoring pipeline:
-  1. **Manifest update:** The CLI rewrites the `rullst`, `rullst-macros`, and `rust-eloquent` version strings in the user's `Cargo.toml` to the latest release.
+  1. **Manifest update:** The CLI rewrites the `rullst`, `rullst-macros`, and `rullst-orm` version strings in the user's `Cargo.toml` to the latest release.
   2. **Codemod execution:** A versioned registry of regex-based (or lightweight AST) search-and-replace rules is shipped with each CLI release. If a public API changed between versions (e.g., `.render()` renamed to `.render_page()`), the CLI automatically rewrites all matching occurrences inside `src/**/*.rs` before the user even sees a compile error.
   3. **Validation gate (`cargo check`):** After applying codemods, the CLI runs `cargo check` in background. If the compiler exits cleanly, the user sees: `"✅ Rullst updated successfully. No breaking changes detected."` If errors remain, a diff of the codemod changes is shown so the developer can review.
 
@@ -209,24 +211,42 @@ graph TD
 
 ---
 
-## 🤖 Milestone 9: Agentic DevOps & Autonomous Infrastructure
-**Goal:** Leverage the Rullst compiler's deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.
+## 🆓 Milestone 9: The "Free Enterprise" Revolution
+**Goal:** Disrupt the web framework ecosystem by providing premium SaaS and Enterprise tools 100% free and open-source, democratizing the tools to build million-dollar companies.
 
-- [ ] **Autonomous Provisioning (`cargo rullst deploy --autonomous`):** The compiler analyzes your code (e.g., if you use `rullst::storage::S3`, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.
-- [ ] **AI-Driven CI/CD Bottleneck Analysis:** Automated testing pipelines that use local LLMs to evaluate performance regressions. If a commit slows a route, the AI profiles the Tokio stack and suggests the exact line causing the bottleneck.
+- [ ] **Rullst Nexus (AI-Native Admin Panel):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Includes an AI chat interface to perform complex database queries in natural language.
+- [ ] **Rullst Orbit (SaaS Billing Boilerplate):** Drop-in integration for Stripe/LemonSqueezy. Provides a full user billing portal, subscription management, and invoice generation in minutes.
+- [ ] **Rullst Shield (Wasm WAF & Bot Management):** Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking.
+- [ ] **Rullst Foundry CLI (DevOps Tooling):** Built-in CLI commands to provision and deploy infrastructure to AWS/Hetzner automatically, forming the open-source foundation for a future hosted 1-click cloud service.
 
 ---
 
-## 📊 Milestone 10: Hardware Telemetry & Pulse
+## 🛠️ Milestone 10: Instant Incremental Compilation & Linker Hacking
+**Goal:** Eradicate compile-time friction in Rust and achieve interpreted-language feedback loop speeds.
+
+- [ ] **Rullst Mold/Cranelift Deep Integration:** Configure the framework's scaffolding to force ultra-fast linkers (like `mold`) and use the `Cranelift` compilation backend during development.
+- [ ] **Sub-100ms Feedback Loop:** Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.
+
+---
+
+## 📊 Milestone 11: Hardware Telemetry & Radar
 **Goal:** Make asynchronous debugging and performance profiling effortless without relying on complex external setups.
 
-- [ ] **Rullst Pulse (Kernel-Level Telemetry):** Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks, Mutex contention, memory leaks, and I/O query bottlenecks with zero overhead.
+- [ ] **Rullst Radar (Kernel-Level Telemetry):** Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks, Mutex contention, memory leaks, and I/O query bottlenecks with zero overhead.
 - [ ] **Time-Travel Debugging in Error Console:** Add a state history of the last 50 events, HTMX clicks, and SQL queries to the "Self-Healing" console. Replay the exact scenario that caused a server panic.
 - [ ] **Native OpenTelemetry:** Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus.
 
 ---
 
-## 🔮 Milestone 11: Omni-Frontend Protocol & AI Expansion
+## 💎 Milestone 12: Zero-Copy Event Streaming & Time-Travel Architecture
+**Goal:** Natively unify the data lifecycle and eliminate the need for heavy external message brokers.
+
+- [ ] **Rullst Ledger (`rullst::ledger`):** An Event Sourcing engine integrated directly into `rullst-orm`. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).
+- [ ] **Built-in Event Streaming:** The Rullst binary itself acts as a distributed async message micro-broker across instances via WebSockets/QUIC, replacing the need for Kafka or RabbitMQ for internal data communication.
+
+---
+
+## 🔮 Milestone 13: Omni-Frontend Protocol & AI Expansion
 **Goal:** Solidify Rullst as the ultimate backend for AI agents, SPAs, and Native Mobile apps.
 
 - [ ] **Automatic TypeScript SDK Generation:** For routes exposed as REST/JSON or WebSockets, auto-generate a 100% typed TS client, eliminating tRPC or manual OpenAPI.
@@ -237,36 +257,19 @@ graph TD
 
 ---
 
-## 💎 Milestone 12: Zero-Copy Event Streaming & Time-Travel Architecture
-**Goal:** Natively unify the data lifecycle and eliminate the need for heavy external message brokers.
+## 🤖 Milestone 14: Agentic DevOps & Autonomous Infrastructure
+**Goal:** Leverage the Rullst compiler's deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.
 
-- [ ] **Rullst Ledger (`rullst::ledger`):** An Event Sourcing engine integrated directly into `rust-eloquent`. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).
-- [ ] **Built-in Event Streaming:** The Rullst binary itself acts as a distributed async message micro-broker across instances via WebSockets/QUIC, replacing the need for Kafka or RabbitMQ for internal data communication.
-
----
-
-## 🛠️ Milestone 13: Instant Incremental Compilation & Linker Hacking
-**Goal:** Eradicate compile-time friction in Rust and achieve interpreted-language feedback loop speeds.
-
-- [ ] **Rullst Mold/Cranelift Deep Integration:** Configure the framework's scaffolding to force ultra-fast linkers (like `mold`) and use the `Cranelift` compilation backend during development.
-- [ ] **Sub-100ms Feedback Loop:** Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.
+- [ ] **Autonomous Provisioning (`cargo rullst deploy --autonomous`):** The compiler analyzes your code (e.g., if you use `rullst::storage::S3`, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.
+- [ ] **AI-Driven CI/CD Bottleneck Analysis:** Automated testing pipelines that use local LLMs to evaluate performance regressions. If a commit slows a route, the AI profiles the Tokio stack and suggests the exact line causing the bottleneck.
 
 ---
 
-## 🌐 Milestone 14: AI-Generated Autonomous Migrations & Intent-Based DB
+## 🌐 Milestone 15: AI-Generated Autonomous Migrations & Intent-Based DB
 **Goal:** Invert the database design flow by having AI generate optimized schemas and indices based on plain text intentions.
 
 - [ ] **Intent-Based Modeling:** Describe your entity using rich Rust comments. The Rullst AI CLI understands the business intent, calculates the best indexing strategy, and generates a perfectly optimized migration automatically.
-- [ ] **Self-Optimizing Indexes:** In production, Rullst monitors slow queries in real-time (using Pulse Telemetry) and autonomously suggests or safely applies secondary indices to eliminate slow table scans.
-
----
-
-## 🔬 Milestone 15: Quantum-Ready Web Architecture (The Post-Quantum Era)
-**Goal:** Future-proof the framework's security and compute layers against the rise of commercial quantum computing.
-
-- [ ] **Native Post-Quantum Cryptography (PQC):** Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.
-- [ ] **Hybrid Security Abstraction:** Implement a hybrid transport layer (Classical TLS + Quantum TLS) by default, ensuring the app is shielded against "Harvest Now, Decrypt Later" attacks.
-- [ ] **Rullst QLink (`rullst::quantum`):** A driver abstraction layer to communicate with cloud Quantum Processing Units (QPUs like IBM Quantum, AWS Braket). Easily dispatch complex logistics or molecular simulation tasks to quantum computers natively in Rust.
+- [ ] **Self-Optimizing Indexes:** In production, Rullst monitors slow queries in real-time (using Radar Telemetry) and autonomously suggests or safely applies secondary indices to eliminate slow table scans.
 
 ---
 
@@ -275,6 +278,15 @@ graph TD
 
 - [ ] **Polymorphic Code Generation:** Deep telemetry and local AI analyze production traffic. If a route receives millions of requests with a specific data pattern, the framework rewrites and recompiles its own internal logic in the background (via Dynamic Linking) to create an ultra-optimized execution path.
 - [ ] **Autonomous Error Auto-Healing in Production:** If the system detects a novel panic in production, the AI analyzes the log, writes a corrective patch, runs the test suite in the background, and hot-swaps the router in under 1 second—all without human intervention. The developer just wakes up to a report saying the bug was fixed.
+
+---
+
+## 🔬 Milestone 17: Quantum-Ready Web Architecture (The Post-Quantum Era)
+**Goal:** Future-proof the framework's security and compute layers against the rise of commercial quantum computing.
+
+- [ ] **Native Post-Quantum Cryptography (PQC):** Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.
+- [ ] **Hybrid Security Abstraction:** Implement a hybrid transport layer (Classical TLS + Quantum TLS) by default, ensuring the app is shielded against "Harvest Now, Decrypt Later" attacks.
+- [ ] **Rullst QLink (`rullst::quantum`):** A driver abstraction layer to communicate with cloud Quantum Processing Units (QPUs like IBM Quantum, AWS Braket). Easily dispatch complex logistics or molecular simulation tasks to quantum computers natively in Rust.
 
 ---
 

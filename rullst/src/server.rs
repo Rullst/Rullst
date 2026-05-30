@@ -1,6 +1,6 @@
 use crate::Router;
 use crate::scheduler::Scheduler;
-use rust_eloquent::Eloquent;
+use rullst_orm::Eloquent;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;

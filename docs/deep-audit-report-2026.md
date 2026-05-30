@@ -44,7 +44,7 @@ Rullst/
 **Observações:**
 - Arquitetura coerente com especificação em `docs/spec.md`
 - Bom uso de features condicionais para funcionalidades opcionais
-- Integração bem planejada com `rust-eloquent` (ORM separado)
+- Integração bem planejada com `rullst-orm` (ORM separado)
 
 ### 1.2 Organização de Código
 **Status:** ✅ Excelente

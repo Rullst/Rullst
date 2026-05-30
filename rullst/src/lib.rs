@@ -77,9 +77,9 @@ pub use routing::Router;
 #[cfg(not(target_arch = "wasm32"))]
 pub use server::Server;
 
-// Re-export rust-eloquent for seamless database usage
+// Re-export rullst-orm for seamless database usage
 #[cfg(not(target_arch = "wasm32"))]
-pub use rust_eloquent::{Eloquent, EloquentModel};
+pub use rullst_orm::{Eloquent, EloquentModel};
 
 // Re-export Configuration types
 pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};

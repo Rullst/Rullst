@@ -49,8 +49,8 @@ pub fn needs_rehash(hash: &str) -> bool {
 
 #[cfg(feature = "oauth")]
 pub mod socialite {
-    //! Re-export do rust-socialite para fornecer autenticação OAuth2 (Google, GitHub, etc.) nativamente no framework.
-    pub use rust_socialite::*;
+    //! Re-export do rullst-connect para fornecer autenticação OAuth2 (Google, GitHub, etc.) nativamente no framework.
+    pub use rullst_connect::*;
 }
 
 /// Resolves the application's unique secret key for encryption.

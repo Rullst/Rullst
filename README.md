@@ -34,9 +34,9 @@ In the current ecosystem, to write a simple CRUD, you are forced to glue dozens 
 
 Rullst redefines this experience. We offer an integrated, cohesive developer experience that brings the sweetness and iteration speed of **Laravel and Next.js** together with the Formula 1 performance and military-grade safety of **Rust, Axum, and Hyper**:
 
-* **No More Frankenstein setups:** A single cohesive framework managing your server (Axum), your database (`rust-eloquent`), and your HTML rendering.
+* **No More Frankenstein setups:** A single cohesive framework managing your server (Axum), your database (`rullst-orm`), and your HTML rendering.
 * **No More Borrow Checker fights in UI:** Our compile-time JSX-like `html!` macro processes pure elements on the server (SSR). It generates optimized string-builders directly at compile time. It's blazing fast, safe, and SEO-friendly by default.
-* **First-Class Active Record ORM:** Native integration with your **`rust-eloquent`** package. Interacting with databases is as intuitive as `user.save()`.
+* **First-Class Active Record ORM:** Native integration with your **`rullst-orm`** package. Interacting with databases is as intuitive as `user.save()`.
 * **AI-Native Engineering & AI-Friendly:** Designed from the ground up for modern pair-programming. Strict type-safety, zero dynamic runtime magic, automatic `.ai-rules` scaffolding, and structured schemas prevent AI agent hallucinations and allow instant compiler self-correction.
 
 ---
@@ -49,7 +49,7 @@ Rullst ships with **8 completed milestones** covering every layer of modern web 
 |---|---|
 | 🛠️ **CLI & DX** | `cargo rullst new` wizard, `make:controller`, `make:model -m`, `make:middleware`, `make:worker`, `generate:openapi`, `cargo rullst upgrade` (self-healing) |
 | 🗄️ **Database** | Active Record ORM, Migrations (`db:migrate`, `db:rollback`, `db:status`), Seeders & Factories, HasMany / BelongsTo / BelongsToMany, Eager Loading |
-| 🔒 **Auth & Security** | Argon2 hashing, JWT & Cookie sessions, CSRF protection, Social OAuth (Google, GitHub, Facebook, Twitter via `rust-socialite`), `cargo rullst auth` scaffolding |
+| 🔒 **Auth & Security** | Argon2 hashing, JWT & Cookie sessions, CSRF protection, Social OAuth (Google, GitHub, Facebook, Twitter via `rullst-connect`), `cargo rullst auth` scaffolding |
 | ⚡ **Frontend** | HTMX first-class support, TailwindCSS auto-integration, partial template rendering, **Rullst Live** (Phoenix LiveView-inspired server-driven UI), **Wasm Islands** (`#[client_component]`) |
 | 📦 **Production** | Queue (SQLite/Redis), Cache (Memory/Redis), Task Scheduler (Cron), Docker multi-stage builds, **Rullst Horizon** dashboard |
 | 🏢 **Enterprise** | Declarative Validation, Mailer (SMTP/Resend/SendGrid), Storage (Local/S3/R2), WebSockets, Multi-Tenancy, Feature Flags, E2E Testing |
@@ -124,9 +124,9 @@ When your application grows, Rullst scales with you using Active Record:
 
 ```rust
 use rullst::{html, routes, Server, Router, response::{Html, IntoResponse}};
-use rust_eloquent::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+use rullst_orm::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
 
-#[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+#[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
 #[eloquent(table = "users")]
 pub struct User {
     pub id: i32,

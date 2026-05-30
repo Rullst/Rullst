@@ -26,13 +26,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Refactoring & Stability
 - **CLI Refactoring**: Extracted the massive CLI command matching block inside `cargo-rullst/src/main.rs` into an isolated `run_cli_command()` function for optimal AI-maintainability.
 - **Studio Dashboard Refactoring**: Extracted raw string generation inside the SQL-inspection tool `studio.rs` into pure `build_headers_html()` and `build_rows_html()` helpers, dramatically reducing the cognitive complexity of the HTTP handler.
-- **Upgraded ORM**: Bumped `rust-eloquent` to `1.1.13` for the latest critical fixes.
+- **Upgraded ORM**: Bumped `rullst-orm` to `1.1.13` for the latest critical fixes.
 - **Queue Worker Stabilization**: Verified and locked the `Worker` polling logic inside `queue.rs` for frictionless background job processing without blocking the tokio event-loop.
 
 ## [1.0.8] - 2026-05-28 🚀
 
 ### Added (Production Readiness)
-- **Rust-Socialite Native Support**: Integrates `rust-socialite` seamlessly into the framework under the `oauth` feature, exposing ready-to-use authentication endpoints in `rullst::auth::socialite`.
+- **Rust-Socialite Native Support**: Integrates `rullst-connect` seamlessly into the framework under the `oauth` feature, exposing ready-to-use authentication endpoints in `rullst::auth::socialite`.
 - **Rullst.toml Configuration Parsing**: Added strong typing and `toml` parsing directly in `Server::run` to read `Rullst.toml`, dynamically applying properties such as `database.url` and `security.csrf_same_site`. Defaults to SQLite `rwc` mode for zero-config persistence.
 - **Dynamic SameSite & CORS**: Removed hardcoded `SameSite=Strict` CSRF cookies, supporting dynamic values (like `Lax`) configurable via `Rullst.toml`. Automatically injects optional `tower_http::cors::CorsLayer`.
 - **Rehash on Login Pattern**: Added `needs_rehash` in `auth.rs` to allow safe migrations of existing user password hashes from unstable Argon2 parameters to current stable defaults seamlessly during authentication.
@@ -64,7 +64,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Non-Intrusive Background Version Checker**: Implemented a background crates.io version updater in the `cargo-rullst` CLI that runs on a spawned thread and caches version status under the OS temporary directory (`rullst_version_cache.txt`). The network fetch is limited to at most once per day, ensuring 0ms impact on developer terminal execution speeds.
 - **Terminal Update Banner**: Visual, colored terminal banner rendered at CLI tool exit when a newer version is cached, prompting users to upgrade.
 - **Self-Healing CLI `upgrade` Codemods**: Refactored the `cargo rullst upgrade` command into a full autonomous refactoring pipeline: automatically updates `Cargo.toml` dependency tags to the latest release, runs search-and-replace codemods across `src/**/*.rs` to patch legacy APIs and enforce dependency shielding automatically, and runs validation compilation checks (`cargo check`) as a final quality gate.
-- **Dependency Shielding Abstraction cascades**: Encapsulated transitive external dependencies into secure modular namespaces within Rullst core's public API: `rullst::db` (wrapping `sqlx`, `rust_eloquent`), `rullst::web` (wrapping `axum`, `tower`, `tower_http`), `rullst::async_runtime` (wrapping `tokio`), and `rullst::email_client` (wrapping `lettre`). This isolates downstream applications from external breaking changes.
+- **Dependency Shielding Abstraction cascades**: Encapsulated transitive external dependencies into secure modular namespaces within Rullst core's public API: `rullst::db` (wrapping `sqlx`, `rullst_orm`), `rullst::web` (wrapping `axum`, `tower`, `tower_http`), `rullst::async_runtime` (wrapping `tokio`), and `rullst::email_client` (wrapping `lettre`). This isolates downstream applications from external breaking changes.
 - **Resilient Traffic Shielding & Adaptive Backpressure**: Introduced a router-level load shielding and backpressure system inside [`rullst/src/resilience.rs`](file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/src/resilience.rs) that actively monitors thread-pool saturation (Tokio event loop lag) and database roundtrip latency (using low-frequency active query probes on the connection pool wrapped in safe `catch_unwind` guards to elegantly bypass panics if a DB is offline or unconfigured). The middleware automatically degrades traffic (returning `503 Service Unavailable` with `Retry-After: 5`) under critical CPU/DB/Active Request saturation, or gently throttles traffic under moderate load using lightweight 25ms delays to serialize requests naturally, preventing out-of-memory (OOM) crashes.
 - **Token-Bucket Rate Limiter**: Added a thread-safe, atomic rate limiting system powered by a concurrent Shared-Memory (`DashMap`) engine. Features a highly customizable `RateLimitConfig` constructed with the Builder Pattern for strict backward-compatibility, and includes convenient factory builders (`per_second`, `per_minute`, `per_hour`). Seamlessly handles proxy environments by resolving client identifiers through standard headers (`X-Forwarded-For`, `X-Real-IP`) and peer addresses (`ConnectInfo`).
 - **Edge-Optimized Assets & Pre-Compression (Brotli + Zstandard)**: Implemented an advanced high-performance pre-compression pipeline within the `cargo-rullst` CLI tool (`cargo rullst build [--debug]`) that recursively compiles the production binary and compresses all text-based static assets (HTML, CSS, JS, SVG, JSON, WASM, TXT, XML) in the `static/` directory using **Brotli (level 11)** and **Zstandard (level 19)** formats, saving `.br` and `.zst` files alongside their original sources. Upgraded the Rullst core library static asset serving (`ServeDir::new("static")`) inside `rullst/src/server.rs` to support pre-compressed Brotli served natively, and integrated a fast zero-overhead rewriting middleware `zstd_static_middleware` that intercepts client requests, checks for `Accept-Encoding: zstd`, rewrites the request URI to `.zst` zero-copy if the file is present, and overrides proper `Content-Encoding: zstd` and mime-specific `Content-Type` headers for blazing-fast edge-optimized transfers.
@@ -96,7 +96,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [1.0.4] - 2026-05-26 🛠️
 
 ### Fixed
-- **Conditional Scaffolding for Database-Disabled Apps**: Fixes a compilation error (`E0433: cannot find module or crate rust_eloquent`) that occurred when creating a project with database support disabled ("no" database selected). The generation of the `src/migrations` folder, `pub mod migrations` module declaration, and `rullst::artisan!` macro call are now strictly conditional on enabling database support during `cargo rullst new`.
+- **Conditional Scaffolding for Database-Disabled Apps**: Fixes a compilation error (`E0433: cannot find module or crate rullst_orm`) that occurred when creating a project with database support disabled ("no" database selected). The generation of the `src/migrations` folder, `pub mod migrations` module declaration, and `rullst::artisan!` macro call are now strictly conditional on enabling database support during `cargo rullst new`.
 
 ### Added
 - **`sync-badges` Automation Tool**: A new internal binary (`cargo-rullst/src/bin/sync_badges.rs`) and cargo alias (`cargo sync`) that automatically reads the current version from `cargo-rullst/Cargo.toml` and updates the status badge in `README.md` and `README.pt.md`. This prevents version badges from becoming stale after releases.
@@ -322,7 +322,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Production Security Headers (`rullst::security::headers_middleware`):**
   - Standard headers injected on all HTTP responses: HSTS, Content-Type-Options (nosniff), Frame-Options (DENY), XSS-Protection, and Referrer-Policy.
 - ** CLI Auth Command (`cargo rullst auth`):**
-  - Scaffold entire authentication systems (local register, login, logout, and GitHub social auth redirect and callback handlers via the dynamic `rust-socialite` sibling dependency).
+  - Scaffold entire authentication systems (local register, login, logout, and GitHub social auth redirect and callback handlers via the dynamic `rullst-connect` sibling dependency).
   - Scaffold database migrations for `users`, the `User` Active Record model, and restricted route `AuthMiddleware`.
   - Scaffold beautiful responsive Dark Mode HTML templates (`login_page`, `register_page`, `dashboard_page`) using the procedurally compiled `html!` macro.
 
@@ -333,7 +333,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added (Database Supremacy Milestone)
 - **Artisan CLI Engine (`rullst::artisan!`):** A declarative macro that intercepts process execution to run database migrations, seeds, and status checks directly within the application binary before the server boots.
 - **Rullst Dev CLI Migrations:** `cargo-rullst` now proxies artisan commands (`db:migrate`, `db:rollback`, `db:status`, `db:seed`) gracefully to the target workspace.
-- **Database agnostic URL Injection:** Rullst `Server::new` now auto-parses `Rullst.toml` and automatically injects the `DATABASE_URL` into the `rust-eloquent` connection pool during boot, supporting SQLite, PostgreSQL, and MySQL effortlessly.
+- **Database agnostic URL Injection:** Rullst `Server::new` now auto-parses `Rullst.toml` and automatically injects the `DATABASE_URL` into the `rullst-orm` connection pool during boot, supporting SQLite, PostgreSQL, and MySQL effortlessly.
 - **Rust-DSL Migrations:** Scaffolding databases now uses pure Rust closures (`make:migration`) instead of raw SQL, giving developers strong typing and compile-time validation for schema building.
 
 ---

@@ -14,10 +14,10 @@ pub mod app {
         html,
         response::{Html, IntoResponse, Redirect},
     };
-    use rust_eloquent::sqlx::FromRow;
+    use rullst_orm::sqlx::FromRow;
 
     // --- Post model & query builder ---
-    #[derive(Debug, Clone, FromRow, rust_eloquent::Eloquent)]
+    #[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
     #[eloquent(table = "posts", global_scope = "apply_tenant_scope")]
     pub struct Post {
         pub id: i32,

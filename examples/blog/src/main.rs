@@ -1,7 +1,7 @@
 #![allow(unexpected_cfgs)]
 use rullst::{Server, multitenant};
 use rullst_blog_example::app::Post;
-use rust_eloquent::Eloquent;
+use rullst_orm::Eloquent;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create table schema
     let pool = Eloquent::pool();
-    rust_eloquent::sqlx::query(
+    rullst_orm::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tenant_id TEXT NOT NULL,

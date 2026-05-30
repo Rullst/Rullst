@@ -1,5 +1,5 @@
-use rust_eloquent::Seeder;
-use rust_eloquent::schema::{Migration, run_artisan_with_args};
+use rullst_orm::Seeder;
+use rullst_orm::schema::{Migration, run_artisan_with_args};
 use std::env;
 use std::fs;
 
@@ -56,7 +56,7 @@ pub async fn check_and_run_artisan(
         let url = db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string());
 
         // Initialize Eloquent database connection pool
-        rust_eloquent::Eloquent::init(&url).await?;
+        rullst_orm::Eloquent::init(&url).await?;
 
         println!("🚀 Iniciando Rullst Studio em http://localhost:5555");
         crate::studio::run_studio(&url).await?;
@@ -81,9 +81,9 @@ pub async fn check_and_run_artisan(
         let url = db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string());
 
         // 2. Initialize Eloquent database connection pool
-        rust_eloquent::Eloquent::init(&url).await?;
+        rullst_orm::Eloquent::init(&url).await?;
 
-        // 3. Delegate to rust-eloquent Artisan CLI runner
+        // 3. Delegate to rullst-orm Artisan CLI runner
         if let Err(e) = run_artisan_with_args(&translated_args, migrations, seeders).await {
             eprintln!("❌ Error: Executing artisan command failed: {}", e);
             std::process::exit(1);
