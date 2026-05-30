@@ -860,7 +860,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "axum",
  "brotli",
@@ -3186,7 +3186,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -3271,7 +3271,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "proc-macro2",
  "quote",
