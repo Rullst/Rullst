@@ -2,7 +2,7 @@ use rullst::feature::{
     self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
     TomlFeatureDriver,
 };
-use rullst_orm::Eloquent;
+use rullst_orm::Orm;
 use std::fs;
 use std::time::Duration;
 
@@ -125,10 +125,10 @@ home-ab = "control:40,treatment:60"
 #[tokio::test]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database
-    Eloquent::init("sqlite:file:memdb1?mode=memory&cache=shared")
+    Orm::init("sqlite:file:memdb1?mode=memory&cache=shared")
         .await
         .unwrap();
-    let pool = Eloquent::pool();
+    let pool = Orm::pool();
 
     // Acquire and hold a connection to keep the in-memory database alive
     let _conn = pool.acquire().await.unwrap();

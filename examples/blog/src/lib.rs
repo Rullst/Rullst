@@ -17,8 +17,8 @@ pub mod app {
     use rullst_orm::sqlx::FromRow;
 
     // --- Post model & query builder ---
-    #[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-    #[eloquent(table = "posts", global_scope = "apply_tenant_scope")]
+    #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+    #[orm(table = "posts", global_scope = "apply_tenant_scope")]
     pub struct Post {
         pub id: i32,
         pub tenant_id: String,

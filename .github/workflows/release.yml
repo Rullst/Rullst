@@ -32,11 +32,11 @@ jobs:
         with:
           path: Rullst
 
-      - name: Checkout rust-eloquent
+      - name: Checkout rullst-orm
         uses: actions/checkout@v4
         with:
-          repository: venelouis/rust-eloquent
-          path: rust-eloquent
+          repository: venelouis/rullst-orm
+          path: rullst-orm
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -63,11 +63,11 @@ jobs:
         with:
           path: Rullst
 
-      - name: Checkout rust-eloquent
+      - name: Checkout rullst-orm
         uses: actions/checkout@v4
         with:
-          repository: venelouis/rust-eloquent
-          path: rust-eloquent
+          repository: venelouis/rullst-orm
+          path: rullst-orm
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1

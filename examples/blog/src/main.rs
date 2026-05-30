@@ -1,7 +1,7 @@
 #![allow(unexpected_cfgs)]
 use rullst::{Server, multitenant};
 use rullst_blog_example::app::Post;
-use rullst_orm::Eloquent;
+use rullst_orm::Orm;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,10 +9,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     rullst::artisan!(vec![]);
 
     // Initialize SQLite file database
-    Eloquent::init("sqlite://blog.db").await?;
+    Orm::init("sqlite://blog.db").await?;
 
     // Create table schema
-    let pool = Eloquent::pool();
+    let pool = Orm::pool();
     rullst_orm::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

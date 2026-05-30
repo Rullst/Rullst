@@ -76,8 +76,8 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 * **Model definition:**
   ```rust
-  #[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-  #[eloquent(table = "table_name")]
+  #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+  #[orm(table = "table_name")]
   pub struct Model {
       pub id: i32,
       // ... fields

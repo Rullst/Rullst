@@ -786,10 +786,10 @@ fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn st
         );
     } else {
         let template = format!(
-            r#"use rullst_orm::{{Eloquent, EloquentModel, sqlx::{{self, FromRow}}}};
+            r#"use rullst_orm::{{Orm, EloquentModel, sqlx::{{self, FromRow}}}};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-#[eloquent(table = "{plural_name}")]
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "{plural_name}")]
 pub struct {pascal_name} {{
     pub id: i32,
     // Add your fields here (e.g. pub name: String)
@@ -1281,11 +1281,11 @@ url = "{db_url}"
 
     // Write src code templates
     let db_model_code = if db_needed {
-        r#"use rullst_orm::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+        r#"use rullst_orm::{Orm, EloquentModel, sqlx::{self, FromRow}};
 
 // 1. Define your database model using the built-in rullst-orm ORM!
-#[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-#[eloquent(table = "users")]
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "users")]
 pub struct User {
     pub id: i32,
     pub name: String,
@@ -1923,10 +1923,10 @@ impl Migration for MigrationImpl {{
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
-    let model_template = r##"use rullst_orm::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+    let model_template = r##"use rullst_orm::{Orm, EloquentModel, sqlx::{self, FromRow}};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-#[eloquent(table = "users")]
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "users")]
 pub struct User {
     pub id: i32,
     pub name: String,
@@ -1943,10 +1943,10 @@ pub struct User {
 
     // 2b. Create UserPasskey Model
     let passkey_model_path = models_dir.join("user_passkey.rs");
-    let passkey_model_template = r##"use rullst_orm::{Eloquent, EloquentModel, sqlx::{self, FromRow}};
+    let passkey_model_template = r##"use rullst_orm::{Orm, EloquentModel, sqlx::{self, FromRow}};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Eloquent)]
-#[eloquent(table = "user_passkeys")]
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "user_passkeys")]
 pub struct UserPasskey {
     pub id: i32,
     pub user_id: i32,

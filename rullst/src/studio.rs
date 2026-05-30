@@ -6,7 +6,7 @@ use axum::{
     routing::get,
 };
 use rullst_macros::html;
-use rullst_orm::Eloquent;
+use rullst_orm::Orm;
 use serde::Deserialize;
 use sqlx::Row;
 use std::net::SocketAddr;
@@ -53,7 +53,7 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 
 /// Dynamic SQLite schema tables finder
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = Eloquent::pool();
+    let pool = Orm::pool();
     let rows = sqlx::query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
     )
@@ -71,7 +71,7 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = Eloquent::pool();
+    let pool = Orm::pool();
     let clean_table = sanitize_identifier(table);
 
     let query_str = if let Some(search) = search_query
@@ -302,7 +302,7 @@ pub async fn handle_table(
     };
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-    let pool = Eloquent::pool();
+    let pool = Orm::pool();
     let clean_table = sanitize_identifier(&table_name);
 
     let columns_query = format!("PRAGMA table_info(\"{}\")", clean_table);

@@ -860,7 +860,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst"
-version = "1.0.10"
+version = "1.0.11"
 dependencies = [
  "axum",
  "brotli",
@@ -3186,7 +3186,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "1.0.10"
+version = "1.0.11"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -3210,9 +3210,9 @@ dependencies = [
  "redis",
  "reqwest",
  "ring",
+ "rullst-connect",
  "rullst-macros",
- "rust-eloquent",
- "rust-socialite",
+ "rullst-orm",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -3241,7 +3241,7 @@ dependencies = [
  "axum",
  "getrandom 0.4.2",
  "rullst",
- "rust-eloquent",
+ "rullst-orm",
  "serde",
  "serde_json",
  "sqlx",
@@ -3251,46 +3251,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "rullst-macros"
-version = "1.0.10"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rust-eloquent"
-version = "1.1.13"
+name = "rullst-connect"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f910c098cbfbbf642477e99fe634fdb14ebf0cabf7fd3a0a5fd232c49944560"
-dependencies = [
- "async-trait",
- "futures",
- "rand 0.10.1",
- "rust-eloquent-macros",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
-]
-
-[[package]]
-name = "rust-eloquent-macros"
-version = "1.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15e5708932d5aa6f0a01ff6e8033a78603d1b3318e42c4eef6de3ad06afc36ed"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rust-socialite"
-version = "5.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25481abfc8d7b2cd82d1df4968023bd2c4b3ba4149c2d29394413f03ff15a2be"
+checksum = "be30afd63dafdb1d022e4cacf31d4448585ded6a2947083c9b8819bbda725a00"
 dependencies = [
  "async-trait",
  "base64",
@@ -3303,6 +3267,42 @@ dependencies = [
  "thiserror",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "rullst-macros"
+version = "1.0.11"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "rullst-orm"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9c3b24afb49f1c774c889d729d13697c5c1f5ff656130f5106a10e584ea14c6"
+dependencies = [
+ "async-trait",
+ "futures",
+ "rand 0.10.1",
+ "rullst-orm-macros",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
+name = "rullst-orm-macros"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a96dfeb4ece99d824f9a5cb1288085aec2eca3d327d5f91d00faf91bdc61b7d3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

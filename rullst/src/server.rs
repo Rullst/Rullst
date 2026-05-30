@@ -1,6 +1,6 @@
 use crate::Router;
 use crate::scheduler::Scheduler;
-use rullst_orm::Eloquent;
+use rullst_orm::Orm;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -41,7 +41,7 @@ impl Server {
         }
     }
 
-    /// Set a database URL to automatically initialize the Eloquent connection pool at startup
+    /// Set a database URL to automatically initialize the Orm connection pool at startup
     pub fn with_db<S: Into<String>>(mut self, db_url: S) -> Self {
         self.db_url = Some(db_url.into());
         self
@@ -98,8 +98,8 @@ impl Server {
         }
 
         if let Some(db_url) = self.db_url {
-            println!("Initializing Eloquent database pool...");
-            match Eloquent::init(&db_url).await {
+            println!("Initializing Orm database pool...");
+            match Orm::init(&db_url).await {
                 Ok(_) => println!("Database initialized successfully."),
                 Err(e) => eprintln!(
                     "⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.",
