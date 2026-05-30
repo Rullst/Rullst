@@ -102,7 +102,7 @@ impl TrafficShield {
                 let interval = Duration::from_millis(1000);
                 loop {
                     tokio::time::sleep(interval).await;
-                    let pool_opt = std::panic::catch_unwind(rust_eloquent::Eloquent::pool);
+                    let pool_opt = std::panic::catch_unwind(rullst_orm::Eloquent::pool);
                     if let Ok(pool) = pool_opt {
                         let start = Instant::now();
                         let res = sqlx::query("SELECT 1").execute(pool).await;

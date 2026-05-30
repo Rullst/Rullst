@@ -29,7 +29,7 @@ rust-socialite = { version = "5.2.3", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time"] }
-rust-eloquent = "1.1.13"
+rullst-orm = "1.1.13"
 sqlx = { version = "0.9.0", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.6.11", features = ["fs", "trace", "cors"] }

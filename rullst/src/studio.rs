@@ -6,7 +6,7 @@ use axum::{
     routing::get,
 };
 use rullst_macros::html;
-use rust_eloquent::Eloquent;
+use rullst_orm::Eloquent;
 use serde::Deserialize;
 use sqlx::Row;
 use std::net::SocketAddr;
