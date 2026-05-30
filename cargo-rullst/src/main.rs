@@ -1801,9 +1801,8 @@ fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     for m in &modules {
         mod_content.push_str(&format!("pub mod {};\n", m));
     }
-    mod_content.push_str(
-        "\npub fn get_migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> {\n",
-    );
+    mod_content
+        .push_str("\npub fn get_migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> {\n");
     mod_content.push_str("    vec![\n");
     for m in &modules {
         mod_content.push_str(&format!("        Box::new({}::MigrationImpl),\n", m));
