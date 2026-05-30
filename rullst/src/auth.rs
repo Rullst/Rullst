@@ -202,10 +202,7 @@ mod tests {
     fn test_password_hashing() {
         let p = String::from_utf8(vec![112, 97, 115, 115]).unwrap(); // "pass"
         let hash = hash_password(&p).expect("Failed to hash password");
-        assert!(
-            verify_password(&p, &hash),
-            "Password verification failed"
-        );
+        assert!(verify_password(&p, &hash), "Password verification failed");
         assert!(
             !verify_password("wrong", &hash),
             "Password verification succeeded for wrong password"
