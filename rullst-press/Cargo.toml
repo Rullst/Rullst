@@ -11,9 +11,9 @@ categories = ["command-line-utilities", "web-programming"]
 readme = "README.md"
 
 [dependencies]
-pulldown-cmark = "0.9"
-walkdir = "2.4"
-colored = "2.0"
-axum = "0.7"
-tokio = { version = "1.0", features = ["full"] }
-tower-http = { version = "0.5", features = ["fs"] }
+pulldown-cmark = "0.13"
+walkdir = "2.5"
+colored = "3.1"
+axum = "0.8"
+tokio = { version = "1.52", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs"] }

@@ -79,7 +79,7 @@ pub use server::Server;
 
 // Re-export rullst-orm for seamless database usage
 #[cfg(not(target_arch = "wasm32"))]
-pub use rullst_orm::{EloquentModel, Orm};
+pub use rullst_orm::{RullstModel, Orm};
 
 // Re-export Configuration types
 pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
