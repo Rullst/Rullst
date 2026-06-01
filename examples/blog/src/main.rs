@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create table schema
     let pool = Orm::pool();
-    rullst_orm::sqlx::query(
+    rullst::db::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tenant_id TEXT NOT NULL,

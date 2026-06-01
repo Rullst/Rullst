@@ -14,7 +14,7 @@ pub mod app {
         html,
         response::{Html, IntoResponse, Redirect},
     };
-    use rullst_orm::sqlx::FromRow;
+    use rullst::db::FromRow;
 
     // --- Post model & query builder ---
     #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]

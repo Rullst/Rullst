@@ -76,9 +76,9 @@ pub fn create_new_model(
         );
     } else {
         let template = format!(
-            r#"use rullst_orm::{{Orm, RullstModel, sqlx::{{self, FromRow}}}};
+            r#"use rullst::db::{{Orm, RullstModel, FromRow, sqlx}};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "{plural_name}")]
 pub struct {pascal_name} {{
     pub id: i32,
@@ -127,8 +127,8 @@ pub struct {pascal_name} {{
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
         let template = format!(
-            r#"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
-use rullst_orm::async_trait;
+            r#"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -138,7 +138,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::create("{plural_name}", |table| {{
             table.id();
             // Add your fields here (e.g. table.string("title");)
@@ -146,7 +146,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::drop_if_exists("{plural_name}").await
     }}
 }}
