@@ -87,6 +87,8 @@ pub fn create_new_project(
             "LMS Platform (Courses, lessons, video player, HTMX integration)",
             "SaaS App Starter (Authentication + Stripe payments billing template)",
             "Blog / Press (Static site generator pre-wired with Nexus CMS)",
+            "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)",
+            "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)",
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("Select a Starter Blueprint")
@@ -226,6 +228,10 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
 "#,
             sqlx_features = sqlx_features
         ));
+    }
+
+    if blueprint_selection == 5 {
+        cargo_toml.push_str("reqwest = { version = \"0.12\", default-features = false, features = [\"rustls-tls\"] }\n");
     }
 
     // Special dependencies for SaaS blueprint

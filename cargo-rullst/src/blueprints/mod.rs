@@ -7,6 +7,8 @@ pub mod blank;
 pub mod lms;
 pub mod saas;
 pub mod blog;
+pub mod erp;
+pub mod uptime;
 
 pub fn apply(
     id: usize,
@@ -22,6 +24,8 @@ pub fn apply(
         1 => lms::file_manifest(project_name_safe),
         2 => saas::file_manifest(project_name_safe),
         3 => blog::file_manifest(project_name_safe),
+        4 => erp::file_manifest(project_name_safe),
+        5 => uptime::file_manifest(project_name_safe),
         _ => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed),
     };
 
