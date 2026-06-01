@@ -275,7 +275,7 @@ pub fn mask_pii(text: &str) -> String {
             }
             
             let count = digit_indices.len();
-            if count >= 13 && count <= 19 {
+            if (13..=19).contains(&count) {
                 let mask_count = count - 4;
                 for idx in 0..mask_count {
                     chars[digit_indices[idx]] = '*';

@@ -4,8 +4,7 @@ pub fn file_manifest(_project_name_safe: &str) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
 
     // 1. src/main.rs
-    let main_rs = format!(
-        r##"use rullst::{{routes, Server}};
+    let main_rs = r##"use rullst::{routes, Server};
 
 pub mod migrations;
 pub mod models;
@@ -14,7 +13,7 @@ pub mod middlewares;
 pub mod pages;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
@@ -49,9 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .await?;
 
     Ok(())
-}}
-"##
-    );
+}
+"##.to_string();
     manifest.push(("src/main.rs", main_rs));
 
     // 2. Models

@@ -180,9 +180,7 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
         for line in content.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with(key) && trimmed.contains('=') {
-                let val = trimmed
-                    .splitn(2, '=')
-                    .nth(1)
+                let val = trimmed.split_once('=').map(|x| x.1)
                     .unwrap_or("")
                     .trim()
                     .trim_matches('"')
@@ -294,14 +292,12 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Step 2: Provision server ─────────────────────────────────────
     println!("{}", "🖥️  [2/5] Provisioning server environment...".bold().yellow());
-    let provision_cmd = format!(
-        r#"set -e
+    let provision_cmd = r#"set -e
 apt-get update -qq
 apt-get install -y -qq docker.io curl wget || yum install -y docker curl wget || true
 systemctl enable docker --now || true
 mkdir -p /app/data /app/bin /app/config
-echo "✅ Server environment ready.""#
-    );
+echo "✅ Server environment ready.""#.to_string();
     if !run_ssh(&provision_cmd)? {
         println!("{}", "⚠️  Server provisioning had warnings (continuing anyway)...".yellow());
     } else {
