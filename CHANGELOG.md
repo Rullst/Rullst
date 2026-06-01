@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added (Milestone 11: Real-World Business Blueprints)
+- **ERP Pocket Starter Blueprint (ID 4)**:
+  - Scaffolds a complete Dark & Neon styled inventory, product, and stock management system with auto-CMS and HTMX.
+  - Features dynamic HTMX stock increments and order processing with strict transactional database logic to validate quantity and automatically decrement product stock.
+- **Uptime Monitor Starter Blueprint (ID 5)**:
+  - Scaffolds a stunning "Uptime Robot" replica dashboard using glassmorphic UI components, average latency metrics, and color-coded status history block bars.
+  - Spawns a background ping worker loop (`tokio::spawn(ping_monitors)`) running concurrently to Axum's web routing thread, recording historic latency and response metrics.
+  - Integrates reqwest TLS features automatically in `Cargo.toml` on demand.
+
 ### Added (Milestone 9 – Phase 5: Rullst Foundry CLI)
 - **1-Click DevOps Deployment (`cargo rullst foundry:init` & `cargo rullst foundry:deploy`)**:
   - Implements declarative infrastructure configuration via `Foundry.toml`, automatically generated and tailored to the Rullst project context with native gitignore protection.

@@ -47,7 +47,7 @@ Rullst ships with **8 completed milestones** covering every layer of modern web 
 
 | Category | Features |
 |---|---|
-| 🛠️ **CLI & DX** | `cargo rullst new` wizard, `make:controller`, `make:model -m`, `make:middleware`, `make:worker`, `generate:openapi`, `cargo rullst upgrade` (self-healing) |
+| 🛠️ **CLI & DX** | `cargo rullst new` wizard (interactive blueprints: Blank, LMS, SaaS, Blog, ERP, Uptime), `make:controller`, `make:model -m`, `make:middleware`, `make:worker`, `generate:openapi`, `cargo rullst upgrade` (self-healing) |
 | 🗄️ **Database** | Active Record ORM, Migrations (`db:migrate`, `db:rollback`, `db:status`), Seeders & Factories, HasMany / BelongsTo / BelongsToMany, Eager Loading |
 | 🔒 **Auth & Security** | Argon2 hashing, JWT & Cookie sessions, CSRF protection, Social OAuth (Google, GitHub, Facebook, Twitter via `rullst-connect`), `cargo rullst auth` scaffolding |
 | ⚡ **Frontend** | HTMX first-class support, TailwindCSS auto-integration, partial template rendering, **Rullst Live** (Phoenix LiveView-inspired server-driven UI), **Wasm Islands** (`#[client_component]`) |
@@ -101,10 +101,19 @@ cargo rullst new
 
 # The wizard will prompt you:
 # 🚀 App name? (no spaces allowed) -> my-app
-# 🏗️ What would you like to build? -> Full-Stack Web App (SaaS, Portfolio, Blog) / REST API
-# 🔥 Enable Hot Reloading by default? -> Yes / No
-# 🗄️ Will your project need a Data Base? -> Yes / No
-# 💾 Select a DB Provider -> Sqlite / Postgres / MySQL/MariaDB
+# 🧭 Select a Starter Blueprint -> 
+#     * Blank Starter (Minimal template with HTMX reactive counter)
+#     * LMS Platform (Courses, lessons, video player, HTMX integration)
+#     * SaaS App Starter (Authentication + Stripe payments billing template)
+#     * Blog / Press (Static site generator pre-wired with Nexus CMS)
+#     * ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)
+#     * Uptime Monitor (Ping dashboard, background status checker, glassmorphism)
+# 
+# (If Blank Starter is selected, it will customize further):
+#   🏗️ What would you like to build? -> Full-Stack Web App / Headless REST API
+#   🔥 Enable Hot Reloading by default? -> Yes / No
+#   🗄️ Will your project need a Database? -> Yes / No
+#   💾 Select a DB Provider -> Sqlite / Postgres / MySQL/MariaDB
 
 # 2. Enter the project folder
 cd my-app
