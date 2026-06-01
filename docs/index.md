@@ -9,7 +9,8 @@ Rullst is an extremely fast, modular, and friendly Full-Stack web framework for 
 - [Tutorial 1: Getting Started](./1-getting-started.html)
 - [Tutorial 2: Documenting with RullstPress](./2-tutorial-rullstpress.html)
 - [🌟 Tutorial 3: The Rullst Masterclass (Build a SaaS)](./3-masterclass-building-a-saas.html)
-- [🛡️ Pre-Release Audit Report](./audit-report.html)
+- [🛡️ Security Audit Report v2.0 — Production Approved](./audit-report.html)
+- [📦 Audit Archive (Pre-v1.1)](./deep-audit-report-2026.html)
 - [📦 View on Crates.io](https://crates.io/crates/rullst)
 
 ### Why Rullst?
