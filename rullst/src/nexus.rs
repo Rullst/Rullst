@@ -742,7 +742,7 @@ fn render_record_form(entry: &RegistryEntry, id: Option<&str>) -> String {
     };
 
     let mut fields_html = String::new();
-    for f in entry.fields.iter().filter(|f| !(f.readonly && !is_edit)) {
+    for f in entry.fields.iter().filter(|f| !f.readonly || is_edit) {
         let readonly_attr = if f.readonly { " readonly" } else { "" };
         let disabled_attr = if f.readonly { " disabled" } else { "" };
         let placeholder = format!("Enter {}...", f.label);

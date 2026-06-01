@@ -352,8 +352,8 @@ pub fn mask_pii(text: &str) -> String {
             let username_len = idx - start;
             let domain_len = end - (idx + 1);
             if username_len > 1 && domain_len > 3 && dot_seen {
-                for m in (start + 1)..idx {
-                    chars[m] = '*';
+                for item in chars.iter_mut().take(idx).skip(start + 1) {
+                    *item = '*';
                 }
                 idx = end;
                 continue;

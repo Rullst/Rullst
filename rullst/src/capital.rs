@@ -32,7 +32,7 @@ impl SubscriptionStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
             "canceled" | "cancelled" => Self::Canceled,
@@ -266,7 +266,7 @@ impl BillingProvider for StripeProvider {
             customer_id,
             customer_email,
             plan_id,
-            status: SubscriptionStatus::from_str(status_str),
+            status: SubscriptionStatus::parse_status(status_str),
             ends_at,
         })
     }
@@ -444,7 +444,7 @@ impl BillingProvider for LemonSqueezyProvider {
             customer_id,
             customer_email,
             plan_id,
-            status: SubscriptionStatus::from_str(status_str),
+            status: SubscriptionStatus::parse_status(status_str),
             ends_at,
         })
     }
@@ -499,15 +499,15 @@ mod tests {
     #[test]
     fn test_subscription_status_parsing() {
         assert_eq!(
-            SubscriptionStatus::from_str("active"),
+            SubscriptionStatus::parse_status("active"),
             SubscriptionStatus::Active
         );
         assert_eq!(
-            SubscriptionStatus::from_str("Canceled"),
+            SubscriptionStatus::parse_status("Canceled"),
             SubscriptionStatus::Canceled
         );
         assert_eq!(
-            SubscriptionStatus::from_str("trialing"),
+            SubscriptionStatus::parse_status("trialing"),
             SubscriptionStatus::Trialing
         );
     }
