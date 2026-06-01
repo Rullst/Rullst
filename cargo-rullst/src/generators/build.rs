@@ -70,7 +70,7 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#)?;
         cargo_content = re_eloquent
             .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"1.1.0""#, &caps[1])
+                format!(r#"{}"3.0.3""#, &caps[1])
             })
             .into_owned();
 
@@ -116,12 +116,12 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         ),
         (
             r#"\buse\s+axum::"#,
-            "use rullst::web::axum::",
+            "use rullst::server::",
             "Enforce Dependency Shielding for axum",
         ),
         (
             r#"\buse\s+tokio::"#,
-            "use rullst::async_runtime::tokio::",
+            "use rullst::runtime::",
             "Enforce Dependency Shielding for tokio",
         ),
     ];

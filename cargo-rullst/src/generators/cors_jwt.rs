@@ -45,11 +45,12 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        let template = r#"use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-    http::{header, Method, StatusCode},
+        let template = r#"use rullst::server::{
+    Request,
+    Next,
+    Response,
+    header, Method, StatusCode,
+    Body,
 };
 
 /// Middleware CORS robusto e de alta performance.
@@ -70,7 +71,7 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
             .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
             .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
             .header(header::ACCESS_CONTROL_MAX_AGE, "86400")
-            .body(axum::body::Body::empty())
+            .body(Body::empty())
             .unwrap();
     }
 
@@ -134,7 +135,7 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
         "{}",
         "How to register in your main router (src/main.rs):".cyan()
     );
-    println!("{}", "  1. Add: '.layer(axum::middleware::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
+    println!("{}", "  1. Add: '.layer(rullst::server::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
 
     Ok(())
 }
@@ -208,11 +209,11 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        let template = r#"use axum::{
-    extract::Request,
-    middleware::Next,
-    response::{Response, IntoResponse},
-    http::{header, StatusCode},
+        let template = r#"use rullst::server::{
+    Request,
+    Next,
+    Response, IntoResponse,
+    header, StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -315,11 +316,11 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
     );
     println!(
         "{}",
-        "     .layer(axum::middleware::from_fn(middlewares::jwt_middleware::jwt_middleware))"
+        "     .layer(rullst::server::from_fn(middlewares::jwt_middleware::jwt_middleware))"
             .cyan()
     );
     println!("{}", "  2. Acesse os claims no controller:".cyan());
-    println!("{}", "     pub async fn meu_endpoint(axum::Extension(claims): axum::Extension<Claims>) -> impl IntoResponse".cyan());
+    println!("{}", "     pub async fn meu_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());
 
     Ok(())
 }

@@ -10,7 +10,7 @@ pub fn file_manifest(
     let mut manifest = Vec::new();
 
     let db_model_code = if db_needed {
-        "use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
+        "use rullst::db::{Orm, RullstModel, FromRow, sqlx};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
     } else {
         ""
     };
@@ -53,7 +53,7 @@ pub async fn home() -> impl IntoResponse {{
     let name = "Rullst";
 {db_status_code}
 
-    axum::Json(HomeResponse {{
+    rullst::server::Json(HomeResponse {{
         message: format!("Welcome to Rullst REST API: {{}}", name),
         database_status: db_status,
     }})
@@ -160,7 +160,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         let main_rs = format!(
             r##"{migrations_mod_declaration}
 
-#[tokio::main]
+#[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
@@ -210,13 +210,13 @@ async fn home() -> impl IntoResponse {{
     let name = "Rullst";
 {db_status_code}
 
-    axum::Json(HomeResponse {{
+    rullst::server::Json(HomeResponse {{
         message: format!("Welcome to Rullst REST API: {{}}", name),
         database_status: db_status,
     }})
 }}
 
-#[tokio::main]
+#[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
     let router = routes![
@@ -303,7 +303,7 @@ async fn clicked() -> impl IntoResponse {{
     }})
 }}
 
-#[tokio::main]
+#[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
     let router = routes![
@@ -326,6 +326,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         };
 
         manifest.push(("src/main.rs", main_rs));
+    }
+
+    if db_needed {
+        manifest.push((
+            "src/migrations/mod.rs",
+            "pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {\n    vec![]\n}\n".to_string(),
+        ));
     }
 
     manifest

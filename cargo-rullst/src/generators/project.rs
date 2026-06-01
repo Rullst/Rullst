@@ -225,8 +225,8 @@ axum = "0.8"
 
     if db_needed {
         cargo_toml.push_str(&format!(
-            r#"rullst-orm = "1.1.0"
-sqlx = {{ version = "0.8", {sqlx_features} }}
+            r#"rullst-orm = "3.0.3"
+sqlx = {{ version = "0.9.0", {sqlx_features} }}
 "#,
             sqlx_features = sqlx_features
         ));

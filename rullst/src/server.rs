@@ -1,4 +1,4 @@
-use crate::Router;
+pub use crate::Router;
 use crate::scheduler::Scheduler;
 use rullst_orm::Orm;
 use std::future::Future;
@@ -641,3 +641,13 @@ mod tests {
         assert!(server.scheduler.is_some());
     }
 }
+
+// ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
+pub use axum::{
+    extract::{Form, Json, Path, Query, State, Request, Extension},
+    http::{StatusCode, HeaderMap, Method, Uri, header, HeaderValue},
+    response::{Html, IntoResponse, Redirect, Response},
+    routing::{get, post, put, delete, patch},
+    middleware::{self, Next, from_fn},
+    body::{Body, Bytes},
+};

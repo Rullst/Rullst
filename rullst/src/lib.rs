@@ -152,6 +152,12 @@ pub use capital::{
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod runtime {
+    pub use tokio::{main, spawn, task, time};
+    pub use async_trait::async_trait;
+}
+
 pub mod web {
     #[cfg(not(target_arch = "wasm32"))]
     pub use axum;
@@ -171,3 +177,4 @@ pub mod email_client {
     #[cfg(not(target_arch = "wasm32"))]
     pub use lettre;
 }
+

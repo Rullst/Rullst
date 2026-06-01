@@ -14,10 +14,8 @@
 <p align="center">
   <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=fc8d62&logo=rust" alt="Crates.io">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-  <img src="https://img.shields.io/badge/Status-v1.0.11-emerald?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/docsrs/rullst?style=for-the-badge&color=4d76ae" alt="Docs">
   <img src="https://img.shields.io/crates/d/rullst?style=for-the-badge&color=8da0cb" alt="Downloads">
-  <img src="https://img.shields.io/badge/Stack-Axum%20%7C%20Rust%20Eloquent-blue?style=for-the-badge" alt="Stack">
 </p>
 
 **Rullst** (Rust + Fullstack) is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. 
@@ -43,7 +41,7 @@ Rullst redefines this experience. We offer an integrated, cohesive developer exp
 
 ## 🏆 Everything You Need, Built-In
 
-Rullst ships with **8 completed milestones** covering every layer of modern web development:
+Rullst ships with **10 completed milestones** covering every layer of modern web development:
 
 | Category | Features |
 |---|---|
@@ -55,6 +53,8 @@ Rullst ships with **8 completed milestones** covering every layer of modern web 
 | 🏢 **Enterprise** | Declarative Validation, Mailer (SMTP/Resend/SendGrid), Storage (Local/S3/R2), WebSockets, Multi-Tenancy, Feature Flags, E2E Testing |
 | 🚀 **Unfair Advantage** | **AI Core** (`rullst::ai` — OpenAI/Gemini/Anthropic/Ollama + RAG), **Rullst Studio** (visual DB GUI), **Self-Healing Error Console** (AI auto-fix), **Hot Reloading via `dylib`** |
 | 🌍 **Edge & Data** | Edge Runtime (Cloudflare Workers, Fastly, AWS Lambda@Edge), Zero-Config Distributed SQLite Replication (Turso/D1), Autonomous Upgrades |
+| 🆓 **Free Enterprise** | **Rullst Nexus** (visual auto-CMS & AI Chat assistant), **Rullst Capital** (Stripe/LemonSqueezy subscriptions boilerplate), **Dual-Engine Frontend** (Hyper Desktop + Omni Multi-Platform Signal Apps), **Rullst Shield** (Wasm WAF & PII masking), **Rullst Foundry** (1-click Cloud Devops Deploy) |
+| ⚡ **Linker Hacking** | **Mold/Cranelift Deep Integration** (sub-100ms incremental hot loops), compiler-driven auto-link optimization |
 
 ---
 

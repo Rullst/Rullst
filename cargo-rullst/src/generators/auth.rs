@@ -33,8 +33,8 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
     let migration_template = format!(
-        r##"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
-use rullst_orm::async_trait;
+        r##"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -44,7 +44,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::create("users", |table| {{
             table.id();
             table.string("name").not_null();
@@ -56,7 +56,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::drop_if_exists("users").await
     }}
 }}
@@ -74,8 +74,8 @@ impl Migration for MigrationImpl {{
     let migration_passkeys_path = migrations_dir.join(format!("{}.rs", file_stem_passkeys));
 
     let migration_passkeys_template = format!(
-        r##"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
-use rullst_orm::async_trait;
+        r##"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -85,7 +85,7 @@ impl Migration for MigrationImpl {{
         "{file_stem_passkeys}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::create("user_passkeys", |table| {{
             table.id();
             table.integer("user_id").not_null();
@@ -95,7 +95,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::drop_if_exists("user_passkeys").await
     }}
 }}
@@ -114,9 +114,9 @@ impl Migration for MigrationImpl {{
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
-    let model_template = r##"use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};
+    let model_template = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -134,9 +134,9 @@ pub struct User {
 
     // 2b. Create UserPasskey Model
     let passkey_model_path = models_dir.join("user_passkey.rs");
-    let passkey_model_template = r##"use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};
+    let passkey_model_template = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "user_passkeys")]
 pub struct UserPasskey {
     pub id: i32,
@@ -172,10 +172,10 @@ pub struct UserPasskey {
     let middlewares_dir = Path::new("src/middlewares");
     fs::create_dir_all(middlewares_dir)?;
     let middleware_path = middlewares_dir.join("auth_middleware.rs");
-    let middleware_template = r##"use axum::{
-    extract::Request,
-    middleware::Next,
-    response::{Response, Redirect, IntoResponse},
+    let middleware_template = r##"use rullst::server::{
+    Request,
+    Next,
+    Response, Redirect, IntoResponse,
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
@@ -215,7 +215,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     fs::create_dir_all(pages_dir)?;
     let pages_path = pages_dir.join("auth.rs");
     let pages_template = r##"use rullst::html;
-use axum::response::Html;
+use rullst::server::Html;
 
 const PASSKEY_SCRIPT: &str = r#"<script>
     function bufferDecode(value) {
@@ -804,10 +804,11 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
     // 5. Create Auth Controller
     let controllers_dir = Path::new("src/controllers");
     let controller_path = controllers_dir.join("auth_controller.rs");
-    let controller_template = r##"use axum::{
-    extract::{Form, Query},
-    response::{Html, IntoResponse, Redirect, Response},
-    http::HeaderMap,
+    let controller_template = r##"use rullst::server::{
+    Form, Query,
+    Html, IntoResponse, Redirect, Response,
+    HeaderMap, Extension, Json, StatusCode,
+    header,
 };
 use serde::Deserialize;
 use crate::models::user::User;
@@ -868,7 +869,7 @@ pub struct PasskeyEmailQuery {
 }
 
 fn get_csrf_token(headers: &HeaderMap) -> String {
-    headers.get(axum::http::header::COOKIE)
+    headers.get(rullst::server::header::COOKIE)
         .and_then(|v| v.to_str().ok())
         .and_then(|cookie_str| {
             for cookie in cookie_str.split(';') {
@@ -910,8 +911,8 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
         Ok(cookie) => {
             let mut res = Redirect::to("/dashboard").into_response();
             res.headers_mut().append(
-                axum::http::header::SET_COOKIE,
-                axum::http::HeaderValue::from_str(&cookie).unwrap()
+                rullst::server::header::SET_COOKIE,
+                rullst::server::HeaderValue::from_str(&cookie).unwrap()
             );
             res
         }
@@ -961,8 +962,8 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
         Ok(cookie) => {
             let mut res = Redirect::to("/dashboard").into_response();
             res.headers_mut().append(
-                axum::http::header::SET_COOKIE,
-                axum::http::HeaderValue::from_str(&cookie).unwrap()
+                rullst::server::header::SET_COOKIE,
+                rullst::server::HeaderValue::from_str(&cookie).unwrap()
             );
             res
         }
@@ -974,13 +975,13 @@ pub async fn logout() -> Response {
     let cookie = rullst_auth::make_logout_cookie();
     let mut res = Redirect::to("/login").into_response();
     res.headers_mut().append(
-        axum::http::header::SET_COOKIE,
-        axum::http::HeaderValue::from_str(&cookie).unwrap()
+        rullst::server::header::SET_COOKIE,
+        rullst::server::HeaderValue::from_str(&cookie).unwrap()
     );
     res
 }
 
-pub async fn dashboard(axum::Extension(user_id): axum::Extension<i32>) -> Response {
+pub async fn dashboard(rullst::server::Extension(user_id): rullst::server::Extension<i32>) -> Response {
     if let Ok(users) = User::all().await {
         if let Some(user) = users.into_iter().find(|u| u.id == user_id) {
             return auth::dashboard_page(&user.name).into_response();
@@ -1037,8 +1038,8 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
             if let Ok(cookie) = rullst_auth::make_login_cookie(user_id) {
                 let mut res = Redirect::to("/dashboard").into_response();
                 res.headers_mut().append(
-                    axum::http::header::SET_COOKIE,
-                    axum::http::HeaderValue::from_str(&cookie).unwrap()
+                    rullst::server::header::SET_COOKIE,
+                    rullst::server::HeaderValue::from_str(&cookie).unwrap()
                 );
                 return res;
             }
@@ -1049,16 +1050,16 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
 }
 
 pub async fn passkey_register_start(
-    axum::Json(payload): axum::Json<PasskeyRegisterStartDto>
+    rullst::server::Json(payload): rullst::server::Json<PasskeyRegisterStartDto>
 ) -> Response {
     let existing_users = match User::all().await {
         Ok(u) => u,
-        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        Err(_) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
     
     let email_lower = payload.email.to_lowercase();
     if existing_users.iter().any(|u| u.email.to_lowercase() == email_lower) {
-        return (axum::http::StatusCode::BAD_REQUEST, "Email already registered").into_response();
+        return (rullst::server::StatusCode::BAD_REQUEST, "Email already registered").into_response();
     }
 
     let next_id = existing_users.iter().map(|u| u.id).max().unwrap_or(0) + 1;
@@ -1068,24 +1069,24 @@ pub async fn passkey_register_start(
             if let Ok(mut states) = REG_STATES.lock() {
                 states.insert(email_lower, state);
             }
-            axum::Json(challenge).into_response()
+            rullst::server::Json(challenge).into_response()
         }
-        Err(e) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        Err(e) => (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
     }
 }
 
 pub async fn passkey_register_finish(
     Query(query): Query<PasskeyEmailQuery>,
-    axum::Json(credential): axum::Json<webauthn_rs::prelude::RegisterPublicKeyCredential>
+    rullst::server::Json(credential): rullst::server::Json<webauthn_rs::prelude::RegisterPublicKeyCredential>
 ) -> Response {
     let email_lower = query.email.to_lowercase();
     let state = {
         let Ok(mut states) = REG_STATES.lock() else {
-            return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
+            return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
         };
         match states.remove(&email_lower) {
             Some(s) => s,
-            None => return (axum::http::StatusCode::BAD_REQUEST, "Registration challenge not found").into_response(),
+            None => return (rullst::server::StatusCode::BAD_REQUEST, "Registration challenge not found").into_response(),
         }
     };
 
@@ -1104,7 +1105,7 @@ pub async fn passkey_register_finish(
             };
 
             if let Err(e) = user.save().await {
-                return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save user: {}", e)).into_response();
+                return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save user: {}", e)).into_response();
             }
 
             let passkey_json = serde_json::to_string(&passkey).unwrap_or_default();
@@ -1118,41 +1119,41 @@ pub async fn passkey_register_finish(
             };
 
             if let Err(e) = user_passkey.save().await {
-                return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save passkey: {}", e)).into_response();
+                return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save passkey: {}", e)).into_response();
             }
 
             match rullst_auth::make_login_cookie(user.id) {
                 Ok(cookie) => {
-                    let mut res = (axum::http::StatusCode::OK, "Success").into_response();
+                    let mut res = (rullst::server::StatusCode::OK, "Success").into_response();
                     res.headers_mut().append(
-                        axum::http::header::SET_COOKIE,
-                        axum::http::HeaderValue::from_str(&cookie).unwrap()
+                        rullst::server::header::SET_COOKIE,
+                        rullst::server::HeaderValue::from_str(&cookie).unwrap()
                     );
                     res
                 }
-                Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
+                Err(_) => (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
             }
         }
-        Err(e) => (axum::http::StatusCode::BAD_REQUEST, e).into_response()
+        Err(e) => (rullst::server::StatusCode::BAD_REQUEST, e).into_response()
     }
 }
 
 pub async fn passkey_login_start(
-    axum::Json(payload): axum::Json<PasskeyLoginStartDto>
+    rullst::server::Json(payload): rullst::server::Json<PasskeyLoginStartDto>
 ) -> Response {
     let email_lower = payload.email.to_lowercase();
     let existing_users = match User::all().await {
         Ok(u) => u,
-        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        Err(_) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
     
     let Some(user) = existing_users.into_iter().find(|u| u.email.to_lowercase() == email_lower) else {
-        return (axum::http::StatusCode::NOT_FOUND, "User not found").into_response();
+        return (rullst::server::StatusCode::NOT_FOUND, "User not found").into_response();
     };
 
     let all_passkeys = match UserPasskey::all().await {
         Ok(pk) => pk,
-        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        Err(_) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
     
     let user_credentials: Vec<webauthn_rs::prelude::Passkey> = all_passkeys
@@ -1162,7 +1163,7 @@ pub async fn passkey_login_start(
         .collect();
 
     if user_credentials.is_empty() {
-        return (axum::http::StatusCode::BAD_REQUEST, "No passkeys registered for this user").into_response();
+        return (rullst::server::StatusCode::BAD_REQUEST, "No passkeys registered for this user").into_response();
     }
 
     match PASSKEY.start_authenticate(&user_credentials) {
@@ -1170,38 +1171,38 @@ pub async fn passkey_login_start(
             if let Ok(mut states) = AUTH_STATES.lock() {
                 states.insert(email_lower, state);
             }
-            axum::Json(challenge).into_response()
+            rullst::server::Json(challenge).into_response()
         }
-        Err(e) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        Err(e) => (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
     }
 }
 
 pub async fn passkey_login_finish(
     Query(query): Query<PasskeyEmailQuery>,
-    axum::Json(credential): axum::Json<webauthn_rs::prelude::PublicKeyCredential>
+    rullst::server::Json(credential): rullst::server::Json<webauthn_rs::prelude::PublicKeyCredential>
 ) -> Response {
     let email_lower = query.email.to_lowercase();
     let state = {
         let Ok(mut states) = AUTH_STATES.lock() else {
-            return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
+            return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Lock error").into_response();
         };
         match states.remove(&email_lower) {
             Some(s) => s,
-            None => return (axum::http::StatusCode::BAD_REQUEST, "Authentication challenge not found").into_response(),
+            None => return (rullst::server::StatusCode::BAD_REQUEST, "Authentication challenge not found").into_response(),
         }
     };
 
     let existing_users = match User::all().await {
         Ok(u) => u,
-        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        Err(_) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
     let Some(user) = existing_users.into_iter().find(|u| u.email.to_lowercase() == email_lower) else {
-        return (axum::http::StatusCode::NOT_FOUND, "User not found").into_response();
+        return (rullst::server::StatusCode::NOT_FOUND, "User not found").into_response();
     };
 
     let mut all_passkeys = match UserPasskey::all().await {
         Ok(pk) => pk,
-        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        Err(_) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
     
     let mut found_passkey = None;
@@ -1221,7 +1222,7 @@ pub async fn passkey_login_finish(
 
     let (passkey, mut user_passkey) = match (found_passkey, found_user_passkey) {
         (Some(pk), Some(upk)) => (pk, upk),
-        _ => return (axum::http::StatusCode::BAD_REQUEST, "Matching credential not found").into_response(),
+        _ => return (rullst::server::StatusCode::BAD_REQUEST, "Matching credential not found").into_response(),
     };
 
     match PASSKEY.finish_authenticate(&credential, state, passkey) {
@@ -1231,17 +1232,17 @@ pub async fn passkey_login_finish(
 
             match rullst_auth::make_login_cookie(user.id) {
                 Ok(cookie) => {
-                    let mut res = (axum::http::StatusCode::OK, "Success").into_response();
+                    let mut res = (rullst::server::StatusCode::OK, "Success").into_response();
                     res.headers_mut().append(
-                        axum::http::header::SET_COOKIE,
-                        axum::http::HeaderValue::from_str(&cookie).unwrap()
+                        rullst::server::header::SET_COOKIE,
+                        rullst::server::HeaderValue::from_str(&cookie).unwrap()
                     );
                     res
                 }
-                Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
+                Err(_) => (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, "Error logging in").into_response(),
             }
         }
-        Err(e) => (axum::http::StatusCode::BAD_REQUEST, e).into_response()
+        Err(e) => (rullst::server::StatusCode::BAD_REQUEST, e).into_response()
     }
 }
 "##;
@@ -1362,7 +1363,7 @@ pub async fn passkey_login_finish(
     println!("{}", "     let protected_router = routes![\n         get(\"/dashboard\" => controllers::auth_controller::dashboard)\n     ]".yellow());
     println!(
         "{}",
-        "     .layer(axum::middleware::from_fn(middlewares::auth_middleware::auth_middleware));"
+        "     .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));"
             .yellow()
     );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
@@ -1371,7 +1372,7 @@ pub async fn passkey_login_finish(
         "  3. Aplique as proteções CSRF e Security Headers globais no seu router principal:".cyan()
     );
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
-    println!("{}", "     let main_router = routes![...]\n         .layer(axum::middleware::from_fn(rullst::security::csrf_middleware))\n         .layer(axum::middleware::from_fn(rullst::security::headers_middleware));".yellow());
+    println!("{}", "     let main_router = routes![...]\n         .layer(rullst::server::from_fn(rullst::security::csrf_middleware))\n         .layer(rullst::server::from_fn(rullst::security::headers_middleware));".yellow());
     println!("{}", "     -------------------------------------------------------------------------------------".yellow());
     println!("{}", "  4. Execute as migrations:".cyan());
     println!("{}", "     $ cargo rullst db:migrate".yellow());

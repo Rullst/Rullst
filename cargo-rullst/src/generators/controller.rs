@@ -70,7 +70,7 @@ pub fn create_new_controller(name: &str, api: bool) -> Result<(), Box<dyn std::e
     } else {
         let template = if api {
             format!(
-                r#"use axum::{{extract::{{Path, Form}}, response::IntoResponse, Json}};
+                r#"use rullst::server::{{Path, Form, IntoResponse, Json}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -127,8 +127,7 @@ pub async fn delete(Path(id): Path<i32>) -> impl IntoResponse {{
             )
         } else {
             format!(
-                r#"use rullst::{{html, response::{{Html, IntoResponse}}}};
-use axum::extract::{{Path, Form}};
+                r#"use rullst::{{html, server::{{Html, IntoResponse, Path, Form}}}};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

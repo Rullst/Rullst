@@ -35,8 +35,8 @@ pub fn scaffold_billing_system() -> Result<(), Box<dyn std::error::Error>> {
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
     let migration_template = format!(
-        r##"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
-use rullst_orm::async_trait;
+        r##"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+use rullst::db::async_trait;
 
 pub struct MigrationImpl;
 
@@ -46,7 +46,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::create("subscriptions", |table| {{
             table.id();
             table.integer("user_id").not_null();
@@ -59,7 +59,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
         Schema::drop_if_exists("subscriptions").await
     }}
 }}
@@ -78,9 +78,9 @@ impl Migration for MigrationImpl {{
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("subscription.rs");
-    let model_template = r##"use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};
+    let model_template = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "subscriptions")]
 pub struct Subscription {
     pub id: i32,
@@ -112,7 +112,7 @@ pub struct Subscription {
     fs::create_dir_all(pages_dir)?;
     let page_path = pages_dir.join("billing.rs");
     let page_template = r##"use rullst::html;
-use axum::response::Html;
+use rullst::server::Html;
 
 pub fn pricing_page() -> Html<String> {
     Html(html! {
@@ -246,15 +246,16 @@ pub fn pricing_page() -> Html<String> {
     let controllers_dir = Path::new("src/controllers");
     fs::create_dir_all(controllers_dir)?;
     let controller_path = controllers_dir.join("billing_controller.rs");
-    let controller_template = r##"use axum::{
-    extract::{Query, State},
-    response::{Html, IntoResponse, Redirect, Response},
-    http::{HeaderMap, StatusCode},
+    let controller_template = r##"use rullst::server::{
+    Query, State,
+    Html, IntoResponse, Redirect, Response,
+    HeaderMap, StatusCode,
+    body::Bytes,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
 use rullst::capital::{BillingProvider, StripeProvider, LemonSqueezyProvider};
-use rullst_orm::sqlx::Row;
+use rullst::db::sqlx::{self, Row};
 use crate::pages::billing;
 
 #[derive(Deserialize)]
@@ -294,7 +295,7 @@ pub async fn checkout_redirect(Query(query): Query<CheckoutQuery>) -> impl IntoR
 }
 
 /// Handles incoming webhook events from the selected provider.
-pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> impl IntoResponse {
+pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) -> impl IntoResponse {
     let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
     let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
     let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
@@ -327,9 +328,9 @@ pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> imp
 
     println!("🔔 Received Webhook for Subscription {} [{}] -> Status: {:?}", event.subscription_id, event.plan_id, event.status);
 
-    let pool = rullst_orm::Orm::pool();
+    let pool = rullst::db::Orm::pool();
     
-    let existing = sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
+    let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)
         .fetch_optional(pool)
         .await;
@@ -337,7 +338,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> imp
     match existing {
         Ok(Some(row)) => {
             let id: i32 = row.get("id");
-            let update_res = sqlx::query("UPDATE subscriptions SET status = ?1, plan_id = ?2, ends_at = ?3, updated_at = datetime('now') WHERE id = ?4")
+            let update_res = rullst::db::sqlx::query("UPDATE subscriptions SET status = ?1, plan_id = ?2, ends_at = ?3, updated_at = datetime('now') WHERE id = ?4")
                 .bind(event.status.as_str())
                 .bind(&event.plan_id)
                 .bind(event.ends_at)
@@ -350,7 +351,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> imp
             }
         }
         Ok(None) => {
-            let insert_res = sqlx::query("INSERT INTO subscriptions (user_id, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))")
+            let insert_res = rullst::db::sqlx::query("INSERT INTO subscriptions (user_id, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))")
                 .bind(1)
                 .bind(&event.customer_id)
                 .bind(&event.subscription_id)
@@ -414,9 +415,9 @@ pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> imp
         "To mount the billing panel and webhooks, register these routes in your main router:"
             .white()
     );
-    println!("{}", "  👉 .route(\"/pricing\", axum::routing::get(controllers::billing_controller::pricing_view))".cyan());
-    println!("{}", "  👉 .route(\"/billing/checkout\", axum::routing::get(controllers::billing_controller::checkout_redirect))".cyan());
-    println!("{}", "  👉 .route(\"/billing/webhook\", axum::routing::post(controllers::billing_controller::webhook_handler))".cyan());
+    println!("{}", "  👉 .route(\"/pricing\", rullst::server::get(controllers::billing_controller::pricing_view))".cyan());
+    println!("{}", "  👉 .route(\"/billing/checkout\", rullst::server::get(controllers::billing_controller::checkout_redirect))".cyan());
+    println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler))".cyan());
     println!(
         "\n{}",
         "Configure your gateway credentials in environment variables or your .env file:".white()

@@ -68,7 +68,7 @@ pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error
         );
     } else {
         let template = format!(
-            r#"use axum::{{extract::Request, middleware::Next, response::Response}};
+            r#"use rullst::server::{{Request, Next, Response}};
 
 pub async fn {}(req: Request, next: Next) -> Response {{
     // Pre-request logic here
@@ -122,7 +122,7 @@ pub async fn {}(req: Request, next: Next) -> Response {{
         .bold()
     );
     println!("{}", "How to map in your routes using Axum layers:".cyan());
-    println!("{}", "  1. Use: 'use axum::middleware::from_fn;'".cyan());
+    println!("{}", "  1. Use: 'use rullst::server::from_fn;'".cyan());
     println!(
         "{}",
         format!(
