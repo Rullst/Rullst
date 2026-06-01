@@ -8,7 +8,7 @@ use argon2::{
 };
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
-use rand_core::OsRng;
+use argon2::password_hash::rand_core::OsRng;
 use sha2::Digest;
 use std::convert::TryInto;
 use std::fs;

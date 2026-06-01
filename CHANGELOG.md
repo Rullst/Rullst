@@ -4,7 +4,14 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.11] - 2026-05-29 🏆
+## [Unreleased]
+
+## [1.0.15] - 2026-05-31 🏆
+
+### Dependency Updates & Modernization
+- **Rullst-ORM v3.x Migration**: Migrated the core framework and project generation templates to `rullst-orm v3.x`, updating all occurrences of the renamed `EloquentModel` trait to `RullstModel`.
+- **Cargo Dependency Upgrades**: Upgraded various key dependencies across the workspace to their latest versions (including `toml`, `redis`, `aws-sdk-s3`, `uuid`, `dashmap`, `walkdir`, `colored`, `tokio`, `pulldown-cmark`, `axum`, and `tower-http`) to guarantee the framework is running on the latest stable and secure releases.
+- **Rng Stability & rand_core Resolution**: Resolved version conflicts between `rand_core` versions. Removed the direct explicit dependency on `rand_core` from the main framework cargo definition, leveraging `argon2`'s re-exported types inside `auth.rs` to allow smooth and crash-free password hashing and salt generation.
 
 ### Community Health
 - **Community Standards**: Added `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant).

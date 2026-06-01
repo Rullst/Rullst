@@ -1,0 +1,19 @@
+[package]
+name = "rullst-press"
+version = "0.1.1"
+edition = "2024"
+authors = ["Rullst Team"]
+description = "A blazingly fast, native Rust Static Site Generator for premium Markdown documentation."
+license = "MIT"
+repository = "https://github.com/venelouis/rullst"
+keywords = ["markdown", "docs", "ssg", "documentation"]
+categories = ["command-line-utilities", "web-programming"]
+readme = "README.md"
+
+[dependencies]
+pulldown-cmark = "0.13"
+walkdir = "2.5"
+colored = "3.1"
+axum = "0.8"
+tokio = { version = "1.52", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs"] }

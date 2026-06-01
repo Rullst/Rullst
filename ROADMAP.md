@@ -214,7 +214,10 @@ graph TD
 ## 🆓 Milestone 9: The "Free Enterprise" Revolution
 **Goal:** Disrupt the web framework ecosystem by providing premium SaaS and Enterprise tools 100% free and open-source, democratizing the tools to build million-dollar companies.
 
-- [ ] **Rullst Nexus (AI-Native Admin Panel):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Includes an AI chat interface to perform complex database queries in natural language.
+- [ ] **Rullst Nexus Panel (Auto-Generated CMS):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Includes an optional AI chat interface to perform complex database queries in natural language.
+- [ ] **Dual-Engine Frontend Architecture:** Empowering developers to choose the right tool for the job directly from the `cargo-rullst` CLI:
+  - **Rullst Hyper:** The ultra-fast, SEO-optimized engine. Uses pure HTML, CSS, and HTMX rendered server-side. Compiles to blazing-fast Web and lightweight native Desktop applications (via WebView).
+  - **Rullst Omni:** The universal app engine. Silently wraps powerful UI frameworks (like Dioxus) to provide a "Write Once, Run Anywhere" experience. Compile a single codebase to iOS, Android, Desktop, and Web.
 - [ ] **Rullst Orbit (SaaS Billing Boilerplate):** Drop-in integration for Stripe/LemonSqueezy. Provides a full user billing portal, subscription management, and invoice generation in minutes.
 - [ ] **Rullst Shield (Wasm WAF & Bot Management):** Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking.
 - [ ] **Rullst Foundry CLI (DevOps Tooling):** Built-in CLI commands to provision and deploy infrastructure to AWS/Hetzner automatically, forming the open-source foundation for a future hosted 1-click cloud service.
