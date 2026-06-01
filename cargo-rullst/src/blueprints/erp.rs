@@ -105,7 +105,10 @@ impl Migration for MigrationImpl {
     }
 }
 "##;
-    manifest.push(("src/migrations/m20260601000000_create_erp_tables.rs", migration_impl.to_string()));
+    manifest.push((
+        "src/migrations/m20260601000000_create_erp_tables.rs",
+        migration_impl.to_string(),
+    ));
 
     // 4. Models mod.rs
     let models_mod = r##"pub mod product;
@@ -266,7 +269,10 @@ pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoRe
     Redirect::to("/")
 }
 "##;
-    manifest.push(("src/controllers/erp_controller.rs", erp_controller.to_string()));
+    manifest.push((
+        "src/controllers/erp_controller.rs",
+        erp_controller.to_string(),
+    ));
 
     // 9. Pages mod.rs
     let pages_mod = r##"pub mod erp;

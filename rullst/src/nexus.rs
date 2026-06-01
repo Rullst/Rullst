@@ -267,14 +267,25 @@ async fn nexus_table_view(
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return (StatusCode::NOT_FOUND, Html("<p>Table not found.</p>".to_string())).into_response(),
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Html("<p>Table not found.</p>".to_string()),
+            )
+                .into_response();
+        }
     };
 
     let page = params.page.unwrap_or(1).max(1);
     let q = params.q.clone().unwrap_or_default();
 
     let content = render_table_view(&state, entry, page, &q);
-    Html(render_shell(&state, &render_sidebar(&state, Some(&table)), &content)).into_response()
+    Html(render_shell(
+        &state,
+        &render_sidebar(&state, Some(&table)),
+        &content,
+    ))
+    .into_response()
 }
 
 /// GET /nexus/table/{table}/search — HTMX search fragment (no shell).
@@ -406,10 +417,16 @@ async fn nexus_chat_page(State(state): State<Arc<NexusState>>) -> Html<String> {
     // Form: use &quot; for the getElementById argument to avoid single-quote issues
     content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on::after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
     content.push_str("<input type=\"text\" name=\"message\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" autocomplete=\"off\" required />");
-    content.push_str("<button type=\"submit\" class=\"nexus-btn nexus-btn-ai\">Send &#9992;&#65039;</button>");
+    content.push_str(
+        "<button type=\"submit\" class=\"nexus-btn nexus-btn-ai\">Send &#9992;&#65039;</button>",
+    );
     content.push_str("</form></div></div>");
 
-    Html(render_shell(&state, &render_sidebar(&state, None), &content))
+    Html(render_shell(
+        &state,
+        &render_sidebar(&state, None),
+        &content,
+    ))
 }
 
 /// POST /nexus/chat/query — AI Query HTMX endpoint.
@@ -556,7 +573,11 @@ fn render_table_rows(entry: &RegistryEntry, q: &str) -> String {
                     FieldKind::Email => format!("user{}@example.com", i),
                     FieldKind::Number => i.to_string(),
                     FieldKind::Boolean => {
-                        if i % 2 == 0 { "&#9989; Yes".to_string() } else { "&#10060; No".to_string() }
+                        if i % 2 == 0 {
+                            "&#9989; Yes".to_string()
+                        } else {
+                            "&#10060; No".to_string()
+                        }
                     }
                     FieldKind::Date => format!("2026-0{}-01", i),
                     _ => format!("Sample {} {}", f.label, i),
@@ -639,7 +660,9 @@ fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &
     out.push_str("<div class=\"nexus-page-header\">");
     out.push_str("<div>");
     out.push_str(&format!("<h1 class=\"nexus-page-title\">{ic} {lb}</h1>"));
-    out.push_str(&format!("<p class=\"nexus-page-subtitle\">Manage all records in the <code>{t}</code> table.</p>"));
+    out.push_str(&format!(
+        "<p class=\"nexus-page-subtitle\">Manage all records in the <code>{t}</code> table.</p>"
+    ));
     out.push_str("</div>");
     out.push_str(&format!(
         "<button class=\"nexus-btn nexus-btn-primary\" \
@@ -662,7 +685,9 @@ fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &
          name=\"q\" />"
     ));
     out.push_str("</div>");
-    out.push_str(&format!("<span class=\"nexus-page-badge\">Page {page}</span>"));
+    out.push_str(&format!(
+        "<span class=\"nexus-page-badge\">Page {page}</span>"
+    ));
     out.push_str("</div>");
 
     out.push_str("<div class=\"nexus-table-wrap\">");
@@ -677,7 +702,9 @@ fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &
 
     out.push_str("<div class=\"nexus-pagination\">");
     out.push_str(&prev_btn);
-    out.push_str(&format!("<span class=\"nexus-page-indicator\">Page {page}</span>"));
+    out.push_str(&format!(
+        "<span class=\"nexus-page-indicator\">Page {page}</span>"
+    ));
     out.push_str(&next_btn);
     out.push_str("</div>");
 
@@ -763,13 +790,17 @@ fn render_record_form(entry: &RegistryEntry, id: Option<&str>) -> String {
          hx-target=\"#nexus-toast\" hx-swap=\"outerHTML\" \
          hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).close()\">"
     ));
-    out.push_str(&format!("<h2 class=\"nexus-modal-title\">{form_title}</h2>"));
+    out.push_str(&format!(
+        "<h2 class=\"nexus-modal-title\">{form_title}</h2>"
+    ));
     out.push_str("<div class=\"nexus-fields-grid\">");
     out.push_str(&fields_html);
     out.push_str("</div>");
     out.push_str("<div class=\"nexus-form-actions\">");
     out.push_str("<button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"document.getElementById(&quot;nexus-modal&quot;).close()\">Cancel</button>");
-    out.push_str(&format!("<button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">{submit_label}</button>"));
+    out.push_str(&format!(
+        "<button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">{submit_label}</button>"
+    ));
     out.push_str("</div></form>");
     out
 }
@@ -813,7 +844,9 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str("<div class=\"nexus-htmx-indicator\" id=\"nexus-htmx-indicator\">");
     out.push_str("<span class=\"nexus-spinner\"></span>Loading...");
     out.push_str("</div></div></header>");
-    out.push_str("<div class=\"nexus-content\" id=\"nexus-content\" hx-indicator=\"#nexus-htmx-indicator\">");
+    out.push_str(
+        "<div class=\"nexus-content\" id=\"nexus-content\" hx-indicator=\"#nexus-htmx-indicator\">",
+    );
     out.push_str(content);
     out.push_str("</div></main>\n</body>\n</html>");
     out
@@ -1005,28 +1038,76 @@ mod tests {
 
     struct TestUser;
     impl NexusModel for TestUser {
-        fn nexus_table() -> &'static str { "users" }
-        fn nexus_label() -> &'static str { "Users" }
-        fn nexus_icon() -> &'static str { "👤" }
+        fn nexus_table() -> &'static str {
+            "users"
+        }
+        fn nexus_label() -> &'static str {
+            "Users"
+        }
+        fn nexus_icon() -> &'static str {
+            "👤"
+        }
         fn nexus_fields() -> Vec<FieldMeta> {
             vec![
-                FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-                FieldMeta { name: "name", label: "Name", kind: FieldKind::Text, hidden: false, readonly: false },
-                FieldMeta { name: "email", label: "Email", kind: FieldKind::Email, hidden: false, readonly: false },
+                FieldMeta {
+                    name: "id",
+                    label: "ID",
+                    kind: FieldKind::Number,
+                    hidden: true,
+                    readonly: true,
+                },
+                FieldMeta {
+                    name: "name",
+                    label: "Name",
+                    kind: FieldKind::Text,
+                    hidden: false,
+                    readonly: false,
+                },
+                FieldMeta {
+                    name: "email",
+                    label: "Email",
+                    kind: FieldKind::Email,
+                    hidden: false,
+                    readonly: false,
+                },
             ]
         }
     }
 
     struct TestPost;
     impl NexusModel for TestPost {
-        fn nexus_table() -> &'static str { "posts" }
-        fn nexus_label() -> &'static str { "Posts" }
-        fn nexus_icon() -> &'static str { "📝" }
+        fn nexus_table() -> &'static str {
+            "posts"
+        }
+        fn nexus_label() -> &'static str {
+            "Posts"
+        }
+        fn nexus_icon() -> &'static str {
+            "📝"
+        }
         fn nexus_fields() -> Vec<FieldMeta> {
             vec![
-                FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-                FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
-                FieldMeta { name: "published", label: "Published", kind: FieldKind::Boolean, hidden: false, readonly: false },
+                FieldMeta {
+                    name: "id",
+                    label: "ID",
+                    kind: FieldKind::Number,
+                    hidden: true,
+                    readonly: true,
+                },
+                FieldMeta {
+                    name: "title",
+                    label: "Title",
+                    kind: FieldKind::Text,
+                    hidden: false,
+                    readonly: false,
+                },
+                FieldMeta {
+                    name: "published",
+                    label: "Published",
+                    kind: FieldKind::Boolean,
+                    hidden: false,
+                    readonly: false,
+                },
             ]
         }
     }
@@ -1090,7 +1171,10 @@ mod tests {
         assert_eq!(field_kind_input_type(&FieldKind::Number), "number");
         assert_eq!(field_kind_input_type(&FieldKind::Text), "text");
         assert_eq!(field_kind_input_type(&FieldKind::Date), "date");
-        assert_eq!(field_kind_input_type(&FieldKind::DateTime), "datetime-local");
+        assert_eq!(
+            field_kind_input_type(&FieldKind::DateTime),
+            "datetime-local"
+        );
     }
 
     #[test]

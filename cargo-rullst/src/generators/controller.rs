@@ -1,6 +1,6 @@
 // src/generators/controller.rs — Controller generator.
 
-use crate::generators::{is_rullst_project, to_snake_case, to_camel_case};
+use crate::generators::{is_rullst_project, to_camel_case, to_snake_case};
 use colored::*;
 use std::fs;
 use std::path::Path;

@@ -4,9 +4,9 @@
 //! Supports Stripe and LemonSqueezy out of the box with secure webhook validation.
 
 use async_trait::async_trait;
+use ring::hmac;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use ring::hmac;
 
 /// The semantic status of a SaaS Subscription.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,7 +77,11 @@ pub trait BillingProvider: Send + Sync {
     ) -> Result<String, String>;
 
     /// Verify the signature and extract subscription data from webhook request.
-    fn handle_webhook(&self, payload: &[u8], headers: &HashMap<String, String>) -> Result<WebhookEvent, String>;
+    fn handle_webhook(
+        &self,
+        payload: &[u8],
+        headers: &HashMap<String, String>,
+    ) -> Result<WebhookEvent, String>;
 }
 
 // ─── Utility Helpers ──────────────────────────────────────────────────────────
@@ -107,7 +111,10 @@ pub struct StripeProvider {
 
 impl StripeProvider {
     pub fn new(api_key: String, webhook_secret: String) -> Self {
-        Self { api_key, webhook_secret }
+        Self {
+            api_key,
+            webhook_secret,
+        }
     }
 
     /// Verifies the `Stripe-Signature` header signature.
@@ -135,12 +142,12 @@ impl StripeProvider {
             return Err("Invalid Stripe-Signature header format".to_string());
         }
 
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| format!("Invalid hex signature: {}", e))?;
+        let sig_bytes =
+            hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
 
         let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(payload));
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        
+
         hmac::verify(&key, signed_payload.as_bytes(), &sig_bytes)
             .map_err(|_| "Stripe signature verification failed".to_string())?;
 
@@ -171,7 +178,7 @@ impl BillingProvider for StripeProvider {
         }
 
         let client = reqwest::Client::new();
-        
+
         // Construct the form body manually to avoid reqwest optional "form" dependency feature
         let body_str = format!(
             "mode=subscription&success_url={}&cancel_url={}&customer_email={}&line_items[0][price]={}&line_items[0][quantity]=1",
@@ -193,7 +200,10 @@ impl BillingProvider for StripeProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(format!("Stripe API returned error {}: {}", status, err_text));
+            return Err(format!(
+                "Stripe API returned error {}: {}",
+                status, err_text
+            ));
         }
 
         #[derive(Deserialize)]
@@ -209,7 +219,11 @@ impl BillingProvider for StripeProvider {
         Ok(session.url)
     }
 
-    fn handle_webhook(&self, payload: &[u8], headers: &HashMap<String, String>) -> Result<WebhookEvent, String> {
+    fn handle_webhook(
+        &self,
+        payload: &[u8],
+        headers: &HashMap<String, String>,
+    ) -> Result<WebhookEvent, String> {
         let sig = headers
             .get("stripe-signature")
             .or_else(|| headers.get("Stripe-Signature"));
@@ -220,8 +234,8 @@ impl BillingProvider for StripeProvider {
             return Err("Missing stripe-signature header".to_string());
         }
 
-        let val: serde_json::Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let val: serde_json::Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let event_type = val["type"].as_str().unwrap_or("");
         if !event_type.starts_with("customer.subscription.") {
@@ -232,7 +246,7 @@ impl BillingProvider for StripeProvider {
         let subscription_id = obj["id"].as_str().unwrap_or("").to_string();
         let customer_id = obj["customer"].as_str().unwrap_or("").to_string();
         let status_str = obj["status"].as_str().unwrap_or("");
-        
+
         let plan_id = obj["items"]["data"][0]["price"]["id"]
             .as_str()
             .unwrap_or("")
@@ -267,7 +281,10 @@ pub struct LemonSqueezyProvider {
 
 impl LemonSqueezyProvider {
     pub fn new(api_key: String, webhook_secret: String) -> Self {
-        Self { api_key, webhook_secret }
+        Self {
+            api_key,
+            webhook_secret,
+        }
     }
 
     /// Verifies the `X-Signature` header signature using HMAC-SHA256 of the raw body.
@@ -276,11 +293,11 @@ impl LemonSqueezyProvider {
             return Ok(());
         }
 
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| format!("Invalid hex signature: {}", e))?;
+        let sig_bytes =
+            hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        
+
         hmac::verify(&key, payload, &sig_bytes)
             .map_err(|_| "LemonSqueezy signature verification failed".to_string())?;
 
@@ -311,7 +328,7 @@ impl BillingProvider for LemonSqueezyProvider {
         }
 
         let client = reqwest::Client::new();
-        
+
         // We need the LemonSqueezy Store ID to create custom checkouts.
         // It can be passed or extracted. Let's look up the STORE_ID env var, default to a mock/1.
         let store_id = std::env::var("LEMONSQUEEZY_STORE_ID").unwrap_or_else(|_| "1".to_string());
@@ -357,7 +374,10 @@ impl BillingProvider for LemonSqueezyProvider {
         if !res.status().is_success() {
             let status = res.status();
             let err_text = res.text().await.unwrap_or_default();
-            return Err(format!("LemonSqueezy API returned error {}: {}", status, err_text));
+            return Err(format!(
+                "LemonSqueezy API returned error {}: {}",
+                status, err_text
+            ));
         }
 
         let body: serde_json::Value = res
@@ -373,7 +393,11 @@ impl BillingProvider for LemonSqueezyProvider {
         Ok(url)
     }
 
-    fn handle_webhook(&self, payload: &[u8], headers: &HashMap<String, String>) -> Result<WebhookEvent, String> {
+    fn handle_webhook(
+        &self,
+        payload: &[u8],
+        headers: &HashMap<String, String>,
+    ) -> Result<WebhookEvent, String> {
         let sig = headers
             .get("x-signature")
             .or_else(|| headers.get("X-Signature"));
@@ -384,8 +408,8 @@ impl BillingProvider for LemonSqueezyProvider {
             return Err("Missing X-Signature header".to_string());
         }
 
-        let val: serde_json::Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let val: serde_json::Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let event_name = val["meta"]["event_name"].as_str().unwrap_or("");
         if !event_name.starts_with("subscription_") {
@@ -395,13 +419,17 @@ impl BillingProvider for LemonSqueezyProvider {
         let data = &val["data"];
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
         let attrs = &data["attributes"];
-        
-        let customer_id = attrs["customer_id"].as_u64().map(|id| id.to_string())
+
+        let customer_id = attrs["customer_id"]
+            .as_u64()
+            .map(|id| id.to_string())
             .or_else(|| attrs["customer_id"].as_str().map(|s| s.to_string()))
             .unwrap_or_default();
 
         let customer_email = attrs["user_email"].as_str().unwrap_or("").to_string();
-        let plan_id = attrs["variant_id"].as_u64().map(|id| id.to_string())
+        let plan_id = attrs["variant_id"]
+            .as_u64()
+            .map(|id| id.to_string())
             .or_else(|| attrs["variant_id"].as_str().map(|s| s.to_string()))
             .unwrap_or_default();
 
@@ -446,8 +474,11 @@ mod tests {
     async fn test_mock_stripe_provider() {
         let provider = StripeProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "stripe");
-        
-        let url = provider.create_checkout_session("test@user.com", "price_123", "https://app.com/success").await.unwrap();
+
+        let url = provider
+            .create_checkout_session("test@user.com", "price_123", "https://app.com/success")
+            .await
+            .unwrap();
         assert!(url.contains("mock_session"));
         assert!(url.contains("test%40user.com"));
     }
@@ -456,16 +487,28 @@ mod tests {
     async fn test_mock_lemonsqueezy_provider() {
         let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "lemonsqueezy");
-        
-        let url = provider.create_checkout_session("test@user.com", "456", "https://app.com/success").await.unwrap();
+
+        let url = provider
+            .create_checkout_session("test@user.com", "456", "https://app.com/success")
+            .await
+            .unwrap();
         assert!(url.contains("mock_session"));
         assert!(url.contains("test%40user.com"));
     }
 
     #[test]
     fn test_subscription_status_parsing() {
-        assert_eq!(SubscriptionStatus::from_str("active"), SubscriptionStatus::Active);
-        assert_eq!(SubscriptionStatus::from_str("Canceled"), SubscriptionStatus::Canceled);
-        assert_eq!(SubscriptionStatus::from_str("trialing"), SubscriptionStatus::Trialing);
+        assert_eq!(
+            SubscriptionStatus::from_str("active"),
+            SubscriptionStatus::Active
+        );
+        assert_eq!(
+            SubscriptionStatus::from_str("Canceled"),
+            SubscriptionStatus::Canceled
+        );
+        assert_eq!(
+            SubscriptionStatus::from_str("trialing"),
+            SubscriptionStatus::Trialing
+        );
     }
 }

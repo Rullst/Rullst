@@ -1,12 +1,12 @@
 // src/ui/components.rs — Neon spinners, interactive dashboard, update banner,
 // and the full Rullst CLI help reference. Zero file I/O here.
 
-use crate::cli::{Commands, DocsCommands, run_cli_command, Cli};
+use crate::cli::{Cli, Commands, DocsCommands, run_cli_command};
 use clap::Parser;
 use colored::*;
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 // ─── Update Check ────────────────────────────────────────────────────────────
 
@@ -219,7 +219,9 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
         "  {} {} {}",
         "The".white(),
         "Ultimate Full-Stack Rust Framework".bright_cyan().bold(),
-        format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow().bold()
+        format!("v{}", env!("CARGO_PKG_VERSION"))
+            .bright_yellow()
+            .bold()
     );
     println!(
         "  {}",
@@ -230,8 +232,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!(
         "  {}",
-        "┌─────────────────────────────────────────────────────────────────┐"
-            .bright_cyan()
+        "┌─────────────────────────────────────────────────────────────────┐".bright_cyan()
     );
     println!(
         "  {} {:<65}{}",
@@ -241,8 +242,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!(
         "  {}",
-        "└─────────────────────────────────────────────────────────────────┘"
-            .bright_cyan()
+        "└─────────────────────────────────────────────────────────────────┘".bright_cyan()
     );
     println!();
 
@@ -449,7 +449,10 @@ pub fn show_help_reference() {
             "🛠️  SCAFFOLDING",
             vec![
                 ("cargo rullst make:controller <Name>", "New controller"),
-                ("cargo rullst make:model <Name> -m", "New model (+migration)"),
+                (
+                    "cargo rullst make:model <Name> -m",
+                    "New model (+migration)",
+                ),
                 ("cargo rullst make:middleware <Name>", "New middleware"),
                 ("cargo rullst make:worker <Name>", "New background worker"),
                 ("cargo rullst make:migration <name>", "Blank migration"),
@@ -477,7 +480,10 @@ pub fn show_help_reference() {
         (
             "🖥️  DESKTOP & CROSS-PLATFORM",
             vec![
-                ("cargo rullst make:desktop", "Tauri native desktop packaging"),
+                (
+                    "cargo rullst make:desktop",
+                    "Tauri native desktop packaging",
+                ),
                 ("cargo rullst make:omni", "Dioxus cross-platform app"),
             ],
         ),
@@ -491,7 +497,10 @@ pub fn show_help_reference() {
         (
             "📦  BUILD & DOCS",
             vec![
-                ("cargo rullst build", "Production binary + Brotli/Zstd assets"),
+                (
+                    "cargo rullst build",
+                    "Production binary + Brotli/Zstd assets",
+                ),
                 ("cargo rullst build:client", "Compile Wasm Islands"),
                 ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
                 ("cargo rullst docs dev", "Live docs preview server"),

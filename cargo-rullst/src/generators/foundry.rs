@@ -22,7 +22,9 @@ pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
     if foundry_path.exists() {
         println!(
             "{}",
-            "⚠️  Foundry.toml already exists. Delete it first to re-initialize.".yellow().bold()
+            "⚠️  Foundry.toml already exists. Delete it first to re-initialize."
+                .yellow()
+                .bold()
         );
         std::process::exit(0);
     }
@@ -99,7 +101,9 @@ APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
 DATABASE_URL = "sqlite:///app/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""
 # AWS_ACCESS_KEY_ID = ""
-"#, project_name = project_name);
+"#,
+        project_name = project_name
+    );
 
     fs::write(foundry_path, &foundry_toml)?;
 
@@ -108,10 +112,7 @@ DATABASE_URL = "sqlite:///app/data/db.sqlite"
         "✅ Foundry.toml generated successfully!".green().bold()
     );
     println!();
-    println!(
-        "{}",
-        "📋 Next steps:".bold()
-    );
+    println!("{}", "📋 Next steps:".bold());
     println!(
         "  1. Edit {} with your server IP, domain, and secrets.",
         "Foundry.toml".cyan()
@@ -180,7 +181,9 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
         for line in content.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with(key) && trimmed.contains('=') {
-                let val = trimmed.split_once('=').map(|x| x.1)
+                let val = trimmed
+                    .split_once('=')
+                    .map(|x| x.1)
                     .unwrap_or("")
                     .trim()
                     .trim_matches('"')
@@ -191,17 +194,17 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
         String::new()
     };
 
-    let app_name   = get_value("name");
-    let domain     = get_value("domain");
-    let port       = get_value("port");
-    let host       = get_value("host");
-    let user       = get_value("user");
-    let ssh_key    = get_value("ssh_key");
-    let ssh_port   = get_value("ssh_port");
-    let provider   = get_value("provider");
-    let db_type    = get_value("type");
-    let _db_url     = get_value("url");
-    let profile    = get_value("profile");
+    let app_name = get_value("name");
+    let domain = get_value("domain");
+    let port = get_value("port");
+    let host = get_value("host");
+    let user = get_value("user");
+    let ssh_key = get_value("ssh_key");
+    let ssh_port = get_value("ssh_port");
+    let provider = get_value("provider");
+    let db_type = get_value("type");
+    let _db_url = get_value("url");
+    let profile = get_value("profile");
     let target_triple = get_value("target");
     let auto_https = get_value("auto_https");
 
@@ -210,8 +213,13 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     let mut in_env = false;
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed == "[env]" { in_env = true; continue; }
-        if trimmed.starts_with('[') && trimmed != "[env]" { in_env = false; }
+        if trimmed == "[env]" {
+            in_env = true;
+            continue;
+        }
+        if trimmed.starts_with('[') && trimmed != "[env]" {
+            in_env = false;
+        }
         if in_env && trimmed.contains('=') && !trimmed.starts_with('#') {
             let mut parts = trimmed.splitn(2, '=');
             if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
@@ -220,9 +228,20 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let ssh_key_expanded = ssh_key.replace("~", &std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default()));
-    let ssh_port_num = if ssh_port.is_empty() { "22".to_string() } else { ssh_port };
-    let app_port = if port.is_empty() { "3000".to_string() } else { port };
+    let ssh_key_expanded = ssh_key.replace(
+        "~",
+        &std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default()),
+    );
+    let ssh_port_num = if ssh_port.is_empty() {
+        "22".to_string()
+    } else {
+        ssh_port
+    };
+    let app_port = if port.is_empty() {
+        "3000".to_string()
+    } else {
+        port
+    };
 
     let ssh_base_args: Vec<String> = {
         let mut args = Vec::new();
@@ -246,20 +265,54 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!();
-    println!("{}", "┌────────────────────────────────────────────────────────────┐".cyan().bold());
-    println!("{}", format!("│  🏭  Rullst Foundry — Deploying to {:>24} │", provider.to_uppercase()).cyan().bold());
-    println!("{}", "└────────────────────────────────────────────────────────────┘".cyan().bold());
+    println!(
+        "{}",
+        "┌────────────────────────────────────────────────────────────┐"
+            .cyan()
+            .bold()
+    );
+    println!(
+        "{}",
+        format!(
+            "│  🏭  Rullst Foundry — Deploying to {:>24} │",
+            provider.to_uppercase()
+        )
+        .cyan()
+        .bold()
+    );
+    println!(
+        "{}",
+        "└────────────────────────────────────────────────────────────┘"
+            .cyan()
+            .bold()
+    );
     println!();
-    println!("  {} {}", "→ App:".bold(),    app_name.cyan());
+    println!("  {} {}", "→ App:".bold(), app_name.cyan());
     println!("  {} {}", "→ Domain:".bold(), domain.cyan());
-    println!("  {} {}", "→ Server:".bold(), format!("{}@{}", user, host).cyan());
-    println!("  {} {}", "→ Port:".bold(),   app_port.cyan());
-    println!("  {} {}", "→ DB:".bold(),     db_type.cyan());
-    println!("  {} {}", "→ Profile:".bold(), if profile.is_empty() { "release".to_string() } else { profile.clone() }.cyan());
+    println!(
+        "  {} {}",
+        "→ Server:".bold(),
+        format!("{}@{}", user, host).cyan()
+    );
+    println!("  {} {}", "→ Port:".bold(), app_port.cyan());
+    println!("  {} {}", "→ DB:".bold(), db_type.cyan());
+    println!(
+        "  {} {}",
+        "→ Profile:".bold(),
+        if profile.is_empty() {
+            "release".to_string()
+        } else {
+            profile.clone()
+        }
+        .cyan()
+    );
     println!();
 
     // ── Step 1: Build ────────────────────────────────────────────────
-    println!("{}", "📦 [1/5] Building production binary...".bold().yellow());
+    println!(
+        "{}",
+        "📦 [1/5] Building production binary...".bold().yellow()
+    );
     let mut build_args = vec!["build".to_string()];
     if profile != "debug" {
         build_args.push("--release".to_string());
@@ -277,9 +330,21 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
 
     // Determine binary path
     let bin_subdir = if target_triple.is_empty() {
-        if profile == "debug" { "debug".to_string() } else { "release".to_string() }
+        if profile == "debug" {
+            "debug".to_string()
+        } else {
+            "release".to_string()
+        }
     } else {
-        format!("{}/{}", target_triple, if profile == "debug" { "debug" } else { "release" })
+        format!(
+            "{}/{}",
+            target_triple,
+            if profile == "debug" {
+                "debug"
+            } else {
+                "release"
+            }
+        )
     };
     let cargo_toml_content = fs::read_to_string("Cargo.toml").unwrap_or_default();
     let bin_name = cargo_toml_content
@@ -291,21 +356,33 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     let local_bin = format!("target/{}/{}", bin_subdir, bin_name);
 
     // ── Step 2: Provision server ─────────────────────────────────────
-    println!("{}", "🖥️  [2/5] Provisioning server environment...".bold().yellow());
+    println!(
+        "{}",
+        "🖥️  [2/5] Provisioning server environment..."
+            .bold()
+            .yellow()
+    );
     let provision_cmd = r#"set -e
 apt-get update -qq
 apt-get install -y -qq docker.io curl wget || yum install -y docker curl wget || true
 systemctl enable docker --now || true
 mkdir -p /app/data /app/bin /app/config
-echo "✅ Server environment ready.""#.to_string();
+echo "✅ Server environment ready.""#
+        .to_string();
     if !run_ssh(&provision_cmd)? {
-        println!("{}", "⚠️  Server provisioning had warnings (continuing anyway)...".yellow());
+        println!(
+            "{}",
+            "⚠️  Server provisioning had warnings (continuing anyway)...".yellow()
+        );
     } else {
         println!("{}", "  ✅ Server provisioned.".green());
     }
 
     // ── Step 3: Upload binary ─────────────────────────────────────────
-    println!("{}", "📤 [3/5] Uploading application binary...".bold().yellow());
+    println!(
+        "{}",
+        "📤 [3/5] Uploading application binary...".bold().yellow()
+    );
     let mut scp_args = Vec::new();
     scp_args.push("-P".to_string());
     scp_args.push(ssh_port_num.clone());
@@ -320,13 +397,23 @@ echo "✅ Server environment ready.""#.to_string();
 
     let scp_status = Command::new("scp").args(&scp_args).status()?;
     if !scp_status.success() {
-        println!("{}", "❌ Failed to upload binary via SCP. Check SSH access and try again.".red().bold());
+        println!(
+            "{}",
+            "❌ Failed to upload binary via SCP. Check SSH access and try again."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
     println!("{}", "  ✅ Binary uploaded to /app/bin/.".green());
 
     // ── Step 4: Write env + Caddyfile + start container ──────────────
-    println!("{}", "⚙️  [4/5] Configuring services (env, Caddy, container)...".bold().yellow());
+    println!(
+        "{}",
+        "⚙️  [4/5] Configuring services (env, Caddy, container)..."
+            .bold()
+            .yellow()
+    );
 
     let caddy_site = if auto_https == "true" || auto_https.is_empty() {
         format!(
@@ -342,13 +429,17 @@ echo "✅ Server environment ready.""#.to_string();
     log {{
         output file /var/log/caddy/{app_name}.log
     }}
-}}"#, domain = domain, app_port = app_port, app_name = app_name
+}}"#,
+            domain = domain,
+            app_port = app_port,
+            app_name = app_name
         )
     } else {
         format!(
             r#":{app_port} {{
     reverse_proxy localhost:{app_port}
-}}"#, app_port = app_port
+}}"#,
+            app_port = app_port
         )
     };
 
@@ -404,20 +495,32 @@ systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || cad
 
 echo "✅ Services configured and started."
 "#,
-        env_lines = env_vars.iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("\n"),
+        env_lines = env_vars
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("\n"),
         caddy_site = caddy_site,
         bin_name = bin_name,
         app_name = app_name,
     );
 
     if !run_ssh(&configure_cmd)? {
-        println!("{}", "⚠️  Service configuration had warnings. Verify on the server.".yellow());
+        println!(
+            "{}",
+            "⚠️  Service configuration had warnings. Verify on the server.".yellow()
+        );
     } else {
         println!("{}", "  ✅ Services configured and started.".green());
     }
 
     // ── Step 5: Health check ──────────────────────────────────────────
-    println!("{}", "🩺 [5/5] Running deployment health check...".bold().yellow());
+    println!(
+        "{}",
+        "🩺 [5/5] Running deployment health check..."
+            .bold()
+            .yellow()
+    );
     let health_cmd = format!(
         "sleep 3 && curl -sf http://localhost:{app_port} > /dev/null && echo '✅ App is responding!' || echo '⚠️  App may still be starting...'",
         app_port = app_port
@@ -425,19 +528,44 @@ echo "✅ Services configured and started."
     let _ = run_ssh(&health_cmd);
 
     println!();
-    println!("{}", "┌────────────────────────────────────────────────────────────┐".green().bold());
-    println!("{}", "│  🎉  Rullst Foundry — Deployment Complete!                  │".green().bold());
-    println!("{}", "└────────────────────────────────────────────────────────────┘".green().bold());
+    println!(
+        "{}",
+        "┌────────────────────────────────────────────────────────────┐"
+            .green()
+            .bold()
+    );
+    println!(
+        "{}",
+        "│  🎉  Rullst Foundry — Deployment Complete!                  │"
+            .green()
+            .bold()
+    );
+    println!(
+        "{}",
+        "└────────────────────────────────────────────────────────────┘"
+            .green()
+            .bold()
+    );
     println!();
-    let url_protocol = if auto_https == "true" || auto_https.is_empty() { "https" } else { "http" };
+    let url_protocol = if auto_https == "true" || auto_https.is_empty() {
+        "https"
+    } else {
+        "http"
+    };
     println!(
         "  {} {}://{}",
         "🌐 Your app is live at:".bold(),
         url_protocol,
         domain.cyan().bold()
     );
-    println!("  {}", "📋 To check logs: ssh into your server and run:".bold());
-    println!("     {}", format!("journalctl -u rullst_{} -f", app_name).magenta());
+    println!(
+        "  {}",
+        "📋 To check logs: ssh into your server and run:".bold()
+    );
+    println!(
+        "     {}",
+        format!("journalctl -u rullst_{} -f", app_name).magenta()
+    );
     println!();
 
     Ok(())

@@ -67,7 +67,10 @@ impl Migration for MigrationImpl {{
         file_stem = file_stem
     );
     fs::write(&migration_path, migration_template)?;
-    println!("{}", "  ✨ Created 'subscriptions' table migration.".green());
+    println!(
+        "{}",
+        "  ✨ Created 'subscriptions' table migration.".green()
+    );
 
     regenerate_migrations_mod()?;
 
@@ -224,7 +227,10 @@ pub fn pricing_page() -> Html<String> {
 }
 "##;
     fs::write(&page_path, page_template)?;
-    println!("{}", "  ✨ Created HTML views in 'src/pages/billing.rs'.".green());
+    println!(
+        "{}",
+        "  ✨ Created HTML views in 'src/pages/billing.rs'.".green()
+    );
 
     let mod_pages_path = pages_dir.join("mod.rs");
     if !mod_pages_path.exists() {
@@ -397,12 +403,24 @@ pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> imp
         fs::write(main_path, main_content)?;
     }
 
-    println!("\n{}", "🎉 Rullst Capital Billing Scaffolding Completed Successfully!".green().bold());
-    println!("{}", "To mount the billing panel and webhooks, register these routes in your main router:".white());
+    println!(
+        "\n{}",
+        "🎉 Rullst Capital Billing Scaffolding Completed Successfully!"
+            .green()
+            .bold()
+    );
+    println!(
+        "{}",
+        "To mount the billing panel and webhooks, register these routes in your main router:"
+            .white()
+    );
     println!("{}", "  👉 .route(\"/pricing\", axum::routing::get(controllers::billing_controller::pricing_view))".cyan());
     println!("{}", "  👉 .route(\"/billing/checkout\", axum::routing::get(controllers::billing_controller::checkout_redirect))".cyan());
     println!("{}", "  👉 .route(\"/billing/webhook\", axum::routing::post(controllers::billing_controller::webhook_handler))".cyan());
-    println!("\n{}", "Configure your gateway credentials in environment variables or your .env file:".white());
+    println!(
+        "\n{}",
+        "Configure your gateway credentials in environment variables or your .env file:".white()
+    );
     println!("{}", "  💰 BILLING_PROVIDER=stripe".yellow());
     println!("{}", "  💰 BILLING_API_KEY=sk_test_...".yellow());
     println!("{}", "  💰 BILLING_WEBHOOK_SECRET=whsec_...".yellow());

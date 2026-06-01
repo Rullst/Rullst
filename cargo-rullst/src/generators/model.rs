@@ -1,14 +1,17 @@
 // src/generators/model.rs — Model generator.
 
 use crate::generators::{
-    is_rullst_project, model_to_snake_case, model_to_pascal_case, pluralize,
-    migration::regenerate_migrations_mod,
+    is_rullst_project, migration::regenerate_migrations_mod, model_to_pascal_case,
+    model_to_snake_case, pluralize,
 };
 use colored::*;
 use std::fs;
 use std::path::Path;
 
-pub fn create_new_model(name: &str, create_migration: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_new_model(
+    name: &str,
+    create_migration: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Validate if we are in the root of the Rullst project
     if !is_rullst_project() {
         println!(

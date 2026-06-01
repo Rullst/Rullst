@@ -1,13 +1,13 @@
 // src/blueprints/mod.rs — Root of the blueprints module.
 
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 pub mod blank;
-pub mod lms;
-pub mod saas;
 pub mod blog;
 pub mod erp;
+pub mod lms;
+pub mod saas;
 pub mod uptime;
 
 pub fn apply(

@@ -21,12 +21,14 @@ fn generate_secure_app_key() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(123456789);
-    
+
     let mut rng = seed;
     let mut key = String::new();
     let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     for _ in 0..32 {
-        rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        rng = rng
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let idx = (rng % (chars.len() as u128)) as usize;
         key.push(chars[idx] as char);
     }
@@ -284,7 +286,7 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
 # Este arquivo configura linkers ultra-rápidos para desenvolvimento local.
 # O Rullst detectou seu ambiente e configurou as opções adequadas.
 
-"#
+"#,
     );
 
     // Configuração para Windows (MSVC usa lld-link ou lld)
@@ -293,7 +295,7 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
             r#"[target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
-"#
+"#,
         );
     } else {
         config_toml.push_str(
@@ -311,14 +313,14 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
             r#"[target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
-"#
+"#,
         );
     } else if has_lld && cfg!(target_os = "linux") {
         config_toml.push_str(
             r#"[target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
-"#
+"#,
         );
     } else {
         config_toml.push_str(
@@ -338,7 +340,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 [target.aarch64-apple-darwin]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-"#
+"#,
         );
     } else {
         config_toml.push_str(
@@ -347,7 +349,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 # rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 # [target.aarch64-apple-darwin]
 # rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-"#
+"#,
         );
     }
 
@@ -463,18 +465,38 @@ APP_ENV=development
     }
 
     if !has_mold && !has_lld {
-        println!("\n{}", "⚡ Rullst Dev Tip: Speed up compile times up to 10x!".yellow().bold());
-        println!("{}", "To unlock near-instant compile speeds, we highly recommend installing a fast linker:".white());
+        println!(
+            "\n{}",
+            "⚡ Rullst Dev Tip: Speed up compile times up to 10x!"
+                .yellow()
+                .bold()
+        );
+        println!(
+            "{}",
+            "To unlock near-instant compile speeds, we highly recommend installing a fast linker:"
+                .white()
+        );
         if cfg!(windows) {
             println!("{}", "  👉 Install LLD: winget install LLVM.LLVM".cyan());
         } else if cfg!(target_os = "macos") {
             println!("{}", "  👉 Install LLD: brew install llvm".cyan());
         } else {
-            println!("{}", "  👉 Install Mold: sudo apt install mold (or dnf install mold)".cyan());
+            println!(
+                "{}",
+                "  👉 Install Mold: sudo apt install mold (or dnf install mold)".cyan()
+            );
         }
-        println!("{}", "Once installed, uncomment the config lines inside '.cargo/config.toml'!".white());
+        println!(
+            "{}",
+            "Once installed, uncomment the config lines inside '.cargo/config.toml'!".white()
+        );
     } else {
-        println!("\n{}", "🚀 High-performance linker automatically detected and configured!".green().bold());
+        println!(
+            "\n{}",
+            "🚀 High-performance linker automatically detected and configured!"
+                .green()
+                .bold()
+        );
     }
 
     println!(

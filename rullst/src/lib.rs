@@ -16,9 +16,9 @@ pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
-pub mod capital;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod capital;
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod error_console;
@@ -36,6 +36,8 @@ pub mod mail;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod nexus;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod resilience;
@@ -51,8 +53,6 @@ pub mod server;
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod studio;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod nexus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
@@ -83,7 +83,7 @@ pub use server::Server;
 
 // Re-export rullst-orm for seamless database usage
 #[cfg(not(target_arch = "wasm32"))]
-pub use rullst_orm::{RullstModel, Orm};
+pub use rullst_orm::{Orm, RullstModel};
 
 // Re-export Configuration types
 pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
@@ -146,7 +146,9 @@ pub use nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
 
 // Re-export Milestone 9: Rullst Capital (Billing Boilerplate)
 #[cfg(not(target_arch = "wasm32"))]
-pub use capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, SubscriptionStatus, WebhookEvent};
+pub use capital::{
+    BillingProvider, LemonSqueezyProvider, StripeProvider, SubscriptionStatus, WebhookEvent,
+};
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 

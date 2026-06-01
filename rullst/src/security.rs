@@ -183,19 +183,34 @@ fn url_decode(s: &str) -> String {
 /// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
 pub async fn waf_middleware(req: Request, next: Next) -> Response {
     // 1. Inspect User-Agent for known bots or scrapers
-    if let Some(ua) = req.headers().get(header::USER_AGENT).and_then(|v| v.to_str().ok()) {
+    if let Some(ua) = req
+        .headers()
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+    {
         let ua_lower = ua.to_lowercase();
         let suspicious_agents = [
-            "curl", "wget", "python-requests", "go-http-client", 
-            "gptbot", "chatgpt-user", "google-extended", "anthropic-ai", 
-            "claude-web", "cohere-ai", "bytespider", "mj12bot"
+            "curl",
+            "wget",
+            "python-requests",
+            "go-http-client",
+            "gptbot",
+            "chatgpt-user",
+            "google-extended",
+            "anthropic-ai",
+            "claude-web",
+            "cohere-ai",
+            "bytespider",
+            "mj12bot",
         ];
         for agent in suspicious_agents {
             if ua_lower.contains(agent) {
                 return Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                    .body(axum::body::Body::from("Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF."))
+                    .body(axum::body::Body::from(
+                        "Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF.",
+                    ))
                     .unwrap();
             }
         }
@@ -205,19 +220,32 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
     if let Some(query) = req.uri().query() {
         let query_decoded = url_decode(query);
         let query_lower = query_decoded.to_lowercase();
-        
+
         let malicious_patterns = [
-            "select ", "union ", "insert ", "delete ", "drop table", "alter table",
-            "<script", "javascript:", "onload=", "onerror=",
-            "../", "..\\", "/etc/passwd", "win.ini"
+            "select ",
+            "union ",
+            "insert ",
+            "delete ",
+            "drop table",
+            "alter table",
+            "<script",
+            "javascript:",
+            "onload=",
+            "onerror=",
+            "../",
+            "..\\",
+            "/etc/passwd",
+            "win.ini",
         ];
-        
+
         for pattern in malicious_patterns {
             if query_lower.contains(pattern) {
                 return Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                    .body(axum::body::Body::from("Access Denied: Malicious pattern detected by Rullst Shield WAF."))
+                    .body(axum::body::Body::from(
+                        "Access Denied: Malicious pattern detected by Rullst Shield WAF.",
+                    ))
                     .unwrap();
             }
         }
@@ -229,12 +257,17 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
 /// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let response = next.run(req).await;
-    
-    let content_type = response.headers().get(header::CONTENT_TYPE)
+
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
-        
-    if content_type.contains("text") || content_type.contains("json") || content_type.contains("javascript") {
+
+    if content_type.contains("text")
+        || content_type.contains("json")
+        || content_type.contains("javascript")
+    {
         let (parts, body) = response.into_parts();
         if let Ok(bytes) = axum::body::to_bytes(body, 2 * 1024 * 1024).await {
             let body_str = String::from_utf8_lossy(&bytes);
@@ -248,7 +281,7 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
                 .unwrap();
         }
     }
-    
+
     response
 }
 
@@ -273,7 +306,7 @@ pub fn mask_pii(text: &str) -> String {
                 }
                 j += 1;
             }
-            
+
             let count = digit_indices.len();
             if (13..=19).contains(&count) {
                 let mask_count = count - 4;
@@ -286,7 +319,7 @@ pub fn mask_pii(text: &str) -> String {
         }
         i += 1;
     }
-    
+
     let text_str = chars.into_iter().collect::<String>();
     let mut chars: Vec<char> = text_str.chars().collect();
     let mut idx = 0;
@@ -301,7 +334,7 @@ pub fn mask_pii(text: &str) -> String {
                     break;
                 }
             }
-            
+
             let mut end = idx + 1;
             let mut dot_seen = false;
             while end < chars.len() {
@@ -315,7 +348,7 @@ pub fn mask_pii(text: &str) -> String {
                     break;
                 }
             }
-            
+
             let username_len = idx - start;
             let domain_len = end - (idx + 1);
             if username_len > 1 && domain_len > 3 && dot_seen {
@@ -328,7 +361,7 @@ pub fn mask_pii(text: &str) -> String {
         }
         idx += 1;
     }
-    
+
     chars.into_iter().collect()
 }
 
@@ -352,4 +385,3 @@ mod tests {
         assert!(masked.contains("a****@domain.org"));
     }
 }
-

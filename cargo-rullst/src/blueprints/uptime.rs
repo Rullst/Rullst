@@ -146,7 +146,10 @@ impl Migration for MigrationImpl {
     }
 }
 "##;
-    manifest.push(("src/migrations/m20260601000000_create_uptime_tables.rs", migration_impl.to_string()));
+    manifest.push((
+        "src/migrations/m20260601000000_create_uptime_tables.rs",
+        migration_impl.to_string(),
+    ));
 
     // 4. Models mod.rs
     let models_mod = r##"pub mod monitor;
@@ -324,7 +327,10 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 "##;
-    manifest.push(("src/controllers/uptime_controller.rs", uptime_controller.to_string()));
+    manifest.push((
+        "src/controllers/uptime_controller.rs",
+        uptime_controller.to_string(),
+    ));
 
     // 9. Pages mod.rs
     let pages_mod = r##"pub mod uptime;
