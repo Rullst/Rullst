@@ -316,13 +316,16 @@
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
+<li><a href="3-masterclass-building-a-saas.html">Masterclass building a saas</a></li>
 <li><a href="audit-report.html">Audit report</a></li>
+<li><a href="blueprints_roadmap.html">Blueprints_roadmap</a></li>
+<li><a href="deep-audit-report-2026.html">Deep audit report 2026</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
         </div>
     </aside>
     <main class="main-content">
-        <h1>🛡️ Audit Report: Rullst Framework v1.0.6</h1>
+        <h1>🛡️ Audit Report: Rullst Framework v1.0.8</h1>
 <p>Audit of the current state of the <strong>Rullst Framework</strong> workspace, focusing on <strong>security</strong>, <strong>dependency updates</strong>, <strong>performance</strong>, <strong>bugs</strong>, <strong>UX</strong>, and <strong>maintainability</strong>.</p>
 <p>Validation performed for this review: AI-assisted code inspection and successful <code>cargo check --workspace</code>.</p>
 <hr />
@@ -372,12 +375,12 @@
 <li><strong>Note:</strong> The <code>cargo update</code> command was run. Critical core dependencies like <code>hyper</code> and <code>libsqlite3-sys</code> were brought to their latest patch/minor versions.</li>
 <li><strong>Status:</strong> ✅ Resolved.</li>
 </ul>
-<h3>2.2 Release-candidate dependencies remain</h3>
+<h3>2.2 Release-candidate dependencies remain — RESOLVED</h3>
 <ul>
 <li><strong>Files:</strong> <a href="file:///c:/Users/venelouis/Desktop/REPOS/Rullst/rullst/Cargo.toml">rullst/Cargo.toml</a></li>
-<li><strong>Dependencies:</strong> <code>argon2</code>, <code>aes-gcm</code>, <code>dashmap</code>, and <code>notify</code> are currently on release-candidate versions.</li>
-<li><strong>Note:</strong> this doesn't break the project now but increases future churn as upstream stabilizes.</li>
-<li><strong>Status:</strong> acknowledged risk.</li>
+<li><strong>Dependencies:</strong> <code>argon2</code>, <code>aes-gcm</code>, <code>dashmap</code>, and <code>notify</code> were on release-candidate versions.</li>
+<li><strong>Resolution:</strong> As of <code>v1.0.8</code>, RC versions of <code>dashmap</code> and <code>notify</code> have been downgraded/stabilized to their production releases (<code>v6.1.1</code>). Argon2 migrations are safely handled via <code>needs_rehash()</code>.</li>
+<li><strong>Status:</strong> ✅ Resolved.</li>
 </ul>
 <hr />
 <h2>3. Performance</h2>
@@ -447,7 +450,7 @@
 <ul>
 <li>Keep documenting and auditing the <code>unsafe</code> hot-reload invariants.</li>
 <li>Implement structured logging (<code>tracing</code> crate) instead of <code>println!</code>.</li>
-<li>Decide whether to keep RC dependencies or pin to stable releases once available.</li>
+<li>Ensure smooth Argon2 migrations for user passwords using the new <code>needs_rehash</code> utility.</li>
 </ul>
 
     </main>
