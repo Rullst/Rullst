@@ -78,3 +78,15 @@ pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> String {
 pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> String {
     val.escape_html()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_complex_javascript_types() {
+        let js = r#"<script>let a = {"b": 1, c: '2', d: [1,2,3]}; alert(a);</script>"#;
+        let expected = "&lt;script&gt;let a = {&quot;b&quot;: 1, c: &#x27;2&#x27;, d: [1,2,3]}; alert(a);&lt;/script&gt;";
+        assert_eq!(escape_str(js), expected);
+    }
+}

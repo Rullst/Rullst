@@ -384,4 +384,42 @@ mod tests {
         assert!(masked.contains("v********@rullst.com"));
         assert!(masked.contains("a****@domain.org"));
     }
+
+    #[tokio::test]
+    async fn test_waf_middleware_blocks_malicious_query() {
+        use axum::http::{Request, StatusCode};
+
+        // Not currently possible to test axum middlewares easily without setting up an app.
+        // We will test `waf_middleware` via a router approach.
+        let app = axum::Router::new()
+            .route("/", axum::routing::get(|| async { "OK" }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+
+        // Use reqwest or tower::ServiceExt to call the app
+        let req = Request::builder().uri("/?q=select%20").body(axum::body::Body::empty()).unwrap();
+        let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+        let req2 = Request::builder().uri("/?q=hello").body(axum::body::Body::empty()).unwrap();
+        let res2 = tower::ServiceExt::oneshot(app, req2).await.unwrap();
+        assert_eq!(res2.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_headers_middleware_injects_security_headers() {
+        use axum::http::{Request, StatusCode};
+
+        let app = axum::Router::new()
+            .route("/", axum::routing::get(|| async { "OK" }))
+            .route_layer(axum::middleware::from_fn(headers_middleware));
+
+        let req = Request::builder().uri("/").body(axum::body::Body::empty()).unwrap();
+        let res = tower::ServiceExt::oneshot(app, req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        
+        let headers = res.headers();
+        assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
+        assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
+        assert_eq!(headers.get("X-XSS-Protection").unwrap(), "1; mode=block");
+    }
 }

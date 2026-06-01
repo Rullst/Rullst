@@ -278,13 +278,11 @@ pub mod redis_driver {
                     .map_err(|e| CacheError::Driver(format!("Redis SCAN failed: {}", e)))?;
 
                 if !keys.is_empty() {
-                    for key in &keys {
-                        redis::cmd("DEL")
-                            .arg(key)
-                            .query_async::<i64>(&mut con)
-                            .await
-                            .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
-                    }
+                    redis::cmd("DEL")
+                        .arg(&keys)
+                        .query_async::<i64>(&mut con)
+                        .await
+                        .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
                 }
 
                 cursor = next_cursor;

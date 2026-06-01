@@ -64,12 +64,15 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
 
     // Lida com requisições preflight OPTIONS
     if req.method() == Method::OPTIONS {
+        // ATENÇÃO: Nunca permita credenciais se a origem for '*'
+        let allow_credentials = if origin == "*" { "false" } else { "true" };
+        
         return Response::builder()
             .status(StatusCode::NO_CONTENT)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &origin)
             .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, PATCH, OPTIONS")
             .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
-            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, allow_credentials)
             .header(header::ACCESS_CONTROL_MAX_AGE, "86400")
             .body(Body::empty())
             .unwrap();
@@ -77,6 +80,8 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
 
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
+
+    let allow_credentials = if origin == "*" { "false" } else { "true" };
 
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -92,7 +97,7 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
     );
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
-        header::HeaderValue::from_static("true"),
+        header::HeaderValue::from_str(allow_credentials).unwrap(),
     );
 
     response
@@ -240,7 +245,7 @@ pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
     }
 
     let token = &auth_str["Bearer ".len()...];
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret_super_secreto_rullst_key".to_string());
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| panic!("JWT_SECRET must be set"));
 
     match decode::<Claims>(
         token,
@@ -258,7 +263,7 @@ pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
 
 /// Helper para gerar um novo token JWT com duração de 1 dia.
 pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret_super_secreto_rullst_key".to_string());
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| panic!("JWT_SECRET must be set"));
     let expiration = chrono::Utc::now()
         .checked_add_signed(chrono::Duration::days(1))
         .expect("valid timestamp")

@@ -46,14 +46,23 @@ impl LocalDriver {
     }
 
     fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
-        let safe_path = path.replace('\\', "/");
-        let safe_path = safe_path.trim_start_matches('/');
-
-        // Ensure no absolute paths or Windows drive letters are injected
-        if std::path::Path::new(safe_path).is_absolute() || safe_path.contains(':') {
+        // Ensure no absolute paths or Windows drive letters are injected before we strip slashes
+        if std::path::Path::new(path).is_absolute() || path.contains(':') || path.starts_with('/') || path.starts_with('\\') {
             return Err(StorageError::DriverError(
                 "Access denied: absolute paths are not allowed".to_string(),
             ));
+        }
+
+        let safe_path = path.replace('\\', "/");
+        let safe_path = safe_path.trim_start_matches('/');
+
+        // Strictly reject any parent directory components to prevent path traversal
+        for component in std::path::Path::new(safe_path).components() {
+            if let std::path::Component::ParentDir = component {
+                return Err(StorageError::DriverError(
+                    "Access denied: path traversal attempt detected".to_string(),
+                ));
+            }
         }
 
         let joined = self.root.join(safe_path);
@@ -73,6 +82,17 @@ impl LocalDriver {
         }
 
         if normalized.starts_with(&self.root) {
+            // Check for symlink escapes if the path exists
+            if normalized.exists() {
+                if let Ok(canon) = std::fs::canonicalize(&normalized) {
+                    let canon_root = std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+                    if !canon.starts_with(&canon_root) {
+                        return Err(StorageError::DriverError(
+                            "Access denied: Symlink traversal attempt detected".to_string(),
+                        ));
+                    }
+                }
+            }
             Ok(normalized)
         } else {
             Err(StorageError::DriverError(
@@ -375,5 +395,35 @@ mod tests {
         assert!(res_get.is_err());
 
         let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[tokio::test]
+    async fn test_local_storage_absolute_path_denied() {
+        let temp_dir = "storage/test_absolute";
+        let _ = std::fs::remove_dir_all(temp_dir);
+        let driver = LocalDriver::new(temp_dir);
+
+        let res_put = driver.put("/etc/passwd", b"hack").await;
+        assert!(res_put.is_err());
+        assert!(res_put.unwrap_err().to_string().contains("absolute paths are not allowed"));
+
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_storage_disk_factory() {
+        unsafe {
+            std::env::set_var("STORAGE_ROOT", "storage/factory_test");
+        }
+        let _driver = Storage::disk("local");
+        // We just ensure it doesn't panic and returns a valid LocalDriver via Box<dyn StorageDriver>
+        // Downcasting is not straight-forward, but we can call a method if we want, or just rely on instantiation.
+        
+        let err_driver = Storage::disk("unknown_disk");
+        // Unknown disk should return an ErrorDriver
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let err_res = runtime.block_on(err_driver.exists("test"));
+        assert!(err_res.is_err());
+        assert!(err_res.unwrap_err().to_string().contains("Unknown storage disk"));
     }
 }
