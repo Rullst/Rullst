@@ -129,14 +129,13 @@ fn generate_sidebar(pages: &[std::path::PathBuf], docs_dir: &Path) -> String {
             let mut title = name.replace("-", " ");
 
             // Remove num prefix (e.g., "1 getting started" -> "getting started")
-            if let Some(first_char) = title.chars().next() {
-                if first_char.is_ascii_digit() {
+            if let Some(first_char) = title.chars().next()
+                && first_char.is_ascii_digit() {
                     let parts: Vec<&str> = title.splitn(2, ' ').collect();
                     if parts.len() == 2 {
                         title = parts[1].to_string();
                     }
                 }
-            }
 
             // Capitalize title
             let mut chars = title.chars();
