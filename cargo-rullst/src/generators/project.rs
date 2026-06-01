@@ -62,7 +62,7 @@ pub fn create_new_project(
             let mut val = String::new();
             while val.trim().is_empty() || val.contains(' ') {
                 val = dialoguer::Input::with_theme(&theme)
-                    .with_prompt("App name? (no spaces allowed)")
+                    .with_prompt("🚀 App name? (no spaces allowed)")
                     .interact_text()?;
                 if val.contains(' ') {
                     println!(
@@ -91,7 +91,7 @@ pub fn create_new_project(
             "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)",
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("Select a Starter Blueprint")
+            .with_prompt("🧭 Select a Starter Blueprint")
             .default(0)
             .items(&blueprint_choices[..])
             .interact()?;
@@ -102,26 +102,26 @@ pub fn create_new_project(
                 "Headless REST API",
             ];
             let build_selection = dialoguer::Select::with_theme(&theme)
-                .with_prompt("What would you like to build?")
+                .with_prompt("🏗️ What would you like to build?")
                 .default(0)
                 .items(&build_options[..])
                 .interact()?;
             api = build_selection == 1;
 
             hot_reload = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("Enable Hot Reloading by default?")
+                .with_prompt("🔥 Enable Hot Reloading by default?")
                 .default(false)
                 .interact()?;
 
             db_needed = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("Will your project need a Database?")
+                .with_prompt("🗄️ Will your project need a Database?")
                 .default(true)
                 .interact()?;
 
             if db_needed {
                 let db_options = &["Sqlite", "Postgres", "MySQL/MariaDB"];
                 let db_selection = dialoguer::Select::with_theme(&theme)
-                    .with_prompt("Select a DB Provider")
+                    .with_prompt("💾 Select a DB Provider")
                     .default(0)
                     .items(&db_options[..])
                     .interact()?;
