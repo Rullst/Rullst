@@ -6,7 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.0.15] - 2026-05-31 🏆
+### Added (Milestone 9 – Phase 5: Rullst Foundry CLI)
+- **1-Click DevOps Deployment (`cargo rullst foundry:init` & `cargo rullst foundry:deploy`)**:
+  - Implements declarative infrastructure configuration via `Foundry.toml`, automatically generated and tailored to the Rullst project context with native gitignore protection.
+  - Supports 6 major cloud providers out of the box: **AWS**, **Hetzner Cloud**, **Google Cloud Platform**, **Microsoft Azure**, **Oracle Cloud Infrastructure**, and **DigitalOcean**.
+  - Implements a resilient 5-stage deployment pipeline using system SSH/SCP integrations: compiles the production binary, provisions the remote server environment, uploads the compiled binary, configures environment variables, configures a Caddy HTTPS reverse proxy with automatic SSL certificate management, sets up a persistent `systemd` service, and performs a live application health check.
+
+### Added (Milestone 9 – Phase 4: Dual-Engine Frontend (Hyper & Omni))
+- **Tauri Desktop Packaging (`cargo rullst make:desktop`)**:
+  - Automatically scaffolds the full Tauri configuration (`src-tauri/`) required to compile Rullst Hyper (HTMX + SSR) applications into native desktop executables.
+  - Implements a high-reliability background server lifecycle orchestrator in Rust (`src/main.rs`) that starts the Rullst backend on a background thread, monitors and polls TCP port `3000` for binding, launches the webview interface, and gracefully terminates the backend when the window is closed.
+  - Integrates a smart transparent 1x1 icon generator directly in the Rust CLI to build and write fully valid, structured binary PNG, `.ico`, and `.icns` file formats to prevent Tauri compilation errors due to missing assets.
+- **Dioxus Multi-Platform Scaffolding (`cargo rullst make:omni`)**:
+  - Scaffolds a complete monorepo template with a Dioxus v0.7 multi-platform frontend application (`omni-app/`) pre-wired to talk to the Rullst backend API.
+  - Features a beautiful dark-mode glassmorphic user interface (`style.css` using modern gradients, ambient glows, responsive panels, beacons of status, and micro-animations) for high-impact visual aesthetics.
+  - Integrates Dioxus v0.7 signals (`use_signal`, `use_future`) for async state fetching from the Rullst REST/WS backend with visual offline fallbacks.
+
+### Added (Milestone 9 – Phase 1: Rullst Nexus Panel)
+- **`rullst::nexus` Module**: Introduced the `Nexus` auto-generated CMS & AI Admin Panel. Developers register any struct that implements the `NexusModel` trait and instantly get a fully functional, dark-mode admin panel served at `/nexus` — zero templates or configuration required.
+- **`NexusModel` Reflection Trait**: Added the core `NexusModel` trait for model schema reflection. Implement `nexus_table()`, `nexus_label()`, `nexus_icon()`, `nexus_fields()`, and `nexus_pk()` to expose any model to the panel. A future `#[derive(Nexus)]` macro will auto-generate this.
+- **`FieldMeta` & `FieldKind`**: New types to describe model field schemas with semantic types (Text, Email, Number, Boolean, Date, DateTime, Password, Json, Textarea, Url), visibility (hidden), and editability (readonly) controls.
+- **Dynamic CRUD via HTMX**: The Nexus router auto-generates full `GET/POST/PUT/DELETE` routes per registered model, with reactive HTMX-powered paginagtion, live search (300ms debounce), and create/edit/delete modals — all without additional handler code.
+- **AI Query Assistant (`/nexus/chat`)**: Added an AI-powered chat interface at `/nexus/chat`. The system prompt is automatically populated with the full registered database schema. Connects to `rullst::ai::AiClient` for production deployments; includes a built-in smart mock responder for development.
+- **Premium Dark-Mode UI**: The panel features a bespoke glassmorphism dark-mode design system (Inter + JetBrains Mono, CSS custom properties, smooth animations) embedded directly into the binary — no external CSS files required.
+- **Re-exports**: `Nexus`, `NexusModel`, `FieldMeta`, and `FieldKind` are now available at the top-level `rullst::` namespace.
+
+
+### Added (Milestone 10: Instant Incremental Compilation & Linker Hacking)
+- **Dynamic Linker Hacking Detection**: Added runtime capability to detect fast modern linkers (`mold` on Linux/macOS and `lld` on Windows/Linux/macOS) in `cargo-rullst`.
+- **Smart Scaffolding Otimization**: Automatically generates the `.cargo/` structure and `.cargo/config.toml` configuring high-performance linkers if they are found in the developer's system path. Prevents build breaks by elegantly generating them commented out with precise activation instructions if not installed.
+- **Cranelift Compiling Integration**: Scaffolds new projects with a ready-to-use, well-documented `[profile.dev] codegen-backend = "cranelift"` block inside `Cargo.toml`, guiding users on how to achieve sub-100ms compilation times in development.
+- **Interactive Performance Scaffold Banners**: Renders a beautiful tip banner at the end of the new project scaffolding wizard, recommending exact commands to install LLD or Mold based on the developer's operating system (e.g. `winget install LLVM.LLVM` for Windows).
 
 ### Dependency Updates & Modernization
 - **Rullst-ORM v3.x Migration**: Migrated the core framework and project generation templates to `rullst-orm v3.x`, updating all occurrences of the renamed `EloquentModel` trait to `RullstModel`.

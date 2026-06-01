@@ -16,6 +16,8 @@ pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod capital;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
@@ -49,6 +51,8 @@ pub mod server;
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod studio;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod nexus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
@@ -135,6 +139,14 @@ pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, 
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use testing::{TestApp, TestRequestBuilder, TestResponse};
+
+// Re-export Milestone 9: Nexus Panel (Auto-Generated CMS & AI Admin)
+#[cfg(not(target_arch = "wasm32"))]
+pub use nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
+
+// Re-export Milestone 9: Rullst Capital (Billing Boilerplate)
+#[cfg(not(target_arch = "wasm32"))]
+pub use capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, SubscriptionStatus, WebhookEvent};
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 

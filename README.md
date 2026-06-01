@@ -41,7 +41,7 @@ Rullst redefines this experience. We offer an integrated, cohesive developer exp
 
 ---
 
-## 🏆 Everything You Need, Built-In (v1.0.9)
+## 🏆 Everything You Need, Built-In
 
 Rullst ships with **8 completed milestones** covering every layer of modern web development:
 
@@ -216,7 +216,7 @@ Under the hood, Rullst compiles your routes as a dynamic library (`cdylib`), loa
 
 ---
 
-## 🎯 Architecture under the hood (v1.0.3)
+## 🎯 Architecture under the hood
 
 Rullst is structured as a modular monorepo Cargo Workspace to optimize compile times:
 

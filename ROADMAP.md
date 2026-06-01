@@ -214,21 +214,29 @@ graph TD
 ## 🆓 Milestone 9: The "Free Enterprise" Revolution
 **Goal:** Disrupt the web framework ecosystem by providing premium SaaS and Enterprise tools 100% free and open-source, democratizing the tools to build million-dollar companies.
 
-- [ ] **Rullst Nexus Panel (Auto-Generated CMS):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Includes an optional AI chat interface to perform complex database queries in natural language.
-- [ ] **Dual-Engine Frontend Architecture:** Empowering developers to choose the right tool for the job directly from the `cargo-rullst` CLI:
-  - **Rullst Hyper:** The ultra-fast, SEO-optimized engine. Uses pure HTML, CSS, and HTMX rendered server-side. Compiles to blazing-fast Web and lightweight native Desktop applications (via WebView).
-  - **Rullst Omni:** The universal app engine. Silently wraps powerful UI frameworks (like Dioxus) to provide a "Write Once, Run Anywhere" experience. Compile a single codebase to iOS, Android, Desktop, and Web.
-- [ ] **Rullst Orbit (SaaS Billing Boilerplate):** Drop-in integration for Stripe/LemonSqueezy. Provides a full user billing portal, subscription management, and invoice generation in minutes.
-- [ ] **Rullst Shield (Wasm WAF & Bot Management):** Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking.
-- [ ] **Rullst Foundry CLI (DevOps Tooling):** Built-in CLI commands to provision and deploy infrastructure to AWS/Hetzner automatically, forming the open-source foundation for a future hosted 1-click cloud service.
+- [x] **Rullst Nexus Panel (Auto-Generated CMS):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Implemented via `rullst::nexus` with `NexusModel` reflection trait, dynamic HTMX CRUD, live search, and an AI chat interface at `/nexus/chat` for natural language database queries.
+- [x] **Dual-Engine Frontend Architecture:** Two new CLI generators empower developers to choose the right rendering engine:
+  - **Rullst Hyper (Desktop):** `cargo rullst make:desktop` scaffolds a full Tauri (`src-tauri/`) wrapper. A background process orchestrator starts the Rullst Axum server, polls port 3000, and gracefully terminates it on window close. Includes smart binary icon generation (PNG/ICO/ICNS) to prevent compiler errors.
+  - **Rullst Omni (Multi-Platform):** `cargo rullst make:omni` scaffolds a Dioxus v0.7 `omni-app/` project pre-wired to the Rullst backend API via reactive signals (`use_signal`, `use_future`), featuring a premium glassmorphic dark-mode UI with micro-animations.
+- [x] **Rullst Capital (SaaS Billing Boilerplate):** `cargo rullst make:billing` generates complete Stripe/LemonSqueezy integration — database migrations for subscriptions, webhook processors for subscription lifecycle events, and styled checkout views.
+- [x] **Rullst Shield (Wasm WAF & Bot Management):** Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking in response payloads.
+- [x] **Rullst Foundry CLI (DevOps Tooling):** Built-in CLI commands to provision and deploy infrastructure automatically via a declarative `Foundry.toml` file, forming the open-source foundation for a future hosted 1-click cloud service. Supported providers:
+  - **AWS** (EC2 + RDS + S3 + CloudFront)
+  - **Hetzner Cloud** (VPS + Volumes + Floating IPs)
+  - **Google Cloud Platform** (Compute Engine + Cloud SQL + Cloud Storage)
+  - **Microsoft Azure** (Virtual Machines + Azure SQL + Blob Storage)
+  - **Oracle Cloud Infrastructure** (OCI Compute + Autonomous DB + Object Storage)
+  - **DigitalOcean** (Droplets + Managed Databases + Spaces)
+  
+  Each provider target provisions the server via SSH, installs Docker, deploys the Rullst binary inside a container, and automatically configures an HTTPS reverse proxy via Caddy with automatic SSL certificate management.
 
 ---
 
 ## 🛠️ Milestone 10: Instant Incremental Compilation & Linker Hacking
 **Goal:** Eradicate compile-time friction in Rust and achieve interpreted-language feedback loop speeds.
 
-- [ ] **Rullst Mold/Cranelift Deep Integration:** Configure the framework's scaffolding to force ultra-fast linkers (like `mold`) and use the `Cranelift` compilation backend during development.
-- [ ] **Sub-100ms Feedback Loop:** Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.
+- [x] **Rullst Mold/Cranelift Deep Integration:** Configure the framework's scaffolding to force ultra-fast linkers (like `mold`) and use the `Cranelift` compilation backend during development.
+- [x] **Sub-100ms Feedback Loop:** Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.
 
 ---
 

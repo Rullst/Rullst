@@ -154,3 +154,202 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
 
     response
 }
+
+/// Helper to decode a hex char pair to a single byte.
+fn hex_decode_char(c1: u8, c2: u8) -> Option<u8> {
+    let b1 = (c1 as char).to_digit(16)?;
+    let b2 = (c2 as char).to_digit(16)?;
+    Some(((b1 << 4) | b2) as u8)
+}
+
+/// WebAssembly-compatible URL decoding helper.
+fn url_decode(s: &str) -> String {
+    let mut decoded = String::new();
+    let mut bytes = s.bytes();
+    while let Some(b) = bytes.next() {
+        if b == b'%' {
+            if let (Some(h1), Some(h2)) = (bytes.next(), bytes.next()) {
+                if let Some(d) = hex_decode_char(h1, h2) {
+                    decoded.push(d as char);
+                    continue;
+                }
+            }
+        }
+        decoded.push(b as char);
+    }
+    decoded
+}
+
+/// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
+pub async fn waf_middleware(req: Request, next: Next) -> Response {
+    // 1. Inspect User-Agent for known bots or scrapers
+    if let Some(ua) = req.headers().get(header::USER_AGENT).and_then(|v| v.to_str().ok()) {
+        let ua_lower = ua.to_lowercase();
+        let suspicious_agents = [
+            "curl", "wget", "python-requests", "go-http-client", 
+            "gptbot", "chatgpt-user", "google-extended", "anthropic-ai", 
+            "claude-web", "cohere-ai", "bytespider", "mj12bot"
+        ];
+        for agent in suspicious_agents {
+            if ua_lower.contains(agent) {
+                return Response::builder()
+                    .status(StatusCode::FORBIDDEN)
+                    .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                    .body(axum::body::Body::from("Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF."))
+                    .unwrap();
+            }
+        }
+    }
+
+    // 2. Inspect query parameters for common attack vectors (SQLi, XSS, Path Traversal)
+    if let Some(query) = req.uri().query() {
+        let query_decoded = url_decode(query);
+        let query_lower = query_decoded.to_lowercase();
+        
+        let malicious_patterns = [
+            "select ", "union ", "insert ", "delete ", "drop table", "alter table",
+            "<script", "javascript:", "onload=", "onerror=",
+            "../", "..\\", "/etc/passwd", "win.ini"
+        ];
+        
+        for pattern in malicious_patterns {
+            if query_lower.contains(pattern) {
+                return Response::builder()
+                    .status(StatusCode::FORBIDDEN)
+                    .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                    .body(axum::body::Body::from("Access Denied: Malicious pattern detected by Rullst Shield WAF."))
+                    .unwrap();
+            }
+        }
+    }
+
+    next.run(req).await
+}
+
+/// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
+pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
+    let response = next.run(req).await;
+    
+    let content_type = response.headers().get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+        
+    if content_type.contains("text") || content_type.contains("json") || content_type.contains("javascript") {
+        let (parts, body) = response.into_parts();
+        if let Ok(bytes) = axum::body::to_bytes(body, 2 * 1024 * 1024).await {
+            let body_str = String::from_utf8_lossy(&bytes);
+            let masked_body = mask_pii(&body_str);
+            let new_body = axum::body::Body::from(masked_body);
+            return Response::from_parts(parts, new_body);
+        } else {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(axum::body::Body::empty())
+                .unwrap();
+        }
+    }
+    
+    response
+}
+
+/// Helper function to perform lightweight regex-free PII masking for emails and credit card numbers.
+pub fn mask_pii(text: &str) -> String {
+    let mut chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_ascii_digit() {
+            let mut digit_indices = vec![i];
+            let mut j = i + 1;
+            let mut non_digits = 0;
+            while j < chars.len() && non_digits < 3 {
+                let c = chars[j];
+                if c.is_ascii_digit() {
+                    digit_indices.push(j);
+                    non_digits = 0;
+                } else if c == ' ' || c == '-' {
+                    non_digits += 1;
+                } else {
+                    break;
+                }
+                j += 1;
+            }
+            
+            let count = digit_indices.len();
+            if count >= 13 && count <= 19 {
+                let mask_count = count - 4;
+                for idx in 0..mask_count {
+                    chars[digit_indices[idx]] = '*';
+                }
+                i = j;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    
+    let text_str = chars.into_iter().collect::<String>();
+    let mut chars: Vec<char> = text_str.chars().collect();
+    let mut idx = 0;
+    while idx < chars.len() {
+        if chars[idx] == '@' {
+            let mut start = idx;
+            while start > 0 {
+                let c = chars[start - 1];
+                if c.is_alphanumeric() || c == '.' || c == '_' || c == '%' || c == '+' || c == '-' {
+                    start -= 1;
+                } else {
+                    break;
+                }
+            }
+            
+            let mut end = idx + 1;
+            let mut dot_seen = false;
+            while end < chars.len() {
+                let c = chars[end];
+                if c.is_alphanumeric() || c == '-' {
+                    end += 1;
+                } else if c == '.' {
+                    dot_seen = true;
+                    end += 1;
+                } else {
+                    break;
+                }
+            }
+            
+            let username_len = idx - start;
+            let domain_len = end - (idx + 1);
+            if username_len > 1 && domain_len > 3 && dot_seen {
+                for m in (start + 1)..idx {
+                    chars[m] = '*';
+                }
+                idx = end;
+                continue;
+            }
+        }
+        idx += 1;
+    }
+    
+    chars.into_iter().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mask_pii_credit_card() {
+        let raw = "My card number is 1234-5678-1234-5678 and it is secret.";
+        let masked = mask_pii(raw);
+        assert!(masked.contains("****-****-****-5678"));
+        assert!(!masked.contains("1234-5678-1234"));
+    }
+
+    #[test]
+    fn test_mask_pii_email() {
+        let raw = "Contact me at venelouis@rullst.com or admin@domain.org.";
+        let masked = mask_pii(raw);
+        assert!(masked.contains("v********@rullst.com"));
+        assert!(masked.contains("a****@domain.org"));
+    }
+}
+

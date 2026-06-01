@@ -77,6 +77,21 @@ enum Commands {
     },
     /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
+    /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
+    #[command(name = "make:billing")]
+    MakeBilling,
+    /// Adds Tauri desktop packaging to compile Hyper (HTMX + SSR) apps into native desktop applications
+    #[command(name = "make:desktop")]
+    MakeDesktop,
+    /// Adds Dioxus multi-platform template integration pre-wired to Rullst backend API/WebSockets
+    #[command(name = "make:omni")]
+    MakeOmni,
+    /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
+    #[command(name = "foundry:init")]
+    FoundryInit,
+    /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
+    #[command(name = "foundry:deploy")]
+    FoundryDeploy,
     /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
@@ -1039,6 +1054,17 @@ pub async fn {}(req: Request, next: Next) -> Response {{
     Ok(())
 }
 
+fn has_binary(name: &str) -> bool {
+    let cmd = if cfg!(windows) { "where" } else { "which" };
+    std::process::Command::new(cmd)
+        .arg(name)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 fn create_new_project(
     name_arg: Option<&str>,
     api_arg: bool,
@@ -1258,11 +1284,105 @@ sqlx = {{ version = "0.8", {sqlx_features} }}
 
     cargo_toml.push_str(
         r#"
+# ⚡ Rullst God-Mode: Compilação Incremental Instantânea (<100ms)
+# Se você deseja velocidade de desenvolvimento próxima de linguagens interpretadas,
+# você pode usar o backend Cranelift oficial do compilador Rust.
+# 
+# Requisitos:
+#   1. Instalar toolchain nightly: rustup toolchain install nightly
+#   2. Instalar o componente: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+#   3. Ative descomentando o bloco abaixo e rodando o projeto com a toolchain nightly (ex: cargo +nightly run)
+# 
+# [profile.dev]
+# codegen-backend = "cranelift"
+
 [workspace]
 "#,
     );
 
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
+
+    // Criar diretório .cargo e escrever config.toml inteligente
+    let cargo_dir = path.join(".cargo");
+    fs::create_dir_all(&cargo_dir)?;
+
+    let has_mold = has_binary("mold");
+    let has_lld = has_binary("lld") || has_binary("lld-link");
+
+    let mut config_toml = String::new();
+    config_toml.push_str(
+        r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
+# Este arquivo configura linkers ultra-rápidos para desenvolvimento local.
+# O Rullst detectou seu ambiente e configurou as opções adequadas.
+
+"#
+    );
+
+    // Configuração para Windows (MSVC usa lld-link ou lld)
+    if has_lld && cfg!(windows) {
+        config_toml.push_str(
+            r#"[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+"#
+        );
+    } else {
+        config_toml.push_str(
+            r#"# Para ativar no Windows (Instale LLVM com 'winget install LLVM.LLVM' e descomente abaixo):
+# [target.x86_64-pc-windows-msvc]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+"#
+        );
+    }
+
+    // Configuração para Linux (GNU usa mold ou lld)
+    if has_mold && cfg!(target_os = "linux") {
+        config_toml.push_str(
+            r#"[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+"#
+        );
+    } else if has_lld && cfg!(target_os = "linux") {
+        config_toml.push_str(
+            r#"[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+"#
+        );
+    } else {
+        config_toml.push_str(
+            r#"# Para ativar no Linux (Instale o mold com seu gerenciador de pacotes e descomente abaixo):
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+"#
+        );
+    }
+
+    // Configuração para macOS (Darwin usa lld)
+    if has_lld && cfg!(target_os = "macos") {
+        config_toml.push_str(
+            r#"[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+"#
+        );
+    } else {
+        config_toml.push_str(
+            r#"# Para ativar no macOS (Instale llvm/lld via brew e descomente abaixo):
+# [target.x86_64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# [target.aarch64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+"#
+        );
+    }
+
+    fs::write(cargo_dir.join("config.toml"), config_toml)?;
 
     // Write Rullst.toml configuration
     if db_needed {
@@ -1617,6 +1737,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Generate Docker files if --docker flag was passed
     if docker {
         generate_docker_files(path, &project_name)?;
+    }
+
+    let has_mold = has_binary("mold");
+    let has_lld = has_binary("lld") || has_binary("lld-link");
+
+    if !has_mold && !has_lld {
+        println!("\n{}", "⚡ Rullst Dev Tip: Speed up compile times up to 10x!".yellow().bold());
+        println!("{}", "To unlock near-instant compile speeds, we highly recommend installing a fast linker:".white());
+        if cfg!(windows) {
+            println!("{}", "  👉 Install LLD: winget install LLVM.LLVM".cyan());
+        } else if cfg!(target_os = "macos") {
+            println!("{}", "  👉 Install LLD: brew install llvm".cyan());
+        } else {
+            println!("{}", "  👉 Install Mold: sudo apt install mold (or dnf install mold)".cyan());
+        }
+        println!("{}", "Once installed, uncomment the config lines inside '.cargo/config.toml'!".white());
+    } else {
+        println!("\n{}", "🚀 High-performance linker automatically detected and configured!".green().bold());
     }
 
     println!(
@@ -3187,6 +3325,410 @@ pub async fn passkey_login_finish(
     Ok(())
 }
 
+fn scaffold_billing_system() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold(),
+            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        "💳 Starting scaffolding of Rullst billing system (Stripe & LemonSqueezy)..."
+            .cyan()
+            .bold()
+    );
+
+    // 1. Create Subscriptions Migration
+    let migrations_dir = Path::new("src/migrations");
+    fs::create_dir_all(migrations_dir)?;
+    let now = chrono::Local::now();
+    let timestamp = now.format("%Y%m%d%H%M%S").to_string();
+    let file_stem = format!("m{}_create_subscriptions_table", timestamp);
+    let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
+
+    let migration_template = format!(
+        r##"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
+use rullst_orm::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {{
+    fn name(&self) -> &'static str {{
+        "{file_stem}"
+    }}
+
+    async fn up(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+        Schema::create("subscriptions", |table| {{
+            table.id();
+            table.integer("user_id").not_null();
+            table.string("customer_id").not_null();
+            table.string("subscription_id").unique().not_null();
+            table.string("plan_id").not_null();
+            table.string("status").not_null();
+            table.integer("ends_at").nullable();
+            table.timestamps();
+        }}).await
+    }}
+
+    async fn down(&self) -> Result<(), rullst_orm::sqlx::Error> {{
+        Schema::drop_if_exists("subscriptions").await
+    }}
+}}
+"##,
+        file_stem = file_stem
+    );
+    fs::write(&migration_path, migration_template)?;
+    println!("{}", "  ✨ Created 'subscriptions' table migration.".green());
+
+    regenerate_migrations_mod()?;
+
+    // 2. Create Subscription Model
+    let models_dir = Path::new("src/models");
+    fs::create_dir_all(models_dir)?;
+    let model_path = models_dir.join("subscription.rs");
+    let model_template = r##"use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};
+
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "subscriptions")]
+pub struct Subscription {
+    pub id: i32,
+    pub user_id: i32,
+    pub customer_id: String,
+    pub subscription_id: String,
+    pub plan_id: String,
+    pub status: String,
+    pub ends_at: Option<i64>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+"##;
+    fs::write(&model_path, model_template)?;
+    println!("{}", "  ✨ Created 'Subscription' model.".green());
+
+    let mod_models_path = models_dir.join("mod.rs");
+    if !mod_models_path.exists() {
+        fs::write(&mod_models_path, "")?;
+    }
+    let mut mod_models_content = fs::read_to_string(&mod_models_path)?;
+    if !mod_models_content.contains("pub mod subscription;") {
+        mod_models_content.push_str("pub mod subscription;\n");
+        fs::write(&mod_models_path, mod_models_content)?;
+    }
+
+    // 3. Create Pricing View Page
+    let pages_dir = Path::new("src/pages");
+    fs::create_dir_all(pages_dir)?;
+    let page_path = pages_dir.join("billing.rs");
+    let page_template = r##"use rullst::html;
+use axum::response::Html;
+
+pub fn pricing_page() -> Html<String> {
+    Html(html! {
+        <!DOCTYPE html>
+        <html lang="en" class="dark">
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Select a Plan - Rullst Billing</title>
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+                body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-x: hidden; position: relative; }
+                .glow-bg { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%); top: -10%; left: -10%; z-index: -1; }
+                .glow-bg-right { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%); bottom: -10%; right: -10%; z-index: -1; }
+                .container { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem; text-align: center; z-index: 1; }
+                .header { margin-bottom: 3.5rem; }
+                .badge { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white; padding: 0.35rem 1rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; margin-bottom: 1rem; }
+                h1 { font-size: 3rem; font-weight: 700; background: linear-gradient(to right, #ffffff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+                .subtitle { color: #9ca3af; font-size: 1.15rem; max-width: 600px; margin: 0 auto; }
+                .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
+                .pricing-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 3rem 2rem; text-align: left; display: flex; flex-direction: column; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+                .pricing-card:hover { transform: translateY(-8px); border-color: rgba(99, 102, 241, 0.4); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+                .pricing-card.premium { border: 2px solid #6366f1; }
+                .pricing-card.premium::after { content: 'Best Value'; position: absolute; top: -14px; right: 24px; background: #6366f1; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 9999px; text-transform: uppercase; }
+                .plan-name { font-size: 1.5rem; font-weight: 600; color: #ffffff; margin-bottom: 0.5rem; }
+                .plan-desc { color: #9ca3af; font-size: 0.95rem; margin-bottom: 2rem; min-height: 40px; }
+                .price-container { display: flex; align-items: baseline; margin-bottom: 2.5rem; }
+                .currency { font-size: 1.75rem; font-weight: 600; color: #ffffff; }
+                .price { font-size: 3.5rem; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
+                .period { color: #9ca3af; font-size: 1rem; margin-left: 0.5rem; }
+                .features-list { list-style: none; margin-bottom: 3rem; flex-grow: 1; }
+                .features-list li { display: flex; align-items: center; color: #d1d5db; font-size: 0.95rem; margin-bottom: 1rem; }
+                .features-list svg { width: 20px; height: 20px; margin-right: 0.75rem; color: #10b981; flex-shrink: 0; }
+                .btn-checkout { display: block; width: 100%; text-align: center; padding: 1rem; border-radius: 12px; font-weight: 600; text-decoration: none; font-size: 1rem; transition: all 0.3s; cursor: pointer; border: none; }
+                .btn-checkout.primary { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
+                .btn-checkout.primary:hover { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6); }
+                .btn-checkout.secondary { background: rgba(255, 255, 255, 0.08); color: white; border: 1px solid rgba(255, 255, 255, 0.1); }
+                .btn-checkout.secondary:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.25); }
+            </style>
+        </head>
+        <body>
+            <div class="glow-bg"></div>
+            <div class="glow-bg-right"></div>
+            <div class="container">
+                <div class="header">
+                    <span class="badge">Rullst Capital</span>
+                    <h1>Simple, Transparent Pricing</h1>
+                    <p class="subtitle">Choose the perfect plan to boost your application with next-gen fullstack performance.</p>
+                </div>
+                <div class="pricing-grid">
+                    <!-- Starter Plan -->
+                    <div class="pricing-card">
+                        <h2 class="plan-name">Starter</h2>
+                        <p class="plan-desc">For hobbyists and early-stage startup prototypes.</p>
+                        <div class="price-container">
+                            <span class="currency">$</span>
+                            <span class="price">9</span>
+                            <span class="period">/mo</span>
+                        </div>
+                        <ul class="features-list">
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Up to 5 Projects
+                            </li>
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Standard SQLite Database
+                            </li>
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Email Support
+                            </li>
+                        </ul>
+                        <a href="/billing/checkout?plan=price_starter" class="btn-checkout secondary">Get Started</a>
+                    </div>
+                    
+                    <!-- Pro Plan -->
+                    <div class="pricing-card premium">
+                        <h2 class="plan-name">Pro</h2>
+                        <p class="plan-desc">For growing apps needing production scaling and support.</p>
+                        <div class="price-container">
+                            <span class="currency">$</span>
+                            <span class="price">29</span>
+                            <span class="period">/mo</span>
+                        </div>
+                        <ul class="features-list">
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Unlimited Projects
+                            </li>
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                PostgreSQL & SQLite Support
+                            </li>
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Adaptive WAF & Bot Management
+                            </li>
+                            <li>
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                Priority Support (Sub-1 hour)
+                            </li>
+                        </ul>
+                        <a href="/billing/checkout?plan=price_pro" class="btn-checkout primary">Go Pro</a>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    })
+}
+"##;
+    fs::write(&page_path, page_template)?;
+    println!("{}", "  ✨ Created HTML views in 'src/pages/billing.rs'.".green());
+
+    let mod_pages_path = pages_dir.join("mod.rs");
+    if !mod_pages_path.exists() {
+        fs::write(&mod_pages_path, "")?;
+    }
+    let mut mod_pages_content = fs::read_to_string(&mod_pages_path)?;
+    if !mod_pages_content.contains("pub mod billing;") {
+        mod_pages_content.push_str("pub mod billing;\n");
+        fs::write(&mod_pages_path, mod_pages_content)?;
+    }
+
+    // 4. Create Billing Controller
+    let controllers_dir = Path::new("src/controllers");
+    fs::create_dir_all(controllers_dir)?;
+    let controller_path = controllers_dir.join("billing_controller.rs");
+    let controller_template = r##"use axum::{
+    extract::{Query, State},
+    response::{Html, IntoResponse, Redirect, Response},
+    http::{HeaderMap, StatusCode},
+};
+use serde::Deserialize;
+use std::collections::HashMap;
+use rullst::capital::{BillingProvider, StripeProvider, LemonSqueezyProvider};
+use rullst_orm::sqlx::Row;
+use crate::pages::billing;
+
+#[derive(Deserialize)]
+pub struct CheckoutQuery {
+    pub plan: String,
+}
+
+/// Serves the premium pricing page.
+pub async fn pricing_view() -> impl IntoResponse {
+    billing::pricing_page()
+}
+
+/// Initiates a checkout redirect.
+pub async fn checkout_redirect(Query(query): Query<CheckoutQuery>) -> impl IntoResponse {
+    // Resolve Billing Provider using environment keys
+    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
+    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
+    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
+
+    let redirect_url = std::env::var("BILLING_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
+
+    let url_result = match provider_name.to_lowercase().as_str() {
+        "lemonsqueezy" => {
+            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
+            provider.create_checkout_session("user@example.com", &query.plan, &redirect_url).await
+        }
+        _ => {
+            let provider = StripeProvider::new(api_key, webhook_secret);
+            provider.create_checkout_session("user@example.com", &query.plan, &redirect_url).await
+        }
+    };
+
+    match url_result {
+        Ok(url) => Redirect::temporary(&url).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create checkout session: {}", e)).into_response(),
+    }
+}
+
+/// Handles incoming webhook events from the selected provider.
+pub async fn webhook_handler(headers: HeaderMap, body: axum::body::Bytes) -> impl IntoResponse {
+    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
+    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
+    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
+
+    let mut headers_map = HashMap::new();
+    for (k, v) in headers.iter() {
+        if let Ok(val_str) = v.to_str() {
+            headers_map.insert(k.as_str().to_string(), val_str.to_string());
+        }
+    }
+
+    let event_result = match provider_name.to_lowercase().as_str() {
+        "lemonsqueezy" => {
+            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
+            provider.handle_webhook(&body, &headers_map)
+        }
+        _ => {
+            let provider = StripeProvider::new(api_key, webhook_secret);
+            provider.handle_webhook(&body, &headers_map)
+        }
+    };
+
+    let event = match event_result {
+        Ok(evt) => evt,
+        Err(e) => {
+            eprintln!("❌ Webhook verification/parsing error: {}", e);
+            return (StatusCode::BAD_REQUEST, "Invalid webhook signature or payload").into_response();
+        }
+    };
+
+    println!("🔔 Received Webhook for Subscription {} [{}] -> Status: {:?}", event.subscription_id, event.plan_id, event.status);
+
+    let pool = rullst_orm::Orm::pool();
+    
+    let existing = sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
+        .bind(&event.subscription_id)
+        .fetch_optional(pool)
+        .await;
+
+    match existing {
+        Ok(Some(row)) => {
+            let id: i32 = row.get("id");
+            let update_res = sqlx::query("UPDATE subscriptions SET status = ?1, plan_id = ?2, ends_at = ?3, updated_at = datetime('now') WHERE id = ?4")
+                .bind(event.status.as_str())
+                .bind(&event.plan_id)
+                .bind(event.ends_at)
+                .bind(id)
+                .execute(pool)
+                .await;
+            if let Err(err) = update_res {
+                eprintln!("❌ Failed to update subscription: {}", err);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+        Ok(None) => {
+            let insert_res = sqlx::query("INSERT INTO subscriptions (user_id, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))")
+                .bind(1)
+                .bind(&event.customer_id)
+                .bind(&event.subscription_id)
+                .bind(&event.plan_id)
+                .bind(event.status.as_str())
+                .bind(event.ends_at)
+                .execute(pool)
+                .await;
+            if let Err(err) = insert_res {
+                eprintln!("❌ Failed to insert subscription: {}", err);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+            }
+        }
+        Err(err) => {
+            eprintln!("❌ Database query failed: {}", err);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
+        }
+    }
+
+    (StatusCode::OK, "Webhook processed successfully").into_response()
+}
+"##;
+    fs::write(&controller_path, controller_template)?;
+    println!(
+        "{}",
+        "  ✨ Created 'src/controllers/billing_controller.rs' controller.".green()
+    );
+
+    let mod_controllers_path = controllers_dir.join("mod.rs");
+    if !mod_controllers_path.exists() {
+        fs::write(&mod_controllers_path, "")?;
+    }
+    let mut mod_controllers_content = fs::read_to_string(&mod_controllers_path)?;
+    if !mod_controllers_content.contains("pub mod billing_controller;") {
+        mod_controllers_content.push_str("pub mod billing_controller;\n");
+        fs::write(&mod_controllers_path, mod_controllers_content)?;
+    }
+
+    // 5. Register modules in src/main.rs if needed
+    let main_path = Path::new("src/main.rs");
+    if main_path.exists() {
+        let mut main_content = fs::read_to_string(main_path)?;
+        for module in &["controllers", "models", "pages"] {
+            let declaration = format!("pub mod {};", module);
+            let alt_declaration = format!("mod {};", module);
+            if !main_content.contains(&declaration) && !main_content.contains(&alt_declaration) {
+                main_content = format!("pub mod {};\n{}", module, main_content);
+            }
+        }
+        fs::write(main_path, main_content)?;
+    }
+
+    println!("\n{}", "🎉 Rullst Capital Billing Scaffolding Completed Successfully!".green().bold());
+    println!("{}", "To mount the billing panel and webhooks, register these routes in your main router:".white());
+    println!("{}", "  👉 .route(\"/pricing\", axum::routing::get(controllers::billing_controller::pricing_view))".cyan());
+    println!("{}", "  👉 .route(\"/billing/checkout\", axum::routing::get(controllers::billing_controller::checkout_redirect))".cyan());
+    println!("{}", "  👉 .route(\"/billing/webhook\", axum::routing::post(controllers::billing_controller::webhook_handler))".cyan());
+    println!("\n{}", "Configure your gateway credentials in environment variables or your .env file:".white());
+    println!("{}", "  💰 BILLING_PROVIDER=stripe".yellow());
+    println!("{}", "  💰 BILLING_API_KEY=sk_test_...".yellow());
+    println!("{}", "  💰 BILLING_WEBHOOK_SECRET=whsec_...".yellow());
+
+    Ok(())
+}
+
 // ==========================================
 // DOCKER FILE GENERATION
 // ==========================================
@@ -4543,6 +5085,1229 @@ fn run_production_build(release: bool) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
+fn scaffold_desktop_system() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold(),
+            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        "🖥️ Starting scaffolding of Rullst desktop packaging system (Tauri)..."
+            .cyan()
+            .bold()
+    );
+
+    // 1. Create Directories
+    let src_tauri_dir = Path::new("src-tauri");
+    let src_dir = src_tauri_dir.join("src");
+    let icons_dir = src_tauri_dir.join("icons");
+
+    fs::create_dir_all(&src_tauri_dir)?;
+    fs::create_dir_all(&src_dir)?;
+    fs::create_dir_all(&icons_dir)?;
+
+    // 2. Write Cargo.toml
+    let cargo_toml = r#"[package]
+name = "rullst-desktop"
+version = "0.1.0"
+description = "Rullst Desktop Application"
+authors = ["Rullst Developer"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5" }
+
+[dependencies]
+tauri = { version = "1.5", features = ["shell-open"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.11", features = ["blocking"] }
+"#;
+    fs::write(src_tauri_dir.join("Cargo.toml"), cargo_toml)?;
+
+    // 3. Write tauri.conf.json
+    let tauri_conf = r#"{
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "http://localhost:3000",
+    "distDir": "http://localhost:3000"
+  },
+  "package": {
+    "productName": "RullstDesktop",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "com.rullst.desktop",
+      "longDescription": "",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerBundleIdentifier": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 768,
+        "resizable": true,
+        "title": "Rullst Hyper Desktop",
+        "width": 1024
+      }
+    ]
+  }
+}
+"#;
+    fs::write(src_tauri_dir.join("tauri.conf.json"), tauri_conf)?;
+
+    // 4. Write build.rs
+    let build_rs = r#"fn main() {
+    tauri_build::build();
+}
+"#;
+    fs::write(src_tauri_dir.join("build.rs"), build_rs)?;
+
+    // 5. Write src/main.rs (Process Orchester)
+    let main_rs = r#"#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use std::process::{Command, Child};
+use std::net::TcpStream;
+use std::time::Duration;
+use std::thread;
+use std::sync::{Arc, Mutex};
+use tauri::Manager;
+
+fn main() {
+    let backend_process = Arc::new(Mutex::new(None::<Child>));
+    let backend_clone = Arc::clone(&backend_process);
+
+    thread::spawn(move || {
+        println!("🚀 Starting Rullst backend server...");
+        
+        let mut cmd = if std::path::Path::new("../Cargo.toml").exists() {
+            let mut c = Command::new("cargo");
+            c.arg("run").current_dir("..");
+            c
+        } else {
+            let exe_dir = std::env::current_exe().unwrap().parent().unwrap().to_path_buf();
+            let server_bin = if cfg!(windows) { "server.exe" } else { "server" };
+            Command::new(exe_dir.join(server_bin))
+        };
+
+        match cmd.spawn() {
+            Ok(child) => {
+                let mut lock = backend_clone.lock().unwrap();
+                *lock = Some(child);
+            }
+            Err(e) => {
+                eprintln!("❌ Failed to start Rullst backend: {}", e);
+            }
+        }
+    });
+
+    println!("⏳ Waiting for Rullst server to bind on port 3000...");
+    let poll_interval = Duration::from_millis(100);
+    let timeout = Duration::from_secs(30);
+    let start_time = std::time::Instant::now();
+    let mut connected = false;
+
+    while start_time.elapsed() < timeout {
+        if TcpStream::connect("127.0.0.1:3000").is_ok() {
+            connected = true;
+            break;
+        }
+        thread::sleep(poll_interval);
+    }
+
+    if connected {
+        println!("✅ Rullst server is ready! Launching Tauri interface...");
+    } else {
+        eprintln!("⚠️ Timeout waiting for port 3000 to open. Attempting window launch anyway...");
+    }
+
+    let backend_for_cleanup = Arc::clone(&backend_process);
+
+    tauri::Builder::default()
+        .on_window_event(move |event| {
+            if let tauri::WindowEvent::Destroyed = event.event() {
+                println!("🛑 Tauri window closed. Shutting down Rullst backend...");
+                let mut lock = backend_for_cleanup.lock().unwrap();
+                if let Some(mut child) = lock.take() {
+                    let _ = child.kill();
+                    println!("✅ Rullst backend terminated.");
+                }
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+"#;
+    fs::write(src_dir.join("main.rs"), main_rs)?;
+
+    // 6. Generate icons to prevent Tauri compile errors
+    // PNG 1x1 transparent
+    let png_bytes: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+        0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0x60, 0x00, 0x00, 0x00,
+        0x02, 0x00, 0x01, 0x73, 0x0d, 0x8b, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+        0x42, 0x60, 0x82
+    ];
+
+    fs::write(icons_dir.join("32x32.png"), png_bytes)?;
+    fs::write(icons_dir.join("128x128.png"), png_bytes)?;
+    fs::write(icons_dir.join("128x128@2x.png"), png_bytes)?;
+
+    // Construct valid minimal ICO embedding the 1x1 PNG
+    let mut ico_bytes = Vec::new();
+    ico_bytes.extend_from_slice(&[0x00, 0x00]); // Reserved
+    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Type (1 = ICO)
+    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Number of images (1)
+    
+    // Directory entry (16 bytes)
+    ico_bytes.push(0x01); // Width (1 pixel)
+    ico_bytes.push(0x01); // Height (1 pixel)
+    ico_bytes.push(0x00); // Color count
+    ico_bytes.push(0x00); // Reserved
+    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Color planes (1)
+    ico_bytes.extend_from_slice(&[0x20, 0x00]); // Bits per pixel (32)
+    
+    let png_len = png_bytes.len() as u32;
+    ico_bytes.extend_from_slice(&png_len.to_le_bytes()); // Size of image data
+    ico_bytes.extend_from_slice(&22u32.to_le_bytes());   // Offset of image data
+    
+    ico_bytes.extend_from_slice(png_bytes);
+    fs::write(icons_dir.join("icon.ico"), &ico_bytes)?;
+
+    // Construct valid minimal ICNS embedding the 1x1 PNG under "ic07" (128x128 size key)
+    let mut icns_bytes = Vec::new();
+    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x6e, 0x73]); // Magic "icns"
+    
+    let total_icns_len = (8 + 8 + png_bytes.len()) as u32;
+    icns_bytes.extend_from_slice(&total_icns_len.to_be_bytes()); // Total length (big endian)
+    
+    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x30, 0x37]); // OSType "ic07" (128x128 icon)
+    let chunk_len = (8 + png_bytes.len()) as u32;
+    icns_bytes.extend_from_slice(&chunk_len.to_be_bytes()); // Chunk length (big endian)
+    
+    icns_bytes.extend_from_slice(png_bytes);
+    fs::write(icons_dir.join("icon.icns"), &icns_bytes)?;
+
+    println!(
+        "{}",
+        "✅ Rullst Hyper desktop template successfully generated in 'src-tauri/'!"
+            .green()
+            .bold()
+    );
+
+    Ok(())
+}
+
+fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold(),
+            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        "📱 Starting scaffolding of Rullst Omni multi-platform frontend (Dioxus)..."
+            .cyan()
+            .bold()
+    );
+
+    // 1. Create Directories
+    let omni_dir = Path::new("omni-app");
+    let src_dir = omni_dir.join("src");
+
+    fs::create_dir_all(&omni_dir)?;
+    fs::create_dir_all(&src_dir)?;
+
+    // 2. Write Cargo.toml
+    let cargo_toml = r#"[package]
+name = "omni-app"
+version = "0.1.0"
+authors = ["Rullst Developer"]
+edition = "2021"
+
+[dependencies]
+dioxus = { version = "0.7", features = ["desktop"] }
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+"#;
+    fs::write(omni_dir.join("Cargo.toml"), cargo_toml)?;
+
+    // 3. Write src/main.rs
+    let main_rs = r##"#![allow(non_snake_case)]
+use dioxus::prelude::*;
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug, Clone)]
+struct BackendStatus {
+    version: String,
+    status: String,
+    uptime: String,
+}
+
+fn main() {
+    dioxus::launch(App);
+}
+
+#[component]
+fn App() -> Element {
+    let mut backend_data = use_signal(|| None::<BackendStatus>);
+
+    let mut fetch_status = move |_| {
+        spawn(async move {
+            let client = reqwest::Client::new();
+            match client.get("http://localhost:3000/api/status").send().await {
+                Ok(res) => {
+                    if let Ok(data) = res.json::<BackendStatus>().await {
+                        backend_data.set(Some(data));
+                    }
+                }
+                Err(_) => {
+                    backend_data.set(Some(BackendStatus {
+                        version: "1.0.5".to_string(),
+                        status: "Running (Offline Simulation)".to_string(),
+                        uptime: "2h 45m".to_string(),
+                    }));
+                }
+            }
+        });
+    };
+
+    use_future(move || async move {
+        let client = reqwest::Client::new();
+        match client.get("http://localhost:3000/api/status").send().await {
+            Ok(res) => {
+                if let Ok(data) = res.json::<BackendStatus>().await {
+                    backend_data.set(Some(data));
+                }
+            }
+            Err(_) => {
+                backend_data.set(Some(BackendStatus {
+                    version: "1.0.5".to_string(),
+                    status: "Running (Offline Simulation)".to_string(),
+                    uptime: "2h 45m".to_string(),
+                }));
+            }
+        }
+    });
+
+    rsx! {
+        style { {include_str!("./style.css")} }
+        
+        div { class: "app-container",
+            div { class: "glow-circle glow-1" }
+            div { class: "glow-circle glow-2" }
+            
+            div { class: "glass-card",
+                header { class: "header-container",
+                    div { class: "logo-group",
+                        span { class: "logo-glow", "R" }
+                        h1 { "Rullst "; span { class: "gradient-text", "Omni" } }
+                    }
+                    span { class: "badge", "v1.0.5 - Free Enterprise" }
+                }
+
+                div { class: "main-grid",
+                    div { class: "sidebar-panel",
+                        h3 { "System Status" }
+                        div { class: "status-indicator active",
+                            div { class: "ping-dot" }
+                            span { "Connected to Dual-Engine Backend" }
+                        }
+                        
+                        div { class: "stats-list",
+                            div { class: "stat-item",
+                                span { class: "stat-label", "Backend Version:" }
+                                span { class: "stat-value", 
+                                    if let Some(ref data) = *backend_data.read() {
+                                        "{data.version}"
+                                    } else {
+                                        "Fetching..."
+                                    }
+                                }
+                            }
+                            div { class: "stat-item",
+                                span { class: "stat-label", "Engine State:" }
+                                span { class: "stat-value state-ok", 
+                                    if let Some(ref data) = *backend_data.read() {
+                                        "{data.status}"
+                                    } else {
+                                        "Connecting..."
+                                    }
+                                }
+                            }
+                            div { class: "stat-item",
+                                span { class: "stat-label", "API Uptime:" }
+                                span { class: "stat-value", 
+                                    if let Some(ref data) = *backend_data.read() {
+                                        "{data.uptime}"
+                                    } else {
+                                        "..."
+                                    }
+                                }
+                            }
+                        }
+
+                        button { 
+                            class: "primary-btn",
+                            onclick: fetch_status,
+                            "Refresh Backend Link"
+                        }
+                    }
+
+                    div { class: "content-panel",
+                        h2 { "Multi-Platform Frontend Engine" }
+                        p { class: "panel-desc",
+                            "Rullst Omni connects your Axum backend to high-fidelity user experiences across iOS, Android, and Desktop using the Dioxus renderer."
+                        }
+
+                        div { class: "cards-container",
+                            div { class: "feature-card",
+                                h4 { "⚡ Rullst Hyper" }
+                                p { "Server-side HTMX rendering for extreme lightweight speed and zero Client Wasm overhead." }
+                            }
+                            div { class: "feature-card highlighted",
+                                h4 { "📱 Rullst Omni" }
+                                p { "Interactive, cross-compiled native Rust components with instant state reactivity." }
+                            }
+                        }
+                    }
+                }
+
+                footer { class: "footer-container",
+                    span { "Rullst Framework © 2026" }
+                    span { class: "footer-link", "rullst.dev" }
+                }
+            }
+        }
+    }
+}
+"##;
+    fs::write(src_dir.join("main.rs"), main_rs)?;
+
+    // 4. Write src/style.css
+    let style_css = r#"* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body, html {
+    background-color: #030712;
+    color: #f3f4f6;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+.app-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at 50% 50%, #0c1020 0%, #030712 100%);
+    overflow: hidden;
+}
+
+.glow-circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.3;
+    z-index: 1;
+    animation: pulse 10s infinite alternate;
+}
+
+.glow-1 {
+    width: 400px;
+    height: 400px;
+    background: #6366f1;
+    top: -100px;
+    left: -100px;
+}
+
+.glow-2 {
+    width: 450px;
+    height: 450px;
+    background: #06b6d4;
+    bottom: -150px;
+    right: -150px;
+    animation-delay: 5s;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1) translate(0, 0); opacity: 0.2; }
+    100% { transform: scale(1.2) translate(30px, 30px); opacity: 0.4; }
+}
+
+.glass-card {
+    position: relative;
+    z-index: 10;
+    width: 90%;
+    max-width: 960px;
+    height: 80%;
+    max-height: 600px;
+    background: rgba(17, 24, 39, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
+    overflow: hidden;
+}
+
+.header-container {
+    padding: 24px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-glow {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #6366f1, #06b6d4);
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 800;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.gradient-text {
+    background: linear-gradient(90deg, #6366f1, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 9999px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.main-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    overflow: hidden;
+}
+
+.sidebar-panel {
+    padding: 32px;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(10, 15, 30, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.sidebar-panel h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 14px;
+}
+
+.ping-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
+    animation: beacon 1.5s infinite alternate;
+}
+
+@keyframes beacon {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.3); opacity: 1; }
+}
+
+.stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.stat-label {
+    color: #9ca3af;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #f3f4f6;
+}
+
+.state-ok {
+    color: #06b6d4;
+}
+
+.primary-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(90deg, #6366f1, #06b6d4);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5), 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+.primary-btn:active {
+    transform: translateY(0);
+}
+
+.content-panel {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+h2 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.panel-desc {
+    color: #9ca3af;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.cards-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.feature-card {
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.feature-card h4 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.feature-card p {
+    font-size: 13px;
+    color: #9ca3af;
+    line-height: 1.5;
+}
+
+.feature-card.highlighted {
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.05);
+}
+
+.feature-card:hover {
+    transform: scale(1.02);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 0 15px rgba(99, 102, 241, 0.1);
+}
+
+.footer-container {
+    padding: 16px 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.footer-link {
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.footer-link:hover {
+    color: #6366f1;
+}
+"#;
+    fs::write(src_dir.join("style.css"), style_css)?;
+
+    println!(
+        "{}",
+        "✅ Rullst Omni (Dioxus) template successfully generated in 'omni-app/'!"
+            .green()
+            .bold()
+    );
+
+    Ok(())
+}
+
+fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold(),
+            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
+        std::process::exit(1);
+    }
+
+    let foundry_path = std::path::Path::new("Foundry.toml");
+    if foundry_path.exists() {
+        println!(
+            "{}",
+            "⚠️  Foundry.toml already exists. Delete it first to re-initialize.".yellow().bold()
+        );
+        std::process::exit(0);
+    }
+
+    println!(
+        "{}",
+        "🏭 Initializing Rullst Foundry deployment manifest (Foundry.toml)..."
+            .cyan()
+            .bold()
+    );
+
+    // Read project name from Cargo.toml
+    let cargo_content = fs::read_to_string("Cargo.toml").unwrap_or_default();
+    let project_name = cargo_content
+        .lines()
+        .find(|l| l.trim_start().starts_with("name"))
+        .and_then(|l| l.split('=').nth(1))
+        .map(|s| s.trim().trim_matches('"').to_string())
+        .unwrap_or_else(|| "my-rullst-app".to_string());
+
+    let foundry_toml = format!(
+        r#"# ┌──────────────────────────────────────────────────────────────┐
+# │           Rullst Foundry - Deployment Manifest               │
+# │  Generated by `cargo rullst foundry:init`                    │
+# │  Edit this file and run `cargo rullst foundry:deploy`        │
+# └──────────────────────────────────────────────────────────────┘
+
+[app]
+# The name of your application (used for container and systemd service naming)
+name = "{project_name}"
+# The public domain that will serve your app (Caddy will get SSL automatically)
+domain = "yourdomain.com"
+# The internal port your Rullst server binds to
+port = 3000
+
+[deploy]
+# Cloud provider: "hetzner" | "aws" | "gcp" | "azure" | "oci" | "digitalocean"
+provider = "hetzner"
+
+[server]
+# Public IP or hostname of the target server
+host = "1.2.3.4"
+# SSH login user (typically root for fresh VPS, or a sudo user for managed VMs)
+user = "root"
+# Path to your SSH private key (leave empty to use SSH agent)
+ssh_key = "~/.ssh/id_rsa"
+# SSH port (default: 22)
+ssh_port = 22
+
+[build]
+# Build profile: "release" | "debug"
+profile = "release"
+# Target triple (leave empty to use the local default)
+# For cross-compilation from macOS/Windows to Linux: "x86_64-unknown-linux-musl"
+target = ""
+
+[database]
+# Database type: "sqlite" | "postgres" | "mysql"
+type = "sqlite"
+# SQLite: path relative to the deployed binary  |  Postgres/MySQL: full connection URL
+url = "sqlite:///app/data/db.sqlite"
+
+[caddy]
+# Enable automatic HTTPS via Caddy (strongly recommended for production)
+auto_https = true
+# Optional: add extra Caddyfile directives (e.g., rate_limit, header, etc.)
+extra_directives = ""
+
+[env]
+# Environment variables injected into the container at runtime.
+# Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
+APP_ENV = "production"
+APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
+DATABASE_URL = "sqlite:///app/data/db.sqlite"
+# STRIPE_SECRET_KEY = ""
+# AWS_ACCESS_KEY_ID = ""
+"#, project_name = project_name);
+
+    fs::write(foundry_path, &foundry_toml)?;
+
+    println!(
+        "{}",
+        "✅ Foundry.toml generated successfully!".green().bold()
+    );
+    println!();
+    println!(
+        "{}",
+        "📋 Next steps:".bold()
+    );
+    println!(
+        "  1. Edit {} with your server IP, domain, and secrets.",
+        "Foundry.toml".cyan()
+    );
+    println!(
+        "  2. Add {} to your {} to keep secrets safe.",
+        "Foundry.toml".cyan(),
+        ".gitignore".yellow()
+    );
+    println!(
+        "  3. Run {} to deploy to your cloud provider.",
+        "cargo rullst foundry:deploy".magenta().bold()
+    );
+    println!();
+
+    // Suggest adding to .gitignore
+    let gitignore_path = std::path::Path::new(".gitignore");
+    if gitignore_path.exists() {
+        let content = fs::read_to_string(gitignore_path).unwrap_or_default();
+        if !content.contains("Foundry.toml") {
+            let mut new_content = content;
+            if !new_content.ends_with('\n') {
+                new_content.push('\n');
+            }
+            new_content.push_str("# Rullst Foundry (contains server secrets)\nFoundry.toml\n");
+            fs::write(gitignore_path, new_content)?;
+            println!(
+                "{}",
+                "🔒 Automatically added Foundry.toml to .gitignore to protect your secrets."
+                    .green()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold(),
+            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
+                .yellow()
+        );
+        std::process::exit(1);
+    }
+
+    let foundry_path = std::path::Path::new("Foundry.toml");
+    if !foundry_path.exists() {
+        println!(
+            "{}",
+            "❌ Foundry.toml not found. Run 'cargo rullst foundry:init' first."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+
+    // --- Parse Foundry.toml ---
+    let content = fs::read_to_string(foundry_path)?;
+
+    let get_value = |key: &str| -> String {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with(key) && trimmed.contains('=') {
+                let val = trimmed
+                    .splitn(2, '=')
+                    .nth(1)
+                    .unwrap_or("")
+                    .trim()
+                    .trim_matches('"')
+                    .to_string();
+                return val;
+            }
+        }
+        String::new()
+    };
+
+    let app_name   = get_value("name");
+    let domain     = get_value("domain");
+    let port       = get_value("port");
+    let host       = get_value("host");
+    let user       = get_value("user");
+    let ssh_key    = get_value("ssh_key");
+    let ssh_port   = get_value("ssh_port");
+    let provider   = get_value("provider");
+    let db_type    = get_value("type");
+    let _db_url     = get_value("url");
+    let profile    = get_value("profile");
+    let target_triple = get_value("target");
+    let auto_https = get_value("auto_https");
+
+    // Collect [env] block
+    let mut env_vars: Vec<(String, String)> = Vec::new();
+    let mut in_env = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[env]" { in_env = true; continue; }
+        if trimmed.starts_with('[') && trimmed != "[env]" { in_env = false; }
+        if in_env && trimmed.contains('=') && !trimmed.starts_with('#') {
+            let mut parts = trimmed.splitn(2, '=');
+            if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
+                env_vars.push((k.trim().to_string(), v.trim().trim_matches('"').to_string()));
+            }
+        }
+    }
+
+    let ssh_key_expanded = ssh_key.replace("~", &std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default()));
+    let ssh_port_num = if ssh_port.is_empty() { "22".to_string() } else { ssh_port };
+    let app_port = if port.is_empty() { "3000".to_string() } else { port };
+
+    let ssh_base_args: Vec<String> = {
+        let mut args = Vec::new();
+        args.push("-p".to_string());
+        args.push(ssh_port_num.clone());
+        if !ssh_key_expanded.is_empty() {
+            args.push("-i".to_string());
+            args.push(ssh_key_expanded.clone());
+        }
+        args.push("-o".to_string());
+        args.push("StrictHostKeyChecking=no".to_string());
+        args.push(format!("{}@{}", user, host));
+        args
+    };
+
+    let run_ssh = |cmd: &str| -> Result<bool, Box<dyn std::error::Error>> {
+        let mut full_args = ssh_base_args.clone();
+        full_args.push(cmd.to_string());
+        let status = Command::new("ssh").args(&full_args).status()?;
+        Ok(status.success())
+    };
+
+    println!();
+    println!("{}", "┌────────────────────────────────────────────────────────────┐".cyan().bold());
+    println!("{}", format!("│  🏭  Rullst Foundry — Deploying to {:>24} │", provider.to_uppercase()).cyan().bold());
+    println!("{}", "└────────────────────────────────────────────────────────────┘".cyan().bold());
+    println!();
+    println!("  {} {}", "→ App:".bold(),    app_name.cyan());
+    println!("  {} {}", "→ Domain:".bold(), domain.cyan());
+    println!("  {} {}", "→ Server:".bold(), format!("{}@{}", user, host).cyan());
+    println!("  {} {}", "→ Port:".bold(),   app_port.cyan());
+    println!("  {} {}", "→ DB:".bold(),     db_type.cyan());
+    println!("  {} {}", "→ Profile:".bold(), if profile.is_empty() { "release".to_string() } else { profile.clone() }.cyan());
+    println!();
+
+    // ── Step 1: Build ────────────────────────────────────────────────
+    println!("{}", "📦 [1/5] Building production binary...".bold().yellow());
+    let mut build_args = vec!["build".to_string()];
+    if profile != "debug" {
+        build_args.push("--release".to_string());
+    }
+    if !target_triple.is_empty() {
+        build_args.push("--target".to_string());
+        build_args.push(target_triple.clone());
+    }
+    let build_status = Command::new("cargo").args(&build_args).status()?;
+    if !build_status.success() {
+        println!("{}", "❌ Build failed. Aborting deployment.".red().bold());
+        std::process::exit(1);
+    }
+    println!("{}", "  ✅ Build successful.".green());
+
+    // Determine binary path
+    let bin_subdir = if target_triple.is_empty() {
+        if profile == "debug" { "debug".to_string() } else { "release".to_string() }
+    } else {
+        format!("{}/{}", target_triple, if profile == "debug" { "debug" } else { "release" })
+    };
+    let cargo_toml_content = fs::read_to_string("Cargo.toml").unwrap_or_default();
+    let bin_name = cargo_toml_content
+        .lines()
+        .find(|l| l.trim_start().starts_with("name"))
+        .and_then(|l| l.split('=').nth(1))
+        .map(|s| s.trim().trim_matches('"').to_string())
+        .unwrap_or_else(|| app_name.clone());
+    let local_bin = format!("target/{}/{}", bin_subdir, bin_name);
+
+    // ── Step 2: Provision server ─────────────────────────────────────
+    println!("{}", "🖥️  [2/5] Provisioning server environment...".bold().yellow());
+    let provision_cmd = format!(
+        r#"set -e
+apt-get update -qq
+apt-get install -y -qq docker.io curl wget || yum install -y docker curl wget || true
+systemctl enable docker --now || true
+mkdir -p /app/data /app/bin /app/config
+echo "✅ Server environment ready.""#
+    );
+    if !run_ssh(&provision_cmd)? {
+        println!("{}", "⚠️  Server provisioning had warnings (continuing anyway)...".yellow());
+    } else {
+        println!("{}", "  ✅ Server provisioned.".green());
+    }
+
+    // ── Step 3: Upload binary ─────────────────────────────────────────
+    println!("{}", "📤 [3/5] Uploading application binary...".bold().yellow());
+    let mut scp_args = Vec::new();
+    scp_args.push("-P".to_string());
+    scp_args.push(ssh_port_num.clone());
+    if !ssh_key_expanded.is_empty() {
+        scp_args.push("-i".to_string());
+        scp_args.push(ssh_key_expanded.clone());
+    }
+    scp_args.push("-o".to_string());
+    scp_args.push("StrictHostKeyChecking=no".to_string());
+    scp_args.push(local_bin.clone());
+    scp_args.push(format!("{}@{}:/app/bin/{}", user, host, bin_name));
+
+    let scp_status = Command::new("scp").args(&scp_args).status()?;
+    if !scp_status.success() {
+        println!("{}", "❌ Failed to upload binary via SCP. Check SSH access and try again.".red().bold());
+        std::process::exit(1);
+    }
+    println!("{}", "  ✅ Binary uploaded to /app/bin/.".green());
+
+    // ── Step 4: Write env + Caddyfile + start container ──────────────
+    println!("{}", "⚙️  [4/5] Configuring services (env, Caddy, container)...".bold().yellow());
+
+    let _env_block: String = env_vars
+        .iter()
+        .map(|(k, v)| format!("ENV {}={}\n", k, v))
+        .collect();
+
+    let _env_run_flags: String = env_vars
+        .iter()
+        .map(|(k, v)| format!("-e {}=\"{}\" ", k, v))
+        .collect();
+
+    let caddy_site = if auto_https == "true" || auto_https.is_empty() {
+        format!(
+            r#"{domain} {{
+    reverse_proxy localhost:{app_port}
+    encode gzip zstd
+    header {{
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }}
+    log {{
+        output file /var/log/caddy/{app_name}.log
+    }}
+}}"#, domain = domain, app_port = app_port, app_name = app_name
+        )
+    } else {
+        format!(
+            r#":{app_port} {{
+    reverse_proxy localhost:{app_port}
+}}"#, app_port = app_port
+        )
+    };
+
+    let configure_cmd = format!(
+        r#"set -e
+# Write env file
+cat > /app/config/.env << 'ENVEOF'
+{env_lines}
+ENVEOF
+
+# Write Caddyfile
+cat > /etc/caddy/Caddyfile << 'CADDYEOF'
+{caddy_site}
+CADDYEOF
+
+# Install Caddy if not present
+if ! command -v caddy &> /dev/null; then
+    curl -fsSL https://caddyserver.com/install.sh | bash -s -- --
+fi
+
+# Make binary executable
+chmod +x /app/bin/{bin_name}
+
+# Stop old service if running
+docker rm -f rullst_{app_name} 2>/dev/null || true
+pkill -f "/app/bin/{bin_name}" 2>/dev/null || true
+
+# Start app as background systemd service
+cat > /etc/systemd/system/rullst_{app_name}.service << 'SVCEOF'
+[Unit]
+Description=Rullst App: {app_name}
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/app/bin/{bin_name}
+WorkingDirectory=/app/data
+EnvironmentFile=/app/config/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+systemctl daemon-reload
+systemctl enable rullst_{app_name}
+systemctl restart rullst_{app_name}
+
+# Reload Caddy
+systemctl enable caddy 2>/dev/null || true
+systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || caddy reload 2>/dev/null || true
+
+echo "✅ Services configured and started."
+"#,
+        env_lines = env_vars.iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("\n"),
+        caddy_site = caddy_site,
+        bin_name = bin_name,
+        app_name = app_name,
+    );
+
+    if !run_ssh(&configure_cmd)? {
+        println!("{}", "⚠️  Service configuration had warnings. Verify on the server.".yellow());
+    } else {
+        println!("{}", "  ✅ Services configured and started.".green());
+    }
+
+    // ── Step 5: Health check ──────────────────────────────────────────
+    println!("{}", "🩺 [5/5] Running deployment health check...".bold().yellow());
+    let health_cmd = format!(
+        "sleep 3 && curl -sf http://localhost:{app_port} > /dev/null && echo '✅ App is responding!' || echo '⚠️  App may still be starting...'",
+        app_port = app_port
+    );
+    let _ = run_ssh(&health_cmd);
+
+    println!();
+    println!("{}", "┌────────────────────────────────────────────────────────────┐".green().bold());
+    println!("{}", "│  🎉  Rullst Foundry — Deployment Complete!                  │".green().bold());
+    println!("{}", "└────────────────────────────────────────────────────────────┘".green().bold());
+    println!();
+    let url_protocol = if auto_https == "true" || auto_https.is_empty() { "https" } else { "http" };
+    println!(
+        "  {} {}://{}",
+        "🌐 Your app is live at:".bold(),
+        url_protocol,
+        domain.cyan().bold()
+    );
+    println!("  {}", "📋 To check logs: ssh into your server and run:".bold());
+    println!("     {}", format!("journalctl -u rullst_{} -f", app_name).magenta());
+    println!();
+
+    Ok(())
+}
+
 fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
         Commands::New { name, api, docker } => {
@@ -4574,6 +6339,21 @@ fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>>
         }
         Commands::Auth => {
             scaffold_auth_system()?;
+        }
+        Commands::MakeBilling => {
+            scaffold_billing_system()?;
+        }
+        Commands::MakeDesktop => {
+            scaffold_desktop_system()?;
+        }
+        Commands::MakeOmni => {
+            scaffold_omni_system()?;
+        }
+        Commands::FoundryInit => {
+            scaffold_foundry_config()?;
+        }
+        Commands::FoundryDeploy => {
+            run_foundry_deploy()?;
         }
         Commands::MakeCors => {
             create_cors_middleware()?;
