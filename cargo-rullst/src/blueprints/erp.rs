@@ -57,7 +57,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_erp_tables"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         // Create products table
         Schema::create("products", |table| {
             table.id();
@@ -98,7 +98,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("orders").await?;
         Schema::drop_if_exists("products").await?;
         Ok(())

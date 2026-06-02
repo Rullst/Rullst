@@ -45,7 +45,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_lms_tables"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         // Create courses table
         Schema::create("courses", |table| {
             table.id();
@@ -87,7 +87,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("lessons").await?;
         Schema::drop_if_exists("courses").await?;
         Ok(())
@@ -268,7 +268,7 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
             <body>
                 <div class="sidebar">
                     <div class="sidebar-header">
-                        <a class="back-btn" href="/">&larr; " Back to Academy"</a>
+                        <a class="back-btn" href="/">"&larr; Back to Academy"</a>
                         <h2>{&course.title}</h2>
                     </div>
                     <ul class="lessons-list">

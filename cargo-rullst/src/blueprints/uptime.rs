@@ -66,7 +66,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_uptime_tables"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         // Create monitors table
         Schema::create("monitors", |table| {
             table.id();
@@ -139,7 +139,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("heartbeats").await?;
         Schema::drop_if_exists("monitors").await?;
         Ok(())

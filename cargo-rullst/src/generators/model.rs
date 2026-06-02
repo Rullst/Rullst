@@ -138,7 +138,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::create("{plural_name}", |table| {{
             table.id();
             // Add your fields here (e.g. table.string("title");)
@@ -146,7 +146,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::drop_if_exists("{plural_name}").await
     }}
 }}

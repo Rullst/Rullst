@@ -44,7 +44,7 @@ impl Migration for MigrationImpl {{
         "{file_stem}"
     }}
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::create("users", |table| {{
             table.id();
             table.string("name").not_null();
@@ -56,7 +56,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::drop_if_exists("users").await
     }}
 }}
@@ -85,7 +85,7 @@ impl Migration for MigrationImpl {{
         "{file_stem_passkeys}"
     }}
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::create("user_passkeys", |table| {{
             table.id();
             table.integer("user_id").not_null();
@@ -95,7 +95,7 @@ impl Migration for MigrationImpl {{
         }}).await
     }}
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {{
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::drop_if_exists("user_passkeys").await
     }}
 }}

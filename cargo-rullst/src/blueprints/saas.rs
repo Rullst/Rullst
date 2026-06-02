@@ -918,7 +918,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_users_table"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::create("users", |table| {
             table.id();
             table.string("name").not_null();
@@ -930,7 +930,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("users").await
     }
 }
@@ -951,7 +951,7 @@ impl Migration for MigrationImpl {
         "m20260601000001_create_user_passkeys_table"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::create("user_passkeys", |table| {
             table.id();
             table.integer("user_id").not_null();
@@ -961,7 +961,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("user_passkeys").await
     }
 }
@@ -982,7 +982,7 @@ impl Migration for MigrationImpl {
         "m20260601000002_create_subscriptions_table"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::create("subscriptions", |table| {
             table.id();
             table.integer("user_id").not_null();
@@ -995,7 +995,7 @@ impl Migration for MigrationImpl {
         }).await
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("subscriptions").await
     }
 }

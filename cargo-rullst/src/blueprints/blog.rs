@@ -44,7 +44,7 @@ impl Migration for MigrationImpl {
         "m20260601000000_create_posts_table"
     }
 
-    async fn up(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::create("posts", |table| {
             table.id();
             table.string("title").not_null();
@@ -64,7 +64,7 @@ impl Migration for MigrationImpl {
         Ok(())
     }
 
-    async fn down(&self) -> Result<(), rullst::db::sqlx::Error> {
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("posts").await
     }
 }
