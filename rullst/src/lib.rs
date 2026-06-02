@@ -154,8 +154,8 @@ pub use capital::{
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod runtime {
-    pub use tokio::{main, spawn, task, time};
     pub use async_trait::async_trait;
+    pub use tokio::{main, spawn, task, time};
 }
 
 pub mod web {
@@ -177,4 +177,3 @@ pub mod email_client {
     #[cfg(not(target_arch = "wasm32"))]
     pub use lettre;
 }
-

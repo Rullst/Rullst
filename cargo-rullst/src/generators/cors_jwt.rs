@@ -321,8 +321,7 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
     );
     println!(
         "{}",
-        "     .layer(rullst::server::from_fn(middlewares::jwt_middleware::jwt_middleware))"
-            .cyan()
+        "     .layer(rullst::server::from_fn(middlewares::jwt_middleware::jwt_middleware))".cyan()
     );
     println!("{}", "  2. Acesse os claims no controller:".cyan());
     println!("{}", "     pub async fn meu_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());

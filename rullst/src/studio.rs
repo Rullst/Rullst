@@ -8,7 +8,7 @@ use axum::{
 use rullst_macros::html;
 use rullst_orm::Orm;
 use serde::Deserialize;
-use sqlx::{Row, QueryBuilder, Any};
+use sqlx::{Any, QueryBuilder, Row};
 use std::net::SocketAddr;
 
 #[derive(Deserialize, Debug)]
@@ -74,12 +74,17 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     let pool = Orm::pool();
     let clean_table = sanitize_identifier(table);
 
-    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
+    let mut qb: QueryBuilder<Any> =
+        QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
 
     if let Some(search) = search_query {
         if !search.is_empty() {
             let schema_query = format!("PRAGMA table_info(\"{}\")", clean_table);
-            if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query).build().fetch_all(pool).await {
+            if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query)
+                .build()
+                .fetch_all(pool)
+                .await
+            {
                 let mut col_names = Vec::new();
                 for r in columns_rows {
                     if let Ok(name) = r.try_get::<String, _>("name") {
@@ -320,7 +325,11 @@ pub async fn handle_table(
     let clean_table = sanitize_identifier(&table_name);
 
     let columns_query = format!("PRAGMA table_info(\"{}\")", clean_table);
-    let columns_rows = match QueryBuilder::<Any>::new(columns_query).build().fetch_all(pool).await {
+    let columns_rows = match QueryBuilder::<Any>::new(columns_query)
+        .build()
+        .fetch_all(pool)
+        .await
+    {
         Ok(r) => r,
         Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
     };
@@ -495,7 +504,8 @@ mod tests {
     #[test]
     fn test_escape_html_attr() {
         let input = r#"<script>alert("XSS & Hack")</script> 'test'"#;
-        let expected = "&lt;script&gt;alert(&quot;XSS &amp; Hack&quot;)&lt;/script&gt; &#x27;test&#x27;";
+        let expected =
+            "&lt;script&gt;alert(&quot;XSS &amp; Hack&quot;)&lt;/script&gt; &#x27;test&#x27;";
         assert_eq!(escape_html_attr(input), expected);
     }
 }

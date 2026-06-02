@@ -644,10 +644,10 @@ mod tests {
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 pub use axum::{
-    extract::{Form, Json, Path, Query, State, Request, Extension},
-    http::{StatusCode, HeaderMap, Method, Uri, header, HeaderValue},
-    response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, post, put, delete, patch},
-    middleware::{self, Next, from_fn},
     body::{Body, Bytes},
+    extract::{Extension, Form, Json, Path, Query, Request, State},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
+    middleware::{self, Next, from_fn},
+    response::{Html, IntoResponse, Redirect, Response},
+    routing::{delete, get, patch, post, put},
 };
