@@ -147,14 +147,14 @@ impl HtmlElement {
     pub fn static_size(&self) -> usize {
         let tag = self.tag_name.to_string();
         let mut size = tag.len() * 2 + 5; // <tag></tag>
-        
+
         for attr in &self.attributes {
             size += attr.name.len() + 4; //  name=""
             if let HtmlAttrValue::Static(lit) = &attr.value {
                 size += lit.value().len();
             }
         }
-        
+
         for child in &self.children {
             size += child.static_size();
         }
