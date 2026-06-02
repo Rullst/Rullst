@@ -2,7 +2,7 @@
 name = "cargo-rullst"
 version = "2.0.0"
 edition = "2024"
-description = "A interface de linha de comando (CLI) oficial para gerenciar aplicações Rullst."
+description = "⌨️ $ The official command-line interface (CLI) for managing Rullst applications.📜🦀🌐"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
