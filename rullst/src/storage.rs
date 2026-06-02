@@ -47,7 +47,11 @@ impl LocalDriver {
 
     fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
         // Ensure no absolute paths or Windows drive letters are injected before we strip slashes
-        if std::path::Path::new(path).is_absolute() || path.contains(':') || path.starts_with('/') || path.starts_with('\\') {
+        if std::path::Path::new(path).is_absolute()
+            || path.contains(':')
+            || path.starts_with('/')
+            || path.starts_with('\\')
+        {
             return Err(StorageError::DriverError(
                 "Access denied: absolute paths are not allowed".to_string(),
             ));
@@ -85,7 +89,8 @@ impl LocalDriver {
             // Check for symlink escapes if the path exists
             if normalized.exists() {
                 if let Ok(canon) = std::fs::canonicalize(&normalized) {
-                    let canon_root = std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+                    let canon_root =
+                        std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
                     if !canon.starts_with(&canon_root) {
                         return Err(StorageError::DriverError(
                             "Access denied: Symlink traversal attempt detected".to_string(),
@@ -405,7 +410,12 @@ mod tests {
 
         let res_put = driver.put("/etc/passwd", b"hack").await;
         assert!(res_put.is_err());
-        assert!(res_put.unwrap_err().to_string().contains("absolute paths are not allowed"));
+        assert!(
+            res_put
+                .unwrap_err()
+                .to_string()
+                .contains("absolute paths are not allowed")
+        );
 
         let _ = std::fs::remove_dir_all(temp_dir);
     }
@@ -418,12 +428,17 @@ mod tests {
         let _driver = Storage::disk("local");
         // We just ensure it doesn't panic and returns a valid LocalDriver via Box<dyn StorageDriver>
         // Downcasting is not straight-forward, but we can call a method if we want, or just rely on instantiation.
-        
+
         let err_driver = Storage::disk("unknown_disk");
         // Unknown disk should return an ErrorDriver
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let err_res = runtime.block_on(err_driver.exists("test"));
         assert!(err_res.is_err());
-        assert!(err_res.unwrap_err().to_string().contains("Unknown storage disk"));
+        assert!(
+            err_res
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown storage disk")
+        );
     }
 }

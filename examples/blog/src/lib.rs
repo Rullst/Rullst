@@ -10,11 +10,11 @@ pub mod live_counter;
 pub mod app {
     use crate::live_counter::CounterComponent;
     use axum::Form;
+    use rullst::db::FromRow;
     use rullst::{
         html,
         response::{Html, IntoResponse, Redirect},
     };
-    use rullst::db::FromRow;
 
     // --- Post model & query builder ---
     #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]

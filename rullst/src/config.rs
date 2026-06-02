@@ -67,7 +67,7 @@ mod tests {
         let temp_dir = "test_config_dir";
         let _ = std::fs::create_dir_all(temp_dir);
         let path = format!("{}/Rullst.toml", temp_dir);
-        
+
         let toml_content = r#"
 [app]
 env = "production"
@@ -83,7 +83,7 @@ cors_allow_origins = ["https://example.com"]
         tokio::fs::write(&path, toml_content).await.unwrap();
 
         let config = RullstConfig::load_from_file(&path).await.unwrap();
-        
+
         assert_eq!(config.app.env.unwrap(), "production");
         assert_eq!(config.app.port.unwrap(), 8080);
         assert_eq!(config.database.url.unwrap(), "sqlite::memory:");
