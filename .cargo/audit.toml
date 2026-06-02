@@ -1,2 +1,4 @@
 [advisories]
+# Ignorando vulnerabilidades do rustls-webpki 0.101 originadas exclusivamente pelos pacotes oficiais da AWS (aws-sdk-s3 e aws-config).
+# Aguardando a AWS migrar o aws-smithy-runtime para rustls >= 0.23 (atualmente preso no 0.21).
 ignore = ["RUSTSEC-2026-0098", "RUSTSEC-2026-0099", "RUSTSEC-2026-0104"]

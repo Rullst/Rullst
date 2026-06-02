@@ -1,0 +1,6 @@
+- Read `docs/spec.md` before architectural refactors.
+- Prefer compile-time `html!` macros over runtime template engines (like Tera/Askama).
+- Keep dependencies updated using `cargo update`.
+- WAF and CSRF middleware are mandatory for all production endpoints.
+- Avoid introducing new `unsafe` blocks.
+- Ensure all dynamic SQL inputs use parameterization or strict alphanumeric sanitization.

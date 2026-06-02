@@ -112,6 +112,7 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
 fn sanitize_identifier(id: &str) -> String {
     id.chars()
         .filter(|c| c.is_alphanumeric() || *c == '_')
+        .take(64) // Strict length limit for security
         .collect()
 }
 

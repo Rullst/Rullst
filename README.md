@@ -133,9 +133,9 @@ When your application grows, Rullst scales with you using Active Record:
 
 ```rust
 use rullst::{html, routes, Server, Router, response::{Html, IntoResponse}};
-use rullst_orm::{Orm, EloquentModel, sqlx::{self, FromRow}};
+use rullst::{Orm, RullstModel, db::{sqlx, FromRow}};
 
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,

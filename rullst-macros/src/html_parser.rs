@@ -133,11 +133,37 @@ impl HtmlNode {
             }
         }
     }
+
+    pub fn static_size(&self) -> usize {
+        match self {
+            HtmlNode::Element(el) => el.static_size(),
+            HtmlNode::Text(txt) => txt.value().len(),
+            HtmlNode::Block(_) => 0,
+        }
+    }
 }
 
 impl HtmlElement {
+    pub fn static_size(&self) -> usize {
+        let tag = self.tag_name.to_string();
+        let mut size = tag.len() * 2 + 5; // <tag></tag>
+        
+        for attr in &self.attributes {
+            size += attr.name.len() + 4; //  name=""
+            if let HtmlAttrValue::Static(lit) = &attr.value {
+                size += lit.value().len();
+            }
+        }
+        
+        for child in &self.children {
+            size += child.static_size();
+        }
+        size
+    }
+
     pub fn to_tokens(&self) -> TokenStream {
         let tag = self.tag_name.to_string();
+        let capacity = self.static_size();
 
         let mut attr_tokens = Vec::new();
         for attr in &self.attributes {
@@ -168,7 +194,7 @@ impl HtmlElement {
         if self.children.is_empty() && is_void {
             quote! {
                 {
-                    let mut s = String::new();
+                    let mut s = String::with_capacity(#capacity);
                     s.push_str("<");
                     s.push_str(#tag);
                     #( s.push_str(&#attr_tokens); )*
@@ -179,7 +205,7 @@ impl HtmlElement {
         } else {
             quote! {
                 {
-                    let mut s = String::new();
+                    let mut s = String::with_capacity(#capacity);
                     s.push_str("<");
                     s.push_str(#tag);
                     #( s.push_str(&#attr_tokens); )*

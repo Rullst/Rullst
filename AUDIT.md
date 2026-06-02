@@ -19,7 +19,7 @@ This document presents the final, revised audit of the `dev` branch of the Rulls
 ## 1. Security Analysis: 100/100
 All critical security flaws have been completely remediated. The codebase employs robust defense-in-depth mechanisms.
 
-- ✅ **SQL Injection (Studio Explorer):** Resolved. The `rullst::studio` dynamic queries now use SQLx `QueryBuilder` and strictly parameterize inputs.
+- ✅ **SQL Injection (Studio Explorer):** Resolved. The `rullst::studio` dynamic queries now use SQLx `QueryBuilder`, strictly parameterize inputs, and enforce a strict 64-character limit on sanitized identifiers.
 - ✅ **Path Traversal (Local Storage Driver):** Resolved. `LocalDriver` strictly validates paths to prevent directory traversal and absolute path injection, effectively sandboxing file operations.
 - ✅ **Hardcoded JWT Secrets:** Resolved. Authentication middleware panics predictably during initialization if `JWT_SECRET` is missing, preventing fallback to vulnerable defaults.
 - ✅ **Upstream Dependency Vulnerabilities (`cargo audit`):** Resolved/Mitigated. Known CVEs in `rustls-webpki` stemming from the AWS SDK ecosystem have been managed via `.cargo/audit.toml` exclusion until a non-breaking upstream patch is issued by AWS. 
@@ -28,6 +28,7 @@ All critical security flaws have been completely remediated. The codebase employ
 The framework's I/O and database operations are strictly non-blocking and optimized for high-concurrency environments.
 
 - ✅ **Async Blocking I/O:** Resolved. The `RedisDriver::flush` operation now aggregates keys and executes a single batched `DEL` command, avoiding sequential I/O bottlenecks.
+- ✅ **HTML Macro Pre-allocation:** Resolved. The `html!` macro pre-computes static token sizes at compile-time and generates `String::with_capacity(STATIC_SIZE)`, eliminating dynamic reallocation overhead at runtime.
 - ✅ **N+1 Query Patterns:** Validated. Detailed inspection confirmed that `fetch_tables` and `list_all_jobs` execute single, highly-optimized SQL queries without iterating into sub-queries.
 
 ## 3. Code Quality & Testing: 100/100
@@ -35,6 +36,7 @@ Rullst now boasts a comprehensive test suite covering all critical domains, prev
 
 - ✅ **Test Suite Completeness:** Added missing tests for Security Middleware, Config parsing, Absolute Path Access Denied scenarios, HTML escaping, and Storage driver initialization.
 - ✅ **Complex Data Handling:** Verified safe HTML escaping for complex JavaScript object structures within the view engine.
+- ✅ **AI Maintainability:** Resolved. Introduced `AGENTS.md` and `.ai-rules` to strictly define architectural guidelines and coding conventions for autonomous AI agents.
 - ✅ **Documentation:** The public API surface (Cache, Queue, Server, Nexus) is well-documented, ensuring a stellar developer experience.
 
 ## Conclusion

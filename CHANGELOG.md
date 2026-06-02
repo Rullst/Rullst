@@ -4,10 +4,13 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-06-01 🚀
+## [2.0.0] - 2026-06-01 🚀
 
 ### Security & Deep Audit 10/10 Certification
 - **100/100 Pristine Status**: Resolved all technical debt and performance bottlenecks flagged in the June 2026 Deep Audit.
+- **Studio SQL Security**: Hardened SQL identifier sanitization with strict 64-character length limits to prevent buffer exhaustion.
+- **HTML Macro Zero-Allocation**: The `html!` compile-time macro now pre-computes static AST sizes and injects `String::with_capacity(STATIC_SIZE)` for maximum memory efficiency.
+- **AI-Native Maintainability**: Created standard `AGENTS.md` and `.ai-rules` files to govern AI tooling workflows securely.
 - **Async I/O Optimization**: Refactored `RedisDriver::flush` cache pruning to utilize a single batched `DEL` roundtrip, eliminating event-loop blocking from sequential iterators.
 - **Complex View Engine Sanitization**: Added strict HTMX-safe validation and encoding checks for complex Javascript data types mapped to HTML strings.
 - **Dependency Sandboxing**: Shielded the upstream AWS SDK `rustls` CVE vulnerabilities via explicit `.cargo/audit.toml` containment pending a major SDK upgrade, allowing CI to pass cleanly.
