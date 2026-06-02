@@ -22,7 +22,7 @@ All critical security flaws have been completely remediated. The codebase employ
 - ✅ **SQL Injection (Studio Explorer):** Resolved. The `rullst::studio` dynamic queries now use SQLx `QueryBuilder`, strictly parameterize inputs, and enforce a strict 64-character limit on sanitized identifiers.
 - ✅ **Path Traversal (Local Storage Driver):** Resolved. `LocalDriver` strictly validates paths to prevent directory traversal and absolute path injection, effectively sandboxing file operations.
 - ✅ **Hardcoded JWT Secrets:** Resolved. Authentication middleware panics predictably during initialization if `JWT_SECRET` is missing, preventing fallback to vulnerable defaults.
-- ✅ **Upstream Dependency Vulnerabilities (`cargo audit`):** Resolved/Mitigated. Known CVEs in `rustls-webpki` stemming from the AWS SDK ecosystem have been managed via `.cargo/audit.toml` exclusion until a non-breaking upstream patch is issued by AWS. 
+- ✅ **Upstream Dependency Vulnerabilities (`cargo audit`):** Resolved. The `storage-s3` feature and its associated AWS SDK dependencies have been completely deactivated and removed from the framework. This decisively eliminates the `rustls-webpki` CVE vulnerabilities without relying on `.cargo/audit.toml` suppressions.
 
 ## 2. Performance & Architecture: 100/100
 The framework's I/O and database operations are strictly non-blocking and optimized for high-concurrency environments.

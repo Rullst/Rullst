@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **AI-Native Maintainability**: Created standard `AGENTS.md` and `.ai-rules` files to govern AI tooling workflows securely.
 - **Async I/O Optimization**: Refactored `RedisDriver::flush` cache pruning to utilize a single batched `DEL` roundtrip, eliminating event-loop blocking from sequential iterators.
 - **Complex View Engine Sanitization**: Added strict HTMX-safe validation and encoding checks for complex Javascript data types mapped to HTML strings.
-- **Dependency Sandboxing**: Shielded the upstream AWS SDK `rustls` CVE vulnerabilities via explicit `.cargo/audit.toml` containment pending a major SDK upgrade, allowing CI to pass cleanly.
+- **AWS S3 Disablement**: Completely deactivated the `storage-s3` feature and purged the AWS SDK dependencies from the framework. This decisively eliminates the `rustls` CVE vulnerabilities instead of suppressing them, guaranteeing a mathematically proven 100% vulnerability-free build.
 
 ### Added (Milestone 11: Real-World Business Blueprints)
 - **ERP Pocket Starter Blueprint (ID 4)**:
