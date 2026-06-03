@@ -792,7 +792,7 @@ pub(crate) async fn render_console_html(
             const autofixBtn = document.getElementById('btn-autofix');
 
             if (file_path === "Unknown File") {{
-                solutionBox.innerHTML = "<div class='empty-state'>Cannot generate solution without file location.</div>";
+                solutionBox.innerHTML = "<div class='empty-state'>Cannot generate solution without file location.<br><br><small style='color: var(--text-muted); line-height: 1.5;'>💡 <b>Tip:</b> If the Rullst AI Assistant is not activated yet, set your <code>GEMINI_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>ANTHROPIC_API_KEY</code> environment variable to enable self-healing.</small></div>";
                 return;
             }}
 

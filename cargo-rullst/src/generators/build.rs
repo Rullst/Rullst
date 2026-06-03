@@ -1,6 +1,7 @@
 // src/generators/build.rs — Production builds, frontend islands compilation, and upgrade systems.
 
 use crate::generators::is_rullst_project;
+use crate::ui::components::with_spinner;
 use colored::*;
 use std::fs;
 use std::io::Write;
@@ -78,13 +79,16 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Step 2: Run cargo update
-    println!(
-        "{}",
-        "📦 Refreshing dependencies and lockfile via cargo update...".yellow()
-    );
-    let update_status = Command::new("cargo").arg("update").status()?;
+    let update_success = with_spinner("Refreshing dependencies and lockfile...", || {
+        Command::new("cargo")
+            .arg("update")
+            .arg("-q")
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    });
 
-    if !update_status.success() {
+    if !update_success {
         println!(
             "{}",
             "❌ Failed to update dependencies via cargo update.".red()
@@ -167,17 +171,18 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Step 4: Run `cargo fix`
-    println!(
-        "{}",
-        "\n🔧 Applying additional code fixes via cargo fix...".yellow()
-    );
-    let fix_status = Command::new("cargo")
-        .arg("fix")
-        .arg("--allow-no-vcs")
-        .arg("--allow-dirty")
-        .status()?;
+    let fix_success = with_spinner("Applying additional code fixes via cargo fix...", || {
+        Command::new("cargo")
+            .arg("fix")
+            .arg("--allow-no-vcs")
+            .arg("--allow-dirty")
+            .arg("-q")
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    });
 
-    if !fix_status.success() {
+    if !fix_success {
         println!(
             "{}",
             "❌ Failed to apply additional code fixes via cargo fix.".red()
@@ -186,13 +191,16 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Step 5: Compiler validation gate
-    println!(
-        "{}",
-        "\n🛡️ Running validation gate (cargo check) to confirm health status...".yellow()
-    );
-    let check_status = Command::new("cargo").arg("check").status()?;
+    let check_success = with_spinner("Running validation gate (cargo check) to confirm health status...", || {
+        Command::new("cargo")
+            .arg("check")
+            .arg("-q")
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    });
 
-    if check_status.success() {
+    if check_success {
         println!(
             "{}",
             "\n✅ Rullst updated successfully. No breaking changes detected! Code is 100% stable.\n"
@@ -206,6 +214,71 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
                 .bold()
         );
+    }
+
+    Ok(())
+}
+
+pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
+    if !is_rullst_project() {
+        println!(
+            "{}",
+            "❌ Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+
+    println!(
+        "{}",
+        "\n🚀 Starting Rullst Dev Server...\n"
+            .cyan()
+            .bold()
+    );
+
+    let output_result = with_spinner("Compiling Rullst Application...", || {
+        Command::new("cargo")
+            .arg("build")
+            .arg("-q")
+            .output()
+    });
+
+    match output_result {
+        Ok(output) => {
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.trim().is_empty() {
+                    println!("{}", stderr);
+                }
+                println!(
+                    "{}",
+                    "❌ Compilation failed. Run `cargo build` to see the detailed errors.".red()
+                );
+                std::process::exit(1);
+            } else {
+                // Print warnings (if any) after the spinner has successfully finished
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.trim().is_empty() {
+                    println!("{}", stderr);
+                }
+            }
+        }
+        Err(_) => {
+            println!("{}", "❌ Failed to execute `cargo build`.".red());
+            std::process::exit(1);
+        }
+    }
+
+    println!("{}", "✨ Compilation successful! Starting the server...\n".green());
+
+    let status = Command::new("cargo")
+        .arg("run")
+        .arg("-q")
+        .status()?;
+
+    if !status.success() {
+        std::process::exit(1);
     }
 
     Ok(())

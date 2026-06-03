@@ -41,39 +41,48 @@ pub fn create_new_project(
     docker: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
-        "{}{}",
-        r#"
-  _____       _ _     _   
- |  __ \     | | |   | |  
- | |__) |   _| | |___| |_ 
- |  _  / | | | | / __| __|
- | | \ \ |_| | | \__ \ |_ 
- |_|  \_\__,_|_|_|___/\__|
-    "#
-        .cyan(),
-        "\nWelcome to the official Rullst application wizard!\n"
-            .white()
-            .bold()
+        "  {}",
+        "┌────────────────────────────────────────────────────┐".bright_cyan()
     );
+    println!(
+        "  {} {} {}",
+        "│".bright_cyan(),
+        format!("🎯 {} APP CREATOR — Let's build something new!", "RULLST".truecolor(255, 165, 0).bold()),
+        "│".bright_cyan()
+    );
+    println!(
+        "  {}",
+        "└────────────────────────────────────────────────────┘".bright_cyan()
+    );
+    println!();
 
     let theme = dialoguer::theme::ColorfulTheme::default();
 
     let name = match name_arg {
         Some(n) => n.to_string(),
         None => {
-            let mut val = String::new();
-            while val.trim().is_empty() || val.contains(' ') {
-                val = dialoguer::Input::with_theme(&theme)
-                    .with_prompt("🚀 App name? (no spaces allowed)")
+            loop {
+                let val: String = dialoguer::Input::with_theme(&theme)
+                    .with_prompt("🚀 What's the New App Name? (lowercase, no spaces, must start with a letter)")
                     .interact_text()?;
-                if val.contains(' ') {
-                    println!(
-                        "{}",
-                        "❌ Spaces are not allowed in the project name. Please try again.".red()
-                    );
+                let val_trim = val.trim();
+                if val_trim.is_empty() {
+                    continue;
                 }
+                if val_trim.contains(' ') {
+                    println!("{}", "❌ Spaces are not allowed in the project name. Please try again.".red());
+                    continue;
+                }
+                if val_trim.chars().next().unwrap().is_ascii_digit() {
+                    println!("{}", "❌ The project name cannot start with a number. Please try again.".red());
+                    continue;
+                }
+                if !val_trim.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+                    println!("{}", "❌ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
+                    continue;
+                }
+                break val_trim.to_string();
             }
-            val
         }
     };
 
@@ -100,7 +109,7 @@ pub fn create_new_project(
 
         if blueprint_selection == 0 {
             let build_options = &[
-                "Full-Stack Web App (SaaS, Portfolio, Blog)",
+                "Full-Stack Web App (SaaS, Portfolio, Blog, Etc)",
                 "Headless REST API",
             ];
             let build_selection = dialoguer::Select::with_theme(&theme)
@@ -111,7 +120,7 @@ pub fn create_new_project(
             api = build_selection == 1;
 
             hot_reload = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("🔥 Enable Hot Reloading by default?")
+                .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
                 .default(false)
                 .interact()?;
 
@@ -121,15 +130,20 @@ pub fn create_new_project(
                 .interact()?;
 
             if db_needed {
-                let db_options = &["Sqlite", "Postgres", "MySQL/MariaDB"];
+                let db_options = &[
+                    "Sqlite (Zero setup)", 
+                    "Postgres (Requires localhost:5432 running)", 
+                    "MySQL/MariaDB (Requires localhost:3306 running)"
+                ];
                 let db_selection = dialoguer::Select::with_theme(&theme)
-                    .with_prompt("💾 Select a DB Provider")
+                    .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
                     .default(0)
                     .items(&db_options[..])
                     .interact()?;
-                db_provider = match db_options[db_selection] {
-                    "MySQL/MariaDB" => "MySQL".to_string(),
-                    other => other.to_string(),
+                db_provider = match db_selection {
+                    1 => "Postgres".to_string(),
+                    2 => "MySQL".to_string(),
+                    _ => "Sqlite".to_string(),
                 };
             }
         } else {
@@ -247,10 +261,9 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
                 .replace("\\", "/");
             format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
         } else {
-            "rullst-connect = \"0.4.0\"\n".to_string()
+            "rullst-connect = \"7.0.0\"\n".to_string()
         };
         cargo_toml.push_str(&connect_dep);
-        cargo_toml.push_str("webauthn-rs = { version = \"0.5\", default-features = false }\n");
     }
 
     cargo_toml.push_str(
@@ -395,7 +408,7 @@ Foundry.toml
     let db_url = match db_provider.as_str() {
         "Postgres" => "postgres://postgres:password@localhost/rullst",
         "MySQL" => "mysql://root:password@localhost/rullst",
-        _ => "sqlite://rullst.db",
+        _ => "sqlite://rullst.db?mode=rwc",
     };
 
     let mut env_content = format!(
@@ -448,6 +461,11 @@ APP_ENV=development
     fs::write(path.join(".env"), &env_content)?;
     fs::write(path.join(".env.example"), &env_example_content)?;
 
+    // Physically create the sqlite database file so SQLx doesn't panic on first run
+    if db_provider == "Sqlite" {
+        let _ = fs::write(path.join("rullst.db"), "");
+    }
+
     // Apply Blueprint templates
     crate::blueprints::apply(
         blueprint_selection,
@@ -462,6 +480,28 @@ APP_ENV=development
     // Generate Docker files if --docker flag was passed
     if docker {
         generate_docker_files(path, &project_name)?;
+    }
+
+    // Automatically run initial migrations if a database was selected
+    if db_needed {
+        println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
+        let migrate_success = crate::ui::components::with_spinner("Running initial migrations (this may take a moment to compile)...", || {
+            std::process::Command::new("cargo")
+                .arg("run")
+                .arg("-q")
+                .arg("--")
+                .arg("db:migrate")
+                .current_dir(path)
+                .output()
+                .map(|s| s.status.success())
+                .unwrap_or(false)
+        });
+
+        if migrate_success {
+            println!("{}", "  ✅ Database tables created successfully.".green());
+        } else {
+            println!("{}", "  ⚠️ Warning: Failed to run initial database migrations. You may need to run `cargo rullst db:migrate` manually.".yellow());
+        }
     }
 
     if !has_mold && !has_lld {
@@ -507,11 +547,7 @@ APP_ENV=development
     );
     println!("{}", "How to run:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
-    if hot_reload {
-        println!("{}", "  HOT_RELOAD=1 cargo run".cyan());
-    } else {
-        println!("{}", "  cargo run".cyan());
-    }
+    println!("{}", "  cargo rullst dev".cyan());
     if docker {
         println!(
             "{}",

@@ -66,48 +66,6 @@ impl Migration for MigrationImpl {{
     fs::write(&migration_path, migration_template)?;
     println!("{}", "  ✨ Created 'users' table migration.".green());
 
-    // 1b. Create User Passkeys Migration
-    let timestamp_passkeys = (now + chrono::Duration::seconds(1))
-        .format("%Y%m%d%H%M%S")
-        .to_string();
-    let file_stem_passkeys = format!("m{}_create_user_passkeys_table", timestamp_passkeys);
-    let migration_passkeys_path = migrations_dir.join(format!("{}.rs", file_stem_passkeys));
-
-    let migration_passkeys_template = format!(
-        r##"use rullst::db::schema::{{Schema, Blueprint, Migration}};
-use rullst::db::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{file_stem_passkeys}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::create("user_passkeys", |table| {{
-            table.id();
-            table.integer("user_id").not_null();
-            table.string("name").not_null();
-            table.text("passkey_json").not_null();
-            table.timestamps();
-        }}).await
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::drop_if_exists("user_passkeys").await
-    }}
-}}
-"##,
-        file_stem_passkeys = file_stem_passkeys
-    );
-    fs::write(&migration_passkeys_path, migration_passkeys_template)?;
-    println!(
-        "{}",
-        "  ✨ Created 'user_passkeys' table migration.".green()
-    );
-
     regenerate_migrations_mod()?;
 
     // 2. Create User Model
@@ -132,24 +90,6 @@ pub struct User {
     fs::write(&model_path, model_template)?;
     println!("{}", "  ✨ Created 'User' model.".green());
 
-    // 2b. Create UserPasskey Model
-    let passkey_model_path = models_dir.join("user_passkey.rs");
-    let passkey_model_template = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "user_passkeys")]
-pub struct UserPasskey {
-    pub id: i32,
-    pub user_id: i32,
-    pub name: String,
-    pub passkey_json: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-"##;
-    fs::write(&passkey_model_path, passkey_model_template)?;
-    println!("{}", "  ✨ Created 'UserPasskey' model.".green());
-
     let mod_models_path = models_dir.join("mod.rs");
     if !mod_models_path.exists() {
         fs::write(&mod_models_path, "")?;
@@ -158,10 +98,6 @@ pub struct UserPasskey {
     let mut modified = false;
     if !mod_models_content.contains("pub mod user;") {
         mod_models_content.push_str("pub mod user;\n");
-        modified = true;
-    }
-    if !mod_models_content.contains("pub mod user_passkey;") {
-        mod_models_content.push_str("pub mod user_passkey;\n");
         modified = true;
     }
     if modified {
@@ -1293,7 +1229,7 @@ pub async fn passkey_login_finish(
                         .replace("\\", "/");
                     format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
                 } else {
-                    "rullst-connect = \"0.4.0\"\n".to_string()
+                    "rullst-connect = \"7.0.0\"\n".to_string()
                 };
 
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {

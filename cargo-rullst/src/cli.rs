@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use crate::generators::{
     auth::scaffold_auth_system,
     billing::scaffold_billing_system,
-    build::{run_build_client, run_production_build, run_upgrade},
+    build::{run_build_client, run_production_build, run_upgrade, run_dev_server},
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
@@ -120,6 +120,8 @@ pub enum Commands {
     },
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
+    /// Starts the Rullst development server with neon spinners
+    Dev,
     /// Opens the Rullst Studio dashboard to inspect the database
     #[command(name = "studio")]
     Studio,
@@ -215,6 +217,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Upgrade => {
             run_upgrade()?;
+        }
+        Commands::Dev => {
+            run_dev_server()?;
         }
         Commands::Studio => {
             run_project_db_command("studio")?;

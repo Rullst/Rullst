@@ -116,7 +116,6 @@ use rullst::server::Html;
 
 pub fn pricing_page() -> Html<String> {
     Html(html! {
-        <!DOCTYPE html>
         <html lang="en" class="dark">
         <head>
             <meta charset="UTF-8" />
@@ -152,16 +151,30 @@ pub fn pricing_page() -> Html<String> {
                 .btn-checkout.primary:hover { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6); }
                 .btn-checkout.secondary { background: rgba(255, 255, 255, 0.08); color: white; border: 1px solid rgba(255, 255, 255, 0.1); }
                 .btn-checkout.secondary:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.25); }
+                .setup-banner { background: rgba(99, 102, 241, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 1rem; padding: 1.5rem; margin-bottom: 3rem; max-width: 800px; margin-left: auto; margin-right: auto; display: flex; gap: 1.5rem; align-items: flex-start; text-align: left; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); animation: fade-in 1s ease-out; }
+                @keyframes fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+                .setup-banner-icon { font-size: 2rem; }
+                .setup-banner-content h4 { font-size: 1.2rem; margin-bottom: 0.5rem; color: #e0e7ff; }
+                .setup-banner-content p { color: #9ca3af; line-height: 1.5; margin-bottom: 1rem; }
+                .setup-banner-content pre { background: #111827; padding: 1rem; border-radius: 0.5rem; border: 1px solid #1f2937; overflow-x: auto; color: #a5b4fc; font-family: ui-monospace, monospace; font-size: 0.9rem; margin: 0; }
             </style>
         </head>
         <body>
             <div class="glow-bg"></div>
             <div class="glow-bg-right"></div>
             <div class="container">
+                <div class="setup-banner">
+                    <div class="setup-banner-icon">"🚀"</div>
+                    <div class="setup-banner-content">
+                        <h4>"Stripe Setup Required"</h4>
+                        <p>"To enable real checkouts, create a " <code>".env"</code> " file in your project root with your API keys:"</p>
+                        <pre><code>"BILLING_PROVIDER=stripe\nBILLING_API_KEY=sk_test_...\nBILLING_WEBHOOK_SECRET=whsec_..."</code></pre>
+                    </div>
+                </div>
                 <div class="header">
-                    <span class="badge">Rullst Capital</span>
-                    <h1>Simple, Transparent Pricing</h1>
-                    <p class="subtitle">Choose the perfect plan to boost your application with next-gen fullstack performance.</p>
+                    <span class="badge">"Rullst Capital"</span>
+                    <h1>"Simple, Transparent Pricing"</h1>
+                    <p class="subtitle">"Choose the perfect plan to boost your application with next-gen fullstack performance."</p>
                 </div>
                 <div class="pricing-grid">
                     <!-- Starter Plan -->

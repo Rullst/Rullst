@@ -1,12 +1,9 @@
 // src/ui/components.rs — Neon spinners, interactive dashboard, update banner,
 // and the full Rullst CLI help reference. Zero file I/O here.
 
-use crate::cli::{Cli, Commands, DocsCommands, run_cli_command};
+use crate::cli::{Cli, run_cli_command};
 use clap::Parser;
 use colored::*;
-use std::io::Write;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 // ─── Update Check ────────────────────────────────────────────────────────────
 
@@ -137,37 +134,78 @@ pub fn print_update_banner(latest_version: &str) {
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
 
-/// Runs a closure while showing an animated neon spinner in a background thread.
+use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::io::Write;
+
 pub fn with_spinner<F, T>(msg: &str, f: F) -> T
 where
     F: FnOnce() -> T,
 {
-    let done = Arc::new(AtomicBool::new(false));
-    let done_clone = Arc::clone(&done);
-    let msg_owned = msg.to_string();
-    let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    let colors: [fn(&str) -> String; 4] = [
-        |s: &str| s.cyan().bold().to_string(),
-        |s: &str| s.magenta().bold().to_string(),
-        |s: &str| s.bright_cyan().bold().to_string(),
-        |s: &str| s.blue().bold().to_string(),
-    ];
-    let handle = std::thread::spawn(move || {
-        let mut i = 0usize;
-        while !done_clone.load(Ordering::Relaxed) {
+    let msg = msg.to_string();
+    let is_running = Arc::new(AtomicBool::new(true));
+    let is_running_clone = is_running.clone();
+
+    let handle = thread::spawn(move || {
+        let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let mut i = 0;
+        let colors = [
+            colored::Color::Cyan,
+            colored::Color::Magenta,
+            colored::Color::BrightCyan,
+            colored::Color::Blue,
+        ];
+        
+
+        while is_running_clone.load(Ordering::SeqCst) {
             let frame = frames[i % frames.len()];
-            let color_fn = colors[i % colors.len()];
-            print!("\r  {} {}", color_fn(frame), msg_owned.white().bold());
+            let color = colors[(i / 2) % colors.len()];
+            
+            let mut animated_msg = String::new();
+            let targets = ["Application", "migrations"];
+            let mut found_target = None;
+            
+            for target in targets {
+                if let Some(pos) = msg.find(target) {
+                    found_target = Some((target, pos));
+                    break;
+                }
+            }
+            
+            if let Some((target, pos)) = found_target {
+                animated_msg.push_str(&msg[..pos].bold().to_string());
+                for (j, ch) in target.chars().enumerate() {
+                    let is_upper = ((i + j) % 4) < 2; // wave effect
+                    let wave_char = if is_upper {
+                        ch.to_ascii_uppercase()
+                    } else {
+                        ch.to_ascii_lowercase()
+                    };
+                    let c_idx = (i + j) % colors.len();
+                    animated_msg.push_str(&wave_char.to_string().color(colors[c_idx]).bold().to_string());
+                }
+                animated_msg.push_str(&msg[pos+target.len()..].bold().to_string());
+            } else {
+                animated_msg = msg.bold().to_string();
+            }
+            
+            print!("\r\x1B[K{} {}", frame.color(color).bold(), animated_msg);
             let _ = std::io::stdout().flush();
-            std::thread::sleep(std::time::Duration::from_millis(80));
+            
+            thread::sleep(Duration::from_millis(80));
             i += 1;
         }
+        print!("\r\x1B[K");
+        let _ = std::io::stdout().flush();
     });
+
     let result = f();
-    done.store(true, Ordering::Relaxed);
+    
+    is_running.store(false, Ordering::SeqCst);
     let _ = handle.join();
-    print!("\r");
-    let _ = std::io::stdout().flush();
+    
     result
 }
 
@@ -177,37 +215,20 @@ where
 pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     // Clear screen and print the neon ASCII banner
     print!("\x1B[2J\x1B[1;1H");
-    let c1 = |s: &str| s.truecolor(80, 200, 120).bold(); // Emerald green
-    let c2 = |s: &str| s.truecolor(255, 165, 0).bold();  // Orange
+    let color_logo = |s: &str| s.truecolor(255, 165, 0).bold(); // Orange
 
-    println!("    {} {} {} {} {} {} {}",
-        c1("██████╗ "), c2("██╗   ██╗"), c1("██╗     "), c2("██╗     "), c1("███████╗"), c2("████████╗"), ""
-    );
-    println!("    {} {} {} {} {} {} {}",
-        c1("██╔══██╗"), c2("██║   ██║"), c1("██║     "), c2("██║     "), c1("██╔════╝"), c2("╚══██╔══╝"), ""
-    );
-    println!(" {} {} {} {} {} {} {} {}",
-        c2("🦀"),
-        c1("██████╔╝"), c2("██║   ██║"), c1("██║     "), c2("██║     "), c1("███████╗"), c2("   ██║   "),
-        "📜"
-    );
-    println!("    {} {} {} {} {} {} {}",
-        c1("██╔══██╗"), c2("██║   ██║"), c1("██║     "), c2("██║     "), c1("╚════██║"), c2("   ██║   "), ""
-    );
-    println!("    {} {} {} {} {} {} {}",
-        c1("██║  ██║"), c2("╚██████╔╝"), c1("███████╗"), c2("███████╗"), c1("███████║"), c2("   ██║   "), ""
-    );
-    println!("    {} {} {} {} {} {} {}",
-        c1("╚═╝  ╚═╝"), c2(" ╚═════╝ "), c1("╚══════╝"), c2("╚══════╝"), c1("╚══════╝"), c2("   ╚═╝   "), ""
-    );
+    println!();
+    println!("{}", color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#));
+    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#));
+    println!("{}", color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#));
+    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#));
+    println!("{}", color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#));
+    println!("{}", color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#));
     println!();
     println!(
-        "  {} {} {}",
+        "  {} {}",
         "The".white(),
         "Ultimate Full-Stack Rust Framework".bright_cyan().bold(),
-        format!("v{}", env!("CARGO_PKG_VERSION"))
-            .bright_yellow()
-            .bold()
     );
     println!(
         "  {}",
@@ -215,42 +236,30 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             .bright_magenta()
             .bold()
     );
-    println!();
-    println!(
-        "  {}",
-        "┌─────────────────────────────────────────────────────────────────┐".bright_cyan()
-    );
-    println!(
-        "  {} {:<65}{}",
-        "│".bright_cyan(),
-        "  🎯 RULLST APP CREATOR — What would you like to do?",
-        "│".bright_cyan()
-    );
-    println!(
-        "  {}",
-        "└─────────────────────────────────────────────────────────────────┘".bright_cyan()
-    );
-    println!();
+
+    println!("\n");
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let choices = &[
         "✨  Create a New Project     (Rullst App Creator + Blueprints)",
+        "🔄  Safe Upgrade             (Self-Healing Updates & Codemods)",
+        "🚀  Start Dev Server         (Compile with Neon Spinner & Run)",
+        /* --- HIDDEN FOR MVP ---
+        "💡  View Help & Commands     (Framework Reference)",
         "🛠️  Scaffold Code            (Controllers, Models, Middlewares, Workers)",
         "🗄️  Database Operations      (Migrate, Rollback, Status, Seed)",
         "🔐  Integrate Auth & Billing (Auth, Stripe/LemonSqueezy, Passkeys)",
         "🖥️  Package for Desktop/App  (Tauri Desktop, Dioxus Cross-Platform)",
         "🚀  Deploy to Cloud          (Foundry: AWS, GCP, Hetzner, Azure, DO)",
         "📚  Docs Site Generator      (RullstPress Static Site)",
-        "💡  View Full Help & Commands Reference",
+        */
     ];
 
     let selection = dialoguer::Select::with_theme(&theme)
-        .with_prompt("Navigate with ↑↓, confirm with Enter")
+        .with_prompt("Navigate with ↑↓, confirm with Enter\n")
         .default(0)
         .items(&choices[..])
         .interact()?;
-
-    println!();
 
     match selection {
         0 => {
@@ -263,139 +272,24 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             run_cli_command(&cli.command)?;
         }
         1 => {
-            // Scaffold submenu
-            let scaffold_choices = &[
-                "make:controller  — Create a new Controller",
-                "make:model       — Create a new Model (+migration)",
-                "make:middleware  — Create a new Middleware",
-                "make:worker      — Create a Background Worker",
-                "make:migration   — Create a blank Migration",
+            // Upgrade
+            let args_vec: Vec<String> = vec![
+                std::env::args().next().unwrap_or_default(),
+                "upgrade".to_string(),
             ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("🛠️  Scaffold — pick a type")
-                .default(0)
-                .items(&scaffold_choices[..])
-                .interact()?;
-            let name: String = dialoguer::Input::with_theme(&theme)
-                .with_prompt("Name?")
-                .interact_text()?;
-            match s {
-                0 => run_cli_command(&Commands::MakeController {
-                    name: name.clone(),
-                    api: false,
-                })?,
-                1 => run_cli_command(&Commands::MakeModel {
-                    name: name.clone(),
-                    migration: true,
-                })?,
-                2 => run_cli_command(&Commands::MakeMiddleware { name: name.clone() })?,
-                3 => run_cli_command(&Commands::MakeWorker { name: name.clone() })?,
-                4 => run_cli_command(&Commands::MakeMigration { name: name.clone() })?,
-                _ => {}
-            }
+            let cli = Cli::parse_from(args_vec);
+            run_cli_command(&cli.command)?;
         }
         2 => {
-            // DB submenu
-            let db_choices = &[
-                "db:migrate   — Run pending migrations",
-                "db:rollback  — Rollback last batch",
-                "db:status    — Show migration status",
-                "db:seed      — Run seeders",
-                "studio       — Open Rullst Studio DB browser",
+            // Dev Server
+            let args_vec: Vec<String> = vec![
+                std::env::args().next().unwrap_or_default(),
+                "dev".to_string(),
             ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("🗄️  Database Operation")
-                .default(0)
-                .items(&db_choices[..])
-                .interact()?;
-            match s {
-                0 => run_cli_command(&Commands::DbMigrate)?,
-                1 => run_cli_command(&Commands::DbRollback)?,
-                2 => run_cli_command(&Commands::DbStatus)?,
-                3 => run_cli_command(&Commands::DbSeed)?,
-                4 => run_cli_command(&Commands::Studio)?,
-                _ => {}
-            }
+            let cli = Cli::parse_from(args_vec);
+            run_cli_command(&cli.command)?;
         }
-        3 => {
-            // Auth & Billing submenu
-            let auth_choices = &[
-                "auth          — Scaffold full Auth system (Login, Register, Passkeys)",
-                "make:billing  — Scaffold Stripe/LemonSqueezy billing",
-                "make:cors     — Add CORS middleware",
-                "make:jwt      — Add JWT middleware",
-            ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("🔐  Auth & Billing")
-                .default(0)
-                .items(&auth_choices[..])
-                .interact()?;
-            match s {
-                0 => run_cli_command(&Commands::Auth)?,
-                1 => run_cli_command(&Commands::MakeBilling)?,
-                2 => run_cli_command(&Commands::MakeCors)?,
-                3 => run_cli_command(&Commands::MakeJwt)?,
-                _ => {}
-            }
-        }
-        4 => {
-            // Desktop/Multi-platform submenu
-            let platform_choices = &[
-                "make:desktop — Rullst Hyper (Tauri native desktop window)",
-                "make:omni    — Rullst Omni (Dioxus cross-platform app)",
-            ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("🖥️  Platform Packaging")
-                .default(0)
-                .items(&platform_choices[..])
-                .interact()?;
-            match s {
-                0 => run_cli_command(&Commands::MakeDesktop)?,
-                1 => run_cli_command(&Commands::MakeOmni)?,
-                _ => {}
-            }
-        }
-        5 => {
-            // Cloud deploy submenu
-            let cloud_choices = &[
-                "foundry:init    — Create Foundry.toml deployment manifest",
-                "foundry:deploy  — Deploy to cloud via SSH pipeline",
-            ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("🚀  Cloud Deploy (Rullst Foundry)")
-                .default(0)
-                .items(&cloud_choices[..])
-                .interact()?;
-            match s {
-                0 => run_cli_command(&Commands::FoundryInit)?,
-                1 => run_cli_command(&Commands::FoundryDeploy)?,
-                _ => {}
-            }
-        }
-        6 => {
-            // Docs submenu
-            let docs_choices = &[
-                "docs dev   — Start local live-preview server",
-                "docs build — Compile Markdown to static HTML",
-            ];
-            let s = dialoguer::Select::with_theme(&theme)
-                .with_prompt("📚  RullstPress Static Docs")
-                .default(0)
-                .items(&docs_choices[..])
-                .interact()?;
-            match s {
-                0 => run_cli_command(&Commands::Docs {
-                    action: DocsCommands::Dev,
-                })?,
-                1 => run_cli_command(&Commands::Docs {
-                    action: DocsCommands::Build,
-                })?,
-                _ => {}
-            }
-        }
-        _ => {
-            show_help_reference();
-        }
+        _ => {}
     }
     Ok(())
 }
@@ -403,6 +297,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
 // ─── Help Reference ───────────────────────────────────────────────────────────
 
 /// Prints a beautiful grouped cheat-sheet of all Rullst CLI commands.
+#[allow(dead_code)]
 pub fn show_help_reference() {
     println!();
     println!(
@@ -425,12 +320,13 @@ pub fn show_help_reference() {
     );
     let groups = [
         (
-            "🗂️  PROJECT",
+            "🗂️  PROJECT (MVP)",
             vec![
                 ("cargo rullst new [name]", "Create a new Rullst application"),
                 ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
             ],
         ),
+        /* --- HIDDEN FOR MVP ---
         (
             "🛠️  SCAFFOLDING",
             vec![
@@ -493,6 +389,7 @@ pub fn show_help_reference() {
                 ("cargo rullst docs build", "Build static docs site"),
             ],
         ),
+        */
     ];
     for (group_name, cmds) in &groups {
         println!(

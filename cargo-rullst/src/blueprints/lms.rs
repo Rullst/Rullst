@@ -18,8 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => controllers::lms_controller::index),
-        get("/courses/:id" => controllers::lms_controller::show_course),
-        get("/lessons/:id/play" => controllers::lms_controller::play_lesson),
+        get("/courses/{id}" => controllers::lms_controller::show_course),
+        get("/lessons/{id}/play" => controllers::lms_controller::play_lesson),
     ];
 
     println!("🚀 LMS server starting on port 3000...");
@@ -46,9 +46,17 @@ impl Migration for MigrationImpl {
     }
 
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+        // Create categories table
+        Schema::create("categories", |table| {
+            table.id();
+            table.string("name").not_null();
+            table.timestamps();
+        }).await?;
+
         // Create courses table
         Schema::create("courses", |table| {
             table.id();
+            table.integer("category_id").not_null();
             table.string("title").not_null();
             table.string("description").not_null();
             table.string("thumbnail").not_null();
@@ -68,11 +76,18 @@ impl Migration for MigrationImpl {
         // Seed initial data
         let pool = rullst::db::Orm::pool();
 
+        // Seed Categories
+        rullst::db::sqlx::query(
+            "INSERT INTO categories (id, name, created_at, updated_at) VALUES 
+             (1, 'Backend & Systems', datetime('now'), datetime('now')),
+             (2, 'Web Development', datetime('now'), datetime('now'))"
+        ).execute(pool).await?;
+
         // Seed Courses
         rullst::db::sqlx::query(
-            "INSERT INTO courses (id, title, description, thumbnail, created_at, updated_at) VALUES 
-             (1, 'Rust Advanced Systems Programming', 'Master threads, concurrency, async, and high-performance design.', 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?q=80&w=300', datetime('now'), datetime('now')),
-             (2, 'Zero to Hero: Web Apps with Rullst', 'Build clean, high-performance web applications using Rust.', 'https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=300')"
+            "INSERT INTO courses (id, category_id, title, description, thumbnail, created_at, updated_at) VALUES 
+             (1, 1, 'Rust Advanced Systems Programming', 'Master threads, concurrency, async, and high-performance design.', 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?q=80&w=300', datetime('now'), datetime('now')),
+             (2, 2, 'Zero to Hero: Web Apps with Rullst', 'Build clean, high-performance web applications using Rust.', 'https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=300', datetime('now'), datetime('now'))"
         ).execute(pool).await?;
 
         // Seed Lessons
@@ -90,6 +105,7 @@ impl Migration for MigrationImpl {
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("lessons").await?;
         Schema::drop_if_exists("courses").await?;
+        Schema::drop_if_exists("categories").await?;
         Ok(())
     }
 }
@@ -111,12 +127,24 @@ pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
     manifest.push(("src/migrations/mod.rs", migrations_mod.to_string()));
 
     // 3. Models
+    let category_model = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "categories")]
+pub struct Category {
+    pub id: i32,
+    pub name: String,
+}
+"##;
+    manifest.push(("src/models/category.rs", category_model.to_string()));
+
     let course_model = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "courses")]
 pub struct Course {
     pub id: i32,
+    pub category_id: i32,
     pub title: String,
     pub description: String,
     pub thumbnail: String,
@@ -138,7 +166,8 @@ pub struct Lesson {
 "##;
     manifest.push(("src/models/lesson.rs", lesson_model.to_string()));
 
-    let models_mod = r##"pub mod course;
+    let models_mod = r##"pub mod category;
+pub mod course;
 pub mod lesson;
 "##;
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
@@ -146,17 +175,19 @@ pub mod lesson;
     // 4. Controller
     let lms_controller = r##"use rullst::server::{Path, IntoResponse};
 use rullst::response::Html;
+use crate::models::category::Category;
 use crate::models::course::Course;
 use crate::models::lesson::Lesson;
 use crate::pages::lms;
 
 pub async fn index() -> impl IntoResponse {
+    let categories = Category::all().await.unwrap_or_default();
     let courses = Course::all().await.unwrap_or_default();
-    Html(lms::index_page(courses))
+    Html(lms::index_page(categories, courses))
 }
 
 pub async fn show_course(Path(id): Path<i32>) -> impl IntoResponse {
-    let course = Course::find(id).await.unwrap();
+    let course = Course::find(id).await.unwrap().unwrap();
     let all_lessons = Lesson::all().await.unwrap_or_default();
     let course_lessons: Vec<Lesson> = all_lessons.into_iter().filter(|l| l.course_id == id).collect();
     
@@ -164,7 +195,7 @@ pub async fn show_course(Path(id): Path<i32>) -> impl IntoResponse {
 }
 
 pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
-    let lesson = Lesson::find(id).await.unwrap();
+    let lesson = Lesson::find(id).await.unwrap().unwrap();
     Html(lms::video_player_snippet(&lesson.title, &lesson.video_url))
 }
 "##;
@@ -179,10 +210,11 @@ pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
 
     // 5. Pages
     let lms_page = r##"use rullst::html;
+use crate::models::category::Category;
 use crate::models::course::Course;
 use crate::models::lesson::Lesson;
 
-pub fn index_page(courses: Vec<Course>) -> String {
+pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
@@ -216,17 +248,24 @@ pub fn index_page(courses: Vec<Course>) -> String {
                         <h1>"Rullst LMS Academy"</h1>
                         <p class="sub">"Explore high-fidelity systems engineering with Rust"</p>
                     </header>
-                    <div class="courses-grid">
-                        { courses.into_iter().map(|c| html! {
-                            <div class="card">
-                                <img class="card-img" src={&c.thumbnail} alt={&c.title} />
-                                <div class="card-body">
-                                    <h3>{&c.title}</h3>
-                                    <p>{&c.description}</p>
-                                    <a class="btn" href={format!("/courses/{}", c.id)}>"Start Learning"</a>
+                    <div class="categories-container">
+                        { rullst::html::RawHtml(categories.into_iter().map(|cat| html! {
+                            <div style="margin-bottom: 4rem;">
+                                <h2 style="font-size: 2rem; color: #ffffff; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #1e293b;">{&cat.name}</h2>
+                                <div class="courses-grid">
+                                    { rullst::html::RawHtml(courses.iter().filter(|c| c.category_id == cat.id).map(|c| html! {
+                                        <div class="card">
+                                            <img class="card-img" src={&c.thumbnail} alt={&c.title} />
+                                            <div class="card-body">
+                                                <h3>{&c.title}</h3>
+                                                <p>{&c.description}</p>
+                                                <a class="btn" href={format!("/courses/{}", c.id)}>"Start Learning"</a>
+                                            </div>
+                                        </div>
+                                    }).collect::<Vec<_>>().join("")) }
                                 </div>
                             </div>
-                        }).collect::<Vec<_>>().join("") }
+                        }).collect::<Vec<_>>().join("")) }
                     </div>
                 </div>
             </body>
@@ -272,12 +311,12 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                         <h2>{&course.title}</h2>
                     </div>
                     <ul class="lessons-list">
-                        { lessons.iter().map(|l| html! {
+                        { rullst::html::RawHtml(lessons.iter().map(|l| html! {
                             <li class="lesson-item" hx-get={format!("/lessons/{}/play", l.id)} hx-target="#video-panel" hx-swap="innerHTML">
                                 <h4>{&l.title}</h4>
                                 <span>{{l.duration.to_string()}}" mins"</span>
                             </li>
-                        }).collect::<Vec<_>>().join("") }
+                        }).collect::<Vec<_>>().join("")) }
                     </ul>
                 </div>
                 <div class="main-content">
