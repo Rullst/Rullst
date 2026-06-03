@@ -1,67 +1,93 @@
+//! Rullst Core Library
 #![allow(
     clippy::collapsible_if,
     clippy::unnecessary_map_or,
     clippy::redundant_async_block
 )]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+#![warn(missing_docs)]
 extern crate self as rullst;
 
+/// [TODO] Missing documentation.
 pub mod config;
 pub mod db;
 pub mod edge;
 
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod ai;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod capital;
+/// [TODO] Missing documentation.
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod feature;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod horizon;
+/// [TODO] Missing documentation.
 pub mod html;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod htmx;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod mail;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod nexus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod routing;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scheduler;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod security;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod server;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod studio;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod validation;
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod ws;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
+/// [TODO] Missing documentation.
 macro_rules! artisan {
     ($migrations:expr) => {
         let _ = $crate::artisan::check_and_run_artisan($migrations, vec![]).await;
@@ -90,6 +116,7 @@ pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
 
 // Re-export axum response types for convenience
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod response {
     pub use axum::response::{Html, IntoResponse, Redirect, Response};
 }
@@ -153,11 +180,13 @@ pub use capital::{
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 
 #[cfg(not(target_arch = "wasm32"))]
+/// [TODO] Missing documentation.
 pub mod runtime {
     pub use async_trait::async_trait;
     pub use tokio::{main, spawn, task, time};
 }
 
+/// [TODO] Missing documentation.
 pub mod web {
     #[cfg(not(target_arch = "wasm32"))]
     pub use axum;
@@ -167,11 +196,13 @@ pub mod web {
     pub use tower_http;
 }
 
+/// [TODO] Missing documentation.
 pub mod async_runtime {
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
 }
 
+/// [TODO] Missing documentation.
 pub mod email_client {
     #[cfg(feature = "mail-smtp")]
     #[cfg(not(target_arch = "wasm32"))]

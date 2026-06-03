@@ -2,34 +2,46 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct RullstConfig {
     #[serde(default)]
+    /// [TODO] Missing documentation.
     pub app: AppConfig,
     #[serde(default)]
+    /// [TODO] Missing documentation.
     pub database: DatabaseConfig,
     #[serde(default)]
+    /// [TODO] Missing documentation.
     pub security: SecurityConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct AppConfig {
+    /// [TODO] Missing documentation.
     pub env: Option<String>,
+    /// [TODO] Missing documentation.
     pub port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct DatabaseConfig {
+    /// [TODO] Missing documentation.
     pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct SecurityConfig {
     #[serde(default = "default_same_site")]
+    /// [TODO] Missing documentation.
     pub csrf_same_site: String,
     #[serde(default)]
+    /// [TODO] Missing documentation.
     pub cors_allow_origins: Vec<String>,
 }
 
@@ -47,10 +59,12 @@ impl Default for SecurityConfig {
 }
 
 impl RullstConfig {
+    /// [TODO] Missing documentation.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// [TODO] Missing documentation.
     pub async fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let content = tokio::fs::read_to_string(path).await?;
         let config: RullstConfig = toml::from_str(&content)?;
@@ -59,6 +73,7 @@ impl RullstConfig {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

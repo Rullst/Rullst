@@ -1,5 +1,6 @@
 /// Trait implemented by types that can be rendered safely into HTML.
 pub trait HtmlEscape {
+    /// [TODO] Missing documentation.
     fn escape_html(&self) -> String;
 }
 
@@ -7,6 +8,7 @@ pub trait HtmlEscape {
 pub struct RawHtml(pub String);
 
 impl RawHtml {
+    /// [TODO] Missing documentation.
     pub fn new<S: Into<String>>(s: S) -> Self {
         RawHtml(s.into())
     }
@@ -80,6 +82,7 @@ pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

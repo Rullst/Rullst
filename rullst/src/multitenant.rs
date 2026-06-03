@@ -1,8 +1,11 @@
 use std::cell::RefCell;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// [TODO] Missing documentation.
 pub enum TenantStrategy {
+    /// [TODO] Missing documentation.
     Subdomain,
+    /// [TODO] Missing documentation.
     Header,
     /// Extract the tenant ID from query parameters.
     ///
@@ -19,10 +22,15 @@ pub enum TenantStrategy {
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct TenantConfig {
+    /// [TODO] Missing documentation.
     pub strategy: TenantStrategy,
+    /// [TODO] Missing documentation.
     pub header_name: String,
+    /// [TODO] Missing documentation.
     pub parameter_name: String,
+    /// [TODO] Missing documentation.
     pub domain_fallback: Option<String>,
 }
 
@@ -100,6 +108,7 @@ pub struct TenantLayer {
 }
 
 impl TenantLayer {
+    /// [TODO] Missing documentation.
     pub fn new(config: TenantConfig) -> Self {
         Self { config }
     }
@@ -193,6 +202,7 @@ pub fn tenant_layer(config: TenantConfig) -> TenantLayer {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

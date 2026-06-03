@@ -1,6 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
+/// [TODO] Missing documentation.
 pub struct OllamaProvider {
     host: String,
     model: String,
@@ -9,6 +10,7 @@ pub struct OllamaProvider {
 }
 
 impl OllamaProvider {
+    /// [TODO] Missing documentation.
     pub fn new(host: impl Into<String>, model: impl Into<String>) -> Self {
         let host_str = host.into();
         // Remove trailing slash if present
@@ -22,6 +24,7 @@ impl OllamaProvider {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn with_embedding_model(mut self, model: impl Into<String>) -> Self {
         self.embedding_model = model.into();
         self

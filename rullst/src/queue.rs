@@ -79,13 +79,21 @@ pub struct QueuedJob {
 /// Detailed job information, used for dashboard monitoring
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QueuedJobDetail {
+    /// [TODO] Missing documentation.
     pub id: String,
+    /// [TODO] Missing documentation.
     pub name: String,
+    /// [TODO] Missing documentation.
     pub payload: String,
+    /// [TODO] Missing documentation.
     pub status: String,
+    /// [TODO] Missing documentation.
     pub error: Option<String>,
+    /// [TODO] Missing documentation.
     pub attempts: i32,
+    /// [TODO] Missing documentation.
     pub created_at: String,
+    /// [TODO] Missing documentation.
     pub updated_at: String,
 }
 
@@ -159,11 +167,13 @@ impl SqliteDriver {
         Ok(Self { pool })
     }
 
+    /// [TODO] Missing documentation.
     pub fn get_pool(&self) -> &sqlx::SqlitePool {
         &self.pool
     }
 
     #[allow(clippy::type_complexity)]
+    /// [TODO] Missing documentation.
     pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
         let rows: Vec<(String, String, String, String, Option<String>, i32, String, String)> = sqlx::query_as(
             "SELECT id, name, payload, status, error, attempts, created_at, updated_at FROM rullst_jobs ORDER BY created_at DESC LIMIT ?"
@@ -192,6 +202,7 @@ impl SqliteDriver {
             .collect())
     }
 
+    /// [TODO] Missing documentation.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
         sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
@@ -201,6 +212,7 @@ impl SqliteDriver {
         Ok(())
     }
 
+    /// [TODO] Missing documentation.
     pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
         sqlx::query("DELETE FROM rullst_jobs WHERE status = 'failed'")
             .execute(&self.pool)
@@ -609,6 +621,7 @@ impl Worker {
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -1076,6 +1089,7 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests_additional {
     use super::tests::MockPendingCountDriver;
     use super::*;

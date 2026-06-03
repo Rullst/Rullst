@@ -1,6 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
+/// [TODO] Missing documentation.
 pub struct AnthropicProvider {
     api_key: String,
     model: String,
@@ -8,6 +9,7 @@ pub struct AnthropicProvider {
 }
 
 impl AnthropicProvider {
+    /// [TODO] Missing documentation.
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             api_key: api_key.into(),
@@ -16,6 +18,7 @@ impl AnthropicProvider {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = model.into();
         self

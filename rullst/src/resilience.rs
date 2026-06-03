@@ -8,9 +8,13 @@ use std::time::{Duration, Instant};
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct TrafficShieldConfig {
+    /// [TODO] Missing documentation.
     pub max_event_loop_lag: Duration,
+    /// [TODO] Missing documentation.
     pub max_db_latency: Duration,
+    /// [TODO] Missing documentation.
     pub max_active_requests: usize,
+    /// [TODO] Missing documentation.
     pub enable_db_probe: bool,
 }
 
@@ -26,6 +30,7 @@ impl Default for TrafficShieldConfig {
 }
 
 impl TrafficShieldConfig {
+    /// [TODO] Missing documentation.
     pub fn new() -> Self {
         Self::default()
     }
@@ -65,6 +70,7 @@ pub struct TrafficShield {
 }
 
 impl TrafficShield {
+    /// [TODO] Missing documentation.
     pub fn new(config: TrafficShieldConfig) -> Self {
         let shield = Self {
             config,
@@ -123,14 +129,17 @@ impl TrafficShield {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn event_loop_lag(&self) -> Duration {
         Duration::from_millis(self.event_loop_lag_ms.load(Ordering::Relaxed))
     }
 
+    /// [TODO] Missing documentation.
     pub fn db_latency(&self) -> Duration {
         Duration::from_millis(self.db_latency_ms.load(Ordering::Relaxed))
     }
 
+    /// [TODO] Missing documentation.
     pub fn active_requests(&self) -> usize {
         self.active_requests.load(Ordering::Relaxed)
     }
@@ -156,7 +165,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             lag, db_lat, active
         );
 
-        return Response::builder()
+        match Response::builder()
             .status(StatusCode::SERVICE_UNAVAILABLE)
             .header(axum::http::header::RETRY_AFTER, "5")
             .header(
@@ -166,7 +175,14 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             .body(axum::body::Body::from(
                 "Service Temporarily Saturated. Please try again soon.",
             ))
-            .unwrap();
+        {
+            Ok(res) => return res,
+            Err(_) => {
+                let mut res = Response::new(axum::body::Body::empty());
+                *res.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+                return res;
+            }
+        }
     }
 
     let is_moderate_cpu = lag >= shield.config.max_event_loop_lag / 2;
@@ -187,11 +203,14 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct RateLimitConfig {
+    /// [TODO] Missing documentation.
     pub max_tokens: f64,
+    /// [TODO] Missing documentation.
     pub refill_rate: f64,
 }
 
 impl RateLimitConfig {
+    /// [TODO] Missing documentation.
     pub fn new(max_tokens: f64, refill_rate: f64) -> Self {
         Self {
             max_tokens,
@@ -230,6 +249,7 @@ pub struct RateLimiter {
 }
 
 impl RateLimiter {
+    /// [TODO] Missing documentation.
     pub fn new(config: RateLimitConfig) -> Self {
         Self {
             config,
@@ -304,7 +324,7 @@ pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Nex
     if limiter.check_and_consume(&key) {
         next.run(req).await
     } else {
-        Response::builder()
+        match Response::builder()
             .status(StatusCode::TOO_MANY_REQUESTS)
             .header(
                 axum::http::header::CONTENT_TYPE,
@@ -313,6 +333,13 @@ pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Nex
             .body(axum::body::Body::from(
                 "Rate limit exceeded. Please try again later.",
             ))
-            .unwrap()
+        {
+            Ok(res) => res,
+            Err(_) => {
+                let mut res = Response::new(axum::body::Body::empty());
+                *res.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+                res
+            }
+        }
     }
 }

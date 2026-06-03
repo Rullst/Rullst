@@ -1,11 +1,17 @@
 use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct Message {
+    /// [TODO] Missing documentation.
     pub to: String,
+    /// [TODO] Missing documentation.
     pub subject: String,
+    /// [TODO] Missing documentation.
     pub body_html: Option<String>,
+    /// [TODO] Missing documentation.
     pub body_text: Option<String>,
+    /// [TODO] Missing documentation.
     pub from: Option<String>,
 }
 
@@ -16,6 +22,7 @@ impl Default for Message {
 }
 
 impl Message {
+    /// [TODO] Missing documentation.
     pub fn new() -> Self {
         Message {
             to: String::new(),
@@ -26,26 +33,31 @@ impl Message {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn to(mut self, to: impl Into<String>) -> Self {
         self.to = to.into();
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn subject(mut self, subject: impl Into<String>) -> Self {
         self.subject = subject.into();
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn html(mut self, html: impl Into<String>) -> Self {
         self.body_html = Some(html.into());
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn text(mut self, text: impl Into<String>) -> Self {
         self.body_text = Some(text.into());
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn from(mut self, from: impl Into<String>) -> Self {
         self.from = Some(from.into());
         self
@@ -53,9 +65,13 @@ impl Message {
 }
 
 #[derive(Debug)]
+/// [TODO] Missing documentation.
 pub enum MailError {
+    /// [TODO] Missing documentation.
     ConfigError(String),
+    /// [TODO] Missing documentation.
     SendError(String),
+    /// [TODO] Missing documentation.
     DriverError(String),
 }
 
@@ -72,7 +88,9 @@ impl std::fmt::Display for MailError {
 impl std::error::Error for MailError {}
 
 #[async_trait]
+/// [TODO] Missing documentation.
 pub trait MailDriver: Send + Sync {
+    /// [TODO] Missing documentation.
     async fn send(&self, message: &Message) -> Result<(), MailError>;
 }
 
@@ -124,9 +142,13 @@ impl MailDriver for LogDriver {
 /// An SMTP mail driver
 #[cfg(feature = "mail-smtp")]
 pub struct SmtpDriver {
+    /// [TODO] Missing documentation.
     pub host: String,
+    /// [TODO] Missing documentation.
     pub port: u16,
+    /// [TODO] Missing documentation.
     pub username: Option<String>,
+    /// [TODO] Missing documentation.
     pub password: Option<String>,
 }
 
@@ -209,6 +231,7 @@ impl MailDriver for SmtpDriver {
 
 /// A Resend HTTP REST API driver
 pub struct ResendDriver {
+    /// [TODO] Missing documentation.
     pub api_key: String,
 }
 
@@ -249,6 +272,7 @@ impl MailDriver for ResendDriver {
 
 /// A SendGrid HTTP REST API driver
 pub struct SendGridDriver {
+    /// [TODO] Missing documentation.
     pub api_key: String,
 }
 
@@ -387,6 +411,7 @@ impl Mail {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -428,6 +453,7 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests_additional {
     use super::*;
     #[tokio::test]

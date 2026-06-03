@@ -11,8 +11,11 @@ use sha2::Digest;
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct PasskeyConfig {
+    /// [TODO] Missing documentation.
     pub rp_name: String,
+    /// [TODO] Missing documentation.
     pub rp_id: String,
+    /// [TODO] Missing documentation.
     pub rp_origin: String,
 }
 
@@ -59,115 +62,170 @@ pub struct PasskeyAuth {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct CreationChallengeResponse {
     #[serde(rename = "publicKey")]
+    /// [TODO] Missing documentation.
     pub public_key: PublicKeyCredentialCreationOptions,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct PublicKeyCredentialCreationOptions {
+    /// [TODO] Missing documentation.
     pub challenge: String,
+    /// [TODO] Missing documentation.
     pub rp: RelyingPartyInfo,
+    /// [TODO] Missing documentation.
     pub user: UserInfo,
     #[serde(rename = "pubKeyCredParams")]
+    /// [TODO] Missing documentation.
     pub pub_key_cred_params: Vec<PubKeyCredParam>,
+    /// [TODO] Missing documentation.
     pub timeout: u32,
     #[serde(rename = "authenticatorSelection")]
+    /// [TODO] Missing documentation.
     pub authenticator_selection: AuthenticatorSelection,
+    /// [TODO] Missing documentation.
     pub attestation: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct RelyingPartyInfo {
+    /// [TODO] Missing documentation.
     pub name: String,
+    /// [TODO] Missing documentation.
     pub id: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct UserInfo {
+    /// [TODO] Missing documentation.
     pub id: String,
+    /// [TODO] Missing documentation.
     pub name: String,
     #[serde(rename = "displayName")]
+    /// [TODO] Missing documentation.
     pub display_name: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct PubKeyCredParam {
+    /// [TODO] Missing documentation.
     pub r#type: String,
+    /// [TODO] Missing documentation.
     pub alg: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct AuthenticatorSelection {
     #[serde(rename = "userVerification")]
+    /// [TODO] Missing documentation.
     pub user_verification: String,
     #[serde(rename = "residentKey")]
+    /// [TODO] Missing documentation.
     pub resident_key: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct RequestChallengeResponse {
     #[serde(rename = "publicKey")]
+    /// [TODO] Missing documentation.
     pub public_key: PublicKeyCredentialRequestOptions,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct PublicKeyCredentialRequestOptions {
+    /// [TODO] Missing documentation.
     pub challenge: String,
+    /// [TODO] Missing documentation.
     pub timeout: u32,
     #[serde(rename = "rpId")]
+    /// [TODO] Missing documentation.
     pub rp_id: String,
     #[serde(rename = "allowCredentials")]
+    /// [TODO] Missing documentation.
     pub allow_credentials: Vec<AllowCredential>,
     #[serde(rename = "userVerification")]
+    /// [TODO] Missing documentation.
     pub user_verification: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct AllowCredential {
+    /// [TODO] Missing documentation.
     pub r#type: String,
+    /// [TODO] Missing documentation.
     pub id: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct RegisterPublicKeyCredential {
+    /// [TODO] Missing documentation.
     pub id: String,
     #[serde(rename = "rawId")]
+    /// [TODO] Missing documentation.
     pub raw_id: String,
+    /// [TODO] Missing documentation.
     pub r#type: String,
+    /// [TODO] Missing documentation.
     pub response: AuthenticatorAttestationResponse,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct AuthenticatorAttestationResponse {
     #[serde(rename = "attestationObject")]
+    /// [TODO] Missing documentation.
     pub attestation_object: String,
     #[serde(rename = "clientDataJSON")]
+    /// [TODO] Missing documentation.
     pub client_data_json: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct PublicKeyCredential {
+    /// [TODO] Missing documentation.
     pub id: String,
     #[serde(rename = "rawId")]
+    /// [TODO] Missing documentation.
     pub raw_id: String,
+    /// [TODO] Missing documentation.
     pub r#type: String,
+    /// [TODO] Missing documentation.
     pub response: AuthenticatorAssertionResponse,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct AuthenticatorAssertionResponse {
     #[serde(rename = "authenticatorData")]
+    /// [TODO] Missing documentation.
     pub authenticator_data: String,
     #[serde(rename = "clientDataJSON")]
+    /// [TODO] Missing documentation.
     pub client_data_json: String,
+    /// [TODO] Missing documentation.
     pub signature: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// [TODO] Missing documentation.
 pub struct Passkey {
+    /// [TODO] Missing documentation.
     pub credential_id: Vec<u8>,
+    /// [TODO] Missing documentation.
     pub public_key: Vec<u8>,
+    /// [TODO] Missing documentation.
     pub sign_count: u32,
 }
 

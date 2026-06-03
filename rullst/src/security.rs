@@ -205,13 +205,15 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
         ];
         for agent in suspicious_agents {
             if ua_lower.contains(agent) {
-                return Response::builder()
+                match Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
                     .body(axum::body::Body::from(
                         "Access Denied: Suspicious User-Agent blocked by Rullst Shield WAF.",
-                    ))
-                    .unwrap();
+                    )) {
+                    Ok(res) => return res,
+                    Err(_) => return StatusCode::FORBIDDEN.into_response(),
+                }
             }
         }
     }
@@ -240,13 +242,15 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
 
         for pattern in malicious_patterns {
             if query_lower.contains(pattern) {
-                return Response::builder()
+                match Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
                     .body(axum::body::Body::from(
                         "Access Denied: Malicious pattern detected by Rullst Shield WAF.",
-                    ))
-                    .unwrap();
+                    )) {
+                    Ok(res) => return res,
+                    Err(_) => return StatusCode::FORBIDDEN.into_response(),
+                }
             }
         }
     }
@@ -275,10 +279,12 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
             let new_body = axum::body::Body::from(masked_body);
             return Response::from_parts(parts, new_body);
         } else {
-            return Response::builder()
+            match Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(axum::body::Body::empty())
-                .unwrap();
+                .body(axum::body::Body::empty()) {
+                Ok(res) => return res,
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
         }
     }
 
@@ -366,6 +372,7 @@ pub fn mask_pii(text: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

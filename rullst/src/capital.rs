@@ -12,15 +12,22 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SubscriptionStatus {
+    /// [TODO] Missing documentation.
     Active,
+    /// [TODO] Missing documentation.
     Canceled,
+    /// [TODO] Missing documentation.
     PastDue,
+    /// [TODO] Missing documentation.
     Unpaid,
+    /// [TODO] Missing documentation.
     Trialing,
+    /// [TODO] Missing documentation.
     Paused,
 }
 
 impl SubscriptionStatus {
+    /// [TODO] Missing documentation.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Active => "active",
@@ -32,6 +39,7 @@ impl SubscriptionStatus {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
@@ -104,12 +112,14 @@ fn url_encode(s: &str) -> String {
 
 // ─── Stripe Provider Implementation ──────────────────────────────────────────
 
+/// [TODO] Missing documentation.
 pub struct StripeProvider {
     api_key: String,
     webhook_secret: String,
 }
 
 impl StripeProvider {
+    /// [TODO] Missing documentation.
     pub fn new(api_key: String, webhook_secret: String) -> Self {
         Self {
             api_key,
@@ -274,12 +284,14 @@ impl BillingProvider for StripeProvider {
 
 // ─── LemonSqueezy Provider Implementation ────────────────────────────────────
 
+/// [TODO] Missing documentation.
 pub struct LemonSqueezyProvider {
     api_key: String,
     webhook_secret: String,
 }
 
 impl LemonSqueezyProvider {
+    /// [TODO] Missing documentation.
     pub fn new(api_key: String, webhook_secret: String) -> Self {
         Self {
             api_key,
@@ -467,6 +479,7 @@ mod hex {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

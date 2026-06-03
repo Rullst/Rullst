@@ -8,13 +8,20 @@ use std::collections::HashMap;
 pub use validator::Validate;
 
 #[derive(Debug)]
+/// [TODO] Missing documentation.
 pub enum ValidationError {
+    /// [TODO] Missing documentation.
     ExtractionError {
+        /// [TODO] Missing documentation.
         message: String,
+        /// [TODO] Missing documentation.
         is_htmx: bool,
     },
+    /// [TODO] Missing documentation.
     ValidationError {
+        /// [TODO] Missing documentation.
         errors: validator::ValidationErrors,
+        /// [TODO] Missing documentation.
         is_htmx: bool,
     },
 }
@@ -178,6 +185,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::http::Request;

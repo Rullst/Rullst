@@ -1,6 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
+/// [TODO] Missing documentation.
 pub struct OpenAiProvider {
     api_key: String,
     model: String,
@@ -9,6 +10,7 @@ pub struct OpenAiProvider {
 }
 
 impl OpenAiProvider {
+    /// [TODO] Missing documentation.
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             api_key: api_key.into(),
@@ -18,11 +20,13 @@ impl OpenAiProvider {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = model.into();
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn with_embedding_model(mut self, model: impl Into<String>) -> Self {
         self.embedding_model = model.into();
         self

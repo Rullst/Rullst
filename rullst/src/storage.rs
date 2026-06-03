@@ -3,9 +3,13 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 
 #[derive(Debug)]
+/// [TODO] Missing documentation.
 pub enum StorageError {
+    /// [TODO] Missing documentation.
     IoError(std::io::Error),
+    /// [TODO] Missing documentation.
     ConfigError(String),
+    /// [TODO] Missing documentation.
     DriverError(String),
 }
 
@@ -28,20 +32,28 @@ impl From<std::io::Error> for StorageError {
 }
 
 #[async_trait]
+/// [TODO] Missing documentation.
 pub trait StorageDriver: Send + Sync {
+    /// [TODO] Missing documentation.
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError>;
+    /// [TODO] Missing documentation.
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError>;
+    /// [TODO] Missing documentation.
     async fn exists(&self, path: &str) -> Result<bool, StorageError>;
+    /// [TODO] Missing documentation.
     async fn delete(&self, path: &str) -> Result<(), StorageError>;
+    /// [TODO] Missing documentation.
     async fn url(&self, path: &str) -> Result<String, StorageError>;
 }
 
 /// A local disk storage driver
 pub struct LocalDriver {
+    /// [TODO] Missing documentation.
     pub root: PathBuf,
 }
 
 impl LocalDriver {
+    /// [TODO] Missing documentation.
     pub fn new(root: impl Into<PathBuf>) -> Self {
         LocalDriver { root: root.into() }
     }
@@ -270,6 +282,7 @@ impl StorageDriver for S3Driver {
 
 /// A fallback driver that always returns an error. Used for gracefully handling unknown disks.
 pub struct ErrorDriver {
+    /// [TODO] Missing documentation.
     pub message: String,
 }
 
@@ -296,26 +309,32 @@ impl StorageDriver for ErrorDriver {
 pub struct Storage;
 
 impl Storage {
+    /// [TODO] Missing documentation.
     pub async fn put(path: &str, bytes: &[u8]) -> Result<(), StorageError> {
         Self::disk("local").put(path, bytes).await
     }
 
+    /// [TODO] Missing documentation.
     pub async fn get(path: &str) -> Result<Vec<u8>, StorageError> {
         Self::disk("local").get(path).await
     }
 
+    /// [TODO] Missing documentation.
     pub async fn exists(path: &str) -> Result<bool, StorageError> {
         Self::disk("local").exists(path).await
     }
 
+    /// [TODO] Missing documentation.
     pub async fn delete(path: &str) -> Result<(), StorageError> {
         Self::disk("local").delete(path).await
     }
 
+    /// [TODO] Missing documentation.
     pub async fn url(path: &str) -> Result<String, StorageError> {
         Self::disk("local").url(path).await
     }
 
+    /// [TODO] Missing documentation.
     pub fn disk(name: &str) -> Box<dyn StorageDriver> {
         match name {
             "local" => {
@@ -352,6 +371,7 @@ impl Storage {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

@@ -13,6 +13,7 @@ use sha2::Digest;
 use std::convert::TryInto;
 use std::fs;
 
+/// [TODO] Missing documentation.
 pub mod passkey;
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
@@ -195,6 +196,7 @@ pub fn make_logout_cookie() -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

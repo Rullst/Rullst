@@ -13,9 +13,13 @@ use std::path::Path;
 // ─── Stack Frame & Backtrace Parsing ──────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// [TODO] Missing documentation.
 pub struct StackFrame {
+    /// [TODO] Missing documentation.
     pub file: String,
+    /// [TODO] Missing documentation.
     pub line: u32,
+    /// [TODO] Missing documentation.
     pub function: String,
 }
 
@@ -98,11 +102,14 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
                 let backtrace = std::backtrace::Backtrace::capture();
                 let html_content = render_console_html(&message, &backtrace).await;
 
-                Response::builder()
+                match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
                     .body(Body::from(html_content))
-                    .unwrap()
+                {
+                    Ok(res) => res,
+                    Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+                }
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
@@ -113,6 +120,7 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
 // ─── Explanations & Auto-Fix API Endpoints ────────────────────────────────────
 
 #[derive(Deserialize)]
+/// [TODO] Missing documentation.
 pub struct ExplainQuery {
     file: String,
     line: u32,
@@ -178,6 +186,7 @@ pub async fn handle_explain(Query(query): Query<ExplainQuery>) -> impl IntoRespo
 }
 
 #[derive(Deserialize)]
+/// [TODO] Missing documentation.
 pub struct AutoFixPayload {
     file_path: String,
     line: u32,

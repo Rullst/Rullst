@@ -1,8 +1,11 @@
 use axum::extract::ws::{Message as AxumMessage, WebSocket as AxumWebSocket};
 
 #[derive(Debug)]
+/// [TODO] Missing documentation.
 pub enum WsError {
+    /// [TODO] Missing documentation.
     SendError(String),
+    /// [TODO] Missing documentation.
     RecvError(String),
 }
 
@@ -23,6 +26,7 @@ pub struct WebSocket {
 }
 
 impl WebSocket {
+    /// [TODO] Missing documentation.
     pub fn new(inner: AxumWebSocket) -> Self {
         WebSocket { inner }
     }
@@ -58,6 +62,7 @@ impl WebSocket {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

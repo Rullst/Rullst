@@ -1,14 +1,21 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
+/// [TODO] Missing documentation.
 pub mod providers;
 
 #[derive(Debug)]
+/// [TODO] Missing documentation.
 pub enum AiError {
+    /// [TODO] Missing documentation.
     RequestError(reqwest::Error),
+    /// [TODO] Missing documentation.
     SerializationError(serde_json::Error),
+    /// [TODO] Missing documentation.
     ApiError(String),
+    /// [TODO] Missing documentation.
     ConfigError(String),
+    /// [TODO] Missing documentation.
     Other(String),
 }
 
@@ -39,12 +46,16 @@ impl From<serde_json::Error> for AiError {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// [TODO] Missing documentation.
 pub struct Message {
+    /// [TODO] Missing documentation.
     pub role: String,
+    /// [TODO] Missing documentation.
     pub content: String,
 }
 
 impl Message {
+    /// [TODO] Missing documentation.
     pub fn system(content: impl Into<String>) -> Self {
         Self {
             role: "system".to_string(),
@@ -52,6 +63,7 @@ impl Message {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn user(content: impl Into<String>) -> Self {
         Self {
             role: "user".to_string(),
@@ -59,6 +71,7 @@ impl Message {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn assistant(content: impl Into<String>) -> Self {
         Self {
             role: "assistant".to_string(),
@@ -68,18 +81,24 @@ impl Message {
 }
 
 #[async_trait]
+/// [TODO] Missing documentation.
 pub trait AiProvider: Send + Sync {
+    /// [TODO] Missing documentation.
     async fn prompt(&self, text: &str) -> Result<String, AiError>;
+    /// [TODO] Missing documentation.
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError>;
+    /// [TODO] Missing documentation.
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError>;
 }
 
+/// [TODO] Missing documentation.
 pub struct ChatBuilder {
     provider: Arc<dyn AiProvider>,
     messages: Vec<Message>,
 }
 
 impl ChatBuilder {
+    /// [TODO] Missing documentation.
     pub fn new(provider: Arc<dyn AiProvider>) -> Self {
         Self {
             provider,
@@ -87,38 +106,45 @@ impl ChatBuilder {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn system(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::system(content));
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn user(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::user(content));
         self
     }
 
+    /// [TODO] Missing documentation.
     pub fn assistant(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::assistant(content));
         self
     }
 
+    /// [TODO] Missing documentation.
     pub async fn send(self) -> Result<String, AiError> {
         self.provider.chat(&self.messages).await
     }
 }
 
 #[derive(Clone)]
+/// [TODO] Missing documentation.
 pub struct AiClient {
     provider: Arc<dyn AiProvider>,
 }
 
 impl AiClient {
+    /// [TODO] Missing documentation.
     pub fn new(provider: impl AiProvider + 'static) -> Self {
         Self {
             provider: Arc::new(provider),
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn auto() -> Result<Self, AiError> {
         if let Ok(key) = std::env::var("OPENAI_API_KEY") {
             Ok(Self::new(providers::openai::OpenAiProvider::new(key)))
@@ -140,18 +166,22 @@ impl AiClient {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub async fn prompt(&self, text: &str) -> Result<String, AiError> {
         self.provider.prompt(text).await
     }
 
+    /// [TODO] Missing documentation.
     pub fn chat(&self) -> ChatBuilder {
         ChatBuilder::new(self.provider.clone())
     }
 
+    /// [TODO] Missing documentation.
     pub async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         self.provider.embed(text).await
     }
 
+    /// [TODO] Missing documentation.
     pub async fn structured_prompt<T>(&self, text: &str) -> Result<T, AiError>
     where
         T: serde::de::DeserializeOwned,
@@ -184,12 +214,17 @@ fn clean_json_markdown(s: &str) -> String {
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// [TODO] Missing documentation.
 pub struct VectorDocument {
+    /// [TODO] Missing documentation.
     pub id: String,
+    /// [TODO] Missing documentation.
     pub vector: Vec<f32>,
+    /// [TODO] Missing documentation.
     pub payload: serde_json::Value,
 }
 
+/// [TODO] Missing documentation.
 pub struct VectorIndex {
     documents: HashMap<String, VectorDocument>,
 }
@@ -201,12 +236,14 @@ impl Default for VectorIndex {
 }
 
 impl VectorIndex {
+    /// [TODO] Missing documentation.
     pub fn new() -> Self {
         Self {
             documents: HashMap::new(),
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn add(&mut self, id: impl Into<String>, vector: Vec<f32>, payload: serde_json::Value) {
         let id_str = id.into();
         self.documents.insert(
@@ -219,6 +256,7 @@ impl VectorIndex {
         );
     }
 
+    /// [TODO] Missing documentation.
     pub fn search(&self, query_vector: &[f32], limit: usize) -> Vec<(f32, &VectorDocument)> {
         if query_vector.is_empty() || self.documents.is_empty() {
             return Vec::new();
@@ -239,6 +277,7 @@ impl VectorIndex {
     }
 }
 
+/// [TODO] Missing documentation.
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     if a.len() != b.len() || a.is_empty() {
         return 0.0;

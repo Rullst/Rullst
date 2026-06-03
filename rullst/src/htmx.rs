@@ -165,6 +165,7 @@ pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<Str
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::http::Request;

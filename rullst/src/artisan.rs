@@ -97,6 +97,7 @@ pub async fn check_and_run_artisan(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

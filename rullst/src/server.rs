@@ -9,6 +9,7 @@ use std::task::{Context, Poll};
 use tower_service::Service;
 
 #[non_exhaustive]
+/// [TODO] Missing documentation.
 pub struct Server {
     router: Router,
     db_url: Option<String>,
@@ -19,6 +20,7 @@ pub struct Server {
 }
 
 impl Server {
+    /// [TODO] Missing documentation.
     pub fn new(router: Router) -> Self {
         Server {
             router,
@@ -30,6 +32,7 @@ impl Server {
         }
     }
 
+    /// [TODO] Missing documentation.
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
         Server {
             router: Router::new(),
@@ -339,6 +342,7 @@ impl Server {
 }
 
 #[derive(Clone)]
+/// [TODO] Missing documentation.
 pub struct HotSwapService {
     current_router: Arc<RwLock<axum::Router>>,
     shield: Option<crate::resilience::TrafficShield>,
@@ -396,10 +400,16 @@ impl Service<axum::extract::Request> for HotSwapService {
                 Ok(Ok(res)) => Ok(res),
                 Ok(Err(_)) => {
                     // H-2: Handle oneshot error gracefully
-                    Ok(axum::response::Response::builder()
+                    match axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(axum::body::Body::empty())
-                        .unwrap())
+                        .body(axum::body::Body::empty()) {
+                        Ok(res) => Ok(res),
+                        Err(_) => {
+                            let mut res = axum::response::Response::new(axum::body::Body::empty());
+                            *res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                            Ok(res)
+                        }
+                    }
                 }
                 Err(join_err) => {
                     // I-2: If a panic occurred during the oneshot invocation, catch it and present the Self-Healing Console
@@ -420,11 +430,17 @@ impl Service<axum::extract::Request> for HotSwapService {
                     let html_content =
                         crate::error_console::render_console_html(&message, &backtrace).await;
 
-                    Ok(axum::response::Response::builder()
+                    match axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                         .header(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")
-                        .body(axum::body::Body::from(html_content))
-                        .unwrap())
+                        .body(axum::body::Body::from(html_content)) {
+                        Ok(res) => Ok(res),
+                        Err(_) => {
+                            let mut res = axum::response::Response::new(axum::body::Body::empty());
+                            *res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                            Ok(res)
+                        }
+                    }
                 }
             }
         })
@@ -627,6 +643,7 @@ pub use axum::{
 };
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::Router;

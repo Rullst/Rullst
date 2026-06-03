@@ -163,9 +163,14 @@ where
                     for (k, v) in edge_resp.headers.iter() {
                         res_builder = res_builder.header(k, v);
                     }
-                    res_builder
-                        .body(axum::body::Body::from(edge_resp.body))
-                        .unwrap()
+                    match res_builder.body(axum::body::Body::from(edge_resp.body)) {
+                        Ok(res) => res,
+                        Err(_) => {
+                            let mut err_res = axum::response::Response::new(axum::body::Body::empty());
+                            *err_res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                            err_res
+                        }
+                    }
                 }
             }),
         );

@@ -12,6 +12,7 @@ use sqlx::{Any, QueryBuilder, Row};
 use std::net::SocketAddr;
 
 #[derive(Deserialize, Debug)]
+/// [TODO] Missing documentation.
 pub struct TableQuery {
     page: Option<usize>,
     search: Option<String>,
@@ -296,6 +297,7 @@ async fn handle_dashboard() -> impl IntoResponse {
     Html(studio_layout(dash_content, None, &tables)).into_response()
 }
 
+/// [TODO] Missing documentation.
 pub async fn handle_table(
     headers: axum::http::HeaderMap,
     path: Path<String>,
@@ -500,6 +502,7 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
