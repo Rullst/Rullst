@@ -233,44 +233,55 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    println!("{}", "\n🚀 Starting Rullst Dev Server...\n".cyan().bold());
+    println!(
+        "{}",
+        "\n🚀 Starting Rullst Dev Server with Hot Reload...\n"
+            .cyan()
+            .bold()
+    );
 
-    let output_result = with_spinner("Compiling Rullst Application...", || {
-        Command::new("cargo").arg("build").arg("-q").output()
-    });
+    // Check if cargo-watch is installed
+    let watch_check = Command::new("cargo").arg("watch").arg("--version").output();
 
-    match output_result {
-        Ok(output) => {
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.trim().is_empty() {
-                    println!("{}", stderr);
-                }
-                println!(
-                    "{}",
-                    "❌ Compilation failed. Run `cargo build` to see the detailed errors.".red()
-                );
-                std::process::exit(1);
-            } else {
-                // Print warnings (if any) after the spinner has successfully finished
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.trim().is_empty() {
-                    println!("{}", stderr);
-                }
-            }
-        }
-        Err(_) => {
-            println!("{}", "❌ Failed to execute `cargo build`.".red());
+    let is_installed = match watch_check {
+        Ok(output) => output.status.success(),
+        Err(_) => false,
+    };
+
+    if !is_installed {
+        println!(
+            "{}",
+            "📦 Installing 'cargo-watch' for Hot Reloading (this will only happen once)..."
+                .yellow()
+        );
+        let install_status = Command::new("cargo")
+            .arg("install")
+            .arg("cargo-watch")
+            .status()?;
+
+        if !install_status.success() {
+            println!("{}", "❌ Failed to install 'cargo-watch'. Please install it manually: `cargo install cargo-watch`".red());
             std::process::exit(1);
         }
+        println!("{}", "✅ 'cargo-watch' installed successfully!\n".green());
     }
 
     println!(
         "{}",
-        "✨ Compilation successful! Starting the server...\n".green()
+        "✨ Watching for file changes...\n(Press Ctrl+C to stop the development server)\n".green()
     );
 
-    let status = Command::new("cargo").arg("run").arg("-q").status()?;
+    let status = Command::new("cargo")
+        .arg("watch")
+        .arg("-q")
+        .arg("-c")
+        .arg("-w")
+        .arg("src")
+        .arg("-w")
+        .arg("Cargo.toml")
+        .arg("-x")
+        .arg("run -q")
+        .status()?;
 
     if !status.success() {
         std::process::exit(1);

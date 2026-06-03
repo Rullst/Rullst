@@ -1,56 +1,56 @@
 # Rullst Blueprints Roadmap 🗺️
-### *"A Coleção Definitiva de Blueprints de Alta Performance para o Rullst"*
+### *"The Ultimate High-Performance Blueprints Collection for Rullst"*
 
-Este documento mapeia o plano de expansão do ecossistema de **Starter Blueprints** do Rullst. O objetivo é fornecer aos desenvolvedores e agências soluções completas e "prontas para produção" que destacam os diferenciais de performance, segurança e produtividade do ecossistema Rust + Rullst.
-
----
-
-## 🚀 Filosofia de Design dos Blueprints
-Cada blueprint adicionado ao CLI deve atender a três princípios fundamentais:
-1. **Fator Uau imediato:** Interface linda, responsiva (Dark Mode, Glassmorphism, Micro-animações) e interativa via HTMX/Tailwind.
-2. **Uso de Recursos Nativos do Rust/Rullst:** Demonstrar na prática a vantagem injusta do Rust (baixo consumo de RAM, concorrência segura, processamento paralelo, type safety, WebSockets robustos).
-3. **Pronto para Produção:** Gerar automaticamente `.env.example`, configurações de banco com travas de concorrência e `.gitignore` blindado.
+This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide developers and agencies with complete, "production-ready" solutions that highlight the performance, security, and productivity advantages of the Rust + Rullst ecosystem.
 
 ---
 
-## 🗺️ Roadmap de Novos Blueprints (Ordenado do Mais Fácil ao Mais Difícil)
+## 🚀 Blueprints Design Philosophy
+Every blueprint added to the CLI must meet three fundamental principles:
+1. **Immediate Wow Factor:** Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.
+2. **Native Rust/Rullst Features:** Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).
+3. **Production-Ready:** Automatically generate `.env.example`, database configurations with concurrency locks, and a bulletproof `.gitignore`.
 
-| ID | Nome do Blueprint | Foco Técnico no Rullst | Diferencial Comercial |
+---
+
+## 🗺️ New Blueprints Roadmap (Ordered from Easiest to Hardest)
+
+| ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|
-| **4** | 💼 ERP Pocket (Estoque) | SQLite Embarcado + `rullst::nexus` (Auto-CMS) + Binário Único | Pequenas e médias empresas com sistema offline-first imune a quedas. |
-| **5** | 📡 Uptime Monitoring Service | Asynchronous Workers (`rullst::queue`) + Health Checks | Alternativa ao Uptime Kuma rodando em VPS de $5 com zero uso de memória. |
-| **6** | 📋 Gestão de Membros / Clubes | `#[derive(Validate)]` + Nexus + Geração de PDF de Recibos | Cadastro de pessoas pagantes para academias, clubes e condomínios. |
-| **7** | 🤖 AI Agent & RAG Boilerplate | `rullst::ai` (Ollama/Gemini/OpenAI) + Vector Embedding local | Análise inteligente de documentos PDF/TXT locais e privados. |
-| **8** | 🪙 AI Credit-Based SaaS | Streaming (SSE) + `rullst-orm` (Lock Concorrência) + Stripe | Plataformas SaaS de IA com consumo de tokens seguro contra race conditions. |
-| **9** | 🏥 Agendamentos & Clínicas | Calendário HTMX + Cron Scheduler + Locks de Double-Booking | Barbearias, médicos e profissionais autônomos com prevenção de reservas duplicadas. |
-| **10**| 🚪 Controle de Acesso Biométrico | `rullst::routing` (WebSockets) + Painel Portaria Real-time | Sistemas de portaria, academias e ponto eletrônico sem lag. |
-| **11**| 📈 Checkout de Afiliados | SSR Rápido (<100ms) + Split de Comissões + Landing Page | Páginas de vendas com Score 100 no Lighthouse para conversão máxima. |
-| **12**| 🏢 B2B Multi-Tenant Platform | `rullst::multitenant` (subdomínios) + RBAC (Enums) + `rullst::mail` | Software corporativo isolado e seguro para venda de licenças corporativas. |
-| **13**| 💬 Discord-Like Realtime Chat | **Rullst Live** (Server-Driven UI) + WebSockets no Tokio | Salas de chat concorrentes escaláveis a baixo custo de infraestrutura. |
-| **14**| 🛵 Delivery / iFood | Fila de Background (`rullst::queue`) + Estado de Pedido | Processamento assíncrono de status de entrega e envio de e-mails. |
+| **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/Medium businesses with an offline-first, crash-immune system. |
+| **5** | 📡 Uptime Monitoring Service | Asynchronous Workers (`rullst::queue`) + Health Checks | Uptime Kuma alternative running on a $5 VPS with zero memory usage. |
+| **6** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
+| **7** | 🤖 AI Agent & RAG Boilerplate | `rullst::ai` (Ollama/Gemini/OpenAI) + Local Vector Embedding | Intelligent parsing of local and private PDF/TXT documents. |
+| **8** | 🪙 AI Credit-Based SaaS | Streaming (SSE) + `rullst-orm` (Concurrency Lock) + Stripe | AI SaaS platforms with token consumption secured against race conditions. |
+| **9** | 🏥 Scheduling & Clinics | HTMX Calendar + Cron Scheduler + Double-Booking Locks | Barbershops, doctors, and freelancers with duplicate reservation prevention. |
+| **10**| 🚪 Biometric Access Control | `rullst::routing` (WebSockets) + Real-time Concierge Panel | Concierge systems, gyms, and electronic timeclocks with zero lag. |
+| **11**| 📈 Affiliate Checkout | Fast SSR (<100ms) + Commission Splits + Landing Page | Sales pages with a 100 Lighthouse Score for maximum conversion. |
+| **12**| 🏢 B2B Multi-Tenant Platform | `rullst::multitenant` (subdomains) + RBAC (Enums) + `rullst::mail` | Secure, isolated enterprise software for selling corporate licenses. |
+| **13**| 💬 Discord-Like Realtime Chat | **Rullst Live** (Server-Driven UI) + WebSockets on Tokio | Scalable, concurrent chat rooms with low infrastructure cost. |
+| **14**| 🛵 Delivery / Food App | Background Queue (`rullst::queue`) + Order State | Asynchronous delivery status processing and email notifications. |
 
 ---
 
-## 🔍 Detalhamento Arquitetural de Destaque
+## 🔍 Highlighted Architectural Details
 
 ### 🪙 8. AI Credit-Based SaaS (The Token-Burner)
-* **Arquitetura:** Interface de chat limpa consumindo dados por Server-Sent Events (SSE) nativo para streaming fluído de respostas de IA.
-* **Segurança de Dados:** O `rullst-orm` implementa locks estritos de transação para garantir que, caso o saldo de créditos do usuário seja zerado simultaneamente em duas abas distintas, o sistema aborte a geração de tokens antes de finalizar chamadas custosas ao modelo LLM.
-* **Monetização:** Checkout Stripe integrado com faturamento baseado em uso e portal de cobrança auto-gerenciado.
+* **Architecture:** Clean chat interface consuming data via native Server-Sent Events (SSE) for fluid AI response streaming.
+* **Data Security:** `rullst-orm` implements strict transaction locks to ensure that if a user's credit balance reaches zero simultaneously in two different tabs, the system aborts token generation before finalizing costly calls to the LLM.
+* **Monetization:** Integrated Stripe checkout with usage-based billing and a self-managed billing portal.
 
 ### 🏢 12. B2B Multi-Tenant Platform (The Corporate Boilerplate)
-* **Isolamento:** Uso do módulo nativo `rullst::multitenant` que intercepta requisições HTTP e injeta dinamicamente o escopo do `tenant_id` em todas as consultas SQL do ciclo de vida da requisição, evitando vazamento acidental de dados entre empresas.
-* **Permissões (RBAC):** Estrutura de cargos (`Admin`, `Member`, `Billing`) baseada em enums seguros em Rust, validada via middlewares antes de despachar para os controllers.
-* **Convites:** Fluxo de convite via e-mail tokenizado criptograficamente com expiração de 24 horas usando o mailer nativo `rullst::mail`.
+* **Isolation:** Uses the native `rullst::multitenant` module, which intercepts HTTP requests and dynamically injects the `tenant_id` scope into all SQL queries throughout the request lifecycle, preventing accidental data leaks between companies.
+* **Permissions (RBAC):** Role structures (`Admin`, `Member`, `Billing`) based on safe Rust enums, validated via middlewares before dispatching to controllers.
+* **Invitations:** Cryptographically tokenized email invitation flow with a 24-hour expiration using the native `rullst::mail` mailer.
 
 ### 💬 13. Discord-Like Realtime Chat
-* **Sem JS Complexo:** Uso do **Rullst Live** para manter o estado da sala de bate-papo no servidor. Toda mensagem submetida via formulário HTMX é processada, adicionada ao canal de broadcasting da thread e renderizada diretamente pelo servidor, atualizando o DOM dos clientes via WebSockets em tempo real.
-* **Escala:** Utilização das threads eficientes do runtime `Tokio` do Rust, permitindo milhares de conexões WebSocket persistentes ativas consumindo menos de 50MB de RAM no servidor.
+* **No Complex JS:** Uses **Rullst Live** to maintain the chat room state on the server. Every message submitted via an HTMX form is processed, added to the thread's broadcasting channel, and rendered directly by the server, updating client DOMs via real-time WebSockets.
+* **Scale:** Utilizes Rust's efficient `Tokio` runtime threads, allowing thousands of persistent active WebSocket connections while consuming less than 50MB of RAM on the server.
 
-### 🏥 9. Agendamentos & Clínicas (The Scheduler)
-* **Prevenção de Conflitos:** Transações do banco executadas com nível de isolamento estrito `SERIALIZABLE` ou lock pessimista para impedir double-booking de horários no milissegundo de confirmação.
-* **Cron Integrado:** Registro de lembretes via Cron nativo do Rullst para buscar agendamentos das próximas 2 horas e disparar notificações automáticas sem necessidade de agendadores externos como Sidekiq ou Celery.
+### 🏥 9. Scheduling & Clinics (The Scheduler)
+* **Conflict Prevention:** Database transactions executed with a strict `SERIALIZABLE` isolation level or pessimistic locking to prevent double-booking at the exact millisecond of confirmation.
+* **Integrated Cron:** Reminder registration via Rullst's native Cron to fetch appointments in the next 2 hours and trigger automatic notifications without the need for external schedulers like Sidekiq or Celery.
 
 ### 🤖 7. AI Agent & RAG Boilerplate (AI-Native)
-* **Estrutura:** Interface intuitiva para upload de arquivos onde o Rullst converte o documento, calcula as embeddings utilizando modelos locais ou APIs configuradas e armazena os dados vetoriais no banco de dados SQLite embarcado.
-* **Flexibilidade:** Configuração flexível via `rullst::ai` permitindo alternar instantaneamente entre LLMs comerciais externas (Gemini, OpenAI) e instâncias locais (Ollama / Llama 3) com uma única variável de ambiente.
+* **Structure:** Intuitive file upload interface where Rullst converts the document, calculates embeddings using local models or configured APIs, and stores the vector data in the embedded SQLite database.
+* **Flexibility:** Flexible configuration via `rullst::ai` allowing instant toggling between external commercial LLMs (Gemini, OpenAI) and local instances (Ollama / Llama 3) with a single environment variable.

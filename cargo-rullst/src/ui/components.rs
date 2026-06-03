@@ -249,9 +249,10 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!();
     println!(
-        "  {} {}",
+        "  {} {} {}",
         "The".white(),
         "Ultimate Full-Stack Rust Framework".bright_cyan().bold(),
+        format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow()
     );
     println!(
         "  {}",

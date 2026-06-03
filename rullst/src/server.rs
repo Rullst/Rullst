@@ -91,9 +91,8 @@ impl Server {
         if self.db_url.is_none() {
             if let Some(ref url) = app_config.database.url {
                 self.db_url = Some(url.clone());
-            } else {
-                // SQLite by default para produção local
-                self.db_url = Some("sqlite://rullst.db?mode=rwc".to_string());
+            } else if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+                self.db_url = Some(env_db_url);
             }
         }
 

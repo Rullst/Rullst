@@ -412,7 +412,7 @@ async fn nexus_chat_page(State(state): State<Arc<NexusState>>) -> Html<String> {
     content.push_str("<div class=\"nexus-chat-messages\" id=\"nexus-chat-messages\">");
     content.push_str("<div class=\"nexus-chat-bubble nexus-chat-assistant\">");
     content.push_str("<span class=\"nexus-chat-avatar\">&#129302;</span>");
-    content.push_str("<div class=\"nexus-chat-text\">Hello! I know your full database schema. Ask me anything &mdash; for example:<br><em>\"List all users created this week\"</em> or <em>\"How many posts are published?\"</em></div>");
+    content.push_str("<div class=\"nexus-chat-text\">Hello! I know your full database schema. Ask me anything &mdash; for example:<br><em>\"List all users created this week\"</em> or <em>\"How many posts are published?\"</em><br><br><small style=\"color: var(--text-300);\">&#128161; <b>Tip:</b> To execute real natural-language queries, you can inject an AI provider into your Nexus instance:<br><code class=\"nexus-code\" style=\"margin-top: 8px; display: block;\">.with_ai(AiClient::new(AiProvider::Gemini { api_key: env!(\"GEMINI_KEY\") }))<br>// Or use AiProvider::OpenAI, AiProvider::Anthropic, etc.</code></small></div>");
     content.push_str("</div></div>");
     // Form: use &quot; for the getElementById argument to avoid single-quote issues
     content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on::after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
@@ -832,7 +832,10 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str(sidebar);
     out.push_str("<div class=\"nexus-sidebar-footer\">");
     out.push_str("<a href=\"/\" class=\"nexus-nav-link nexus-nav-home\"><span class=\"nexus-nav-icon\">&#127968;</span><span>Back to App</span></a>");
-    out.push_str("<div class=\"nexus-version\">Rullst Nexus v1.0</div>");
+    out.push_str(&format!(
+        "<div class=\"nexus-version\">Rullst Nexus v{}</div>",
+        env!("CARGO_PKG_VERSION")
+    ));
     out.push_str("</div></nav>");
 
     // Main

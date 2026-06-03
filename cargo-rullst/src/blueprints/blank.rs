@@ -10,7 +10,7 @@ pub fn file_manifest(
     let mut manifest = Vec::new();
 
     let db_model_code = if db_needed {
-        "use rullst::db::{Orm, RullstModel, FromRow, sqlx};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
+        "use rullst::db::{Orm, FromRow};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
     } else {
         ""
     };
@@ -329,7 +329,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     }
 
     if db_needed {
-        let migration = r##"use rullst::db::schema::{Schema, Blueprint, Migration};
+        let migration = r##"use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;

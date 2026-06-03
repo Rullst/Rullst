@@ -7,8 +7,11 @@ Rullst is an extremely fast, modular, and friendly Full-Stack web framework for 
 ## Documentation Hub
 
 - [📖 Getting Started & Blueprints Showcase](./1-getting-started.html)
-- [🤖 Rullst AI: Developing with AI Agents](./2-rullst-ai.html)
-- [⚙️ Documenting with RullstPress Engine](./3-rullstpress-engine.html)
+- [🤖 Rullst AI: Developing with Autonomous Agents](./2-rullst-ai.html)
+- [📊 Rullst Studio: Real-Time Monitoring](./3-rullst-studio.html)
+- [⚙️ Rullst Nexus: Your Instant CMS](./4-rullst-nexus.html)
+- [💳 Rullst Capital: SaaS Billing Made Easy](./5-rullst-capital.html)
+- [📝 Documenting with RullstPress Engine](./6-rullstpress-engine.html)
 - [📜 Framework Spec](./spec.html)
 - [🗺️ Blueprints Roadmap](./blueprints_roadmap.html)
 - [🛡️ Deep Audit Report (June 03, 2026)](./deep-audit-06-03.html)

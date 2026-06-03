@@ -133,11 +133,6 @@ pub fn create_new_project(
                 .interact()?;
             api = build_selection == 1;
 
-            hot_reload = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
-                .default(false)
-                .interact()?;
-
             db_needed = dialoguer::Confirm::with_theme(&theme)
                 .with_prompt("🗄️ Will your project need a Database?")
                 .default(true)
@@ -167,6 +162,11 @@ pub fn create_new_project(
             db_needed = true;
             db_provider = "Sqlite".to_string();
         }
+
+        hot_reload = dialoguer::Confirm::with_theme(&theme)
+            .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
+            .default(true)
+            .interact()?;
     }
 
     println!(
@@ -188,6 +188,7 @@ pub fn create_new_project(
     // Create folders
     fs::create_dir_all(path.join("src/pages"))?;
     fs::create_dir_all(path.join("src/models"))?;
+    fs::create_dir_all(path.join("static"))?;
 
     // Get absolute path to the Rullst framework folder for local referencing
     let current_dir = std::env::current_dir()?;
@@ -200,6 +201,14 @@ pub fn create_new_project(
     } else {
         "c:\\Users\\venelouis\\Desktop\\REPOS\\Rullst\\rullst".to_string()
     };
+
+    let rullst_png_path = Path::new(&rullst_path)
+        .parent()
+        .unwrap_or(Path::new(""))
+        .join("Rullst.png");
+    if rullst_png_path.exists() {
+        let _ = fs::copy(rullst_png_path, path.join("static/favicon.png"));
+    }
 
     // Fix Windows path escaping in Cargo.toml and strip UNC prefix \\?\ if present
     let rullst_path = rullst_path.trim_start_matches(r"\\?\").replace("\\", "/");
@@ -284,6 +293,9 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
 
     cargo_toml.push_str(
         r#"
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
+
 # ⚡ Rullst God-Mode: Compilação Incremental Instantânea (<100ms)
 # Se você deseja velocidade de desenvolvimento próxima de linguagens interpretadas,
 # você pode usar o backend Cranelift oficial do compilador Rust.
@@ -436,32 +448,41 @@ Foundry.toml
 # ⚠️ SECURITY: This file must NEVER be committed to git.
 # It is automatically added to .gitignore by the Rullst CLI.
 
-# ── Database ──────────────────────────────────────────────────
-DATABASE_URL={db_url}
-
 # ── Application ───────────────────────────────────────────────
 APP_KEY={app_key}
 APP_ENV=development
 "#,
-        db_url = db_url,
         app_key = app_key
     );
 
-    let mut env_example_content = format!(
-        r#"# ─────────────────────────────────────────────────────────────
+    let mut env_example_content = r#"# ─────────────────────────────────────────────────────────────
 #  Rullst Application Environment Configuration
 #  Generated automatically by cargo rullst new
 # ─────────────────────────────────────────────────────────────
 
-# ── Database ──────────────────────────────────────────────────
-DATABASE_URL={db_url}
-
 # ── Application ───────────────────────────────────────────────
 APP_KEY=REPLACE_WITH_YOUR_32_CHAR_APP_KEY
 APP_ENV=development
-"#,
-        db_url = db_url
-    );
+"#.to_string();
+
+    if db_needed {
+        let db_env_str = format!(
+            "\n# ── Database ──────────────────────────────────────────────────\nDATABASE_URL={}\n",
+            db_url
+        );
+        env_content.insert_str(
+            env_content
+                .find("# ── Application")
+                .unwrap_or(env_content.len()),
+            &db_env_str,
+        );
+        env_example_content.insert_str(
+            env_example_content
+                .find("# ── Application")
+                .unwrap_or(env_example_content.len()),
+            &db_env_str,
+        );
+    }
 
     if blueprint_selection == 2 || blueprint_selection == 3 {
         let stripe_template = r#"
