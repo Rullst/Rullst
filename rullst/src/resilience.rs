@@ -174,8 +174,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             )
             .body(axum::body::Body::from(
                 "Service Temporarily Saturated. Please try again soon.",
-            ))
-        {
+            )) {
             Ok(res) => return res,
             Err(_) => {
                 let mut res = Response::new(axum::body::Body::empty());
@@ -332,8 +331,7 @@ pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Nex
             )
             .body(axum::body::Body::from(
                 "Rate limit exceeded. Please try again later.",
-            ))
-        {
+            )) {
             Ok(res) => res,
             Err(_) => {
                 let mut res = Response::new(axum::body::Body::empty());

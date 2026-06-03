@@ -455,7 +455,8 @@ APP_ENV=development
         app_key = app_key
     );
 
-    let mut env_example_content = r#"# ─────────────────────────────────────────────────────────────
+    let mut env_example_content =
+        r#"# ─────────────────────────────────────────────────────────────
 #  Rullst Application Environment Configuration
 #  Generated automatically by cargo rullst new
 # ─────────────────────────────────────────────────────────────
@@ -463,7 +464,8 @@ APP_ENV=development
 # ── Application ───────────────────────────────────────────────
 APP_KEY=REPLACE_WITH_YOUR_32_CHAR_APP_KEY
 APP_ENV=development
-"#.to_string();
+"#
+        .to_string();
 
     if db_needed {
         let db_env_str = format!(

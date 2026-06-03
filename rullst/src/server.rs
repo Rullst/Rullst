@@ -402,7 +402,8 @@ impl Service<axum::extract::Request> for HotSwapService {
                     // H-2: Handle oneshot error gracefully
                     match axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(axum::body::Body::empty()) {
+                        .body(axum::body::Body::empty())
+                    {
                         Ok(res) => Ok(res),
                         Err(_) => {
                             let mut res = axum::response::Response::new(axum::body::Body::empty());
@@ -433,7 +434,8 @@ impl Service<axum::extract::Request> for HotSwapService {
                     match axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                         .header(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")
-                        .body(axum::body::Body::from(html_content)) {
+                        .body(axum::body::Body::from(html_content))
+                    {
                         Ok(res) => Ok(res),
                         Err(_) => {
                             let mut res = axum::response::Response::new(axum::body::Body::empty());

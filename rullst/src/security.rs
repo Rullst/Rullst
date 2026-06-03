@@ -281,7 +281,8 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         } else {
             match Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(axum::body::Body::empty()) {
+                .body(axum::body::Body::empty())
+            {
                 Ok(res) => return res,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             }
