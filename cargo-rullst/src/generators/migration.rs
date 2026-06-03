@@ -40,7 +40,7 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
     let table_name = get_table_name_from_migration(&snake_name);
 
     let template = format!(
-        r#"use rullst_orm::schema::{{Schema, Blueprint, Migration}};
+        r#"use rullst_orm::schema::{{Schema, Migration}};
 use rullst_orm::async_trait;
 
 pub struct MigrationImpl;

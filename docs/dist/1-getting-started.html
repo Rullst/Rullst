@@ -316,7 +316,10 @@
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-rullst-ai.html">Rullst ai</a></li>
-<li><a href="3-rullstpress-engine.html">RullstPress engine</a></li>
+<li><a href="3-rullst-studio.html">Rullst studio</a></li>
+<li><a href="4-rullst-nexus.html">Rullst nexus</a></li>
+<li><a href="5-rullst-capital.html">Rullst capital</a></li>
+<li><a href="6-rullstpress-engine.html">RullstPress engine</a></li>
 <li><a href="blueprints_roadmap.html">Blueprints_roadmap</a></li>
 <li><a href="deep-audit-06-03.html">Deep audit 06 03</a></li>
 <li><a href="spec.html">Spec</a></li>
@@ -346,64 +349,15 @@ Download and run <code>rustup-init.exe</code> from the website.</p>
 <li>Select <strong>Create New App</strong>.</li>
 <li><strong>App Name</strong>: Provide a simple lowercase name (e.g., <code>my_portfolio</code>).</li>
 <li><strong>Starter Blueprint</strong>: Choose <strong>Portfolio 🔥 (showcase for Rullst/AI developers) - HOT</strong>.</li>
-<li><strong>Hot Reload</strong>: Select <strong>Yes</strong> to enable lightning-fast auto-recompilation.</li>
 </ol>
-<pre><code class="language-bash">cd my_app
+<pre><code class="language-bash">cd my_portfolio
 cargo rullst dev
 </code></pre>
 <blockquote>
 <p>[!TIP]
 The <code>cargo rullst dev</code> command automatically compiles your code and spins up a local server. If you edit any <code>.rs</code> file, it will instantly recompile using Hot Reload!</p>
 </blockquote>
-<h2>3. Writing Your First Page</h2>
-<p>Rullst uses an extremely efficient <code>html!</code> macro that compiles HTML directly into the AST, pre-computing string sizes for zero-allocation rendering.</p>
-<p>Open <code>src/lib.rs</code> (or your controller file) and check out the syntax:</p>
-<pre><code class="language-rust">use rullst::{html, response::IntoResponse, htmx::HtmxRequest};
-
-pub async fn home(htmx: HtmxRequest) -&gt; impl IntoResponse {
-    let title = "My Rullst App";
-    
-    let content = html! {
-        &lt;div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center"&gt;
-            &lt;h1 class="text-4xl font-bold text-emerald-500"&gt;
-                {title}
-            &lt;/h1&gt;
-            
-            &lt;!-- Note: Boolean attributes must always be quoted in Rullst! --&gt;
-            &lt;input type="text" required="true" placeholder="Enter your name" /&gt;
-            
-            &lt;button class="ml-4 bg-orange-500 px-4 py-2 rounded"&gt;
-                "Submit"
-            &lt;/button&gt;
-        &lt;/div&gt;
-    };
-
-    rullst::htmx::render_page(&amp;htmx, title, content)
-}
-</code></pre>
-<blockquote>
-<p>[!WARNING]
-<strong>Macro Rule</strong>: In Rullst's <code>html!</code> macro, you MUST wrap boolean attribute values in quotes (e.g., <code>required="true"</code> or <code>checked="true"</code>). The macro parser enforces strict token separation to prevent parsing ambiguity.</p>
-</blockquote>
-<h2>4. Routing</h2>
-<p>Rullst embraces explicit, compile-time checked routing using the <code>routes!</code> macro. Ensure you follow the strict syntax rules:</p>
-<pre><code class="language-rust">#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -&gt; *mut rullst::Router {
-    let router = rullst::routes![
-        // ✅ CORRECT: Wrap the path and handler in parentheses
-        get("/" =&gt; home),
-        post("/submit" =&gt; handle_submit),
-        get("/users/{id}" =&gt; get_user),
-    ];
-    Box::into_raw(Box::new(router))
-}
-</code></pre>
-<blockquote>
-<p>[!CAUTION]
-<strong>Syntax Error Alert</strong>: Do not write <code>get("/") =&gt; home,</code>. The fat arrow <code>=&gt;</code> and handler must be INSIDE the parentheses: <code>get("/" =&gt; home),</code>.</p>
-</blockquote>
-<p>Now that you know the basics, you're ready to build! Check out the next sections to learn about the RullstPress documentation engine or our powerful Blueprints.</p>
-<h2>5. Rullst Blueprints Showcase</h2>
+<h2>3. Rullst Blueprints Showcase</h2>
 <p>The Rullst framework accelerates your development by providing <strong>Blueprints</strong>. A Blueprint is a highly-polished, pre-built application template that serves as the foundation for your project.</p>
 <p>When you run <code>cargo rullst</code>, the wizard will ask you to select a Blueprint. All Blueprints feature the official Rullst color scheme (Emerald Green and Orange) and are built with zero-allocation HTML macros and HTMX.</p>
 <h2>1. Blank Starter</h2>

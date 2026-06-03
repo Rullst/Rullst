@@ -33,7 +33,7 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
     let migration_template = format!(
-        r##"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+        r##"use rullst::db::schema::{{Schema, Migration}};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;
@@ -72,7 +72,7 @@ impl Migration for MigrationImpl {{
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("user.rs");
-    let model_template = r##"use rullst::db::{Orm, RullstModel, FromRow, sqlx};
+    let model_template = r##"use rullst::db::{Orm, FromRow};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "users")]

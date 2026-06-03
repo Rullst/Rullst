@@ -127,7 +127,7 @@ pub struct {pascal_name} {{
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
         let template = format!(
-            r#"use rullst::db::schema::{{Schema, Blueprint, Migration}};
+            r#"use rullst::db::schema::{{Schema, Migration}};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;

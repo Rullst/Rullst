@@ -327,61 +327,42 @@
         </div>
     </aside>
     <main class="main-content">
-        <h1>Rullst Blueprints Roadmap 🗺️</h1>
-<h3><em>"The Ultimate High-Performance Blueprints Collection for Rullst"</em></h3>
-<p>This document maps the expansion plan for the Rullst <strong>Starter Blueprints</strong> ecosystem. The goal is to provide developers and agencies with complete, "production-ready" solutions that highlight the performance, security, and productivity advantages of the Rust + Rullst ecosystem.</p>
-<hr />
-<h2>🚀 Blueprints Design Philosophy</h2>
-<p>Every blueprint added to the CLI must meet three fundamental principles:</p>
+        <h1>Rullst Nexus: Your Instant CMS</h1>
+<p><strong>Rullst Nexus</strong> is a tightly coupled and dynamically generated Content Management System (CMS) for your Rullst project.</p>
+<p>Instead of spending dozens of hours developing an administrative panel (CRUDs) for your database tables, Rullst Nexus reads the metadata from your database models (<code>structs</code>) and builds a stunning administrative interface (using Tailwind CSS and glassmorphism layouts) at the exact moment the application compiles.</p>
+<h2>How it Works</h2>
+<p>All you need to do is implement the <code>NexusModel</code> trait on your ORM <code>struct</code>:</p>
+<pre><code class="language-rust">use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
+
+impl NexusModel for User {
+    fn nexus_table() -&gt; &amp;'static str { "users" }
+    fn nexus_label() -&gt; &amp;'static str { "Users" }
+    fn nexus_icon() -&gt; &amp;'static str { "👥" }
+    fn nexus_fields() -&gt; Vec&lt;FieldMeta&gt; {
+        vec![
+            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
+            FieldMeta { name: "name", label: "Name", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "email", label: "Email", kind: FieldKind::Text, hidden: false, readonly: false },
+        ]
+    }
+}
+</code></pre>
+<p>And then, in your routing file (usually <code>src/lib.rs</code> or <code>src/main.rs</code>), you "hook up" the Nexus engine:</p>
+<pre><code class="language-rust">let nexus = rullst::nexus::Nexus::new()
+    .with_brand("SaaS Admin")
+    .register::&lt;models::user::User&gt;()
+    .build();
+
+// ... and add it to the final router:
+let router = router.nest_axum("/nexus", nexus);
+</code></pre>
+<h2>Benefits of Nexus</h2>
 <ol>
-<li><strong>Immediate Wow Factor:</strong> Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.</li>
-<li><strong>Native Rust/Rullst Features:</strong> Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).</li>
-<li><strong>Production-Ready:</strong> Automatically generate <code>.env.example</code>, database configurations with concurrency locks, and a bulletproof <code>.gitignore</code>.</li>
+<li><strong>Zero Front-end Effort:</strong> Nexus renders responsive tables, creation/edition modals, and delete buttons using HTML and HTMX without writing a single line of JS.</li>
+<li><strong>Totally Secure:</strong> Nexus lives <em>inside</em> the same compiled binary. There is no need for separate APIs or complex permissions to access the database; it uses the secure global connection pool.</li>
+<li><strong>Highly Customizable:</strong> The <code>hidden</code> and <code>readonly</code> flags in <code>FieldMeta</code> ensure you control exactly what the administrative team can see and modify.</li>
 </ol>
-<hr />
-<h2>🗺️ New Blueprints Roadmap (Ordered from Easiest to Hardest)</h2>
-<table><thead><tr><th style="text-align: left">ID</th><th style="text-align: left">Blueprint Name</th><th style="text-align: left">Technical Focus in Rullst</th><th style="text-align: left">Commercial Differentiator</th></tr></thead><tbody>
-<tr><td style="text-align: left"><strong>4</strong></td><td style="text-align: left">💼 ERP Pocket (Inventory)</td><td style="text-align: left">Embedded SQLite + <code>rullst::nexus</code> (Auto-CMS) + Single Binary</td><td style="text-align: left">Small/Medium businesses with an offline-first, crash-immune system.</td></tr>
-<tr><td style="text-align: left"><strong>5</strong></td><td style="text-align: left">📡 Uptime Monitoring Service</td><td style="text-align: left">Asynchronous Workers (<code>rullst::queue</code>) + Health Checks</td><td style="text-align: left">Uptime Kuma alternative running on a $5 VPS with zero memory usage.</td></tr>
-<tr><td style="text-align: left"><strong>6</strong></td><td style="text-align: left">📋 Member/Club Management</td><td style="text-align: left"><code>#[derive(Validate)]</code> + Nexus + PDF Receipt Generation</td><td style="text-align: left">Member registration and billing for gyms, clubs, and condominiums.</td></tr>
-<tr><td style="text-align: left"><strong>7</strong></td><td style="text-align: left">🤖 AI Agent &amp; RAG Boilerplate</td><td style="text-align: left"><code>rullst::ai</code> (Ollama/Gemini/OpenAI) + Local Vector Embedding</td><td style="text-align: left">Intelligent parsing of local and private PDF/TXT documents.</td></tr>
-<tr><td style="text-align: left"><strong>8</strong></td><td style="text-align: left">🪙 AI Credit-Based SaaS</td><td style="text-align: left">Streaming (SSE) + <code>rullst-orm</code> (Concurrency Lock) + Stripe</td><td style="text-align: left">AI SaaS platforms with token consumption secured against race conditions.</td></tr>
-<tr><td style="text-align: left"><strong>9</strong></td><td style="text-align: left">🏥 Scheduling &amp; Clinics</td><td style="text-align: left">HTMX Calendar + Cron Scheduler + Double-Booking Locks</td><td style="text-align: left">Barbershops, doctors, and freelancers with duplicate reservation prevention.</td></tr>
-<tr><td style="text-align: left"><strong>10</strong></td><td style="text-align: left">🚪 Biometric Access Control</td><td style="text-align: left"><code>rullst::routing</code> (WebSockets) + Real-time Concierge Panel</td><td style="text-align: left">Concierge systems, gyms, and electronic timeclocks with zero lag.</td></tr>
-<tr><td style="text-align: left"><strong>11</strong></td><td style="text-align: left">📈 Affiliate Checkout</td><td style="text-align: left">Fast SSR (&lt;100ms) + Commission Splits + Landing Page</td><td style="text-align: left">Sales pages with a 100 Lighthouse Score for maximum conversion.</td></tr>
-<tr><td style="text-align: left"><strong>12</strong></td><td style="text-align: left">🏢 B2B Multi-Tenant Platform</td><td style="text-align: left"><code>rullst::multitenant</code> (subdomains) + RBAC (Enums) + <code>rullst::mail</code></td><td style="text-align: left">Secure, isolated enterprise software for selling corporate licenses.</td></tr>
-<tr><td style="text-align: left"><strong>13</strong></td><td style="text-align: left">💬 Discord-Like Realtime Chat</td><td style="text-align: left"><strong>Rullst Live</strong> (Server-Driven UI) + WebSockets on Tokio</td><td style="text-align: left">Scalable, concurrent chat rooms with low infrastructure cost.</td></tr>
-<tr><td style="text-align: left"><strong>14</strong></td><td style="text-align: left">🛵 Delivery / Food App</td><td style="text-align: left">Background Queue (<code>rullst::queue</code>) + Order State</td><td style="text-align: left">Asynchronous delivery status processing and email notifications.</td></tr>
-</tbody></table>
-<hr />
-<h2>🔍 Highlighted Architectural Details</h2>
-<h3>🪙 8. AI Credit-Based SaaS (The Token-Burner)</h3>
-<ul>
-<li><strong>Architecture:</strong> Clean chat interface consuming data via native Server-Sent Events (SSE) for fluid AI response streaming.</li>
-<li><strong>Data Security:</strong> <code>rullst-orm</code> implements strict transaction locks to ensure that if a user's credit balance reaches zero simultaneously in two different tabs, the system aborts token generation before finalizing costly calls to the LLM.</li>
-<li><strong>Monetization:</strong> Integrated Stripe checkout with usage-based billing and a self-managed billing portal.</li>
-</ul>
-<h3>🏢 12. B2B Multi-Tenant Platform (The Corporate Boilerplate)</h3>
-<ul>
-<li><strong>Isolation:</strong> Uses the native <code>rullst::multitenant</code> module, which intercepts HTTP requests and dynamically injects the <code>tenant_id</code> scope into all SQL queries throughout the request lifecycle, preventing accidental data leaks between companies.</li>
-<li><strong>Permissions (RBAC):</strong> Role structures (<code>Admin</code>, <code>Member</code>, <code>Billing</code>) based on safe Rust enums, validated via middlewares before dispatching to controllers.</li>
-<li><strong>Invitations:</strong> Cryptographically tokenized email invitation flow with a 24-hour expiration using the native <code>rullst::mail</code> mailer.</li>
-</ul>
-<h3>💬 13. Discord-Like Realtime Chat</h3>
-<ul>
-<li><strong>No Complex JS:</strong> Uses <strong>Rullst Live</strong> to maintain the chat room state on the server. Every message submitted via an HTMX form is processed, added to the thread's broadcasting channel, and rendered directly by the server, updating client DOMs via real-time WebSockets.</li>
-<li><strong>Scale:</strong> Utilizes Rust's efficient <code>Tokio</code> runtime threads, allowing thousands of persistent active WebSocket connections while consuming less than 50MB of RAM on the server.</li>
-</ul>
-<h3>🏥 9. Scheduling &amp; Clinics (The Scheduler)</h3>
-<ul>
-<li><strong>Conflict Prevention:</strong> Database transactions executed with a strict <code>SERIALIZABLE</code> isolation level or pessimistic locking to prevent double-booking at the exact millisecond of confirmation.</li>
-<li><strong>Integrated Cron:</strong> Reminder registration via Rullst's native Cron to fetch appointments in the next 2 hours and trigger automatic notifications without the need for external schedulers like Sidekiq or Celery.</li>
-</ul>
-<h3>🤖 7. AI Agent &amp; RAG Boilerplate (AI-Native)</h3>
-<ul>
-<li><strong>Structure:</strong> Intuitive file upload interface where Rullst converts the document, calculates embeddings using local models or configured APIs, and stores the vector data in the embedded SQLite database.</li>
-<li><strong>Flexibility:</strong> Flexible configuration via <code>rullst::ai</code> allowing instant toggling between external commercial LLMs (Gemini, OpenAI) and local instances (Ollama / Llama 3) with a single environment variable.</li>
-</ul>
+<p>To access it, open your browser at the <code>/nexus</code> route on your app.</p>
 
     </main>
     <script>

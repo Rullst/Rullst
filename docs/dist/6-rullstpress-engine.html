@@ -327,61 +327,39 @@
         </div>
     </aside>
     <main class="main-content">
-        <h1>Rullst Blueprints Roadmap 🗺️</h1>
-<h3><em>"The Ultimate High-Performance Blueprints Collection for Rullst"</em></h3>
-<p>This document maps the expansion plan for the Rullst <strong>Starter Blueprints</strong> ecosystem. The goal is to provide developers and agencies with complete, "production-ready" solutions that highlight the performance, security, and productivity advantages of the Rust + Rullst ecosystem.</p>
-<hr />
-<h2>🚀 Blueprints Design Philosophy</h2>
-<p>Every blueprint added to the CLI must meet three fundamental principles:</p>
-<ol>
-<li><strong>Immediate Wow Factor:</strong> Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.</li>
-<li><strong>Native Rust/Rullst Features:</strong> Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).</li>
-<li><strong>Production-Ready:</strong> Automatically generate <code>.env.example</code>, database configurations with concurrency locks, and a bulletproof <code>.gitignore</code>.</li>
-</ol>
-<hr />
-<h2>🗺️ New Blueprints Roadmap (Ordered from Easiest to Hardest)</h2>
-<table><thead><tr><th style="text-align: left">ID</th><th style="text-align: left">Blueprint Name</th><th style="text-align: left">Technical Focus in Rullst</th><th style="text-align: left">Commercial Differentiator</th></tr></thead><tbody>
-<tr><td style="text-align: left"><strong>4</strong></td><td style="text-align: left">💼 ERP Pocket (Inventory)</td><td style="text-align: left">Embedded SQLite + <code>rullst::nexus</code> (Auto-CMS) + Single Binary</td><td style="text-align: left">Small/Medium businesses with an offline-first, crash-immune system.</td></tr>
-<tr><td style="text-align: left"><strong>5</strong></td><td style="text-align: left">📡 Uptime Monitoring Service</td><td style="text-align: left">Asynchronous Workers (<code>rullst::queue</code>) + Health Checks</td><td style="text-align: left">Uptime Kuma alternative running on a $5 VPS with zero memory usage.</td></tr>
-<tr><td style="text-align: left"><strong>6</strong></td><td style="text-align: left">📋 Member/Club Management</td><td style="text-align: left"><code>#[derive(Validate)]</code> + Nexus + PDF Receipt Generation</td><td style="text-align: left">Member registration and billing for gyms, clubs, and condominiums.</td></tr>
-<tr><td style="text-align: left"><strong>7</strong></td><td style="text-align: left">🤖 AI Agent &amp; RAG Boilerplate</td><td style="text-align: left"><code>rullst::ai</code> (Ollama/Gemini/OpenAI) + Local Vector Embedding</td><td style="text-align: left">Intelligent parsing of local and private PDF/TXT documents.</td></tr>
-<tr><td style="text-align: left"><strong>8</strong></td><td style="text-align: left">🪙 AI Credit-Based SaaS</td><td style="text-align: left">Streaming (SSE) + <code>rullst-orm</code> (Concurrency Lock) + Stripe</td><td style="text-align: left">AI SaaS platforms with token consumption secured against race conditions.</td></tr>
-<tr><td style="text-align: left"><strong>9</strong></td><td style="text-align: left">🏥 Scheduling &amp; Clinics</td><td style="text-align: left">HTMX Calendar + Cron Scheduler + Double-Booking Locks</td><td style="text-align: left">Barbershops, doctors, and freelancers with duplicate reservation prevention.</td></tr>
-<tr><td style="text-align: left"><strong>10</strong></td><td style="text-align: left">🚪 Biometric Access Control</td><td style="text-align: left"><code>rullst::routing</code> (WebSockets) + Real-time Concierge Panel</td><td style="text-align: left">Concierge systems, gyms, and electronic timeclocks with zero lag.</td></tr>
-<tr><td style="text-align: left"><strong>11</strong></td><td style="text-align: left">📈 Affiliate Checkout</td><td style="text-align: left">Fast SSR (&lt;100ms) + Commission Splits + Landing Page</td><td style="text-align: left">Sales pages with a 100 Lighthouse Score for maximum conversion.</td></tr>
-<tr><td style="text-align: left"><strong>12</strong></td><td style="text-align: left">🏢 B2B Multi-Tenant Platform</td><td style="text-align: left"><code>rullst::multitenant</code> (subdomains) + RBAC (Enums) + <code>rullst::mail</code></td><td style="text-align: left">Secure, isolated enterprise software for selling corporate licenses.</td></tr>
-<tr><td style="text-align: left"><strong>13</strong></td><td style="text-align: left">💬 Discord-Like Realtime Chat</td><td style="text-align: left"><strong>Rullst Live</strong> (Server-Driven UI) + WebSockets on Tokio</td><td style="text-align: left">Scalable, concurrent chat rooms with low infrastructure cost.</td></tr>
-<tr><td style="text-align: left"><strong>14</strong></td><td style="text-align: left">🛵 Delivery / Food App</td><td style="text-align: left">Background Queue (<code>rullst::queue</code>) + Order State</td><td style="text-align: left">Asynchronous delivery status processing and email notifications.</td></tr>
-</tbody></table>
-<hr />
-<h2>🔍 Highlighted Architectural Details</h2>
-<h3>🪙 8. AI Credit-Based SaaS (The Token-Burner)</h3>
+        <h1>RullstPress: The SSG Engine</h1>
+<p><strong>RullstPress</strong> is a lightning-fast, zero-dependency <strong>Static Site Generator (SSG)</strong> built directly into the Rullst Framework. It compiles standard Markdown files into highly-optimized, premium HTML files with an automatically generated sidebar and responsive layout.</p>
+<h2>The Core Concept</h2>
+<p>RullstPress is designed for everything from simple technical documentation to fully-fledged SaaS landing pages and developer portfolios.</p>
+<p>To begin, all you need is a <code>docs/</code> folder in the root of your project.</p>
+<pre><code class="language-text">my_project/
+└── docs/
+    ├── index.md             # The Home Page (Special Hero Layout)
+    ├── 1-getting-started.md # Article 1
+    └── 2-architecture.md    # Article 2
+</code></pre>
+<h2>Running the Engine</h2>
+<p>Rullst CLI provides built-in commands to work with your documentation.</p>
+<h3>Development Server</h3>
+<pre><code class="language-bash">cargo rullst docs dev
+</code></pre>
+<p>This command instantly compiles your markdown, launches a blazing-fast local server at <code>http://localhost:4000</code>, and watches your files for changes. When you save a markdown file, the server will hot-reload your browser!</p>
+<h3>Production Build</h3>
+<pre><code class="language-bash">cargo rullst docs build
+</code></pre>
+<p>This command compiles your site with maximum optimizations and outputs static HTML, CSS, and JS to the <code>docs/dist/</code> directory. You can host this <code>dist</code> folder directly on GitHub Pages, Vercel, or Netlify.</p>
+<h2>The Magic <code>index.md</code></h2>
+<p>If RullstPress finds an <code>index.md</code> file, it activates <strong>Hero Landing Page Mode</strong>. Instead of generating a standard documentation reading layout, it generates a beautiful, responsive landing page featuring:</p>
 <ul>
-<li><strong>Architecture:</strong> Clean chat interface consuming data via native Server-Sent Events (SSE) for fluid AI response streaming.</li>
-<li><strong>Data Security:</strong> <code>rullst-orm</code> implements strict transaction locks to ensure that if a user's credit balance reaches zero simultaneously in two different tabs, the system aborts token generation before finalizing costly calls to the LLM.</li>
-<li><strong>Monetization:</strong> Integrated Stripe checkout with usage-based billing and a self-managed billing portal.</li>
+<li>A centered visual logo</li>
+<li>Glowing headlines with smooth CSS gradients</li>
+<li>Animated Call-to-Action buttons</li>
 </ul>
-<h3>🏢 12. B2B Multi-Tenant Platform (The Corporate Boilerplate)</h3>
-<ul>
-<li><strong>Isolation:</strong> Uses the native <code>rullst::multitenant</code> module, which intercepts HTTP requests and dynamically injects the <code>tenant_id</code> scope into all SQL queries throughout the request lifecycle, preventing accidental data leaks between companies.</li>
-<li><strong>Permissions (RBAC):</strong> Role structures (<code>Admin</code>, <code>Member</code>, <code>Billing</code>) based on safe Rust enums, validated via middlewares before dispatching to controllers.</li>
-<li><strong>Invitations:</strong> Cryptographically tokenized email invitation flow with a 24-hour expiration using the native <code>rullst::mail</code> mailer.</li>
-</ul>
-<h3>💬 13. Discord-Like Realtime Chat</h3>
-<ul>
-<li><strong>No Complex JS:</strong> Uses <strong>Rullst Live</strong> to maintain the chat room state on the server. Every message submitted via an HTMX form is processed, added to the thread's broadcasting channel, and rendered directly by the server, updating client DOMs via real-time WebSockets.</li>
-<li><strong>Scale:</strong> Utilizes Rust's efficient <code>Tokio</code> runtime threads, allowing thousands of persistent active WebSocket connections while consuming less than 50MB of RAM on the server.</li>
-</ul>
-<h3>🏥 9. Scheduling &amp; Clinics (The Scheduler)</h3>
-<ul>
-<li><strong>Conflict Prevention:</strong> Database transactions executed with a strict <code>SERIALIZABLE</code> isolation level or pessimistic locking to prevent double-booking at the exact millisecond of confirmation.</li>
-<li><strong>Integrated Cron:</strong> Reminder registration via Rullst's native Cron to fetch appointments in the next 2 hours and trigger automatic notifications without the need for external schedulers like Sidekiq or Celery.</li>
-</ul>
-<h3>🤖 7. AI Agent &amp; RAG Boilerplate (AI-Native)</h3>
-<ul>
-<li><strong>Structure:</strong> Intuitive file upload interface where Rullst converts the document, calculates embeddings using local models or configured APIs, and stores the vector data in the embedded SQLite database.</li>
-<li><strong>Flexibility:</strong> Flexible configuration via <code>rullst::ai</code> allowing instant toggling between external commercial LLMs (Gemini, OpenAI) and local instances (Ollama / Llama 3) with a single environment variable.</li>
-</ul>
+<p>You don't need to write any CSS to achieve this—RullstPress automatically injects its premium design system.</p>
+<h2>Navigation and Ordering</h2>
+<p>RullstPress automatically builds a beautiful sidebar navigation menu for you.</p>
+<p>By default, it sorts pages alphabetically. To control the exact order, prefix your markdown filenames with a number (e.g., <code>1-intro.md</code>, <code>2-setup.md</code>). The generator is smart enough to hide these numbers from the rendered titles in the sidebar!</p>
+<p>Enjoy building fast, gorgeous documentation sites without ever leaving the Rust ecosystem!</p>
 
     </main>
     <script>

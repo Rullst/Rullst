@@ -316,7 +316,10 @@
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
 <li><a href="2-rullst-ai.html">Rullst ai</a></li>
-<li><a href="3-rullstpress-engine.html">RullstPress engine</a></li>
+<li><a href="3-rullst-studio.html">Rullst studio</a></li>
+<li><a href="4-rullst-nexus.html">Rullst nexus</a></li>
+<li><a href="5-rullst-capital.html">Rullst capital</a></li>
+<li><a href="6-rullstpress-engine.html">RullstPress engine</a></li>
 <li><a href="blueprints_roadmap.html">Blueprints_roadmap</a></li>
 <li><a href="deep-audit-06-03.html">Deep audit 06 03</a></li>
 <li><a href="spec.html">Spec</a></li>
@@ -324,39 +327,28 @@
         </div>
     </aside>
     <main class="main-content">
-        <h1>RullstPress: The SSG Engine</h1>
-<p><strong>RullstPress</strong> is a lightning-fast, zero-dependency <strong>Static Site Generator (SSG)</strong> built directly into the Rullst Framework. It compiles standard Markdown files into highly-optimized, premium HTML files with an automatically generated sidebar and responsive layout.</p>
-<h2>The Core Concept</h2>
-<p>RullstPress is designed for everything from simple technical documentation to fully-fledged SaaS landing pages and developer portfolios.</p>
-<p>To begin, all you need is a <code>docs/</code> folder in the root of your project.</p>
-<pre><code class="language-text">my_project/
-└── docs/
-    ├── index.md             # The Home Page (Special Hero Layout)
-    ├── 1-getting-started.md # Article 1
-    └── 2-architecture.md    # Article 2
-</code></pre>
-<h2>Running the Engine</h2>
-<p>Rullst CLI provides built-in commands to work with your documentation.</p>
-<h3>Development Server</h3>
-<pre><code class="language-bash">cargo rullst docs dev
-</code></pre>
-<p>This command instantly compiles your markdown, launches a blazing-fast local server at <code>http://localhost:4000</code>, and watches your files for changes. When you save a markdown file, the server will hot-reload your browser!</p>
-<h3>Production Build</h3>
-<pre><code class="language-bash">cargo rullst docs build
-</code></pre>
-<p>This command compiles your site with maximum optimizations and outputs static HTML, CSS, and JS to the <code>docs/dist/</code> directory. You can host this <code>dist</code> folder directly on GitHub Pages, Vercel, or Netlify.</p>
-<h2>The Magic <code>index.md</code></h2>
-<p>If RullstPress finds an <code>index.md</code> file, it activates <strong>Hero Landing Page Mode</strong>. Instead of generating a standard documentation reading layout, it generates a beautiful, responsive landing page featuring:</p>
+        <h1>Rullst Capital: SaaS Billing Made Easy</h1>
+<p><strong>Rullst Capital</strong> is the billing and subscription orchestration layer for Rullst SaaS applications.</p>
+<p>If you generated your project using the <code>SaaS</code> blueprint (<code>cargo rullst new</code> -&gt; Select <code>SaaS Starter</code>), your application already comes wired with Capital, allowing you to charge your users from day one.</p>
+<h2>Core Features</h2>
 <ul>
-<li>A centered visual logo</li>
-<li>Glowing headlines with smooth CSS gradients</li>
-<li>Animated Call-to-Action buttons</li>
+<li><strong>Multi-Provider Support:</strong> Rullst Capital currently supports <code>Stripe</code> and <code>LemonSqueezy</code>. You can swap between them by simply changing the <code>BILLING_PROVIDER</code> environment variable. No code changes required!</li>
+<li><strong>Webhook Handling:</strong> Secure webhook endpoints are automatically set up to listen to subscription updates, payment successes, and cancellations.</li>
+<li><strong>Database Synchronization:</strong> When a payment succeeds, Capital automatically updates the <code>subscriptions</code> table in your local database via the <code>rullst-orm</code>, keeping user access in sync with their payment status.</li>
 </ul>
-<p>You don't need to write any CSS to achieve this—RullstPress automatically injects its premium design system.</p>
-<h2>Navigation and Ordering</h2>
-<p>RullstPress automatically builds a beautiful sidebar navigation menu for you.</p>
-<p>By default, it sorts pages alphabetically. To control the exact order, prefix your markdown filenames with a number (e.g., <code>1-intro.md</code>, <code>2-setup.md</code>). The generator is smart enough to hide these numbers from the rendered titles in the sidebar!</p>
-<p>Enjoy building fast, gorgeous documentation sites without ever leaving the Rust ecosystem!</p>
+<h2>Configuration</h2>
+<p>In your <code>.env</code> file, configure your keys:</p>
+<pre><code class="language-env">BILLING_PROVIDER=stripe # or lemonsqueezy
+BILLING_API_KEY=sk_test_...
+BILLING_WEBHOOK_SECRET=whsec_...
+</code></pre>
+<h2>How It Works in Your App</h2>
+<p>The generated <code>billing_controller.rs</code> provides two primary endpoints:</p>
+<ol>
+<li><strong>Checkout Redirect:</strong> When a user clicks "Upgrade to Pro", they hit <code>/billing/checkout?plan=price_pro</code>. Rullst Capital instantly communicates with Stripe/LemonSqueezy to create a secure checkout session and redirects the user.</li>
+<li><strong>Webhook Listener:</strong> The <code>/billing/webhook</code> route securely verifies the signature of the incoming request and delegates it to the <code>webhook_handler</code>. The handler then updates the user's <code>plan_id</code> and <code>ends_at</code> timestamp in your local database.</li>
+</ol>
+<p>This architecture ensures your application stays extremely fast and never stores sensitive payment data on your servers.</p>
 
     </main>
     <script>

@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - **Clean Blueprints**: Removed stale and unused ORM imports (`Blueprint`, `RullstModel`, `sqlx`, etc.) across all starter Blueprints. Generated code is now warning-free, scoring 10/10 on `cargo clippy`.
 - **Clippy Optimization**: Replaced a `useless_format` in the CLI's environment generator (`project.rs`) with a standard `.to_string()`.
+- **Zero-Panic Stability**: Eliminated all occurrences of `.unwrap()` and `.expect()` throughout the Rullst core (`edge.rs`, `server.rs`, `security.rs`, `resilience.rs`, `error_console.rs`), utilizing safe `match` patterns.
+- **Strict Linting Enforcement**: Injected `#![deny(clippy::unwrap_used)]` and `#![deny(clippy::expect_used)]` into `rullst/src/lib.rs` to enforce zero-panic code.
+- **100% Documentation Coverage Baseline**: Enabled `#![warn(missing_docs)]` across the main library, automatically seeding 282 missing documentation segments to mandate strictly documented APIs for future PRs.
 
 ## [2.0.1] - 2026-06-03 🐛
 
