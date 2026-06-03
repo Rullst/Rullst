@@ -315,33 +315,39 @@
             <ul class="sidebar-list" id="sidebar-links">
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
-<li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
-<li><a href="3-masterclass-building-a-saas.html">Masterclass building a saas</a></li>
-<li><a href="audit-report.html">Audit report</a></li>
+<li><a href="2-rullst-ai.html">Rullst ai</a></li>
+<li><a href="3-rullstpress-engine.html">RullstPress engine</a></li>
 <li><a href="blueprints_roadmap.html">Blueprints_roadmap</a></li>
-<li><a href="deep-audit-report-2026.html">Deep audit report 2026</a></li>
+<li><a href="deep-audit-06-03.html">Deep audit 06 03</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
         </div>
     </aside>
     <main class="main-content">
-        <h1>📦 Audit Report Archive — Deep Audit 2026 (Superseded)</h1>
-<blockquote>
-<p>[!WARNING]
-<strong>This report has been superseded.</strong> The findings documented here were addressed and resolved during Milestones 10 and 11.</p>
-<p><strong>Please refer to the current audit report:</strong> <a href="./audit-report.html">🛡️ Audit Report v2.0</a></p>
-</blockquote>
-<p>This document is retained for historical reference only.</p>
-<h2>Summary of Previous Findings (All Resolved)</h2>
-<table><thead><tr><th>Finding</th><th>Status</th></tr></thead><tbody>
-<tr><td>Hardcoded <code>DEV_APP_KEY</code> static value in <code>auth.rs</code></td><td>✅ Resolved in v1.0.10</td></tr>
-<tr><td>Production server could boot with an ephemeral key</td><td>✅ Resolved — panic enforced in production</td></tr>
-<tr><td>Dummy <code>assert!(true)</code> tests across multiple modules</td><td>✅ Resolved — replaced with real assertions</td></tr>
-<tr><td><code>cargo-rullst/main.rs</code> exceeded the 80-line limit</td><td>✅ Resolved — full CLI refactoring</td></tr>
-<tr><td>Missing community health files</td><td>✅ Resolved — CONTRIBUTING.md, CODE_OF_CONDUCT.md, PR templates added</td></tr>
-<tr><td>WAF and security headers not present</td><td>✅ Resolved — <code>waf_middleware</code>, <code>headers_middleware</code>, PII masking added</td></tr>
-</tbody></table>
-<p>For the full current security posture, please see the active <a href="./audit-report.html">Audit Report v2.0</a>.</p>
+        <h1>Rullst AI: Developing with AI Agents</h1>
+<p>Rullst is designed from the ground up to be <strong>"AI-native"</strong>. This means the architecture intentionally avoids "magic" reflection at runtime in favor of strong typing and compile-time guarantees, which helps AI coding assistants (like Copilot, Claude, or Gemini) reason about the code effectively.</p>
+<h2>1. Setting up AI Guardrails</h2>
+<p>To get the best results when pairing with an AI to develop your Rullst applications, you should provide the AI with strict guidelines.</p>
+<p>Rullst projects typically include a <code>.ai-rules</code> and <code>AGENTS.md</code> file in the root directory.</p>
+<h3>The <code>AGENTS.md</code> File</h3>
+<p>Create an <code>AGENTS.md</code> file in the root of your project:</p>
+<pre><code class="language-markdown"># AI Agents Guidelines for My Rullst App
+
+Welcome! If you are an autonomous AI or coding assistant contributing to this app, please follow these directives:
+
+1. **Strict Type Safety**: Do not use `dyn Trait` unless absolutely necessary. Rely on Rust's strong typing to guarantee safety.
+2. **Explicit APIs**: Avoid hidden state or implicit magic. Every controller, middleware, and model should be explicit.
+3. **HTML Macros**: Always quote boolean attributes in the `html!` macro (e.g. `required="true"`).
+4. **Error Handling**: Use the typed `AppError` enum and never `panic!()`, `unwrap()`, or `expect()` in production paths.
+</code></pre>
+<h2>2. Best Practices for AI Generation</h2>
+<p>When asking an AI to generate a new controller or page in Rullst, always mention the following rules:</p>
+<ol>
+<li><strong>Routing Macros</strong>: The <code>routes!</code> macro syntax requires parentheses: <code>get("/" =&gt; handler),</code>.</li>
+<li><strong>Zero-Allocation</strong>: Tell the AI to use the <code>html!</code> macro for rendering.</li>
+<li><strong>Database Concurrency</strong>: If the AI writes a background worker, remind it to use a <code>sleep</code> delay during initialization to avoid SQLx panics.</li>
+</ol>
+<p>By setting up these guardrails, your AI assistant will become a highly efficient co-pilot, seamlessly writing native Rust code that perfectly aligns with Rullst's strict type safety and high-performance philosophy!</p>
 
     </main>
     <script>

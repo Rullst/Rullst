@@ -20,6 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Spawn Uptime Ping background worker
     rullst::runtime::spawn(async {
         println!("📡 Uptime Monitor Background Worker iniciado.");
+        rullst::runtime::time::sleep(std::time::Duration::from_secs(3)).await;
         loop {
             let _ = controllers::uptime_controller::ping_monitors().await;
             rullst::runtime::time::sleep(Duration::from_secs(60)).await;
@@ -27,9 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let router = routes![
-        get("/") => controllers::uptime_controller::index,
+        get("/" => controllers::uptime_controller::index),
         post("/monitors" => controllers::uptime_controller::store_monitor),
-        post("/monitors/:id/toggle" => controllers::uptime_controller::toggle_monitor),
+        post("/monitors/{id}/toggle" => controllers::uptime_controller::toggle_monitor),
     ];
 
     println!("🚀 Uptime Monitoring server starting on port 3000...");
@@ -406,7 +407,7 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                         <div class="flex items-center gap-4">
                             <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 pulse"></div>
                             <div>
-                                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">"Rullst Uptime Radar"</h1>
+                                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst Uptime Radar"</h1>
                                 <p class="text-sm text-slate-400 mt-1">"Monitoramento contínuo de APIs e sites em tempo real."</p>
                             </div>
                         </div>
@@ -427,8 +428,8 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                         </div>
                         <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                             <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Monitores Ativos"</span>
-                            <span class="text-3xl font-bold mt-2 text-indigo-400">{format!("{} / {}", active_monitors_count, monitors.len())}</span>
-                            <span class="text-xs text-indigo-400/80 mt-1">"Alvos ativos de varredura"</span>
+                            <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{} / {}", active_monitors_count, monitors.len())}</span>
+                            <span class="text-xs text-orange-400/80 mt-1">"Alvos ativos de varredura"</span>
                         </div>
                     </div>
 
@@ -439,7 +440,7 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                         <div class="lg:col-span-2 space-y-6">
                             <h2 class="text-xl font-bold text-slate-200">"Monitores Registrados"</h2>
                             
-                            { monitors.into_iter().map(|(monitor, history)| {
+                            { rullst::html::RawHtml::new(monitors.into_iter().map(|(monitor, history)| {
                                 let is_active = monitor.is_active == 1;
                                 let last_hb = history.last();
                                 let is_currently_up = last_hb.map(|h| h.is_up == 1).unwrap_or(false);
@@ -491,7 +492,7 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                                             </div>
                                             <div class="col-span-2 sm:col-span-1 text-right">
                                                 <form action={format!("/monitors/{}/toggle", monitor.id)} method="POST">
-                                                    <button type="submit" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-indigo-400 bg-slate-900/40 text-slate-300 hover:text-indigo-400 transition-all">
+                                                    <button type="submit" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-orange-400 bg-slate-900/40 text-slate-300 hover:text-orange-400 transition-all">
                                                         {toggle_text}
                                                     </button>
                                                 </form>
@@ -505,7 +506,7 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                                                 { if history.is_empty() {
                                                     html! { <span class="text-xs text-slate-500">"Aguardando primeira verificação..."</span> }
                                                 } else {
-                                                    history.iter().map(|hb| {
+                                                    html! { { rullst::html::RawHtml::new(history.iter().map(|hb| {
                                                         let block_color = if hb.is_up == 1 {
                                                             "bg-emerald-500 hover:bg-emerald-400"
                                                         } else {
@@ -522,14 +523,14 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                                                                 class={format!("w-5 h-8 rounded-sm transition-all duration-150 hover:scale-110 cursor-pointer {}", block_color)}
                                                             ></div>
                                                         }
-                                                    }).collect::<Vec<_>>().join("")
+                                                    }).collect::<Vec<_>>().join("")) } }
                                                 } }
                                             </div>
                                         </div>
 
                                     </div>
                                 }
-                            }).collect::<Vec<_>>().join("") }
+                            }).collect::<Vec<_>>().join("")) }
 
                         </div>
 
@@ -542,11 +543,11 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
                                 <form action="/monitors" method="POST" class="space-y-4">
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Serviço"</label>
-                                        <input type="text" name="name" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="Ex: Meu Blog" />
+                                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="Ex: Meu Blog" />
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Endereço URL"</label>
-                                        <input type="url" name="url" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="https://meusite.com" />
+                                        <input type="url" name="url" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="https://meusite.com" />
                                     </div>
                                     <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                                         "Adicionar Monitor"

@@ -7,6 +7,7 @@ pub mod blank;
 pub mod blog;
 pub mod erp;
 pub mod lms;
+pub mod portfolio;
 pub mod saas;
 pub mod uptime;
 
@@ -20,12 +21,13 @@ pub fn apply(
     db_needed: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let manifest = match id {
-        0 => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed),
-        1 => lms::file_manifest(project_name_safe),
-        2 => saas::file_manifest(project_name_safe),
-        3 => blog::file_manifest(project_name_safe),
-        4 => erp::file_manifest(project_name_safe),
-        5 => uptime::file_manifest(project_name_safe),
+        0 => portfolio::file_manifest(project_name_safe),
+        1 => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed),
+        2 => lms::file_manifest(project_name_safe),
+        3 => saas::file_manifest(project_name_safe),
+        4 => blog::file_manifest(project_name_safe),
+        5 => erp::file_manifest(project_name_safe),
+        6 => uptime::file_manifest(project_name_safe),
         _ => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed),
     };
 

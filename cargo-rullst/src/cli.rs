@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use crate::generators::{
     auth::scaffold_auth_system,
     billing::scaffold_billing_system,
-    build::{run_build_client, run_production_build, run_upgrade, run_dev_server},
+    build::{run_build_client, run_dev_server, run_production_build, run_upgrade},
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,

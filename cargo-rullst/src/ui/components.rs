@@ -134,11 +134,11 @@ pub fn print_update_banner(latest_version: &str) {
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
 
-use std::time::Duration;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
 use std::io::Write;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
 
 pub fn with_spinner<F, T>(msg: &str, f: F) -> T
 where
@@ -157,23 +157,22 @@ where
             colored::Color::BrightCyan,
             colored::Color::Blue,
         ];
-        
 
         while is_running_clone.load(Ordering::SeqCst) {
             let frame = frames[i % frames.len()];
             let color = colors[(i / 2) % colors.len()];
-            
+
             let mut animated_msg = String::new();
             let targets = ["Application", "migrations"];
             let mut found_target = None;
-            
+
             for target in targets {
                 if let Some(pos) = msg.find(target) {
                     found_target = Some((target, pos));
                     break;
                 }
             }
-            
+
             if let Some((target, pos)) = found_target {
                 animated_msg.push_str(&msg[..pos].bold().to_string());
                 for (j, ch) in target.chars().enumerate() {
@@ -184,16 +183,22 @@ where
                         ch.to_ascii_lowercase()
                     };
                     let c_idx = (i + j) % colors.len();
-                    animated_msg.push_str(&wave_char.to_string().color(colors[c_idx]).bold().to_string());
+                    animated_msg.push_str(
+                        &wave_char
+                            .to_string()
+                            .color(colors[c_idx])
+                            .bold()
+                            .to_string(),
+                    );
                 }
-                animated_msg.push_str(&msg[pos+target.len()..].bold().to_string());
+                animated_msg.push_str(&msg[pos + target.len()..].bold().to_string());
             } else {
                 animated_msg = msg.bold().to_string();
             }
-            
+
             print!("\r\x1B[K{} {}", frame.color(color).bold(), animated_msg);
             let _ = std::io::stdout().flush();
-            
+
             thread::sleep(Duration::from_millis(80));
             i += 1;
         }
@@ -202,10 +207,10 @@ where
     });
 
     let result = f();
-    
+
     is_running.store(false, Ordering::SeqCst);
     let _ = handle.join();
-    
+
     result
 }
 
@@ -218,12 +223,30 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     let color_logo = |s: &str| s.truecolor(255, 165, 0).bold(); // Orange
 
     println!();
-    println!("{}", color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#));
-    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#));
-    println!("{}", color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#));
-    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#));
-    println!("{}", color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#));
-    println!("{}", color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#));
+    println!(
+        "{}",
+        color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#)
+    );
+    println!(
+        "{}",
+        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#)
+    );
+    println!(
+        "{}",
+        color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#)
+    );
+    println!(
+        "{}",
+        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#)
+    );
+    println!(
+        "{}",
+        color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#)
+    );
+    println!(
+        "{}",
+        color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#)
+    );
     println!();
     println!(
         "  {} {}",
@@ -243,7 +266,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     let choices = &[
         "✨  Create a New Project     (Rullst App Creator + Blueprints)",
         "🔄  Safe Upgrade             (Self-Healing Updates & Codemods)",
-        "🚀  Start Dev Server         (Compile with Neon Spinner & Run)",
+        "🚀  Start Dev Server         (Fast dev build + Hot Reload. Shortcut for 'cargo rullst dev')",
         /* --- HIDDEN FOR MVP ---
         "💡  View Help & Commands     (Framework Reference)",
         "🛠️  Scaffold Code            (Controllers, Models, Middlewares, Workers)",

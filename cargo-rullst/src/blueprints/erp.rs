@@ -17,9 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     rullst::artisan!(crate::migrations::get_migrations());
 
     let router = routes![
-        get("/") => controllers::erp_controller::index,
-        post("/products") => controllers::erp_controller::store_product,
-        post("/products/:id/add-stock" => controllers::erp_controller::add_stock),
+        get("/" => controllers::erp_controller::index),
+        post("/products" => controllers::erp_controller::store_product),
+        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
     ];
 
@@ -62,8 +62,8 @@ impl Migration for MigrationImpl {
         Schema::create("products", |table| {
             table.id();
             table.string("name").not_null();
-            table.string("sku").unique().not_null();
-            table.double("price").not_null();
+            table.string("sku").not_null();
+            table.float("price").not_null();
             table.integer("stock").not_null();
             table.timestamps();
         }).await?;
@@ -74,7 +74,7 @@ impl Migration for MigrationImpl {
             table.string("customer_name").not_null();
             table.integer("product_id").not_null();
             table.integer("quantity").not_null();
-            table.double("total_price").not_null();
+            table.float("total_price").not_null();
             table.string("status").not_null();
             table.timestamps();
         }).await?;
@@ -319,11 +319,11 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                     // --- Header ---
                     <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
                         <div>
-                            <span class="px-3 py-1 text-xs font-semibold text-purple-400 bg-purple-950/40 rounded-full border border-purple-800/40">"ERP Pocket"</span>
-                            <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-purple-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
+                            <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
+                            <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
                             <p class="text-sm text-slate-400 mt-1">"Gerenciamento ágil de inventário e vendas em tempo de execução."</p>
                         </div>
-                        <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-purple-500/50 hover:bg-slate-900/40 transition-all">"Acessar Rullst Nexus CMS &rarr;"</a>
+                        <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"Acessar Rullst Nexus CMS &rarr;"</a>
                     </header>
 
                     // --- KPI Cards ---
@@ -335,8 +335,8 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                         </div>
                         <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                             <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Pedidos Realizados"</span>
-                            <span class="text-3xl font-bold mt-2 text-purple-400">{format!("{}", total_orders)}</span>
-                            <span class="text-xs text-purple-400/80 mt-1">"Fluxo de vendas ativo"</span>
+                            <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
+                            <span class="text-xs text-orange-400/80 mt-1">"Fluxo de vendas ativo"</span>
                         </div>
                         <div class="glass p-6 rounded-2xl flex flex-col justify-between">
                             <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Alertas de Estoque Crítico"</span>
@@ -364,7 +364,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-800/40 text-sm">
-                                            { products.into_iter().map(|p| {
+                                            { rullst::html::RawHtml::new(products.iter().map(|p| {
                                                 let badge_color = if p.stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
                                                 html! {
                                                     <tr>
@@ -381,14 +381,14 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                                                 hx-post={format!("/products/{}/add-stock", p.id)}
                                                                 hx-target={format!("#stock-badge-{}", p.id)}
                                                                 hx-swap="outerHTML"
-                                                                class="px-2.5 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20 hover:border-indigo-400 bg-indigo-950/20 rounded-md transition-all active:scale-95"
+                                                                class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95"
                                                             >
                                                                 "+1 Estoque"
                                                             </button>
                                                         </td>
                                                     </tr>
                                                 }
-                                            }).collect::<Vec<_>>().join("") }
+                                            }).collect::<Vec<_>>().join("")) }
                                         </tbody>
                                     </table>
                                 </div>
@@ -409,7 +409,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-800/40 text-sm">
-                                            { orders.into_iter().map(|o| html! {
+                                            { rullst::html::RawHtml::new(orders.iter().map(|o| html! {
                                                 <tr>
                                                     <td class="py-3.5 px-4 text-slate-400 font-mono">"#{}"{format!("{}", o.id)}</td>
                                                     <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
@@ -421,7 +421,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                                         </span>
                                                     </td>
                                                 </tr>
-                                            }).collect::<Vec<_>>().join("") }
+                                            }).collect::<Vec<_>>().join("")) }
                                         </tbody>
                                     </table>
                                 </div>
@@ -437,24 +437,24 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                 <form action="/orders" method="POST" class="space-y-4">
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
-                                        <input type="text" name="customer_name" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
+                                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
-                                        <select name="product_id" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
+                                        <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
                                             // Usamos os produtos mapeados
                                             // Nota: no formulário passamos apenas a lista simples para seleção
-                                            { products.iter().map(|p| {
+                                            { rullst::html::RawHtml::new(products.iter().map(|p| {
                                                 let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
                                                 html! {
                                                     <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
                                                 }
-                                            }).collect::<Vec<_>>().join("") }
+                                            }).collect::<Vec<_>>().join("")) }
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
-                                        <input type="number" name="quantity" min="1" value="1" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
+                                        <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
                                     </div>
                                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                                         "Finalizar Pedido"
@@ -468,21 +468,21 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                                 <form action="/products" method="POST" class="space-y-4">
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
-                                        <input type="text" name="name" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
+                                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
-                                            <input type="text" name="sku" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                                            <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
                                         </div>
                                         <div>
                                             <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
-                                            <input type="number" step="0.01" name="price" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                                            <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
                                         </div>
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
-                                        <input type="number" name="stock" required=true class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
+                                        <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
                                     </div>
                                     <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                                         "Salvar Produto"

@@ -4,6 +4,15 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-06-03 🐛
+
+### Changed
+- **CLI Upgrades**: Improved the `cargo rullst` CLI wizard hints and simplified the dev server startup message.
+- **Blueprint Fixes**: Fixed `routes!` syntax (`get("/" => handler),`) and `html!` macro syntax (`required="true"`) that caused compilation errors in newly generated ERP and Uptime Monitor projects.
+- **Blueprint Resilience**: Added a 3-second initialization delay to background workers to completely prevent SQLx `Orm must be initialized before querying` panics on startup.
+- **Design Standardization**: Updated all 5 starter blueprints to strictly use the Rullst branding colors (Emerald Green `emerald-500` and Orange `orange-500`) instead of generic blues and purples.
+- **RullstPress Engine**: Completely rewrote the Rullst documentation using the internal SSG Engine, providing accurate tutorials for the new interactive CLI.
+
 ## [2.0.0] - 2026-06-01 🚀
 
 ### Security & Deep Audit 10/10 Certification

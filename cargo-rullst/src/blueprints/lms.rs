@@ -228,16 +228,16 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
                     body { background: #080b11; color: #f1f5f9; min-height: 100vh; padding: 3rem 1.5rem; }
                     .container { max-width: 1000px; margin: 0 auto; }
                     header { text-align: center; margin-bottom: 4rem; }
-                    h1 { font-size: 3rem; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+                    h1 { font-size: 3rem; background: linear-gradient(135deg, #10b981, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
                     p.sub { color: #64748b; font-size: 1.15rem; margin-top: 0.5rem; }
                     .courses-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2.5rem; }
                     .card { background: #111827; border: 1px solid #1f2937; border-radius: 1.25rem; overflow: hidden; transition: transform 0.3s, border-color 0.3s; display: flex; flex-direction: column; }
-                    .card:hover { transform: translateY(-5px); border-color: #6366f1; }
+                    .card:hover { transform: translateY(-5px); border-color: #10b981; }
                     .card-img { height: 180px; width: 100%; object-fit: cover; }
                     .card-body { padding: 2rem; flex: 1; display: flex; flex-direction: column; }
                     .card h3 { font-size: 1.4rem; margin-bottom: 0.75rem; color: #ffffff; }
                     .card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; flex: 1; }
-                    .btn { display: inline-block; text-align: center; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; text-decoration: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; transition: opacity 0.2s; }
+                    .btn { display: inline-block; text-align: center; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; text-decoration: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; transition: opacity 0.2s; }
                     .btn:hover { opacity: 0.9; }
                     "
                 </style>
@@ -291,7 +291,7 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                     .lessons-list { list-style: none; overflow-y: auto; flex: 1; }
                     .lesson-item { padding: 1.5rem 2rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: background-color 0.2s; }
                     .lesson-item:hover { background-color: #1e293b; }
-                    .lesson-item.active { background-color: #312e81; }
+                    .lesson-item.active { background-color: #064e3b; }
                     .lesson-item h4 { font-size: 0.95rem; font-weight: 600; color: #ffffff; margin-bottom: 0.25rem; }
                     .lesson-item span { font-size: 0.8rem; color: #94a3b8; }
                     .main-content { flex: 1; display: flex; flex-direction: column; background: #090d16; }
@@ -300,7 +300,7 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                     .player { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
                     .info-bar { padding: 2rem; background: #0f172a; border-top: 1px solid #1e293b; }
                     .info-bar h3 { font-size: 1.5rem; color: #ffffff; margin-bottom: 0.5rem; }
-                    .back-btn { margin-bottom: 1rem; display: inline-block; color: #38bdf8; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+                    .back-btn { margin-bottom: 1rem; display: inline-block; color: #f97316; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
                     "
                 </style>
             </head>

@@ -315,245 +315,48 @@
             <ul class="sidebar-list" id="sidebar-links">
 <li><a href="index.html">Home</a></li>
 <li><a href="1-getting-started.html">Getting started</a></li>
-<li><a href="2-tutorial-rullstpress.html">Tutorial RullstPress</a></li>
-<li><a href="3-masterclass-building-a-saas.html">Masterclass building a saas</a></li>
-<li><a href="audit-report.html">Audit report</a></li>
+<li><a href="2-rullst-ai.html">Rullst ai</a></li>
+<li><a href="3-rullstpress-engine.html">RullstPress engine</a></li>
 <li><a href="blueprints_roadmap.html">Blueprints_roadmap</a></li>
-<li><a href="deep-audit-report-2026.html">Deep audit report 2026</a></li>
+<li><a href="deep-audit-06-03.html">Deep audit 06 03</a></li>
 <li><a href="spec.html">Spec</a></li>
 </ul>
         </div>
     </aside>
     <main class="main-content">
-        <h1>🚀 Rullst Masterclass: Building a SaaS in 15 Minutes</h1>
-<p>Welcome to the definitive Rullst Masterclass! In this epic tutorial, we will take you on a journey from zero to production. You will experience the extreme productivity and raw power of the <strong>Rullst Framework</strong>.</p>
-<p>We won't just build a "Hello World". We are going to build a fully functional <strong>Task Tracker SaaS</strong> with database persistence, a reactive UI without writing JavaScript, an automatic Admin CMS, and then we will deploy it to the cloud.</p>
-<p>Let's build, not suffer! 🦀</p>
-<hr />
-<h2>🛠️ Chapter 1: The 10-Second Scaffold</h2>
-<p>Forget spending hours configuring Webpack, Babel, or fighting with borrow checkers. Rullst gives you everything out-of-the-box.</p>
-<p>Open your terminal and run the interactive Rullst wizard:</p>
-<pre><code class="language-bash">cargo rullst new
+        <h1>RullstPress: The SSG Engine</h1>
+<p><strong>RullstPress</strong> is a lightning-fast, zero-dependency <strong>Static Site Generator (SSG)</strong> built directly into the Rullst Framework. It compiles standard Markdown files into highly-optimized, premium HTML files with an automatically generated sidebar and responsive layout.</p>
+<h2>The Core Concept</h2>
+<p>RullstPress is designed for everything from simple technical documentation to fully-fledged SaaS landing pages and developer portfolios.</p>
+<p>To begin, all you need is a <code>docs/</code> folder in the root of your project.</p>
+<pre><code class="language-text">my_project/
+└── docs/
+    ├── index.md             # The Home Page (Special Hero Layout)
+    ├── 1-getting-started.md # Article 1
+    └── 2-architecture.md    # Article 2
 </code></pre>
-<p>The CLI will present an elegant prompt. Make the following choices:</p>
+<h2>Running the Engine</h2>
+<p>Rullst CLI provides built-in commands to work with your documentation.</p>
+<h3>Development Server</h3>
+<pre><code class="language-bash">cargo rullst docs dev
+</code></pre>
+<p>This command instantly compiles your markdown, launches a blazing-fast local server at <code>http://localhost:4000</code>, and watches your files for changes. When you save a markdown file, the server will hot-reload your browser!</p>
+<h3>Production Build</h3>
+<pre><code class="language-bash">cargo rullst docs build
+</code></pre>
+<p>This command compiles your site with maximum optimizations and outputs static HTML, CSS, and JS to the <code>docs/dist/</code> directory. You can host this <code>dist</code> folder directly on GitHub Pages, Vercel, or Netlify.</p>
+<h2>The Magic <code>index.md</code></h2>
+<p>If RullstPress finds an <code>index.md</code> file, it activates <strong>Hero Landing Page Mode</strong>. Instead of generating a standard documentation reading layout, it generates a beautiful, responsive landing page featuring:</p>
 <ul>
-<li><strong>App name?</strong> <code>task-master</code></li>
-<li><strong>Select a Starter Blueprint?</strong> <code>Blank Starter</code></li>
-<li><strong>What would you like to build?</strong> <code>Full-Stack Web App</code></li>
-<li><strong>Enable Hot Reloading by default?</strong> <code>Yes</code></li>
-<li><strong>Will your project need a Database?</strong> <code>Yes</code></li>
-<li><strong>Select a DB Provider?</strong> <code>Sqlite</code></li>
+<li>A centered visual logo</li>
+<li>Glowing headlines with smooth CSS gradients</li>
+<li>Animated Call-to-Action buttons</li>
 </ul>
-<p>Enter the project folder and start the engine:</p>
-<pre><code class="language-bash">cd task-master
-HOT_RELOAD=1 cargo run
-</code></pre>
-<p>Boom! Your server is running at <code>http://localhost:3000</code>. And because we enabled <code>HOT_RELOAD</code>, every time you save a <code>.rs</code> file, the server will atomically update in the background <strong>without dropping connections or restarting</strong>. Zero downtime! ⚡</p>
-<hr />
-<h2>🗄️ Chapter 2: Modeling Data &amp; Migrations</h2>
-<p>Our SaaS needs a database table to store tasks. With Rullst, you don't write complex SQL manually. You use the built-in <strong>Artisan CLI</strong> to scaffold your models and migrations using pure, type-safe Rust DSL.</p>
-<p>Run the model generator (the <code>-m</code> flag tells Rullst to generate a migration alongside the model):</p>
-<pre><code class="language-bash">cargo rullst make:model Task -m
-</code></pre>
-<p>This generates two files:</p>
-<ol>
-<li><code>src/models/task.rs</code> (Your Active Record Model)</li>
-<li><code>src/migrations/m[TIMESTAMP]_create_tasks_table.rs</code> (Your Migration)</li>
-</ol>
-<p>Open the migration file and define your schema using the elegant Schema Builder:</p>
-<pre><code class="language-rust">// src/migrations/m2026...create_tasks_table.rs
-use rullst_orm::schema::{Schema, Blueprint, Migration};
-use rullst_orm::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {
-    fn name(&amp;self) -&gt; &amp;'static str { "m2026_create_tasks_table" }
-
-    async fn up(&amp;self) -&gt; Result&lt;(), rullst_orm::sqlx::Error&gt; {
-        Schema::create("tasks", |table| {
-            table.id();
-            table.string("title").not_null();
-            table.boolean("is_completed").default("false");
-            table.timestamps();
-        }).await?;
-        Ok(())
-    }
-
-    async fn down(&amp;self) -&gt; Result&lt;(), rullst_orm::sqlx::Error&gt; {
-        Schema::drop_if_exists("tasks").await?;
-        Ok(())
-    }
-}
-</code></pre>
-<p>Now, let's execute the migration and create the SQLite database automatically:</p>
-<pre><code class="language-bash">cargo rullst db:migrate
-</code></pre>
-<p>Rullst intercepts this command, connects to the database, applies the schema, and safely exits. No external tools needed!</p>
-<hr />
-<h2>⚡ Chapter 3: The Magic of <code>html!</code> and HTMX</h2>
-<p>It's time to build the User Interface. Most Rust frameworks force you to use complex templating engines (like Tera or Askama) that don't understand your Rust types and break silently at runtime.</p>
-<p>Rullst uses a <strong>compile-time JSX-like engine</strong> called <code>html!</code>. It's 100% type-safe, blazingly fast, and prevents XSS automatically. We will combine this with <strong>HTMX</strong> to get single-page application (SPA) reactivity without writing a single line of JavaScript!</p>
-<p>Open <code>src/main.rs</code> and update the routes:</p>
-<pre><code class="language-rust">use rullst::{routes, html, Server, Router, response::{Html, IntoResponse}};
-use axum::Form;
-use serde::Deserialize;
-// Import our newly created model
-use crate::models::task::Task; 
-
-pub mod models;
-pub mod migrations;
-
-// 1. The Dashboard View
-async fn index() -&gt; impl IntoResponse {
-    let tasks = Task::all().await.unwrap_or_default();
-
-    Html(html! {
-        &lt;html class="dark"&gt;
-            &lt;head&gt;
-                &lt;script src="https://unpkg.com/htmx.org@1.9.10"&gt;&lt;/script&gt;
-                &lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;
-            &lt;/head&gt;
-            &lt;body class="bg-slate-950 text-white font-sans p-10 max-w-2xl mx-auto"&gt;
-                &lt;h1 class="text-4xl font-bold mb-8 text-emerald-400"&gt;"Task Master SaaS"&lt;/h1&gt;
-                
-                // Form to create a new task. Notice the HTMX tags!
-                &lt;form 
-                    hx-post="/tasks" 
-                    hx-target="#task-list" 
-                    hx-swap="beforeend" 
-                    class="flex gap-4 mb-8"
-                &gt;
-                    &lt;input type="text" name="title" required=true class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2" placeholder="What needs to be done?" /&gt;
-                    &lt;button type="submit" class="bg-emerald-600 hover:bg-emerald-500 font-bold py-2 px-6 rounded-lg transition-colors"&gt;"Add Task"&lt;/button&gt;
-                &lt;/form&gt;
-
-                &lt;ul id="task-list" class="space-y-3"&gt;
-                    { tasks.into_iter().map(|t| task_row(t)).collect::&lt;Vec&lt;_&gt;&gt;().join("") }
-                &lt;/ul&gt;
-            &lt;/body&gt;
-        &lt;/html&gt;
-    })
-}
-
-// 2. A reusable component for rendering a single Task
-fn task_row(task: Task) -&gt; String {
-    html! {
-        &lt;li class="p-4 bg-slate-900 rounded-lg border border-slate-800 flex justify-between items-center shadow-lg"&gt;
-            &lt;span class="font-medium text-lg"&gt;{&amp;task.title}&lt;/span&gt;
-            &lt;span class="text-xs text-slate-500"&gt;"Pending"&lt;/span&gt;
-        &lt;/li&gt;
-    }
-}
-
-// 3. Controller to handle form submission
-#[derive(Deserialize)]
-struct NewTask { title: String }
-
-async fn create_task(Form(payload): Form&lt;NewTask&gt;) -&gt; impl IntoResponse {
-    let pool = rullst_orm::Orm::pool();
-    
-    // Insert into DB safely
-    let _ = rullst_orm::sqlx::query("INSERT INTO tasks (title, is_completed, created_at, updated_at) VALUES ($1, false, datetime('now'), datetime('now'))")
-        .bind(&amp;payload.title)
-        .execute(pool)
-        .await;
-
-    // Fetch the newly created task (mocking ID 999 for brevity in tutorial)
-    let new_task = Task { id: 999, title: payload.title, is_completed: false };
-    
-    // Return ONLY the HTML for the new row. 
-    // HTMX will inject this directly into the &lt;ul&gt;!
-    Html(task_row(new_task))
-}
-
-// Register Artisan CLI interceptor
-rullst::artisan!(crate::migrations::get_migrations());
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    let app = routes![
-        get("/" =&gt; index),
-        post("/tasks" =&gt; create_task),
-    ];
-
-    Server::new(app).run(3000).await?;
-    Ok(())
-}
-</code></pre>
-<p>Save the file. Because Hot Reloading is active, go back to your browser at <code>localhost:3000</code>.
-Try typing a task and hitting "Add Task". <strong>Watch it appear instantly without the page refreshing!</strong> That's the magic of Rullst + HTMX.</p>
-<hr />
-<h2>🔮 Chapter 4: Rullst Nexus (The Magic Admin Panel)</h2>
-<p>Building admin panels is boring. Rullst automates this completely with the <strong>Rullst Nexus</strong> module. By simply implementing a trait, your model gets a gorgeous, dark-mode, AI-powered CMS panel for free.</p>
-<p>Open <code>src/models/task.rs</code> and add the <code>NexusModel</code> implementation:</p>
-<pre><code class="language-rust">use rullst_orm::{Orm, RullstModel, sqlx::{self, FromRow}};
-use rullst::{NexusModel, FieldMeta, FieldKind};
-
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
-#[orm(table = "tasks")]
-pub struct Task {
-    pub id: i32,
-    pub title: String,
-    pub is_completed: bool,
-}
-
-// Just add this trait!
-impl NexusModel for Task {
-    fn nexus_table() -&gt; &amp;'static str { "tasks" }
-    fn nexus_label() -&gt; &amp;'static str { "Tarefas" }
-    fn nexus_icon() -&gt; &amp;'static str { "📋" }
-    fn nexus_pk() -&gt; &amp;'static str { "id" }
-
-    fn nexus_fields() -&gt; Vec&lt;FieldMeta&gt; {
-        vec![
-            FieldMeta::new("id", "ID", FieldKind::Number).readonly(true),
-            FieldMeta::new("title", "Título da Tarefa", FieldKind::Text),
-            FieldMeta::new("is_completed", "Concluída?", FieldKind::Boolean),
-        ]
-    }
-}
-</code></pre>
-<p>Now, tell your router to mount the Nexus interface in <code>src/main.rs</code>:</p>
-<pre><code class="language-rust">use rullst::Nexus;
-
-// Inside main()...
-let app = routes![
-    get("/" =&gt; index),
-    post("/tasks" =&gt; create_task),
-].merge(Nexus::new().register::&lt;Task&gt;().into_router()); // Mount Nexus!
-</code></pre>
-<p>Open <code>http://localhost:3000/nexus</code> in your browser.
-Prepare to be amazed. You now have a complete, production-ready admin panel to create, read, update, and delete tasks, complete with an AI assistant ready to help!</p>
-<hr />
-<h2>🚀 Chapter 5: Deployment with Rullst Foundry</h2>
-<p>Your SaaS is ready for the world. How do you deploy a Rust application? Docker? Nginx configs? SSL certificates? Systemd services?</p>
-<p>Forget all that. <strong>Rullst Foundry</strong> is your 1-click DevOps engineer.</p>
-<p>Initialize the Foundry configuration:</p>
-<pre><code class="language-bash">cargo rullst foundry:init
-</code></pre>
-<p>This creates a <code>Foundry.toml</code> file. Open it and fill in your remote server's IP address (e.g., an Ubuntu server on DigitalOcean, AWS, or Hetzner). You only need a clean Ubuntu box with SSH access.</p>
-<pre><code class="language-toml">[server]
-host = "203.0.113.50"
-user = "root"
-</code></pre>
-<p>Now, launch the deployment pipeline:</p>
-<pre><code class="language-bash">cargo rullst foundry:deploy
-</code></pre>
-<p>Sit back and watch the magic happen. Rullst will:</p>
-<ol>
-<li>Compile a highly-optimized Linux production binary (<code>cargo build --release</code>).</li>
-<li>SSH into your server and install dependencies (Docker, Caddy).</li>
-<li>Upload your binary securely via SCP.</li>
-<li>Auto-configure a Caddy HTTPS reverse-proxy and acquire free SSL certificates for your domain.</li>
-<li>Setup a <code>systemd</code> persistence daemon to keep your app alive forever.</li>
-</ol>
-<p>In under 2 minutes, your application is live in production, running at blazingly fast Rust speeds.</p>
-<hr />
-<h2>🎉 Conclusion</h2>
-<p>Congratulations! In just 15 minutes, you learned how to scaffold, model data, build reactive UI, generate an admin CMS, and deploy a production-ready application.</p>
-<p><strong>This is the Rullst promise: Rust for those who want to build, not suffer.</strong> 🦀</p>
+<p>You don't need to write any CSS to achieve this—RullstPress automatically injects its premium design system.</p>
+<h2>Navigation and Ordering</h2>
+<p>RullstPress automatically builds a beautiful sidebar navigation menu for you.</p>
+<p>By default, it sorts pages alphabetically. To control the exact order, prefix your markdown filenames with a number (e.g., <code>1-intro.md</code>, <code>2-setup.md</code>). The generator is smart enough to hide these numbers from the rendered titles in the sidebar!</p>
+<p>Enjoy building fast, gorgeous documentation sites without ever leaving the Rust ecosystem!</p>
 
     </main>
     <script>

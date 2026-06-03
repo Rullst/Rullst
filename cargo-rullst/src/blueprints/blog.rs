@@ -17,8 +17,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     rullst::artisan!(crate::migrations::get_migrations());
 
     let router = routes![
-        get("/") => controllers::blog_controller::index,
-        get("/posts/:slug" => controllers::blog_controller::show),
+        get("/" => controllers::blog_controller::index),
+        get("/posts/{slug}" => controllers::blog_controller::show),
     ];
 
     println!("🚀 Blog server starting on port 3000...");
@@ -48,8 +48,8 @@ impl Migration for MigrationImpl {
         Schema::create("posts", |table| {
             table.id();
             table.string("title").not_null();
-            table.string("slug").unique().not_null();
-            table.text("content").not_null();
+            table.string("slug").not_null();
+            table.string("content").not_null();
             table.timestamps();
         }).await?;
 
@@ -146,14 +146,14 @@ pub fn index_page(posts: Vec<Post>) -> String {
                     body { background: #030712; color: #f3f4f6; min-height: 100vh; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; }
                     .container { max-width: 800px; width: 100%; }
                     header { text-align: center; margin-bottom: 5rem; }
-                    h1 { font-size: 3.5rem; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                    h1 { font-size: 3.5rem; font-weight: 800; background: linear-gradient(135deg, #059669, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
                     p.sub { color: #9ca3af; font-size: 1.20rem; margin-top: 0.5rem; }
                     .post-list { display: flex; flex-direction: column; gap: 2.5rem; }
                     .card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 2.5rem; transition: transform 0.2s, border-color 0.2s; }
-                    .card:hover { transform: translateY(-3px); border-color: rgba(167, 139, 250, 0.4); }
+                    .card:hover { transform: translateY(-3px); border-color: rgba(5, 150, 105, 0.4); }
                     .card h2 { font-size: 1.75rem; color: #ffffff; margin-bottom: 1rem; }
                     .card p { color: #9ca3af; font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; }
-                    .read-more { color: #a78bfa; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+                    .read-more { color: #f97316; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
                     .read-more:hover { text-decoration: underline; }
                     "
                 </style>
@@ -165,13 +165,13 @@ pub fn index_page(posts: Vec<Post>) -> String {
                         <p class="sub">"Insights on hyper-performance fullstack development"</p>
                     </header>
                     <div class="post-list">
-                        { posts.into_iter().map(|p| html! {
+                        { rullst::html::RawHtml::new(posts.into_iter().map(|p| html! {
                             <div class="card">
                                 <h2>{&p.title}</h2>
                                 <p>{&p.content[..100]} "..."</p>
                                 <a class="read-more" href={format!("/posts/{}", p.slug)}>"Read full post &rarr;"</a>
                             </div>
-                        }).collect::<Vec<_>>().join("") }
+                        }).collect::<Vec<_>>().join("")) }
                     </div>
                 </div>
             </body>
@@ -191,7 +191,7 @@ pub fn detail_page(post: Post) -> String {
                     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
                     body { background: #030712; color: #f3f4f6; min-height: 100vh; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; }
                     .container { max-width: 700px; width: 100%; }
-                    .back-link { color: #a78bfa; text-decoration: none; font-weight: 600; margin-bottom: 2rem; display: inline-block; }
+                    .back-link { color: #f97316; text-decoration: none; font-weight: 600; margin-bottom: 2rem; display: inline-block; }
                     h1 { font-size: 3rem; font-weight: 800; color: #ffffff; margin-bottom: 2rem; line-height: 1.2; }
                     .content { font-size: 1.15rem; color: #d1d5db; line-height: 1.8; }
                     "
@@ -199,7 +199,7 @@ pub fn detail_page(post: Post) -> String {
             </head>
             <body>
                 <div class="container">
-                    <a class="back-link" href="/">&larr; " Back to Feed"</a>
+                    <a class="back-link" href="/">"← Back to Feed"</a>
                     <h1>{&post.title}</h1>
                     <div class="content">
                         {&post.content}

@@ -1,186 +1,90 @@
 # Getting Started
 
-Welcome to the Rullst initial tutorial.
+Welcome to the **Rullst** Getting Started guide!
+
+Rullst is a blazing-fast, strictly-typed Full-Stack web framework designed to give you a pristine developer experience while prioritizing security and zero-allocation performance.
 
 ## 1. Installation
 
-First, you'll need Rust installed. The official and recommended way is to visit [https://rust-lang.org/tools/install/](https://rust-lang.org/tools/install/).
+First, ensure you have Rust installed. The official and recommended way is to visit [rustup.rs](https://rustup.rs/).
 
 **For macOS and Linux:**
-You can install via `rustup` by running the following command in your terminal:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 **For Windows:**
-Download and run the `rustup-init.exe` from the official website mentioned above. Follow the on-screen instructions.
+Download and run `rustup-init.exe` from the website.
 
-Next, install the Rullst CLI:
+Next, install the **Rullst CLI**. The CLI is the heart of the developer experience, handling scaffolding, static sites (RullstPress), database migrations, and more.
 
 ```bash
 cargo install cargo-rullst
 ```
 
-> **Adding to an existing project?**
-> If you already have a Rust project and just want to install the framework package without the CLI, you can simply run:
-> ```bash
-> cargo add rullst
-> ```
-> This command tells Cargo (Rust's package manager) to download the `rullst` library and add it as a dependency in your `Cargo.toml` file.
-
 ## 2. Creating Your First Project
 
-With the CLI installed, you can generate a complete project using our interactive wizard:
+We have completely redesigned the project creation experience. Instead of remembering complex flags, just run:
 
 ```bash
-cargo rullst new
-
-# The wizard will prompt you with a few options:
-# 🚀 App name? (no spaces allowed) -> my_portfolio
-# 🏗️ What would you like to build? -> Full-Stack Web App (SaaS, Portfolio, Blog)
-# 🔥 Enable Hot Reloading by default? -> Yes
-# 🗄️ Will your project need a Data Base? -> Yes (or No for simple projects)
-# 💾 Select a DB Provider -> Sqlite / Postgres / MySQL/MariaDB
-
-cd my_portfolio
-cargo run
+cargo rullst
 ```
 
-> **Note about Cargo:** The first time you run `cargo run`, Cargo will download and compile all the necessary dependencies (like Tokio, Axum, SQLx). This is completely normal in Rust and might take a few minutes. However, it will cache everything, so the next times you run `cargo run` it will take only a second!
+The **Rullst App Creator** will launch an interactive wizard. Let's create a beautiful Portfolio:
+1. Select **Create New App**.
+2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
+3. **Starter Blueprint**: Choose **Portfolio 🔥 (showcase for Rullst/AI developers) - HOT**.
 
-> **Note:** The project name cannot contain spaces (use `my_portfolio` instead of `my portfolio`).
+```bash
+cd my_portfolio
+cargo rullst dev
+```
 
-Done! Go to `http://localhost:3000` to see your framework running.
+> [!TIP]
+> The `cargo rullst dev` command automatically compiles your code and spins up a local server. If you edit any `.rs` file, it will instantly recompile using Hot Reload!
 
-After doing this, you can already put in your portfolio that you've started learning Rullst, the best Full-Stack web framework! :)
+
+## 3. Rullst Blueprints Showcase
+
+The Rullst framework accelerates your development by providing **Blueprints**. A Blueprint is a highly-polished, pre-built application template that serves as the foundation for your project.
+
+When you run `cargo rullst`, the wizard will ask you to select a Blueprint. All Blueprints feature the official Rullst color scheme (Emerald Green and Orange) and are built with zero-allocation HTML macros and HTMX.
+
+## 1. Blank Starter
+**Use Case:** Custom, from-scratch development.
+This is the minimal template. It includes a simple HTMX reactive counter to demonstrate the frontend-backend communication, but leaves the rest entirely up to you.
+
+## 2. Portfolio 🔥
+**Use Case:** Developer showcases and personal branding.
+**Status:** HOT!
+A visually stunning, glassmorphic portfolio template designed specifically for Rullst/AI developers. It includes:
+- A responsive Hero section with glowing text.
+- Project cards with hover animations.
+- A built-in contact form.
+
+## 3. Blog / Press
+**Use Case:** Content creation and articles.
+A static site generator pre-wired with Nexus CMS. It features:
+- A beautiful article reading view with typography optimized for readability.
+- A fully functional Markdown parser engine.
+- SEO-friendly metadata injection.
+
+## 4. Uptime Monitor
+**Use Case:** Infrastructure tracking and observability.
+A robust system designed to ping URLs and track their health. It features:
+- A dashboard with live status indicators.
+- A background worker (`rullst::runtime::spawn`) that loops every minute to check endpoints.
+- *Note: Background workers include a startup delay to ensure the database pool is fully initialized before querying.*
+
+## 5. ERP Pocket
+**Use Case:** Business management, stock, and inventory tracking.
+A complete back-office suite out of the box. It features:
+- A complex relational database schema (Products and Orders).
+- Full CRUD operations with HTMX.
+- A sleek, split-pane dashboard for simultaneous product listing and order creation.
 
 ---
 
-## 3. Creating a Developer Portfolio
+> [!TIP]
+> **Blueprint Evolution:** We are constantly refining our Blueprints. In version 2.0.1, all Blueprints were rigorously audited to ensure 100% macro syntax compliance (`routes!` and `html!`) and perfect database initialization order. You can build upon them with absolute confidence.
 
-This section will guide you step-by-step through creating a lightning-fast, highly-reactive Developer Portfolio using **Rullst**, **Tailwind CSS**, and **HTMX**.
-
-By the end of this tutorial, you will have a beautiful dark-mode portfolio that renders in under 5 milliseconds!
-
-### Using Tailwind CSS with the `html!` macro
-
-Open your project in your code editor. 
-Since this is a Web App, Rullst automatically configured a frontend entry point for you in `src/lib.rs`.
-
-Rullst has a powerful `html!` macro that allows you to write standard HTML5 directly inside Rust. 
-It supports dynamic Rust variables natively, escaping them automatically to prevent XSS attacks.
-
-Let's create an incredible Hero Section using Tailwind CSS classes. Replace the `home` function in `src/lib.rs` with this:
-
-```rust
-use rullst::{html, response::IntoResponse, htmx::{HtmxRequest, render_page}};
-
-pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {
-    let name = "Alex Developer";
-    let role = "Full-Stack Rust Engineer";
-    let description = "I build blazingly fast and highly scalable applications.";
-
-    let content = html! {
-        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans selection:bg-sky-500/30">
-            
-            <div class="max-w-3xl text-center space-y-8 animate-fade-in-up">
-                
-                <div class="inline-block px-4 py-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-400 text-sm font-semibold tracking-wide backdrop-blur-md">
-                    "Available for hire"
-                </div>
-
-                <h1 class="text-6xl md:text-7xl font-extrabold tracking-tight">
-                    "Hi, I'm " 
-                    <span class="bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
-                        {name}
-                    </span>
-                </h1>
-                
-                <p class="text-2xl font-medium text-slate-300">
-                    {role}
-                </p>
-
-                <p class="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                    {description}
-                </p>
-
-                <!-- Project Loader Section -->
-                <div id="projects-container" class="pt-8">
-                    <button hx-get="/projects" 
-                            hx-target="#projects-container" 
-                            hx-swap="outerHTML" 
-                            class="px-8 py-3.5 bg-slate-100 text-slate-900 font-bold rounded-xl shadow-lg shadow-slate-100/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer">
-                        "View My Projects"
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    };
-
-    render_page(&htmx, "Alex's Portfolio", content)
-}
-```
-
-Notice the `<button hx-get="/projects">`! We are using **HTMX** to fetch projects directly from the backend without writing a single line of JavaScript!
-
-### Creating the HTMX Interactive Route
-
-Now, let's create the `/projects` route that will respond to the button click and render a beautiful grid of projects.
-
-Add this new handler below the `home` function in `src/lib.rs`:
-
-```rust
-// A simple struct to represent a project
-struct Project {
-    title: &'static str,
-    tech: &'static str,
-}
-
-pub async fn load_projects() -> impl IntoResponse {
-    let projects = vec![
-        Project { title: "Rullst CLI", tech: "Rust, clap" },
-        Project { title: "E-Commerce API", tech: "Rust, Axum, PostgreSQL" },
-        Project { title: "Social Dashboard", tech: "React, Tailwind, HTMX" },
-    ];
-
-    rullst::response::Html(html! {
-        <div id="projects-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 w-full animate-fade-in">
-            { 
-                projects.into_iter().map(|p| html! {
-                    <div class="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-sky-500/50 transition-all duration-300 hover:-translate-y-1">
-                        <h3 class="text-xl font-bold text-slate-200 group-hover:text-sky-400 transition-colors">
-                            {p.title}
-                        </h3>
-                        <p class="text-sm font-mono text-slate-500 mt-2">
-                            {p.tech}
-                        </p>
-                    </div>
-                }).collect::<String>()
-            }
-        </div>
-    })
-}
-```
-
-### Adding the Route
-
-Finally, don't forget to register this new route in your `rullst_router_init` function at the bottom of the file:
-
-```rust
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
-    let router = rullst::routes![
-        get("/" => home),
-        get("/projects" => load_projects),
-    ];
-    Box::into_raw(Box::new(router))
-}
-```
-
-### Run and Enjoy!
-
-If you generated your project with **Hot-Reloading** enabled, your server has already recompiled and updated the routes dynamically! 
-Just visit [http://localhost:3000](http://localhost:3000) and click the "View My Projects" button!
-
-You now have an incredibly robust, SEO-friendly, and blazing-fast portfolio powered by Rust!

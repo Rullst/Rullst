@@ -191,14 +191,17 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Step 5: Compiler validation gate
-    let check_success = with_spinner("Running validation gate (cargo check) to confirm health status...", || {
-        Command::new("cargo")
-            .arg("check")
-            .arg("-q")
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    });
+    let check_success = with_spinner(
+        "Running validation gate (cargo check) to confirm health status...",
+        || {
+            Command::new("cargo")
+                .arg("check")
+                .arg("-q")
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+        },
+    );
 
     if check_success {
         println!(
@@ -230,18 +233,10 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    println!(
-        "{}",
-        "\n🚀 Starting Rullst Dev Server...\n"
-            .cyan()
-            .bold()
-    );
+    println!("{}", "\n🚀 Starting Rullst Dev Server...\n".cyan().bold());
 
     let output_result = with_spinner("Compiling Rullst Application...", || {
-        Command::new("cargo")
-            .arg("build")
-            .arg("-q")
-            .output()
+        Command::new("cargo").arg("build").arg("-q").output()
     });
 
     match output_result {
@@ -270,12 +265,12 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("{}", "✨ Compilation successful! Starting the server...\n".green());
+    println!(
+        "{}",
+        "✨ Compilation successful! Starting the server...\n".green()
+    );
 
-    let status = Command::new("cargo")
-        .arg("run")
-        .arg("-q")
-        .status()?;
+    let status = Command::new("cargo").arg("run").arg("-q").status()?;
 
     if !status.success() {
         std::process::exit(1);

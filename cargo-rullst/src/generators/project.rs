@@ -45,9 +45,9 @@ pub fn create_new_project(
         "┌────────────────────────────────────────────────────┐".bright_cyan()
     );
     println!(
-        "  {} {} {}",
+        "  {} 🎯 {} APP CREATOR — Let's build something new! {}",
         "│".bright_cyan(),
-        format!("🎯 {} APP CREATOR — Let's build something new!", "RULLST".truecolor(255, 165, 0).bold()),
+        "RULLST".truecolor(255, 165, 0).bold(),
         "│".bright_cyan()
     );
     println!(
@@ -70,14 +70,23 @@ pub fn create_new_project(
                     continue;
                 }
                 if val_trim.contains(' ') {
-                    println!("{}", "❌ Spaces are not allowed in the project name. Please try again.".red());
+                    println!(
+                        "{}",
+                        "❌ Spaces are not allowed in the project name. Please try again.".red()
+                    );
                     continue;
                 }
                 if val_trim.chars().next().unwrap().is_ascii_digit() {
-                    println!("{}", "❌ The project name cannot start with a number. Please try again.".red());
+                    println!(
+                        "{}",
+                        "❌ The project name cannot start with a number. Please try again.".red()
+                    );
                     continue;
                 }
-                if !val_trim.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+                if !val_trim
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                {
                     println!("{}", "❌ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
                     continue;
                 }
@@ -93,18 +102,23 @@ pub fn create_new_project(
     let mut blueprint_selection = 0usize;
 
     if name_arg.is_none() {
-        let blueprint_choices = &[
-            "Blank Starter (Minimal template with HTMX reactive counter)",
-            "LMS Platform (Courses, lessons, video player, HTMX integration)",
-            "SaaS App Starter (Authentication + Stripe payments billing template)",
-            "Blog / Press (Static site generator pre-wired with Nexus CMS)",
-            "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)",
-            "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)",
+        let portfolio_title = format!(
+            "Portfolio 🔥 (showcase for Rullst/AI developers) - {}",
+            "HOT".bright_red().bold()
+        );
+        let blueprint_choices = vec![
+            "Blank Starter (Minimal template with HTMX reactive counter)".to_string(),
+            portfolio_title,
+            "LMS Platform (Courses, lessons, video player, HTMX integration)".to_string(),
+            "SaaS App Starter (Authentication + Stripe payments billing template)".to_string(),
+            "Blog / Press (Static site generator pre-wired with Nexus CMS)".to_string(),
+            "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
+            "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)".to_string(),
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("🧭 Select a Starter Blueprint")
             .default(0)
-            .items(&blueprint_choices[..])
+            .items(&blueprint_choices)
             .interact()?;
 
         if blueprint_selection == 0 {
@@ -131,9 +145,9 @@ pub fn create_new_project(
 
             if db_needed {
                 let db_options = &[
-                    "Sqlite (Zero setup)", 
-                    "Postgres (Requires localhost:5432 running)", 
-                    "MySQL/MariaDB (Requires localhost:3306 running)"
+                    "Sqlite (Zero setup)",
+                    "Postgres (Requires localhost:5432 running)",
+                    "MySQL/MariaDB (Requires localhost:3306 running)",
                 ];
                 let db_selection = dialoguer::Select::with_theme(&theme)
                     .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
@@ -146,6 +160,8 @@ pub fn create_new_project(
                     _ => "Sqlite".to_string(),
                 };
             }
+        } else if blueprint_selection == 1 {
+            db_needed = false;
         } else {
             // LMS, SaaS, and Blog blueprints require database configuration (always Sqlite by default)
             db_needed = true;
@@ -246,12 +262,12 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
         ));
     }
 
-    if blueprint_selection == 5 {
+    if blueprint_selection == 6 {
         cargo_toml.push_str("reqwest = { version = \"0.12\", default-features = false, features = [\"rustls-tls\"] }\n");
     }
 
     // Special dependencies for SaaS blueprint
-    if blueprint_selection == 2 {
+    if blueprint_selection == 3 {
         let sibling_path = current_dir.join("rullst-connect");
         let connect_dep = if sibling_path.exists() {
             let absolute_path = sibling_path
@@ -447,7 +463,7 @@ APP_ENV=development
         db_url = db_url
     );
 
-    if blueprint_selection == 1 || blueprint_selection == 2 {
+    if blueprint_selection == 2 || blueprint_selection == 3 {
         let stripe_template = r#"
 # ── Stripe Billing (replace with your real keys from stripe.com/dashboard) ──
 # STRIPE_SECRET_KEY=sk_test_REPLACE_WITH_YOUR_SECRET_KEY
@@ -485,17 +501,20 @@ APP_ENV=development
     // Automatically run initial migrations if a database was selected
     if db_needed {
         println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
-        let migrate_success = crate::ui::components::with_spinner("Running initial migrations (this may take a moment to compile)...", || {
-            std::process::Command::new("cargo")
-                .arg("run")
-                .arg("-q")
-                .arg("--")
-                .arg("db:migrate")
-                .current_dir(path)
-                .output()
-                .map(|s| s.status.success())
-                .unwrap_or(false)
-        });
+        let migrate_success = crate::ui::components::with_spinner(
+            "Running initial migrations (this may take a moment to compile)...",
+            || {
+                std::process::Command::new("cargo")
+                    .arg("run")
+                    .arg("-q")
+                    .arg("--")
+                    .arg("db:migrate")
+                    .current_dir(path)
+                    .output()
+                    .map(|s| s.status.success())
+                    .unwrap_or(false)
+            },
+        );
 
         if migrate_success {
             println!("{}", "  ✅ Database tables created successfully.".green());
