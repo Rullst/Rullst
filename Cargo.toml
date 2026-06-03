@@ -3,6 +3,6 @@ members = [
     "rullst",
     "rullst-macros",
     "cargo-rullst",
-    "examples/blog", "rullst-press", "test_alias",
+    "examples/blog", "rullst-press",
 ]
 resolver = "2"
