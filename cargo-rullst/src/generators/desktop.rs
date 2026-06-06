@@ -20,7 +20,7 @@ pub fn scaffold_desktop_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "🖥️ Starting scaffolding of Rullst desktop packaging system (Tauri)..."
+        "🖥️ Starting scaffolding of Rullst desktop packaging system..."
             .cyan()
             .bold()
     );
@@ -46,11 +46,13 @@ edition = "2021"
 tauri-build = { version = "1.5" }
 
 [dependencies]
-tauri = { version = "1.5", features = ["shell-open"] }
+tauri = { version = "1.5" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["blocking"] }
+
+[workspace]
 "#;
     fs::write(src_tauri_dir.join("Cargo.toml"), cargo_toml)?;
 
@@ -88,11 +90,8 @@ reqwest = { version = "0.11", features = ["blocking"] }
       "identifier": "com.rullst.desktop",
       "longDescription": "",
       "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
         "frameworks": [],
-        "providerBundleIdentifier": null,
-        "signingIdentity": null
+        "minimumSystemVersion": ""
       },
       "resources": [],
       "shortDescription": "",
@@ -210,8 +209,8 @@ fn main() {
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
         0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
         0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0x60,
-        0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x73, 0x0d, 0x8b, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
-        0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        0x60, 0x60, 0x60, 0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x7a, 0xa8, 0x57, 0x50, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
     ];
 
     fs::write(icons_dir.join("32x32.png"), png_bytes)?;
@@ -278,7 +277,7 @@ pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "📱 Starting scaffolding of Rullst Omni multi-platform frontend (Dioxus)..."
+        "📱 Starting scaffolding of Rullst Omni multi-platform frontend..."
             .cyan()
             .bold()
     );
@@ -303,6 +302,8 @@ reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
+
+[workspace]
 "#;
     fs::write(omni_dir.join("Cargo.toml"), cargo_toml)?;
 
@@ -375,7 +376,7 @@ fn App() -> Element {
                 header { class: "header-container",
                     div { class: "logo-group",
                         span { class: "logo-glow", "R" }
-                        h1 { "Rullst "; span { class: "gradient-text", "Omni" } }
+                        h1 { "Rullst ", span { class: "gradient-text", "Omni" } }
                     }
                     span { class: "badge", "v1.0.5 - Free Enterprise" }
                 }
@@ -768,7 +769,7 @@ h2 {
 
     println!(
         "{}",
-        "✅ Rullst Omni (Dioxus) template successfully generated in 'omni-app/'!"
+        "✅ Rullst Omni template successfully generated in 'omni-app/'!"
             .green()
             .bold()
     );

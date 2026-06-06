@@ -123,12 +123,16 @@ impl Server {
             );
         }
 
-        let host = if is_dev && std::env::var("RULLST_HOST").is_err() {
-            [127, 0, 0, 1]
-        } else {
-            [0, 0, 0, 0]
-        };
-        let addr = SocketAddr::from((host, port));
+        let host_str = std::env::var("HOST").unwrap_or_else(|_| {
+            if is_dev && std::env::var("RULLST_HOST").is_err() {
+                "127.0.0.1".to_string()
+            } else {
+                "0.0.0.0".to_string()
+            }
+        });
+        let addr: SocketAddr = format!("{}:{}", host_str, port)
+            .parse()
+            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], port)));
 
         // I-1: Warn when dev-only routes are exposed on a non-loopback address
         if is_dev && addr.ip().is_unspecified() {

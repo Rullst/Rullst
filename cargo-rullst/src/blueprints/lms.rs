@@ -246,7 +246,7 @@ impl NexusModel for Course {
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
             FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "category_id", label: "Category ID", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "category_id", label: "Category", kind: FieldKind::ForeignKey { table: "categories", label_col: "name" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "description", label: "Description", kind: FieldKind::Textarea, hidden: false, readonly: false },
             FieldMeta { name: "thumbnail", label: "Thumbnail URL", kind: FieldKind::Url, hidden: false, readonly: false },
@@ -276,7 +276,7 @@ impl NexusModel for Lesson {
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
             FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "course_id", label: "Course ID", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "video_url", label: "Video URL", kind: FieldKind::Url, hidden: false, readonly: false },
             FieldMeta { name: "duration", label: "Duration (mins)", kind: FieldKind::Number, hidden: false, readonly: false },

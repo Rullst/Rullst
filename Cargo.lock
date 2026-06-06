@@ -371,7 +371,7 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "cargo-rullst"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "axum",
  "brotli",
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "2.0.1"
+version = "2.0.3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "2.0.1"
+version = "2.0.3"
 dependencies = [
  "proc-macro2",
  "quote",

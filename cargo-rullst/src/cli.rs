@@ -103,6 +103,8 @@ pub enum Commands {
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
     #[command(name = "foundry:deploy")]
     FoundryDeploy,
+    /// Generates Dockerfile and docker-compose.yml for the project
+    Dockerize,
     /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
@@ -202,6 +204,25 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::FoundryDeploy => {
             run_foundry_deploy()?;
+        }
+        Commands::Dockerize => {
+            let mut proj_name = "app".to_string();
+            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
+                for line in toml_content.lines() {
+                    if line.starts_with("name = ") {
+                        proj_name = line
+                            .replace("name = ", "")
+                            .replace("\"", "")
+                            .trim()
+                            .to_string();
+                        break;
+                    }
+                }
+            }
+            crate::generators::project::generate_docker_files(
+                std::path::Path::new("."),
+                &proj_name,
+            )?;
         }
         Commands::MakeCors => {
             create_cors_middleware()?;

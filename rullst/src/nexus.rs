@@ -65,6 +65,13 @@ pub enum FieldKind {
     Password,
     /// A JSON object displayed as textarea.
     Json,
+    /// A foreign key pointing to another table.
+    ForeignKey {
+        /// Target table name (e.g. "categories").
+        table: &'static str,
+        /// Column of target table to use as option label (e.g. "name").
+        label_col: &'static str,
+    },
 }
 
 /// Describes a single field/column in a model's schema for the Nexus Panel.
@@ -223,7 +230,10 @@ struct ChatRequest {
 // ─── Route Handlers ───────────────────────────────────────────────────────────
 
 /// GET /nexus — Dashboard overview.
-async fn nexus_dashboard(State(state): State<Arc<NexusState>>) -> Html<String> {
+async fn nexus_dashboard(
+    State(state): State<Arc<NexusState>>,
+    headers: axum::http::HeaderMap,
+) -> Html<String> {
     let models_sidebar = render_sidebar(&state, None);
 
     let mut stats_cards = String::new();
@@ -256,7 +266,11 @@ async fn nexus_dashboard(State(state): State<Arc<NexusState>>) -> Html<String> {
     content.push_str("<a href=\"/nexus/chat\" class=\"nexus-btn nexus-btn-ai\" hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">&#129302; Open AI Query Assistant</a>");
     content.push_str("</div>");
 
-    Html(render_shell(&state, &models_sidebar, &content))
+    if headers.contains_key("hx-request") {
+        Html(content)
+    } else {
+        Html(render_shell(&state, &models_sidebar, &content))
+    }
 }
 
 /// GET /nexus/table/{table} — Model list view with pagination.
@@ -264,6 +278,7 @@ async fn nexus_table_view(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
     Query(params): Query<PaginationParams>,
+    headers: axum::http::HeaderMap,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -279,13 +294,17 @@ async fn nexus_table_view(
     let page = params.page.unwrap_or(1).max(1);
     let q = params.q.clone().unwrap_or_default();
 
-    let content = render_table_view(&state, entry, page, &q);
-    Html(render_shell(
-        &state,
-        &render_sidebar(&state, Some(&table)),
-        &content,
-    ))
-    .into_response()
+    let content = render_table_view(&state, entry, page, &q).await;
+    if headers.contains_key("hx-request") {
+        Html(content).into_response()
+    } else {
+        Html(render_shell(
+            &state,
+            &render_sidebar(&state, Some(&table)),
+            &content,
+        ))
+        .into_response()
+    }
 }
 
 /// GET /nexus/table/{table}/search — HTMX search fragment (no shell).
@@ -299,7 +318,8 @@ async fn nexus_table_search(
         None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
     };
     let q = params.q.clone().unwrap_or_default();
-    Html(render_table_rows(entry, &q))
+    let page = params.page.unwrap_or(1).max(1);
+    Html(render_table_rows(entry, &q, page).await)
 }
 
 /// GET /nexus/table/{table}/new — New record form.
@@ -311,24 +331,103 @@ async fn nexus_new_form(
         Some(e) => e,
         None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
     };
-    Html(render_record_form(entry, None))
+    Html(render_record_form(&state, entry, None).await)
 }
 
-/// POST /nexus/table/{table} — Create a new record (demo handler).
+/// POST /nexus/table/{table} — Create a new record.
 async fn nexus_create_record(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
-) -> Html<String> {
+    axum::extract::Form(data): axum::extract::Form<std::collections::HashMap<String, String>>,
+) -> impl axum::response::IntoResponse {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => {
+            return (
+                axum::http::StatusCode::NOT_FOUND,
+                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+            )
+                .into_response();
+        }
     };
-    Html(format!(
-        "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-         &#9989; New {} record created successfully!\
-         </div>",
-        entry.label
-    ))
+
+    let mut keys = Vec::new();
+    let mut values = Vec::new();
+    for f in &entry.fields {
+        if let Some(val) = data.get(f.name) {
+            if f.name == entry.pk && val.trim().is_empty() {
+                continue;
+            }
+            keys.push(f.name);
+            values.push(val);
+        }
+    }
+
+    if keys.is_empty() {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#10060; No values provided to create {}\
+                 </div>",
+                entry.label
+            ))
+        ).into_response();
+    }
+
+    let sql = format!(
+        "INSERT INTO {} ({}) VALUES ({})",
+        table,
+        keys.join(", "),
+        (0..keys.len())
+            .map(|i| format!("${}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+    for v in values {
+        query = query.bind(v);
+    }
+
+    let mut success = false;
+    let mut err_msg = String::new();
+
+    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+        match query.execute(pool).await {
+            Ok(_) => {
+                success = true;
+            }
+            Err(e) => {
+                err_msg = e.to_string();
+            }
+        }
+    } else {
+        err_msg = "Database pool not initialized".to_string();
+    }
+
+    if success {
+        (
+            axum::http::StatusCode::OK,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#9989; New {} record created successfully!\
+                 </div>",
+                entry.label
+            ))
+        ).into_response()
+    } else {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#10060; Failed to create {}: {}\
+                 </div>",
+                entry.label,
+                crate::html::escape_str(&err_msg)
+            ))
+        ).into_response()
+    }
 }
 
 /// GET /nexus/table/{table}/{id}/edit — Edit record form.
@@ -340,49 +439,162 @@ async fn nexus_edit_form(
         Some(e) => e,
         None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
     };
-    Html(render_record_form(entry, Some(&id)))
+    Html(render_record_form(&state, entry, Some(&id)).await)
 }
 
-/// PUT /nexus/table/{table}/{id} — Update a record (demo handler).
+/// PUT /nexus/table/{table}/{id} — Update a record.
 async fn nexus_update_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
-) -> Html<String> {
+    axum::extract::Form(data): axum::extract::Form<std::collections::HashMap<String, String>>,
+) -> impl axum::response::IntoResponse {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => {
+            return (
+                axum::http::StatusCode::NOT_FOUND,
+                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+            )
+                .into_response();
+        }
     };
-    Html(format!(
-        "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-         &#9989; {} #{} updated successfully!\
-         </div>",
-        entry.label,
-        crate::html::escape_str(&id)
-    ))
+
+    let mut updates = Vec::new();
+    let mut values = Vec::new();
+    for f in &entry.fields {
+        if f.name != entry.pk {
+            if let Some(val) = data.get(f.name) {
+                updates.push(format!("{} = ${}", f.name, updates.len() + 1));
+                values.push(val);
+            }
+        }
+    }
+
+    let sql = format!(
+        "UPDATE {} SET {} WHERE {} = ${}",
+        table,
+        updates.join(", "),
+        entry.pk,
+        updates.len() + 1
+    );
+    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+    for v in values {
+        query = query.bind(v);
+    }
+    query = query.bind(id.clone());
+
+    let mut success = false;
+    let mut err_msg = String::new();
+
+    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+        match query.execute(pool).await {
+            Ok(_) => {
+                success = true;
+            }
+            Err(e) => {
+                err_msg = e.to_string();
+            }
+        }
+    } else {
+        err_msg = "Database pool not initialized".to_string();
+    }
+
+    if success {
+        (
+            axum::http::StatusCode::OK,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#9989; {} #{} updated successfully!\
+                 </div>",
+                entry.label,
+                crate::html::escape_str(&id)
+            ))
+        ).into_response()
+    } else {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#10060; Failed to update {}: {}\
+                 </div>",
+                entry.label,
+                crate::html::escape_str(&err_msg)
+            ))
+        ).into_response()
+    }
 }
 
-/// DELETE /nexus/table/{table}/{id} — Delete a record (demo handler).
+/// DELETE /nexus/table/{table}/{id} — Delete a record.
 async fn nexus_delete_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
-) -> Html<String> {
+) -> impl axum::response::IntoResponse {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => {
+            return (
+                axum::http::StatusCode::NOT_FOUND,
+                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+            )
+                .into_response();
+        }
     };
-    Html(format!(
-        "<tr id=\"row-{id}\" class=\"nexus-row-deleted\">\
-         <td colspan=\"99\">\
-         <div class=\"nexus-toast nexus-toast-warning\">\
-         &#128465;&#65039; {} #{} deleted.\
-         </div></td></tr>",
-        entry.label,
-        crate::html::escape_str(&id)
-    ))
+
+    let sql = format!("DELETE FROM {} WHERE {} = ?", table, entry.pk);
+    let mut success = false;
+    let mut err_msg = String::new();
+
+    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+        match rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(&id)
+            .execute(pool)
+            .await
+        {
+            Ok(_) => {
+                success = true;
+            }
+            Err(e) => {
+                err_msg = e.to_string();
+            }
+        }
+    } else {
+        err_msg = "Database pool not initialized".to_string();
+    }
+
+    if success {
+        (
+            axum::http::StatusCode::OK,
+            Html(format!(
+                "<tr id=\"row-{id}\" class=\"nexus-row-deleted\">\
+                 <td colspan=\"99\">\
+                 <div class=\"nexus-toast nexus-toast-warning\">\
+                 &#128465;&#65039; {} #{} deleted.\
+                 </div></td></tr>",
+                entry.label,
+                crate::html::escape_str(&id)
+            )),
+        )
+            .into_response()
+    } else {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Html(format!(
+                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+                 &#10060; Failed to delete {} #{}: {}\
+                 </div>",
+                entry.label,
+                crate::html::escape_str(&id),
+                crate::html::escape_str(&err_msg)
+            ))
+        ).into_response()
+    }
 }
 
 /// GET /nexus/chat — AI Query Assistant page.
-async fn nexus_chat_page(State(state): State<Arc<NexusState>>) -> Html<String> {
+async fn nexus_chat_page(
+    State(state): State<Arc<NexusState>>,
+    headers: axum::http::HeaderMap,
+) -> Html<String> {
     let schema_summary: String = state
         .registry
         .iter()
@@ -414,7 +626,6 @@ async fn nexus_chat_page(State(state): State<Arc<NexusState>>) -> Html<String> {
     content.push_str("<span class=\"nexus-chat-avatar\">&#129302;</span>");
     content.push_str("<div class=\"nexus-chat-text\">Hello! I know your full database schema. Ask me anything &mdash; for example:<br><em>\"List all users created this week\"</em> or <em>\"How many posts are published?\"</em><br><br><small style=\"color: var(--text-300);\">&#128161; <b>Tip:</b> To execute real natural-language queries, you can inject an AI provider into your Nexus instance:<br><code class=\"nexus-code\" style=\"margin-top: 8px; display: block;\">.with_ai(AiClient::new(AiProvider::Gemini { api_key: env!(\"GEMINI_KEY\") }))<br>// Or use AiProvider::OpenAI, AiProvider::Anthropic, etc.</code></small></div>");
     content.push_str("</div></div>");
-    // Form: use &quot; for the getElementById argument to avoid single-quote issues
     content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on::after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
     content.push_str("<input type=\"text\" name=\"message\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" autocomplete=\"off\" required />");
     content.push_str(
@@ -422,11 +633,15 @@ async fn nexus_chat_page(State(state): State<Arc<NexusState>>) -> Html<String> {
     );
     content.push_str("</form></div></div>");
 
-    Html(render_shell(
-        &state,
-        &render_sidebar(&state, None),
-        &content,
-    ))
+    if headers.contains_key("hx-request") {
+        Html(content)
+    } else {
+        Html(render_shell(
+            &state,
+            &render_sidebar(&state, None),
+            &content,
+        ))
+    }
 }
 
 /// POST /nexus/chat/query — AI Query HTMX endpoint.
@@ -482,6 +697,7 @@ fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::DateTime => "datetime",
         FieldKind::Password => "password",
         FieldKind::Json => "json",
+        FieldKind::ForeignKey { .. } => "relation",
     }
 }
 
@@ -489,6 +705,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Number => "INTEGER",
         FieldKind::Boolean => "INTEGER",
+        FieldKind::ForeignKey { .. } => "INTEGER",
         FieldKind::Date | FieldKind::DateTime => "TEXT",
         FieldKind::Json => "TEXT",
         _ => "TEXT",
@@ -503,6 +720,7 @@ fn field_kind_input_type(kind: &FieldKind) -> &'static str {
         FieldKind::Password => "password",
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime-local",
+        FieldKind::ForeignKey { .. } => "select",
         _ => "text",
     }
 }
@@ -562,64 +780,156 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
     out
 }
 
-fn render_table_rows(entry: &RegistryEntry, q: &str) -> String {
+async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
+    let table = entry.table;
+    let pk = entry.pk;
 
-    let sample_rows: Vec<Vec<String>> = (1u32..=5)
-        .map(|i| {
-            visible_fields
-                .iter()
-                .map(|f| match f.kind {
-                    FieldKind::Email => format!("user{}@example.com", i),
-                    FieldKind::Number => i.to_string(),
-                    FieldKind::Boolean => {
-                        if i % 2 == 0 {
-                            "&#9989; Yes".to_string()
-                        } else {
-                            "&#10060; No".to_string()
-                        }
-                    }
-                    FieldKind::Date => format!("2026-0{}-01", i),
-                    _ => format!("Sample {} {}", f.label, i),
-                })
-                .collect()
-        })
-        .filter(|row: &Vec<String>| {
-            if q.is_empty() {
-                return true;
+    let driver = std::panic::catch_unwind(|| rullst_orm::Orm::driver()).unwrap_or("sqlite");
+    let mut sql = format!("SELECT * FROM {}", table);
+    let mut binds = Vec::new();
+
+    if !q.is_empty() {
+        let mut clauses = Vec::new();
+        for f in &visible_fields {
+            if matches!(
+                f.kind,
+                FieldKind::Text | FieldKind::Email | FieldKind::Url | FieldKind::Textarea
+            ) {
+                if driver == "postgres" {
+                    clauses.push(format!("{} ILIKE ${}", f.name, clauses.len() + 1));
+                } else {
+                    clauses.push(format!("{} LIKE ?", f.name));
+                }
             }
-            let q_lower = q.to_lowercase();
-            row.iter().any(|c| c.to_lowercase().contains(&q_lower))
-        })
-        .collect();
-
-    if sample_rows.is_empty() {
-        return format!(
-            "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
-            visible_fields.len() + 1,
-            crate::html::escape_str(q)
-        );
+        }
+        if !clauses.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&clauses.join(" OR "));
+            for _ in &clauses {
+                binds.push(format!("%{}%", q));
+            }
+        }
     }
 
-    let t = entry.table;
-    let mut out = String::new();
-    for (i, row) in sample_rows.iter().enumerate() {
-        let id = i + 1;
-        let mut cells = String::new();
-        for c in row {
-            cells.push_str(&format!("<td class=\"nexus-td\">{c}</td>"));
+    let limit = 20;
+    let offset = (page.max(1) - 1) * limit;
+    sql.push_str(&format!(
+        " ORDER BY {} DESC LIMIT {} OFFSET {}",
+        pk, limit, offset
+    ));
+
+    let pool = std::panic::catch_unwind(|| rullst_orm::Orm::pool());
+    let pool = match pool {
+        Ok(p) => p,
+        Err(_) => {
+            return format!(
+                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; Database not initialized. Please configure database_url.</td></tr>",
+                visible_fields.len() + 1
+            );
         }
+    };
+
+    let sql_safe = rullst_orm::_sqlx::AssertSqlSafe(sql.as_str());
+    let mut query = rullst_orm::_sqlx::query(sql_safe);
+    for bind in binds {
+        query = query.bind(bind);
+    }
+
+    use rullst_orm::_sqlx::Row;
+
+    let rows_result = query.fetch_all(pool).await;
+
+    let db_rows = match rows_result {
+        Ok(r) => r,
+        Err(e) => {
+            return format!(
+                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; Database Error: {}</td></tr>",
+                visible_fields.len() + 1,
+                crate::html::escape_str(&e.to_string())
+            );
+        }
+    };
+
+    if db_rows.is_empty() {
+        if q.is_empty() {
+            return format!(
+                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">No records found in table `{}`.</td></tr>",
+                visible_fields.len() + 1,
+                table
+            );
+        } else {
+            return format!(
+                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
+                visible_fields.len() + 1,
+                crate::html::escape_str(q)
+            );
+        }
+    }
+
+    let mut out = String::new();
+    let t = entry.table;
+    for row in db_rows {
+        // Read PK explicitly to generate actions
+        let row_id: String = match row.try_get::<String, _>(pk) {
+            Ok(s) => s,
+            Err(_) => match row.try_get::<i64, _>(pk) {
+                Ok(i) => i.to_string(),
+                Err(_) => match row.try_get::<i32, _>(pk) {
+                    Ok(i) => i.to_string(),
+                    Err(_) => "0".to_string(),
+                },
+            },
+        };
+
+        let mut cells = String::new();
+        for f in &visible_fields {
+            // Read based on kind
+            let val_str = match f.kind {
+                FieldKind::Boolean => {
+                    let b = row.try_get::<bool, _>(f.name).unwrap_or(false);
+                    if b {
+                        "&#9989; Yes".to_string()
+                    } else {
+                        "&#10060; No".to_string()
+                    }
+                }
+                FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                    if let Ok(v) = row.try_get::<i64, _>(f.name) {
+                        v.to_string()
+                    } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
+                        v.to_string()
+                    } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
+                        v.to_string()
+                    } else {
+                        "0".to_string()
+                    }
+                }
+                _ => row
+                    .try_get::<String, _>(f.name)
+                    .unwrap_or_else(|_| "-".to_string()),
+            };
+
+            let clean_val = if val_str.starts_with("&#") {
+                val_str
+            } else {
+                crate::html::escape_str(&val_str)
+            };
+
+            cells.push_str(&format!("<td class=\"nexus-td\">{}</td>", clean_val));
+        }
+
         out.push_str(&format!(
-            "<tr id=\"row-{id}\" class=\"nexus-tr\">\
+            "<tr id=\"row-{row_id}\" class=\"nexus-tr\">\
              {cells}\
              <td class=\"nexus-td nexus-td-actions\">\
              <button class=\"nexus-action-btn nexus-action-edit\" \
-             hx-get=\"/nexus/table/{t}/{id}/edit\" \
+             hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
              hx-target=\"#nexus-modal-body\" \
              hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">&#9999;&#65039;</button>\
              <button class=\"nexus-action-btn nexus-action-delete\" \
-             hx-delete=\"/nexus/table/{t}/{id}\" \
-             hx-target=\"#row-{id}\" \
+             hx-delete=\"/nexus/table/{t}/{row_id}\" \
+             hx-target=\"#row-{row_id}\" \
              hx-confirm=\"Delete this record?\">&#128465;&#65039;</button>\
              </td></tr>"
         ));
@@ -627,7 +937,12 @@ fn render_table_rows(entry: &RegistryEntry, q: &str) -> String {
     out
 }
 
-fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &str) -> String {
+async fn render_table_view(
+    _state: &NexusState,
+    entry: &RegistryEntry,
+    page: u32,
+    q: &str,
+) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
     let t = entry.table;
     let lb = entry.label;
@@ -639,7 +954,7 @@ fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &
     for f in &visible_fields {
         headers.push_str(&format!("<th class=\"nexus-th\">{}</th>", f.label));
     }
-    let rows = render_table_rows(entry, q);
+    let rows = render_table_rows(entry, q, page).await;
 
     let prev_btn = if page > 1 {
         let prev = page - 1;
@@ -708,101 +1023,196 @@ fn render_table_view(_state: &NexusState, entry: &RegistryEntry, page: u32, q: &
     out.push_str(&next_btn);
     out.push_str("</div>");
 
-    // Modal dialog
     out.push_str("<dialog id=\"nexus-modal\" class=\"nexus-modal\">");
     out.push_str("<div class=\"nexus-modal-inner\">");
     out.push_str("<button class=\"nexus-modal-close\" onclick=\"document.getElementById(&quot;nexus-modal&quot;).close()\">&#x2715;</button>");
     out.push_str("<div id=\"nexus-modal-body\"></div>");
     out.push_str("</div></dialog>");
 
-    // Toast target
     out.push_str("<div id=\"nexus-toast\" class=\"nexus-toast\" aria-live=\"polite\"></div>");
 
     out
 }
 
-fn render_record_form(entry: &RegistryEntry, id: Option<&str>) -> String {
-    let is_edit = id.is_some();
-    let form_title = if is_edit {
-        format!("&#9999;&#65039; Edit {} #{}", entry.label, id.unwrap_or(""))
+async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Option<&str>) -> String {
+    let t = entry.table;
+    let title = if let Some(i) = id {
+        format!("&#128398;&#65039; Edit {} #{}", entry.label, i)
     } else {
         format!("&#10133; New {}", entry.label.trim_end_matches('s'))
     };
 
-    let method_lower = if is_edit { "put" } else { "post" };
-    let action_url = if let Some(id) = id {
-        format!("/nexus/table/{}/{}", entry.table, id)
+    let action = if let Some(i) = id {
+        format!("/nexus/table/{t}/{i}")
     } else {
-        format!("/nexus/table/{}", entry.table)
+        format!("/nexus/table/{t}")
     };
-    let submit_label = if is_edit {
-        "&#128190; Save Changes"
-    } else {
-        "&#9989; Create"
-    };
+
+    let method = if id.is_some() { "hx-put" } else { "hx-post" };
+
+    let mut record_data: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+
+    if let Some(i) = id {
+        let driver = std::panic::catch_unwind(|| rullst_orm::Orm::driver()).unwrap_or("sqlite");
+        let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
+        let sql = format!(
+            "SELECT * FROM {} WHERE {} = {}",
+            t, entry.pk, pk_placeholder
+        );
+
+        if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+            use rullst_orm::_sqlx::Row;
+            if let Ok(row) =
+                rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+                    .bind(i)
+                    .fetch_one(pool)
+                    .await
+            {
+                for f in &entry.fields {
+                    let val_str = match &f.kind {
+                        FieldKind::Boolean => row
+                            .try_get::<bool, _>(f.name)
+                            .map(|v| v.to_string())
+                            .unwrap_or_default(),
+                        FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                            if let Ok(v) = row.try_get::<i64, _>(f.name) {
+                                v.to_string()
+                            } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
+                                v.to_string()
+                            } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
+                                v.to_string()
+                            } else {
+                                "".to_string()
+                            }
+                        }
+                        _ => row.try_get::<String, _>(f.name).unwrap_or_default(),
+                    };
+                    record_data.insert(f.name.to_string(), val_str);
+                }
+            }
+        }
+    }
 
     let mut fields_html = String::new();
-    for f in entry.fields.iter().filter(|f| !f.readonly || is_edit) {
-        let readonly_attr = if f.readonly { " readonly" } else { "" };
-        let disabled_attr = if f.readonly { " disabled" } else { "" };
-        let placeholder = format!("Enter {}...", f.label);
-
-        let input = match f.kind {
-            FieldKind::Textarea | FieldKind::Json => {
-                format!(
-                    "<textarea id=\"field-{}\" name=\"{}\" class=\"nexus-input nexus-textarea\"{} placeholder=\"{}\"></textarea>",
-                    f.name, f.name, readonly_attr, placeholder
-                )
-            }
-            FieldKind::Boolean => {
-                format!(
-                    "<label class=\"nexus-toggle\"><input type=\"checkbox\" id=\"field-{}\" name=\"{}\"{} /><span class=\"nexus-toggle-slider\"></span></label>",
-                    f.name, f.name, disabled_attr
-                )
-            }
-            _ => {
-                let itype = field_kind_input_type(&f.kind);
-                format!(
-                    "<input type=\"{itype}\" id=\"field-{}\" name=\"{}\" class=\"nexus-input\"{} placeholder=\"{}\" />",
-                    f.name, f.name, readonly_attr, placeholder
-                )
-            }
-        };
-
-        let readonly_badge = if f.readonly {
-            "<span class=\"nexus-badge-readonly\">readonly</span>"
+    for f in &entry.fields {
+        let is_pk = f.name == entry.pk;
+        let readonly = if is_pk { "readonly" } else { "" };
+        let ro_badge = if is_pk {
+            "<span class=\"nexus-badge\">READONLY</span>"
         } else {
             ""
         };
+        let val = record_data.get(f.name).map(|s| s.as_str()).unwrap_or("");
+        let val_esc = crate::html::escape_str(val);
 
-        fields_html.push_str(&format!(
-            "<div class=\"nexus-field-group\">\
-             <label class=\"nexus-label\" for=\"field-{}\">{} {readonly_badge}</label>\
-             {input}\
-             </div>",
-            f.name, f.label
-        ));
+        if f.kind == FieldKind::Boolean {
+            let checked = if val == "true" { "checked" } else { "" };
+            fields_html.push_str(&format!(
+                "<div class=\"nexus-form-group\">\
+                 <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <input type=\"checkbox\" name=\"{}\" value=\"true\" {checked} {readonly}>\
+                 </div>",
+                f.label, f.name
+            ));
+        } else if f.kind == FieldKind::Textarea {
+            fields_html.push_str(&format!(
+                "<div class=\"nexus-form-group\">\
+                 <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <textarea name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" {readonly}>{}</textarea>\
+                 </div>",
+                f.label, f.name, f.label, val_esc
+            ));
+        } else if let FieldKind::ForeignKey {
+            table: target_table,
+            label_col,
+        } = &f.kind
+        {
+            let target_pk = state
+                .registry
+                .iter()
+                .find(|e| e.table == *target_table)
+                .map(|e| e.pk)
+                .unwrap_or("id");
+
+            let mut options_html = String::new();
+            options_html.push_str("<option value=\"\">-- Select --</option>");
+
+            let sql = format!(
+                "SELECT {} as key_id, {} as val_label FROM {}",
+                target_pk, label_col, target_table
+            );
+            if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+                use rullst_orm::_sqlx::Row;
+                if let Ok(rows) =
+                    rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+                        .fetch_all(pool)
+                        .await
+                {
+                    for r in rows {
+                        let id_val: String = match r.try_get::<String, _>("key_id") {
+                            Ok(s) => s,
+                            Err(_) => match r.try_get::<i64, _>("key_id") {
+                                Ok(i) => i.to_string(),
+                                Err(_) => match r.try_get::<i32, _>("key_id") {
+                                    Ok(i) => i.to_string(),
+                                    Err(_) => "0".to_string(),
+                                },
+                            },
+                        };
+                        let label_val = r
+                            .try_get::<String, _>("val_label")
+                            .unwrap_or_else(|_| "Unknown".to_string());
+                        let selected = if id_val == val { "selected" } else { "" };
+                        options_html.push_str(&format!(
+                            "<option value=\"{}\" {}>{}</option>",
+                            id_val,
+                            selected,
+                            crate::html::escape_str(&label_val)
+                        ));
+                    }
+                }
+            }
+
+            fields_html.push_str(&format!(
+                "<div class=\"nexus-form-group\">\
+                 <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <select name=\"{}\" class=\"nexus-input\" {readonly}>\
+                 {}\
+                 </select>\
+                 </div>",
+                f.label, f.name, options_html
+            ));
+        } else {
+            let type_attr = match f.kind {
+                FieldKind::Number => "number",
+                FieldKind::Email => "email",
+                FieldKind::Date => "date",
+                _ => "text",
+            };
+            fields_html.push_str(&format!(
+                "<div class=\"nexus-form-group\">\
+                 <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <input type=\"{type_attr}\" name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" value=\"{}\" {readonly}>\
+                 </div>",
+                f.label, f.name, f.label, val_esc
+            ));
+        }
     }
 
-    let mut out = String::new();
-    out.push_str(&format!(
-        "<form class=\"nexus-form\" hx-{method_lower}=\"{action_url}\" \
+    let btn_label = if id.is_some() { "Save Changes" } else { "Create" };
+
+    format!(
+        "<form class=\"nexus-form\" {method}=\"{action}\" \
          hx-target=\"#nexus-toast\" hx-swap=\"outerHTML\" \
-         hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).close()\">"
-    ));
-    out.push_str(&format!(
-        "<h2 class=\"nexus-modal-title\">{form_title}</h2>"
-    ));
-    out.push_str("<div class=\"nexus-fields-grid\">");
-    out.push_str(&fields_html);
-    out.push_str("</div>");
-    out.push_str("<div class=\"nexus-form-actions\">");
-    out.push_str("<button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"document.getElementById(&quot;nexus-modal&quot;).close()\">Cancel</button>");
-    out.push_str(&format!(
-        "<button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">{submit_label}</button>"
-    ));
-    out.push_str("</div></form>");
-    out
+         hx-on::after-request=\"if(event.detail.successful) {{ document.getElementById(&quot;nexus-modal&quot;).close(); htmx.ajax(&quot;GET&quot;, &quot;/nexus/table/{t}&quot;, &quot;#nexus-content&quot;); }}\">\
+         <h2 class=\"nexus-modal-title\">{title}</h2>\
+         <div class=\"nexus-fields-grid\">{fields_html}</div>\
+         <div class=\"nexus-form-actions\">\
+         <button type=\"button\" class=\"nexus-btn\" onclick=\"document.getElementById(&quot;nexus-modal&quot;).close()\">Cancel</button>\
+         <button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">{btn_label}</button>\
+         </div></form>"
+    )
 }
 
 // ─── Shell Renderer ───────────────────────────────────────────────────────────
@@ -822,7 +1232,6 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str(NEXUS_CSS);
     out.push_str("\n</style>\n</head>\n<body class=\"nexus-body\">\n");
 
-    // Sidebar
     out.push_str("<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\">");
     out.push_str("<div class=\"nexus-brand\">");
     out.push_str("<span class=\"nexus-brand-icon\">&#127963;&#65039;</span>");
@@ -838,7 +1247,6 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     ));
     out.push_str("</div></nav>");
 
-    // Main
     out.push_str("<main class=\"nexus-main\">");
     out.push_str("<header class=\"nexus-topbar\">");
     out.push_str("<button class=\"nexus-topbar-toggle\" onclick=\"document.getElementById(&quot;nexus-sidebar&quot;).classList.toggle(&quot;nexus-sidebar-open&quot;)\">&#9776;</button>");
@@ -985,25 +1393,35 @@ html, body { height: 100%; }
 @keyframes nexus-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 /* == Modal ============================================================= */
-.nexus-modal { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-800); color: var(--text-100); padding: 0; max-width: 580px; width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+.nexus-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    background: var(--bg-800);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0;
+    color: var(--text-100);
+    max-width: 500px;
+    width: 90vw;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+}
 .nexus-modal::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-.nexus-modal-inner { position: relative; padding: 28px; }
+.nexus-modal-inner { padding: 28px; }
 .nexus-modal-close { position: absolute; top: 16px; right: 16px; background: var(--bg-700); border: 1px solid var(--border); color: var(--text-300); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
 .nexus-modal-close:hover { background: var(--red); border-color: var(--red); color: #fff; }
 .nexus-modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
 
 /* == Form ============================================================== */
-.nexus-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-.nexus-field-group { display: flex; flex-direction: column; gap: 6px; }
+.nexus-fields-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+.nexus-form-group { display: flex; flex-direction: column; gap: 6px; }
 .nexus-label { font-size: 12px; font-weight: 600; color: var(--text-300); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
-.nexus-input { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 10px 12px; width: 100%; outline: none; transition: border-color var(--transition), box-shadow var(--transition); }
+.nexus-input { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-100); font-family: var(--font-sans); font-size: 13.5px; padding: 10px 12px; width: 100%; outline: none; }
 .nexus-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-.nexus-input[readonly] { opacity: 0.55; cursor: not-allowed; }
-.nexus-textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); font-size: 12px; }
-.nexus-badge-readonly { background: var(--bg-500); border: 1px solid var(--border); color: var(--text-500); border-radius: 4px; font-size: 10px; padding: 1px 5px; font-weight: 500; }
-.nexus-toggle { display: flex; align-items: center; }
+.nexus-badge { background: var(--bg-500); border: 1px solid var(--border); color: var(--text-500); border-radius: 4px; font-size: 10px; padding: 1px 5px; }
 .nexus-form-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 20px; }
-.nexus-error { color: var(--red); font-size: 14px; }
 
 /* == Chat ============================================================== */
 .nexus-chat-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - var(--topbar-h) - 160px); }
@@ -1039,6 +1457,26 @@ html, body { height: 100%; }
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    static INIT_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    async fn init_test_db() {
+        let _guard = INIT_MUTEX.lock().await;
+        let is_init = std::panic::catch_unwind(|| rullst_orm::Orm::pool()).is_ok();
+        if !is_init {
+            rullst_orm::Orm::init("sqlite://test_nexus.db").await.expect("Failed to init SQLite DB file");
+        }
+        if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+            rullst_orm::_sqlx::query("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)")
+                .execute(pool)
+                .await
+                .expect("Failed to CREATE TABLE users");
+            rullst_orm::_sqlx::query("INSERT OR IGNORE INTO users (id, name, email) VALUES (42, 'Test User', 'example.com')")
+                .execute(pool)
+                .await
+                .expect("Failed to INSERT mock user");
+        }
+    }
 
     struct TestUser;
     impl NexusModel for TestUser {
@@ -1181,8 +1619,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_render_table_rows_with_search() {
+    #[tokio::test]
+    async fn test_render_table_rows_with_search() {
+        init_test_db().await;
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
@@ -1190,12 +1629,13 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let rows = render_table_rows(&entry, "example.com");
-        assert!(rows.contains("example.com"));
+        let rows = render_table_rows(&entry, "example.com", 1).await;
+        assert!(rows.contains("example.com"), "Expected rows to contain 'example.com', but got: {}", rows);
     }
 
-    #[test]
-    fn test_render_table_rows_empty_search() {
+    #[tokio::test]
+    async fn test_render_table_rows_empty_search() {
+        init_test_db().await;
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
@@ -1203,12 +1643,13 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let rows = render_table_rows(&entry, "zzznomatch99999xyz");
-        assert!(rows.contains("No results"));
+        let rows = render_table_rows(&entry, "zzznomatch99999xyz", 1).await;
+        assert!(rows.contains("No results"), "Expected rows to contain 'No results', but got: {}", rows);
     }
 
-    #[test]
-    fn test_render_record_form_new() {
+    #[tokio::test]
+    async fn test_render_record_form_new() {
+        init_test_db().await;
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
@@ -1216,14 +1657,20 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let form = render_record_form(&entry, None);
-        assert!(form.contains("New User"));
-        assert!(form.contains("hx-post"));
-        assert!(form.contains("Create"));
+        let state = NexusState {
+            registry: Arc::new(vec![entry.clone()]),
+            brand: Arc::new("Test App".to_string()),
+            db_url: Arc::new(None),
+        };
+        let form = render_record_form(&state, &entry, None).await;
+        assert!(form.contains("New User"), "Expected form to contain 'New User', but got: {}", form);
+        assert!(form.contains("hx-post"), "Expected form to contain 'hx-post', but got: {}", form);
+        assert!(form.contains("Create"), "Expected form to contain 'Create', but got: {}", form);
     }
 
-    #[test]
-    fn test_render_record_form_edit() {
+    #[tokio::test]
+    async fn test_render_record_form_edit() {
+        init_test_db().await;
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
@@ -1231,10 +1678,15 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let form = render_record_form(&entry, Some("42"));
-        assert!(form.contains("Edit Users #42"));
-        assert!(form.contains("hx-put"));
-        assert!(form.contains("Save Changes"));
+        let state = NexusState {
+            registry: Arc::new(vec![entry.clone()]),
+            brand: Arc::new("Test App".to_string()),
+            db_url: Arc::new(None),
+        };
+        let form = render_record_form(&state, &entry, Some("42")).await;
+        assert!(form.contains("Edit Users #42"), "Expected form to contain 'Edit Users #42', but got: {}", form);
+        assert!(form.contains("hx-put"), "Expected form to contain 'hx-put', but got: {}", form);
+        assert!(form.contains("Save Changes"), "Expected form to contain 'Save Changes', but got: {}", form);
     }
 
     #[test]
