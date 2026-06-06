@@ -7,3 +7,8 @@ target_dev_test/
 *.db-shm
 *.db-wal
 storage/
+
+# Local testing and scratch directories
+tests/
+scratch/
+cargo-rullst/src/bin/test_colored.rs
