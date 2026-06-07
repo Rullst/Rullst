@@ -1,15 +1,15 @@
 use axum::{
     Json,
     body::Body,
-    extract::{Query, ConnectInfo},
+    extract::{ConnectInfo, Query},
     http::{Request, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
 use std::net::SocketAddr;
+use std::path::Path;
 
 // ─── Stack Frame & Backtrace Parsing ──────────────────────────────────────────
 
@@ -932,14 +932,23 @@ mod tests {
     fn test_find_source_location_linux() {
         let bt = "   0: rullst::error_console::tests::test_panic\n             at /home/user/project/src/error_console.rs:42";
         let res = find_source_location(bt);
-        assert_eq!(res, Some(("/home/user/project/src/error_console.rs".to_string(), 42)));
+        assert_eq!(
+            res,
+            Some(("/home/user/project/src/error_console.rs".to_string(), 42))
+        );
     }
 
     #[test]
     fn test_find_source_location_windows() {
         let bt = "   0: rullst::error_console::tests::test_panic\n             at C:\\Users\\user\\project\\src\\error_console.rs:55";
         let res = find_source_location(bt);
-        assert_eq!(res, Some(("C:\\Users\\user\\project\\src\\error_console.rs".to_string(), 55)));
+        assert_eq!(
+            res,
+            Some((
+                "C:\\Users\\user\\project\\src\\error_console.rs".to_string(),
+                55
+            ))
+        );
     }
 
     #[test]
@@ -949,4 +958,3 @@ mod tests {
         assert_eq!(res, None);
     }
 }
-

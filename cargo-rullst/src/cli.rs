@@ -11,7 +11,7 @@ use crate::generators::{
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
-    desktop::{scaffold_omni_system, run_omni_app},
+    desktop::{run_omni_app, scaffold_omni_system},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     middleware::create_new_middleware,
     migration::create_new_migration,

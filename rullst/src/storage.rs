@@ -339,7 +339,9 @@ impl Storage {
         match name {
             "local" => {
                 let config = crate::config::RullstConfig::global();
-                let is_prod = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
+                let is_prod = std::env::var("APP_ENV")
+                    .unwrap_or_else(|_| "development".to_string())
+                    == "production";
                 let root = config.storage.root.clone().unwrap_or_else(|| {
                     if is_prod {
                         "storage/app".to_string()
@@ -355,7 +357,9 @@ impl Storage {
                     let bucket = std::env::var("AWS_BUCKET").unwrap_or_default();
                     let endpoint = std::env::var("AWS_ENDPOINT").ok();
                     let config = tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(aws_config::defaults(aws_config::BehaviorVersion::latest()).load())
+                        tokio::runtime::Handle::current().block_on(
+                            aws_config::defaults(aws_config::BehaviorVersion::latest()).load(),
+                        )
                     });
                     let client = aws_sdk_s3::Client::new(&config);
                     Box::new(S3Driver {

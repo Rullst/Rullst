@@ -78,6 +78,7 @@ impl RullstConfig {
     }
 
     /// Sets the global configuration instance.
+    #[allow(clippy::result_large_err)]
     pub fn set_global(config: Self) -> Result<(), Self> {
         GLOBAL_CONFIG.set(config)
     }

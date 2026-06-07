@@ -205,17 +205,16 @@ pub fn create_new_project(
     }
 
     let rullst_dep = if let Some(ref dir) = rullst_dir {
-        let path = dir
-            .canonicalize()?
-            .display()
-            .to_string();
+        let path = dir.canonicalize()?.display().to_string();
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!("rullst = {{ path = \"{}\" }}", path)
     } else {
         r#"rullst = "2.0.3""#.to_string()
     };
 
-    let rullst_png_path = rullst_dir.unwrap_or_else(|| current_dir.join("rullst")).join("Rullst.png");
+    let rullst_png_path = rullst_dir
+        .unwrap_or_else(|| current_dir.join("rullst"))
+        .join("Rullst.png");
     if !rullst_png_path.exists() {
         let fallback_png = Path::new("Rullst.png");
         if fallback_png.exists() {
@@ -754,7 +753,7 @@ LICENSE
          DATABASE_URL=postgres://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@db:5432/${{POSTGRES_DB}}\n\n\
          # Redis Configuration\n\
          REDIS_URL=redis://redis:6379\n",
-         project_name = project_name
+        project_name = project_name
     );
     std::fs::write(&env_path, &env_content)?;
     std::fs::write(&env_example_path, &env_content)?;

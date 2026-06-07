@@ -175,12 +175,16 @@ where
 
             if let Some((target, pos)) = found_target {
                 animated_msg.push_str(&msg[..pos].bold().to_string());
-                
+
                 // Use special colors for Omni (orange/red)
                 let custom_colors = if target == "Omni" {
                     vec![
                         colored::Color::Red,
-                        colored::Color::TrueColor { r: 255, g: 165, b: 0 },
+                        colored::Color::TrueColor {
+                            r: 255,
+                            g: 165,
+                            b: 0,
+                        },
                         colored::Color::BrightRed,
                         colored::Color::Yellow,
                     ]
@@ -622,9 +626,8 @@ pub fn show_help_reference() {
             .bold()
     );
     println!(
-        "  {}{}{}",
+        "  {}  💡 Rullst CLI - Full Command Reference  {}",
         "║".bright_cyan().bold(),
-        "  💡 Rullst CLI - Full Command Reference  ",
         "║".bright_cyan().bold()
     );
     println!(

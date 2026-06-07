@@ -3,8 +3,8 @@
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
-use std::path::Path;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::Stdio;
 
 struct ChildGuard(std::process::Child);
@@ -38,12 +38,15 @@ pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 1. Select platforms
-    let platforms = vec![
+    let platforms = [
         "Desktop (Windows/Mac/Linux)".to_string(),
-        format!("Android {}", "(Requires Android Studio SDK)".truecolor(255, 165, 0)),
+        format!(
+            "Android {}",
+            "(Requires Android Studio SDK)".truecolor(255, 165, 0)
+        ),
         format!("iOS {}", "(iPhone/iPad - Requires macOS)".red()),
     ];
-    
+
     let selections = match dialoguer::MultiSelect::with_theme(&theme)
         .with_prompt(format!("{}", "⚠️ Select target platforms for Rullst Omni (Press <Space> to select, <Enter> to confirm)".truecolor(255, 165, 0).bold()))
         .items(&platforms[..])
@@ -414,7 +417,14 @@ To run on an iOS simulator or device:
                     .status();
             }
             Err(e) => {
-                println!("{}", format!("⚠️ Warning: Could not initialize Android target support: {}", e).yellow());
+                println!(
+                    "{}",
+                    format!(
+                        "⚠️ Warning: Could not initialize Android target support: {}",
+                        e
+                    )
+                    .yellow()
+                );
             }
         }
     }
@@ -431,13 +441,20 @@ To run on an iOS simulator or device:
                         .status();
                 }
                 Err(e) => {
-                    println!("{}", format!("⚠️ Warning: Could not initialize iOS target support: {}", e).yellow());
+                    println!(
+                        "{}",
+                        format!("⚠️ Warning: Could not initialize iOS target support: {}", e)
+                            .yellow()
+                    );
                 }
             }
         } else {
-            println!("{}", "⚠️ Warning: iOS initialization requires a macOS host. Skipping iOS setup."
-                .truecolor(255, 165, 0)
-                .bold());
+            println!(
+                "{}",
+                "⚠️ Warning: iOS initialization requires a macOS host. Skipping iOS setup."
+                    .truecolor(255, 165, 0)
+                    .bold()
+            );
         }
     }
 
@@ -465,7 +482,11 @@ To run on an iOS simulator or device:
 pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let omni_dir = Path::new("omni-app");
     if !omni_dir.exists() {
-        println!("{}", "❌ Error: 'omni-app' directory not found. Please run `cargo rullst make:omni` first.".red());
+        println!(
+            "{}",
+            "❌ Error: 'omni-app' directory not found. Please run `cargo rullst make:omni` first."
+                .red()
+        );
         std::process::exit(1);
     }
 
@@ -484,19 +505,22 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
 
             let stdout = child.stdout.take().expect("Failed to open stdout");
 
-            let launched = crate::ui::components::with_spinner("🚀 Soon the Omni window will automatically open...", move || {
-                let reader = BufReader::new(stdout);
-                let mut ok = false;
-                for line in reader.lines() {
-                    if let Ok(l) = line {
-                        if l.contains("Launching Omni interface...") || l.contains("Launching Tauri interface...") {
+            let launched = crate::ui::components::with_spinner(
+                "🚀 Soon the Omni window will automatically open...",
+                move || {
+                    let reader = BufReader::new(stdout);
+                    let mut ok = false;
+                    for l in reader.lines().map_while(Result::ok) {
+                        if l.contains("Launching Omni interface...")
+                            || l.contains("Launching Tauri interface...")
+                        {
                             ok = true;
                             break;
                         }
                     }
-                }
-                ok
-            });
+                    ok
+                },
+            );
 
             if launched {
                 println!("{}", "✅ Omni window launched successfully!".green().bold());
@@ -520,10 +544,15 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
             println!("⏳ Waiting for backend to bind...");
             std::thread::sleep(std::time::Duration::from_secs(3));
 
-            println!("📱 Starting Omni mobile client ({}) via Omni Engine...", platform);
+            println!(
+                "📱 Starting Omni mobile client ({}) via Omni Engine...",
+                platform
+            );
 
             if platform == "android" {
-                println!("🔗 Setting up Android USB/Emulator port forwarding (adb reverse tcp:3000 tcp:3000)...");
+                println!(
+                    "🔗 Setting up Android USB/Emulator port forwarding (adb reverse tcp:3000 tcp:3000)..."
+                );
                 let adb_cmd = if cfg!(windows) {
                     if let Ok(android_home) = std::env::var("ANDROID_HOME") {
                         format!("{}\\platform-tools\\adb.exe", android_home)
@@ -546,10 +575,7 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
 
             match get_tauri_command(omni_dir) {
                 Ok(mut tauri_cmd) => {
-                    tauri_cmd
-                        .arg(platform)
-                        .arg("dev")
-                        .current_dir(omni_dir);
+                    tauri_cmd.arg(platform).arg("dev").current_dir(omni_dir);
                     let status = tauri_cmd.status().expect("Failed to run cargo tauri dev");
 
                     drop(backend_guard);
@@ -558,13 +584,23 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
                     }
                 }
                 Err(e) => {
-                    println!("{}", format!("❌ Error: Omni CLI is required for mobile target: {}", e).red());
+                    println!(
+                        "{}",
+                        format!("❌ Error: Omni CLI is required for mobile target: {}", e).red()
+                    );
                     std::process::exit(1);
                 }
             }
         }
         _ => {
-            println!("{}", format!("❌ Error: Unknown platform '{}'. Supported: desktop, android, ios", platform).red());
+            println!(
+                "{}",
+                format!(
+                    "❌ Error: Unknown platform '{}'. Supported: desktop, android, ios",
+                    platform
+                )
+                .red()
+            );
             std::process::exit(1);
         }
     }
@@ -572,7 +608,9 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-fn get_tauri_command(_omni_dir: &Path) -> Result<std::process::Command, Box<dyn std::error::Error>> {
+fn get_tauri_command(
+    _omni_dir: &Path,
+) -> Result<std::process::Command, Box<dyn std::error::Error>> {
     let has_tauri_cli = std::process::Command::new("cargo")
         .arg("tauri")
         .arg("--version")
@@ -617,10 +655,9 @@ fn get_tauri_command(_omni_dir: &Path) -> Result<std::process::Command, Box<dyn 
     println!("{}", "📦 Omni background tools not found. Installing globally via Cargo (this may take a few minutes)..."
         .truecolor(255, 165, 0)
         .bold());
-    
-    let installed = crate::ui::components::with_spinner(
-        "🚀 Installing Omni background tools...",
-        || {
+
+    let installed =
+        crate::ui::components::with_spinner("🚀 Installing Omni background tools...", || {
             std::process::Command::new("cargo")
                 .args(&["install", "tauri-cli"])
                 .stdout(std::process::Stdio::null())
@@ -628,11 +665,15 @@ fn get_tauri_command(_omni_dir: &Path) -> Result<std::process::Command, Box<dyn 
                 .status()
                 .map(|s| s.success())
                 .unwrap_or(false)
-        }
-    );
+        });
 
     if installed {
-        println!("{}", "✅ Omni background tools installed successfully!".green().bold());
+        println!(
+            "{}",
+            "✅ Omni background tools installed successfully!"
+                .green()
+                .bold()
+        );
         let mut cmd = std::process::Command::new("cargo");
         cmd.arg("tauri");
         Ok(cmd)

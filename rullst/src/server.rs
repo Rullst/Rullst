@@ -341,8 +341,12 @@ impl Server {
 
             if !is_dev {
                 app = app
-                    .layer(axum::middleware::from_fn(crate::security::pii_masking_middleware))
-                    .layer(axum::middleware::from_fn(crate::security::headers_middleware))
+                    .layer(axum::middleware::from_fn(
+                        crate::security::pii_masking_middleware,
+                    ))
+                    .layer(axum::middleware::from_fn(
+                        crate::security::headers_middleware,
+                    ))
                     .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
                     .layer(axum::middleware::from_fn(crate::security::waf_middleware));
             }

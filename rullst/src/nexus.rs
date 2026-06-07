@@ -1223,7 +1223,11 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
         }
     }
 
-    let btn_label = if id.is_some() { "Save Changes" } else { "Create" };
+    let btn_label = if id.is_some() {
+        "Save Changes"
+    } else {
+        "Create"
+    };
 
     format!(
         "<form class=\"nexus-form\" {method}=\"{action}\" \
@@ -1487,13 +1491,17 @@ mod tests {
         let _guard = INIT_MUTEX.lock().await;
         let is_init = rullst_orm::Orm::pool().is_ok();
         if !is_init {
-            rullst_orm::Orm::init("sqlite://test_nexus.db?mode=rwc").await.expect("Failed to init SQLite DB file");
+            rullst_orm::Orm::init("sqlite://test_nexus.db?mode=rwc")
+                .await
+                .expect("Failed to init SQLite DB file");
         }
         if let Ok(pool) = rullst_orm::Orm::pool() {
-            rullst_orm::_sqlx::query("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)")
-                .execute(pool)
-                .await
-                .expect("Failed to CREATE TABLE users");
+            rullst_orm::_sqlx::query(
+                "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)",
+            )
+            .execute(pool)
+            .await
+            .expect("Failed to CREATE TABLE users");
             rullst_orm::_sqlx::query("INSERT OR IGNORE INTO users (id, name, email) VALUES (42, 'Test User', 'example.com')")
                 .execute(pool)
                 .await
@@ -1653,7 +1661,11 @@ mod tests {
             fields: TestUser::nexus_fields(),
         };
         let rows = render_table_rows(&entry, "example.com", 1).await;
-        assert!(rows.contains("example.com"), "Expected rows to contain 'example.com', but got: {}", rows);
+        assert!(
+            rows.contains("example.com"),
+            "Expected rows to contain 'example.com', but got: {}",
+            rows
+        );
     }
 
     #[tokio::test]
@@ -1667,7 +1679,11 @@ mod tests {
             fields: TestUser::nexus_fields(),
         };
         let rows = render_table_rows(&entry, "zzznomatch99999xyz", 1).await;
-        assert!(rows.contains("No results"), "Expected rows to contain 'No results', but got: {}", rows);
+        assert!(
+            rows.contains("No results"),
+            "Expected rows to contain 'No results', but got: {}",
+            rows
+        );
     }
 
     #[tokio::test]
@@ -1686,9 +1702,21 @@ mod tests {
             db_url: Arc::new(None),
         };
         let form = render_record_form(&state, &entry, None).await;
-        assert!(form.contains("New User"), "Expected form to contain 'New User', but got: {}", form);
-        assert!(form.contains("hx-post"), "Expected form to contain 'hx-post', but got: {}", form);
-        assert!(form.contains("Create"), "Expected form to contain 'Create', but got: {}", form);
+        assert!(
+            form.contains("New User"),
+            "Expected form to contain 'New User', but got: {}",
+            form
+        );
+        assert!(
+            form.contains("hx-post"),
+            "Expected form to contain 'hx-post', but got: {}",
+            form
+        );
+        assert!(
+            form.contains("Create"),
+            "Expected form to contain 'Create', but got: {}",
+            form
+        );
     }
 
     #[tokio::test]
@@ -1707,9 +1735,21 @@ mod tests {
             db_url: Arc::new(None),
         };
         let form = render_record_form(&state, &entry, Some("42")).await;
-        assert!(form.contains("Edit Users #42"), "Expected form to contain 'Edit Users #42', but got: {}", form);
-        assert!(form.contains("hx-put"), "Expected form to contain 'hx-put', but got: {}", form);
-        assert!(form.contains("Save Changes"), "Expected form to contain 'Save Changes', but got: {}", form);
+        assert!(
+            form.contains("Edit Users #42"),
+            "Expected form to contain 'Edit Users #42', but got: {}",
+            form
+        );
+        assert!(
+            form.contains("hx-put"),
+            "Expected form to contain 'hx-put', but got: {}",
+            form
+        );
+        assert!(
+            form.contains("Save Changes"),
+            "Expected form to contain 'Save Changes', but got: {}",
+            form
+        );
     }
 
     #[test]

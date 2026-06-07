@@ -57,9 +57,15 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
     let driver = Orm::driver().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
 
     let query = match driver {
-        "postgres" => "SELECT CAST(table_name AS VARCHAR) as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC",
-        "mysql" => "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC",
-        _ => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC",
+        "postgres" => {
+            "SELECT CAST(table_name AS VARCHAR) as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC"
+        }
+        "mysql" => {
+            "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC"
+        }
+        _ => {
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
+        }
     };
 
     let rows = sqlx::query(query).fetch_all(pool).await?;
@@ -91,8 +97,14 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     if let Some(search) = search_query {
         if !search.is_empty() {
             let schema_query = match driver {
-                "postgres" => format!("SELECT CAST(column_name AS VARCHAR) as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = 'public'", clean_table),
-                "mysql" => format!("SELECT column_name as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = DATABASE()", clean_table),
+                "postgres" => format!(
+                    "SELECT CAST(column_name AS VARCHAR) as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = 'public'",
+                    clean_table
+                ),
+                "mysql" => format!(
+                    "SELECT column_name as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = DATABASE()",
+                    clean_table
+                ),
                 _ => format!("PRAGMA table_info(\"{}\")", clean_table),
             };
             if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query)
@@ -111,9 +123,15 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
                     let mut separated = qb.separated(" OR ");
                     for col in &col_names {
                         if driver == "postgres" {
-                            separated.push(format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col)));
+                            separated.push(format!(
+                                "CAST(\"{}\" AS TEXT) ILIKE ",
+                                sanitize_identifier(col)
+                            ));
                         } else if driver == "mysql" {
-                            separated.push(format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col)));
+                            separated.push(format!(
+                                "CAST(`{}` AS CHAR) LIKE ",
+                                sanitize_identifier(col)
+                            ));
                         } else {
                             separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
                         }
@@ -372,7 +390,7 @@ pub async fn handle_table(
         ", clean_table),
         _ => format!("PRAGMA table_info(\"{}\")", clean_table),
     };
-    
+
     let columns_rows = match QueryBuilder::<Any>::new(columns_query)
         .build()
         .fetch_all(pool)
@@ -417,9 +435,15 @@ pub async fn handle_table(
         let mut separated = qb.separated(" OR ");
         for col in &col_names {
             if driver == "postgres" {
-                separated.push(format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col)));
+                separated.push(format!(
+                    "CAST(\"{}\" AS TEXT) ILIKE ",
+                    sanitize_identifier(col)
+                ));
             } else if driver == "mysql" {
-                separated.push(format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col)));
+                separated.push(format!(
+                    "CAST(`{}` AS CHAR) LIKE ",
+                    sanitize_identifier(col)
+                ));
             } else {
                 separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
             }

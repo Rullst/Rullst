@@ -312,9 +312,9 @@ mod tests {
         assert!((cosine_similarity(&a, &d) - (-1.0)).abs() < 1e-6);
 
         // Mismatched lengths
-        assert_eq!(cosine_similarity(&a, &vec![1.0, 0.0]), 0.0);
+        assert_eq!(cosine_similarity(&a, &[1.0, 0.0]), 0.0);
         // Empty
-        assert_eq!(cosine_similarity(&vec![], &vec![]), 0.0);
+        assert_eq!(cosine_similarity(&[], &[]), 0.0);
     }
 
     #[test]
@@ -324,14 +324,13 @@ mod tests {
         idx.add("doc2", vec![0.0, 1.0], serde_json::json!({"name": "doc2"}));
 
         // Search with query vector [0.9, 0.1]
-        let results = idx.search(&vec![0.9, 0.1], 1);
+        let results = idx.search(&[0.9, 0.1], 1);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].1.id, "doc1");
 
         // Search with query vector [0.1, 0.9]
-        let results2 = idx.search(&vec![0.1, 0.9], 1);
+        let results2 = idx.search(&[0.1, 0.9], 1);
         assert_eq!(results2.len(), 1);
         assert_eq!(results2[0].1.id, "doc2");
     }
 }
-

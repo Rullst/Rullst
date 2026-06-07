@@ -705,16 +705,15 @@ mod tests {
 
     #[test]
     fn test_resolve_variant() {
-        let variants = vec![
-            ("control".to_string(), 30),
-            ("treatment".to_string(), 70),
-        ];
+        let variants = vec![("control".to_string(), 30), ("treatment".to_string(), 70)];
         // bucket 10 should fall into control (0-29)
         assert_eq!(resolve_variant(&variants, 10), Some("control".to_string()));
         // bucket 50 should fall into treatment (30-99)
-        assert_eq!(resolve_variant(&variants, 50), Some("treatment".to_string()));
+        assert_eq!(
+            resolve_variant(&variants, 50),
+            Some("treatment".to_string())
+        );
         // bucket 101 is out of bounds
         assert_eq!(resolve_variant(&variants, 101), None);
     }
 }
-
