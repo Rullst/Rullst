@@ -101,9 +101,10 @@ pub struct LogDriver;
 impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let log_dir = std::path::Path::new("storage/logs");
-        if !log_dir.exists() {
-            let _ = tokio::fs::create_dir_all(log_dir).await;
-        }
+        tokio::fs::create_dir_all(log_dir).await.map_err(|e| {
+            MailError::DriverError(format!("Failed to create log directory: {}", e))
+        })?;
+
         let log_path = log_dir.join("mail.log");
         let formatted = format!(
             "========================================\n\
@@ -128,14 +129,17 @@ impl MailDriver for LogDriver {
         println!("{}", formatted);
 
         use tokio::io::AsyncWriteExt;
-        if let Ok(mut file) = tokio::fs::OpenOptions::new()
+        let mut file = tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&log_path)
             .await
-        {
-            let _ = file.write_all(formatted.as_bytes()).await;
-        }
+            .map_err(|e| MailError::DriverError(format!("Failed to open log file: {}", e)))?;
+
+        file.write_all(formatted.as_bytes())
+            .await
+            .map_err(|e| MailError::DriverError(format!("Failed to write to log file: {}", e)))?;
+
         Ok(())
     }
 }
