@@ -107,18 +107,7 @@ impl MailDriver for LogDriver {
 
         let log_path = log_dir.join("mail.log");
         let formatted = format!(
-            "========================================\n\
-             [MAIL SENT] {}\n\
-             To: {}\n\
-             From: {}\n\
-             Subject: {}\n\
-             ----------------------------------------\n\
-             [TEXT BODY]\n\
-             {}\n\
-             ----------------------------------------\n\
-             [HTML BODY]\n\
-             {}\n\
-             ========================================\n\n",
+            "========================================\n[MAIL SENT] {}\nTo: {}\nFrom: {}\nSubject: {}\n----------------------------------------\n[TEXT BODY]\n{}\n----------------------------------------\n[HTML BODY]\n{}\n========================================\n\n",
             chrono::Local::now().to_rfc3339(),
             message.to,
             message.from.as_deref().unwrap_or("noreply@rullst.dev"),
