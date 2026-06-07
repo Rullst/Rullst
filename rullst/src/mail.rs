@@ -117,17 +117,27 @@ impl MailDriver for LogDriver {
         );
         println!("{}", formatted);
 
-        use tokio::io::AsyncWriteExt;
-        let mut file = tokio::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_path)
-            .await
-            .map_err(|e| MailError::DriverError(format!("Failed to open log file: {}", e)))?;
-
-        file.write_all(formatted.as_bytes())
-            .await
-            .map_err(|e| MailError::DriverError(format!("Failed to write to log file: {}", e)))?;
+        // Use spawn_blocking with std::fs to guarantee bytes are flushed to disk
+        // before this function returns. tokio::fs::File's async write_all may
+        // buffer internally, causing read_to_string in tests to see empty content.
+        let log_path_owned = log_path.clone();
+        let formatted_clone = formatted.clone();
+        tokio::task::spawn_blocking(move || {
+            use std::io::Write;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_path_owned)
+                .map_err(|e| MailError::DriverError(format!("Failed to open log file: {}", e)))?;
+            file.write_all(formatted_clone.as_bytes()).map_err(|e| {
+                MailError::DriverError(format!("Failed to write to log file: {}", e))
+            })?;
+            file.flush()
+                .map_err(|e| MailError::DriverError(format!("Failed to flush log file: {}", e)))?;
+            Ok::<(), MailError>(())
+        })
+        .await
+        .map_err(|e| MailError::DriverError(format!("spawn_blocking error: {}", e)))??;
 
         Ok(())
     }
