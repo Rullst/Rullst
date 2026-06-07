@@ -92,10 +92,10 @@ impl Server {
         }
 
         if self.db_url.is_none() {
-            if let Some(ref url) = app_config.database.url {
-                self.db_url = Some(url.clone());
-            } else if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+            if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
                 self.db_url = Some(env_db_url);
+            } else if let Some(ref url) = app_config.database.url {
+                self.db_url = Some(url.clone());
             }
         }
 

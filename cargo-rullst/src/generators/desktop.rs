@@ -1,11 +1,15 @@
-// src/generators/desktop.rs — Desktop packaging and Omni-channel sub-systems scaffolding.
+// src/generators/desktop.rs — Omni packaging sub-systems scaffolding.
 
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
 use std::path::Path;
+use std::io::{BufRead, BufReader};
+use std::process::Stdio;
 
-pub fn scaffold_desktop_system() -> Result<(), Box<dyn std::error::Error>> {
+pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
+    let theme = dialoguer::theme::ColorfulTheme::default();
+
     if !is_rullst_project() {
         println!(
             "{}{}",
@@ -20,191 +24,304 @@ pub fn scaffold_desktop_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "🖥️ Starting scaffolding of Rullst desktop packaging system..."
+        "🖥️ Starting scaffolding of Rullst Omni packaging system..."
             .cyan()
             .bold()
     );
 
-    // 1. Create Directories
-    let src_tauri_dir = Path::new("src-tauri");
-    let src_dir = src_tauri_dir.join("src");
-    let icons_dir = src_tauri_dir.join("icons");
+    // 1. Select platforms
+    let platforms = vec![
+        "Desktop (Windows/Mac/Linux)".to_string(),
+        format!("Android {}", "(Requires Android Studio SDK)".truecolor(255, 165, 0)),
+        format!("iOS {}", "(iPhone/iPad - Requires macOS)".red()),
+    ];
+    
+    let selections = match dialoguer::MultiSelect::with_theme(&theme)
+        .with_prompt(format!("{}", "⚠️ Select target platforms for Rullst Omni (Press <Space> to select, <Enter> to confirm)".truecolor(255, 165, 0).bold()))
+        .items(&platforms[..])
+        .defaults(&[true, false, false])
+        .interact() {
+            Ok(sel) => sel,
+            Err(_) => {
+                println!("{}", "⚠️ Warning: Non-interactive terminal detected. Defaulting to Desktop target.".yellow());
+                vec![0]
+            }
+        };
 
-    fs::create_dir_all(&src_tauri_dir)?;
+    let mut has_desktop = false;
+    let mut has_android = false;
+    let mut has_ios = false;
+
+    for &selection in &selections {
+        match selection {
+            0 => has_desktop = true,
+            1 => has_android = true,
+            2 => has_ios = true,
+            _ => {}
+        }
+    }
+
+    // Ensure at least one platform is selected
+    if !has_desktop && !has_android && !has_ios {
+        println!("{}", "⚠️ Warning: No platforms selected (remember to press <Space> to select). Defaulting to Desktop."
+            .truecolor(255, 165, 0)
+            .bold());
+        has_desktop = true;
+    }
+    let _ = has_desktop;
+
+    // 2. Create Directories
+    let omni_dir = Path::new("omni-app");
+    let src_dir = omni_dir.join("src");
+    let icons_dir = omni_dir.join("icons");
+
+    fs::create_dir_all(&omni_dir)?;
     fs::create_dir_all(&src_dir)?;
     fs::create_dir_all(&icons_dir)?;
 
-    // 2. Write Cargo.toml
+    // 3. Write index.html
+    let index_html = r#"<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script>window.location.replace("http://localhost:3000");</script>
+  </head>
+  <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
+    <h2 style="animation: pulse 1.5s infinite;">Starting Omni Engine...</h2>
+    <style>@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }</style>
+  </body>
+</html>"#;
+    fs::write(src_dir.join("index.html"), index_html)?;
+
+    // 4. Write package.json
+    let package_json = r#"{
+  "name": "rullst-omni",
+  "version": "1.0.0",
+  "scripts": {
+    "tauri": "npx -y @tauri-apps/cli@^2.0.0"
+  }
+}
+"#;
+    fs::write(omni_dir.join("package.json"), package_json)?;
+
+    // 4. Write Cargo.toml (with Tauri 2.11.2 and Tauri-build 2.6.2)
     let cargo_toml = r#"[package]
-name = "rullst-desktop"
+name = "rullst-omni"
 version = "0.1.0"
-description = "Rullst Desktop Application"
+description = "Rullst Omni Application"
 authors = ["Rullst Developer"]
 edition = "2021"
 
+[lib]
+name = "rullst_omni"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
-tauri-build = { version = "1.5" }
+tauri-build = { version = "2.6.2", features = [] }
 
 [dependencies]
-tauri = { version = "1.5" }
+tauri = { version = "2.11.2", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.11", features = ["blocking"] }
+reqwest = { version = "0.13", features = ["blocking"] }
 
 [workspace]
 "#;
-    fs::write(src_tauri_dir.join("Cargo.toml"), cargo_toml)?;
+    fs::write(omni_dir.join("Cargo.toml"), cargo_toml)?;
 
-    // 3. Write tauri.conf.json
+    // 5. Write tauri.conf.json
     let tauri_conf = r#"{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RullstOmni",
+  "version": "0.1.0",
+  "identifier": "com.rullst.omni",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "devPath": "http://localhost:3000",
-    "distDir": "http://localhost:3000"
+    "frontendDist": "src"
   },
-  "package": {
-    "productName": "RullstDesktop",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false
-    },
-    "bundle": {
-      "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "com.rullst.desktop",
-      "longDescription": "",
-      "macOS": {
-        "frameworks": [],
-        "minimumSystemVersion": ""
-      },
-      "resources": [],
-      "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
-      }
-    },
-    "security": {
-      "csp": null
-    },
+  "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "fullscreen": false,
+        "title": "Rullst Omni",
+        "width": 1024,
         "height": 768,
-        "resizable": true,
-        "title": "Rullst Hyper Desktop",
-        "width": 1024
+        "resizable": true
       }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ]
   }
 }
 "#;
-    fs::write(src_tauri_dir.join("tauri.conf.json"), tauri_conf)?;
+    fs::write(omni_dir.join("tauri.conf.json"), tauri_conf)?;
 
-    // 4. Write build.rs
+    // 6. Write build.rs
     let build_rs = r#"fn main() {
     tauri_build::build();
 }
 "#;
-    fs::write(src_tauri_dir.join("build.rs"), build_rs)?;
+    fs::write(omni_dir.join("build.rs"), build_rs)?;
 
-    // 5. Write src/main.rs (Process Orchester)
-    let main_rs = r#"#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+    // 7. Write src/lib.rs and src/main.rs (Process Orchestrator with conditional mobile compilation)
+    let lib_rs = r#"
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::process::{Command, Child};
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::net::TcpStream;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::time::Duration;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::thread;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::sync::{Arc, Mutex};
-use tauri::Manager;
 
-fn main() {
-    let backend_process = Arc::new(Mutex::new(None::<Child>));
-    let backend_clone = Arc::clone(&backend_process);
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        let backend_process = Arc::new(Mutex::new(None::<Child>));
+        let backend_clone = Arc::clone(&backend_process);
 
-    thread::spawn(move || {
-        println!("🚀 Starting Rullst backend server...");
-        
-        let mut cmd = if std::path::Path::new("../Cargo.toml").exists() {
-            let mut c = Command::new("cargo");
-            c.arg("run").current_dir("..");
-            c
-        } else {
-            let exe_dir = std::env::current_exe().unwrap().parent().unwrap().to_path_buf();
-            let server_bin = if cfg!(windows) { "server.exe" } else { "server" };
-            Command::new(exe_dir.join(server_bin))
-        };
+        thread::spawn(move || {
+            println!("🚀 Starting Rullst backend server...");
+            
+            let mut cmd = if std::path::Path::new("../Cargo.toml").exists() {
+                let mut c = Command::new("cargo");
+                c.arg("run").arg("-q").current_dir("..");
+                c
+            } else {
+                let exe_dir = std::env::current_exe().unwrap().parent().unwrap().to_path_buf();
+                let server_bin = if cfg!(windows) { "server.exe" } else { "server" };
+                Command::new(exe_dir.join(server_bin))
+            };
 
-        match cmd.spawn() {
-            Ok(child) => {
-                let mut lock = backend_clone.lock().unwrap();
-                *lock = Some(child);
-            }
-            Err(e) => {
-                eprintln!("❌ Failed to start Rullst backend: {}", e);
-            }
-        }
-    });
-
-    println!("⏳ Waiting for Rullst server to bind on port 3000...");
-    let poll_interval = Duration::from_millis(100);
-    let timeout = Duration::from_secs(30);
-    let start_time = std::time::Instant::now();
-    let mut connected = false;
-
-    while start_time.elapsed() < timeout {
-        if TcpStream::connect("127.0.0.1:3000").is_ok() {
-            connected = true;
-            break;
-        }
-        thread::sleep(poll_interval);
-    }
-
-    if connected {
-        println!("✅ Rullst server is ready! Launching Tauri interface...");
-    } else {
-        eprintln!("⚠️ Timeout waiting for port 3000 to open. Attempting window launch anyway...");
-    }
-
-    let backend_for_cleanup = Arc::clone(&backend_process);
-
-    tauri::Builder::default()
-        .on_window_event(move |event| {
-            if let tauri::WindowEvent::Destroyed = event.event() {
-                println!("🛑 Tauri window closed. Shutting down Rullst backend...");
-                let mut lock = backend_for_cleanup.lock().unwrap();
-                if let Some(mut child) = lock.take() {
-                    let _ = child.kill();
-                    println!("✅ Rullst backend terminated.");
+            match cmd.spawn() {
+                Ok(child) => {
+                    let mut lock = backend_clone.lock().unwrap();
+                    *lock = Some(child);
+                }
+                Err(e) => {
+                    eprintln!("❌ Failed to start Rullst backend: {}", e);
                 }
             }
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        });
+
+        println!("⏳ Waiting for Rullst server to bind on port 3000...");
+        let poll_interval = Duration::from_millis(100);
+        let timeout = Duration::from_secs(30);
+        let start_time = std::time::Instant::now();
+        let mut connected = false;
+
+        while start_time.elapsed() < timeout {
+            if TcpStream::connect("127.0.0.1:3000").is_ok() {
+                connected = true;
+                break;
+            }
+            thread::sleep(poll_interval);
+        }
+
+        if connected {
+            println!("✅ Rullst server is ready! Launching Omni interface...");
+        } else {
+            eprintln!("⚠️ Timeout waiting for port 3000 to open. Attempting window launch anyway...");
+        }
+
+        let backend_for_cleanup = Arc::clone(&backend_process);
+
+        tauri::Builder::default()
+            .on_window_event(move |_window, event| {
+                if let tauri::WindowEvent::Destroyed = event {
+                    println!("🛑 Omni window closed. Shutting down Rullst backend...");
+                    let mut lock = backend_for_cleanup.lock().unwrap();
+                    if let Some(mut child) = lock.take() {
+                        let _ = child.kill();
+                        println!("✅ Rullst backend terminated.");
+                    }
+                }
+            })
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application");
+    }
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        // On mobile, the backend server must be running on the host machine.
+        // We simply launch standard tauri runtime here.
+        tauri::Builder::default()
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application on mobile");
+    }
+}
+"#;
+    fs::write(src_dir.join("lib.rs"), lib_rs)?;
+
+    let main_rs = r#"#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+fn main() {
+    rullst_omni::run();
 }
 "#;
     fs::write(src_dir.join("main.rs"), main_rs)?;
 
-    // 6. Generate icons to prevent Tauri compile errors
-    // PNG 1x1 transparent
+    // 8. Write README.md
+    let readme_md = r#"# Rullst Omni (Tauri-powered Desktop & Mobile App wrapper)
+
+This directory contains the cross-platform Tauri packaging wrapper for your Rullst application.
+
+## Getting Started
+
+### Desktop (Windows, macOS, Linux)
+To run the desktop application:
+```bash
+cargo rullst omni
+# or
+cargo rullst omni desktop
+```
+
+### Android
+To run on an Android emulator or physical device:
+1. Make sure you have the Android SDK, NDK, and emulator configured.
+2. Ensure the Rullst backend server is running:
+   ```bash
+   cargo rullst dev
+   ```
+3. Run the Android client:
+   ```bash
+   cargo rullst omni android
+   ```
+
+> [!IMPORTANT]
+> **Android Networking Note:** By default, Android emulators cannot access the host machine's `localhost`.
+> You need to update your `tauri.conf.json` or redirects in `index.html` to point to `http://10.0.2.2:3000` (which redirects to your host's localhost:3000) or your computer's local IP address (e.g., `http://192.168.1.50:3000`).
+
+### iOS (macOS required)
+To run on an iOS simulator or device:
+1. Make sure Xcode is installed.
+2. Ensure the Rullst backend server is running:
+   ```bash
+   cargo rullst dev
+   ```
+3. Run the iOS client:
+   ```bash
+   cargo rullst omni ios
+   ```
+"#;
+    fs::write(omni_dir.join("README.md"), readme_md)?;
+
+    // 9. Generate icons to prevent Tauri compile errors
     let png_bytes: &[u8] = &[
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
         0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
@@ -217,562 +334,302 @@ fn main() {
     fs::write(icons_dir.join("128x128.png"), png_bytes)?;
     fs::write(icons_dir.join("128x128@2x.png"), png_bytes)?;
 
-    // Construct valid minimal ICO embedding the 1x1 PNG
+    // Construct valid ICO
     let mut ico_bytes = Vec::new();
-    ico_bytes.extend_from_slice(&[0x00, 0x00]); // Reserved
-    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Type (1 = ICO)
-    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Number of images (1)
-
-    // Directory entry (16 bytes)
-    ico_bytes.push(0x01); // Width (1 pixel)
-    ico_bytes.push(0x01); // Height (1 pixel)
-    ico_bytes.push(0x00); // Color count
-    ico_bytes.push(0x00); // Reserved
-    ico_bytes.extend_from_slice(&[0x01, 0x00]); // Color planes (1)
-    ico_bytes.extend_from_slice(&[0x20, 0x00]); // Bits per pixel (32)
-
+    ico_bytes.extend_from_slice(&[0x00, 0x00]);
+    ico_bytes.extend_from_slice(&[0x01, 0x00]);
+    ico_bytes.extend_from_slice(&[0x01, 0x00]);
+    ico_bytes.push(0x01);
+    ico_bytes.push(0x01);
+    ico_bytes.push(0x00);
+    ico_bytes.push(0x00);
+    ico_bytes.extend_from_slice(&[0x01, 0x00]);
+    ico_bytes.extend_from_slice(&[0x20, 0x00]);
     let png_len = png_bytes.len() as u32;
-    ico_bytes.extend_from_slice(&png_len.to_le_bytes()); // Size of image data
-    ico_bytes.extend_from_slice(&22u32.to_le_bytes()); // Offset of image data
-
+    ico_bytes.extend_from_slice(&png_len.to_le_bytes());
+    ico_bytes.extend_from_slice(&22u32.to_le_bytes());
     ico_bytes.extend_from_slice(png_bytes);
     fs::write(icons_dir.join("icon.ico"), &ico_bytes)?;
 
-    // Construct valid minimal ICNS embedding the 1x1 PNG under "ic07" (128x128 size key)
+    // Construct valid ICNS
     let mut icns_bytes = Vec::new();
-    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x6e, 0x73]); // Magic "icns"
-
+    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x6e, 0x73]);
     let total_icns_len = (8 + 8 + png_bytes.len()) as u32;
-    icns_bytes.extend_from_slice(&total_icns_len.to_be_bytes()); // Total length (big endian)
-
-    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x30, 0x37]); // OSType "ic07" (128x128 icon)
+    icns_bytes.extend_from_slice(&total_icns_len.to_be_bytes());
+    icns_bytes.extend_from_slice(&[0x69, 0x63, 0x30, 0x37]);
     let chunk_len = (8 + png_bytes.len()) as u32;
-    icns_bytes.extend_from_slice(&chunk_len.to_be_bytes()); // Chunk length (big endian)
-
+    icns_bytes.extend_from_slice(&chunk_len.to_be_bytes());
     icns_bytes.extend_from_slice(png_bytes);
     fs::write(icons_dir.join("icon.icns"), &icns_bytes)?;
 
+    // 9.5. Run npm install to populate node_modules with @tauri-apps/cli
+    let has_npm = if cfg!(windows) {
+        std::process::Command::new("cmd")
+            .args(&["/C", "npm --version"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    } else {
+        std::process::Command::new("npm")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    };
+
+    if has_npm {
+        println!("📦 Installing project dependencies via npm...");
+        let mut npm_install = if cfg!(windows) {
+            let mut c = std::process::Command::new("cmd");
+            c.args(&["/C", "npm", "install"]);
+            c
+        } else {
+            let mut c = std::process::Command::new("npm");
+            c.arg("install");
+            c
+        };
+        let _ = npm_install.current_dir(omni_dir).status();
+    }
+
+    // 10. Check and resolve Tauri CLI for mobile target auto-initialization
+    if has_android {
+        println!("🤖 Initializing Android support folder inside 'omni-app/'...");
+        println!("{}", "💡 Tip: If Omni asks to install Android command line tools or NDK, typing 'y' (yes) is highly recommended!"
+            .truecolor(255, 165, 0)
+            .bold());
+        match get_tauri_command(omni_dir) {
+            Ok(mut tauri_cmd) => {
+                let _ = tauri_cmd
+                    .arg("android")
+                    .arg("init")
+                    .current_dir(omni_dir)
+                    .status();
+            }
+            Err(e) => {
+                println!("{}", format!("⚠️ Warning: Could not initialize Android target support: {}", e).yellow());
+            }
+        }
+    }
+
+    if has_ios {
+        if cfg!(target_os = "macos") {
+            println!("🍎 Initializing iOS support folder inside 'omni-app/'...");
+            match get_tauri_command(omni_dir) {
+                Ok(mut tauri_cmd) => {
+                    let _ = tauri_cmd
+                        .arg("ios")
+                        .arg("init")
+                        .current_dir(omni_dir)
+                        .status();
+                }
+                Err(e) => {
+                    println!("{}", format!("⚠️ Warning: Could not initialize iOS target support: {}", e).yellow());
+                }
+            }
+        } else {
+            println!("{}", "⚠️ Warning: iOS initialization requires a macOS host. Skipping iOS setup."
+                .truecolor(255, 165, 0)
+                .bold());
+        }
+    }
+
     println!(
-        "{}",
-        "✅ Rullst Hyper desktop template successfully generated in 'src-tauri/'!"
+        "{}\n\n{}",
+        "✅ Rullst Omni template successfully generated in 'omni-app/'!"
             .green()
-            .bold()
+            .bold(),
+        "To start developing, run:".cyan()
     );
+
+    if has_desktop {
+        println!("  {}", "cargo rullst omni desktop".white().bold());
+    }
+    if has_android {
+        println!("  {}", "cargo rullst omni android".white().bold());
+    }
+    if has_ios {
+        println!("  {}", "cargo rullst omni ios".white().bold());
+    }
 
     Ok(())
 }
 
-pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
-    if !is_rullst_project() {
-        println!(
-            "{}{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold(),
-            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
-                .yellow()
-        );
+pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let omni_dir = Path::new("omni-app");
+    if !omni_dir.exists() {
+        println!("{}", "❌ Error: 'omni-app' directory not found. Please run `cargo rullst make:omni` first.".red());
         std::process::exit(1);
     }
 
-    println!(
-        "{}",
-        "📱 Starting scaffolding of Rullst Omni multi-platform frontend..."
-            .cyan()
-            .bold()
-    );
+    let platform = target.unwrap_or("desktop");
 
-    // 1. Create Directories
-    let omni_dir = Path::new("omni-app");
-    let src_dir = omni_dir.join("src");
+    match platform {
+        "desktop" => {
+            let mut child = std::process::Command::new("cargo")
+                .arg("run")
+                .arg("-q")
+                .current_dir(omni_dir)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .expect("Failed to execute cargo run");
 
-    fs::create_dir_all(&omni_dir)?;
-    fs::create_dir_all(&src_dir)?;
+            let stdout = child.stdout.take().expect("Failed to open stdout");
 
-    // 2. Write Cargo.toml
-    let cargo_toml = r#"[package]
-name = "omni-app"
-version = "0.1.0"
-authors = ["Rullst Developer"]
-edition = "2021"
-
-[dependencies]
-dioxus = { version = "0.7", features = ["desktop"] }
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1", features = ["full"] }
-
-[workspace]
-"#;
-    fs::write(omni_dir.join("Cargo.toml"), cargo_toml)?;
-
-    // 3. Write src/main.rs
-    let main_rs = r##"#![allow(non_snake_case)]
-use dioxus::prelude::*;
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug, Clone)]
-struct BackendStatus {
-    version: String,
-    status: String,
-    uptime: String,
-}
-
-fn main() {
-    dioxus::launch(App);
-}
-
-#[component]
-fn App() -> Element {
-    let mut backend_data = use_signal(|| None::<BackendStatus>);
-
-    let mut fetch_status = move |_| {
-        spawn(async move {
-            let client = reqwest::Client::new();
-            match client.get("http://localhost:3000/api/status").send().await {
-                Ok(res) => {
-                    if let Ok(data) = res.json::<BackendStatus>().await {
-                        backend_data.set(Some(data));
+            let launched = crate::ui::components::with_spinner("🚀 Soon the Omni window will automatically open...", move || {
+                let reader = BufReader::new(stdout);
+                let mut ok = false;
+                for line in reader.lines() {
+                    if let Ok(l) = line {
+                        if l.contains("Launching Omni interface...") || l.contains("Launching Tauri interface...") {
+                            ok = true;
+                            break;
+                        }
                     }
                 }
-                Err(_) => {
-                    backend_data.set(Some(BackendStatus {
-                        version: "1.0.5".to_string(),
-                        status: "Running (Offline Simulation)".to_string(),
-                        uptime: "2h 45m".to_string(),
-                    }));
-                }
-            }
-        });
-    };
+                ok
+            });
 
-    use_future(move || async move {
-        let client = reqwest::Client::new();
-        match client.get("http://localhost:3000/api/status").send().await {
-            Ok(res) => {
-                if let Ok(data) = res.json::<BackendStatus>().await {
-                    backend_data.set(Some(data));
-                }
+            if launched {
+                println!("{}", "✅ Omni window launched successfully!".green().bold());
             }
-            Err(_) => {
-                backend_data.set(Some(BackendStatus {
-                    version: "1.0.5".to_string(),
-                    status: "Running (Offline Simulation)".to_string(),
-                    uptime: "2h 45m".to_string(),
-                }));
+
+            let status = child.wait().expect("Failed to wait on child");
+            if !status.success() {
+                std::process::exit(1);
             }
         }
-    });
+        "android" | "ios" => {
+            println!("🚀 Starting Rullst backend server in background...");
+            let mut backend = std::process::Command::new("cargo")
+                .arg("run")
+                .arg("-q")
+                .current_dir(".") // Running in root
+                .spawn()
+                .expect("Failed to spawn Rullst backend");
 
-    rsx! {
-        style { {include_str!("./style.css")} }
-        
-        div { class: "app-container",
-            div { class: "glow-circle glow-1" }
-            div { class: "glow-circle glow-2" }
-            
-            div { class: "glass-card",
-                header { class: "header-container",
-                    div { class: "logo-group",
-                        span { class: "logo-glow", "R" }
-                        h1 { "Rullst ", span { class: "gradient-text", "Omni" } }
+            println!("⏳ Waiting for backend to bind...");
+            std::thread::sleep(std::time::Duration::from_secs(3));
+
+            println!("📱 Starting Omni mobile client ({}) via Omni Engine...", platform);
+
+            if platform == "android" {
+                println!("🔗 Setting up Android USB/Emulator port forwarding (adb reverse tcp:3000 tcp:3000)...");
+                let adb_cmd = if cfg!(windows) {
+                    if let Ok(android_home) = std::env::var("ANDROID_HOME") {
+                        format!("{}\\platform-tools\\adb.exe", android_home)
+                    } else {
+                        "adb".to_string()
                     }
-                    span { class: "badge", "v1.0.5 - Free Enterprise" }
-                }
+                } else {
+                    "adb".to_string()
+                };
 
-                div { class: "main-grid",
-                    div { class: "sidebar-panel",
-                        h3 { "System Status" }
-                        div { class: "status-indicator active",
-                            div { class: "ping-dot" }
-                            span { "Connected to Dual-Engine Backend" }
-                        }
-                        
-                        div { class: "stats-list",
-                            div { class: "stat-item",
-                                span { class: "stat-label", "Backend Version:" }
-                               span { class: "stat-value", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.version}"
-                                    } else {
-                                        "Fetching..."
-                                    }
-                                }
-                            }
-                            div { class: "stat-item",
-                                span { class: "stat-label", "Engine State:" }
-                                span { class: "stat-value state-ok", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.status}"
-                                    } else {
-                                        "Connecting..."
-                                    }
-                                }
-                            }
-                            div { class: "stat-item",
-                                span { class: "stat-label", "API Uptime:" }
-                                span { class: "stat-value", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.uptime}"
-                                    } else {
-                                        "..."
-                                    }
-                                }
-                            }
-                        }
+                let _ = std::process::Command::new(&adb_cmd)
+                    .args(&["reverse", "tcp:3000", "tcp:3000"])
+                    .status()
+                    .or_else(|_| {
+                        std::process::Command::new("adb")
+                            .args(&["reverse", "tcp:3000", "tcp:3000"])
+                            .status()
+                    });
+            }
 
-                        button { 
-                            class: "primary-btn",
-                            onclick: fetch_status,
-                            "Refresh Backend Link"
-                        }
-                    }
+            match get_tauri_command(omni_dir) {
+                Ok(mut tauri_cmd) => {
+                    tauri_cmd
+                        .arg(platform)
+                        .arg("dev")
+                        .current_dir(omni_dir);
+                    let status = tauri_cmd.status().expect("Failed to run cargo tauri dev");
 
-                    div { class: "content-panel",
-                        h2 { "Multi-Platform Frontend Engine" }
-                        p { class: "panel-desc",
-                            "Rullst Omni connects your Axum backend to high-fidelity user experiences across iOS, Android, and Desktop using the Dioxus renderer."
-                        }
-
-                        div { class: "cards-container",
-                            div { class: "feature-card",
-                                h4 { "⚡ Rullst Hyper" }
-                                p { "Server-side HTMX rendering for extreme lightweight speed and zero Client Wasm overhead." }
-                            }
-                            div { class: "feature-card highlighted",
-                                h4 { "📱 Rullst Omni" }
-                                p { "Interactive, cross-compiled native Rust components with instant state reactivity." }
-                            }
-                        }
+                    // Clean up backend
+                    let _ = backend.kill();
+                    if !status.success() {
+                        std::process::exit(1);
                     }
                 }
-
-                footer { class: "footer-container",
-                    span { "Rullst Framework © 2026" }
-                    span { class: "footer-link", "rullst.dev" }
+                Err(e) => {
+                    let _ = backend.kill();
+                    println!("{}", format!("❌ Error: Omni CLI is required for mobile target: {}", e).red());
+                    std::process::exit(1);
                 }
             }
+        }
+        _ => {
+            println!("{}", format!("❌ Error: Unknown platform '{}'. Supported: desktop, android, ios", platform).red());
+            std::process::exit(1);
         }
     }
-}
-"##;
-    fs::write(src_dir.join("main.rs"), main_rs)?;
-
-    // 4. Write src/style.css
-    let style_css = r#"* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-body, html {
-    background-color: #030712;
-    color: #f3f4f6;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-}
-
-.app-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: radial-gradient(circle at 50% 50%, #0c1020 0%, #030712 100%);
-    overflow: hidden;
-}
-
-.glow-circle {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(100px);
-    opacity: 0.3;
-    z-index: 1;
-    animation: pulse 10s infinite alternate;
-}
-
-.glow-1 {
-    width: 400px;
-    height: 400px;
-    background: #6366f1;
-    top: -100px;
-    left: -100px;
-}
-
-.glow-2 {
-    width: 450px;
-    height: 450px;
-    background: #06b6d4;
-    bottom: -150px;
-    right: -150px;
-    animation-delay: 5s;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1) translate(0, 0); opacity: 0.2; }
-    100% { transform: scale(1.2) translate(30px, 30px); opacity: 0.4; }
-}
-
-.glass-card {
-    position: relative;
-    z-index: 10;
-    width: 90%;
-    max-width: 960px;
-    height: 80%;
-    max-height: 600px;
-    background: rgba(17, 24, 39, 0.65);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
-    overflow: hidden;
-}
-
-.header-container {
-    padding: 24px 32px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.logo-glow {
-    width: 38px;
-    height: 38px;
-    background: linear-gradient(135deg, #6366f1, #06b6d4);
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: 800;
-    font-size: 20px;
-    color: white;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
-}
-
-h1 {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-}
-
-.gradient-text {
-    background: linear-gradient(90deg, #6366f1, #06b6d4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.badge {
-    padding: 6px 12px;
-    border-radius: 9999px;
-    background: rgba(99, 102, 241, 0.15);
-    border: 1px solid rgba(99, 102, 241, 0.3);
-    color: #a5b4fc;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.main-grid {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    overflow: hidden;
-}
-
-.sidebar-panel {
-    padding: 32px;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(10, 15, 30, 0.2);
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.sidebar-panel h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    font-size: 14px;
-}
-
-.ping-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #10b981;
-    border-radius: 50%;
-    box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
-    animation: beacon 1.5s infinite alternate;
-}
-
-@keyframes beacon {
-    0% { transform: scale(1); opacity: 0.8; }
-    100% { transform: scale(1.3); opacity: 1; }
-}
-
-.stats-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-}
-
-.stat-label {
-    color: #9ca3af;
-}
-
-.stat-value {
-    font-weight: 600;
-    color: #f3f4f6;
-}
-
-.state-ok {
-    color: #06b6d4;
-}
-
-.primary-btn {
-    margin-top: auto;
-    width: 100%;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
-    background: linear-gradient(90deg, #6366f1, #06b6d4);
-    color: white;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-}
-
-.primary-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5), 0 0 10px rgba(6, 182, 212, 0.3);
-}
-
-.primary-btn:active {
-    transform: translateY(0);
-}
-
-.content-panel {
-    padding: 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    overflow-y: auto;
-}
-
-h2 {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-}
-
-.panel-desc {
-    color: #9ca3af;
-    line-height: 1.6;
-    font-size: 15px;
-}
-
-.cards-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-top: 10px;
-}
-
-.feature-card {
-    padding: 24px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: all 0.3s ease;
-}
-
-.feature-card h4 {
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.feature-card p {
-    font-size: 13px;
-    color: #9ca3af;
-    line-height: 1.5;
-}
-
-.feature-card.highlighted {
-    background: rgba(99, 102, 241, 0.06);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.05);
-}
-
-.feature-card:hover {
-    transform: scale(1.02);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 0 15px rgba(99, 102, 241, 0.1);
-}
-
-.footer-container {
-    padding: 16px 32px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.footer-link {
-    color: #9ca3af;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.footer-link:hover {
-    color: #6366f1;
-}
-"#;
-    fs::write(omni_dir.join("src/style.css"), style_css)?;
-
-    println!(
-        "{}",
-        "✅ Rullst Omni template successfully generated in 'omni-app/'!"
-            .green()
-            .bold()
-    );
 
     Ok(())
+}
+
+fn get_tauri_command(_omni_dir: &Path) -> Result<std::process::Command, Box<dyn std::error::Error>> {
+    let has_tauri_cli = std::process::Command::new("cargo")
+        .arg("tauri")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    if has_tauri_cli {
+        let mut cmd = std::process::Command::new("cargo");
+        cmd.arg("tauri");
+        return Ok(cmd);
+    }
+
+    let has_npx = if cfg!(windows) {
+        std::process::Command::new("cmd")
+            .args(&["/C", "npx --version"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    } else {
+        std::process::Command::new("npx")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    };
+
+    if has_npx {
+        let cmd = if cfg!(windows) {
+            let mut c = std::process::Command::new("cmd");
+            c.args(&["/C", "npx", "--yes", "@tauri-apps/cli"]);
+            c
+        } else {
+            let mut c = std::process::Command::new("npx");
+            c.args(&["--yes", "@tauri-apps/cli"]);
+            c
+        };
+        return Ok(cmd);
+    }
+
+    // Install tauri-cli globally via cargo install tauri-cli
+    println!("{}", "📦 Omni background tools not found. Installing globally via Cargo (this may take a few minutes)..."
+        .truecolor(255, 165, 0)
+        .bold());
+    
+    let installed = crate::ui::components::with_spinner(
+        "🚀 Installing Omni background tools...",
+        || {
+            std::process::Command::new("cargo")
+                .args(&["install", "tauri-cli"])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+        }
+    );
+
+    if installed {
+        println!("{}", "✅ Omni background tools installed successfully!".green().bold());
+        let mut cmd = std::process::Command::new("cargo");
+        cmd.arg("tauri");
+        Ok(cmd)
+    } else {
+        Err("Failed to install tauri-cli automatically".into())
+    }
 }

@@ -163,7 +163,7 @@ where
             let color = colors[(i / 2) % colors.len()];
 
             let mut animated_msg = String::new();
-            let targets = ["Application", "migrations"];
+            let targets = ["Application", "migrations", "Omni"];
             let mut found_target = None;
 
             for target in targets {
@@ -175,6 +175,19 @@ where
 
             if let Some((target, pos)) = found_target {
                 animated_msg.push_str(&msg[..pos].bold().to_string());
+                
+                // Use special colors for Omni (orange/red)
+                let custom_colors = if target == "Omni" {
+                    vec![
+                        colored::Color::Red,
+                        colored::Color::TrueColor { r: 255, g: 165, b: 0 },
+                        colored::Color::BrightRed,
+                        colored::Color::Yellow,
+                    ]
+                } else {
+                    colors.to_vec()
+                };
+
                 for (j, ch) in target.chars().enumerate() {
                     let is_upper = ((i + j) % 4) < 2; // wave effect
                     let wave_char = if is_upper {
@@ -182,11 +195,11 @@ where
                     } else {
                         ch.to_ascii_lowercase()
                     };
-                    let c_idx = (i + j) % colors.len();
+                    let c_idx = (i + j) % custom_colors.len();
                     animated_msg.push_str(
                         &wave_char
                             .to_string()
-                            .color(colors[c_idx])
+                            .color(custom_colors[c_idx])
                             .bold()
                             .to_string(),
                     );
@@ -350,7 +363,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
                 ),
                 format!(
                     "🖥  Package for Desktop/App  {}",
-                    "(Hyper Desktop, Omni Cross-Platform)".dimmed()
+                    "(Omni Desktop & Mobile)".dimmed()
                 ),
                 format!(
                     "🐳  Dockerize Project        {}",
@@ -524,29 +537,13 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 4 => {
-                    // Package for Desktop/App
-                    let pkg_choices = &[
-                        "🖥  Hyper Desktop        (Native desktop packaging)",
-                        "📱  Omni Cross-Platform  (Cross-platform app)",
+                    // Package for Desktop/App (Omni)
+                    let args_vec = vec![
+                        std::env::args().next().unwrap_or_default(),
+                        "make:omni".to_string(),
                     ];
-                    let pkg_selection = dialoguer::Select::with_theme(&theme)
-                        .with_prompt("Choose packaging target:\n")
-                        .default(0)
-                        .items(&pkg_choices[..])
-                        .interact()?;
-                    let cmd_str = match pkg_selection {
-                        0 => "make:desktop",
-                        1 => "make:omni",
-                        _ => "",
-                    };
-                    if !cmd_str.is_empty() {
-                        let args_vec = vec![
-                            std::env::args().next().unwrap_or_default(),
-                            cmd_str.to_string(),
-                        ];
-                        let cli = Cli::parse_from(args_vec);
-                        run_cli_command(&cli.command)?;
-                    }
+                    let cli = Cli::parse_from(args_vec);
+                    run_cli_command(&cli.command)?;
                 }
                 5 => {
                     // Dockerize Project
@@ -677,13 +674,16 @@ pub fn show_help_reference() {
             ],
         ),
         (
-            "🖥️  DESKTOP & CROSS-PLATFORM",
+            "🖥️  DESKTOP & MOBILE (OMNI)",
             vec![
                 (
-                    "cargo rullst make:desktop",
-                    "Hyper native desktop packaging",
+                    "cargo rullst make:omni",
+                    "Scaffold Omni desktop & mobile app wrapper",
                 ),
-                ("cargo rullst make:omni", "Omni cross-platform app"),
+                (
+                    "cargo rullst omni [target]",
+                    "Run Omni app (desktop, android, ios)",
+                ),
             ],
         ),
         (

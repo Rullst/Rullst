@@ -39,8 +39,11 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        println!("📊 Rullst Studio running on port 5555");
+    }}
     println!("🚀 Blog server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
@@ -88,8 +91,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         get("/posts/{slug}" => controllers::blog_controller::show),
     ].nest_axum("/nexus", nexus);
 
-    rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 Blog server starting on port 3000...");
     Server::new(router)
         .run(3000)
@@ -260,7 +266,7 @@ pub fn index_page(posts: Vec<Post>) -> String {
                         { rullst::html::RawHtml::new(posts.into_iter().map(|p| html! {
                             <div class="card">
                                 <h2>{&p.title}</h2>
-                                <p>{&p.content[..100]} "..."</p>
+                                <p>{p.content.chars().take(100).collect::<String>()} "..."</p>
                                 <a class="read-more" href={format!("/posts/{}", p.slug)}>"Read full post &rarr;"</a>
                             </div>
                         }).collect::<Vec<_>>().join("")) }

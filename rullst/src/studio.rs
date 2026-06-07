@@ -55,11 +55,15 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 /// Dynamic SQLite schema tables finder
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
     let pool = Orm::pool();
-    let rows = sqlx::query(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
-    )
-    .fetch_all(pool)
-    .await?;
+    let driver = Orm::driver();
+
+    let query = match driver {
+        "postgres" => "SELECT CAST(table_name AS VARCHAR) as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC",
+        "mysql" => "SELECT table_name as name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name ASC",
+        _ => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC",
+    };
+
+    let rows = sqlx::query(query).fetch_all(pool).await?;
 
     let mut tables = Vec::new();
     for row in rows {
@@ -73,14 +77,25 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
     let pool = Orm::pool();
+    let driver = Orm::driver();
     let clean_table = sanitize_identifier(table);
 
+    let quoted_table = if driver == "mysql" {
+        format!("`{}`", clean_table)
+    } else {
+        format!("\"{}\"", clean_table)
+    };
+
     let mut qb: QueryBuilder<Any> =
-        QueryBuilder::new(format!("SELECT COUNT(*) FROM \"{}\"", clean_table));
+        QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
 
     if let Some(search) = search_query {
         if !search.is_empty() {
-            let schema_query = format!("PRAGMA table_info(\"{}\")", clean_table);
+            let schema_query = match driver {
+                "postgres" => format!("SELECT CAST(column_name AS VARCHAR) as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = 'public'", clean_table),
+                "mysql" => format!("SELECT column_name as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = DATABASE()", clean_table),
+                _ => format!("PRAGMA table_info(\"{}\")", clean_table),
+            };
             if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query)
                 .build()
                 .fetch_all(pool)
@@ -96,7 +111,13 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
                     qb.push(" WHERE ");
                     let mut separated = qb.separated(" OR ");
                     for col in &col_names {
-                        separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+                        if driver == "postgres" {
+                            separated.push(format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col)));
+                        } else if driver == "mysql" {
+                            separated.push(format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col)));
+                        } else {
+                            separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+                        }
                         separated.push_bind_unseparated(format!("%{}%", search));
                     }
                 }
@@ -240,7 +261,7 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
                 <aside class="w-72 bg-slate-900/60 border-r border-slate-800/80 flex flex-col flex-shrink-0 overflow-y-auto">
                     <div class="p-4 border-b border-slate-800/50">
                         <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">"Database Schema"</h2>
-                        <p class="text-[11px] text-slate-400 font-medium">"SQLite Database"</p>
+                        <p class="text-[11px] text-slate-400 font-medium">"Studio DB"</p>
                     </div>
                     <div class="flex-grow py-2">
                         { RawHtml(sidebar_links) }
@@ -278,13 +299,13 @@ async fn handle_dashboard() -> impl IntoResponse {
             <div class="space-y-2">
                 <h1 class="text-3xl font-extrabold tracking-tight text-white">"Welcome to Rullst Studio"</h1>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    "Inspect tables, explore structural schemas, and view real-time records inside your SQLite dev database effortlessly."
+                    "Inspect tables, explore structural schemas, and view real-time records inside your dev database effortlessly."
                 </p>
             </div>
             <div class="w-full grid grid-cols-2 gap-4 mt-8 text-left">
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
-                    <span class="text-xs text-sky-400 font-bold uppercase tracking-wider">"Database Size"</span>
-                    <h3 class="text-xl font-bold mt-1 text-slate-200">"Local SQLite"</h3>
+                    <span class="text-xs text-sky-400 font-bold uppercase tracking-wider">"Database Type"</span>
+                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{Orm::driver()}</h3>
                 </div>
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-indigo-400 font-bold uppercase tracking-wider">"Total Tables"</span>
@@ -326,9 +347,29 @@ pub async fn handle_table(
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
     let pool = Orm::pool();
+    let driver = Orm::driver();
     let clean_table = sanitize_identifier(&table_name);
 
-    let columns_query = format!("PRAGMA table_info(\"{}\")", clean_table);
+    let columns_query = match driver {
+        "postgres" => format!("
+            SELECT CAST(c.column_name AS VARCHAR) as name,
+            CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END as pk
+            FROM information_schema.columns c
+            LEFT JOIN information_schema.key_column_usage kcu
+              ON c.table_name = kcu.table_name AND CAST(c.column_name AS VARCHAR) = CAST(kcu.column_name AS VARCHAR) AND kcu.table_schema = 'public'
+            LEFT JOIN information_schema.table_constraints tc
+              ON kcu.constraint_name = tc.constraint_name AND tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
+            WHERE c.table_name = '{}' AND c.table_schema = 'public'
+        ", clean_table),
+        "mysql" => format!("
+            SELECT column_name as name,
+            CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END as pk
+            FROM information_schema.columns
+            WHERE table_name = '{}' AND table_schema = DATABASE()
+        ", clean_table),
+        _ => format!("PRAGMA table_info(\"{}\")", clean_table),
+    };
+    
     let columns_rows = match QueryBuilder::<Any>::new(columns_query)
         .build()
         .fetch_all(pool)
@@ -343,30 +384,48 @@ pub async fn handle_table(
     for r in &columns_rows {
         if let Ok(name) = r.try_get::<String, _>("name") {
             col_names.push(name.clone());
-            if let Ok(pk) = r.try_get::<i32, _>("pk") {
-                if pk > 0 {
-                    primary_keys.push(name);
-                }
+            
+            // Handle PK correctly based on the driver query result types.
+            // In MySQL/Postgres we used 1 and 0 which parses to i64 or i32.
+            let is_pk = if let Ok(pk) = r.try_get::<i64, _>("pk") {
+                pk > 0
+            } else if let Ok(pk) = r.try_get::<i32, _>("pk") {
+                pk > 0
+            } else {
+                false
+            };
+
+            if is_pk {
+                primary_keys.push(name);
             }
         }
     }
 
+    let quoted_table = if driver == "mysql" {
+        format!("`{}`", clean_table)
+    } else {
+        format!("\"{}\"", clean_table)
+    };
+
     // Dynamic records list
-    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM \"{}\"", clean_table));
+    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
 
     if !search.is_empty() && !col_names.is_empty() {
         qb.push(" WHERE ");
         let mut separated = qb.separated(" OR ");
         for col in &col_names {
-            separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+            if driver == "postgres" {
+                separated.push(format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col)));
+            } else if driver == "mysql" {
+                separated.push(format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col)));
+            } else {
+                separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+            }
             separated.push_bind_unseparated(format!("%{}%", search));
         }
     }
 
-    qb.push(" LIMIT ");
-    qb.push_bind(page_size as i64);
-    qb.push(" OFFSET ");
-    qb.push_bind(offset as i64);
+    qb.push(format!(" LIMIT {} OFFSET {}", page_size, offset));
 
     let records = match qb.build().fetch_all(pool).await {
         Ok(recs) => recs,
@@ -494,8 +553,9 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
         .route("/", get(handle_dashboard))
         .route("/tables/{table_name}", get(handle_table));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 5555));
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let host_str = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let addr_str = format!("{}:5555", host_str);
+    let listener = tokio::net::TcpListener::bind(&addr_str).await?;
     axum::serve(listener, app).await?;
 
     Ok(())

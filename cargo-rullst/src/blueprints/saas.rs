@@ -120,8 +120,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus);
 
-    rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 SaaS server starting on port 3000...");
     Server::new(router)
         .run(3000)

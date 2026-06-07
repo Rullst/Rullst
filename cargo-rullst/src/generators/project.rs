@@ -192,26 +192,27 @@ pub fn create_new_project(
 
     // Get absolute path to the Rullst framework folder for local referencing
     let current_dir = std::env::current_dir()?;
-    let rullst_path = if current_dir.join("rullst").exists() {
-        current_dir
+    let rullst_dep = if current_dir.join("rullst").exists() {
+        let path = current_dir
             .join("rullst")
             .canonicalize()?
             .display()
-            .to_string()
+            .to_string();
+        let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
+        format!("rullst = {{ path = \"{}\" }}", path)
     } else {
-        "c:\\Users\\venelouis\\Desktop\\REPOS\\Rullst\\rullst".to_string()
+        r#"rullst = "2.0.3""#.to_string()
     };
 
-    let rullst_png_path = Path::new(&rullst_path)
-        .parent()
-        .unwrap_or(Path::new(""))
-        .join("Rullst.png");
-    if rullst_png_path.exists() {
+    let rullst_png_path = current_dir.join("rullst").join("Rullst.png");
+    if !rullst_png_path.exists() {
+        let fallback_png = Path::new("Rullst.png");
+        if fallback_png.exists() {
+            let _ = fs::copy(fallback_png, path.join("static/favicon.png"));
+        }
+    } else {
         let _ = fs::copy(rullst_png_path, path.join("static/favicon.png"));
     }
-
-    // Fix Windows path escaping in Cargo.toml and strip UNC prefix \\?\ if present
-    let rullst_path = rullst_path.trim_start_matches(r"\\?\").replace("\\", "/");
 
     // Extract a valid package name from the path (e.g. "..\dummy_test" -> "dummy_test")
     let project_name = path
@@ -253,13 +254,13 @@ crate-type = ["cdylib", "rlib"]
     cargo_toml.push_str(&format!(
         r#"
 [dependencies]
-rullst = {{ path = "{rullst_path}" }}
+{rullst_dep}
 tokio = {{ version = "1.43", features = ["full"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
 axum = "0.8"
 "#,
-        rullst_path = rullst_path
+        rullst_dep = rullst_dep
     ));
 
     if db_needed {
@@ -617,7 +618,7 @@ pub fn generate_docker_files(
 # ══════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ─────────────────────────────────────────
-FROM rust:1.87-slim AS builder
+FROM rust:1.94-slim-bookworm AS builder
 WORKDIR /app
 
 # Install system dependencies for SQLite/Postgres/MySQL linking
@@ -625,25 +626,29 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Cache dependency compilation
 COPY Cargo.toml Cargo.lock* ./
-RUN mkdir src && echo "fn main() {{}}" > src/main.rs && cargo build --release && rm -rf src
+RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
 
 # Build the actual application
 COPY . .
 RUN cargo build --release
 
-# ── Stage 2: Runtime (Distroless) ────────────────────────────
-FROM gcr.io/distroless/cc-debian12 AS runtime
+# ── Stage 2: Runtime ─────────────────────────────────────────
+FROM docker.io/library/debian:bookworm-slim
 WORKDIR /app
 
-# Copy only the compiled binary
+# Install runtime dependencies if needed
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Create a rootless user for security
+RUN groupadd -r rullst && useradd -r -g rullst rullst
+RUN chown -R rullst:rullst /app
+USER rullst
+
 COPY --from=builder /app/target/release/{project_name} /app/{project_name}
-
-# Copy configuration files
 COPY Rullst.toml /app/Rullst.toml
-
 EXPOSE 3000
-
-ENTRYPOINT ["/app/{project_name}"]
+EXPOSE 5555
+CMD ["/app/{project_name}"]
 "#
     );
 
@@ -660,9 +665,9 @@ services:
     container_name: {project_name}-app
     ports:
       - "3000:3000"
-    environment:
-      - DATABASE_URL=postgres://rullst:rullst@db:5432/rullst_db
-      - REDIS_URL=redis://redis:6379
+      - "5555:5555"
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
@@ -673,16 +678,14 @@ services:
   db:
     image: postgres:16-alpine
     container_name: {project_name}-db
-    environment:
-      POSTGRES_USER: rullst
-      POSTGRES_PASSWORD: rullst
-      POSTGRES_DB: rullst_db
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rullst"]
+      test: ["CMD-SHELL", "pg_isready -U ${{POSTGRES_USER}} -d ${{POSTGRES_DB}}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -709,7 +712,7 @@ volumes:
     );
 
     // --- .dockerignore ---
-    let dockerignore = r#"target/
+    let dockerignore = r#"**/target/
 .git/
 .gitignore
 *.md
@@ -720,7 +723,31 @@ LICENSE
 *.sqlite
 "#;
 
-    fs::write(project_path.join("Dockerfile"), dockerfile)?;
+    let dockerfile_path = project_path.join("Dockerfile");
+    std::fs::write(&dockerfile_path, dockerfile)?;
+
+    // --- .env File Generation ---
+    let env_path = project_path.join(".env");
+    let env_example_path = project_path.join(".env.example");
+    let env_content = format!(
+        "# ══════════════════════════════════════════════════════════════\n\
+         # Rullst Environment Variables\n\
+         # ══════════════════════════════════════════════════════════════\n\n\
+         # Application Environment (development, production)\n\
+         APP_ENV=development\n\
+         HOST=0.0.0.0\n\n\
+         # Database Configuration\n\
+         POSTGRES_USER=rullst\n\
+         POSTGRES_PASSWORD=rullst_super_secret\n\
+         POSTGRES_DB={project_name}_db\n\
+         DATABASE_URL=postgres://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@db:5432/${{POSTGRES_DB}}\n\n\
+         # Redis Configuration\n\
+         REDIS_URL=redis://redis:6379\n",
+         project_name = project_name
+    );
+    std::fs::write(&env_path, &env_content)?;
+    std::fs::write(&env_example_path, &env_content)?;
+
     fs::write(project_path.join("docker-compose.yml"), docker_compose)?;
     fs::write(project_path.join(".dockerignore"), dockerignore)?;
 
