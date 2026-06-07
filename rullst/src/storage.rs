@@ -338,8 +338,15 @@ impl Storage {
     pub fn disk(name: &str) -> Box<dyn StorageDriver> {
         match name {
             "local" => {
-                let root =
-                    std::env::var("STORAGE_ROOT").unwrap_or_else(|_| "storage/app".to_string());
+                let config = crate::config::RullstConfig::global();
+                let is_prod = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
+                let root = config.storage.root.clone().unwrap_or_else(|| {
+                    if is_prod {
+                        "storage/app".to_string()
+                    } else {
+                        std::env::var("STORAGE_ROOT").unwrap_or_else(|_| "storage/app".to_string())
+                    }
+                });
                 Box::new(LocalDriver::new(root))
             }
             "s3" => {
@@ -348,8 +355,7 @@ impl Storage {
                     let bucket = std::env::var("AWS_BUCKET").unwrap_or_default();
                     let endpoint = std::env::var("AWS_ENDPOINT").ok();
                     let config = tokio::task::block_in_place(|| {
-                        #[allow(deprecated)]
-                        tokio::runtime::Handle::current().block_on(aws_config::load_from_env())
+                        tokio::runtime::Handle::current().block_on(aws_config::defaults(aws_config::BehaviorVersion::latest()).load())
                     });
                     let client = aws_sdk_s3::Client::new(&config);
                     Box::new(S3Driver {

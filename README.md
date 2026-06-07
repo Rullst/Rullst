@@ -104,6 +104,7 @@ cargo rullst new
 # 🚀 App name? (no spaces allowed) -> my-app
 # 🧭 Select a Starter Blueprint -> 
 #     * Blank Starter (Minimal template with HTMX reactive counter)
+#     * Portfolio 🔥 (Showcase for Rullst/AI developers) - HOT
 #     * LMS Platform (Courses, lessons, video player, HTMX integration)
 #     * SaaS App Starter (Authentication + Stripe payments billing template)
 #     * Blog / Press (Static site generator pre-wired with Nexus CMS)
@@ -119,11 +120,8 @@ cargo rullst new
 # 2. Enter the project folder
 cd my-app
 
-# 3. Start your high-performance full-stack app immediately!
-cargo run
-
-# 🔥 Or enable instant Hot Reloading (no server restart!):
-HOT_RELOAD=1 cargo run
+# 3. Start your high-performance full-stack app immediately with hot-reloading!
+cargo rullst dev
 ```
 
 ---

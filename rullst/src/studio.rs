@@ -386,8 +386,6 @@ pub async fn handle_table(
     let mut primary_keys = Vec::new();
     for r in &columns_rows {
         if let Ok(name) = r.try_get::<String, _>("name") {
-            col_names.push(name.clone());
-            
             // Handle PK correctly based on the driver query result types.
             // In MySQL/Postgres we used 1 and 0 which parses to i64 or i32.
             let is_pk = if let Ok(pk) = r.try_get::<i64, _>("pk") {
@@ -399,8 +397,9 @@ pub async fn handle_table(
             };
 
             if is_pk {
-                primary_keys.push(name);
+                primary_keys.push(name.clone());
             }
+            col_names.push(name);
         }
     }
 

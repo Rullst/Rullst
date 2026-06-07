@@ -192,9 +192,20 @@ pub fn create_new_project(
 
     // Get absolute path to the Rullst framework folder for local referencing
     let current_dir = std::env::current_dir()?;
-    let rullst_dep = if current_dir.join("rullst").exists() {
-        let path = current_dir
-            .join("rullst")
+    let mut rullst_dir = None;
+    let mut check_dir = current_dir.clone();
+    loop {
+        if check_dir.join("rullst").exists() && check_dir.join("Cargo.toml").exists() {
+            rullst_dir = Some(check_dir.join("rullst"));
+            break;
+        }
+        if !check_dir.pop() {
+            break;
+        }
+    }
+
+    let rullst_dep = if let Some(ref dir) = rullst_dir {
+        let path = dir
             .canonicalize()?
             .display()
             .to_string();
@@ -204,7 +215,7 @@ pub fn create_new_project(
         r#"rullst = "2.0.3""#.to_string()
     };
 
-    let rullst_png_path = current_dir.join("rullst").join("Rullst.png");
+    let rullst_png_path = rullst_dir.unwrap_or_else(|| current_dir.join("rullst")).join("Rullst.png");
     if !rullst_png_path.exists() {
         let fallback_png = Path::new("Rullst.png");
         if fallback_png.exists() {

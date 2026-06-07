@@ -274,7 +274,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    println!("\n");
+    println!();
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let choices = &[
@@ -377,7 +377,7 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
                     "🔄  Safe Upgrade             {}",
                     "(Self-Healing Updates & Codemods)".dimmed()
                 ),
-                format!("🔙  Back to Main Menu        "),
+                "🔙  Back to Main Menu        ".to_string(),
             ];
 
             let project_selection = dialoguer::Select::with_theme(&theme)

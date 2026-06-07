@@ -7,6 +7,14 @@ use std::path::Path;
 use std::io::{BufRead, BufReader};
 use std::process::Stdio;
 
+struct ChildGuard(std::process::Child);
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
     let theme = dialoguer::theme::ColorfulTheme::default();
 
@@ -501,12 +509,13 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
         }
         "android" | "ios" => {
             println!("🚀 Starting Rullst backend server in background...");
-            let mut backend = std::process::Command::new("cargo")
+            let backend = std::process::Command::new("cargo")
                 .arg("run")
                 .arg("-q")
                 .current_dir(".") // Running in root
                 .spawn()
                 .expect("Failed to spawn Rullst backend");
+            let backend_guard = ChildGuard(backend);
 
             println!("⏳ Waiting for backend to bind...");
             std::thread::sleep(std::time::Duration::from_secs(3));
@@ -543,14 +552,12 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
                         .current_dir(omni_dir);
                     let status = tauri_cmd.status().expect("Failed to run cargo tauri dev");
 
-                    // Clean up backend
-                    let _ = backend.kill();
+                    drop(backend_guard);
                     if !status.success() {
                         std::process::exit(1);
                     }
                 }
                 Err(e) => {
-                    let _ = backend.kill();
                     println!("{}", format!("❌ Error: Omni CLI is required for mobile target: {}", e).red());
                     std::process::exit(1);
                 }

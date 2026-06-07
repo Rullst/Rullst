@@ -1,7 +1,7 @@
 use axum::{
     Json,
     body::Body,
-    extract::Query,
+    extract::{Query, ConnectInfo},
     http::{Request, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
@@ -9,6 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::net::SocketAddr;
 
 // ─── Stack Frame & Backtrace Parsing ──────────────────────────────────────────
 
@@ -38,8 +39,7 @@ pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
             // Find the location after "at "
             if let Some(pos) = trimmed.find("at ") {
                 let path_part = &trimmed[pos + 3..];
-                let mut parts = path_part.split(':');
-                if let (Some(file), Some(line_str)) = (parts.next(), parts.next())
+                if let Some((file, line_str)) = path_part.rsplit_once(':')
                     && let Ok(line_num) = line_str.trim().parse::<u32>()
                 {
                     return Some((file.trim().to_string(), line_num));
@@ -131,7 +131,14 @@ pub struct ExplainQuery {
 ///
 /// **Security:** Validates that the target file resides within the project's working
 /// directory and is a `.rs` or `.toml` file to prevent path-traversal attacks.
-pub async fn handle_explain(Query(query): Query<ExplainQuery>) -> impl IntoResponse {
+pub async fn handle_explain(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Query(query): Query<ExplainQuery>,
+) -> impl IntoResponse {
+    if !addr.ip().is_loopback() {
+        return "Access denied: endpoint only accessible from localhost.".to_string();
+    }
+
     // H-3: Apply the same path traversal guard as handle_autofix
     let project_root = match std::env::current_dir() {
         Ok(cwd) => cwd.canonicalize().unwrap_or(cwd),
@@ -155,6 +162,13 @@ pub async fn handle_explain(Query(query): Query<ExplainQuery>) -> impl IntoRespo
     let extension = canonical.extension().and_then(|e| e.to_str()).unwrap_or("");
     if extension != "rs" && extension != "toml" {
         return "Access denied: only .rs and .toml files can be inspected.".to_string();
+    }
+
+    // Block sensitive files disclosure (e.g. .env*, Foundry.toml, Cargo.toml)
+    if let Some(filename) = canonical.file_name().and_then(|f| f.to_str()) {
+        if filename.starts_with(".env") || filename == "Foundry.toml" || filename == "Cargo.toml" {
+            return "Access denied: sensitive configuration files cannot be inspected.".to_string();
+        }
     }
 
     let file_content = fs::read_to_string(&canonical).unwrap_or_default();
@@ -197,7 +211,17 @@ pub struct AutoFixPayload {
 ///
 /// **Security:** This endpoint validates that the target file resides within the
 /// project's working directory to prevent path-traversal attacks.
-pub async fn handle_autofix(Json(payload): Json<AutoFixPayload>) -> impl IntoResponse {
+pub async fn handle_autofix(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(payload): Json<AutoFixPayload>,
+) -> impl IntoResponse {
+    if !addr.ip().is_loopback() {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Access denied: endpoint only accessible from localhost"
+        }));
+    }
+
     // 1. Resolve the project root (current working directory)
     let project_root = match std::env::current_dir() {
         Ok(cwd) => match cwd.canonicalize() {
@@ -249,6 +273,16 @@ pub async fn handle_autofix(Json(payload): Json<AutoFixPayload>) -> impl IntoRes
             "success": false,
             "error": "Autofix is restricted to .rs and .toml files only"
         }));
+    }
+
+    // Block sensitive files disclosure (e.g. .env*, Foundry.toml, Cargo.toml)
+    if let Some(filename) = canonical_target.file_name().and_then(|f| f.to_str()) {
+        if filename.starts_with(".env") || filename == "Foundry.toml" || filename == "Cargo.toml" {
+            return Json(serde_json::json!({
+                "success": false,
+                "error": "Access denied: sensitive configuration files cannot be modified"
+            }));
+        }
     }
 
     match perform_autofix(&payload.file_path, payload.line, &payload.error_message).await {
@@ -889,3 +923,30 @@ pub(crate) async fn render_console_html(
         trace_html = trace_html
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_source_location_linux() {
+        let bt = "   0: rullst::error_console::tests::test_panic\n             at /home/user/project/src/error_console.rs:42";
+        let res = find_source_location(bt);
+        assert_eq!(res, Some(("/home/user/project/src/error_console.rs".to_string(), 42)));
+    }
+
+    #[test]
+    fn test_find_source_location_windows() {
+        let bt = "   0: rullst::error_console::tests::test_panic\n             at C:\\Users\\user\\project\\src\\error_console.rs:55";
+        let res = find_source_location(bt);
+        assert_eq!(res, Some(("C:\\Users\\user\\project\\src\\error_console.rs".to_string(), 55)));
+    }
+
+    #[test]
+    fn test_find_source_location_none() {
+        let bt = "   0: rust_panic\n             at /home/user/project/main.rs:100";
+        let res = find_source_location(bt);
+        assert_eq!(res, None);
+    }
+}
+

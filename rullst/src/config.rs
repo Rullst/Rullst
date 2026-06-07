@@ -13,6 +13,17 @@ pub struct RullstConfig {
     #[serde(default)]
     /// [TODO] Missing documentation.
     pub security: SecurityConfig,
+    #[serde(default)]
+    /// [TODO] Missing documentation.
+    pub storage: StorageConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[non_exhaustive]
+/// [TODO] Missing documentation.
+pub struct StorageConfig {
+    /// [TODO] Missing documentation.
+    pub root: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -58,7 +69,19 @@ impl Default for SecurityConfig {
     }
 }
 
+static GLOBAL_CONFIG: std::sync::OnceLock<RullstConfig> = std::sync::OnceLock::new();
+
 impl RullstConfig {
+    /// Gets the global configuration reference, initializing it with default values if not set.
+    pub fn global() -> &'static RullstConfig {
+        GLOBAL_CONFIG.get_or_init(Self::default)
+    }
+
+    /// Sets the global configuration instance.
+    pub fn set_global(config: Self) -> Result<(), Self> {
+        GLOBAL_CONFIG.set(config)
+    }
+
     /// [TODO] Missing documentation.
     pub fn new() -> Self {
         Self::default()

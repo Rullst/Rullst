@@ -40,6 +40,13 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+fn sanitize_identifier(id: &str) -> String {
+    id.chars()
+        .filter(|c| c.is_alphanumeric() || *c == '_')
+        .take(64) // Strict length limit for security
+        .collect()
+}
+
 // ─── Field Metadata & Reflection ─────────────────────────────────────────────
 
 /// The semantic type of a model field, used to render the correct HTML input.
@@ -375,11 +382,13 @@ async fn nexus_create_record(
         ).into_response();
     }
 
+    let clean_table = sanitize_identifier(&table);
+    let clean_keys: Vec<String> = keys.iter().map(|k| sanitize_identifier(k)).collect();
     let sql = format!(
         "INSERT INTO {} ({}) VALUES ({})",
-        table,
-        keys.join(", "),
-        (0..keys.len())
+        clean_table,
+        clean_keys.join(", "),
+        (0..clean_keys.len())
             .map(|i| format!("${}", i + 1))
             .collect::<Vec<_>>()
             .join(", ")
@@ -459,12 +468,15 @@ async fn nexus_update_record(
         }
     };
 
+    let clean_table = sanitize_identifier(&table);
+    let clean_pk = sanitize_identifier(entry.pk);
     let mut updates = Vec::new();
     let mut values = Vec::new();
     for f in &entry.fields {
         if f.name != entry.pk {
             if let Some(val) = data.get(f.name) {
-                updates.push(format!("{} = ${}", f.name, updates.len() + 1));
+                let clean_field = sanitize_identifier(f.name);
+                updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
                 values.push(val);
             }
         }
@@ -472,9 +484,9 @@ async fn nexus_update_record(
 
     let sql = format!(
         "UPDATE {} SET {} WHERE {} = ${}",
-        table,
+        clean_table,
         updates.join(", "),
-        entry.pk,
+        clean_pk,
         updates.len() + 1
     );
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
@@ -540,7 +552,9 @@ async fn nexus_delete_record(
         }
     };
 
-    let sql = format!("DELETE FROM {} WHERE {} = ?", table, entry.pk);
+    let clean_table = sanitize_identifier(&table);
+    let clean_pk = sanitize_identifier(entry.pk);
+    let sql = format!("DELETE FROM {} WHERE {} = ?", clean_table, clean_pk);
     let mut success = false;
     let mut err_msg = String::new();
 
@@ -786,8 +800,11 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let table = entry.table;
     let pk = entry.pk;
 
+    let clean_table = sanitize_identifier(table);
+    let clean_pk = sanitize_identifier(pk);
+
     let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
-    let mut sql = format!("SELECT * FROM {}", table);
+    let mut sql = format!("SELECT * FROM {}", clean_table);
     let mut binds = Vec::new();
 
     if !q.is_empty() {
@@ -797,10 +814,11 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
                 f.kind,
                 FieldKind::Text | FieldKind::Email | FieldKind::Url | FieldKind::Textarea
             ) {
+                let clean_field = sanitize_identifier(f.name);
                 if driver == "postgres" {
-                    clauses.push(format!("{} ILIKE ${}", f.name, clauses.len() + 1));
+                    clauses.push(format!("{} ILIKE ${}", clean_field, clauses.len() + 1));
                 } else {
-                    clauses.push(format!("{} LIKE ?", f.name));
+                    clauses.push(format!("{} LIKE ?", clean_field));
                 }
             }
         }
@@ -817,7 +835,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let offset = (page.max(1) - 1) * limit;
     sql.push_str(&format!(
         " ORDER BY {} DESC LIMIT {} OFFSET {}",
-        pk, limit, offset
+        clean_pk, limit, offset
     ));
 
     let pool = match rullst_orm::Orm::pool() {
@@ -1056,9 +1074,11 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
     if let Some(i) = id {
         let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
         let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
+        let clean_table = sanitize_identifier(t);
+        let clean_pk = sanitize_identifier(entry.pk);
         let sql = format!(
             "SELECT * FROM {} WHERE {} = {}",
-            t, entry.pk, pk_placeholder
+            clean_table, clean_pk, pk_placeholder
         );
 
         if let Ok(pool) = rullst_orm::Orm::pool() {
@@ -1138,9 +1158,12 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
             let mut options_html = String::new();
             options_html.push_str("<option value=\"\">-- Select --</option>");
 
+            let clean_target_pk = sanitize_identifier(target_pk);
+            let clean_label_col = sanitize_identifier(label_col);
+            let clean_target_table = sanitize_identifier(target_table);
             let sql = format!(
                 "SELECT {} as key_id, {} as val_label FROM {}",
-                target_pk, label_col, target_table
+                clean_target_pk, clean_label_col, clean_target_table
             );
             if let Ok(pool) = rullst_orm::Orm::pool() {
                 use rullst_orm::_sqlx::Row;

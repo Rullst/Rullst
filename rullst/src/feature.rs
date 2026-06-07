@@ -667,3 +667,54 @@ pub async fn enabled_for(flag: &str, identifier: &str) -> bool {
 pub async fn variant(flag: &str, identifier: &str) -> Option<String> {
     manager().variant(flag, identifier).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_hash_bucket() {
+        let b1 = calculate_hash_bucket("flag-a", "user-1");
+        let b2 = calculate_hash_bucket("flag-a", "user-1");
+        let b3 = calculate_hash_bucket("flag-a", "user-2");
+        assert_eq!(b1, b2);
+        assert!(b1 < 100);
+        assert!(b3 < 100);
+    }
+
+    #[test]
+    fn test_parse_rollout() {
+        assert_eq!(parse_rollout("30%"), Some(30));
+        assert_eq!(parse_rollout("  100% "), Some(100));
+        assert_eq!(parse_rollout("0"), Some(0));
+        assert_eq!(parse_rollout("abc"), None);
+    }
+
+    #[test]
+    fn test_parse_variants() {
+        let parsed = parse_variants("control:50,treatment:50");
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].0, "control");
+        assert_eq!(parsed[0].1, 50);
+        assert_eq!(parsed[1].0, "treatment");
+        assert_eq!(parsed[1].1, 50);
+
+        let parsed_empty = parse_variants("invalid");
+        assert!(parsed_empty.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_variant() {
+        let variants = vec![
+            ("control".to_string(), 30),
+            ("treatment".to_string(), 70),
+        ];
+        // bucket 10 should fall into control (0-29)
+        assert_eq!(resolve_variant(&variants, 10), Some("control".to_string()));
+        // bucket 50 should fall into treatment (30-99)
+        assert_eq!(resolve_variant(&variants, 50), Some("treatment".to_string()));
+        // bucket 101 is out of bounds
+        assert_eq!(resolve_variant(&variants, 101), None);
+    }
+}
+

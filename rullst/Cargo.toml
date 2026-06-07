@@ -25,7 +25,7 @@ lettre = { version = "0.11.22", optional = true, default-features = false, featu
 rullst-connect = { version = "7.0.1", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }
-tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
 rullst-orm = "4.0.4"
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio", "macros"] }
 tower = { version = "0.5.3", features = ["util"] }
