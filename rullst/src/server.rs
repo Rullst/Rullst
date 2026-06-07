@@ -86,16 +86,24 @@ impl Server {
         let mut app_config = crate::config::RullstConfig::new();
         if std::path::Path::new("Rullst.toml").exists() {
             match crate::config::RullstConfig::load_from_file("Rullst.toml").await {
-                Ok(c) => app_config = c,
-                Err(e) => eprintln!("⚠️ Rullst Warning: Failed to parse Rullst.toml: {}", e),
+                Ok(c) => {
+                    let _ = crate::config::RullstConfig::set_global(c.clone());
+                    app_config = c;
+                }
+                Err(e) => {
+                    eprintln!("⚠️ Rullst Warning: Failed to parse Rullst.toml: {}", e);
+                    let _ = crate::config::RullstConfig::set_global(app_config.clone());
+                }
             }
+        } else {
+            let _ = crate::config::RullstConfig::set_global(app_config.clone());
         }
 
         if self.db_url.is_none() {
-            if let Some(ref url) = app_config.database.url {
-                self.db_url = Some(url.clone());
-            } else if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+            if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
                 self.db_url = Some(env_db_url);
+            } else if let Some(ref url) = app_config.database.url {
+                self.db_url = Some(url.clone());
             }
         }
 
@@ -123,12 +131,16 @@ impl Server {
             );
         }
 
-        let host = if is_dev && std::env::var("RULLST_HOST").is_err() {
-            [127, 0, 0, 1]
-        } else {
-            [0, 0, 0, 0]
-        };
-        let addr = SocketAddr::from((host, port));
+        let host_str = std::env::var("HOST").unwrap_or_else(|_| {
+            if is_dev && std::env::var("RULLST_HOST").is_err() {
+                "127.0.0.1".to_string()
+            } else {
+                "0.0.0.0".to_string()
+            }
+        });
+        let addr: SocketAddr = format!("{}:{}", host_str, port)
+            .parse()
+            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], port)));
 
         // I-1: Warn when dev-only routes are exposed on a non-loopback address
         if is_dev && addr.ip().is_unspecified() {
@@ -325,6 +337,14 @@ impl Server {
                 app = app.layer(axum::middleware::from_fn(move |req, next| {
                     crate::resilience::backpressure_middleware(shield.clone(), req, next)
                 }));
+            }
+
+            if !is_dev {
+                app = app
+                    .layer(axum::middleware::from_fn(crate::security::pii_masking_middleware))
+                    .layer(axum::middleware::from_fn(crate::security::headers_middleware))
+                    .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
+                    .layer(axum::middleware::from_fn(crate::security::waf_middleware));
             }
 
             println!("Rullst framework serving on http://{}", addr);
@@ -529,7 +549,8 @@ fn load_dylib_router(
     // future changes to router ABI or plugin implementations must be reflected
     // here and documented. Review and audit this section when upgrading
     // `libloading`, `Router` types, or changing the plugin API.
-    let lib = unsafe { libloading::Library::new(temp_path)? };
+    let lib = unsafe { libloading::Library::new(&temp_path)? };
+    let _ = std::fs::remove_file(&temp_path);
     let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> =
         unsafe { lib.get(b"rullst_router_init")? };
     let router_ptr = unsafe { init_fn() };

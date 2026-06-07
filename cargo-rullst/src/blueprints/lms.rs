@@ -94,8 +94,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         get("/lessons/{id}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus);
 
-    rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 LMS server starting on port 3000...");
     Server::new(router)
         .run(3000)
@@ -149,7 +152,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial data
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
 
         // Seed Categories
         rullst::db::sqlx::query(
@@ -246,7 +249,7 @@ impl NexusModel for Course {
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
             FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "category_id", label: "Category ID", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "category_id", label: "Category", kind: FieldKind::ForeignKey { table: "categories", label_col: "name" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "description", label: "Description", kind: FieldKind::Textarea, hidden: false, readonly: false },
             FieldMeta { name: "thumbnail", label: "Thumbnail URL", kind: FieldKind::Url, hidden: false, readonly: false },
@@ -276,7 +279,7 @@ impl NexusModel for Lesson {
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
             FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "course_id", label: "Course ID", kind: FieldKind::Number, hidden: false, readonly: false },
+            FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "video_url", label: "Video URL", kind: FieldKind::Url, hidden: false, readonly: false },
             FieldMeta { name: "duration", label: "Duration (mins)", kind: FieldKind::Number, hidden: false, readonly: false },

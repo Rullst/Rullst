@@ -1,6 +1,6 @@
 [package]
 name = "cargo-rullst"
-version = "2.0.2"
+version = "2.0.3"
 edition = "2024"
 description = "⌨️ $ The official command-line interface (CLI) for managing Rullst applications.📜🦀🌐"
 license = "MIT"
@@ -18,7 +18,7 @@ path = "src/bin/sync_badges.rs"
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
-chrono = "0.4.44"
+chrono = "0.4.45"
 dialoguer = "0.12.0"
 regex = "1.12.3"
 serde = { version = "1.0.228", features = ["derive"] }

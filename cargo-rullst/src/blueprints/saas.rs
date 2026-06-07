@@ -120,8 +120,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus);
 
-    rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 SaaS server starting on port 3000...");
     Server::new(router)
         .run(3000)
@@ -464,7 +467,10 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid signature").into_response(),
     };
 
-    let pool = rullst_orm::Orm::pool();
+    let pool = match rullst_orm::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
+    };
     let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)
         .fetch_optional(pool)

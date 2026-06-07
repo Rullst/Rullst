@@ -1,0 +1,6 @@
+**/target/
+.git/
+.vscode/
+.idea/
+**/*.rs.bk
+node_modules/

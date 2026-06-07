@@ -250,7 +250,7 @@ cargo-rullst/
 │   │   ├── project.rs        # create_new_project() — main wizard
 │   │   ├── auth.rs           # scaffold_auth_system()
 │   │   ├── billing.rs        # scaffold_billing_system()
-│   │   ├── desktop.rs        # scaffold_desktop_system() / scaffold_omni_system()
+│   │   ├── desktop.rs        # scaffold_omni_system() / run_omni_app()
 │   │   └── foundry.rs        # scaffold_foundry_config() / run_foundry_deploy()
 │   └── blueprints/           # Blueprint template definitions (NOT inline strings).
 │       ├── mod.rs

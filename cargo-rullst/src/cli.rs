@@ -11,7 +11,7 @@ use crate::generators::{
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
-    desktop::{scaffold_desktop_system, scaffold_omni_system},
+    desktop::{scaffold_omni_system, run_omni_app},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     middleware::create_new_middleware,
     migration::create_new_migration,
@@ -91,10 +91,7 @@ pub enum Commands {
     /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
     #[command(name = "make:billing")]
     MakeBilling,
-    /// Adds Tauri desktop packaging to compile Hyper (HTMX + SSR) apps into native desktop applications
-    #[command(name = "make:desktop")]
-    MakeDesktop,
-    /// Adds Dioxus multi-platform template integration pre-wired to Rullst backend API/WebSockets
+    /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
     MakeOmni,
     /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
@@ -103,6 +100,8 @@ pub enum Commands {
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
     #[command(name = "foundry:deploy")]
     FoundryDeploy,
+    /// Generates Dockerfile and docker-compose.yml for the project
+    Dockerize,
     /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
@@ -137,6 +136,11 @@ pub enum Commands {
         /// Optional: compile in debug mode instead of release
         #[arg(long)]
         debug: bool,
+    },
+    /// Starts the Omni App client (must be generated via make:omni first)
+    Omni {
+        /// Target platform (desktop, android, ios)
+        target: Option<String>,
     },
     /// RullstPress: Native Static Site Generator (SSG) for websites and documentation
     Docs {
@@ -191,9 +195,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeBilling => {
             scaffold_billing_system()?;
         }
-        Commands::MakeDesktop => {
-            scaffold_desktop_system()?;
-        }
         Commands::MakeOmni => {
             scaffold_omni_system()?;
         }
@@ -202,6 +203,25 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::FoundryDeploy => {
             run_foundry_deploy()?;
+        }
+        Commands::Dockerize => {
+            let mut proj_name = "app".to_string();
+            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
+                for line in toml_content.lines() {
+                    if line.starts_with("name = ") {
+                        proj_name = line
+                            .replace("name = ", "")
+                            .replace("\"", "")
+                            .trim()
+                            .to_string();
+                        break;
+                    }
+                }
+            }
+            crate::generators::project::generate_docker_files(
+                std::path::Path::new("."),
+                &proj_name,
+            )?;
         }
         Commands::MakeCors => {
             create_cors_middleware()?;
@@ -229,6 +249,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Build { debug } => {
             run_production_build(!*debug)?;
+        }
+        Commands::Omni { target } => {
+            run_omni_app(target.as_deref())?;
         }
         Commands::Docs { action } => match action {
             DocsCommands::Dev => crate::docs_generator::run_dev_server()?,

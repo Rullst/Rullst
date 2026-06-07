@@ -102,7 +102,7 @@ impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let log_dir = std::path::Path::new("storage/logs");
         if !log_dir.exists() {
-            let _ = std::fs::create_dir_all(log_dir);
+            let _ = tokio::fs::create_dir_all(log_dir).await;
         }
         let log_path = log_dir.join("mail.log");
         let formatted = format!(
@@ -127,13 +127,14 @@ impl MailDriver for LogDriver {
         );
         println!("{}", formatted);
 
-        use std::io::Write;
-        if let Ok(mut file) = std::fs::OpenOptions::new()
+        use tokio::io::AsyncWriteExt;
+        if let Ok(mut file) = tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&log_path)
+            .await
         {
-            let _ = file.write_all(formatted.as_bytes());
+            let _ = file.write_all(formatted.as_bytes()).await;
         }
         Ok(())
     }

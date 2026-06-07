@@ -7,3 +7,25 @@ target_dev_test/
 *.db-shm
 *.db-wal
 storage/
+
+# Local testing and scratch directories
+tests/
+scratch/
+cargo-rullst/src/bin/test_colored.rs
+
+# Rullst Framework Temporary & Scratch files
+patch.txt
+patch_studio.rs
+symlink_diff.txt
+clippy_output.json
+fix_queue.sh
+test_plan.sh
+inject_favicon.py
+test_nexus.db
+test_nexus.db-journal
+test_nexus.db-shm
+test_nexus.db-wal
+test.db
+test.db-journal
+test.db-shm
+test.db-wal

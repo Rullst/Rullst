@@ -130,6 +130,11 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         ),
     ];
 
+    let mut compiled_rules = Vec::new();
+    for (pattern, replacement, desc) in rules {
+        compiled_rules.push((regex::Regex::new(pattern)?, replacement, desc));
+    }
+
     let mut applied_count = 0;
     if Path::new("src").exists() {
         let walker = walkdir::WalkDir::new("src");
@@ -139,8 +144,7 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
                 let mut file_content = std::fs::read_to_string(path)?;
                 let mut modified = false;
 
-                for (pattern, replacement, desc) in &rules {
-                    let re = regex::Regex::new(pattern)?;
+                for (re, replacement, desc) in &compiled_rules {
                     if re.is_match(&file_content) {
                         file_content = re.replace_all(&file_content, *replacement).into_owned();
                         println!(

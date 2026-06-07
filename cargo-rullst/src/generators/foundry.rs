@@ -208,6 +208,31 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     let target_triple = get_value("target");
     let auto_https = get_value("auto_https");
 
+    // Validate user, host, and port configurations to prevent command/argument injection
+    let is_valid_user = !user.is_empty() && user.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if !is_valid_user {
+        println!("{}", "❌ Error: Invalid SSH user in Foundry.toml. Only alphanumeric, dashes and underscores are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
+    let is_valid_host = !host.is_empty() && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == ':');
+    if !is_valid_host {
+        println!("{}", "❌ Error: Invalid SSH host in Foundry.toml. Only alphanumeric, dots, colons and dashes are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
+    let is_valid_ssh_port = ssh_port.is_empty() || ssh_port.chars().all(|c| c.is_ascii_digit());
+    if !is_valid_ssh_port {
+        println!("{}", "❌ Error: Invalid SSH port in Foundry.toml. Only digits are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
+    let is_valid_port = port.is_empty() || port.chars().all(|c| c.is_ascii_digit());
+    if !is_valid_port {
+        println!("{}", "❌ Error: Invalid port in Foundry.toml. Only digits are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
     // Collect [env] block
     let mut env_vars: Vec<(String, String)> = Vec::new();
     let mut in_env = false;

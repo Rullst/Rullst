@@ -62,21 +62,35 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Project cards with hover animations.
 - A built-in contact form.
 
-## 3. Blog / Press
+## 3. LMS Platform
+**Use Case:** Online course platforms and video streaming.
+A complete learning management system featuring:
+- Courses and Lessons database models.
+- Migrations pre-populated with seed data.
+- A glassmorphic video player layout integrated with HTMX.
+
+## 4. SaaS App Starter
+**Use Case:** Subscription-based products and billing.
+The ultimate boilerplate for SaaS products, pre-wired with:
+- User authentication (login, signup, session management).
+- Stripe pricing panels and subscription checkout views.
+- Secure user dashboard.
+
+## 5. Blog / Press
 **Use Case:** Content creation and articles.
 A static site generator pre-wired with Nexus CMS. It features:
 - A beautiful article reading view with typography optimized for readability.
 - A fully functional Markdown parser engine.
 - SEO-friendly metadata injection.
 
-## 4. Uptime Monitor
+## 6. Uptime Monitor
 **Use Case:** Infrastructure tracking and observability.
 A robust system designed to ping URLs and track their health. It features:
 - A dashboard with live status indicators.
 - A background worker (`rullst::runtime::spawn`) that loops every minute to check endpoints.
 - *Note: Background workers include a startup delay to ensure the database pool is fully initialized before querying.*
 
-## 5. ERP Pocket
+## 7. ERP Pocket
 **Use Case:** Business management, stock, and inventory tracking.
 A complete back-office suite out of the box. It features:
 - A complex relational database schema (Products and Orders).

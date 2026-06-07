@@ -40,8 +40,11 @@ pub mod pages;
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
-    rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        println!("📊 Rullst Studio running on port 5555");
+    }}
     println!("🚀 ERP Pocket server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
@@ -92,8 +95,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         post("/orders" => controllers::erp_controller::store_order),
     ].nest_axum("/nexus", nexus);
 
-    rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
-    println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 ERP Pocket server starting on port 3000...");
     Server::new(router)
         .run(3000)
@@ -153,7 +159,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial products and orders
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
         
         rullst::db::sqlx::query(
             "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
@@ -285,7 +291,10 @@ pub struct CreateProductPayload {
 }
 
 pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return Redirect::to("/").into_response(),
+    };
     let _ = rullst::db::sqlx::query(
         "INSERT INTO products (name, sku, price, stock, created_at, updated_at) VALUES ($1, $2, $3, $4, datetime('now'), datetime('now'))"
     )
@@ -300,7 +309,10 @@ pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl In
 }
 
 pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
+    };
     
     // Increment stock
     let _ = rullst::db::sqlx::query(
@@ -335,7 +347,10 @@ pub struct CreateOrderPayload {
 }
 
 pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return Redirect::to("/").into_response(),
+    };
 
     // Get product price and stock
     let product_row: Result<(f64, i32), _> = rullst::db::sqlx::query_as(

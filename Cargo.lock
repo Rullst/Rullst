@@ -296,9 +296,9 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bitflags"
-version = "2.12.1"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84d7ced0ae9557296835c32bf1b1e02b44c746701f898460fb000d7eaa84f00a"
+checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 dependencies = [
  "serde_core",
 ]
@@ -371,7 +371,7 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "cargo-rullst"
-version = "2.0.2"
+version = "2.0.3"
 dependencies = [
  "axum",
  "brotli",
@@ -427,9 +427,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -1202,9 +1202,9 @@ checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 
 [[package]]
 name = "hashlink"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea0b22561a9c04a7cb1a302c013e0259cd3b4bb619f145b32f72b8b4bcbed230"
+checksum = "824e001ac4f3012dd16a264bec811403a67ca9deb6c102fc5049b32c4574b35f"
 dependencies = [
  "hashbrown 0.16.1",
 ]
@@ -1762,9 +1762,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.31"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "113b30b4cd05f7c06868fdb2854f66a7b9fece9a48425351cd532e810d74024f"
+checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "lru-slab"
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "2.0.1"
+version = "2.0.3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2454,9 +2454,9 @@ dependencies = [
 
 [[package]]
 name = "rullst-connect"
-version = "7.0.0"
+version = "7.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66bc213fc7c0eedde93a28b274414071fbc87dad929b1ea0b75b3fd996f4f115"
+checksum = "4e0fecb8e52d250486ba8605a04449e304be377d8e1f4be58501a24b690bd0ae"
 dependencies = [
  "async-trait",
  "base64",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "2.0.1"
+version = "2.0.3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2484,9 +2484,9 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "4.0.1"
+version = "4.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dba3e9d02244e60cfa615eda6707093475a9d36610c23f71318d718fef09c2cb"
+checksum = "c1dc9213735e32e1c598fef7efe1e970145c783571b0d11e3544ef66faa4df3d"
 dependencies = [
  "async-trait",
  "futures",
@@ -2500,9 +2500,9 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "4.0.1"
+version = "4.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc7e3091465b5bce0726edc2aa222ccf2e61f2be851c4ec6f99a5aee91484db6"
+checksum = "9bf1f51b0ebb376ffb0168a5226faf3a6563c240da4467756dc5e22174eb4372"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4168,9 +4168,9 @@ checksum = "fdd20c5420375476fbd4394763288da7eb0cc0b8c11deed431a91562af7335d3"
 
 [[package]]
 name = "yoke"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abe8c5fda708d9ca3df187cae8bfb9ceda00dd96231bed36e445a1a48e66f9ca"
+checksum = "709fe23a0424b6a435d82152b1bd3fdfb0833487d5fa90d05d42762a9891fef5"
 dependencies = [
  "stable_deref_trait",
  "yoke-derive",

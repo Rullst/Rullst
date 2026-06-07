@@ -53,7 +53,11 @@ pub async fn check_and_run_artisan(
             }
         }
 
-        let url = db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string());
+        let url = if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+            env_db_url
+        } else {
+            db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string())
+        };
 
         // Initialize Orm database connection pool
         rullst_orm::Orm::init(&url).await?;
@@ -78,7 +82,11 @@ pub async fn check_and_run_artisan(
             }
         }
 
-        let url = db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string());
+        let url = if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+            env_db_url
+        } else {
+            db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string())
+        };
 
         // 2. Initialize Orm database connection pool
         rullst_orm::Orm::init(&url).await?;

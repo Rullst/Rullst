@@ -163,7 +163,7 @@ where
             let color = colors[(i / 2) % colors.len()];
 
             let mut animated_msg = String::new();
-            let targets = ["Application", "migrations"];
+            let targets = ["Application", "migrations", "Omni"];
             let mut found_target = None;
 
             for target in targets {
@@ -175,6 +175,19 @@ where
 
             if let Some((target, pos)) = found_target {
                 animated_msg.push_str(&msg[..pos].bold().to_string());
+                
+                // Use special colors for Omni (orange/red)
+                let custom_colors = if target == "Omni" {
+                    vec![
+                        colored::Color::Red,
+                        colored::Color::TrueColor { r: 255, g: 165, b: 0 },
+                        colored::Color::BrightRed,
+                        colored::Color::Yellow,
+                    ]
+                } else {
+                    colors.to_vec()
+                };
+
                 for (j, ch) in target.chars().enumerate() {
                     let is_upper = ((i + j) % 4) < 2; // wave effect
                     let wave_char = if is_upper {
@@ -182,11 +195,11 @@ where
                     } else {
                         ch.to_ascii_lowercase()
                     };
-                    let c_idx = (i + j) % colors.len();
+                    let c_idx = (i + j) % custom_colors.len();
                     animated_msg.push_str(
                         &wave_char
                             .to_string()
-                            .color(colors[c_idx])
+                            .color(custom_colors[c_idx])
                             .bold()
                             .to_string(),
                     );
@@ -261,22 +274,30 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    println!("\n");
+    println!();
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let choices = &[
-        "✨  Create a New Project     (Rullst App Creator + Blueprints)",
-        "🔄  Safe Upgrade             (Self-Healing Updates & Codemods)",
-        "🚀  Start Dev Server         (Fast dev build + Hot Reload. Shortcut for 'cargo rullst dev')",
-        /* --- HIDDEN FOR MVP ---
-        "💡  View Help & Commands     (Framework Reference)",
-        "🛠️  Scaffold Code            (Controllers, Models, Middlewares, Workers)",
-        "🗄️  Database Operations      (Migrate, Rollback, Status, Seed)",
-        "🔐  Integrate Auth & Billing (Auth, Stripe/LemonSqueezy, Passkeys)",
-        "🖥️  Package for Desktop/App  (Tauri Desktop, Dioxus Cross-Platform)",
-        "🚀  Deploy to Cloud          (Foundry: AWS, GCP, Hetzner, Azure, DO)",
-        "📚  Docs Site Generator      (RullstPress Static Site)",
-        */
+        format!(
+            "✨  Create a New Project     {}",
+            "(Rullst App Creator + Blueprints)".dimmed()
+        ),
+        format!(
+            "📚  RullstPress Engine       {}",
+            "(Complete Publishing & Documentation Engine)".dimmed()
+        ),
+        format!(
+            "📁  Already have a project?  {}",
+            "(Dev, Scaffold, DB, Auth, Deploy...)".dimmed()
+        ),
+        format!(
+            "💡  View Help & Commands     {}",
+            "(Framework Reference)".dimmed()
+        ),
+        format!(
+            "❌  Exit                     {}",
+            "(Close interactive menu)".dimmed()
+        ),
     ];
 
     let selection = dialoguer::Select::with_theme(&theme)
@@ -296,22 +317,291 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             run_cli_command(&cli.command)?;
         }
         1 => {
-            // Upgrade
-            let args_vec: Vec<String> = vec![
-                std::env::args().next().unwrap_or_default(),
-                "upgrade".to_string(),
+            // RullstPress Engine
+            let docs_choices = &[
+                "🌐  Live Preview Server  (cargo rullst docs dev)",
+                "📦  Build Static Site    (cargo rullst docs build)",
             ];
-            let cli = Cli::parse_from(args_vec);
-            run_cli_command(&cli.command)?;
+            let docs_selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("Choose RullstPress action:\n")
+                .default(0)
+                .items(&docs_choices[..])
+                .interact()?;
+            let cmd_str = match docs_selection {
+                0 => "dev",
+                1 => "build",
+                _ => "",
+            };
+            if !cmd_str.is_empty() {
+                let args_vec = vec![
+                    std::env::args().next().unwrap_or_default(),
+                    "docs".to_string(),
+                    cmd_str.to_string(),
+                ];
+                let cli = Cli::parse_from(args_vec);
+                run_cli_command(&cli.command)?;
+            }
         }
         2 => {
-            // Dev Server
-            let args_vec: Vec<String> = vec![
-                std::env::args().next().unwrap_or_default(),
-                "dev".to_string(),
+            // Already have a project?
+            let project_choices = &[
+                format!(
+                    "🚀  Start Dev Server         {}",
+                    "(Fast dev build + Hot Reload)".dimmed()
+                ),
+                format!(
+                    "🛠  Scaffold Code            {}",
+                    "(Controllers, Models, Middlewares, Workers)".dimmed()
+                ),
+                format!(
+                    "🗄  Database Operations      {}",
+                    "(Migrate, Rollback, Status, Seed)".dimmed()
+                ),
+                format!(
+                    "🔐  Integrate Auth & Billing {}",
+                    "(Auth, Stripe/LemonSqueezy, Passkeys)".dimmed()
+                ),
+                format!(
+                    "🖥  Package for Desktop/App  {}",
+                    "(Omni Desktop & Mobile)".dimmed()
+                ),
+                format!(
+                    "🐳  Dockerize Project        {}",
+                    "(Generate Dockerfile & docker-compose)".dimmed()
+                ),
+                format!(
+                    "🚀  Deploy to Cloud          {}",
+                    "(Foundry: AWS, GCP, Hetzner, Azure, DO)".dimmed()
+                ),
+                format!(
+                    "🔄  Safe Upgrade             {}",
+                    "(Self-Healing Updates & Codemods)".dimmed()
+                ),
+                "🔙  Back to Main Menu        ".to_string(),
             ];
-            let cli = Cli::parse_from(args_vec);
-            run_cli_command(&cli.command)?;
+
+            let project_selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("Project Operations:\n")
+                .default(0)
+                .items(&project_choices[..])
+                .interact()?;
+
+            match project_selection {
+                0 => {
+                    // Dev Server
+                    let args_vec: Vec<String> = vec![
+                        std::env::args().next().unwrap_or_default(),
+                        "dev".to_string(),
+                    ];
+                    let cli = Cli::parse_from(args_vec);
+                    run_cli_command(&cli.command)?;
+                }
+                1 => {
+                    // Scaffold Code
+                    let scaffold_choices = &[
+                        "🎮  Controller            (cargo rullst make:controller)",
+                        "💾  Model & Migration     (cargo rullst make:model -m)",
+                        "🚪  Middleware            (cargo rullst make:middleware)",
+                        "⚙️  Background Worker     (cargo rullst make:worker)",
+                        "📂  Blank Migration       (cargo rullst make:migration)",
+                    ];
+                    let scaffold_selection = dialoguer::Select::with_theme(&theme)
+                        .with_prompt("Choose component to scaffold:\n")
+                        .default(0)
+                        .items(&scaffold_choices[..])
+                        .interact()?;
+
+                    match scaffold_selection {
+                        0 => {
+                            let name: String = dialoguer::Input::with_theme(&theme)
+                                .with_prompt("Enter controller name (e.g. UsersController):")
+                                .interact_text()?;
+                            let args_vec = vec![
+                                std::env::args().next().unwrap_or_default(),
+                                "make:controller".to_string(),
+                                name,
+                            ];
+                            let cli = Cli::parse_from(args_vec);
+                            run_cli_command(&cli.command)?;
+                        }
+                        1 => {
+                            let name: String = dialoguer::Input::with_theme(&theme)
+                                .with_prompt("Enter model name (e.g. Product):")
+                                .interact_text()?;
+                            let args_vec = vec![
+                                std::env::args().next().unwrap_or_default(),
+                                "make:model".to_string(),
+                                name,
+                                "-m".to_string(),
+                            ];
+                            let cli = Cli::parse_from(args_vec);
+                            run_cli_command(&cli.command)?;
+                        }
+                        2 => {
+                            let name: String = dialoguer::Input::with_theme(&theme)
+                                .with_prompt("Enter middleware name (e.g. RateLimiter):")
+                                .interact_text()?;
+                            let args_vec = vec![
+                                std::env::args().next().unwrap_or_default(),
+                                "make:middleware".to_string(),
+                                name,
+                            ];
+                            let cli = Cli::parse_from(args_vec);
+                            run_cli_command(&cli.command)?;
+                        }
+                        3 => {
+                            let name: String = dialoguer::Input::with_theme(&theme)
+                                .with_prompt("Enter worker name (e.g. EmailSender):")
+                                .interact_text()?;
+                            let args_vec = vec![
+                                std::env::args().next().unwrap_or_default(),
+                                "make:worker".to_string(),
+                                name,
+                            ];
+                            let cli = Cli::parse_from(args_vec);
+                            run_cli_command(&cli.command)?;
+                        }
+                        4 => {
+                            let name: String = dialoguer::Input::with_theme(&theme)
+                                .with_prompt("Enter migration name (e.g. add_status_to_users):")
+                                .interact_text()?;
+                            let args_vec = vec![
+                                std::env::args().next().unwrap_or_default(),
+                                "make:migration".to_string(),
+                                name,
+                            ];
+                            let cli = Cli::parse_from(args_vec);
+                            run_cli_command(&cli.command)?;
+                        }
+                        _ => {}
+                    }
+                }
+                2 => {
+                    // Database Operations
+                    let db_choices = &[
+                        "🚀  Run Migrations       (cargo rullst db:migrate)",
+                        "🔄  Rollback Last Batch  (cargo rullst db:rollback)",
+                        "📊  Migration Status     (cargo rullst db:status)",
+                        "🌱  Run Seeders          (cargo rullst db:seed)",
+                        "🖥️  Open Studio Browser  (cargo rullst studio)",
+                    ];
+                    let db_selection = dialoguer::Select::with_theme(&theme)
+                        .with_prompt("Choose database operation:\n")
+                        .default(0)
+                        .items(&db_choices[..])
+                        .interact()?;
+                    let cmd_str = match db_selection {
+                        0 => "db:migrate",
+                        1 => "db:rollback",
+                        2 => "db:status",
+                        3 => "db:seed",
+                        4 => "studio",
+                        _ => "",
+                    };
+                    if !cmd_str.is_empty() {
+                        let args_vec = vec![
+                            std::env::args().next().unwrap_or_default(),
+                            cmd_str.to_string(),
+                        ];
+                        let cli = Cli::parse_from(args_vec);
+                        run_cli_command(&cli.command)?;
+                    }
+                }
+                3 => {
+                    // Auth & Billing
+                    let auth_choices = &[
+                        "🔐  Scaffold Full Auth System  (cargo rullst auth)",
+                        "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
+                        "🌐  Add CORS Middleware        (cargo rullst make:cors)",
+                        "🔑  Add JWT Middleware         (cargo rullst make:jwt)",
+                    ];
+                    let auth_selection = dialoguer::Select::with_theme(&theme)
+                        .with_prompt("Choose auth & billing action:\n")
+                        .default(0)
+                        .items(&auth_choices[..])
+                        .interact()?;
+                    let cmd_str = match auth_selection {
+                        0 => "auth",
+                        1 => "make:billing",
+                        2 => "make:cors",
+                        3 => "make:jwt",
+                        _ => "",
+                    };
+                    if !cmd_str.is_empty() {
+                        let args_vec = vec![
+                            std::env::args().next().unwrap_or_default(),
+                            cmd_str.to_string(),
+                        ];
+                        let cli = Cli::parse_from(args_vec);
+                        run_cli_command(&cli.command)?;
+                    }
+                }
+                4 => {
+                    // Package for Desktop/App (Omni)
+                    let args_vec = vec![
+                        std::env::args().next().unwrap_or_default(),
+                        "make:omni".to_string(),
+                    ];
+                    let cli = Cli::parse_from(args_vec);
+                    run_cli_command(&cli.command)?;
+                }
+                5 => {
+                    // Dockerize Project
+                    let args_vec: Vec<String> = vec![
+                        std::env::args().next().unwrap_or_default(),
+                        "dockerize".to_string(),
+                    ];
+                    let cli = Cli::parse_from(args_vec);
+                    run_cli_command(&cli.command)?;
+                }
+                6 => {
+                    // Deploy to Cloud
+                    let deploy_choices = &[
+                        "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
+                        "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
+                    ];
+                    let deploy_selection = dialoguer::Select::with_theme(&theme)
+                        .with_prompt("Choose deployment action:\n")
+                        .default(0)
+                        .items(&deploy_choices[..])
+                        .interact()?;
+                    let cmd_str = match deploy_selection {
+                        0 => "foundry:init",
+                        1 => "foundry:deploy",
+                        _ => "",
+                    };
+                    if !cmd_str.is_empty() {
+                        let args_vec = vec![
+                            std::env::args().next().unwrap_or_default(),
+                            cmd_str.to_string(),
+                        ];
+                        let cli = Cli::parse_from(args_vec);
+                        run_cli_command(&cli.command)?;
+                    }
+                }
+                7 => {
+                    // Upgrade
+                    let args_vec: Vec<String> = vec![
+                        std::env::args().next().unwrap_or_default(),
+                        "upgrade".to_string(),
+                    ];
+                    let cli = Cli::parse_from(args_vec);
+                    run_cli_command(&cli.command)?;
+                }
+                8 => {
+                    // Back to Main Menu
+                    return show_interactive_dashboard();
+                }
+                _ => {}
+            }
+        }
+        3 => {
+            // View Help
+            show_help_reference();
+        }
+        4 => {
+            // Exit Menu
+            println!("\n  {} Goodbye!", "👋".bright_green());
         }
         _ => {}
     }
@@ -323,34 +613,34 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
 /// Prints a beautiful grouped cheat-sheet of all Rullst CLI commands.
 #[allow(dead_code)]
 pub fn show_help_reference() {
+    print!("\x1B[2J\x1B[1;1H");
     println!();
     println!(
         "  {}",
-        "╔═══════════════════════════════════════════════════════════════╗"
+        "╔══════════════════════════════════════════╗"
             .bright_cyan()
             .bold()
     );
     println!(
-        "  {} {:<63} {}",
+        "  {}{}{}",
         "║".bright_cyan().bold(),
-        "  💡 Rullst CLI — Full Command Reference",
+        "  💡 Rullst CLI - Full Command Reference  ",
         "║".bright_cyan().bold()
     );
     println!(
         "  {}",
-        "╠═══════════════════════════════════════════════════════════════╣"
+        "╚══════════════════════════════════════════╝"
             .bright_cyan()
             .bold()
     );
     let groups = [
         (
-            "🗂️  PROJECT (MVP)",
+            "🗂️  PROJECT",
             vec![
                 ("cargo rullst new [name]", "Create a new Rullst application"),
                 ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
             ],
         ),
-        /* --- HIDDEN FOR MVP ---
         (
             "🛠️  SCAFFOLDING",
             vec![
@@ -384,18 +674,22 @@ pub fn show_help_reference() {
             ],
         ),
         (
-            "🖥️  DESKTOP & CROSS-PLATFORM",
+            "🖥️  DESKTOP & MOBILE (OMNI)",
             vec![
                 (
-                    "cargo rullst make:desktop",
-                    "Tauri native desktop packaging",
+                    "cargo rullst make:omni",
+                    "Scaffold Omni desktop & mobile app wrapper",
                 ),
-                ("cargo rullst make:omni", "Dioxus cross-platform app"),
+                (
+                    "cargo rullst omni [target]",
+                    "Run Omni app (desktop, android, ios)",
+                ),
             ],
         ),
         (
             "🚀  DEPLOY",
             vec![
+                ("cargo rullst dockerize", "Generate Docker files"),
                 ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
                 ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),
             ],
@@ -413,36 +707,13 @@ pub fn show_help_reference() {
                 ("cargo rullst docs build", "Build static docs site"),
             ],
         ),
-        */
     ];
     for (group_name, cmds) in &groups {
-        println!(
-            "  {} {} {}",
-            "║".bright_cyan().bold(),
-            format!(" {:<63}", group_name).bright_yellow().bold(),
-            "║".bright_cyan().bold()
-        );
+        println!("  {}", group_name.bright_yellow().bold(),);
         for (cmd, desc) in cmds {
-            println!(
-                "  {} {:<40} {} {}",
-                "║".bright_cyan().bold(),
-                cmd.bright_cyan(),
-                format!("{:<22}", desc).white(),
-                "║".bright_cyan().bold()
-            );
+            println!("    {:<35} {}", cmd.bright_cyan(), desc.white(),);
         }
-        println!(
-            "  {} {:<63} {}",
-            "║".bright_cyan().bold(),
-            "",
-            "║".bright_cyan().bold()
-        );
+        println!();
     }
-    println!(
-        "  {}",
-        "╚═══════════════════════════════════════════════════════════════╝"
-            .bright_cyan()
-            .bold()
-    );
     println!();
 }
