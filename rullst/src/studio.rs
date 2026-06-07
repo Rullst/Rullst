@@ -9,7 +9,6 @@ use rullst_macros::html;
 use rullst_orm::Orm;
 use serde::Deserialize;
 use sqlx::{Any, QueryBuilder, Row};
-use std::net::SocketAddr;
 
 #[derive(Deserialize, Debug)]
 /// [TODO] Missing documentation.
@@ -54,8 +53,8 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 
 /// Dynamic SQLite schema tables finder
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = Orm::pool();
-    let driver = Orm::driver();
+    let pool = Orm::pool().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
+    let driver = Orm::driver().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
 
     let query = match driver {
         "postgres" => "SELECT CAST(table_name AS VARCHAR) as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC",
@@ -76,8 +75,8 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = Orm::pool();
-    let driver = Orm::driver();
+    let pool = Orm::pool().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
+    let driver = Orm::driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
     let quoted_table = if driver == "mysql" {
@@ -131,6 +130,7 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
 }
 
 /// Sanitize table and column names to prevent SQL injections in dynamic queries
+#[allow(dead_code)]
 fn sanitize_identifier(id: &str) -> String {
     id.chars()
         .filter(|c| c.is_alphanumeric() || *c == '_')
@@ -305,7 +305,7 @@ async fn handle_dashboard() -> impl IntoResponse {
             <div class="w-full grid grid-cols-2 gap-4 mt-8 text-left">
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-sky-400 font-bold uppercase tracking-wider">"Database Type"</span>
-                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{Orm::driver()}</h3>
+                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{Orm::driver().unwrap_or("sqlite")}</h3>
                 </div>
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-indigo-400 font-bold uppercase tracking-wider">"Total Tables"</span>
@@ -346,8 +346,11 @@ pub async fn handle_table(
     };
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-    let pool = Orm::pool();
-    let driver = Orm::driver();
+    let pool = match Orm::pool() {
+        Ok(p) => p,
+        Err(e) => return Html(format!("Database not initialized: {}", e)).into_response(),
+    };
+    let driver = Orm::driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table_name);
 
     let columns_query = match driver {

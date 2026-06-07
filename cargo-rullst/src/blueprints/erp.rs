@@ -159,7 +159,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial products and orders
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
         
         rullst::db::sqlx::query(
             "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
@@ -291,7 +291,10 @@ pub struct CreateProductPayload {
 }
 
 pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return Redirect::to("/").into_response(),
+    };
     let _ = rullst::db::sqlx::query(
         "INSERT INTO products (name, sku, price, stock, created_at, updated_at) VALUES ($1, $2, $3, $4, datetime('now'), datetime('now'))"
     )
@@ -306,7 +309,10 @@ pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl In
 }
 
 pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
+    };
     
     // Increment stock
     let _ = rullst::db::sqlx::query(
@@ -341,7 +347,10 @@ pub struct CreateOrderPayload {
 }
 
 pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    let pool = match rullst::db::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return Redirect::to("/").into_response(),
+    };
 
     // Get product price and stock
     let product_row: Result<(f64, i32), _> = rullst::db::sqlx::query_as(

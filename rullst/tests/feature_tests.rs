@@ -128,7 +128,7 @@ async fn test_database_feature_driver() {
     Orm::init("sqlite:file:memdb1?mode=memory&cache=shared")
         .await
         .unwrap();
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("Pool not initialized");
 
     // Acquire and hold a connection to keep the in-memory database alive
     let _conn = pool.acquire().await.unwrap();

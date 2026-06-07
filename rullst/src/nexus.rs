@@ -393,7 +393,7 @@ async fn nexus_create_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+    if let Ok(pool) = rullst_orm::Orm::pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -486,7 +486,7 @@ async fn nexus_update_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+    if let Ok(pool) = rullst_orm::Orm::pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -544,7 +544,7 @@ async fn nexus_delete_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+    if let Ok(pool) = rullst_orm::Orm::pool() {
         match rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
             .bind(&id)
             .execute(pool)
@@ -712,6 +712,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
@@ -785,7 +786,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let table = entry.table;
     let pk = entry.pk;
 
-    let driver = std::panic::catch_unwind(|| rullst_orm::Orm::driver()).unwrap_or("sqlite");
+    let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
     let mut sql = format!("SELECT * FROM {}", table);
     let mut binds = Vec::new();
 
@@ -819,8 +820,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
         pk, limit, offset
     ));
 
-    let pool = std::panic::catch_unwind(|| rullst_orm::Orm::pool());
-    let pool = match pool {
+    let pool = match rullst_orm::Orm::pool() {
         Ok(p) => p,
         Err(_) => {
             return format!(
@@ -1054,14 +1054,14 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
         std::collections::HashMap::new();
 
     if let Some(i) = id {
-        let driver = std::panic::catch_unwind(|| rullst_orm::Orm::driver()).unwrap_or("sqlite");
+        let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
         let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
         let sql = format!(
             "SELECT * FROM {} WHERE {} = {}",
             t, entry.pk, pk_placeholder
         );
 
-        if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+        if let Ok(pool) = rullst_orm::Orm::pool() {
             use rullst_orm::_sqlx::Row;
             if let Ok(row) =
                 rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
@@ -1142,7 +1142,7 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
                 "SELECT {} as key_id, {} as val_label FROM {}",
                 target_pk, label_col, target_table
             );
-            if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+            if let Ok(pool) = rullst_orm::Orm::pool() {
                 use rullst_orm::_sqlx::Row;
                 if let Ok(rows) =
                     rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
@@ -1462,11 +1462,11 @@ mod tests {
 
     async fn init_test_db() {
         let _guard = INIT_MUTEX.lock().await;
-        let is_init = std::panic::catch_unwind(|| rullst_orm::Orm::pool()).is_ok();
+        let is_init = rullst_orm::Orm::pool().is_ok();
         if !is_init {
-            rullst_orm::Orm::init("sqlite://test_nexus.db").await.expect("Failed to init SQLite DB file");
+            rullst_orm::Orm::init("sqlite://test_nexus.db?mode=rwc").await.expect("Failed to init SQLite DB file");
         }
-        if let Ok(pool) = std::panic::catch_unwind(|| rullst_orm::Orm::pool()) {
+        if let Ok(pool) = rullst_orm::Orm::pool() {
             rullst_orm::_sqlx::query("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)")
                 .execute(pool)
                 .await

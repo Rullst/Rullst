@@ -467,7 +467,10 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid signature").into_response(),
     };
 
-    let pool = rullst_orm::Orm::pool();
+    let pool = match rullst_orm::Orm::pool() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
+    };
     let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)
         .fetch_optional(pool)

@@ -450,7 +450,7 @@ impl DbFeatureDriver {
     async fn fetch_flag_from_db(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         use sqlx::Row;
 
-        let pool = rullst_orm::Orm::pool();
+        let pool = rullst_orm::Orm::pool().ok()?;
         let row = sqlx::query(
             "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?",
         )

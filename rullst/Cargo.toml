@@ -22,11 +22,11 @@ rullst-macros = { version = "2.0.3", path = "../rullst-macros" }
 # Optional features dependencies
 redis = { version = "1.2.2", features = ["tokio-comp", "aio"], optional = true }
 lettre = { version = "0.11.22", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
-rullst-connect = { version = "7.0.0", optional = true }
+rullst-connect = { version = "7.0.1", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time"] }
-rullst-orm = "4.0.1"
+rullst-orm = "4.0.4"
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio", "macros"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.6.11", features = ["fs", "trace", "cors"] }

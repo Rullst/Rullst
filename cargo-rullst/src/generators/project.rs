@@ -287,7 +287,7 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
                 .replace("\\", "/");
             format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
         } else {
-            "rullst-connect = \"7.0.0\"\n".to_string()
+            "rullst-connect = \"7.0.1\"\n".to_string()
         };
         cargo_toml.push_str(&connect_dep);
     }
