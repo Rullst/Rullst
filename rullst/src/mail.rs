@@ -461,9 +461,16 @@ mod tests {
             );
         }
         let content = std::fs::read_to_string(path).expect("Failed to read log file");
-        assert!(content.contains("To: test@rullst.dev"));
-        assert!(content.contains("Subject: Hello Test"));
-        assert!(content.contains("Testing 1 2 3"));
+        if !content.contains("To: test@rullst.dev")
+            || !content.contains("Subject: Hello Test")
+            || !content.contains("Testing 1 2 3")
+        {
+            panic!(
+                "Log file content mismatch! Content was: {:?}. CWD: {}",
+                content,
+                cwd.display()
+            );
+        }
     }
 
     #[test]
