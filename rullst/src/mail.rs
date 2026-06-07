@@ -431,8 +431,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_driver() {
+        let cwd = std::env::current_dir().unwrap_or_default();
         // Prepare storage/logs directory
-        let _ = std::fs::remove_file("storage/logs/mail.log");
+        let log_path = "storage/logs/mail.log";
+        let _ = std::fs::remove_file(log_path);
 
         let msg = Message::new()
             .to("test@rullst.dev")
@@ -441,10 +443,24 @@ mod tests {
             .html("<h1>Testing 1 2 3</h1>");
 
         let driver = LogDriver;
-        driver.send(&msg).await.unwrap();
+        if let Err(e) = driver.send(&msg).await {
+            panic!(
+                "driver.send failed! Error: {:?}. CWD: {}. Log Path exists? {}",
+                e,
+                cwd.display(),
+                std::path::Path::new(log_path).exists()
+            );
+        }
 
-        assert!(std::path::Path::new("storage/logs/mail.log").exists());
-        let content = std::fs::read_to_string("storage/logs/mail.log").unwrap();
+        let path = std::path::Path::new(log_path);
+        if !path.exists() {
+            panic!(
+                "Log file does not exist after send! CWD: {}. Expected Path: {}",
+                cwd.display(),
+                path.display()
+            );
+        }
+        let content = std::fs::read_to_string(path).expect("Failed to read log file");
         assert!(content.contains("To: test@rullst.dev"));
         assert!(content.contains("Subject: Hello Test"));
         assert!(content.contains("Testing 1 2 3"));
