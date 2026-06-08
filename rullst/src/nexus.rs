@@ -134,7 +134,6 @@ struct RegistryEntry {
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
-
 }
 
 // ─── Nexus Builder ────────────────────────────────────────────────────────────
@@ -152,7 +151,6 @@ struct NexusState {
 pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
-
 }
 
 impl Default for Nexus {
@@ -167,7 +165,6 @@ impl Nexus {
         Nexus {
             registry: Vec::new(),
             brand: "Rullst Nexus".to_string(),
-
         }
     }
 
@@ -201,7 +198,6 @@ impl Nexus {
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
             brand: Arc::new(self.brand),
-
         });
 
         AxumRouter::new()
@@ -724,18 +720,6 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
-fn field_kind_input_type(kind: &FieldKind) -> &'static str {
-    match kind {
-        FieldKind::Email => "email",
-        FieldKind::Url => "url",
-        FieldKind::Number => "number",
-        FieldKind::Password => "password",
-        FieldKind::Date => "date",
-        FieldKind::DateTime => "datetime-local",
-        FieldKind::ForeignKey { .. } => "select",
-        _ => "text",
-    }
-}
 
 fn generate_mock_ai_response(message: &str, schema: &str) -> String {
     let msg_lower = message.to_lowercase();
@@ -1619,6 +1603,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_nexus_build_returns_router() {
         let nexus = Nexus::new()
             .register::<TestUser>()
@@ -1634,18 +1619,6 @@ mod tests {
         assert_eq!(field_kind_sql(&FieldKind::Boolean), "INTEGER");
     }
 
-    #[test]
-    fn test_field_kind_input_type() {
-        assert_eq!(field_kind_input_type(&FieldKind::Email), "email");
-        assert_eq!(field_kind_input_type(&FieldKind::Password), "password");
-        assert_eq!(field_kind_input_type(&FieldKind::Number), "number");
-        assert_eq!(field_kind_input_type(&FieldKind::Text), "text");
-        assert_eq!(field_kind_input_type(&FieldKind::Date), "date");
-        assert_eq!(
-            field_kind_input_type(&FieldKind::DateTime),
-            "datetime-local"
-        );
-    }
 
     #[tokio::test]
     async fn test_render_table_rows_with_search() {
@@ -1696,7 +1669,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-
         };
         let form = render_record_form(&state, &entry, None).await;
         assert!(
@@ -1729,7 +1701,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-
         };
         let form = render_record_form(&state, &entry, Some("42")).await;
         assert!(
@@ -1760,7 +1731,6 @@ mod tests {
                 fields: TestUser::nexus_fields(),
             }]),
             brand: Arc::new("Test".to_string()),
-
         };
         assert!(find_entry(&state, "users").is_some());
         assert!(find_entry(&state, "missing").is_none());
@@ -1789,7 +1759,6 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-
         };
         let sidebar = render_sidebar(&state, None);
         assert!(sidebar.contains("/nexus/table/users"));
@@ -1808,7 +1777,6 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-
         };
         let sidebar = render_sidebar(&state, Some("users"));
         assert!(sidebar.contains("nexus-nav-active"));
@@ -1819,7 +1787,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![]),
             brand: Arc::new("MySaaS".to_string()),
-
         };
         let html = render_shell(&state, "", "<p>content</p>");
         assert!(html.contains("MySaaS"));
