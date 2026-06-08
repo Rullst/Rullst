@@ -134,6 +134,7 @@ struct RegistryEntry {
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
+    #[allow(dead_code)]
     pub db_url: Arc<Option<String>>,
 }
 
@@ -724,6 +725,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",

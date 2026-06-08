@@ -228,7 +228,12 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if ssh_key.starts_with('-') {
-        println!("{}", "❌ Error: Invalid SSH key path in Foundry.toml. Path cannot start with a dash.".red().bold());
+        println!(
+            "{}",
+            "❌ Error: Invalid SSH key path in Foundry.toml. Path cannot start with a dash."
+                .red()
+                .bold()
+        );
         std::process::exit(1);
     }
 

@@ -229,6 +229,7 @@ pub struct Passkey {
 
 // Custom lightweight CBOR parser for WebAuthn payload decoding
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum CborValue {
     Integer(i64),
     ByteString(Vec<u8>),
