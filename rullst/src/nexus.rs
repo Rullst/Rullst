@@ -134,7 +134,7 @@ struct RegistryEntry {
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
-    pub db_url: Arc<Option<String>>,
+
 }
 
 // ─── Nexus Builder ────────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ struct NexusState {
 pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
-    db_url: Option<String>,
+
 }
 
 impl Default for Nexus {
@@ -167,7 +167,7 @@ impl Nexus {
         Nexus {
             registry: Vec::new(),
             brand: "Rullst Nexus".to_string(),
-            db_url: None,
+
         }
     }
 
@@ -190,8 +190,8 @@ impl Nexus {
     }
 
     /// Sets the database URL used by the panel to execute live queries.
-    pub fn with_db(mut self, url: impl Into<String>) -> Self {
-        self.db_url = Some(url.into());
+    #[deprecated(since = "2.0.3", note = "Database URL is now managed globally by ORM.")]
+    pub fn with_db(self, _url: impl Into<String>) -> Self {
         self
     }
 
@@ -201,7 +201,7 @@ impl Nexus {
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
             brand: Arc::new(self.brand),
-            db_url: Arc::new(self.db_url),
+
         });
 
         AxumRouter::new()
@@ -1696,7 +1696,7 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-            db_url: Arc::new(None),
+
         };
         let form = render_record_form(&state, &entry, None).await;
         assert!(
@@ -1729,7 +1729,7 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-            db_url: Arc::new(None),
+
         };
         let form = render_record_form(&state, &entry, Some("42")).await;
         assert!(
@@ -1760,7 +1760,7 @@ mod tests {
                 fields: TestUser::nexus_fields(),
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
+
         };
         assert!(find_entry(&state, "users").is_some());
         assert!(find_entry(&state, "missing").is_none());
@@ -1789,7 +1789,7 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
+
         };
         let sidebar = render_sidebar(&state, None);
         assert!(sidebar.contains("/nexus/table/users"));
@@ -1808,7 +1808,7 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
+
         };
         let sidebar = render_sidebar(&state, Some("users"));
         assert!(sidebar.contains("nexus-nav-active"));
@@ -1819,7 +1819,7 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![]),
             brand: Arc::new("MySaaS".to_string()),
-            db_url: Arc::new(None),
+
         };
         let html = render_shell(&state, "", "<p>content</p>");
         assert!(html.contains("MySaaS"));
