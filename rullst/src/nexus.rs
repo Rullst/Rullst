@@ -121,7 +121,6 @@ pub trait NexusModel: Send + Sync + 'static {
 
 /// Internal representation of a registered model used by the Nexus Panel engine.
 #[derive(Clone)]
-#[allow(dead_code)]
 struct RegistryEntry {
     pub table: &'static str,
     pub label: &'static str,
@@ -132,7 +131,6 @@ struct RegistryEntry {
 
 /// Shared state passed into all Nexus route handlers.
 #[derive(Clone)]
-#[allow(dead_code)]
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
@@ -726,7 +724,6 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
-#[allow(dead_code)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",

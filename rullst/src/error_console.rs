@@ -58,7 +58,17 @@ pub fn extract_source_context(
     target_line: u32,
     range: u32,
 ) -> Option<Vec<(u32, String, bool)>> {
-    let content = fs::read_to_string(file_path).ok()?;
+    let project_root = std::env::current_dir()
+        .map(|cwd| cwd.canonicalize().unwrap_or(cwd))
+        .ok()?;
+
+    let target_path = Path::new(file_path);
+    let canonical = target_path.canonicalize().ok()?;
+    if !canonical.starts_with(&project_root) {
+        return None;
+    }
+
+    let content = fs::read_to_string(&canonical).ok()?;
     let lines: Vec<&str> = content.lines().collect();
 
     let total_lines = lines.len() as u32;
@@ -145,19 +155,11 @@ pub async fn handle_explain(
         Err(_) => return "Unable to determine project root directory.".to_string(),
     };
 
-    let target_path = std::path::Path::new(&query.file);
-    if !target_path.exists() {
-        return format!("File not found: {}", query.file);
-    }
-
-    let canonical = match target_path.canonicalize() {
-        Ok(p) => p,
-        Err(_) => return "Unable to resolve file path.".to_string(),
+    let canonical_res = std::path::Path::new(&query.file).canonicalize();
+    let canonical = match canonical_res {
+        Ok(p) if p.starts_with(&project_root) => p,
+        _ => return "File not found or access denied.".to_string(),
     };
-
-    if !canonical.starts_with(&project_root) {
-        return "Access denied: file is outside the project directory.".to_string();
-    }
 
     let extension = canonical.extension().and_then(|e| e.to_str()).unwrap_or("");
     if extension != "rs" && extension != "toml" {
@@ -236,32 +238,17 @@ pub async fn handle_autofix(
         }
     };
 
-    // 2. Ensure file exists
-    let target_path = Path::new(&payload.file_path);
-    if !target_path.exists() {
-        return Json(serde_json::json!({
-            "success": false,
-            "error": format!("File not found: {}", payload.file_path)
-        }));
-    }
-
-    // 3. Canonicalize and verify the file is within the project root (prevents path traversal)
-    let canonical_target = match target_path.canonicalize() {
-        Ok(p) => p,
-        Err(_) => {
+    // 2. Resolve and verify the file is within the project root (prevents path traversal and existence oracles)
+    let canonical_res = Path::new(&payload.file_path).canonicalize();
+    let canonical_target = match canonical_res {
+        Ok(p) if p.starts_with(&project_root) => p,
+        _ => {
             return Json(serde_json::json!({
                 "success": false,
-                "error": "Unable to resolve file path"
+                "error": "File not found or access denied"
             }));
         }
     };
-
-    if !canonical_target.starts_with(&project_root) {
-        return Json(serde_json::json!({
-            "success": false,
-            "error": "Access denied: file is outside the project directory"
-        }));
-    }
 
     // 4. Additionally restrict to Rust source files only
     let extension = canonical_target

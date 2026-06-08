@@ -209,6 +209,29 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
     let auto_https = get_value("auto_https");
 
     // Validate user, host, and port configurations to prevent command/argument injection
+    let is_valid_app_name = !app_name.is_empty()
+        && app_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if !is_valid_app_name {
+        println!("{}", "❌ Error: Invalid app name in Foundry.toml. Only alphanumeric, dashes and underscores are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
+    let is_valid_domain = domain.is_empty()
+        || domain
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    if !is_valid_domain {
+        println!("{}", "❌ Error: Invalid domain in Foundry.toml. Only alphanumeric, dots and dashes are allowed.".red().bold());
+        std::process::exit(1);
+    }
+
+    if ssh_key.starts_with('-') {
+        println!("{}", "❌ Error: Invalid SSH key path in Foundry.toml. Path cannot start with a dash.".red().bold());
+        std::process::exit(1);
+    }
+
     let is_valid_user = !user.is_empty()
         && user
             .chars()

@@ -358,7 +358,7 @@ impl Storage {
                     let endpoint = std::env::var("AWS_ENDPOINT").ok();
                     let config = tokio::task::block_in_place(|| {
                         tokio::runtime::Handle::current().block_on(
-                            aws_config::defaults(aws_config::BehaviorVersion::latest()).load(),
+                            aws_config::load_defaults(aws_config::BehaviorVersion::latest()),
                         )
                     });
                     let client = aws_sdk_s3::Client::new(&config);

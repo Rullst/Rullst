@@ -71,7 +71,7 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#)?;
         cargo_content = re_eloquent
             .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"3.0.3""#, &caps[1])
+                format!(r#"{}"4.0.4""#, &caps[1])
             })
             .into_owned();
 

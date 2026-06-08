@@ -157,10 +157,10 @@ fn sanitize_identifier(id: &str) -> String {
 }
 
 /// Helper to build table headers HTML
-fn build_headers_html(col_names: &[String], primary_keys: &[String]) -> String {
+fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> String {
     let mut headers_html = String::new();
-    for col in col_names {
-        let is_pk = primary_keys.contains(col);
+    for (i, col) in col_names.iter().enumerate() {
+        let is_pk = primary_keys.contains(&i);
         let pk_badge = if is_pk {
             "<span class=\"ml-1.5 text-[9px] font-extrabold tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1 py-0.2 rounded font-mono\">PK</span>"
         } else {
@@ -404,8 +404,6 @@ pub async fn handle_table(
     let mut primary_keys = Vec::new();
     for r in &columns_rows {
         if let Ok(name) = r.try_get::<String, _>("name") {
-            // Handle PK correctly based on the driver query result types.
-            // In MySQL/Postgres we used 1 and 0 which parses to i64 or i32.
             let is_pk = if let Ok(pk) = r.try_get::<i64, _>("pk") {
                 pk > 0
             } else if let Ok(pk) = r.try_get::<i32, _>("pk") {
@@ -415,7 +413,7 @@ pub async fn handle_table(
             };
 
             if is_pk {
-                primary_keys.push(name.clone());
+                primary_keys.push(col_names.len());
             }
             col_names.push(name);
         }
