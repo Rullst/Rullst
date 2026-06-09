@@ -227,39 +227,55 @@ impl Nexus {
             .route("/chat/query", post(nexus_chat_query));
 
         let router = if let Some((username, password)) = self.auth {
-            router.layer(axum::middleware::from_fn(move |req: axum::extract::Request, next: axum::middleware::Next| {
-                let expected_username = username.clone();
-                let expected_password = password.clone();
-                async move {
-                    if let Some(auth_header) = req.headers().get(axum::http::header::AUTHORIZATION) {
-                        if let Ok(auth_str) = auth_header.to_str() {
-                            if let Some(encoded) = auth_str.strip_prefix("Basic ") {
-                                use base64::Engine;
-                                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(encoded) {
-                                    if let Ok(decoded_str) = String::from_utf8(decoded) {
-                                        if let Some((parts_user, parts_pass)) = decoded_str.split_once(':') {
-                                            if parts_user == expected_username && parts_pass == expected_password {
-                                                return next.run(req).await;
+            router.layer(axum::middleware::from_fn(
+                move |req: axum::extract::Request, next: axum::middleware::Next| {
+                    let expected_username = username.clone();
+                    let expected_password = password.clone();
+                    async move {
+                        if let Some(auth_header) =
+                            req.headers().get(axum::http::header::AUTHORIZATION)
+                        {
+                            if let Ok(auth_str) = auth_header.to_str() {
+                                if let Some(encoded) = auth_str.strip_prefix("Basic ") {
+                                    use base64::Engine;
+                                    if let Ok(decoded) =
+                                        base64::engine::general_purpose::STANDARD.decode(encoded)
+                                    {
+                                        if let Ok(decoded_str) = String::from_utf8(decoded) {
+                                            if let Some((parts_user, parts_pass)) =
+                                                decoded_str.split_once(':')
+                                            {
+                                                if parts_user == expected_username
+                                                    && parts_pass == expected_password
+                                                {
+                                                    return next.run(req).await;
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                        axum::response::Response::builder()
+                            .status(axum::http::StatusCode::UNAUTHORIZED)
+                            .header(
+                                axum::http::header::WWW_AUTHENTICATE,
+                                "Basic realm=\"Nexus Admin Panel\"",
+                            )
+                            .body(axum::body::Body::empty())
+                            .unwrap_or_else(|_| {
+                                let mut res =
+                                    axum::response::Response::new(axum::body::Body::empty());
+                                *res.status_mut() = axum::http::StatusCode::UNAUTHORIZED;
+                                res
+                            })
                     }
-                    axum::response::Response::builder()
-                        .status(axum::http::StatusCode::UNAUTHORIZED)
-                        .header(axum::http::header::WWW_AUTHENTICATE, "Basic realm=\"Nexus Admin Panel\"")
-                        .body(axum::body::Body::empty())
-                        .unwrap_or_else(|_| {
-                            let mut res = axum::response::Response::new(axum::body::Body::empty());
-                            *res.status_mut() = axum::http::StatusCode::UNAUTHORIZED;
-                            res
-                        })
-                }
-            }))
+                },
+            ))
         } else {
-            eprintln!("⚠️  Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production.");
+            eprintln!(
+                "⚠️  Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production."
+            );
             router
         };
 
@@ -1880,8 +1896,8 @@ mod tests {
     #[tokio::test]
     async fn test_nexus_with_auth() {
         use axum::http::{Request, StatusCode};
-        use tower::ServiceExt;
         use base64::Engine;
+        use tower::ServiceExt;
 
         let nexus = Nexus::new()
             .with_brand("Auth Test")
@@ -1898,7 +1914,10 @@ mod tests {
         let response = router.clone().oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(
-            response.headers().get(axum::http::header::WWW_AUTHENTICATE).unwrap(),
+            response
+                .headers()
+                .get(axum::http::header::WWW_AUTHENTICATE)
+                .unwrap(),
             "Basic realm=\"Nexus Admin Panel\""
         );
 
@@ -1907,7 +1926,10 @@ mod tests {
             .uri("/")
             .header(
                 axum::http::header::AUTHORIZATION,
-                format!("Basic {}", base64::engine::general_purpose::STANDARD.encode("admin:wrong"))
+                format!(
+                    "Basic {}",
+                    base64::engine::general_purpose::STANDARD.encode("admin:wrong")
+                ),
             )
             .body(axum::body::Body::empty())
             .unwrap();
@@ -1920,7 +1942,10 @@ mod tests {
             .uri("/")
             .header(
                 axum::http::header::AUTHORIZATION,
-                format!("Basic {}", base64::engine::general_purpose::STANDARD.encode("admin:secret"))
+                format!(
+                    "Basic {}",
+                    base64::engine::general_purpose::STANDARD.encode("admin:secret")
+                ),
             )
             .body(axum::body::Body::empty())
             .unwrap();

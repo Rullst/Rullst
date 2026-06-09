@@ -582,12 +582,18 @@ fn load_dylib_router(
     let lib = unsafe { libloading::Library::new(&temp_path)? };
     if let Err(e) = std::fs::remove_file(&temp_path) {
         #[cfg(not(target_os = "windows"))]
-        eprintln!("⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}", temp_path, e);
+        eprintln!(
+            "⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}",
+            temp_path, e
+        );
         #[cfg(target_os = "windows")]
         {
             // On Windows, sharing violation (error code 32) is normal, so we only log other errors.
             if e.raw_os_error() != Some(32) {
-                eprintln!("⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}", temp_path, e);
+                eprintln!(
+                    "⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}",
+                    temp_path, e
+                );
             }
         }
     }

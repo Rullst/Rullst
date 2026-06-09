@@ -53,8 +53,10 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 
 /// Dynamic SQLite schema tables finder
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = crate::db::safe_pool().ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
-    let driver = crate::db::safe_driver().ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
+    let pool = crate::db::safe_pool()
+        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let driver = crate::db::safe_driver()
+        .ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
 
     let query = match driver {
         "postgres" => {
@@ -81,7 +83,8 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = crate::db::safe_pool().ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let pool = crate::db::safe_pool()
+        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
@@ -367,7 +370,12 @@ pub async fn handle_table(
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
     let pool = match crate::db::safe_pool() {
         Some(p) => p,
-        None => return Html("Database pool not initialized. Please configure database_url.".to_string()).into_response(),
+        None => {
+            return Html(
+                "Database pool not initialized. Please configure database_url.".to_string(),
+            )
+            .into_response();
+        }
     };
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table_name);

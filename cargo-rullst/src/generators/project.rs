@@ -626,11 +626,7 @@ pub fn generate_docker_files(
     let db_provider = match db_provider_arg {
         Some(db) => db.to_string(),
         None => {
-            let db_options = &[
-                "Sqlite (Zero setup)",
-                "Postgres",
-                "MySQL/MariaDB",
-            ];
+            let db_options = &["Sqlite (Zero setup)", "Postgres", "MySQL/MariaDB"];
             let selection = dialoguer::Select::with_theme(&theme)
                 .with_prompt("Which Database are you using?")
                 .default(0)
@@ -646,12 +642,10 @@ pub fn generate_docker_files(
 
     let wants_redis = match redis_arg {
         Some(r) => r,
-        None => {
-            dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("Do you want to include Redis in your docker-compose?")
-                .default(true)
-                .interact()?
-        }
+        None => dialoguer::Confirm::with_theme(&theme)
+            .with_prompt("Do you want to include Redis in your docker-compose?")
+            .default(true)
+            .interact()?,
     };
 
     // --- Dockerfile (multi-stage, distroless) ---
@@ -769,7 +763,7 @@ services:
         // Sqlite
         compose = compose.replace(
             "    restart: unless-stopped\n",
-            "    volumes:\n      - ./rullst.db:/app/rullst.db\n    restart: unless-stopped\n"
+            "    volumes:\n      - ./rullst.db:/app/rullst.db\n    restart: unless-stopped\n",
         );
     }
 
@@ -798,15 +792,27 @@ services:
     if !depends_on.is_empty() {
         let mut deps_str = String::from("    depends_on:\n");
         for dep in depends_on {
-            deps_str.push_str(&format!("      {}:\n        condition: service_healthy\n", dep));
+            deps_str.push_str(&format!(
+                "      {}:\n        condition: service_healthy\n",
+                dep
+            ));
         }
-        compose = compose.replace("    restart: unless-stopped", &format!("{}\n    restart: unless-stopped", deps_str));
+        compose = compose.replace(
+            "    restart: unless-stopped",
+            &format!("{}\n    restart: unless-stopped", deps_str),
+        );
     }
 
     let mut volumes_str = String::new();
-    if db_provider == "Postgres" { volumes_str.push_str("  pgdata:\n"); }
-    if db_provider == "MySQL" { volumes_str.push_str("  mysqldata:\n"); }
-    if wants_redis { volumes_str.push_str("  redisdata:\n"); }
+    if db_provider == "Postgres" {
+        volumes_str.push_str("  pgdata:\n");
+    }
+    if db_provider == "MySQL" {
+        volumes_str.push_str("  mysqldata:\n");
+    }
+    if wants_redis {
+        volumes_str.push_str("  redisdata:\n");
+    }
 
     if !volumes_str.is_empty() {
         compose.push_str("\nvolumes:\n");
@@ -837,7 +843,7 @@ LICENSE
          # \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\n\n\
          # Application Environment (development, production)\n\
          APP_ENV=development\n\
-         HOST=0.0.0.0\n\n"
+         HOST=0.0.0.0\n\n",
     );
 
     if db_provider == "Postgres" {
@@ -847,7 +853,7 @@ LICENSE
              POSTGRES_PASSWORD=rullst_super_secret\n\
              POSTGRES_DB={project_name}_db\n\
              DATABASE_URL=postgres://rullst:rullst_super_secret@db:5432/{project_name}_db\n\n",
-             project_name = project_name
+            project_name = project_name
         ));
     } else if db_provider == "MySQL" {
         env_content.push_str(&format!(
@@ -855,19 +861,19 @@ LICENSE
              MYSQL_ROOT_PASSWORD=rullst_super_secret\n\
              MYSQL_DATABASE={project_name}_db\n\
              DATABASE_URL=mysql://root:rullst_super_secret@db:3306/{project_name}_db\n\n",
-             project_name = project_name
+            project_name = project_name
         ));
     } else {
         env_content.push_str(
             "# Database Configuration\n\
-             DATABASE_URL=sqlite://rullst.db?mode=rwc\n\n"
+             DATABASE_URL=sqlite://rullst.db?mode=rwc\n\n",
         );
     }
 
     if wants_redis {
         env_content.push_str(
             "# Redis Configuration\n\
-             REDIS_URL=redis://redis:6379\n"
+             REDIS_URL=redis://redis:6379\n",
         );
     }
 

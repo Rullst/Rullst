@@ -142,9 +142,7 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
         .extensions()
         .get::<crate::config::SecurityConfig>()
         .map(|cfg| cfg.csp.clone())
-        .unwrap_or_else(|| {
-            crate::config::RullstConfig::global().security.csp.clone()
-        });
+        .unwrap_or_else(|| crate::config::RullstConfig::global().security.csp.clone());
 
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
@@ -215,7 +213,10 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
             .get::<crate::config::SecurityConfig>()
             .map(|cfg| cfg.user_agent_blocklist.clone())
             .unwrap_or_else(|| {
-                crate::config::RullstConfig::global().security.user_agent_blocklist.clone()
+                crate::config::RullstConfig::global()
+                    .security
+                    .user_agent_blocklist
+                    .clone()
             });
 
         for agent in suspicious_agents {

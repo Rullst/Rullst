@@ -244,12 +244,10 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    let output_result = crate::ui::components::with_spinner("Compiling Rullst Application...", || {
-        Command::new("cargo")
-            .arg("build")
-            .arg("-q")
-            .output()
-    });
+    let output_result =
+        crate::ui::components::with_spinner("Compiling Rullst Application...", || {
+            Command::new("cargo").arg("build").arg("-q").output()
+        });
 
     match output_result {
         Ok(output) => {
@@ -276,7 +274,10 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("{}\n", "✨ Compilation successful! Starting the hot-reloader...".green());
+    println!(
+        "{}\n",
+        "✨ Compilation successful! Starting the hot-reloader...".green()
+    );
 
     // Check if cargo-watch is installed
     let watch_check = Command::new("cargo").arg("watch").arg("--version").output();

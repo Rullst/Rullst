@@ -167,8 +167,10 @@ mod tests {
     #[test]
     fn test_scheduler_task_registration() {
         let scheduler = Scheduler::new()
-            .task("* * * * *", || async {}).unwrap()
-            .task("0 0 * * *", || async {}).unwrap();
+            .task("* * * * *", || async {})
+            .unwrap()
+            .task("0 0 * * *", || async {})
+            .unwrap();
         assert_eq!(scheduler.tasks.len(), 2);
     }
 

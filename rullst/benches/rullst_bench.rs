@@ -1,7 +1,7 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
+use rullst::html;
 use rullst::routes;
 use rullst::server::Request;
-use rullst::html;
 
 // 1. Router Benchmarks
 fn bench_router(c: &mut Criterion) {
@@ -16,31 +16,33 @@ fn bench_router(c: &mut Criterion) {
     let axum_router = router.into_axum();
 
     c.bench_function("router_match_simple", |b| {
-        b.to_async(tokio::runtime::Runtime::new().unwrap()).iter(|| {
-            let req = Request::builder()
-                .uri("/users")
-                .body(axum::body::Body::empty())
-                .unwrap();
-            let mut app = axum_router.clone();
-            async move {
-                use tower::Service;
-                let _ = app.call(req).await;
-            }
-        });
+        b.to_async(tokio::runtime::Runtime::new().unwrap())
+            .iter(|| {
+                let req = Request::builder()
+                    .uri("/users")
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+                let mut app = axum_router.clone();
+                async move {
+                    use tower::Service;
+                    let _ = app.call(req).await;
+                }
+            });
     });
 
     c.bench_function("router_match_nested_params", |b| {
-        b.to_async(tokio::runtime::Runtime::new().unwrap()).iter(|| {
-            let req = Request::builder()
-                .uri("/posts/123/comments/456")
-                .body(axum::body::Body::empty())
-                .unwrap();
-            let mut app = axum_router.clone();
-            async move {
-                use tower::Service;
-                let _ = app.call(req).await;
-            }
-        });
+        b.to_async(tokio::runtime::Runtime::new().unwrap())
+            .iter(|| {
+                let req = Request::builder()
+                    .uri("/posts/123/comments/456")
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+                let mut app = axum_router.clone();
+                async move {
+                    use tower::Service;
+                    let _ = app.call(req).await;
+                }
+            });
     });
 }
 
@@ -80,17 +82,18 @@ fn bench_middlewares(c: &mut Criterion) {
         .layer(axum::middleware::from_fn(rullst::security::waf_middleware));
 
     c.bench_function("waf_middleware_overhead", |b| {
-        b.to_async(tokio::runtime::Runtime::new().unwrap()).iter(|| {
-            let req = Request::builder()
-                .uri("/?query=safe_value")
-                .body(axum::body::Body::empty())
-                .unwrap();
-            let mut app = app.clone();
-            async move {
-                use tower::Service;
-                let _ = app.call(req).await;
-            }
-        });
+        b.to_async(tokio::runtime::Runtime::new().unwrap())
+            .iter(|| {
+                let req = Request::builder()
+                    .uri("/?query=safe_value")
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+                let mut app = app.clone();
+                async move {
+                    use tower::Service;
+                    let _ = app.call(req).await;
+                }
+            });
     });
 }
 
