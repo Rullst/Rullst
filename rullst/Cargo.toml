@@ -6,7 +6,7 @@ description = "📜🦀🌐 Framework Web FullStack for Rust language 🌐🦀�
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
-
+exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
 [features]
 default = []
 queue-redis = ["dep:redis"]
