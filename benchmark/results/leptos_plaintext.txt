@@ -1,0 +1,65 @@
+﻿Bombarding http://leptos:3000/ for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec        62.04     569.13    6547.51
+  Latency         1.99s    16.28ms      2.00s
+  HTTP codes:
+    1xx - 0, 2xx - 0, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 750
+  Errors:
+    dial tcp: lookup leptos: i/o timeout - 500
+    dial tcp: lookup leptos on 127.0.0.11:53: no such host - 250
+  Throughput:       0.00/s

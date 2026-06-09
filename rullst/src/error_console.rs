@@ -14,13 +14,13 @@ use std::path::Path;
 // ─── Stack Frame & Backtrace Parsing ──────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// [TODO] Missing documentation.
+/// Represents a single frame in the panic stack trace.
 pub struct StackFrame {
-    /// [TODO] Missing documentation.
+    /// The source file path containing the frame.
     pub file: String,
-    /// [TODO] Missing documentation.
+    /// The line number in the source file.
     pub line: u32,
-    /// [TODO] Missing documentation.
+    /// The name of the function where the panic occurred.
     pub function: String,
 }
 
@@ -130,7 +130,7 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
 // ─── Explanations & Auto-Fix API Endpoints ────────────────────────────────────
 
 #[derive(Deserialize)]
-/// [TODO] Missing documentation.
+/// Query parameters for requests to fetch an AI-based explanation of an error.
 pub struct ExplainQuery {
     file: String,
     line: u32,
@@ -202,7 +202,7 @@ pub async fn handle_explain(
 }
 
 #[derive(Deserialize)]
-/// [TODO] Missing documentation.
+/// POST request body payload containing data needed to perform an AI autofix operation.
 pub struct AutoFixPayload {
     file_path: String,
     line: u32,

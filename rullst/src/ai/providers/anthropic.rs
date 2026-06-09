@@ -1,7 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
-/// [TODO] Missing documentation.
+/// Anthropic Claude API provider implementation.
 pub struct AnthropicProvider {
     api_key: String,
     model: String,
@@ -9,7 +9,7 @@ pub struct AnthropicProvider {
 }
 
 impl AnthropicProvider {
-    /// [TODO] Missing documentation.
+    /// Creates a new `AnthropicProvider` with the given API key.
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             api_key: api_key.into(),
@@ -18,7 +18,7 @@ impl AnthropicProvider {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets a custom generation model name.
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = model.into();
         self

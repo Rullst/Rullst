@@ -1,7 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
-/// [TODO] Missing documentation.
+/// Ollama API provider implementation.
 pub struct OllamaProvider {
     host: String,
     model: String,
@@ -10,7 +10,7 @@ pub struct OllamaProvider {
 }
 
 impl OllamaProvider {
-    /// [TODO] Missing documentation.
+    /// Creates a new `OllamaProvider` with the host endpoint and model.
     pub fn new(host: impl Into<String>, model: impl Into<String>) -> Self {
         let host_str = host.into();
         // Remove trailing slash if present
@@ -24,7 +24,7 @@ impl OllamaProvider {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets a custom text embedding model name.
     pub fn with_embedding_model(mut self, model: impl Into<String>) -> Self {
         self.embedding_model = model.into();
         self

@@ -1,0 +1,62 @@
+﻿Bombarding http://actix:3000/json for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec     44916.85    8671.29   62446.46
+  Latency        2.78ms    10.63ms      1.34s
+  HTTP codes:
+    1xx - 0, 2xx - 448797, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:     8.32MB/s

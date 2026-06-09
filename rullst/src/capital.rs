@@ -12,22 +12,22 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SubscriptionStatus {
-    /// [TODO] Missing documentation.
+    /// The subscription is active and in good standing.
     Active,
-    /// [TODO] Missing documentation.
+    /// The subscription was canceled.
     Canceled,
-    /// [TODO] Missing documentation.
+    /// The subscription is past due but not yet unpaid.
     PastDue,
-    /// [TODO] Missing documentation.
+    /// The subscription is unpaid and access is revoked.
     Unpaid,
-    /// [TODO] Missing documentation.
+    /// The subscription is currently in a free trial period.
     Trialing,
-    /// [TODO] Missing documentation.
+    /// The subscription has been paused.
     Paused,
 }
 
 impl SubscriptionStatus {
-    /// [TODO] Missing documentation.
+    /// Returns the static string representation of the subscription status.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Active => "active",
@@ -39,7 +39,7 @@ impl SubscriptionStatus {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Parses a string representation of a subscription status.
     pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
@@ -112,14 +112,14 @@ fn url_encode(s: &str) -> String {
 
 // ─── Stripe Provider Implementation ──────────────────────────────────────────
 
-/// [TODO] Missing documentation.
+/// Billing provider implementation for Stripe.
 pub struct StripeProvider {
     api_key: String,
     webhook_secret: String,
 }
 
 impl StripeProvider {
-    /// [TODO] Missing documentation.
+    /// Creates a new `StripeProvider` instance.
     pub fn new(api_key: String, webhook_secret: String) -> Self {
         Self {
             api_key,
@@ -284,14 +284,14 @@ impl BillingProvider for StripeProvider {
 
 // ─── LemonSqueezy Provider Implementation ────────────────────────────────────
 
-/// [TODO] Missing documentation.
+/// Billing provider implementation for LemonSqueezy.
 pub struct LemonSqueezyProvider {
     api_key: String,
     webhook_secret: String,
 }
 
 impl LemonSqueezyProvider {
-    /// [TODO] Missing documentation.
+    /// Creates a new `LemonSqueezyProvider` instance.
     pub fn new(api_key: String, webhook_secret: String) -> Self {
         Self {
             api_key,

@@ -79,21 +79,21 @@ pub struct QueuedJob {
 /// Detailed job information, used for dashboard monitoring
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QueuedJobDetail {
-    /// [TODO] Missing documentation.
+    /// Unique identifier of the queued job.
     pub id: String,
-    /// [TODO] Missing documentation.
+    /// The name/type of the job.
     pub name: String,
-    /// [TODO] Missing documentation.
+    /// The JSON payload of the job as a string.
     pub payload: String,
-    /// [TODO] Missing documentation.
+    /// Current execution status of the job (e.g. "pending", "processing", "failed").
     pub status: String,
-    /// [TODO] Missing documentation.
+    /// Error message if the job failed.
     pub error: Option<String>,
-    /// [TODO] Missing documentation.
+    /// Number of processing attempts made so far.
     pub attempts: i32,
-    /// [TODO] Missing documentation.
+    /// Time when the job was originally created/pushed.
     pub created_at: String,
-    /// [TODO] Missing documentation.
+    /// Time when the job status was last updated.
     pub updated_at: String,
 }
 
@@ -167,13 +167,13 @@ impl SqliteDriver {
         Ok(Self { pool })
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns a reference to the internal SQLite pool.
     pub fn get_pool(&self) -> &sqlx::SqlitePool {
         &self.pool
     }
 
     #[allow(clippy::type_complexity)]
-    /// [TODO] Missing documentation.
+    /// Retrieves a list of all jobs up to the specified limit, sorted by creation time.
     pub async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
         let rows: Vec<(String, String, String, String, Option<String>, i32, String, String)> = sqlx::query_as(
             "SELECT id, name, payload, status, error, attempts, created_at, updated_at FROM rullst_jobs ORDER BY created_at DESC LIMIT ?"
@@ -202,7 +202,7 @@ impl SqliteDriver {
             .collect())
     }
 
-    /// [TODO] Missing documentation.
+    /// Retries a failed job by resetting its status to 'pending' and clearing error details.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
         sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
@@ -212,7 +212,7 @@ impl SqliteDriver {
         Ok(())
     }
 
-    /// [TODO] Missing documentation.
+    /// Purges all failed jobs from the database.
     pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
         sqlx::query("DELETE FROM rullst_jobs WHERE status = 'failed'")
             .execute(&self.pool)

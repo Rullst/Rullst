@@ -134,6 +134,7 @@ struct RegistryEntry {
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
+    #[allow(dead_code)] // reserved for future live-query features
     pub db_url: Arc<Option<String>>,
 }
 
@@ -147,12 +148,14 @@ struct NexusState {
 /// let nexus_router = Nexus::new()
 ///     .with_brand("My SaaS")
 ///     .with_db("sqlite://./db.sqlite3")
+///     .with_auth("admin", "secret_pass")
 ///     .build();
 /// ```
 pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
     db_url: Option<String>,
+    auth: Option<(String, String)>,
 }
 
 impl Default for Nexus {
@@ -168,6 +171,7 @@ impl Nexus {
             registry: Vec::new(),
             brand: "Rullst Nexus".to_string(),
             db_url: None,
+            auth: None,
         }
     }
 
@@ -189,6 +193,12 @@ impl Nexus {
         self
     }
 
+    /// Exposes optional HTTP Basic Authentication credentials to secure the panel.
+    pub fn with_auth(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
+        self.auth = Some((username.into(), password.into()));
+        self
+    }
+
     /// Sets the database URL used by the panel to execute live queries.
     pub fn with_db(mut self, url: impl Into<String>) -> Self {
         self.db_url = Some(url.into());
@@ -204,7 +214,7 @@ impl Nexus {
             db_url: Arc::new(self.db_url),
         });
 
-        AxumRouter::new()
+        let router = AxumRouter::new()
             .route("/", get(nexus_dashboard))
             .route("/table/{table}", get(nexus_table_view))
             .route("/table/{table}/search", get(nexus_table_search))
@@ -214,8 +224,46 @@ impl Nexus {
             .route("/table/{table}/{id}", put(nexus_update_record))
             .route("/table/{table}/{id}", delete(nexus_delete_record))
             .route("/chat", get(nexus_chat_page))
-            .route("/chat/query", post(nexus_chat_query))
-            .with_state(state)
+            .route("/chat/query", post(nexus_chat_query));
+
+        let router = if let Some((username, password)) = self.auth {
+            router.layer(axum::middleware::from_fn(move |req: axum::extract::Request, next: axum::middleware::Next| {
+                let expected_username = username.clone();
+                let expected_password = password.clone();
+                async move {
+                    if let Some(auth_header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+                        if let Ok(auth_str) = auth_header.to_str() {
+                            if let Some(encoded) = auth_str.strip_prefix("Basic ") {
+                                use base64::Engine;
+                                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(encoded) {
+                                    if let Ok(decoded_str) = String::from_utf8(decoded) {
+                                        if let Some((parts_user, parts_pass)) = decoded_str.split_once(':') {
+                                            if parts_user == expected_username && parts_pass == expected_password {
+                                                return next.run(req).await;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    axum::response::Response::builder()
+                        .status(axum::http::StatusCode::UNAUTHORIZED)
+                        .header(axum::http::header::WWW_AUTHENTICATE, "Basic realm=\"Nexus Admin Panel\"")
+                        .body(axum::body::Body::empty())
+                        .unwrap_or_else(|_| {
+                            let mut res = axum::response::Response::new(axum::body::Body::empty());
+                            *res.status_mut() = axum::http::StatusCode::UNAUTHORIZED;
+                            res
+                        })
+                }
+            }))
+        } else {
+            eprintln!("⚠️  Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production.");
+            router
+        };
+
+        router.with_state(state)
     }
 }
 
@@ -724,6 +772,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
@@ -1826,5 +1875,57 @@ mod tests {
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains("nexus-body"));
         assert!(html.contains("<p>content</p>"));
+    }
+
+    #[tokio::test]
+    async fn test_nexus_with_auth() {
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+        use base64::Engine;
+
+        let nexus = Nexus::new()
+            .with_brand("Auth Test")
+            .with_auth("admin", "secret");
+
+        let router = nexus.build();
+
+        // 1. Request without authorization header -> 401 Unauthorized
+        let req = Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.clone().oneshot(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            response.headers().get(axum::http::header::WWW_AUTHENTICATE).unwrap(),
+            "Basic realm=\"Nexus Admin Panel\""
+        );
+
+        // 2. Request with incorrect credentials -> 401 Unauthorized
+        let req = Request::builder()
+            .uri("/")
+            .header(
+                axum::http::header::AUTHORIZATION,
+                format!("Basic {}", base64::engine::general_purpose::STANDARD.encode("admin:wrong"))
+            )
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.clone().oneshot(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        // 3. Request with correct credentials -> 200 OK
+        let req = Request::builder()
+            .uri("/")
+            .header(
+                axum::http::header::AUTHORIZATION,
+                format!("Basic {}", base64::engine::general_purpose::STANDARD.encode("admin:secret"))
+            )
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.oneshot(req).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

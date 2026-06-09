@@ -1,0 +1,62 @@
+﻿Bombarding http://axum:3000/ for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec     25035.23   13374.60   70603.65
+  Latency        4.97ms    44.02ms      1.98s
+  HTTP codes:
+    1xx - 0, 2xx - 249692, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:     4.46MB/s

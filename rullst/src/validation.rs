@@ -7,21 +7,23 @@ use axum::{
 use std::collections::HashMap;
 pub use validator::Validate;
 
+/// Error type returned by [`ValidatedForm`] and [`ValidatedJson`] extractors.
+/// Automatically renders HTMX-friendly HTML error components for HTMX requests,
+/// or standard JSON `422`/`400` responses for REST clients.
 #[derive(Debug)]
-/// [TODO] Missing documentation.
 pub enum ValidationError {
-    /// [TODO] Missing documentation.
+    /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
     ExtractionError {
-        /// [TODO] Missing documentation.
+        /// Human-readable description of the extraction failure.
         message: String,
-        /// [TODO] Missing documentation.
+        /// `true` if the request was triggered by HTMX (`HX-Request: true` header present).
         is_htmx: bool,
     },
-    /// [TODO] Missing documentation.
+    /// The payload was extracted successfully but failed `validator::Validate` constraints.
     ValidationError {
-        /// [TODO] Missing documentation.
+        /// The set of field-level validation errors returned by the `validator` crate.
         errors: validator::ValidationErrors,
-        /// [TODO] Missing documentation.
+        /// `true` if the request was triggered by HTMX (`HX-Request: true` header present).
         is_htmx: bool,
     },
 }

@@ -1,21 +1,21 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-/// [TODO] Missing documentation.
+/// Individual AI model API provider clients.
 pub mod providers;
 
 #[derive(Debug)]
-/// [TODO] Missing documentation.
+/// Errors that can occur when calling AI APIs or processing models.
 pub enum AiError {
-    /// [TODO] Missing documentation.
+    /// Error representing failed network HTTP requests.
     RequestError(reqwest::Error),
-    /// [TODO] Missing documentation.
+    /// Error representing failed JSON parsing or serialization.
     SerializationError(serde_json::Error),
-    /// [TODO] Missing documentation.
+    /// Error returned by the AI provider API backend.
     ApiError(String),
-    /// [TODO] Missing documentation.
+    /// Configuration errors such as missing API keys.
     ConfigError(String),
-    /// [TODO] Missing documentation.
+    /// Generic or fallback error string.
     Other(String),
 }
 
@@ -46,16 +46,16 @@ impl From<serde_json::Error> for AiError {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-/// [TODO] Missing documentation.
+/// A message in a chat completion prompt context.
 pub struct Message {
-    /// [TODO] Missing documentation.
+    /// The role of the message author (e.g., "system", "user", "assistant").
     pub role: String,
-    /// [TODO] Missing documentation.
+    /// The string content of the message.
     pub content: String,
 }
 
 impl Message {
-    /// [TODO] Missing documentation.
+    /// Creates a system instruction message.
     pub fn system(content: impl Into<String>) -> Self {
         Self {
             role: "system".to_string(),
@@ -63,7 +63,7 @@ impl Message {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Creates a user message.
     pub fn user(content: impl Into<String>) -> Self {
         Self {
             role: "user".to_string(),
@@ -71,7 +71,7 @@ impl Message {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Creates an assistant response message.
     pub fn assistant(content: impl Into<String>) -> Self {
         Self {
             role: "assistant".to_string(),
@@ -81,24 +81,24 @@ impl Message {
 }
 
 #[async_trait]
-/// [TODO] Missing documentation.
+/// Interface implemented by all AI client backends.
 pub trait AiProvider: Send + Sync {
-    /// [TODO] Missing documentation.
+    /// Generates a response for a single text prompt.
     async fn prompt(&self, text: &str) -> Result<String, AiError>;
-    /// [TODO] Missing documentation.
+    /// Generates a response for a multi-turn conversational chat.
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError>;
-    /// [TODO] Missing documentation.
+    /// Generates a high-dimensional vector embedding for the input text.
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError>;
 }
 
-/// [TODO] Missing documentation.
+/// A fluent builder utility for building multi-turn chats.
 pub struct ChatBuilder {
     provider: Arc<dyn AiProvider>,
     messages: Vec<Message>,
 }
 
 impl ChatBuilder {
-    /// [TODO] Missing documentation.
+    /// Creates a new `ChatBuilder` initialized with the given provider.
     pub fn new(provider: Arc<dyn AiProvider>) -> Self {
         Self {
             provider,
@@ -106,45 +106,45 @@ impl ChatBuilder {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Appends a system instruction to the chat context.
     pub fn system(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::system(content));
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Appends a user message to the chat context.
     pub fn user(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::user(content));
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Appends an assistant response to the chat context.
     pub fn assistant(mut self, content: impl Into<String>) -> Self {
         self.messages.push(Message::assistant(content));
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Dispatches the conversation history to the provider and yields the next turn message.
     pub async fn send(self) -> Result<String, AiError> {
         self.provider.chat(&self.messages).await
     }
 }
 
 #[derive(Clone)]
-/// [TODO] Missing documentation.
+/// Standard high-level Rullst client for interacting with AI models.
 pub struct AiClient {
     provider: Arc<dyn AiProvider>,
 }
 
 impl AiClient {
-    /// [TODO] Missing documentation.
+    /// Creates a new `AiClient` wrapping the specified `AiProvider`.
     pub fn new(provider: impl AiProvider + 'static) -> Self {
         Self {
             provider: Arc::new(provider),
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Automatically constructs an `AiClient` by scanning configuration environment variables.
     pub fn auto() -> Result<Self, AiError> {
         if let Ok(key) = std::env::var("OPENAI_API_KEY") {
             Ok(Self::new(providers::openai::OpenAiProvider::new(key)))
@@ -166,22 +166,22 @@ impl AiClient {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Prompts the underlying AI model with a simple text prompt.
     pub async fn prompt(&self, text: &str) -> Result<String, AiError> {
         self.provider.prompt(text).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Initiates a multi-turn chat interaction.
     pub fn chat(&self) -> ChatBuilder {
         ChatBuilder::new(self.provider.clone())
     }
 
-    /// [TODO] Missing documentation.
+    /// Generates high-dimensional vector embeddings for the input text.
     pub async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         self.provider.embed(text).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Prompts the model and parses the returned JSON string into type `T`.
     pub async fn structured_prompt<T>(&self, text: &str) -> Result<T, AiError>
     where
         T: serde::de::DeserializeOwned,
@@ -214,17 +214,17 @@ fn clean_json_markdown(s: &str) -> String {
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-/// [TODO] Missing documentation.
+/// Represents a document stored inside a vector memory index.
 pub struct VectorDocument {
-    /// [TODO] Missing documentation.
+    /// Unique identifier of the document.
     pub id: String,
-    /// [TODO] Missing documentation.
+    /// High-dimensional floating point embedding vector.
     pub vector: Vec<f32>,
-    /// [TODO] Missing documentation.
+    /// Additional JSON payload containing document metadata.
     pub payload: serde_json::Value,
 }
 
-/// [TODO] Missing documentation.
+/// In-memory search index supporting cosine similarity vector lookup.
 pub struct VectorIndex {
     documents: HashMap<String, VectorDocument>,
 }
@@ -236,14 +236,14 @@ impl Default for VectorIndex {
 }
 
 impl VectorIndex {
-    /// [TODO] Missing documentation.
+    /// Creates a new, empty `VectorIndex`.
     pub fn new() -> Self {
         Self {
             documents: HashMap::new(),
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Inserts or updates a document inside the vector index.
     pub fn add(&mut self, id: impl Into<String>, vector: Vec<f32>, payload: serde_json::Value) {
         let id_str = id.into();
         self.documents.insert(
@@ -256,7 +256,7 @@ impl VectorIndex {
         );
     }
 
-    /// [TODO] Missing documentation.
+    /// Searches the index returning the top matches sorted by cosine similarity descending.
     pub fn search(&self, query_vector: &[f32], limit: usize) -> Vec<(f32, &VectorDocument)> {
         if query_vector.is_empty() || self.documents.is_empty() {
             return Vec::new();
@@ -277,7 +277,7 @@ impl VectorIndex {
     }
 }
 
-/// [TODO] Missing documentation.
+/// Calculates the cosine similarity score between two float vectors.
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     if a.len() != b.len() || a.is_empty() {
         return 0.0;

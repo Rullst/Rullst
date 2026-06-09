@@ -1,8 +1,8 @@
-/// [TODO] Missing documentation.
+/// Anthropic AI client provider.
 pub mod anthropic;
-/// [TODO] Missing documentation.
+/// Google Gemini client provider.
 pub mod gemini;
-/// [TODO] Missing documentation.
+/// Ollama local client provider.
 pub mod ollama;
-/// [TODO] Missing documentation.
+/// OpenAI client provider.
 pub mod openai;

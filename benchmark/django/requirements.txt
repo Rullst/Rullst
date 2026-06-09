@@ -1,0 +1,2 @@
+django>=5.0,<5.1
+uvicorn[standard]>=0.30

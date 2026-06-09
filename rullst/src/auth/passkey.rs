@@ -9,11 +9,13 @@ use sha2::Digest;
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct PasskeyConfig {
-    /// [TODO] Missing documentation.
+    /// Human-readable name of the Relying Party displayed to the user during registration (e.g. `"My App"`).
     pub rp_name: String,
-    /// [TODO] Missing documentation.
+    /// The effective domain of the Relying Party used to scope the credential (e.g. `"example.com"`).
+    /// Must match the origin's registrable domain suffix.
     pub rp_id: String,
-    /// [TODO] Missing documentation.
+    /// The full origin URL of the Relying Party (e.g. `"https://example.com"`).
+    /// Used to verify the `clientDataJSON.origin` during assertion.
     pub rp_origin: String,
 }
 
@@ -60,175 +62,184 @@ pub struct PasskeyAuth {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The top-level response sent to the browser to begin a WebAuthn credential registration ceremony.
+/// Wraps [`PublicKeyCredentialCreationOptions`] under the `publicKey` JSON key as required by the W3C spec.
 pub struct CreationChallengeResponse {
     #[serde(rename = "publicKey")]
-    /// [TODO] Missing documentation.
+    /// The full set of options passed to `navigator.credentials.create()` on the client.
     pub public_key: PublicKeyCredentialCreationOptions,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Options passed to `navigator.credentials.create()` to register a new public-key credential.
+/// Serialized under the `publicKey` field of the JSON challenge response.
 pub struct PublicKeyCredentialCreationOptions {
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded random challenge used to prevent replay attacks.
     pub challenge: String,
-    /// [TODO] Missing documentation.
+    /// Information about the Relying Party (name and ID).
     pub rp: RelyingPartyInfo,
-    /// [TODO] Missing documentation.
+    /// Information about the user account being registered.
     pub user: UserInfo,
     #[serde(rename = "pubKeyCredParams")]
-    /// [TODO] Missing documentation.
+    /// Ordered list of supported credential types and cryptographic algorithms.
     pub pub_key_cred_params: Vec<PubKeyCredParam>,
-    /// [TODO] Missing documentation.
+    /// Maximum time (in milliseconds) that the browser should wait for the user to respond.
     pub timeout: u32,
     #[serde(rename = "authenticatorSelection")]
-    /// [TODO] Missing documentation.
+    /// Constraints on the authenticator used for credential creation.
     pub authenticator_selection: AuthenticatorSelection,
-    /// [TODO] Missing documentation.
+    /// Attestation conveyance preference (`"none"`, `"indirect"`, or `"direct"`).
     pub attestation: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Identifies the Relying Party to the authenticator.
 pub struct RelyingPartyInfo {
-    /// [TODO] Missing documentation.
+    /// Human-readable Relying Party name shown to the user (e.g. `"My App"`).
     pub name: String,
-    /// [TODO] Missing documentation.
+    /// Effective domain that scopes the credential (e.g. `"example.com"`).
     pub id: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Information about the user account being registered. Used by the authenticator to personalize UX.
 pub struct UserInfo {
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded unique user handle (opaque identifier, must not contain PII).
     pub id: String,
-    /// [TODO] Missing documentation.
+    /// Username used for account disambiguation (may be shown to the user).
     pub name: String,
     #[serde(rename = "displayName")]
-    /// [TODO] Missing documentation.
+    /// Human-readable display name for the account (e.g. full name).
     pub display_name: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Describes a supported public-key credential type and its cryptographic algorithm.
 pub struct PubKeyCredParam {
-    /// [TODO] Missing documentation.
+    /// The credential type — always `"public-key"` per the WebAuthn spec.
     pub r#type: String,
-    /// [TODO] Missing documentation.
+    /// COSE algorithm identifier (e.g. `-7` for ES256, `-257` for RS256).
     pub alg: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Constraints that restrict which authenticators may be used during credential creation.
 pub struct AuthenticatorSelection {
     #[serde(rename = "userVerification")]
-    /// [TODO] Missing documentation.
+    /// User verification requirement: `"required"`, `"preferred"`, or `"discouraged"`.
     pub user_verification: String,
     #[serde(rename = "residentKey")]
-    /// [TODO] Missing documentation.
+    /// Resident (discoverable) key requirement: `"required"`, `"preferred"`, or `"discouraged"`.
     pub resident_key: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The top-level response sent to the browser to begin a WebAuthn authentication assertion ceremony.
+/// Wraps [`PublicKeyCredentialRequestOptions`] under the `publicKey` JSON key.
 pub struct RequestChallengeResponse {
     #[serde(rename = "publicKey")]
-    /// [TODO] Missing documentation.
+    /// The full set of options passed to `navigator.credentials.get()` on the client.
     pub public_key: PublicKeyCredentialRequestOptions,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// Options passed to `navigator.credentials.get()` during a WebAuthn authentication ceremony.
 pub struct PublicKeyCredentialRequestOptions {
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded random challenge to prevent replay attacks.
     pub challenge: String,
-    /// [TODO] Missing documentation.
+    /// Maximum time (in milliseconds) for the browser to wait for user interaction.
     pub timeout: u32,
     #[serde(rename = "rpId")]
-    /// [TODO] Missing documentation.
+    /// The Relying Party ID that scopes valid credentials for this request.
     pub rp_id: String,
     #[serde(rename = "allowCredentials")]
-    /// [TODO] Missing documentation.
+    /// List of credentials that are acceptable for this authentication ceremony.
     pub allow_credentials: Vec<AllowCredential>,
     #[serde(rename = "userVerification")]
-    /// [TODO] Missing documentation.
+    /// User verification requirement: `"required"`, `"preferred"`, or `"discouraged"`.
     pub user_verification: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// A specific credential that is allowed for the current authentication ceremony.
 pub struct AllowCredential {
-    /// [TODO] Missing documentation.
+    /// The credential type — always `"public-key"`.
     pub r#type: String,
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded credential ID previously returned during registration.
     pub id: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The credential object submitted by the browser during passkey **registration**.
+/// Mirrors the `PublicKeyCredential` interface returned by `navigator.credentials.create()`.
 pub struct RegisterPublicKeyCredential {
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded credential ID assigned by the authenticator.
     pub id: String,
     #[serde(rename = "rawId")]
-    /// [TODO] Missing documentation.
+    /// The raw binary credential ID, also base64url-encoded.
     pub raw_id: String,
-    /// [TODO] Missing documentation.
+    /// The credential type — always `"public-key"`.
     pub r#type: String,
-    /// [TODO] Missing documentation.
+    /// The authenticator's attestation response containing the public key and attestation object.
     pub response: AuthenticatorAttestationResponse,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The authenticator's response to a registration request.
+/// Contains the CBOR-encoded attestation object and the client data JSON.
 pub struct AuthenticatorAttestationResponse {
     #[serde(rename = "attestationObject")]
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded CBOR attestation object containing authData, fmt, and attStmt.
     pub attestation_object: String,
     #[serde(rename = "clientDataJSON")]
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded JSON string describing the client context (origin, challenge, type).
     pub client_data_json: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The credential object submitted by the browser during passkey **authentication**.
+/// Mirrors the `PublicKeyCredential` interface returned by `navigator.credentials.get()`.
 pub struct PublicKeyCredential {
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded credential ID that matches the registered credential.
     pub id: String,
     #[serde(rename = "rawId")]
-    /// [TODO] Missing documentation.
+    /// The raw binary credential ID, also base64url-encoded.
     pub raw_id: String,
-    /// [TODO] Missing documentation.
+    /// The credential type — always `"public-key"`.
     pub r#type: String,
-    /// [TODO] Missing documentation.
+    /// The authenticator's assertion response containing the signed data.
     pub response: AuthenticatorAssertionResponse,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// The authenticator's response to an authentication assertion request.
+/// Contains the signed authenticator data and the client data JSON.
 pub struct AuthenticatorAssertionResponse {
     #[serde(rename = "authenticatorData")]
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded authenticator data (rpIdHash, flags, signCount).
     pub authenticator_data: String,
     #[serde(rename = "clientDataJSON")]
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded client data JSON (origin, challenge, type).
     pub client_data_json: String,
-    /// [TODO] Missing documentation.
+    /// Base64url-encoded ECDSA or RSA signature over (authenticatorData || hash(clientDataJSON)).
     pub signature: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// [TODO] Missing documentation.
+/// A stored passkey credential associated with a user account.
+/// Persisted in the database after successful WebAuthn registration.
 pub struct Passkey {
-    /// [TODO] Missing documentation.
+    /// The credential ID returned by the authenticator, used to match credentials during authentication.
     pub credential_id: Vec<u8>,
-    /// [TODO] Missing documentation.
+    /// The raw DER-encoded COSE public key extracted from the attestation object.
     pub public_key: Vec<u8>,
-    /// [TODO] Missing documentation.
+    /// Monotonically increasing signature counter used to detect authenticator cloning.
     pub sign_count: u32,
 }
 
 // Custom lightweight CBOR parser for WebAuthn payload decoding
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Array variant retained for spec completeness; may be used by future attestation formats
 enum CborValue {
     Integer(i64),
     ByteString(Vec<u8>),
@@ -447,6 +458,14 @@ impl PasskeyAuth {
             return Err("authData too short".to_string());
         }
 
+        // Verify rpIdHash matches SHA-256 hash of rp_id
+        let mut rp_hasher = sha2::Sha256::new();
+        rp_hasher.update(self.rp_id.as_bytes());
+        let expected_rp_id_hash = rp_hasher.finalize();
+        if auth_data[..32] != expected_rp_id_hash[..] {
+            return Err("rpIdHash mismatch in authData".to_string());
+        }
+
         let flags = auth_data[32];
         let has_attested_credential_data = (flags & 0x40) != 0;
         if !has_attested_credential_data {
@@ -552,6 +571,18 @@ impl PasskeyAuth {
         let auth_data_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.authenticator_data)
             .map_err(|e| format!("Failed to decode authenticatorData: {}", e))?;
+
+        if auth_data_bytes.len() < 37 {
+            return Err("authenticatorData too short".to_string());
+        }
+
+        // Verify rpIdHash matches SHA-256 hash of rp_id
+        let mut rp_hasher = sha2::Sha256::new();
+        rp_hasher.update(self.rp_id.as_bytes());
+        let expected_rp_id_hash = rp_hasher.finalize();
+        if auth_data_bytes[..32] != expected_rp_id_hash[..] {
+            return Err("rpIdHash mismatch in authenticatorData".to_string());
+        }
 
         let signature_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.signature)

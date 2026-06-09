@@ -1,0 +1,17 @@
+{
+    "name": "laravel/laravel",
+    "type": "project",
+    "description": "Minimal Laravel app for benchmarking.",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0",
+        "laravel/octane": "^2.3"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

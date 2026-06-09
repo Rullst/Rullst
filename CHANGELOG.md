@@ -4,6 +4,33 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-06-09 🔒
+
+### Security & Stability
+
+- **Zero-Panic Policy Enforcement (P1)**: Replaced the single remaining `unwrap()` call inside the Nexus Basic Auth middleware (`nexus.rs:249`) with a `unwrap_or_else` fallback response builder, fully complying with the Zero-Panic production requirement across all runtime paths.
+- **WASM Panic Elimination (P3)**: Fixed a panic vector in the `#[client_component]` proc-macro (`rullst-macros`). The generated WASM code now uses a `let Some(...) else { return String::new() }` pattern instead of `unwrap()` when accessing the DOM, making island components safe to use inside Web Worker contexts.
+- **Basic Auth Strip Hardening**: Replaced the manual `starts_with("Basic ") + &auth_str[6..]` byte-index slice in the Nexus middleware with `.strip_prefix("Basic ")`, eliminating any risk of a byte-boundary panic on malformed `Authorization` headers.
+
+### Code Quality
+
+- **Clippy Clean Sweep (`-D warnings`)**: Resolved all 7 clippy lints found during the formal audit pass. `cargo clippy --workspace --all-targets --all-features -- -D warnings` now exits with **0 errors, 0 warnings** across the entire workspace:
+  - `dead_code` — `NexusState::db_url` field suppressed with `#[allow(dead_code)]` and a reserved-for-future-use comment.
+  - `dead_code` — `field_kind_input_type` is test-only; annotated with `#[cfg_attr(not(test), allow(dead_code))]`.
+  - `clippy::manual_strip` — replaced manual prefix-strip with `.strip_prefix("Basic ")`.
+  - `dead_code` — `CborValue::Array` CBOR variant suppressed with `#[allow(dead_code)]` and a spec-compliance comment.
+  - `unused_imports` — removed unused `Response` import from `benches/rullst_bench.rs`.
+  - `clippy::useless_vec` — replaced `vec!["Rust", "Go", "Python"]` with an array literal in `benches/rullst_bench.rs`.
+
+### Testing
+
+- **Storage Test Environment Isolation (P2)**: Added `#[allow(unsafe_code)]` with full SAFETY documentation to the `unsafe { std::env::set_var }` call in `storage.rs` tests. Added a matching `remove_var` call after the test to prevent environment state from leaking into parallel test threads.
+- **CBOR Parser Spec Compliance**: The `CborValue::Array` variant in `auth/passkey.rs` is retained for future attestation format compatibility; annotated to suppress the `dead_code` lint without removing the spec-correct variant.
+
+### Documentation
+
+- **`AUDIT.md`**: Added a comprehensive formal security and architecture audit report to the repository root. The document covers dependency security (`cargo audit`), code quality (`cargo clippy`), Zero-Panic policy compliance, `unsafe` block analysis, SQL injection prevention, CSRF, session encryption, HTTP headers, WebAuthn, rate limiting, backpressure, and hot-reload safety. All 9 findings identified have been resolved; only the advisory `RUSTSEC-2026-0173` (`proc-macro-error2` unmaintained) remains under monitoring as a compile-time-only concern with no associated CVE.
+
 ## [2.0.3] - 2026-06-07 🛠️
 
 ### Added

@@ -8,86 +8,86 @@
 #![warn(missing_docs)]
 extern crate self as rullst;
 
-/// [TODO] Missing documentation.
+/// Rullst application and server configuration models.
 pub mod config;
 pub mod db;
 pub mod edge;
 
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// AI integrations (e.g. Chat, Vector indices, Embeddings).
 pub mod ai;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Artisan command-line migrations and seed execution helpers.
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Complete authentication system supporting session, JWT, and Passkey.
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod capital;
-/// [TODO] Missing documentation.
+/// Edge client components rendering module.
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// HTML visual logging and runtime console for development mode.
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Feature flagging management and drivers.
 pub mod feature;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Background job queues monitoring panel (Horizon).
 pub mod horizon;
-/// [TODO] Missing documentation.
+/// Fast compile-time HTML rendering utilities.
 pub mod html;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// HTMX helpers for rapid reactive UI design.
 pub mod htmx;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Unified mail delivery and dispatch drivers.
 pub mod mail;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod nexus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Network and service resilience (rate limits, traffic shield, load shedding).
 pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// High-performance application routers built on Axum.
 pub mod routing;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scheduler;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// CSRF tokens, CORS, and response headers security policies.
 pub mod security;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Rullst HTTP web server core engine.
 pub mod server;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// File and cloud storage abstraction layer.
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Developer's Studio dashboard for database, logs, and queue analytics.
 pub mod studio;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Scaffolding tools for robust integration testing.
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Strongly-typed request validation extractors.
 pub mod validation;
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// WebSocket live connection and messaging system.
 pub mod ws;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
-/// [TODO] Missing documentation.
+/// Standard migration and seeding bootstrap macro for Rullst.
 macro_rules! artisan {
     ($migrations:expr) => {
         let _ = $crate::artisan::check_and_run_artisan($migrations, vec![]).await;
@@ -116,7 +116,7 @@ pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
 
 // Re-export axum response types for convenience
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Standard HTTP response types and helpers.
 pub mod response {
     pub use axum::response::{Html, IntoResponse, Redirect, Response};
 }
@@ -180,13 +180,13 @@ pub use capital::{
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 
 #[cfg(not(target_arch = "wasm32"))]
-/// [TODO] Missing documentation.
+/// Internal asynchronous runtime wrappers.
 pub mod runtime {
     pub use async_trait::async_trait;
     pub use tokio::{main, spawn, task, time};
 }
 
-/// [TODO] Missing documentation.
+/// Web server engine re-exports (Axum, Tower, Tower-HTTP).
 pub mod web {
     #[cfg(not(target_arch = "wasm32"))]
     pub use axum;
@@ -196,13 +196,13 @@ pub mod web {
     pub use tower_http;
 }
 
-/// [TODO] Missing documentation.
+/// Re-exported underlying asynchronous engine (Tokio).
 pub mod async_runtime {
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
 }
 
-/// [TODO] Missing documentation.
+/// Re-exported email client engine (Lettre).
 pub mod email_client {
     #[cfg(feature = "mail-smtp")]
     #[cfg(not(target_arch = "wasm32"))]

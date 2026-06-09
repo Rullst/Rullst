@@ -220,13 +220,19 @@ pub mod subscription;
     let auth_middleware = r##"use rullst::server::{
     Request,
     Next,
-    Response, Redirect, IntoResponse,
+    Response, Redirect, IntoResponse, StatusCode,
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let headers = req.headers();
     if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
-        let app_key = rullst::auth::get_app_key();
+        let app_key = match rullst::auth::get_app_key() {
+            Ok(key) => key,
+            Err(e) => {
+                eprintln!("Authentication middleware error: {}", e);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
         if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
             req.extensions_mut().insert(user_id);
             return next.run(req).await;

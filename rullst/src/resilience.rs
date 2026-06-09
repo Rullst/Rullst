@@ -8,13 +8,13 @@ use std::time::{Duration, Instant};
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct TrafficShieldConfig {
-    /// [TODO] Missing documentation.
+    /// Maximum Tokio event-loop lag before load shedding activates. Default: 100ms.
     pub max_event_loop_lag: Duration,
-    /// [TODO] Missing documentation.
+    /// Maximum DB probe round-trip latency before load shedding activates. Default: 500ms.
     pub max_db_latency: Duration,
-    /// [TODO] Missing documentation.
+    /// Maximum number of concurrent in-flight requests before load shedding activates. Default: 1000.
     pub max_active_requests: usize,
-    /// [TODO] Missing documentation.
+    /// If `true`, spawns a background task that probes the DB with `SELECT 1` every second to measure latency.
     pub enable_db_probe: bool,
 }
 
@@ -30,7 +30,8 @@ impl Default for TrafficShieldConfig {
 }
 
 impl TrafficShieldConfig {
-    /// [TODO] Missing documentation.
+    /// Creates a `TrafficShieldConfig` with sensible production defaults:
+    /// 100ms event-loop lag threshold, 500ms DB latency threshold, 1000 max active requests.
     pub fn new() -> Self {
         Self::default()
     }
@@ -70,7 +71,8 @@ pub struct TrafficShield {
 }
 
 impl TrafficShield {
-    /// [TODO] Missing documentation.
+    /// Creates a new `TrafficShield`, starts background monitoring goroutines for event-loop lag
+    /// and (optionally) database latency, and returns the ready-to-use shield instance.
     pub fn new(config: TrafficShieldConfig) -> Self {
         let shield = Self {
             config,
@@ -128,17 +130,19 @@ impl TrafficShield {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns the most recently measured Tokio event-loop lag as a `Duration`.
+    /// Updated every 100ms by the background monitor task.
     pub fn event_loop_lag(&self) -> Duration {
         Duration::from_millis(self.event_loop_lag_ms.load(Ordering::Relaxed))
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns the most recently measured database probe round-trip latency as a `Duration`.
+    /// Returns `Duration::ZERO` if `enable_db_probe` is `false` or the pool is uninitialized.
     pub fn db_latency(&self) -> Duration {
         Duration::from_millis(self.db_latency_ms.load(Ordering::Relaxed))
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns the current count of in-flight HTTP requests being tracked by this shield.
     pub fn active_requests(&self) -> usize {
         self.active_requests.load(Ordering::Relaxed)
     }
@@ -201,14 +205,15 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct RateLimitConfig {
-    /// [TODO] Missing documentation.
+    /// Maximum number of tokens (burst capacity). A request consumes 1 token.
     pub max_tokens: f64,
-    /// [TODO] Missing documentation.
+    /// Token refill rate in **tokens per second**. Use the `per_second`, `per_minute`, `per_hour` factories.
     pub refill_rate: f64,
 }
 
 impl RateLimitConfig {
-    /// [TODO] Missing documentation.
+    /// Creates a new `RateLimitConfig` with explicit burst capacity and refill rate.
+    /// For convenience, prefer the factory methods: [`per_second`], [`per_minute`], [`per_hour`].
     pub fn new(max_tokens: f64, refill_rate: f64) -> Self {
         Self {
             max_tokens,
@@ -247,7 +252,8 @@ pub struct RateLimiter {
 }
 
 impl RateLimiter {
-    /// [TODO] Missing documentation.
+    /// Creates a new `RateLimiter` from the given config, using IP address as the default key.
+    /// The key extractor resolves `X-Forwarded-For`, `X-Real-IP`, or the peer `SocketAddr` in that order.
     pub fn new(config: RateLimitConfig) -> Self {
         Self {
             config,

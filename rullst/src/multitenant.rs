@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// [TODO] Missing documentation.
+/// Strategy used to extract the active tenant ID from an incoming request.
 pub enum TenantStrategy {
-    /// [TODO] Missing documentation.
+    /// Extract the tenant ID from the request host subdomain (e.g. `tenant.example.com`).
     Subdomain,
-    /// [TODO] Missing documentation.
+    /// Extract the tenant ID from a custom HTTP header.
     Header,
     /// Extract the tenant ID from query parameters.
     ///
@@ -22,15 +22,15 @@ pub enum TenantStrategy {
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// Configuration settings for multitenancy extraction.
 pub struct TenantConfig {
-    /// [TODO] Missing documentation.
+    /// The extraction strategy to be used.
     pub strategy: TenantStrategy,
-    /// [TODO] Missing documentation.
+    /// The name of the custom HTTP header (used only with `TenantStrategy::Header`).
     pub header_name: String,
-    /// [TODO] Missing documentation.
+    /// The name of the query parameter (used only with `TenantStrategy::Parameter`).
     pub parameter_name: String,
-    /// [TODO] Missing documentation.
+    /// Fallback tenant ID to use when subdomain/header resolution fails or is absent.
     pub domain_fallback: Option<String>,
 }
 
@@ -108,7 +108,7 @@ pub struct TenantLayer {
 }
 
 impl TenantLayer {
-    /// [TODO] Missing documentation.
+    /// Creates a new `TenantLayer` with the specified `TenantConfig`.
     pub fn new(config: TenantConfig) -> Self {
         Self { config }
     }

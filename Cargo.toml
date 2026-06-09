@@ -5,4 +5,12 @@ members = [
     "cargo-rullst",
     "examples/blog", "rullst-press",
 ]
+exclude = [
+    "benchmark/rullst",
+    "benchmark/axum",
+    "benchmark/actix",
+    "benchmark/loco",
+    "benchmark/rocket",
+    "benchmark/leptos",
+]
 resolver = "2"

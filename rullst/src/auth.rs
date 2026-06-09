@@ -13,7 +13,7 @@ use sha2::Digest;
 use std::convert::TryInto;
 use std::fs;
 
-/// [TODO] Missing documentation.
+/// WebAuthn and Passkey authentication submodule.
 pub mod passkey;
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
@@ -56,9 +56,9 @@ pub mod socialite {
 
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
-pub fn get_app_key() -> Vec<u8> {
+pub fn get_app_key() -> Result<Vec<u8>, String> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
-        return env_key.into_bytes();
+        return Ok(env_key.into_bytes());
     }
 
     if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
@@ -67,7 +67,7 @@ pub fn get_app_key() -> Vec<u8> {
             if (trimmed.starts_with("app_key") || trimmed.starts_with("key"))
                 && let Some(val) = trimmed.split('=').nth(1)
             {
-                return val.trim().trim_matches('"').as_bytes().to_vec();
+                return Ok(val.trim().trim_matches('"').as_bytes().to_vec());
             }
         }
     }
@@ -76,17 +76,16 @@ pub fn get_app_key() -> Vec<u8> {
     let env = std::env::var("RULLST_ENV")
         .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
     if env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod") {
-        eprintln!(
-            "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret."
-        );
-        panic!("Missing APP_KEY in production environment");
+        let err_msg = "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret.".to_string();
+        eprintln!("{}", err_msg);
+        return Err("Missing APP_KEY in production environment".to_string());
     }
 
     let dev_key_path = ".rullst_dev_key";
     if let Ok(key_hex) = fs::read_to_string(dev_key_path) {
         if let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim()) {
             if key_bytes.len() == 32 {
-                return key_bytes;
+                return Ok(key_bytes);
             }
         }
     }
@@ -102,7 +101,7 @@ pub fn get_app_key() -> Vec<u8> {
 
     let _ = fs::write(dev_key_path, general_purpose::STANDARD.encode(&key_vec));
 
-    key_vec
+    Ok(key_vec)
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
@@ -181,12 +180,16 @@ pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
 
 /// Generates the standard HTTP header string to set the encrypted session cookie on the client.
 pub fn make_login_cookie(user_id: i32) -> Result<String, String> {
-    let app_key = get_app_key();
+    let app_key = get_app_key()?;
     let encrypted = encrypt_session(user_id, &app_key)?;
     // Set a HttpOnly, Secure (if not local), SameSite=Lax cookie valid for 30 days
+    let env = std::env::var("RULLST_ENV")
+        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
+    let is_prod = env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod");
+    let secure_attr = if is_prod { "; Secure" } else { "" };
     Ok(format!(
-        "rullst_session={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000",
-        encrypted
+        "rullst_session={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000{}",
+        encrypted, secure_attr
     ))
 }
 

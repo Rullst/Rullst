@@ -10,8 +10,8 @@ use rullst_orm::Orm;
 use serde::Deserialize;
 use sqlx::{Any, QueryBuilder, Row};
 
+/// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
-/// [TODO] Missing documentation.
 pub struct TableQuery {
     page: Option<usize>,
     search: Option<String>,
@@ -336,7 +336,8 @@ async fn handle_dashboard() -> impl IntoResponse {
     Html(studio_layout(dash_content, None, &tables)).into_response()
 }
 
-/// [TODO] Missing documentation.
+/// HTMX-aware handler for rendering a paginated, searchable table view inside Rullst Studio.
+/// Responds with a full HTML page on direct load, or an HTML fragment for HTMX partial updates.
 pub async fn handle_table(
     headers: axum::http::HeaderMap,
     path: Path<String>,

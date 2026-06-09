@@ -1,0 +1,63 @@
+﻿Bombarding http://rullst:3000/json for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m09s
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec     12098.06    5801.65   26596.72
+  Latency       10.56ms    10.17ms   257.30ms
+  HTTP codes:
+    1xx - 0, 2xx - 0, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 118015
+  Errors:
+    dial tcp 172.19.0.2:3000: connect: connection refused - 118015
+  Throughput:       0.00/s

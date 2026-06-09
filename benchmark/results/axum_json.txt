@@ -1,0 +1,62 @@
+﻿Bombarding http://axum:3000/json for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec     32889.89   11288.04   68888.40
+  Latency        4.54ms    40.44ms      1.93s
+  HTTP codes:
+    1xx - 0, 2xx - 274601, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:     5.13MB/s
