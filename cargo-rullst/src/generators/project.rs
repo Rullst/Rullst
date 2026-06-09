@@ -529,7 +529,8 @@ APP_ENV=development
 
     // Generate Docker files if --docker flag was passed
     if docker {
-        generate_docker_files(path, &project_name)?;
+        let wants_redis = blueprint_selection == 2 || blueprint_selection == 3;
+        generate_docker_files(path, &project_name, Some(&db_provider), Some(wants_redis))?;
     }
 
     // Automatically run initial migrations if a database was selected
@@ -616,8 +617,42 @@ APP_ENV=development
 pub fn generate_docker_files(
     project_path: &Path,
     project_name: &str,
+    db_provider_arg: Option<&str>,
+    redis_arg: Option<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "🐳 Generating Docker files...".cyan().bold());
+
+    let theme = dialoguer::theme::ColorfulTheme::default();
+    let db_provider = match db_provider_arg {
+        Some(db) => db.to_string(),
+        None => {
+            let db_options = &[
+                "Sqlite (Zero setup)",
+                "Postgres",
+                "MySQL/MariaDB",
+            ];
+            let selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("Which Database are you using?")
+                .default(0)
+                .items(&db_options[..])
+                .interact()?;
+            match selection {
+                1 => "Postgres".to_string(),
+                2 => "MySQL".to_string(),
+                _ => "Sqlite".to_string(),
+            }
+        }
+    };
+
+    let wants_redis = match redis_arg {
+        Some(r) => r,
+        None => {
+            dialoguer::Confirm::with_theme(&theme)
+                .with_prompt("Do you want to include Redis in your docker-compose?")
+                .default(true)
+                .interact()?
+        }
+    };
 
     // --- Dockerfile (multi-stage, distroless) ---
     let dockerfile = format!(
@@ -636,6 +671,8 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Cache dependency compilation
 COPY Cargo.toml Cargo.lock* ./
+RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "2.0.4"/g' Cargo.toml && \
+    sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "7.0.1"/g' Cargo.toml || true
 RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
 
 # Build the actual application
@@ -663,10 +700,9 @@ CMD ["/app/{project_name}"]
     );
 
     // --- docker-compose.yml ---
-    let docker_compose = format!(
+    let mut compose = format!(
         r#"# ══════════════════════════════════════════════════════════════
 # Rullst Docker Compose (auto-generated)
-# Services: App + PostgreSQL + Redis
 # ══════════════════════════════════════════════════════════════
 
 services:
@@ -678,13 +714,17 @@ services:
       - "5555:5555"
     env_file:
       - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
+"#,
+        project_name = project_name
+    );
 
+    let mut depends_on = vec![];
+
+    if db_provider == "Postgres" {
+        depends_on.push("db");
+        compose.push_str(&format!(
+            r#"
   db:
     image: postgres:16-alpine
     container_name: {project_name}-db
@@ -695,12 +735,48 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${{POSTGRES_USER}} -d ${{POSTGRES_DB}}"]
+      test: ["CMD-SHELL", "pg_isready -U $${{POSTGRES_USER}} -d $${{POSTGRES_DB}}"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+"#,
+            project_name = project_name
+        ));
+    } else if db_provider == "MySQL" {
+        depends_on.push("db");
+        compose.push_str(&format!(
+            r#"
+  db:
+    image: mysql:8.0
+    container_name: {project_name}-db
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${{MYSQL_ROOT_PASSWORD}}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+"#,
+            project_name = project_name
+        ));
+    } else {
+        // Sqlite
+        compose = compose.replace(
+            "    restart: unless-stopped\n",
+            "    volumes:\n      - ./rullst.db:/app/rullst.db\n    restart: unless-stopped\n"
+        );
+    }
 
+    if wants_redis {
+        depends_on.push("redis");
+        compose.push_str(&format!(
+            r#"
   redis:
     image: redis:7-alpine
     container_name: {project_name}-redis
@@ -714,12 +790,28 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+"#,
+            project_name = project_name
+        ));
+    }
 
-volumes:
-  pgdata:
-  redisdata:
-"#
-    );
+    if !depends_on.is_empty() {
+        let mut deps_str = String::from("    depends_on:\n");
+        for dep in depends_on {
+            deps_str.push_str(&format!("      {}:\n        condition: service_healthy\n", dep));
+        }
+        compose = compose.replace("    restart: unless-stopped", &format!("{}\n    restart: unless-stopped", deps_str));
+    }
+
+    let mut volumes_str = String::new();
+    if db_provider == "Postgres" { volumes_str.push_str("  pgdata:\n"); }
+    if db_provider == "MySQL" { volumes_str.push_str("  mysqldata:\n"); }
+    if wants_redis { volumes_str.push_str("  redisdata:\n"); }
+
+    if !volumes_str.is_empty() {
+        compose.push_str("\nvolumes:\n");
+        compose.push_str(&volumes_str);
+    }
 
     // --- .dockerignore ---
     let dockerignore = r#"**/target/
@@ -739,33 +831,54 @@ LICENSE
     // --- .env File Generation ---
     let env_path = project_path.join(".env");
     let env_example_path = project_path.join(".env.example");
-    let env_content = format!(
-        "# ══════════════════════════════════════════════════════════════\n\
+    let mut env_content = String::from(
+        "# \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\n\
          # Rullst Environment Variables\n\
-         # ══════════════════════════════════════════════════════════════\n\n\
+         # \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\n\n\
          # Application Environment (development, production)\n\
          APP_ENV=development\n\
-         HOST=0.0.0.0\n\n\
-         # Database Configuration\n\
-         POSTGRES_USER=rullst\n\
-         POSTGRES_PASSWORD=rullst_super_secret\n\
-         POSTGRES_DB={project_name}_db\n\
-         DATABASE_URL=postgres://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@db:5432/${{POSTGRES_DB}}\n\n\
-         # Redis Configuration\n\
-         REDIS_URL=redis://redis:6379\n",
-        project_name = project_name
+         HOST=0.0.0.0\n\n"
     );
+
+    if db_provider == "Postgres" {
+        env_content.push_str(&format!(
+            "# Database Configuration\n\
+             POSTGRES_USER=rullst\n\
+             POSTGRES_PASSWORD=rullst_super_secret\n\
+             POSTGRES_DB={project_name}_db\n\
+             DATABASE_URL=postgres://rullst:rullst_super_secret@db:5432/{project_name}_db\n\n",
+             project_name = project_name
+        ));
+    } else if db_provider == "MySQL" {
+        env_content.push_str(&format!(
+            "# Database Configuration\n\
+             MYSQL_ROOT_PASSWORD=rullst_super_secret\n\
+             MYSQL_DATABASE={project_name}_db\n\
+             DATABASE_URL=mysql://root:rullst_super_secret@db:3306/{project_name}_db\n\n",
+             project_name = project_name
+        ));
+    } else {
+        env_content.push_str(
+            "# Database Configuration\n\
+             DATABASE_URL=sqlite://rullst.db?mode=rwc\n\n"
+        );
+    }
+
+    if wants_redis {
+        env_content.push_str(
+            "# Redis Configuration\n\
+             REDIS_URL=redis://redis:6379\n"
+        );
+    }
+
     std::fs::write(&env_path, &env_content)?;
     std::fs::write(&env_example_path, &env_content)?;
 
-    fs::write(project_path.join("docker-compose.yml"), docker_compose)?;
+    fs::write(project_path.join("docker-compose.yml"), compose)?;
     fs::write(project_path.join(".dockerignore"), dockerignore)?;
 
     println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
-    println!(
-        "{}",
-        "  ✅ docker-compose.yml (App + Postgres + Redis)".green()
-    );
+    println!("{}", "  ✅ docker-compose.yml (Customized)".green());
     println!("{}", "  ✅ .dockerignore".green());
 
     Ok(())
