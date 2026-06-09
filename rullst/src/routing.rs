@@ -109,6 +109,9 @@ where
 /// ```rust,no_run
 /// use rullst::{routes, routing::{get, post}};
 ///
+/// async fn home_handler() -> &'static str { "home" }
+/// async fn create_user() -> &'static str { "created" }
+///
 /// let router = routes![
 ///     get("/" => home_handler),
 ///     post("/users" => create_user),
