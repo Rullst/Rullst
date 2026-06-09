@@ -233,6 +233,7 @@ enum CborValue {
     Integer(i64),
     ByteString(Vec<u8>),
     TextString(String),
+    #[allow(dead_code)]
     Array(Vec<CborValue>),
     Map(std::collections::HashMap<CborKey, CborValue>),
 }
