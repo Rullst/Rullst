@@ -105,6 +105,22 @@ pub use sqlx;
 #[cfg(not(target_arch = "wasm32"))]
 pub use sqlx::FromRow;
 
+/// Safely retrieves the database pool, returning `None` if uninitialized.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn safe_pool() -> Option<&'static rullst_orm::RullstPool> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        rullst_orm::Orm::pool()
+    })).ok()
+}
+
+/// Safely retrieves the database driver name, returning `None` if uninitialized.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn safe_driver() -> Option<&'static str> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        rullst_orm::Orm::driver()
+    })).ok()
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {

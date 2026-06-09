@@ -110,7 +110,7 @@ impl TrafficShield {
                 let interval = Duration::from_millis(1000);
                 loop {
                     tokio::time::sleep(interval).await;
-                    if let Ok(pool) = rullst_orm::Orm::pool() {
+                    if let Some(pool) = crate::db::safe_pool() {
                         let start = Instant::now();
                         let res = sqlx::query("SELECT 1").execute(pool).await;
                         match res {

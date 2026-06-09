@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Orm::init("sqlite://blog.db").await?;
 
     // Create table schema
-    let pool = Orm::pool()?;
+    let pool = Orm::pool();
     rullst::db::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

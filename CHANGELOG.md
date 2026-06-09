@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Zero-Panic Policy Enforcement (P1)**: Replaced the single remaining `unwrap()` call inside the Nexus Basic Auth middleware (`nexus.rs:249`) with a `unwrap_or_else` fallback response builder, fully complying with the Zero-Panic production requirement across all runtime paths.
 - **WASM Panic Elimination (P3)**: Fixed a panic vector in the `#[client_component]` proc-macro (`rullst-macros`). The generated WASM code now uses a `let Some(...) else { return String::new() }` pattern instead of `unwrap()` when accessing the DOM, making island components safe to use inside Web Worker contexts.
 - **Basic Auth Strip Hardening**: Replaced the manual `starts_with("Basic ") + &auth_str[6..]` byte-index slice in the Nexus middleware with `.strip_prefix("Basic ")`, eliminating any risk of a byte-boundary panic on malformed `Authorization` headers.
+- **ORM Alignment & Panic Safety**: Upgraded `rullst-orm` dependency version to `4.0.5` across the framework and scaffolding templates to resolve type-mismatch compile errors in derived macro implementations. Introduced panic-safe database guards `safe_pool()` and `safe_driver()` in `rullst::db` to cleanly query initialization status and handle offline database states without crashing the server.
+- **Blueprint & Example Migration Alignment**: Updated `rullst-blog-example` and all scaffolding templates (`uptime`, `lms`, `erp`, `blog`) to align with `rullst-orm` 4.0.5's non-Result pool signature, removing obsolete `?` error propagation operators on pool retrieval.
 
 ### Code Quality
 

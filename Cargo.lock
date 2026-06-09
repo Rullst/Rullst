@@ -2679,13 +2679,10 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "4.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1dc9213735e32e1c598fef7efe1e970145c783571b0d11e3544ef66faa4df3d"
+version = "4.0.5"
 dependencies = [
  "async-trait",
  "futures",
- "rand 0.10.1",
  "rullst-orm-macros",
  "serde",
  "serde_json",
@@ -2695,9 +2692,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "4.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf1f51b0ebb376ffb0168a5226faf3a6563c240da4467756dc5e22174eb4372"
+version = "4.0.5"
 dependencies = [
  "proc-macro2",
  "quote",

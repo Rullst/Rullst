@@ -130,7 +130,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial blog posts
-        let pool = rullst::db::Orm::pool()?;
+        let pool = rullst::db::Orm::pool();
         rullst::db::sqlx::query(
             "INSERT INTO posts (id, title, slug, content, created_at, updated_at) VALUES 
              (1, 'Announcing Rullst: The Ultimate Rust Framework', 'announcing-rullst', 'We are thrilled to announce Rullst, a new full-stack framework combining Axum, HTMX, and SQLite/Postgres for lightning-fast applications.', datetime('now'), datetime('now')),

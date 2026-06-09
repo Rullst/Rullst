@@ -448,7 +448,7 @@ async fn nexus_create_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = rullst_orm::Orm::pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -544,7 +544,7 @@ async fn nexus_update_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = rullst_orm::Orm::pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -604,7 +604,7 @@ async fn nexus_delete_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Ok(pool) = rullst_orm::Orm::pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
             .bind(&id)
             .execute(pool)
@@ -849,7 +849,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let clean_table = sanitize_identifier(table);
     let clean_pk = sanitize_identifier(pk);
 
-    let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
+    let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let mut sql = format!("SELECT * FROM {}", clean_table);
     let mut binds = Vec::new();
 
@@ -884,9 +884,9 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
         clean_pk, limit, offset
     ));
 
-    let pool = match rullst_orm::Orm::pool() {
-        Ok(p) => p,
-        Err(_) => {
+    let pool = match crate::db::safe_pool() {
+        Some(p) => p,
+        None => {
             return format!(
                 "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; Database not initialized. Please configure database_url.</td></tr>",
                 visible_fields.len() + 1
@@ -1118,7 +1118,7 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
         std::collections::HashMap::new();
 
     if let Some(i) = id {
-        let driver = rullst_orm::Orm::driver().unwrap_or("sqlite");
+        let driver = crate::db::safe_driver().unwrap_or("sqlite");
         let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
         let clean_table = sanitize_identifier(t);
         let clean_pk = sanitize_identifier(entry.pk);
@@ -1127,7 +1127,7 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
             clean_table, clean_pk, pk_placeholder
         );
 
-        if let Ok(pool) = rullst_orm::Orm::pool() {
+        if let Some(pool) = crate::db::safe_pool() {
             use rullst_orm::_sqlx::Row;
             if let Ok(row) =
                 rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
@@ -1211,7 +1211,7 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
                 "SELECT {} as key_id, {} as val_label FROM {}",
                 clean_target_pk, clean_label_col, clean_target_table
             );
-            if let Ok(pool) = rullst_orm::Orm::pool() {
+            if let Some(pool) = crate::db::safe_pool() {
                 use rullst_orm::_sqlx::Row;
                 if let Ok(rows) =
                     rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
@@ -1535,13 +1535,13 @@ mod tests {
 
     async fn init_test_db() {
         let _guard = INIT_MUTEX.lock().await;
-        let is_init = rullst_orm::Orm::pool().is_ok();
+        let is_init = crate::db::safe_pool().is_some();
         if !is_init {
             rullst_orm::Orm::init("sqlite://test_nexus.db?mode=rwc")
                 .await
                 .expect("Failed to init SQLite DB file");
         }
-        if let Ok(pool) = rullst_orm::Orm::pool() {
+        if let Some(pool) = crate::db::safe_pool() {
             rullst_orm::_sqlx::query(
                 "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)",
             )

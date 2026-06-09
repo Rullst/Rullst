@@ -118,6 +118,13 @@ else {
 };
 ```
 
+#### P4 — `rullst-orm` Dependency Panic-Mitigation (`safe_pool()`, `safe_driver()`) ✅ Mitigated
+
+In `rullst-orm` 4.0.5, direct access methods `Orm::pool()` and `Orm::driver()` panic if the database has not been initialized. To prevent these potential panics from propagating into the framework, the database module now exposes safety wrappers:
+- `safe_pool() -> Option<&'static RullstPool>`
+- `safe_driver() -> Option<&'static str>`
+
+These wrappers shield the framework by executing the ORM calls in a `std::panic::catch_unwind` context, safely returning `None` instead of panicking. All calls within the framework (`studio.rs`, `resilience.rs`, `nexus.rs`, `feature.rs`) have been migrated to these safe wrappers.
 
 ---
 
@@ -268,6 +275,7 @@ This is correct: the WAF runs outermost to reject malicious requests early, and 
 | **P1 / C5** | Medium | `nexus.rs:249` | `unwrap()` in production Basic Auth middleware | ✅ **Fixed** |
 | **P2** | Low | `storage.rs:456` | `unsafe { set_var }` without env restore in tests | ✅ **Fixed** |
 | **P3** | Very Low | `rullst-macros/src/lib.rs:87` | `unwrap()` in WASM DOM access in generated code | ✅ **Fixed** |
+| **P4** | Medium | `rullst/src/db.rs` | Potential panics on uninitialized db driver/pool in `rullst-orm` | ✅ **Fixed (via catch_unwind wrappers)** |
 | **C1** | Low | `nexus.rs:137` | `db_url` field dead code | ✅ **Fixed** |
 | **C2** | Low | `nexus.rs:770` | `field_kind_input_type` dead code | ✅ **Fixed** |
 | **C3** | Low | `nexus.rs:237` | Manual prefix strip instead of `.strip_prefix()` | ✅ **Fixed** |

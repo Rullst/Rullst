@@ -14,3 +14,7 @@ exclude = [
     "benchmark/leptos",
 ]
 resolver = "2"
+
+[patch.crates-io]
+rullst-orm = { path = "../rullst-orm/rullst-orm" }
+rullst-orm-macros = { path = "../rullst-orm/rullst-orm-macros" }

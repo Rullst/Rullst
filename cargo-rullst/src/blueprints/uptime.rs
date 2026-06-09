@@ -159,7 +159,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial monitors
-        let pool = rullst::db::Orm::pool()?;
+        let pool = rullst::db::Orm::pool();
         
         rullst::db::sqlx::query(
             "INSERT INTO monitors (id, name, url, is_active, created_at, updated_at) VALUES 
@@ -277,10 +277,7 @@ use serde::Deserialize;
 use std::time::Instant;
 
 pub async fn index() -> impl IntoResponse {
-    let pool = match rullst::db::Orm::pool() {
-        Ok(p) => p,
-        Err(e) => return (rullst::server::StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)).into_response(),
-    };
+    let pool = rullst::db::Orm::pool();
     
     // Get all monitors
     let monitors = Monitor::all().await.unwrap_or_default();
@@ -313,10 +310,7 @@ pub struct CreateMonitorPayload {
 }
 
 pub async fn store_monitor(Form(payload): Form<CreateMonitorPayload>) -> impl IntoResponse {
-    let pool = match rullst::db::Orm::pool() {
-        Ok(p) => p,
-        Err(_) => return Redirect::to("/").into_response(),
-    };
+    let pool = rullst::db::Orm::pool();
     let _ = rullst::db::sqlx::query(
         "INSERT INTO monitors (name, url, is_active, created_at, updated_at) VALUES ($1, $2, 1, datetime('now'), datetime('now'))"
     )
@@ -329,10 +323,7 @@ pub async fn store_monitor(Form(payload): Form<CreateMonitorPayload>) -> impl In
 }
 
 pub async fn toggle_monitor(Path(id): Path<i32>) -> impl IntoResponse {
-    let pool = match rullst::db::Orm::pool() {
-        Ok(p) => p,
-        Err(_) => return Redirect::to("/").into_response(),
-    };
+    let pool = rullst::db::Orm::pool();
     
     // Get active state
     let state: (i32,) = rullst::db::sqlx::query_as("SELECT is_active FROM monitors WHERE id = $1")
@@ -356,7 +347,7 @@ pub async fn toggle_monitor(Path(id): Path<i32>) -> impl IntoResponse {
 
 // Background Ping Job execution
 pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = rullst::db::Orm::pool()?;
+    let pool = rullst::db::Orm::pool();
     
     // Get active monitors
     let active_monitors: Vec<Monitor> = rullst::db::sqlx::query_as(

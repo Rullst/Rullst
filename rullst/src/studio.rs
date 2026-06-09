@@ -6,7 +6,7 @@ use axum::{
     routing::get,
 };
 use rullst_macros::html;
-use rullst_orm::Orm;
+
 use serde::Deserialize;
 use sqlx::{Any, QueryBuilder, Row};
 
@@ -53,8 +53,8 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 
 /// Dynamic SQLite schema tables finder
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = Orm::pool().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
-    let driver = Orm::driver().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
+    let pool = crate::db::safe_pool().ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let driver = crate::db::safe_driver().ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
 
     let query = match driver {
         "postgres" => {
@@ -81,8 +81,8 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = Orm::pool().map_err(|e| sqlx::Error::Configuration(e.to_string().into()))?;
-    let driver = Orm::driver().unwrap_or("sqlite");
+    let pool = crate::db::safe_pool().ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
     let quoted_table = if driver == "mysql" {
@@ -323,7 +323,7 @@ async fn handle_dashboard() -> impl IntoResponse {
             <div class="w-full grid grid-cols-2 gap-4 mt-8 text-left">
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-sky-400 font-bold uppercase tracking-wider">"Database Type"</span>
-                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{Orm::driver().unwrap_or("sqlite")}</h3>
+                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{crate::db::safe_driver().unwrap_or("sqlite")}</h3>
                 </div>
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-indigo-400 font-bold uppercase tracking-wider">"Total Tables"</span>
@@ -365,11 +365,11 @@ pub async fn handle_table(
     };
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-    let pool = match Orm::pool() {
-        Ok(p) => p,
-        Err(e) => return Html(format!("Database not initialized: {}", e)).into_response(),
+    let pool = match crate::db::safe_pool() {
+        Some(p) => p,
+        None => return Html("Database pool not initialized. Please configure database_url.".to_string()).into_response(),
     };
-    let driver = Orm::driver().unwrap_or("sqlite");
+    let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table_name);
 
     let columns_query = match driver {
