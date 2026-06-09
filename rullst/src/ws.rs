@@ -1,11 +1,11 @@
 use axum::extract::ws::{Message as AxumMessage, WebSocket as AxumWebSocket};
 
+/// Error type for Rullst WebSocket operations.
 #[derive(Debug)]
-/// [TODO] Missing documentation.
 pub enum WsError {
-    /// [TODO] Missing documentation.
+    /// Returned when sending a message to the client fails (e.g. the connection was dropped).
     SendError(String),
-    /// [TODO] Missing documentation.
+    /// Returned when receiving a message from the client fails (e.g. the connection was reset).
     RecvError(String),
 }
 
@@ -26,7 +26,7 @@ pub struct WebSocket {
 }
 
 impl WebSocket {
-    /// [TODO] Missing documentation.
+    /// Wraps a raw Axum WebSocket connection in the high-level `WebSocket` interface.
     pub fn new(inner: AxumWebSocket) -> Self {
         WebSocket { inner }
     }

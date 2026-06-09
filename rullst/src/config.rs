@@ -2,58 +2,85 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// Main configuration container for Rullst applications.
 pub struct RullstConfig {
     #[serde(default)]
-    /// [TODO] Missing documentation.
+    /// General application settings.
     pub app: AppConfig,
     #[serde(default)]
-    /// [TODO] Missing documentation.
+    /// Database settings.
     pub database: DatabaseConfig,
     #[serde(default)]
-    /// [TODO] Missing documentation.
+    /// Security policies and configuration parameters.
     pub security: SecurityConfig,
     #[serde(default)]
-    /// [TODO] Missing documentation.
+    /// File storage settings.
     pub storage: StorageConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// Configuration settings for storage drivers.
 pub struct StorageConfig {
-    /// [TODO] Missing documentation.
+    /// The root directory for filesystem storage.
     pub root: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// General configuration options for the application instance.
 pub struct AppConfig {
-    /// [TODO] Missing documentation.
+    /// Environment profile of the application (e.g. "development", "production").
     pub env: Option<String>,
-    /// [TODO] Missing documentation.
+    /// The port number that the HTTP server will bind to.
     pub port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// Database connection configuration.
 pub struct DatabaseConfig {
-    /// [TODO] Missing documentation.
+    /// Database connection URL (e.g., `sqlite://rullst.db`).
     pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// Configuration options for application security layers.
 pub struct SecurityConfig {
+    /// SameSite policy for the CSRF cookie ("Lax", "Strict", or "None").
     #[serde(default = "default_same_site")]
-    /// [TODO] Missing documentation.
     pub csrf_same_site: String,
+    /// List of allowed origins for Cross-Origin Resource Sharing (CORS).
     #[serde(default)]
-    /// [TODO] Missing documentation.
     pub cors_allow_origins: Vec<String>,
+    /// Content-Security-Policy (CSP) header value.
+    #[serde(default = "default_csp")]
+    pub csp: String,
+    /// User-Agent strings or substrings to block in the WAF middleware.
+    #[serde(default = "default_user_agent_blocklist")]
+    pub user_agent_blocklist: Vec<String>,
+}
+
+fn default_csp() -> String {
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';".to_string()
+}
+
+fn default_user_agent_blocklist() -> Vec<String> {
+    vec![
+        "curl".to_string(),
+        "wget".to_string(),
+        "python-requests".to_string(),
+        "go-http-client".to_string(),
+        "gptbot".to_string(),
+        "chatgpt-user".to_string(),
+        "google-extended".to_string(),
+        "anthropic-ai".to_string(),
+        "claude-web".to_string(),
+        "cohere-ai".to_string(),
+        "bytespider".to_string(),
+        "mj12bot".to_string(),
+    ]
 }
 
 fn default_same_site() -> String {
@@ -65,6 +92,8 @@ impl Default for SecurityConfig {
         Self {
             csrf_same_site: default_same_site(),
             cors_allow_origins: vec![],
+            csp: default_csp(),
+            user_agent_blocklist: default_user_agent_blocklist(),
         }
     }
 }
@@ -83,12 +112,12 @@ impl RullstConfig {
         GLOBAL_CONFIG.set(config)
     }
 
-    /// [TODO] Missing documentation.
+    /// Creates a new `RullstConfig` with default values.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// [TODO] Missing documentation.
+    /// Loads and parses the configuration from a TOML file.
     pub async fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let content = tokio::fs::read_to_string(path).await?;
         let config: RullstConfig = toml::from_str(&content)?;

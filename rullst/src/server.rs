@@ -9,7 +9,24 @@ use std::task::{Context, Poll};
 use tower_service::Service;
 
 #[non_exhaustive]
-/// [TODO] Missing documentation.
+/// The central application server builder for Rullst.
+///
+/// Configures and boots the Axum HTTP server, ORM connection pool, task scheduler,
+/// hot-reload DLL watcher, traffic shield, and rate limiter in a single fluent chain.
+///
+/// # Example
+/// ```rust,no_run
+/// use rullst::{Server, routes, routing::get};
+///
+/// #[tokio::main]
+/// async fn main() {
+///     Server::new(routes![get("/" => || async { "OK" })])
+///         .with_db("sqlite://app.db")
+///         .run(3000)
+///         .await
+///         .unwrap();
+/// }
+/// ```
 pub struct Server {
     router: Router,
     db_url: Option<String>,
@@ -20,7 +37,8 @@ pub struct Server {
 }
 
 impl Server {
-    /// [TODO] Missing documentation.
+    /// Creates a new `Server` from an already-built [`Router`].
+    /// Use [`Server::new_hot`] instead to enable hot-reload mode.
     pub fn new(router: Router) -> Self {
         Server {
             router,
@@ -32,7 +50,9 @@ impl Server {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Creates a `Server` in **hot-reload** mode that loads the application router from
+    /// a compiled `cdylib` dynamic library at the given `lib_path`.
+    /// The background file-watcher recompiles and hot-swaps the router on source changes.
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
         Server {
             router: Router::new(),
@@ -244,11 +264,15 @@ impl Server {
                                 };
 
                                 // Keep all loaded libraries in memory to prevent segmentation faults
-                                // for concurrent requests executing handlers from older versions
+                                // for concurrent requests executing handlers from older versions.
+                                // We cap this to the last 3 versions to prevent infinite memory growth.
                                 let mut active_libs = active_libraries_clone
                                     .lock()
                                     .unwrap_or_else(|p| p.into_inner());
                                 active_libs.push(new_lib);
+                                if active_libs.len() > 3 {
+                                    active_libs.remove(0);
+                                }
 
                                 println!(
                                     "\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m"
@@ -365,8 +389,10 @@ impl Server {
     }
 }
 
+/// Tower service that atomically swaps the Axum router at runtime during hot-reload development.
+/// Wraps the router in an `Arc<RwLock<>>` so handlers continue serving in-flight requests
+/// while the new router is being compiled and installed.
 #[derive(Clone)]
-/// [TODO] Missing documentation.
 pub struct HotSwapService {
     current_router: Arc<RwLock<axum::Router>>,
     shield: Option<crate::resilience::TrafficShield>,
@@ -554,7 +580,17 @@ fn load_dylib_router(
     // here and documented. Review and audit this section when upgrading
     // `libloading`, `Router` types, or changing the plugin API.
     let lib = unsafe { libloading::Library::new(&temp_path)? };
-    let _ = std::fs::remove_file(&temp_path);
+    if let Err(e) = std::fs::remove_file(&temp_path) {
+        #[cfg(not(target_os = "windows"))]
+        eprintln!("⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}", temp_path, e);
+        #[cfg(target_os = "windows")]
+        {
+            // On Windows, sharing violation (error code 32) is normal, so we only log other errors.
+            if e.raw_os_error() != Some(32) {
+                eprintln!("⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}", temp_path, e);
+            }
+        }
+    }
     let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> =
         unsafe { lib.get(b"rullst_router_init")? };
     let router_ptr = unsafe { init_fn() };

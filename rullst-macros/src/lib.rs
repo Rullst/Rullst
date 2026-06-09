@@ -81,10 +81,12 @@ pub fn client_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[cfg(target_arch = "wasm32")]
         #vis fn #name(#(#arg_names: #arg_types),*) -> String {
-            let element = web_sys::window()
+            let Some(element) = web_sys::window()
                 .and_then(|w| w.document())
                 .and_then(|d| d.create_element("div").ok())
-                .unwrap();
+            else {
+                return String::new();
+            };
             let _ = {
                 #body
             };

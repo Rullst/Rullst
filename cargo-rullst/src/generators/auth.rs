@@ -111,7 +111,7 @@ pub struct User {
     let middleware_template = r##"use rullst::server::{
     Request,
     Next,
-    Response, Redirect, IntoResponse,
+    Response, Redirect, IntoResponse, StatusCode,
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
@@ -119,7 +119,13 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     
     // 1. Extrai o cookie de sessão criptografado
     if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
-        let app_key = rullst::auth::get_app_key();
+        let app_key = match rullst::auth::get_app_key() {
+            Ok(key) => key,
+            Err(e) => {
+                eprintln!("Authentication middleware error: {}", e);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
         
         // 2. Descriptografa o user_id
         if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {

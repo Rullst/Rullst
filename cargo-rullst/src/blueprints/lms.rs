@@ -152,7 +152,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial data
-        let pool = rullst::db::Orm::pool()?;
+        let pool = rullst::db::Orm::pool();
 
         // Seed Categories
         rullst::db::sqlx::query(

@@ -220,13 +220,19 @@ pub mod subscription;
     let auth_middleware = r##"use rullst::server::{
     Request,
     Next,
-    Response, Redirect, IntoResponse,
+    Response, Redirect, IntoResponse, StatusCode,
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let headers = req.headers();
     if let Some(cookie) = rullst::auth::extract_session_cookie(headers) {
-        let app_key = rullst::auth::get_app_key();
+        let app_key = match rullst::auth::get_app_key() {
+            Ok(key) => key,
+            Err(e) => {
+                eprintln!("Authentication middleware error: {}", e);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
         if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
             req.extensions_mut().insert(user_id);
             return next.run(req).await;
@@ -467,10 +473,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid signature").into_response(),
     };
 
-    let pool = match rullst_orm::Orm::pool() {
-        Ok(p) => p,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
-    };
+    let pool = rullst_orm::Orm::pool();
     let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)
         .fetch_optional(pool)

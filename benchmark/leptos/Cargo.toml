@@ -1,0 +1,11 @@
+[package]
+name = "bench-leptos"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+leptos = { version = "0.6.15", features = ["ssr"] }
+leptos_axum = "0.6.15"
+axum = { version = "0.7.9" }
+tokio = { version = "1.42.0", features = ["full"] }
+serde = { version = "1.0.217", features = ["derive"] }

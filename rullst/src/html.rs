@@ -1,6 +1,6 @@
 /// Trait implemented by types that can be rendered safely into HTML.
 pub trait HtmlEscape {
-    /// [TODO] Missing documentation.
+    /// Escapes characters in `self` so they can be rendered safely as HTML.
     fn escape_html(&self) -> String;
 }
 
@@ -8,7 +8,7 @@ pub trait HtmlEscape {
 pub struct RawHtml(pub String);
 
 impl RawHtml {
-    /// [TODO] Missing documentation.
+    /// Wraps a raw string as HTML that is trusted not to be escaped.
     pub fn new<S: Into<String>>(s: S) -> Self {
         RawHtml(s.into())
     }

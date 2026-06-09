@@ -1,17 +1,17 @@
 use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
-/// [TODO] Missing documentation.
+/// An email message structure to be sent via a mail driver.
 pub struct Message {
-    /// [TODO] Missing documentation.
+    /// The recipient email address.
     pub to: String,
-    /// [TODO] Missing documentation.
+    /// The subject line of the email.
     pub subject: String,
-    /// [TODO] Missing documentation.
+    /// Optional HTML body content.
     pub body_html: Option<String>,
-    /// [TODO] Missing documentation.
+    /// Optional plain-text body content.
     pub body_text: Option<String>,
-    /// [TODO] Missing documentation.
+    /// Optional sender email address.
     pub from: Option<String>,
 }
 
@@ -22,7 +22,7 @@ impl Default for Message {
 }
 
 impl Message {
-    /// [TODO] Missing documentation.
+    /// Creates a new, empty `Message`.
     pub fn new() -> Self {
         Message {
             to: String::new(),
@@ -33,31 +33,31 @@ impl Message {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets the recipient email address.
     pub fn to(mut self, to: impl Into<String>) -> Self {
         self.to = to.into();
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets the email subject.
     pub fn subject(mut self, subject: impl Into<String>) -> Self {
         self.subject = subject.into();
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets the HTML body content.
     pub fn html(mut self, html: impl Into<String>) -> Self {
         self.body_html = Some(html.into());
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets the plain-text body content.
     pub fn text(mut self, text: impl Into<String>) -> Self {
         self.body_text = Some(text.into());
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets the sender email address.
     pub fn from(mut self, from: impl Into<String>) -> Self {
         self.from = Some(from.into());
         self
@@ -65,13 +65,13 @@ impl Message {
 }
 
 #[derive(Debug)]
-/// [TODO] Missing documentation.
+/// Errors that can occur during mail operations.
 pub enum MailError {
-    /// [TODO] Missing documentation.
+    /// Configuration errors (e.g. missing API keys).
     ConfigError(String),
-    /// [TODO] Missing documentation.
+    /// Errors occurred while sending the message.
     SendError(String),
-    /// [TODO] Missing documentation.
+    /// Errors related to the driver backend itself.
     DriverError(String),
 }
 
@@ -88,9 +88,9 @@ impl std::fmt::Display for MailError {
 impl std::error::Error for MailError {}
 
 #[async_trait]
-/// [TODO] Missing documentation.
+/// Interface for different email dispatching backends.
 pub trait MailDriver: Send + Sync {
-    /// [TODO] Missing documentation.
+    /// Dispatches the given email message.
     async fn send(&self, message: &Message) -> Result<(), MailError>;
 }
 
@@ -146,13 +146,13 @@ impl MailDriver for LogDriver {
 /// An SMTP mail driver
 #[cfg(feature = "mail-smtp")]
 pub struct SmtpDriver {
-    /// [TODO] Missing documentation.
+    /// SMTP server hostname or IP.
     pub host: String,
-    /// [TODO] Missing documentation.
+    /// SMTP port (e.g. 587, 465, 25).
     pub port: u16,
-    /// [TODO] Missing documentation.
+    /// Optional username for authentication.
     pub username: Option<String>,
-    /// [TODO] Missing documentation.
+    /// Optional password for authentication.
     pub password: Option<String>,
 }
 
@@ -235,7 +235,7 @@ impl MailDriver for SmtpDriver {
 
 /// A Resend HTTP REST API driver
 pub struct ResendDriver {
-    /// [TODO] Missing documentation.
+    /// Resend API token.
     pub api_key: String,
 }
 
@@ -276,7 +276,7 @@ impl MailDriver for ResendDriver {
 
 /// A SendGrid HTTP REST API driver
 pub struct SendGridDriver {
-    /// [TODO] Missing documentation.
+    /// SendGrid API token.
     pub api_key: String,
 }
 

@@ -2,14 +2,14 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 
+/// Error type for all Rullst storage operations.
 #[derive(Debug)]
-/// [TODO] Missing documentation.
 pub enum StorageError {
-    /// [TODO] Missing documentation.
+    /// Wraps a standard I/O error returned by the filesystem or network layer.
     IoError(std::io::Error),
-    /// [TODO] Missing documentation.
+    /// Indicates invalid or missing configuration (e.g. storage root not set, unknown disk).
     ConfigError(String),
-    /// [TODO] Missing documentation.
+    /// Returned by drivers when an operation fails for driver-specific reasons.
     DriverError(String),
 }
 
@@ -31,29 +31,30 @@ impl From<std::io::Error> for StorageError {
     }
 }
 
+/// Trait that all storage backends must implement. Implement this to add custom drivers
+/// (e.g. S3, GCS, R2) and register them with `Storage::disk("my_driver")`.
 #[async_trait]
-/// [TODO] Missing documentation.
 pub trait StorageDriver: Send + Sync {
-    /// [TODO] Missing documentation.
+    /// Writes `bytes` to the given `path` in the storage driver's root. Creates parent directories as needed.
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError>;
-    /// [TODO] Missing documentation.
+    /// Reads and returns the contents of `path` as raw bytes.
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError>;
-    /// [TODO] Missing documentation.
+    /// Returns `true` if `path` exists in the storage backend, `false` otherwise.
     async fn exists(&self, path: &str) -> Result<bool, StorageError>;
-    /// [TODO] Missing documentation.
+    /// Deletes the file at `path`. Returns an error if the file does not exist.
     async fn delete(&self, path: &str) -> Result<(), StorageError>;
-    /// [TODO] Missing documentation.
+    /// Returns the public URL for accessing `path`. For local disks, returns a relative path.
     async fn url(&self, path: &str) -> Result<String, StorageError>;
 }
 
 /// A local disk storage driver
 pub struct LocalDriver {
-    /// [TODO] Missing documentation.
+    /// Absolute path to the root directory where all files will be stored.
     pub root: PathBuf,
 }
 
 impl LocalDriver {
-    /// [TODO] Missing documentation.
+    /// Creates a new `LocalDriver` rooted at the given path. The directory is created on first `put`.
     pub fn new(root: impl Into<PathBuf>) -> Self {
         LocalDriver { root: root.into() }
     }
@@ -282,7 +283,7 @@ impl StorageDriver for S3Driver {
 
 /// A fallback driver that always returns an error. Used for gracefully handling unknown disks.
 pub struct ErrorDriver {
-    /// [TODO] Missing documentation.
+    /// The error message returned by all operations on this driver.
     pub message: String,
 }
 
@@ -309,32 +310,33 @@ impl StorageDriver for ErrorDriver {
 pub struct Storage;
 
 impl Storage {
-    /// [TODO] Missing documentation.
+    /// Stores `bytes` at `path` using the default `"local"` disk driver.
     pub async fn put(path: &str, bytes: &[u8]) -> Result<(), StorageError> {
         Self::disk("local").put(path, bytes).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Retrieves the file at `path` from the default `"local"` disk driver.
     pub async fn get(path: &str) -> Result<Vec<u8>, StorageError> {
         Self::disk("local").get(path).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Checks whether `path` exists on the default `"local"` disk driver.
     pub async fn exists(path: &str) -> Result<bool, StorageError> {
         Self::disk("local").exists(path).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Deletes the file at `path` on the default `"local"` disk driver.
     pub async fn delete(path: &str) -> Result<(), StorageError> {
         Self::disk("local").delete(path).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns the public URL for `path` on the default `"local"` disk driver.
     pub async fn url(path: &str) -> Result<String, StorageError> {
         Self::disk("local").url(path).await
     }
 
-    /// [TODO] Missing documentation.
+    /// Returns a boxed [`StorageDriver`] for the named disk configuration.
+    /// Unknown disk names return an [`ErrorDriver`] rather than panicking.
     pub fn disk(name: &str) -> Box<dyn StorageDriver> {
         match name {
             "local" => {
@@ -453,6 +455,12 @@ mod tests {
 
     #[test]
     fn test_storage_disk_factory() {
+        // SAFETY: This test must not run concurrently with other tests that read STORAGE_ROOT.
+        // In a parallel test run, prefer running with `cargo test -- --test-threads=1` if
+        // STORAGE_ROOT is also checked by other tests, or use the `serial_test` crate.
+        // set_var is safe here because this file's tests are independent of STORAGE_ROOT.
+        #[allow(unsafe_code)]
+        // SAFETY: No other thread reads STORAGE_ROOT during this test in the test suite.
         unsafe {
             std::env::set_var("STORAGE_ROOT", "storage/factory_test");
         }
@@ -471,5 +479,10 @@ mod tests {
                 .to_string()
                 .contains("Unknown storage disk")
         );
+        // Restore env to avoid polluting other tests
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("STORAGE_ROOT");
+        }
     }
 }

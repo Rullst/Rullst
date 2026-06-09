@@ -5,4 +5,16 @@ members = [
     "cargo-rullst",
     "examples/blog", "rullst-press",
 ]
+exclude = [
+    "benchmark/rullst",
+    "benchmark/axum",
+    "benchmark/actix",
+    "benchmark/loco",
+    "benchmark/rocket",
+    "benchmark/leptos",
+]
 resolver = "2"
+
+[patch.crates-io]
+rullst-orm = { path = "../rullst-orm/rullst-orm" }
+rullst-orm-macros = { path = "../rullst-orm/rullst-orm-macros" }

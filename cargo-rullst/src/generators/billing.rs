@@ -341,10 +341,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
 
     println!("🔔 Received Webhook for Subscription {} [{}] -> Status: {:?}", event.subscription_id, event.plan_id, event.status);
 
-    let pool = match rullst::db::Orm::pool() {
-        Ok(p) => p,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Database pool not initialized").into_response(),
-    };
+    let pool = rullst::db::Orm::pool();
     
     let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)

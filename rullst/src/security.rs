@@ -5,6 +5,13 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use rand::distr::{Alphanumeric, SampleString};
+use subtle::ConstantTimeEq;
+
+fn is_production() -> bool {
+    let env = std::env::var("RULLST_ENV")
+        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
+    env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod")
+}
 
 /// Generates a cryptographically secure 32-character random alphanumeric string.
 pub fn generate_csrf_token() -> String {
@@ -48,10 +55,10 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
 
             let mut response = next.run(req).await;
 
-            // Set cookie for CSRF
+            let secure_attr = if is_production() { "; Secure" } else { "" };
             if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-                "rullst_csrf={}; Path=/; SameSite={}; HttpOnly",
-                token, same_site
+                "rullst_csrf={}; Path=/; SameSite={}; HttpOnly{}",
+                token, same_site, secure_attr
             )) {
                 response
                     .headers_mut()
@@ -90,7 +97,7 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
         .map(|s| s.to_string());
 
     if let Some(token) = header_token {
-        if token == cookie_token {
+        if token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
             return next.run(req).await;
         }
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
@@ -120,7 +127,7 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
         let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
 
         if let Some(token) = body_token
-            && token == cookie_token
+            && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
         {
             return next.run(reconstructed_req).await;
         }
@@ -131,6 +138,14 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
 
 /// Middleware that injects secure-by-default HTTP headers to prevent standard web exploits.
 pub async fn headers_middleware(req: Request, next: Next) -> Response {
+    let csp = req
+        .extensions()
+        .get::<crate::config::SecurityConfig>()
+        .map(|cfg| cfg.csp.clone())
+        .unwrap_or_else(|| {
+            crate::config::RullstConfig::global().security.csp.clone()
+        });
+
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
 
@@ -151,6 +166,12 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
         "Strict-Transport-Security",
         header::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
     );
+
+    if !csp.is_empty() {
+        if let Ok(csp_val) = header::HeaderValue::from_str(&csp) {
+            headers.insert("Content-Security-Policy", csp_val);
+        }
+    }
 
     response
 }
@@ -189,22 +210,16 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
         .and_then(|v| v.to_str().ok())
     {
         let ua_lower = ua.to_lowercase();
-        let suspicious_agents = [
-            "curl",
-            "wget",
-            "python-requests",
-            "go-http-client",
-            "gptbot",
-            "chatgpt-user",
-            "google-extended",
-            "anthropic-ai",
-            "claude-web",
-            "cohere-ai",
-            "bytespider",
-            "mj12bot",
-        ];
+        let suspicious_agents = req
+            .extensions()
+            .get::<crate::config::SecurityConfig>()
+            .map(|cfg| cfg.user_agent_blocklist.clone())
+            .unwrap_or_else(|| {
+                crate::config::RullstConfig::global().security.user_agent_blocklist.clone()
+            });
+
         for agent in suspicious_agents {
-            if ua_lower.contains(agent) {
+            if ua_lower.contains(&agent.to_lowercase()) {
                 match Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")

@@ -7,6 +7,7 @@
 
 > 📖 **[See all the changes in our Changelog!](https://github.com/venelouis/Rullst/blob/main/CHANGELOG.md)**  
 > 🚨 **[Any issues? Please report it](https://github.com/venelouis/Rullst/issues)** 
+> ⚡ **[Read the Benchmarks!](https://github.com/venelouis/Rullst/blob/main/RUST_BENCHMARKS.md)**  
 > 📚 **[Read the Official Documentation!](https://venelouis.github.io/Rullst/)**  
 > 📦 **[View on Crates.io!](https://crates.io/crates/rullst)**
 

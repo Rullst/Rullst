@@ -1,7 +1,7 @@
 use crate::ai::{AiError, AiProvider, Message};
 use async_trait::async_trait;
 
-/// [TODO] Missing documentation.
+/// Google Gemini API provider implementation.
 pub struct GeminiProvider {
     api_key: String,
     model: String,
@@ -10,7 +10,7 @@ pub struct GeminiProvider {
 }
 
 impl GeminiProvider {
-    /// [TODO] Missing documentation.
+    /// Creates a new `GeminiProvider` with the given API key.
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             api_key: api_key.into(),
@@ -20,13 +20,13 @@ impl GeminiProvider {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets a custom generation model name.
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
         self.model = model.into();
         self
     }
 
-    /// [TODO] Missing documentation.
+    /// Sets a custom text embedding model name.
     pub fn with_embedding_model(mut self, model: impl Into<String>) -> Self {
         self.embedding_model = model.into();
         self

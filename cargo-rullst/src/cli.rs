@@ -221,6 +221,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             crate::generators::project::generate_docker_files(
                 std::path::Path::new("."),
                 &proj_name,
+                None,
+                None,
             )?;
         }
         Commands::MakeCors => {

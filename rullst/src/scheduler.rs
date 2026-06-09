@@ -72,16 +72,16 @@ impl Scheduler {
     /// The cron expression uses the standard 5-field format extended to 7 fields
     /// internally (seconds and year are auto-filled).
     ///
-    /// # Panics
-    /// Panics if the cron expression is invalid.
+    /// # Errors
+    /// Returns an error if the cron expression is invalid.
     ///
     /// # Example
     /// ```rust,ignore
     /// scheduler.task("30 2 * * 1", || async {
     ///     println!("Running at 2:30 AM every Monday");
-    /// });
+    /// }).unwrap();
     /// ```
-    pub fn task<F, Fut>(mut self, cron_expr: &str, handler: F) -> Self
+    pub fn task<F, Fut>(mut self, cron_expr: &str, handler: F) -> Result<Self, String>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -93,7 +93,7 @@ impl Scheduler {
 
         let schedule: cron::Schedule = full_expr
             .parse()
-            .unwrap_or_else(|e| panic!("Invalid cron expression '{}': {}", cron_expr, e));
+            .map_err(|e| format!("Invalid cron expression '{}': {}", cron_expr, e))?;
 
         let label = cron_expr.to_string();
         let boxed: Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync> =
@@ -105,7 +105,7 @@ impl Scheduler {
             handler: Arc::new(boxed),
         });
 
-        self
+        Ok(self)
     }
 
     /// Start all scheduled tasks as background Tokio tasks.
@@ -167,27 +167,30 @@ mod tests {
     #[test]
     fn test_scheduler_task_registration() {
         let scheduler = Scheduler::new()
-            .task("* * * * *", || async {})
-            .task("0 0 * * *", || async {});
+            .task("* * * * *", || async {}).unwrap()
+            .task("0 0 * * *", || async {}).unwrap();
         assert_eq!(scheduler.tasks.len(), 2);
     }
 
     #[test]
     fn test_scheduler_label_preserved() {
-        let scheduler = Scheduler::new().task("30 2 * * 1", || async {});
+        let scheduler = Scheduler::new().task("30 2 * * 1", || async {}).unwrap();
         assert_eq!(scheduler.tasks[0].label, "30 2 * * 1");
     }
 
     #[test]
-    #[should_panic(expected = "Invalid cron expression")]
     fn test_scheduler_invalid_cron() {
-        let _scheduler = Scheduler::new().task("invalid cron", || async {});
+        let res = Scheduler::new().task("invalid cron", || async {});
+        match res {
+            Ok(_) => panic!("Expected task registration to fail for invalid cron"),
+            Err(e) => assert!(e.contains("Invalid cron expression")),
+        }
     }
 
     #[tokio::test]
     async fn test_scheduler_cron_parses_correctly() {
         // Verify that a 5-field expression parses to a valid 7-field schedule
-        let scheduler = Scheduler::new().task("*/5 * * * *", || async {});
+        let scheduler = Scheduler::new().task("*/5 * * * *", || async {}).unwrap();
         let next = scheduler.tasks[0].schedule.upcoming(chrono::Utc).next();
         assert!(next.is_some(), "Scheduler should have upcoming executions");
     }

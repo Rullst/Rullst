@@ -13,14 +13,15 @@ impl Default for Router {
 }
 
 impl Router {
-    /// [TODO] Missing documentation.
+    /// Creates a new empty `Router` with no routes configured.
     pub fn new() -> Self {
         Router {
             inner: AxumRouter::new(),
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Registers an HTTP route at the given `path` with the given method router.
+    /// `method_router` is typically the result of `get(handler)`, `post(handler)`, etc.
     pub fn route<T>(self, path: &str, method_router: T) -> Self
     where
         T: Into<axum::routing::MethodRouter>,
@@ -30,7 +31,8 @@ impl Router {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Registers a WebSocket upgrade route at the given `path`.
+    /// Internally maps to `GET path` since WebSocket upgrades happen over HTTP GET.
     pub fn ws<H, T>(self, path: &str, handler: H) -> Self
     where
         T: 'static,
@@ -41,26 +43,30 @@ impl Router {
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Unwraps the inner [`axum::Router`]. Use this to hand the router off to `axum::serve`
+    /// or to interoperate with Tower middleware that requires a raw Axum router.
     pub fn into_axum(self) -> AxumRouter {
         self.inner
     }
 
-    /// [TODO] Missing documentation.
+    /// Nests another Rullst `Router` under a path prefix.
+    /// All routes defined in `router` will be reachable under `path/...`.
     pub fn nest(self, path: &str, router: Router) -> Self {
         Router {
             inner: self.inner.nest(path, router.inner),
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Nests a raw [`axum::Router`] under a path prefix.
+    /// Useful for integrating third-party Axum routers (e.g. from `utoipa`, `aide`) without wrapping.
     pub fn nest_axum(self, path: &str, router: AxumRouter) -> Self {
         Router {
             inner: self.inner.nest(path, router),
         }
     }
 
-    /// [TODO] Missing documentation.
+    /// Applies a Tower middleware layer to all routes in this router.
+    /// The layer is cloned once per request and must be `Send + Sync + 'static`.
     pub fn layer<L>(self, layer: L) -> Self
     where
         L: tower_layer::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
@@ -86,7 +92,8 @@ pub use axum::routing::patch;
 pub use axum::routing::post;
 pub use axum::routing::put;
 
-/// [TODO] Missing documentation.
+/// Returns an Axum `MethodRouter` that upgrades `GET` requests to a WebSocket connection.
+/// Used inside `routes!` as `ws("/chat" => handler)` or directly on a `Router::ws()` call.
 pub fn ws<H, T>(handler: H) -> axum::routing::MethodRouter
 where
     T: 'static,
@@ -96,7 +103,20 @@ where
 }
 
 #[macro_export]
-/// [TODO] Missing documentation.
+/// Declarative macro for building a [`Router`] from a list of HTTP route definitions.
+///
+/// # Example
+/// ```rust,no_run
+/// use rullst::{routes, routing::{get, post}};
+///
+/// async fn home_handler() -> &'static str { "home" }
+/// async fn create_user() -> &'static str { "created" }
+///
+/// let router = routes![
+///     get("/" => home_handler),
+///     post("/users" => create_user),
+/// ];
+/// ```
 macro_rules! routes {
     ( $($method:ident ( $path:expr => $handler:expr )),* $(,)? ) => {
         {
