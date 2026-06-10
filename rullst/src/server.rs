@@ -55,9 +55,11 @@ impl Server {
     /// The background file-watcher recompiles and hot-swaps the router on source changes.
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
         if !cfg!(debug_assertions) {
-            panic!("CRITICAL SECURITY: Hot-Reloading (new_hot) is strictly disabled in release mode to prevent RCE vulnerabilities via dynamic library injection.");
+            panic!(
+                "CRITICAL SECURITY: Hot-Reloading (new_hot) is strictly disabled in release mode to prevent RCE vulnerabilities via dynamic library injection."
+            );
         }
-        
+
         Server {
             router: Router::new(),
             db_url: None,
