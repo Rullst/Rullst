@@ -142,19 +142,6 @@ pub enum Commands {
         /// Target platform (desktop, android, ios)
         target: Option<String>,
     },
-    /// RullstPress: Native Static Site Generator (SSG) for websites and documentation
-    Docs {
-        #[command(subcommand)]
-        action: DocsCommands,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum DocsCommands {
-    /// Starts the local live-preview server for RullstPress
-    Dev,
-    /// Compiles Markdown files into static HTML pages
-    Build,
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
@@ -255,10 +242,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Omni { target } => {
             run_omni_app(target.as_deref())?;
         }
-        Commands::Docs { action } => match action {
-            DocsCommands::Dev => crate::docs_generator::run_dev_server()?,
-            DocsCommands::Build => crate::docs_generator::run_build()?,
-        },
     }
     Ok(())
 }

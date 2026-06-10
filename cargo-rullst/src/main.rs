@@ -6,7 +6,6 @@
 
 pub mod blueprints;
 pub mod cli;
-pub mod docs_generator;
 pub mod generators;
 pub mod ui;
 

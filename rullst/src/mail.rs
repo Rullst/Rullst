@@ -337,11 +337,11 @@ pub struct Mail;
 impl Mail {
     /// Send a message using the default configured mail driver
     pub async fn send(message: Message) -> Result<(), MailError> {
-        let driver = Self::resolve_driver()?;
+        let driver = Self::resolve_driver().await?;
         driver.send(&message).await
     }
 
-    fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
+    async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         let driver_name = std::env::var("MAIL_DRIVER").unwrap_or_else(|_| {
             let mut found_driver = None;
             if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {

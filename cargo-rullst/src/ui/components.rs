@@ -281,14 +281,10 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     let theme = dialoguer::theme::ColorfulTheme::default();
-    let choices = &[
+    let choices = [
         format!(
-            "✨  Create a New Project     {}",
-            "(Rullst App Creator + Blueprints)".dimmed()
-        ),
-        format!(
-            "📚  RullstPress Engine       {}",
-            "(Complete Publishing & Documentation Engine)".dimmed()
+            "✨  Create New Project       {}",
+            "(API, Fullstack or Dockerized)".dimmed()
         ),
         format!(
             "📁  Already have a project?  {}",
@@ -321,32 +317,6 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             run_cli_command(&cli.command)?;
         }
         1 => {
-            // RullstPress Engine
-            let docs_choices = &[
-                "🌐  Live Preview Server  (cargo rullst docs dev)",
-                "📦  Build Static Site    (cargo rullst docs build)",
-            ];
-            let docs_selection = dialoguer::Select::with_theme(&theme)
-                .with_prompt("Choose RullstPress action:\n")
-                .default(0)
-                .items(&docs_choices[..])
-                .interact()?;
-            let cmd_str = match docs_selection {
-                0 => "dev",
-                1 => "build",
-                _ => "",
-            };
-            if !cmd_str.is_empty() {
-                let args_vec = vec![
-                    std::env::args().next().unwrap_or_default(),
-                    "docs".to_string(),
-                    cmd_str.to_string(),
-                ];
-                let cli = Cli::parse_from(args_vec);
-                run_cli_command(&cli.command)?;
-            }
-        }
-        2 => {
             // Already have a project?
             let project_choices = &[
                 format!(
@@ -599,15 +569,14 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             }
         }
-        3 => {
+        2 => {
             // View Help
             show_help_reference();
         }
-        4 => {
-            // Exit Menu
-            println!("\n  {} Goodbye!", "👋".bright_green());
+        _ => {
+            // Exit
+            println!("{}", "Exiting. Happy coding with Rullst! 🦀🚀".dimmed());
         }
-        _ => {}
     }
     Ok(())
 }
@@ -615,7 +584,6 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
 // ─── Help Reference ───────────────────────────────────────────────────────────
 
 /// Prints a beautiful grouped cheat-sheet of all Rullst CLI commands.
-#[allow(dead_code)]
 pub fn show_help_reference() {
     print!("\x1B[2J\x1B[1;1H");
     println!();

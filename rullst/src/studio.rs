@@ -151,7 +151,6 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
 }
 
 /// Sanitize table and column names to prevent SQL injections in dynamic queries
-#[allow(dead_code)]
 fn sanitize_identifier(id: &str) -> String {
     id.chars()
         .filter(|c| c.is_alphanumeric() || *c == '_')

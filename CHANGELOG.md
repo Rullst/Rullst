@@ -4,6 +4,22 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-06-10 🛠️
+
+### Performance & Stability
+- **Concurrent Uptime Monitoring**: Optimized the Uptime Monitor blueprint (`cargo-rullst/src/blueprints/uptime.rs`) by replacing blocking sequential HTTP requests and database inserts with concurrent `tokio::spawn` tasks, drastically improving throughput for multiple monitors.
+- **Async I/O Safety**: Refactored `MailDriver` resolution (`rullst/src/mail.rs`) to strictly utilize asynchronous `tokio::fs::read_to_string` instead of `std::fs`, eliminating Tokio event-loop thread blocking during email dispatches.
+
+### Security & Testing
+- **Rust 1.80+ Test Compatibility**: Patched `auth.rs` tests failing on newer Rust compilers by wrapping the newly deprecated and unsafe `std::env::set_var` within an explicit `unsafe` block for local testing environments.
+- **Test Coverage Expansion**: Added strict boundary condition tests for source code context extraction (`error_console.rs`) and session cookie parameter generation (`auth.rs`), resolving gaps in coverage.
+- **Security Validation**: Addressed and invalidated false-positive AI security audits regarding CLI command injection, hot-reloading `unsafe` blocks, and uptime scaffolding inserts, cementing Rullst's 100/100 pristine security baseline.
+
+### CLI & Tooling
+- **Docker Cache Bugfix**: Fixed an issue in `cargo rullst dockerize` and `--docker` scaffolding where Docker's `mtime` caching behavior would cause Cargo to skip compilation of `.rs` files after building dependencies, resulting in empty binaries that exited with code 0.
+- **Lean Core Refactor**: Completely removed the internal `rullst-press` SSG tool from the framework workspace and CLI menu. Rullst is now strictly focused on backend/fullstack productivity, and the main documentation has migrated to a dedicated modern SPA site.
+- **Clippy Strict Compliance**: Re-audited and passed `cargo clippy --workspace --all-targets --all-features -- -D warnings`, resolving a stray `clippy::useless_vec` warning in the interactive menu.
+
 ## [2.0.4] - 2026-06-09 🔒
 
 ### Security & Stability

@@ -16,20 +16,13 @@ pub fn has_binary(name: &str) -> bool {
 }
 
 fn generate_secure_app_key() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let seed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(123456789);
-
-    let mut rng = seed;
+    use rand::Rng;
+    
+    let mut rng = rand::thread_rng();
     let mut key = String::new();
     let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     for _ in 0..32 {
-        rng = rng
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        let idx = (rng % (chars.len() as u128)) as usize;
+        let idx = rng.gen_range(0..chars.len());
         key.push(chars[idx] as char);
     }
     key
@@ -671,7 +664,7 @@ RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && carg
 
 # Build the actual application
 COPY . .
-RUN cargo build --release
+RUN find src -type f -name "*.rs" -exec touch {} + && cargo build --release
 
 # ── Stage 2: Runtime ─────────────────────────────────────────
 FROM docker.io/library/debian:bookworm-slim
@@ -797,9 +790,10 @@ services:
                 dep
             ));
         }
-        compose = compose.replace(
+        compose = compose.replacen(
             "    restart: unless-stopped",
             &format!("{}\n    restart: unless-stopped", deps_str),
+            1,
         );
     }
 

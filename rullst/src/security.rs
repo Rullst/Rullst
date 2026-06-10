@@ -402,6 +402,15 @@ mod tests {
     }
 
     #[test]
+    fn test_mask_pii_edge_cases() {
+        assert_eq!(mask_pii(""), "");
+        assert_eq!(mask_pii("a@b.c"), "a@b.c");
+        assert_eq!(mask_pii("admin123@longdomain.com"), "a*******@longdomain.com");
+        assert_eq!(mask_pii("invalid_email@"), "invalid_email@");
+        assert_eq!(mask_pii("my card is 1234"), "my card is 1234");
+    }
+
+    #[test]
     fn test_mask_pii_email() {
         let raw = "Contact me at venelouis@rullst.com or admin@domain.org.";
         let masked = mask_pii(raw);

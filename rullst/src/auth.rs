@@ -222,7 +222,36 @@ mod tests {
         let decrypted = decrypt_session(&token, &k).expect("Failed to decrypt session");
         assert_eq!(
             user_id, decrypted,
-            "Decrypted user ID does not match original"
         );
+    }
+
+    #[test]
+    fn test_password_hash_format() {
+        let p = "super_secret";
+        let hash = hash_password(p).expect("Failed to hash password");
+        assert!(hash.starts_with("$argon2id$"));
+    }
+
+    #[test]
+    fn test_password_verification_error_paths() {
+        assert!(!verify_password("pass", "invalid_hash_format"));
+        
+        let p = "pass";
+        let hash = hash_password(p).expect("Failed to hash password");
+        assert!(!verify_password("wrong", &hash));
+    }
+
+    #[test]
+    fn test_make_login_logout_cookie() {
+        unsafe { std::env::set_var("APP_KEY", "test_key_for_cookie_1234567890"); }
+        let login_cookie = make_login_cookie(42).expect("Failed to make login cookie");
+        assert!(login_cookie.starts_with("rullst_session="));
+        assert!(login_cookie.contains("HttpOnly"));
+        assert!(login_cookie.contains("Path=/"));
+        assert!(login_cookie.contains("Max-Age=2592000"));
+
+        let logout_cookie = make_logout_cookie();
+        assert!(logout_cookie.starts_with("rullst_session=;"));
+        assert!(logout_cookie.contains("Max-Age=0"));
     }
 }

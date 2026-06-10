@@ -363,36 +363,48 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap_or_default();
 
+    let mut handles = Vec::new();
+
     for monitor in active_monitors {
-        let start = Instant::now();
-        let res = client.get(&monitor.url).send().await;
-        let duration = start.elapsed().as_millis() as i32;
+        let client_clone = client.clone();
+        let pool_clone = pool.clone();
+        
+        handles.push(tokio::spawn(async move {
+            let start = Instant::now();
+            let res = client_clone.get(&monitor.url).send().await;
+            let duration = start.elapsed().as_millis() as i32;
 
-        let (status_code, is_up, error_msg) = match res {
-            Ok(response) => {
-                let code = response.status().as_u16() as i32;
-                let up = if code >= 200 && code < 400 { 1 } else { 0 };
-                (code, up, "".to_string())
-            }
-            Err(e) => {
-                (0, 0, e.to_string())
-            }
-        };
+            let (status_code, is_up, error_msg) = match res {
+                Ok(response) => {
+                    let code = response.status().as_u16() as i32;
+                    let up = if code >= 200 && code < 400 { 1 } else { 0 };
+                    (code, up, "".to_string())
+                }
+                Err(e) => {
+                    (0, 0, e.to_string())
+                }
+            };
 
-        // Write heartbeat log
-        let _ = rullst::db::sqlx::query(
-            "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
-             VALUES ($1, $2, $3, $4, $5, datetime('now'), datetime('now'))"
-        )
-        .bind(monitor.id)
-        .bind(status_code)
-        .bind(duration)
-        .bind(is_up)
-        .bind(error_msg)
-        .execute(pool)
-        .await;
+            // Write heartbeat log
+            let _ = rullst::db::sqlx::query(
+                "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
+                 VALUES ($1, $2, $3, $4, $5, datetime('now'), datetime('now'))"
+            )
+            .bind(monitor.id)
+            .bind(status_code)
+            .bind(duration)
+            .bind(is_up)
+            .bind(error_msg)
+            .execute(&pool_clone)
+            .await;
 
-        println!("📡 Checked '{}' ({}): {} | {}ms", monitor.name, monitor.url, status_code, duration);
+            println!("📡 Checked '{}' ({}): {} | {}ms", monitor.name, monitor.url, status_code, duration);
+        }));
+    }
+
+    // Wait for all checks to complete
+    for handle in handles {
+        let _ = handle.await;
     }
 
     Ok(())

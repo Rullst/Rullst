@@ -92,4 +92,12 @@ mod tests {
         let expected = "&lt;script&gt;let a = {&quot;b&quot;: 1, c: &#x27;2&#x27;, d: [1,2,3]}; alert(a);&lt;/script&gt;";
         assert_eq!(escape_str(js), expected);
     }
+
+    #[test]
+    fn test_escape_str_edge_cases() {
+        assert_eq!(escape_str(""), "");
+        assert_eq!(escape_str("Café & croissant"), "Café &amp; croissant");
+        assert_eq!(escape_str("<script>"), "&lt;script&gt;");
+        assert_eq!(escape_str("\"'"), "&quot;&#x27;");
+    }
 }

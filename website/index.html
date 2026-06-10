@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rullst - Rust Fullstack Web Framework</title>
+    <!-- Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <nav class="navbar">
+      <div class="nav-content">
+        <div class="logo">
+          <span>📜🦀🌐 Rullst</span>
+        </div>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#benchmarks">Benchmarks</a>
+          <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="nav-discord">Discord</a>
+          <a href="https://github.com/venelouis/Rullst" target="_blank" class="btn btn-outline">GitHub</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">Rust for those who want to <span class="text-gradient">build</span>, not suffer.</h1>
+        <p class="hero-subtitle">The developer-first full-stack web framework designed obsessively for emotional productivity. Ditch the boilerplate and ship your startup today.</p>
+        
+        <div class="hero-cta">
+          <button class="btn btn-primary" id="copy-install">cargo install cargo-rullst</button>
+          <a href="#code" class="btn btn-secondary">See how it works</a>
+        </div>
+        
+        <div class="badges">
+          <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io">
+          <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
+        </div>
+      </div>
+    </header>
+
+    <section id="features" class="features">
+      <h2 class="section-title">The Unfair Advantage</h2>
+      <div class="features-grid">
+        <div class="feature-card glass">
+          <div class="feature-icon">✨</div>
+          <h3>Rullst Nexus</h3>
+          <p>Get a fully-functional, dark-mode Admin CMS auto-generated directly from your Rust Structs. Zero frontend code required.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">🔥</div>
+          <h3>Native Hot-Reload</h3>
+          <p>Sub-second DLL hot-swapping. Change your Rust code and see updates instantly without dropping TCP connections.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">🛡️</div>
+          <h3>Zero-Panic Policy</h3>
+          <p>Hardened for production edge infrastructure. Our core is 100% free of panics, ensuring unbreakable stability.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">🚀</div>
+          <h3>1-Click Scaffolding</h3>
+          <p>Generate complete Auth systems, ERPs, or Uptime Monitors interactively using the built-in CLI wizard.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="code" class="code-showcase">
+      <div class="code-container glass">
+        <div class="code-header">
+          <div class="mac-dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <span class="filename">src/main.rs</span>
+        </div>
+        <pre><code class="language-rust">use rullst::{routing::get, html, Server, Response};
+
+#[routes]
+fn home() -> Response {
+    html! {
+        &lt;div class="h-screen bg-slate-900 text-emerald-400 flex items-center justify-center"&gt;
+            &lt;h1&gt;"Hello, Rullst!"&lt;/h1&gt;
+        &lt;/div&gt;
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Server::new()
+        .route("/", get(home))
+        .run()
+        .await;
+}</code></pre>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Built with ❤️ by the Rullst Community.</p>
+      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="text-emerald">Join the Discord</a>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
