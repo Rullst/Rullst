@@ -912,6 +912,7 @@ pub(crate) async fn render_console_html(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

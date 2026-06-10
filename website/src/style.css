@@ -278,7 +278,7 @@ body {
 .bar-chart {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 .bar-row {
   display: flex;
@@ -290,8 +290,13 @@ body {
   font-size: 0.85rem;
   color: var(--text-light);
 }
+.bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
 .bar-track {
-  width: 100%;
+  flex-grow: 1;
   height: 24px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
@@ -300,16 +305,16 @@ body {
 .bar-fill {
   height: 100%;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 0.5rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: white;
-  transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bar-text {
+  min-width: 90px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-light);
 }
 
 /* Footer */

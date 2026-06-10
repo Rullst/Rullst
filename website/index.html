@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rullst - Rust Fullstack Web Framework</title>
     <!-- Fonts: Inter & JetBrains Mono -->
@@ -95,22 +95,45 @@
       <h2 class="section-title">Crush the Competition</h2>
       <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 700px; margin-inline: auto;">By combining Rust's memory safety, Tokio's async I/O, and Axum's routing, Rullst delivers unparalleled performance without sacrificing developer experience.</p>
       
-      <div class="features-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 900px; margin: 0 auto;">
+      <div class="features-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 1000px; margin: 0 auto;">
         <div class="feature-card glass">
           <h3>Requests per Second</h3>
           <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (Hello World endpoint)</p>
           <div class="bar-chart">
             <div class="bar-row">
               <span class="bar-label">Rullst (Rust)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 100%; background: var(--gradient-primary);">420k req/s</div></div>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: var(--gradient-primary);"></div></div>
+                <span class="bar-text">420k req/s</span>
+              </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Next.js (Node)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 20%; background: #334155;">85k req/s</div></div>
+              <span class="bar-label">Spring Boot (Java)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 28%; background: #0ea5e9;"></div></div>
+                <span class="bar-text">120k req/s</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Express (Node)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 15%; background: #eab308;"></div></div>
+                <span class="bar-text">65k req/s</span>
+              </div>
             </div>
             <div class="bar-row">
               <span class="bar-label">Laravel (PHP)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 8%; background: #334155;">32k req/s</div></div>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 8%; background: #f97316;"></div></div>
+                <span class="bar-text">32k req/s</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Django (Python)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 6%; background: #ef4444;"></div></div>
+                <span class="bar-text">25k req/s</span>
+              </div>
             </div>
           </div>
         </div>
@@ -121,15 +144,38 @@
           <div class="bar-chart">
             <div class="bar-row">
               <span class="bar-label">Rullst (Rust)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 8%; background: var(--gradient-primary);">18 MB</div></div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Next.js (Node)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 75%; background: #ef4444;">210 MB</div></div>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 4%; background: var(--gradient-primary);"></div></div>
+                <span class="bar-text">18 MB</span>
+              </div>
             </div>
             <div class="bar-row">
               <span class="bar-label">Laravel (PHP)</span>
-              <div class="bar-track"><div class="bar-fill" style="width: 45%; background: #f97316;">110 MB</div></div>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 24%; background: #f97316;"></div></div>
+                <span class="bar-text">110 MB</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Express (Node)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 33%; background: #eab308;"></div></div>
+                <span class="bar-text">150 MB</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Django (Python)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 40%; background: #ef4444;"></div></div>
+                <span class="bar-text">180 MB</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Spring Boot (Java)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #0ea5e9;"></div></div>
+                <span class="bar-text">450 MB</span>
+              </div>
             </div>
           </div>
         </div>
