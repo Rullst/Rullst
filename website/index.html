@@ -47,27 +47,27 @@
     </header>
 
     <section id="features" class="features">
-      <h2 class="section-title">The Unfair Advantage</h2>
+      <h2 class="section-title">The AI-Native Advantage</h2>
       <div class="features-grid">
         <div class="feature-card glass">
-          <div class="feature-icon">✨</div>
-          <h3>Rullst Nexus</h3>
-          <p>Get a fully-functional, dark-mode Admin CMS auto-generated directly from your Rust Structs. Zero frontend code required.</p>
+          <div class="feature-icon">🤖</div>
+          <h3>AI-Native by Design</h3>
+          <p>Built from the ground up for AI coders. Zero runtime magic, pure compilation, and automatic `.ai-rules` context injection makes Rullst perfectly legible to Cursor and Copilot without hallucinations.</p>
         </div>
         <div class="feature-card glass">
-          <div class="feature-icon">🔥</div>
-          <h3>Native Hot-Reload</h3>
-          <p>Sub-second DLL hot-swapping. Change your Rust code and see updates instantly without dropping TCP connections.</p>
+          <div class="feature-icon">🔄</div>
+          <h3>Autonomous Upgrades</h3>
+          <p>Never fear breaking changes again. <code>cargo rullst upgrade</code> performs AST-based codemods in the background to automatically update your syntax when the framework evolves.</p>
         </div>
         <div class="feature-card glass">
-          <div class="feature-icon">🛡️</div>
-          <h3>Zero-Panic Policy</h3>
-          <p>Hardened for production edge infrastructure. Our core is 100% free of panics, ensuring unbreakable stability.</p>
+          <div class="feature-icon">🌍</div>
+          <h3>Edge Fusion & Replication</h3>
+          <p>Compile to WebAssembly for Cloudflare Workers globally, backed by built-in Turso/libsql replication for 1ms database read latency worldwide.</p>
         </div>
         <div class="feature-card glass">
-          <div class="feature-icon">🚀</div>
-          <h3>1-Click Scaffolding</h3>
-          <p>Generate complete Auth systems, ERPs, or Uptime Monitors interactively using the built-in CLI wizard.</p>
+          <div class="feature-icon">📱</div>
+          <h3>Omni-Frontend Wasm</h3>
+          <p>Write frontend interactive components strictly in Rust (`#[client_component]`). They compile to lightweight Wasm, eliminating the need to write JavaScript for SPAs or Desktop apps.</p>
         </div>
       </div>
     </section>
@@ -95,7 +95,7 @@
       <h2 class="section-title">Crush the Competition</h2>
       <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 700px; margin-inline: auto;">By combining Rust's memory safety, Tokio's async I/O, and Axum's routing, Rullst delivers unparalleled performance without sacrificing developer experience.</p>
       
-      <div class="features-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 1000px; margin: 0 auto;">
+      <div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
         <div class="feature-card glass">
           <h3>Requests per Second</h3>
           <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (Hello World endpoint)</p>
@@ -179,6 +179,43 @@
             </div>
           </div>
         </div>
+      </div>
+    <section id="docs" class="docs-section" style="padding: 6rem 1rem; max-width: 1000px; margin: 0 auto;">
+      <h2 class="section-title">Documentation</h2>
+      <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem;">Getting started is simple. See the basics below or visit our GitHub for the full guide.</p>
+      
+      <div class="docs-grid" style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        
+        <div class="doc-card glass" style="padding: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: #38bdf8;">1. Define Your Model</h3>
+          <p style="color: #94a3b8; margin-bottom: 1rem; font-size: 0.9rem;">No manual SQL. Use declarative macros to define your Active Record models.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code style="color: #a78bfa;">#[derive(Orm, Clone)]
+#[table("users")]
+pub struct User {
+    pub id: i32,
+    pub name: String,
+    pub email: String,
+}</code></pre>
+        </div>
+
+        <div class="doc-card glass" style="padding: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: #38bdf8;">2. Create a Controller</h3>
+          <p style="color: #94a3b8; margin-bottom: 1rem; font-size: 0.9rem;">Fetch data effortlessly and return JSON or HTML using concise syntax.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code style="color: #34d399;">pub async fn get_users() -> Json&lt;Vec&lt;User&gt;&gt; {
+    let users = User::all().await.unwrap();
+    Json(users)
+}</code></pre>
+        </div>
+
+        <div class="doc-card glass" style="padding: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: #38bdf8;">3. Register the Route</h3>
+          <p style="color: #94a3b8; margin-bottom: 1rem; font-size: 0.9rem;">Bind your controller to an Axum-powered router natively.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code style="color: #fbbf24;">Server::new()
+    .route(get, "/api/users", get_users)
+    .serve()
+    .await;</code></pre>
+        </div>
+
       </div>
     </section>
 

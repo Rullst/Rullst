@@ -7,7 +7,7 @@ async function runTerminalAnimation() {
   if (!terminal) return;
 
   const steps = [
-    { type: 'input', text: 'cargo rullst' },
+    { type: 'input', text: 'cargo rullst new my_startup' },
     { type: 'empty', delay: 200 },
     { type: 'output', text: '📜🦀🌐 Rullst Framework v2.0.5', color: '#10b981', delay: 200 },
     { type: 'output', text: 'The emotional productivity framework for Rust.', delay: 200 },
@@ -26,7 +26,7 @@ async function runTerminalAnimation() {
     { type: 'output', text: '✔ Auth selected: Yes', color: '#3b82f6', delay: 400 },
     { type: 'empty', delay: 200 },
     { type: 'output', text: '🚀 Scaffolding complete in 0.08s!', color: '#10b981', delay: 400 },
-    { type: 'output', text: '  cd my_app', delay: 100 },
+    { type: 'output', text: '  cd my_startup', delay: 100 },
     { type: 'output', text: '  cargo rullst dev', delay: 100 }
   ];
 

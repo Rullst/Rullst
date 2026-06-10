@@ -320,9 +320,38 @@ body {
 /* Footer */
 .footer {
   text-align: center;
-  padding: 3rem;
-  border-top: 1px solid var(--glass-border);
-  color: var(--text-muted);
+  padding: 4rem 1rem;
+  color: var(--text-light);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  .nav-links {
+    display: none; /* simple hidden on mobile for now, can add hamburger later */
+  }
+  .hero-cta {
+    flex-direction: column;
+    align-items: center;
+  }
+  .bar-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+  .bar-text {
+    text-align: left;
+    margin-top: 4px;
+  }
+  .bar-track {
+    width: 100%;
+  }
+  .docs-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .text-emerald {
   color: var(--primary);
