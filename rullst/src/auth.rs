@@ -220,9 +220,7 @@ mod tests {
         let k = vec![42u8; 36];
         let token = encrypt_session(user_id, &k).expect("Failed to encrypt session");
         let decrypted = decrypt_session(&token, &k).expect("Failed to decrypt session");
-        assert_eq!(
-            user_id, decrypted,
-        );
+        assert_eq!(user_id, decrypted,);
     }
 
     #[test]
@@ -235,7 +233,7 @@ mod tests {
     #[test]
     fn test_password_verification_error_paths() {
         assert!(!verify_password("pass", "invalid_hash_format"));
-        
+
         let p = "pass";
         let hash = hash_password(p).expect("Failed to hash password");
         assert!(!verify_password("wrong", &hash));
@@ -243,7 +241,9 @@ mod tests {
 
     #[test]
     fn test_make_login_logout_cookie() {
-        unsafe { std::env::set_var("APP_KEY", "test_key_for_cookie_1234567890"); }
+        unsafe {
+            std::env::set_var("APP_KEY", "test_key_for_cookie_1234567890");
+        }
         let login_cookie = make_login_cookie(42).expect("Failed to make login cookie");
         assert!(login_cookie.starts_with("rullst_session="));
         assert!(login_cookie.contains("HttpOnly"));

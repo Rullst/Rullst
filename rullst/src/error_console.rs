@@ -944,7 +944,7 @@ mod tests {
         let res = find_source_location(bt);
         assert_eq!(res, None);
     }
-    
+
     #[test]
     fn test_extract_source_context_bounds() {
         use std::io::Write;
@@ -969,7 +969,7 @@ mod tests {
         assert_eq!(ctx.len(), 2);
         assert_eq!(ctx[1].1, "line 3");
         assert!(ctx[1].2);
-        
+
         let _ = std::fs::remove_file(test_file);
     }
 }

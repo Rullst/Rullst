@@ -17,7 +17,7 @@ pub fn has_binary(name: &str) -> bool {
 
 fn generate_secure_app_key() -> String {
     use rand::Rng;
-    
+
     let mut rng = rand::thread_rng();
     let mut key = String::new();
     let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

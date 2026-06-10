@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://venelouis.github.io/Rullst/Rullst.png" alt="Rullst Logo" width="300">
+  <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
 <h1 align="center">Rullst 📜🦀🌐🚀</h1>
