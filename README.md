@@ -12,7 +12,7 @@
     <img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Discord">
   </a>
   <a href="https://venelouis.github.io/Rullst/">
-    <img src="https://img.shields.io/badge/Website-Official%20Site-blue?logo=vercel&logoColor=white&style=for-the-badge" alt="Official Website">
+    <img src="https://img.shields.io/badge/Website-Official%20Site-blue?logo=github&logoColor=white&style=for-the-badge" alt="Official Website">
   </a>
 </p>
 

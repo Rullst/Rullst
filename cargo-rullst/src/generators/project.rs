@@ -664,7 +664,7 @@ RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && carg
 
 # Build the actual application
 COPY . .
-RUN find src -type f -name "*.rs" -exec touch {} + && cargo build --release
+RUN find src -type f -name "*.rs" -exec touch {{}} + && cargo build --release
 
 # ── Stage 2: Runtime ─────────────────────────────────────────
 FROM docker.io/library/debian:bookworm-slim
