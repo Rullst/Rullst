@@ -65,6 +65,18 @@ impl Router {
         }
     }
 
+    /// Merges a raw [`axum::Router`] into this router at the root.
+    ///
+    /// Equivalent to `Router::merge` on the inner `axum::Router`. This is the
+    /// recommended way to compose a fully-built Axum router (for example, one
+    /// produced by `utoipa_axum::OpenApiRouter::split_for_parts`) into a Rullst
+    /// `Router`, since axum 0.8+ no longer allows nesting at the root path.
+    pub fn merge_axum(self, router: AxumRouter) -> Self {
+        Router {
+            inner: self.inner.merge(router),
+        }
+    }
+
     /// Applies a Tower middleware layer to all routes in this router.
     /// The layer is cloned once per request and must be `Send + Sync + 'static`.
     pub fn layer<L>(self, layer: L) -> Self
