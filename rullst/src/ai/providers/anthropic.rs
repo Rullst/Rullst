@@ -98,3 +98,15 @@ impl AiProvider for AnthropicProvider {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_anthropic_provider_builder() {
+        let provider = AnthropicProvider::new("test-key").with_model("claude-test");
+        assert_eq!(provider.api_key, "test-key");
+        assert_eq!(provider.model, "claude-test");
+    }
+}

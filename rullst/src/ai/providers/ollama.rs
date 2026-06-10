@@ -110,3 +110,17 @@ impl AiProvider for OllamaProvider {
         Ok(embedding)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ollama_provider_builder() {
+        let provider = OllamaProvider::new("http://localhost:11434/", "llama-test")
+            .with_embedding_model("nomic-test");
+        assert_eq!(provider.host, "http://localhost:11434");
+        assert_eq!(provider.model, "llama-test");
+        assert_eq!(provider.embedding_model, "nomic-test");
+    }
+}

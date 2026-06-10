@@ -619,3 +619,50 @@ impl PasskeyAuth {
         Ok(passkey)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_passkey_config_builder() {
+        let config = PasskeyConfig::new("RP", "rp.com", "https://rp.com")
+            .with_rp_name("New RP")
+            .with_rp_id("new.rp.com");
+
+        assert_eq!(config.rp_name, "New RP");
+        assert_eq!(config.rp_id, "new.rp.com");
+        assert_eq!(config.rp_origin, "https://rp.com");
+    }
+
+    #[test]
+    fn test_passkey_auth_start_register() {
+        let config = PasskeyConfig::new("App", "app.com", "https://app.com");
+        let auth = PasskeyAuth::new(&config).unwrap();
+
+        let (response, challenge) = auth.start_register(1, "alice", "Alice Smith").unwrap();
+
+        assert_eq!(response.public_key.user.name, "alice");
+        assert_eq!(response.public_key.user.display_name, "Alice Smith");
+        assert_eq!(response.public_key.rp.id, "app.com");
+        assert!(!challenge.is_empty());
+    }
+
+    #[test]
+    fn test_passkey_auth_start_authenticate() {
+        let config = PasskeyConfig::new("App", "app.com", "https://app.com");
+        let auth = PasskeyAuth::new(&config).unwrap();
+
+        let passkey = Passkey {
+            credential_id: vec![1, 2, 3],
+            public_key: vec![4, 5, 6],
+            sign_count: 0,
+        };
+
+        let (response, challenge) = auth.start_authenticate(&[passkey]).unwrap();
+
+        assert_eq!(response.public_key.rp_id, "app.com");
+        assert_eq!(response.public_key.allow_credentials.len(), 1);
+        assert!(!challenge.is_empty());
+    }
+}

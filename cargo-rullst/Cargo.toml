@@ -1,6 +1,6 @@
 [package]
 name = "cargo-rullst"
-version = "2.0.5"
+version = "2.0.6"
 edition = "2024"
 description = "⌨️ $ The official command-line interface (CLI) for managing Rullst applications.📜🦀🌐"
 license = "MIT"
@@ -20,7 +20,7 @@ clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
 chrono = "0.4.45"
 dialoguer = "0.12.0"
-regex = "1.12.3"
+regex = "1.12.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 walkdir = "2.5.0"
@@ -30,4 +30,4 @@ tower-http = { version = "0.6.11", features = ["fs"] }
 brotli = "8.0.3"
 zstd = "0.13.3"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "blocking"] }
-rand = "0.8"
+rand = "0.10.1"

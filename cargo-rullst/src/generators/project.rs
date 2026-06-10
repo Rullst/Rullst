@@ -16,13 +16,12 @@ pub fn has_binary(name: &str) -> bool {
 }
 
 fn generate_secure_app_key() -> String {
-    use rand::Rng;
-
-    let mut rng = rand::thread_rng();
+    use rand::RngExt;
+    let mut rng = rand::rng();
     let mut key = String::new();
     let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     for _ in 0..32 {
-        let idx = rng.gen_range(0..chars.len());
+        let idx = rng.random_range(0..chars.len());
         key.push(chars[idx] as char);
     }
     key
@@ -268,7 +267,7 @@ axum = "0.8"
 
     if db_needed {
         cargo_toml.push_str(&format!(
-            r#"rullst-orm = "4.0.4"
+            r#"rullst-orm = "5.0.0"
 sqlx = {{ version = "0.9.0", {sqlx_features} }}
 "#,
             sqlx_features = sqlx_features

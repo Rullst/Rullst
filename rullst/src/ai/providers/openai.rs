@@ -115,3 +115,18 @@ impl AiProvider for OpenAiProvider {
         Ok(embedding)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_openai_provider_builder() {
+        let provider = OpenAiProvider::new("test-key")
+            .with_model("gpt-4")
+            .with_embedding_model("text-emb");
+        assert_eq!(provider.api_key, "test-key");
+        assert_eq!(provider.model, "gpt-4");
+        assert_eq!(provider.embedding_model, "text-emb");
+    }
+}

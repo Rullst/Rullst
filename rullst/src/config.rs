@@ -131,6 +131,13 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn test_global_config_access() {
+        let config = RullstConfig::global();
+        assert_eq!(config.security.csrf_same_site, "Lax");
+        assert_eq!(config.app.env, None);
+    }
+
+    #[tokio::test]
     async fn test_load_config_from_file() {
         let temp_dir = "test_config_dir";
         let _ = std::fs::create_dir_all(temp_dir);

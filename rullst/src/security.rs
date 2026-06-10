@@ -467,4 +467,13 @@ mod tests {
         assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(headers.get("X-XSS-Protection").unwrap(), "1; mode=block");
     }
+
+    #[test]
+    fn test_generate_csrf_token() {
+        let token1 = generate_csrf_token();
+        let token2 = generate_csrf_token();
+        assert_eq!(token1.len(), 32);
+        assert_eq!(token2.len(), 32);
+        assert_ne!(token1, token2);
+    }
 }

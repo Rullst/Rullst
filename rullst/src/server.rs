@@ -735,4 +735,19 @@ mod tests {
 
         assert!(server.scheduler.is_some());
     }
+
+    #[tokio::test]
+    async fn test_server_resilience_attach() {
+        let router = Router::new();
+        let shield = crate::resilience::TrafficShield::new(
+            crate::resilience::TrafficShieldConfig::new().with_db_probe(false),
+        );
+        let limiter = crate::resilience::RateLimiter::new(
+            crate::resilience::RateLimitConfig::per_second(10.0),
+        );
+        let server = Server::new(router).shield(shield).rate_limit(limiter);
+
+        assert!(server.shield.is_some());
+        assert!(server.limiter.is_some());
+    }
 }

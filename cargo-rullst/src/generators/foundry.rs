@@ -321,7 +321,7 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
             args.push(ssh_key_expanded.clone());
         }
         args.push("-o".to_string());
-        args.push("StrictHostKeyChecking=no".to_string());
+        args.push("StrictHostKeyChecking=accept-new".to_string());
         args.push(format!("{}@{}", user, host));
         args
     };
@@ -460,7 +460,7 @@ echo "✅ Server environment ready.""#
         scp_args.push(ssh_key_expanded.clone());
     }
     scp_args.push("-o".to_string());
-    scp_args.push("StrictHostKeyChecking=no".to_string());
+    scp_args.push("StrictHostKeyChecking=accept-new".to_string());
     scp_args.push(local_bin.clone());
     scp_args.push(format!("{}@{}:/app/bin/{}", user, host, bin_name));
 

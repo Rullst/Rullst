@@ -146,3 +146,18 @@ impl AiProvider for GeminiProvider {
         Ok(embedding)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gemini_provider_builder() {
+        let provider = GeminiProvider::new("test-key")
+            .with_model("gemini-test")
+            .with_embedding_model("text-emb");
+        assert_eq!(provider.api_key, "test-key");
+        assert_eq!(provider.model, "gemini-test");
+        assert_eq!(provider.embedding_model, "text-emb");
+    }
+}

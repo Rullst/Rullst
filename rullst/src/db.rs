@@ -130,4 +130,12 @@ mod tests {
         assert_eq!(config.sync_interval_secs, 20);
         assert_eq!(config.auth_token, Some("secret".to_string()));
     }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn test_safe_pool_uninitialized() {
+        // Assuming Orm isn't initialized in this isolated test, safe_pool should safely return None
+        let pool = safe_pool();
+        assert!(pool.is_none());
+    }
 }

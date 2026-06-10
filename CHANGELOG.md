@@ -4,6 +4,23 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-06-10 🚀
+
+### Performance & Stability
+- **Uptime Blueprint Window Functions**: Replaced an N+1 query vulnerability in the Uptime Monitor dashboard (`cargo-rullst/src/blueprints/uptime.rs`) by using SQLite Window Functions (`ROW_NUMBER() OVER`), massively improving dashboard load times.
+- **ORM Dependency Bump**: Upgraded `rullst-orm` to `5.0.0` for latest database performance and macro improvements.
+
+### Security & Testing
+- **Foundry SCP Hardening**: Fixed a potential MITM vulnerability in `cargo-rullst`'s Web3 deployment scaffolding by replacing `StrictHostKeyChecking=no` with `accept-new`.
+- **Passkey WebAuthn Tests**: Added unit testing coverage to the `rullst/src/auth/passkey.rs` manager to validate credential start/finish options.
+- **Server Resilience Tests**: Added builder validation tests for `Server::shield` and `Server::rate_limit` modifiers.
+- **AI Providers Tests**: Added API key and model builder test validations to OpenAI, Gemini, Anthropic, and Ollama core providers.
+- **Wasm & Auth Test Coverages**: Expanded testing suites into `client.rs` (wasm_bindgen support), `config.rs`, `security.rs` (CSRF), and `resilience.rs`.
+
+### Maintenance & Dependencies
+- **Rand 0.10.1 Compatibility**: Upgraded `rand` dependency to `0.10.1` and migrated the internal `cargo-rullst` app key generator from `thread_rng().gen_range()` to the new `rng().random_range()` API.
+- **Root Dependencies Update**: Safely bumped patch versions for multiple core dependencies (`regex` to 1.12.4, `uuid` to 1.23.3, `wasm-bindgen` to 0.2.123, `rullst-connect` to 7.0.2) following a pristine security audit with zero CVEs.
+
 ## [2.0.5] - 2026-06-10 🛠️
 
 ### Performance & Stability

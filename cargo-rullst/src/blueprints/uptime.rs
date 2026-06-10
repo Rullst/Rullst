@@ -282,19 +282,28 @@ pub async fn index() -> impl IntoResponse {
     // Get all monitors
     let monitors = Monitor::all().await.unwrap_or_default();
     
-    // Package monitors with their last 20 heartbeats
+    // Use a Window Function to fetch the last 20 heartbeats for ALL monitors in a single query (solves N+1)
+    let history_flat: Vec<Heartbeat> = rullst::db::sqlx::query_as(
+        "SELECT id, monitor_id, status_code, response_time_ms, is_up, error_message 
+         FROM (
+             SELECT *, ROW_NUMBER() OVER(PARTITION BY monitor_id ORDER BY id DESC) as rn 
+             FROM heartbeats
+         ) WHERE rn <= 20"
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Package monitors with their heartbeats
     let mut monitors_with_history = Vec::new();
     for monitor in monitors {
-        let history: Vec<Heartbeat> = rullst::db::sqlx::query_as(
-            "SELECT * FROM heartbeats WHERE monitor_id = $1 ORDER BY id DESC LIMIT 20"
-        )
-        .bind(monitor.id)
-        .fetch_all(pool)
-        .await
-        .unwrap_or_default();
+        let mut history: Vec<Heartbeat> = history_flat
+            .iter()
+            .filter(|h| h.monitor_id == monitor.id)
+            .cloned()
+            .collect();
         
         // Reverse so chronological order is left-to-right
-        let mut history = history;
         history.reverse();
         
         monitors_with_history.push((monitor, history));

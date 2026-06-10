@@ -10,3 +10,18 @@ pub fn rullst_client_init() {
     console_error_panic_hook::set_once();
     web_sys::console::log_1(&"Rullst Wasm Islands client initialized successfully!".into());
 }
+
+#[cfg(test)]
+#[cfg(target_arch = "wasm32")]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn test_client_init() {
+        // Just calling it should not panic
+        rullst_client_init();
+    }
+}

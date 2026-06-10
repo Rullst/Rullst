@@ -346,3 +346,35 @@ pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Nex
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use axum::http::Request;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    #[test]
+    fn test_default_key_extractor() {
+        let req1 = Request::builder()
+            .header("x-forwarded-for", "192.168.1.1, 10.0.0.1")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        assert_eq!(default_key_extractor(&req1), "192.168.1.1");
+
+        let req2 = Request::builder()
+            .header("x-real-ip", "10.0.0.2")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        assert_eq!(default_key_extractor(&req2), "10.0.0.2");
+
+        let mut req3 = Request::builder().body(axum::body::Body::empty()).unwrap();
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        req3.extensions_mut()
+            .insert(axum::extract::ConnectInfo(socket));
+        assert_eq!(default_key_extractor(&req3), "127.0.0.1");
+
+        let req4 = Request::builder().body(axum::body::Body::empty()).unwrap();
+        assert_eq!(default_key_extractor(&req4), "anonymous");
+    }
+}
