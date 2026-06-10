@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **ORM Dependency Bump**: Upgraded `rullst-orm` to `5.0.0` for latest database performance and macro improvements.
 
 ### Security & Testing
+- **Hot-Reload Isolation**: Hard-disabled dynamic library (`.dll`/`.so`) hot-reloading router implementations (`Server::new_hot`) when compiled in `--release` profiles, aggressively mitigating Remote Code Execution (RCE) via `libloading` in production.
 - **Foundry SCP Hardening**: Fixed a potential MITM vulnerability in `cargo-rullst`'s Web3 deployment scaffolding by replacing `StrictHostKeyChecking=no` with `accept-new`.
 - **Passkey WebAuthn Tests**: Added unit testing coverage to the `rullst/src/auth/passkey.rs` manager to validate credential start/finish options.
 - **Server Resilience Tests**: Added builder validation tests for `Server::shield` and `Server::rate_limit` modifiers.

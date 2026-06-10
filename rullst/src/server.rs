@@ -54,6 +54,10 @@ impl Server {
     /// a compiled `cdylib` dynamic library at the given `lib_path`.
     /// The background file-watcher recompiles and hot-swaps the router on source changes.
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
+        if !cfg!(debug_assertions) {
+            panic!("CRITICAL SECURITY: Hot-Reloading (new_hot) is strictly disabled in release mode to prevent RCE vulnerabilities via dynamic library injection.");
+        }
+        
         Server {
             router: Router::new(),
             db_url: None,
@@ -171,6 +175,10 @@ impl Server {
         }
 
         if let Some(lib_path) = self.hot_reload_lib {
+            if !cfg!(debug_assertions) {
+                panic!("CRITICAL SECURITY: Hot-Reloading is strictly disabled in release mode!");
+            }
+
             // --- Hot Reloading Mode ---
             println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
 
