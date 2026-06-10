@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-09
 **Auditor:** Antigravity (Google DeepMind)
-**Audited Version:** `rullst 2.0.3` · `rullst-macros 2.0.3` · `cargo-rullst 2.0.3`
+**Audited Version:** `rullst 2.0.7` · `rullst-macros 2.0.7` · `cargo-rullst 2.0.7`
 **Scanned Dependencies:** 447 crates (via `cargo audit`)
 **Methodology:** Full source-code inspection of all production modules (`rullst/src/*.rs`, `rullst/src/auth/`, `rullst-macros/src/`), systematic grep for `unwrap`, `expect`, `panic!`, and `unsafe` in production paths, tooling validation via `cargo audit` and `cargo clippy --workspace --all-targets --all-features`.
 **Status:** ✅ All issues identified in this audit have been resolved. `cargo clippy --workspace --all-targets --all-features -- -D warnings` exits with 0 errors, 0 warnings.
@@ -28,7 +28,7 @@ All identified issues (including panics, lints, and documentation gaps) have bee
 |----|-------|---------|------|--------|
 | RUSTSEC-2026-0173 | `proc-macro-error2` | 2.0.1 | Unmaintained | **Monitored** — compile-time only; zero runtime risk |
 
-`proc-macro-error2` is pulled by `validator_derive 0.20.0 → validator 0.20.0 → rullst 2.0.3`. No exploitable CVE is associated with this advisory. Track for a future `validator` upgrade.
+`proc-macro-error2` is pulled by `validator_derive 0.20.0 → validator 0.20.0 → rullst 2.0.7`. No exploitable CVE is associated with this advisory. Track for a future `validator` upgrade.
 
 ---
 

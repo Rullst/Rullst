@@ -4,7 +4,7 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.6] - 2026-06-10 🚀
+## [2.0.7] - 2026-06-10 🚀
 
 ### Performance & Stability
 - **Uptime Blueprint Window Functions**: Replaced an N+1 query vulnerability in the Uptime Monitor dashboard (`cargo-rullst/src/blueprints/uptime.rs`) by using SQLite Window Functions (`ROW_NUMBER() OVER`), massively improving dashboard load times.
