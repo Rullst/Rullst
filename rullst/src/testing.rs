@@ -225,9 +225,10 @@ impl TestResponse {
             .iter()
             .find_map(|value| {
                 let cookie_str = value.to_str().ok()?;
-                let cookie = cookie::Cookie::parse(cookie_str).ok()?;
-                if cookie.name() == name {
-                    Some(cookie.value().to_string())
+                let main_part = cookie_str.split(';').next()?.trim();
+                let (cookie_name, cookie_val) = main_part.split_once('=')?;
+                if cookie_name.trim() == name {
+                    Some(cookie_val.trim().to_string())
                 } else {
                     None
                 }
