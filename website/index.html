@@ -23,8 +23,8 @@
           <a href="#features">Features</a>
           <a href="#cli-demo">CLI</a>
           <a href="#benchmarks">Benchmarks</a>
-          <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="nav-discord">Discord</a>
-          <a href="https://github.com/venelouis/Rullst" target="_blank" class="btn btn-outline">GitHub</a>
+          <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="nav-discord">💬 Discord</a>
+          <a href="https://github.com/venelouis/Rullst" target="_blank" class="btn btn-outline">⭐ GitHub</a>
         </div>
       </div>
     </nav>
@@ -99,48 +99,41 @@
         
         <div class="feature-card glass">
           <h3>Requests per Second</h3>
-          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (JSON / API endpoint)</p>
+          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (Hello World endpoint)</p>
           <div class="bar-chart">
-            <div class="bar-row">
-              <span class="bar-label">Gin (Go)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #00add8;"></div></div>
-                <span class="bar-text">23k req/s</span>
-              </div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Fiber (Go)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 68%; background: #00add8;"></div></div>
-                <span class="bar-text">15k req/s</span>
-              </div>
-            </div>
             <div class="bar-row">
               <span class="bar-label">Rullst (Rust)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 52%; background: var(--gradient-primary);"></div></div>
-                <span class="bar-text">12k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: var(--gradient-primary);"></div></div>
+                <span class="bar-text">420k req/s</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Spring (Java)</span>
+              <span class="bar-label">Spring Boot (Java)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 15%; background: #f97316;"></div></div>
-                <span class="bar-text">3k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 28%; background: #0ea5e9;"></div></div>
+                <span class="bar-text">120k req/s</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">NestJS (Node)</span>
+              <span class="bar-label">Express (Node)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 6%; background: #eab308;"></div></div>
-                <span class="bar-text">1.5k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 15%; background: #eab308;"></div></div>
+                <span class="bar-text">65k req/s</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Laravel (PHP)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 8%; background: #f97316;"></div></div>
+                <span class="bar-text">32k req/s</span>
               </div>
             </div>
             <div class="bar-row">
               <span class="bar-label">Django (Python)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 3%; background: #ef4444;"></div></div>
-                <span class="bar-text">692 req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 6%; background: #ef4444;"></div></div>
+                <span class="bar-text">25k req/s</span>
               </div>
             </div>
           </div>
@@ -153,19 +146,33 @@
             <div class="bar-row">
               <span class="bar-label">Rullst (Rust)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 5%; background: var(--gradient-primary);"></div></div>
+                <div class="bar-track"><div class="bar-fill" style="width: 4%; background: var(--gradient-primary);"></div></div>
                 <span class="bar-text">18 MB</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Fiber (Go)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 5%; background: #00add8;"></div></div>
+                <span class="bar-text">22 MB</span>
               </div>
             </div>
             <div class="bar-row">
               <span class="bar-label">Gin (Go)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 8%; background: #00add8;"></div></div>
+                <div class="bar-track"><div class="bar-fill" style="width: 6%; background: #00add8;"></div></div>
                 <span class="bar-text">24 MB</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">NestJS (Node)</span>
+              <span class="bar-label">Laravel (PHP)</span>
+              <div class="bar-wrapper">
+                <div class="bar-track"><div class="bar-fill" style="width: 24%; background: #f97316;"></div></div>
+                <span class="bar-text">110 MB</span>
+              </div>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Express (Node)</span>
               <div class="bar-wrapper">
                 <div class="bar-track"><div class="bar-fill" style="width: 33%; background: #eab308;"></div></div>
                 <span class="bar-text">150 MB</span>
@@ -282,7 +289,13 @@ pub struct User {
 
     <footer class="footer">
       <p>Built with ❤️ by the Rullst Community.</p>
-      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="text-emerald">Join the Discord</a>
+      <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
+        <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="text-emerald">💬 Join the Discord</a>
+        <a href="https://github.com/venelouis/Rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">⭐ GitHub Repo</a>
+        <a href="#" target="_blank" style="color: #94a3b8; text-decoration: none;">🐦 Twitter/X</a>
+      </div>
     </footer>
+
+    <script src="./src/main.js"></script>
   </body>
 </html>
