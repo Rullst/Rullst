@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.95-slim-bookworm AS builder
+FROM rust:1.96-slim-bookworm AS builder
 WORKDIR /usr/src/rullst
 
 # Copy workspace files required for build

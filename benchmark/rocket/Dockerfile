@@ -1,4 +1,4 @@
-FROM rust:1.95-slim-bookworm AS builder
+FROM rust:1.96-slim-bookworm AS builder
 WORKDIR /usr/src/rocket
 COPY Cargo.toml ./
 COPY src ./src

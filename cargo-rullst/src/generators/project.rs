@@ -299,14 +299,14 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 
-# ⚡ Rullst God-Mode: Compilação Incremental Instantânea (<100ms)
-# Se você deseja velocidade de desenvolvimento próxima de linguagens interpretadas,
-# você pode usar o backend Cranelift oficial do compilador Rust.
+# ⚡ Rullst God-Mode: Instant Incremental Compilation (<100ms)
+# If you want development speed close to interpreted languages,
+# you can use the official Cranelift backend for the Rust compiler.
 # 
-# Requisitos:
-#   1. Instalar toolchain nightly: rustup toolchain install nightly
-#   2. Instalar o componente: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
-#   3. Ative descomentando o bloco abaixo e rodando o projeto com a toolchain nightly (ex: cargo +nightly run)
+# Requirements:
+#   1. Install nightly toolchain: rustup toolchain install nightly
+#   2. Install the component: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+#   3. Enable by uncommenting the block below and running the project with the nightly toolchain (e.g.: cargo +nightly run)
 # 
 # [profile.dev]
 # codegen-backend = "cranelift"
@@ -327,8 +327,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
     let mut config_toml = String::new();
     config_toml.push_str(
         r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
-# Este arquivo configura linkers ultra-rápidos para desenvolvimento local.
-# O Rullst detectou seu ambiente e configurou as opções adequadas.
+# This file configures ultra-fast linkers for local development.
+# Rullst has detected your environment and configured the appropriate options.
 
 "#,
     );
@@ -343,7 +343,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         );
     } else {
         config_toml.push_str(
-            r#"# Para ativar no Windows (Instale LLVM com 'winget install LLVM.LLVM' e descomente abaixo):
+            r#"# To enable on Windows (Install LLVM with 'winget install LLVM.LLVM' and uncomment below):
 # [target.x86_64-pc-windows-msvc]
 # rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
@@ -368,7 +368,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         );
     } else {
         config_toml.push_str(
-            r#"# Para ativar no Linux (Instale o mold com seu gerenciador de pacotes e descomente abaixo):
+            r#"# To enable on Linux (Install mold with your package manager and uncomment below):
 # [target.x86_64-unknown-linux-gnu]
 # rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
@@ -388,7 +388,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         );
     } else {
         config_toml.push_str(
-            r#"# Para ativar no macOS (Instale llvm/lld via brew e descomente abaixo):
+            r#"# To enable on macOS (Install llvm/lld via brew and uncomment below):
 # [target.x86_64-apple-darwin]
 # rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 # [target.aarch64-apple-darwin]
@@ -649,7 +649,7 @@ pub fn generate_docker_files(
 # ══════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ─────────────────────────────────────────
-FROM rust:1.94-slim-bookworm AS builder
+FROM rust:1.96-slim-bookworm AS builder
 WORKDIR /app
 
 # Install system dependencies for SQLite/Postgres/MySQL linking
