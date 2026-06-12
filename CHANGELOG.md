@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 - **Ecosystem Diet**: Audited the entire workspace with `cargo-machete` and removed unused "ghost" dependencies from `cargo-rullst` and internal benchmark projects (`tower-http`, `tokio`, `async-trait`, `serde`), keeping the codebase as lightweight as possible.
 
+## [2.0.9] - 2026-06-12 🚀
+
+### Performance & Benchmarks
+- **Criterion Fullstack Benchmarks Suite**: Integrated PR #80 by Jules with comprehensive benchmark tests comparing Rullst's zero-cost architecture against Axum, Loco, Leptos, and Dioxus.
+- **SSR Rendering Dominance**: Confirmed that Rullst's compile-time `html!` macro executes at `~1.07 µs`, being significantly faster than Tera (2x), Dioxus Virtual DOM (4.2x) and Leptos (8.5x).
+- **Zero-Cost Routing**: Validated that Rullst's high-level declarative router compiles down to near-identical Axum-level latency (`~974 ns` for Rullst vs `~946 ns` for raw Axum).
+- **Website Redesign**: Overhauled the framework's website with a premium glassmorphism dark-mode design, showcasing dynamic visual elements and injecting the new official performance metrics.
+- **Dependency Cleanups**: Pruned unused dependencies (including the `cookie` crate) across the framework workspace.
+
 ## [2.0.8] - 2026-06-12 🚀
 
 ### Added

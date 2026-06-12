@@ -3,7 +3,7 @@ members = [
     "rullst",
     "rullst-macros",
     "cargo-rullst",
-    "examples/blog",
+    "examples/blog", "rust-fullstack-benchmarks",
 ]
 exclude = [
     "benchmark/rullst",

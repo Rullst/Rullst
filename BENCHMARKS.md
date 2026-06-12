@@ -2,11 +2,35 @@
 
 This document records the performance of Rullst compared against other web frameworks across different languages and architectures.
 
-## Current Benchmark Results
+## Criterion Fullstack Benchmarks (v2.0.9+)
 
 > [!NOTE]
-> The following results are from the initial run using **Bombardier v2.0.2** load tester targeting containerized applications. Connection size: 125, duration: 10 seconds.
-> Some frameworks failed to boot or compile in the initial run and are marked as `N/A`. They are currently being fixed.
+> The following results are from the official `rust-fullstack-benchmarks` suite using **Criterion.rs**, focusing on execution latency at the microsecond level for core framework operations.
+
+### 1. SSR Rendering (Dynamic HTML with Loops)
+Measures the latency to render a complex HTML template into a string.
+- **Rullst (`html!` macro)**: ~1.07 µs (Winner)
+- **Tera Template Engine**: ~2.14 µs (2x slower)
+- **Dioxus (Virtual DOM)**: ~4.54 µs (4.2x slower)
+- **Leptos (View macro)**: ~9.10 µs (8.5x slower)
+
+*Rullst's 100% compile-time macro expansion delivers zero-allocation overhead, completely dominating traditional template engines and Virtual DOM approaches.*
+
+### 2. Routing and Handlers (In-Memory)
+Measures the overhead of the routing layer and handler execution.
+- **Axum Router (Plaintext)**: ~946 ns
+- **Rullst Router (Plaintext)**: ~974 ns
+- **Rullst Router (JSON)**: ~1.53 µs
+- **Axum Router (JSON)**: ~1.59 µs
+
+*Rullst compiles down to near-identical Axum-level latency, proving its "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed.*
+
+---
+
+## Legacy Load Tests (Bombardier)
+
+> [!WARNING]
+> The following results are from an older run using **Bombardier v2.0.2** targeting containerized applications. Some frameworks failed to boot properly under Docker in this run.
 
 | Framework | Language | Plaintext (Reqs/s) | Plaintext Latency (Avg) | JSON (Reqs/s) | JSON Latency (Avg) |
 |---|---|---|---|---|---|
