@@ -23,7 +23,7 @@ pub struct HtmlAttribute {
 
 pub enum HtmlAttrValue {
     Static(LitStr),
-    Dynamic(Expr),
+    Dynamic(Box<Expr>),
 }
 
 impl Parse for HtmlNode {
@@ -111,7 +111,7 @@ impl Parse for HtmlAttribute {
             let content;
             syn::braced!(content in input);
             let expr = content.parse::<Expr>()?;
-            HtmlAttrValue::Dynamic(expr)
+            HtmlAttrValue::Dynamic(Box::new(expr))
         } else {
             let lit = input.parse::<LitStr>()?;
             HtmlAttrValue::Static(lit)
