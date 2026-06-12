@@ -22,6 +22,13 @@
 
 ---
 
+### ⚡ Unmatched Performance
+
+Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed. In our official [Criterion micro-benchmarks](BENCHMARKS.md):
+
+- **SSR Rendering**: `~1.07 µs` (4.2x faster than Dioxus, 8.5x faster than Leptos).
+- **Routing**: `~974 ns` (Identical latency to raw Axum).
+
 ### ✨ The "Wow" Factor
 
 Rullst brings the ergonomics of Laravel and Ruby on Rails to the blazing-fast, memory-safe world of Rust:
