@@ -35,7 +35,7 @@ tower-service = "0.3.3"
 async-trait = "0.1.89"
 argon2 = "0.5.3"
 cookie = { version = "0.18.1", features = ["percent-encoding"] }
-time = "=0.3.36"
+time = "=0.3.47"
 rand = "0.10.1"
 aes-gcm = "0.10.3"
 sha2 = "0.11.0"
