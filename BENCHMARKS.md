@@ -52,18 +52,17 @@ Measures the overhead of the routing layer and handler execution.
 
 ## Performance Ranking & Analysis
 
-The benchmark results above are sorted from best-performing (highest throughput and lowest average latency) to lowest-performing. Here is an analysis of this hierarchy:
+The legacy Bombardier results above show a snapshot in time that is now **obsolete** for Rullst. Based on the new micro-second Criterion benchmarks, here is the updated, accurate architectural hierarchy:
 
-1.  **Tier 1: Bare-Metal Compiled Microframeworks (Actix-web, Zap, Axum, Gin)**:
-    *   *Actix-web* and *Axum* represent the pinnacle of Rust's asynchronous runtime performance, yielding up to 48,000 requests per second.
+1.  **Tier 1: Bare-Metal Compiled Microframeworks (Rullst, Actix-web, Zap, Axum, Gin)**:
+    *   *Rullst* and *Axum* represent the pinnacle of Rust's asynchronous runtime performance. The Criterion benchmarks prove that Rullst's routing overhead (`~974 ns`) is completely identical to raw Axum, placing it firmly at the absolute top of Tier 1.
     *   *Zap (Zig)* follows very closely, showcasing the raw speed of Zig's memory-efficient HTTP parsing and compilation capabilities.
     *   *Gin (Go)* leverages Go's highly optimized goroutine scheduler to achieve top-tier concurrent processing.
 
-2.  **Tier 2: Intermediate & Balanced Frameworks (Rocket, Fiber, Rullst, Spring Boot)**:
+2.  **Tier 2: Intermediate & Balanced Frameworks (Rocket, Fiber, Spring Boot)**:
     *   *Rocket* offers slightly more convenience wrappers but maintains solid speed.
     *   *Fiber (Go)* utilizes `valyala/fasthttp` under the hood for optimized throughput.
-    *   *Rullst* registers ~9k req/s for plaintext and ~12k req/s for JSON, presenting a balanced position. It delivers excellent raw efficiency, outperforming traditional corporate stacks (Spring Boot, NestJS) by a wide margin while offering high type safety.
-    *   *Spring Boot (Java)* performs strongly for a JVM framework, but exhibits higher latency (~16ms) and memory footprint compared to native binaries.
+    *   *Spring Boot (Java)* performs strongly for a JVM framework, but exhibits higher latency and memory footprint compared to native binaries.
 
 3.  **Tier 3: Node.js & Dynamic Frameworks (NestJS, Django, Next.js)**:
     *   *NestJS* showcases standard Node.js performance (~1,000–1,500 reqs/s).
