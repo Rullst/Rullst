@@ -335,7 +335,6 @@ dependencies = [
 name = "bench-loco"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "axum",
  "loco-rs",
  "sea-orm-migration",
