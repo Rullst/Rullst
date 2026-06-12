@@ -4,6 +4,18 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - 2026-06-12 🚀
+
+### Added
+- **Axum 0.8 Router Composition**: Added `Router::merge_axum` method in `rullst/src/routing.rs` allowing developers to merge raw `axum::Router` instances (e.g., from `utoipa_axum`) directly into the Rullst router at the root. (PR #78 by @mengyou658).
+
+### Changed
+- **Rust 1.96 Upgrade**: Upgraded all Rullst internal Dockerfile templates (used in `cargo rullst new` with `--docker` and all framework benchmarks) from `1.94`/`1.95` to use the newly released `rust:1.96-slim-bookworm` base image.
+- **CLI Translation**: Translated the remaining Portuguese configuration comments inside the `.cargo/config.toml` linker performance hints scaffolding into English.
+
+### Fixed
+- **Ecosystem Crash Shielding (E0119)**: Pinned the `time` dependency strictly to `0.3.36` inside the framework's core `Cargo.toml`. This explicitly shields all newly scaffolded Rullst applications from a global ecosystem crash caused by `time 0.3.37` which broke the standard `cookie 0.18.1` crate.
+
 ## [2.0.7] - 2026-06-10 🚀
 
 ### Performance & Stability
