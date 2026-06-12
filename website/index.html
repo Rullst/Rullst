@@ -316,8 +316,35 @@ pub struct User {
       <p style="font-size: 0.8rem; color: #64748b; margin-top: 1.5rem;"><a href="/privacy" style="color: #64748b; text-decoration: underline;">Aviso de Privacidade</a></p>
     </footer>
 
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-banner" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; flex-wrap: wrap; gap: 1rem; transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);">
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0; max-width: 800px; line-height: 1.5;">
+        Nós utilizamos cookies e tecnologias semelhantes para garantir que você tenha a melhor experiência na nossa plataforma. Ao continuar navegando, você concorda com o nosso <a href="/privacy" style="color: #38bdf8; text-decoration: underline; font-weight: 500;">Aviso de Privacidade</a>.
+      </p>
+      <button id="accept-cookies" class="btn btn-primary" style="padding: 0.6rem 2rem; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">Entendi e Aceito</button>
+    </div>
+
     <script>
       // We removed main.js because the terminal is now an awesome static ASCII art display.
+
+      // Privacy Consent Banner Logic
+      document.addEventListener("DOMContentLoaded", function() {
+        const banner = document.getElementById('cookie-banner');
+        const acceptBtn = document.getElementById('accept-cookies');
+        
+        if (!localStorage.getItem('rullst_privacy_accepted')) {
+          // Slide in the banner after a short delay
+          setTimeout(() => {
+            banner.style.transform = 'translateY(0)';
+          }, 800);
+        }
+
+        acceptBtn.addEventListener('click', () => {
+          localStorage.setItem('rullst_privacy_accepted', 'true');
+          // Slide out
+          banner.style.transform = 'translateY(100%)';
+        });
+      });
     </script>
   </body>
 </html>
