@@ -1,43 +1,57 @@
-# Relatório de Benchmark: Rullst vs Frameworks Concorrentes (Rust)
+# Benchmark Report: Rullst vs Competitor Frameworks (Rust)
 
-Este relatório detalha a comparação arquitetural e de performance entre o Rullst e outros frameworks full-stack e backend ecossistema Rust, como Loco, Leptos, Dioxus e Axum (como base).
+This report details the architectural and performance comparison between Rullst and other full-stack and backend frameworks in the Rust ecosystem, such as Loco, Leptos, Dioxus, and Axum (as a baseline).
 
-## Escopo do Benchmark
+## Benchmark Scope
 
-O benchmark foi focado em três pilares principais onde a arquitetura dos frameworks interage mais fortemente com a performance pura:
+The benchmark focused on three main pillars where framework architecture interacts most heavily with pure performance:
 
-1. **Server-Side Rendering (SSR):** Geração de HTML no backend para os clientes.
-2. **Roteamento em Memória (Texto Puro):** Custos de roteamento e middlewares para requisições de texto.
-3. **Serialização JSON:** O "feijão com arroz" das APIs para interações com SPAs.
+1. **Server-Side Rendering (SSR):** Generating HTML on the backend for clients.
+2. **In-Memory Routing (Plain Text):** Routing and middleware costs for plain text requests.
+3. **JSON Serialization:** The "bread and butter" of APIs for interacting with SPAs.
 
-## 1. Por que o Rullst Vence no SSR (Server-Side Rendering)?
+## 1. Why Rullst Wins at SSR (Server-Side Rendering)
 
-Ao realizar a renderização Server-Side, o Rullst possui uma vantagem estrutural gigantesca em comparação com os principais concorrentes:
+When performing Server-Side Rendering, Rullst holds a massive structural advantage compared to its main competitors:
 
-* **Contra Dioxus e Leptos:** Esses frameworks nasceram como soluções para interfaces de usuário usando a abordagem de componentes em árvore. Isso exige a construção (mesmo em SSR) de um **Virtual DOM** ou de estruturas de controle no Rust, que posteriormente precisam ser cacheadas, percorridas e serializadas para uma `String`.
-* **Contra Loco (via Tera/Askama):** Loco depende de engines tradicionais de template (como Tera). Templates são arquivos de texto parseados e interpretados em *runtime* (no caso do Tera) ou que geram grande boilerplate de compilação.
-* **A Solução Rullst (`html!` macro):** O Rullst realiza tudo em tempo de compilação sem estruturas intermediárias. A macro `html!` não cria objetos de DOM ou Virtual DOMs; ela simplesmente expande o código em operações diretas de concatenação em um buffer pré-alocado (`String::with_capacity(..)`) injetando variáveis de escopo usando `std::fmt::Write`.
-  * *Resultado:* Zero overhead de runtime. O Rullst vence por evitar alocações repetidas de memória, entregando o HTML gerado mais rápido.
+* **Vs Dioxus and Leptos:** These frameworks were born as UI solutions using a component-tree approach. This requires constructing (even in SSR) a **Virtual DOM** or control structures in Rust, which later need to be cached, traversed, and serialized into a `String`.
+* **Vs Loco (via Tera/Askama):** Loco relies on traditional template engines (like Tera). Templates are text files parsed and interpreted at *runtime* (in Tera's case) or that generate large compilation boilerplate.
+* **The Rullst Solution (`html!` macro):** Rullst does everything at compile-time with no intermediate structures. The `html!` macro does not create DOM objects or Virtual DOMs; it simply expands the code into direct concatenation operations within a pre-allocated buffer (`String::with_capacity(..)`) by injecting scope variables using `std::fmt::Write`.
+  * *Result:* Zero runtime overhead. Rullst wins by avoiding repeated memory allocations, delivering the generated HTML much faster.
 
-## 2. Roteamento (Rullst vs Loco / Axum)
+### SSR Results (Lower is Better)
+- Rullst (`html!` macro): `~1.07 µs`
+- Dioxus (Virtual DOM): `~4.54 µs` (4.2x slower)
+- Leptos (View macro): `~9.10 µs` (8.5x slower)
+- Tera Template: `~2.14 µs` (2x slower)
 
-O roteamento é onde o custo do framework é pago.
+## 2. Routing (Rullst vs Loco / Axum)
 
-* **Loco:** O Loco é focado na produtividade no estilo Rails. No entanto, para oferecer essa experiência MVC robusta, ele embute uma pesada camada de abstração com `Hooks`, middlewares de autenticação, Injeção de Dependências e context structs. Tudo isso roda em cima do Axum.
-* **Axum:** O Axum puro é muito rápido, mas não provê nada fora da caixa. Fica a cargo do desenvolvedor acoplar serializadores, bancos de dados, segurança WAF, etc.
-* **O Ponto Ótimo do Rullst:** O Rullst usa o ecossistema Tower/Axum, assim como o Loco. Contudo, o Rullst gera o seu sistema de roteamento via macros compiladas (`routes!`) e usa "Zero-Cost Abstractions" para compilar handlers. Ele provê a velocidade quase idêntica ao Axum "puro", mas com uma produtividade "Full-Stack". Na camada de resposta JSON, o Rullst expõe os tipos primitivos e os envia no formato serializado sem conversões dinâmicas.
+Routing is where the framework tax is paid.
 
-## 3. Filosofia Full-Stack e o Custo do Virtual DOM
+* **Loco:** Loco is focused on Rails-style productivity. However, to offer this robust MVC experience, it embeds a heavy abstraction layer with `Hooks`, authentication middlewares, Dependency Injection, and context structs. All of this runs on top of Axum.
+* **Axum:** Pure Axum is extremely fast, but provides nothing out of the box. It's up to the developer to wire up serializers, databases, WAF security, etc.
+* **The Rullst Sweet Spot:** Rullst uses the Tower/Axum ecosystem, just like Loco. However, Rullst generates its routing system via compiled macros (`routes!`) and uses "Zero-Cost Abstractions" to compile handlers. It provides nearly identical speed to "pure" Axum but with "Full-Stack" productivity. At the JSON response layer, Rullst exposes primitive types and sends them in serialized format without dynamic conversions.
 
-O que difere o Rullst de frameworks puramente voltados para SPA/WASM (como Leptos e Dioxus) é que ele abraça a filosofia **Server-Driven UI** (frequentemente em conjunto com HTMX e Alpine.js), utilizando as macros compiladas para HTML e a extensão `LiveComponent` para updates reativos via WebSockets.
+### Routing Results (Plain Text)
+- Rullst Router: `~974 ns`
+- Axum Router: `~946 ns`
 
-Neste cenário:
-- A resposta inicial ao cliente tem **zero delay de parsing JavaScript**, renderizando na velocidade de luz comparado a uma arquitetura SSR de Virtual DOM.
-- As abstrações "Zero-Panic" do Rullst significam não apenas previsibilidade de erros, mas compilações altamente otimizadas na remoção de blocos dinâmicos (`unwrap/expect`).
+### Routing Results (JSON)
+- Rullst Router: `~1.53 µs`
+- Axum Router: `~1.59 µs`
 
-## Conclusão
+## 3. Full-Stack Philosophy and the Virtual DOM Cost
 
-O Rullst oferece a performance do C++/Rust (via Axum direto e compilação HTML nativa) empacotado em uma experiência de desenvolvimento similar ao Laravel, Loco ou Rails. Ele vence os demais por:
-1. Eliminar completamente árvores de Virtual DOM durante o SSR.
-2. Evitar engines lentas de Templates processadas em runtime (Tera/Liquid).
-3. Utilizar conciliação zero-cost nos roteadores do Axum com macros que geram as rotas no momento de build do crate.
+What distinguishes Rullst from purely SPA/WASM-focused frameworks (like Leptos and Dioxus) is that it embraces the **Server-Driven UI** philosophy (often in conjunction with HTMX and Alpine.js), utilizing compiled macros for HTML and the `LiveComponent` extension for reactive updates via WebSockets.
+
+In this scenario:
+- The initial response to the client has **zero JavaScript parsing delay**, rendering at lightspeed compared to a Virtual DOM SSR architecture.
+- Rullst's "Zero-Panic" abstractions mean not only error predictability but highly optimized compilations by removing dynamic blocks (`unwrap/expect`).
+
+## Conclusion
+
+Rullst offers C++/Rust performance (via direct Axum and native HTML compilation) packaged in a development experience similar to Laravel, Loco, or Rails. It beats the rest by:
+1. Completely eliminating Virtual DOM trees during SSR.
+2. Avoiding slow template engines processed at runtime (Tera/Liquid).
+3. Utilizing zero-cost routing reconciliation on top of Axum with macros that generate routes at crate build time.

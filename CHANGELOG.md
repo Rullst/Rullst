@@ -4,6 +4,15 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased / 2.0.9] - 2026-06-12 🚀
+
+### Performance & Benchmarks
+- **Criterion Fullstack Benchmarks Suite**: Integrated PR #80 by Jules with comprehensive benchmark tests comparing Rullst's zero-cost architecture against Axum, Loco, Leptos, and Dioxus.
+- **SSR Rendering Dominance**: Confirmed that Rullst's compile-time `html!` macro executes at `~1.07 µs`, being significantly faster than Tera (2x), Dioxus Virtual DOM (4.2x) and Leptos (8.5x).
+- **Zero-Cost Routing**: Validated that Rullst's high-level declarative router compiles down to near-identical Axum-level latency (`~974 ns` for Rullst vs `~946 ns` for raw Axum).
+- **Website Redesign**: Overhauled the framework's website with a premium glassmorphism dark-mode design, showcasing dynamic visual elements and injecting the new official performance metrics.
+- **Dependency Cleanups**: Pruned unused dependencies (including the `cookie` crate) across the framework workspace.
+
 ## [2.0.7] - 2026-06-10 🚀
 
 ### Performance & Stability

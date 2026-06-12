@@ -96,90 +96,64 @@
       <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 700px; margin-inline: auto;">By combining Rust's memory safety, Tokio's async I/O, and Axum's routing, Rullst delivers unparalleled performance without sacrificing developer experience.</p>
       
       <div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
+        
         <div class="feature-card glass">
-          <h3>Requests per Second</h3>
-          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (Hello World endpoint)</p>
+          <h3>SSR Execution Time</h3>
+          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Lower is better (Microseconds per render)</p>
           <div class="bar-chart">
             <div class="bar-row">
-              <span class="bar-label">Rullst (Rust)</span>
+              <span class="bar-label">Rullst (html!)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: var(--gradient-primary);"></div></div>
-                <span class="bar-text">420k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 12%; background: var(--gradient-primary);"></div></div>
+                <span class="bar-text">1.07 µs</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Spring Boot (Java)</span>
+              <span class="bar-label">Tera Template</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 28%; background: #0ea5e9;"></div></div>
-                <span class="bar-text">120k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 24%; background: #f97316;"></div></div>
+                <span class="bar-text">2.14 µs</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Express (Node)</span>
+              <span class="bar-label">Dioxus (VDOM)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 15%; background: #eab308;"></div></div>
-                <span class="bar-text">65k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 50%; background: #0ea5e9;"></div></div>
+                <span class="bar-text">4.54 µs</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Laravel (PHP)</span>
+              <span class="bar-label">Leptos (View)</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 8%; background: #f97316;"></div></div>
-                <span class="bar-text">32k req/s</span>
-              </div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Django (Python)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 6%; background: #ef4444;"></div></div>
-                <span class="bar-text">25k req/s</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #eab308;"></div></div>
+                <span class="bar-text">9.10 µs</span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="feature-card glass">
-          <h3>Memory Footprint</h3>
-          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Lower is better (Idle memory usage)</p>
+          <h3>Routing Overhead (JSON)</h3>
+          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Lower is better (Microseconds per request)</p>
           <div class="bar-chart">
             <div class="bar-row">
-              <span class="bar-label">Rullst (Rust)</span>
+              <span class="bar-label">Rullst Router</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 4%; background: var(--gradient-primary);"></div></div>
-                <span class="bar-text">18 MB</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 96%; background: var(--gradient-primary);"></div></div>
+                <span class="bar-text">1.53 µs</span>
               </div>
             </div>
             <div class="bar-row">
-              <span class="bar-label">Laravel (PHP)</span>
+              <span class="bar-label">Axum Router</span>
               <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 24%; background: #f97316;"></div></div>
-                <span class="bar-text">110 MB</span>
-              </div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Express (Node)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 33%; background: #eab308;"></div></div>
-                <span class="bar-text">150 MB</span>
-              </div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Django (Python)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 40%; background: #ef4444;"></div></div>
-                <span class="bar-text">180 MB</span>
-              </div>
-            </div>
-            <div class="bar-row">
-              <span class="bar-label">Spring Boot (Java)</span>
-              <div class="bar-wrapper">
-                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #0ea5e9;"></div></div>
-                <span class="bar-text">450 MB</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #10b981;"></div></div>
+                <span class="bar-text">1.59 µs</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </section>
     <section id="docs" class="docs-section" style="padding: 6rem 1rem; max-width: 1000px; margin: 0 auto;">
       <h2 class="section-title">Documentation</h2>
       <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem;">Getting started is simple. See the basics below or visit our GitHub for the full guide.</p>
