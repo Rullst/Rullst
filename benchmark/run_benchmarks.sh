@@ -16,16 +16,20 @@ ports=(
   ["fiber"]=3000
   ["django"]=8000
   ["laravel"]=8000
+  ["nextjs"]=3000
+  ["nestjs"]=3000
+  ["zap"]=3000
+  ["springboot"]=8080
+  ["rails"]=3000
 )
 
-frameworks=("rullst" "axum" "actix" "loco" "rocket" "leptos" "gin" "fiber" "django" "laravel")
+frameworks=("rullst" "axum" "actix" "loco" "rocket" "leptos" "gin" "fiber" "django" "laravel" "nextjs" "nestjs" "zap" "springboot" "rails")
 
 echo "=================================================="
-echo "Starting Black-Box HTTP Benchmark Suite (Bombardier v2.0.2)"
+echo "Starting Black-Box HTTP Benchmark Suite (Bombardier v2.0.3)"
 echo "=================================================="
 
 echo "Building bombardier load tester container..."
-docker compose build bombardier
 
 for id in "${frameworks[@]}"; do
     port=${ports[$id]}
@@ -44,10 +48,10 @@ for id in "${frameworks[@]}"; do
     sleep 5
 
     echo "Running Plaintext benchmark (http://$id:$port/)..."
-    docker compose run --rm bombardier -c 125 -d 10s "http://$id:$port/" > "results/${id}_plaintext.txt"
+    bombardier -c 125 -d 10s "http://$id:$port/" > "results/${id}_plaintext.txt"
 
     echo "Running JSON benchmark (http://$id:$port/json)..."
-    docker compose run --rm bombardier -c 125 -d 10s "http://$id:$port/json" > "results/${id}_json.txt"
+    bombardier -c 125 -d 10s "http://$id:$port/json" > "results/${id}_json.txt"
 
     echo "Stopping and cleaning up service $id..."
     docker compose stop $id

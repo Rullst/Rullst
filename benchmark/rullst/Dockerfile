@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.96-slim-bookworm AS builder
+FROM rust:1.85-slim-bookworm AS builder
 WORKDIR /usr/src/rullst
 
 # Copy workspace files required for build
@@ -7,7 +7,6 @@ COPY Cargo.toml Cargo.lock ./
 COPY rullst ./rullst
 COPY rullst-macros ./rullst-macros
 COPY cargo-rullst ./cargo-rullst
-COPY rullst-press ./rullst-press
 COPY examples ./examples
 COPY benchmark/rullst ./benchmark/rullst
 

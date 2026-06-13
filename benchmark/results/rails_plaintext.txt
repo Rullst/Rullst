@@ -1,0 +1,3 @@
+Bombardier load test
+Reqs/sec       1987.65
+Latency        62.88ms
