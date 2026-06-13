@@ -1,3 +1,62 @@
-Bombardier load test
-Reqs/sec       9876.54
-Latency        12.65ms
+﻿Bombarding http://nestjs:3000/ for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec      1084.24     568.47    2428.59
+  Latency      116.34ms    78.70ms   581.90ms
+  HTTP codes:
+    1xx - 0, 2xx - 10921, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:   308.59KB/s

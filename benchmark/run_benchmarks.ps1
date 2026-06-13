@@ -1,66 +1,70 @@
+# PowerShell script to run the multi-language benchmark suite
+# Make sure Docker is running on your machine.
+
 $ErrorActionPreference = "Stop"
 
 # Create results directory
-if (!(Test-Path "results")) {
-    New-Item -ItemType Directory -Path "results" | Out-Null
-}
-
-$ports = @{
-    "rullst" = 3000
-    "axum" = 3000
-    "actix" = 3000
-    "loco" = 3000
-    "rocket" = 8000
-    "leptos" = 3000
-    "gin" = 3000
-    "fiber" = 3000
-    "django" = 8000
-    "laravel" = 8000
-    "nextjs" = 3000
-    "nestjs" = 3000
-    "zap" = 3000
-    "springboot" = 8080
-    "rails" = 3000
-}
+New-Item -ItemType Directory -Force -Path "results" | Out-Null
 
 $frameworks = @(
-    "rullst", "axum", "actix", "loco", "rocket", "leptos", "gin", "fiber", "django", "laravel", "nextjs", "nestjs", "zap", "springboot", "rails"
+    # --- Fast & Ready (Rust/Go/Python/Node/Zig microframeworks) ---
+    @{ id = "axum"; port = 3000 },
+    @{ id = "actix"; port = 3000 },
+    @{ id = "rocket"; port = 8000 },
+    @{ id = "rullst"; port = 3000 },
+    @{ id = "gin"; port = 3000 },
+    @{ id = "fiber"; port = 3000 },
+    @{ id = "django"; port = 8000 },
+    @{ id = "nextjs"; port = 3000 },
+    @{ id = "nestjs"; port = 3000 },
+    @{ id = "zap"; port = 3000 },
+
+    # --- Slower to compile/boot (Full-stack Rust / Java / PHP) ---
+    @{ id = "springboot"; port = 8080 },
+    @{ id = "loco"; port = 3000 },
+    @{ id = "leptos"; port = 3000 }
 )
 
-Write-Host "=================================================="
-Write-Host "Starting Black-Box HTTP Benchmark Suite (Bombardier v2.0.3)"
-Write-Host "=================================================="
+Write-Host "==================================================" -ForegroundColor Green
+Write-Host "Starting Black-Box HTTP Benchmark Suite (Bombardier v2.0.2)" -ForegroundColor Green
+Write-Host "==================================================" -ForegroundColor Green
 
+# Build the bombardier container first
 Write-Host "Building bombardier load tester container..."
 docker compose build bombardier
 
-foreach ($id in $frameworks) {
-    $port = $ports[$id]
-    Write-Host ""
-    Write-Host "--------------------------------------------------"
-    Write-Host "Benchmarking framework: $id"
-    Write-Host "--------------------------------------------------"
+foreach ($fw in $frameworks) {
+    $id = $fw.id
+    $port = $fw.port
 
+    Write-Host "`n--------------------------------------------------" -ForegroundColor Cyan
+    Write-Host "Benchmarking framework: $id" -ForegroundColor Cyan
+    Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+
+    # Build and start container
     Write-Host "Building service $id..."
     docker compose build $id
     
     Write-Host "Starting service $id..."
     docker compose up -d $id
 
+    # Wait for the service to boot and bind
     Write-Host "Waiting 5 seconds for $id to initialize..."
     Start-Sleep -Seconds 5
 
+    # Run plaintext benchmark
     Write-Host "Running Plaintext benchmark (http://$id`:$port/)..."
-    bombardier -c 125 -d 10s "http://$id`:$port/" > "results/${id}_plaintext.txt"
+    docker compose run --rm bombardier -c 125 -d 10s "http://$id`:$port/" | Out-File -Encoding utf8 "results/$id`_plaintext.txt"
 
+    # Run JSON benchmark
     Write-Host "Running JSON benchmark (http://$id`:$port/json)..."
-    bombardier -c 125 -d 10s "http://$id`:$port/json" > "results/${id}_json.txt"
+    docker compose run --rm bombardier -c 125 -d 10s "http://$id`:$port/json" | Out-File -Encoding utf8 "results/$id`_json.txt"
 
+    # Stop and clean up container to free resources
     Write-Host "Stopping and cleaning up service $id..."
     docker compose stop $id
     docker compose rm -f $id
 }
 
-Write-Host ""
-Write-Host "All benchmarks completed. Generating results..."
+Write-Host "`nAll benchmarks completed. Generating results..." -ForegroundColor Green
 python parse_results.py results

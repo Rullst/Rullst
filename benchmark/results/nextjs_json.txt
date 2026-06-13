@@ -1,3 +1,52 @@
-Bombardier load test
-Reqs/sec       3456.78
-Latency        36.16ms
+﻿Bombarding http://nextjs:3000/json for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec       190.91      88.14     499.21
+  Latency      799.50ms   691.63ms      4.01s
+  HTTP codes:
+    1xx - 0, 2xx - 1595, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 0
+  Throughput:    48.23KB/s

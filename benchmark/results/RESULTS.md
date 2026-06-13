@@ -1,21 +1,20 @@
 # Black-Box HTTP Load Test Results
 
-Generated using `bombardier` stress-testing each containerized service in isolation.
+Generated using `bombardier` version 2.0.2 stress-testing each containerized service in isolation.
 
 | Framework | Language | Plaintext (Reqs/s) | Plaintext Latency (Avg) | JSON (Reqs/s) | JSON Latency (Avg) |
 |---|---|---|---|---|---|
-| **Actix-web** | Rust | 68,215.34 | 1.83ms | 61,340.12 | 2.04ms |
-| **Axum** | Rust | 67,012.98 | 1.86ms | 60,112.55 | 2.08ms |
-| **Rullst** | Rust | 66,890.11 | 1.87ms | 59,876.32 | 2.09ms |
-| **Zap (Zig)** | Zig | 55,231.50 | 2.26ms | 48,102.77 | 2.59ms |
-| **Fiber (Go)** | Go | 52,140.88 | 2.40ms | 46,890.45 | 2.66ms |
-| **Gin (Go)** | Go | 49,876.12 | 2.51ms | 45,012.89 | 2.78ms |
-| **Rocket** | Rust | 35,123.65 | 3.56ms | 31,045.22 | 4.02ms |
-| **Loco** | Rust | 28,105.77 | 4.44ms | 24,567.11 | 5.08ms |
-| **Spring Boot** | Java | 25,432.90 | 4.91ms | 18,765.43 | 6.66ms |
-| **Leptos** | Rust | 15,678.34 | 7.97ms | 12,345.67 | 10.12ms |
-| **NestJS** | JavaScript | 9,876.54 | 12.65ms | 7,654.32 | 16.33ms |
-| **Next.js** | JavaScript | 4,567.89 | 27.36ms | 3,456.78 | 36.16ms |
-| **Django** | Python | 2,345.67 | 53.29ms | 1,876.54 | 66.61ms |
-| **Ruby on Rails** | Ruby | 1,987.65 | 62.88ms | 1,543.21 | 80.99ms |
-| **Laravel Octane** | PHP | 1,567.89 | 79.72ms | 1,234.56 | 101.25ms |
+| **Rullst** | Rust | 38,426.60 | 3.30ms | 74,393.31 | 1.68ms |
+| **Axum** | Rust | 112,099.39 | 1.11ms | 112,075.84 | 1.11ms |
+| **Actix-web** | Rust | 119,852.35 | 1.04ms | 112,556.60 | 1.11ms |
+| **Loco** | Rust | 90,338.83 | 1.38ms | 103,706.65 | 1.20ms |
+| **Rocket** | Rust | 107,913.46 | 1.15ms | 107,814.24 | 1.16ms |
+| **Leptos** | Rust | 43,919.60 | 2.86ms | 61,585.17 | 2.03ms |
+| **Gin (Go)** | Go | 34,484.73 | 3.61ms | 35,856.79 | 3.48ms |
+| **Fiber (Go)** | Go | 114,878.31 | 1.08ms | 110,825.31 | 1.12ms |
+| **Django** | Python | 489.30 | 254.28ms | 692.12 | 179.23ms |
+| **Laravel Octane** | PHP | 62.85 | 2.00s | 62.07 | 1.99s |
+| **Next.js** | JavaScript | 82.00 | 1.39s | 190.91 | 799.50ms |
+| **NestJS** | JavaScript | 1,084.24 | 116.34ms | 1,565.11 | 82.38ms |
+| **Zap (Zig)** | Zig | 29,933.82 | 4.17ms | 25,616.38 | 4.87ms |
+| **Spring Boot** | Java | 7,483.75 | 16.74ms | 3,480.63 | 37.72ms |

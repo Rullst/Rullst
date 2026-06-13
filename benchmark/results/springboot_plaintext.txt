@@ -1,3 +1,64 @@
-Bombardier load test
-Reqs/sec       25432.90
-Latency        4.91ms
+﻿Bombarding http://springboot:8080/ for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec      7483.75    7782.58   27684.03
+  Latency       16.74ms    55.99ms      1.78s
+  HTTP codes:
+    1xx - 0, 2xx - 10805, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 63875
+  Errors:
+    dial tcp 172.19.0.2:8080: connect: connection refused - 63875
+  Throughput:   199.45KB/s

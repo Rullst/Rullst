@@ -88,9 +88,3 @@ services:
     build:
       context: bombardier
 
-
-  rails:
-    build:
-      context: rails
-    ports:
-      - "8014:3000"

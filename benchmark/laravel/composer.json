@@ -3,7 +3,7 @@
     "type": "project",
     "description": "Minimal Laravel app for benchmarking.",
     "require": {
-        "php": "^8.3",
+        "php": "^8.2",
         "laravel/framework": "^11.0",
         "laravel/octane": "^2.3"
     },
