@@ -110,11 +110,12 @@ impl Server {
     /// Start the HTTP server on the specified port
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
         let app_config = Self::load_config().await;
-        
+
         self.init_database(&app_config).await;
         self.start_scheduler();
-        
-        let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+
+        let is_dev =
+            std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
         let addr = Self::setup_networking(port, is_dev);
 
         if let Some(lib_path) = self.hot_reload_lib.take() {
@@ -265,8 +266,7 @@ impl Server {
                     let _ = tx.send(res);
                 });
 
-                let build_success = match rx_build
-                    .recv_timeout(std::time::Duration::from_secs(120))
+                let build_success = match rx_build.recv_timeout(std::time::Duration::from_secs(120))
                 {
                     Ok(Ok(status)) => status.success(),
                     Ok(Err(e)) => {
@@ -274,9 +274,7 @@ impl Server {
                         false
                     }
                     Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                        eprintln!(
-                            "⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!"
-                        );
+                        eprintln!("⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!");
                         false
                     }
                     Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,

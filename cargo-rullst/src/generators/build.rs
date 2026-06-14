@@ -131,7 +131,8 @@ fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Err
         let mut cargo_content = std::fs::read_to_string(cargo_path)?;
 
         static RE_RULLST: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_rullst = RE_RULLST.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#).unwrap());
+        let re_rullst = RE_RULLST
+            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#).unwrap());
         cargo_content = re_rullst
             .replace_all(&cargo_content, |caps: &regex::Captures| {
                 format!(r#"{}"{}""#, &caps[1], latest_version)
@@ -139,7 +140,8 @@ fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Err
             .into_owned();
 
         static RE_MACROS: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_macros = RE_MACROS.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#).unwrap());
+        let re_macros = RE_MACROS
+            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#).unwrap());
         cargo_content = re_macros
             .replace_all(&cargo_content, |caps: &regex::Captures| {
                 format!(r#"{}"{}""#, &caps[1], latest_version)
@@ -147,7 +149,8 @@ fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Err
             .into_owned();
 
         static RE_ELOQUENT: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_eloquent = RE_ELOQUENT.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#).unwrap());
+        let re_eloquent = RE_ELOQUENT
+            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#).unwrap());
         cargo_content = re_eloquent
             .replace_all(&cargo_content, |caps: &regex::Captures| {
                 format!(r#"{}"4.0.4""#, &caps[1])

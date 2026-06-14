@@ -77,7 +77,10 @@ fn validate_project_root() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn register_middleware_in_mod(middlewares_dir: &Path, snake_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn register_middleware_in_mod(
+    middlewares_dir: &Path,
+    snake_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mod_path = middlewares_dir.join("mod.rs");
     if !mod_path.exists() {
         fs::write(&mod_path, "")?;
@@ -96,7 +99,10 @@ fn register_middleware_in_mod(middlewares_dir: &Path, snake_name: &str) -> Resul
     Ok(())
 }
 
-fn create_middleware_file(middlewares_dir: &Path, snake_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn create_middleware_file(
+    middlewares_dir: &Path,
+    snake_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let middleware_path = middlewares_dir.join(format!("{}.rs", snake_name));
     if middleware_path.exists() {
         println!(

@@ -382,9 +382,11 @@ mod tests {
     async fn test_traffic_shield_active_requests() {
         let config = TrafficShieldConfig::new().with_db_probe(false);
         let shield = TrafficShield::new(config);
-        
+
         assert_eq!(shield.active_requests(), 0);
-        shield.active_requests.fetch_add(5, std::sync::atomic::Ordering::SeqCst);
+        shield
+            .active_requests
+            .fetch_add(5, std::sync::atomic::Ordering::SeqCst);
         assert_eq!(shield.active_requests(), 5);
     }
 
@@ -413,9 +415,11 @@ mod tests {
     async fn test_traffic_shield_db_latency() {
         let config = TrafficShieldConfig::new().with_db_probe(false);
         let shield = TrafficShield::new(config);
-        
+
         assert_eq!(shield.db_latency().as_millis(), 0);
-        shield.db_latency_ms.store(50, std::sync::atomic::Ordering::Relaxed);
+        shield
+            .db_latency_ms
+            .store(50, std::sync::atomic::Ordering::Relaxed);
         assert_eq!(shield.db_latency().as_millis(), 50);
     }
 
@@ -423,9 +427,11 @@ mod tests {
     async fn test_traffic_shield_event_loop_lag() {
         let config = TrafficShieldConfig::new().with_db_probe(false);
         let shield = TrafficShield::new(config);
-        
+
         assert_eq!(shield.event_loop_lag().as_millis(), 0);
-        shield.event_loop_lag_ms.store(100, std::sync::atomic::Ordering::Relaxed);
+        shield
+            .event_loop_lag_ms
+            .store(100, std::sync::atomic::Ordering::Relaxed);
         assert_eq!(shield.event_loop_lag().as_millis(), 100);
     }
 

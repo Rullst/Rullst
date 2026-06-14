@@ -172,7 +172,8 @@ pub mod app {
             padding: 3rem;
             font-style: italic;
         }
-        "#.to_string()
+        "#
+        .to_string()
     }
 
     fn render_post_list(posts: &[Post]) -> String {
@@ -183,14 +184,18 @@ pub mod app {
                 </div>
             }
         } else {
-            let post_list: String = posts.iter().rev().map(|post| {
-                html! {
-                    <div class="post-card">
-                        <h3 class="post-title">{&post.title}</h3>
-                        <p class="post-body">{&post.body}</p>
-                    </div>
-                }
-            }).collect();
+            let post_list: String = posts
+                .iter()
+                .rev()
+                .map(|post| {
+                    html! {
+                        <div class="post-card">
+                            <h3 class="post-title">{&post.title}</h3>
+                            <p class="post-body">{&post.body}</p>
+                        </div>
+                    }
+                })
+                .collect();
             post_list
         }
     }

@@ -866,7 +866,7 @@ fn build_table_query(
     let clean_table = sanitize_identifier(entry.table);
     let clean_pk = sanitize_identifier(entry.pk);
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
-    
+
     let mut sql = format!("SELECT * FROM {}", clean_table);
     let mut binds = Vec::new();
 
@@ -913,7 +913,8 @@ fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
     } else {
         format!(
             "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
-            cols, crate::html::escape_str(q)
+            cols,
+            crate::html::escape_str(q)
         )
     }
 }
@@ -959,7 +960,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let mut out = String::new();
     let t = entry.table;
     let pk = entry.pk;
-    
+
     for row in db_rows {
         let row_id: String = match row.try_get::<String, _>(pk) {
             Ok(s) => s,

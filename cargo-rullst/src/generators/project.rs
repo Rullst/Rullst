@@ -5,7 +5,10 @@ use std::fs;
 use std::path::Path;
 
 pub fn has_binary(name: &str) -> bool {
-    if name.chars().any(|c| !c.is_alphanumeric() && c != '-' && c != '_') {
+    if name
+        .chars()
+        .any(|c| !c.is_alphanumeric() && c != '-' && c != '_')
+    {
         return false;
     }
     let cmd = if cfg!(windows) { "where" } else { "which" };

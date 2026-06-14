@@ -232,12 +232,7 @@ mod tests {
         let app = router.into_axum();
 
         let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/chat")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::builder().uri("/chat").body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);

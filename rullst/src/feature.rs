@@ -293,11 +293,11 @@ impl TomlFeatureDriver {
             config: DashMap::new(),
             config_path,
         };
-        
+
         if let Ok(content) = std::fs::read_to_string(&driver.config_path) {
             driver.load_from_str(&content);
         }
-        
+
         driver
     }
 

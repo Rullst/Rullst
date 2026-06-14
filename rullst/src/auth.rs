@@ -261,7 +261,8 @@ mod tests {
         let hash = hash_password(p).expect("Failed to hash password");
         assert!(!needs_rehash(&hash));
 
-        let old_hash = "$argon2i$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$YhhQvA1/zHGEoWnUBY/J2iY/R/hG93WqG2k73D655b0";
+        let old_hash =
+            "$argon2i$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$YhhQvA1/zHGEoWnUBY/J2iY/R/hG93WqG2k73D655b0";
         assert!(needs_rehash(old_hash));
 
         assert!(!needs_rehash("invalid"));
@@ -274,15 +275,23 @@ mod tests {
 
         headers.insert(
             axum::http::header::COOKIE,
-            "rullst_session=my_secret_token; other=123".parse().unwrap()
+            "rullst_session=my_secret_token; other=123".parse().unwrap(),
         );
-        assert_eq!(extract_session_cookie(&headers), Some("my_secret_token".to_string()));
+        assert_eq!(
+            extract_session_cookie(&headers),
+            Some("my_secret_token".to_string())
+        );
 
         headers.insert(
             axum::http::header::COOKIE,
-            "other=123; rullst_session=my_secret_token_2".parse().unwrap()
+            "other=123; rullst_session=my_secret_token_2"
+                .parse()
+                .unwrap(),
         );
-        assert_eq!(extract_session_cookie(&headers), Some("my_secret_token_2".to_string()));
+        assert_eq!(
+            extract_session_cookie(&headers),
+            Some("my_secret_token_2".to_string())
+        );
     }
 
     #[test]

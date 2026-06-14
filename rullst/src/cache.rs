@@ -507,10 +507,18 @@ mod tests {
         async fn get(&self, _key: &str) -> Result<Option<String>, CacheError> {
             Ok(Some("mocked".to_string()))
         }
-        async fn put(&self, _k: &str, _v: &str, _t: Option<u64>) -> Result<(), CacheError> { Ok(()) }
-        async fn forget(&self, _k: &str) -> Result<(), CacheError> { Ok(()) }
-        async fn flush(&self) -> Result<(), CacheError> { Ok(()) }
-        async fn has(&self, _k: &str) -> Result<bool, CacheError> { Ok(true) }
+        async fn put(&self, _k: &str, _v: &str, _t: Option<u64>) -> Result<(), CacheError> {
+            Ok(())
+        }
+        async fn forget(&self, _k: &str) -> Result<(), CacheError> {
+            Ok(())
+        }
+        async fn flush(&self) -> Result<(), CacheError> {
+            Ok(())
+        }
+        async fn has(&self, _k: &str) -> Result<bool, CacheError> {
+            Ok(true)
+        }
     }
 
     #[tokio::test]
