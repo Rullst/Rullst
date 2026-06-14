@@ -1,6 +1,0 @@
-logger:
-  level: info
-  format: compact
-server:
-  port: 3000
-  binding: 0.0.0.0

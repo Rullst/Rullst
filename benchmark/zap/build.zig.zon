@@ -1,9 +1,0 @@
-.{
-    .name = "bench-zap",
-    .version = "0.1.0",
-    .dependencies = .{},
-    .paths = .{
-        "build.zig",
-        "src",
-    },
-}
