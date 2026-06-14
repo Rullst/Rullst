@@ -19,6 +19,14 @@
 <br/>
 
 **Rullst** is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
+  
+<h2 align="center">How to build a SaaS Blueprint with Rullst </h2>
+<p align="center">
+<a href="https://www.youtube.com/watch?v=nDXLeNM327g">
+  <img src="https://img.youtube.com/vi/nDXLeNM327g/hqdefault.jpg" alt="How to build a SaaS with Rullst" width="430" />
+</a>
+
+</p>
 
 ---
 
