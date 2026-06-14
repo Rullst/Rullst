@@ -164,7 +164,13 @@ function debugString(val) {
     if (val instanceof Error) {
         return `${val.name}: ${val.message}\n${val.stack}`;
     }
-    // TODO we could test for more things here, like `Set`s and `Map`s.
+    if (val instanceof Map) {
+        return 'Map(' + JSON.stringify(Array.from(val.entries())) + ')';
+    }
+    if (val instanceof Set) {
+        return 'Set(' + JSON.stringify(Array.from(val.values())) + ')';
+    }
+    // TODO we could test for more things here, like typed arrays.
     return className;
 }
 

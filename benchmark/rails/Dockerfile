@@ -1,11 +1,11 @@
-FROM ruby:3.3-alpine
+FROM ruby:3.3.0-alpine
 
 # Install essential Linux packages
 RUN apk add --no-cache build-base
 
 WORKDIR /app
 
-COPY Gemfile Gemfile.lock ./
+COPY Gemfile* ./
 RUN bundle install --without development test
 
 COPY . .

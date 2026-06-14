@@ -6,7 +6,60 @@ use std::fs;
 use std::path::Path;
 
 pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Validate if we are in the root of the Rullst project
+    validate_project_root()?;
+
+    let snake_name = middleware_to_snake_case(name);
+
+    println!(
+        "{}",
+        format!("🛠️ Generating Rullst middleware: {}...", snake_name)
+            .cyan()
+            .bold()
+    );
+
+    let middlewares_dir = Path::new("src/middlewares");
+    if !middlewares_dir.exists() {
+        fs::create_dir_all(middlewares_dir)?;
+    }
+
+    register_middleware_in_mod(middlewares_dir, &snake_name)?;
+    create_middleware_file(middlewares_dir, &snake_name)?;
+    inject_middleware_module_in_main()?;
+
+    println!(
+        "{}",
+        format!(
+            "✨ Middleware '{}' successfully created at '{}/{}.rs'!",
+            snake_name,
+            middlewares_dir.display(),
+            snake_name
+        )
+        .green()
+        .bold()
+    );
+    println!("{}", "How to map in your routes using Axum layers:".cyan());
+    println!("{}", "  1. Use: 'use rullst::server::from_fn;'".cyan());
+    println!(
+        "{}",
+        format!(
+            "  2. Use: 'use crate::middlewares::{}::{};'",
+            snake_name, snake_name
+        )
+        .cyan()
+    );
+    println!(
+        "{}",
+        format!(
+            "  3. Add: '.layer(from_fn({}))' on your router.",
+            snake_name
+        )
+        .cyan()
+    );
+
+    Ok(())
+}
+
+fn validate_project_root() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}",
@@ -21,29 +74,15 @@ pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error
         );
         std::process::exit(1);
     }
+    Ok(())
+}
 
-    let snake_name = middleware_to_snake_case(name);
-
-    println!(
-        "{}",
-        format!("🛠️ Generating Rullst middleware: {}...", snake_name)
-            .cyan()
-            .bold()
-    );
-
-    // 2. Ensure src/middlewares directory exists
-    let middlewares_dir = Path::new("src/middlewares");
-    if !middlewares_dir.exists() {
-        fs::create_dir_all(middlewares_dir)?;
-    }
-
-    // 3. Garantir que o src/middlewares/mod.rs existe
+fn register_middleware_in_mod(middlewares_dir: &Path, snake_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mod_path = middlewares_dir.join("mod.rs");
     if !mod_path.exists() {
         fs::write(&mod_path, "")?;
     }
 
-    // 4. Register new middleware in mod.rs
     let mut mod_content = fs::read_to_string(&mod_path)?;
     let mod_declaration = format!("pub mod {};", snake_name);
     if !mod_content.contains(&mod_declaration) {
@@ -54,8 +93,10 @@ pub fn create_new_middleware(name: &str) -> Result<(), Box<dyn std::error::Error
         mod_content.push('\n');
         fs::write(&mod_path, mod_content)?;
     }
+    Ok(())
+}
 
-    // 5. Create middleware file
+fn create_middleware_file(middlewares_dir: &Path, snake_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let middleware_path = middlewares_dir.join(format!("{}.rs", snake_name));
     if middleware_path.exists() {
         println!(
@@ -84,8 +125,10 @@ pub async fn {}(req: Request, next: Next) -> Response {{
         );
         fs::write(&middleware_path, template)?;
     }
+    Ok(())
+}
 
-    // 6. Attempt to inject "pub mod middlewares;" into src/main.rs if needed
+fn inject_middleware_module_in_main() -> Result<(), Box<dyn std::error::Error>> {
     let main_path = Path::new("src/main.rs");
     if main_path.exists() {
         let mut main_content = fs::read_to_string(main_path)?;
@@ -110,35 +153,5 @@ pub async fn {}(req: Request, next: Next) -> Response {{
             );
         }
     }
-
-    println!(
-        "{}",
-        format!(
-            "✨ Middleware '{}' successfully created at '{}'!",
-            snake_name,
-            middleware_path.display()
-        )
-        .green()
-        .bold()
-    );
-    println!("{}", "How to map in your routes using Axum layers:".cyan());
-    println!("{}", "  1. Use: 'use rullst::server::from_fn;'".cyan());
-    println!(
-        "{}",
-        format!(
-            "  2. Use: 'use crate::middlewares::{}::{};'",
-            snake_name, snake_name
-        )
-        .cyan()
-    );
-    println!(
-        "{}",
-        format!(
-            "  3. Add: '.layer(from_fn({}))' on your router.",
-            snake_name
-        )
-        .cyan()
-    );
-
     Ok(())
 }

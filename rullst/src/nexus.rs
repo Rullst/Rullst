@@ -857,21 +857,22 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
     out
 }
 
-async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String {
-    let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
-    let table = entry.table;
-    let pk = entry.pk;
-
-    let clean_table = sanitize_identifier(table);
-    let clean_pk = sanitize_identifier(pk);
-
+fn build_table_query(
+    entry: &RegistryEntry,
+    visible_fields: &[&FieldMeta],
+    q: &str,
+    page: u32,
+) -> (String, Vec<String>) {
+    let clean_table = sanitize_identifier(entry.table);
+    let clean_pk = sanitize_identifier(entry.pk);
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
+    
     let mut sql = format!("SELECT * FROM {}", clean_table);
     let mut binds = Vec::new();
 
     if !q.is_empty() {
         let mut clauses = Vec::new();
-        for f in &visible_fields {
+        for f in visible_fields {
             if matches!(
                 f.kind,
                 FieldKind::Text | FieldKind::Email | FieldKind::Url | FieldKind::Textarea
@@ -900,6 +901,27 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
         clean_pk, limit, offset
     ));
 
+    (sql, binds)
+}
+
+fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
+    if q.is_empty() {
+        format!(
+            "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">No records found in table `{}`.</td></tr>",
+            cols, table
+        )
+    } else {
+        format!(
+            "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
+            cols, crate::html::escape_str(q)
+        )
+    }
+}
+
+async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String {
+    let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
+    let (sql, binds) = build_table_query(entry, &visible_fields, q, page);
+
     let pool = match crate::db::safe_pool() {
         Some(p) => p,
         None => {
@@ -917,7 +939,6 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     }
 
     use rullst_orm::_sqlx::Row;
-
     let rows_result = query.fetch_all(pool).await;
 
     let db_rows = match rows_result {
@@ -932,25 +953,14 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     };
 
     if db_rows.is_empty() {
-        if q.is_empty() {
-            return format!(
-                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">No records found in table `{}`.</td></tr>",
-                visible_fields.len() + 1,
-                table
-            );
-        } else {
-            return format!(
-                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
-                visible_fields.len() + 1,
-                crate::html::escape_str(q)
-            );
-        }
+        return render_empty_state_html(visible_fields.len() + 1, entry.table, q);
     }
 
     let mut out = String::new();
     let t = entry.table;
+    let pk = entry.pk;
+    
     for row in db_rows {
-        // Read PK explicitly to generate actions
         let row_id: String = match row.try_get::<String, _>(pk) {
             Ok(s) => s,
             Err(_) => match row.try_get::<i64, _>(pk) {
@@ -964,7 +974,6 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
 
         let mut cells = String::new();
         for f in &visible_fields {
-            // Read based on kind
             let val_str = match f.kind {
                 FieldKind::Boolean => {
                     let b = row.try_get::<bool, _>(f.name).unwrap_or(false);
@@ -1114,29 +1123,15 @@ async fn render_table_view(
     out
 }
 
-async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Option<&str>) -> String {
-    let t = entry.table;
-    let title = if let Some(i) = id {
-        format!("&#128398;&#65039; Edit {} #{}", entry.label, i)
-    } else {
-        format!("&#10133; New {}", entry.label.trim_end_matches('s'))
-    };
-
-    let action = if let Some(i) = id {
-        format!("/nexus/table/{t}/{i}")
-    } else {
-        format!("/nexus/table/{t}")
-    };
-
-    let method = if id.is_some() { "hx-put" } else { "hx-post" };
-
-    let mut record_data: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-
+async fn fetch_record_data(
+    entry: &RegistryEntry,
+    id: Option<&str>,
+) -> std::collections::HashMap<String, String> {
+    let mut record_data = std::collections::HashMap::new();
     if let Some(i) = id {
         let driver = crate::db::safe_driver().unwrap_or("sqlite");
         let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
-        let clean_table = sanitize_identifier(t);
+        let clean_table = sanitize_identifier(entry.table);
         let clean_pk = sanitize_identifier(entry.pk);
         let sql = format!(
             "SELECT * FROM {} WHERE {} = {}",
@@ -1175,7 +1170,14 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
             }
         }
     }
+    record_data
+}
 
+async fn render_form_fields_html(
+    state: &NexusState,
+    entry: &RegistryEntry,
+    record_data: &std::collections::HashMap<String, String>,
+) -> String {
     let mut fields_html = String::new();
     for f in &entry.fields {
         let is_pk = f.name == entry.pk;
@@ -1284,6 +1286,27 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
             ));
         }
     }
+    fields_html
+}
+
+async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Option<&str>) -> String {
+    let t = entry.table;
+    let title = if let Some(i) = id {
+        format!("&#128398;&#65039; Edit {} #{}", entry.label, i)
+    } else {
+        format!("&#10133; New {}", entry.label.trim_end_matches('s'))
+    };
+
+    let action = if let Some(i) = id {
+        format!("/nexus/table/{t}/{i}")
+    } else {
+        format!("/nexus/table/{t}")
+    };
+
+    let method = if id.is_some() { "hx-put" } else { "hx-post" };
+
+    let record_data = fetch_record_data(entry, id).await;
+    let fields_html = render_form_fields_html(state, entry, &record_data).await;
 
     let btn_label = if id.is_some() {
         "Save Changes"

@@ -4,8 +4,25 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] 🚧
+## [2.0.10] - 2026-06-13 🚀
 
+### Refactoring & Code Quality (Jules' suggestions)
+- **Regex Compilation Optimization**: Optimized the `cargo-rullst` project dependency generator (`build.rs`) using `std::sync::OnceLock`. This completely avoids the expensive redundant compilation of Regex patterns inside hot loops during code generation.
+- **Async I/O Safety**: Simplified the `TomlFeatureDriver` in `rullst/src/feature.rs` by removing the explicit synchronous `tokio::task::block_in_place` wrapper. This eliminates Tokio thread pool blocking warnings during configuration loading.
+- **Secure Key Generation**: Strengthened the `generate_secure_app_key` function inside `cargo-rullst/src/generators/project.rs` by utilizing the robust `rand::rngs::OsRng` rather than the default `thread_rng`.
+- **UI Blueprint Refactoring**: Decomposed the massive `dashboard_page` HTML macro inside `cargo-rullst/src/blueprints/erp.rs` and `cargo-rullst/src/blueprints/uptime.rs` into modular `< 100` line view functions (`render_kpi_cards`, `render_products_table`, `render_orders_table`, `render_forms`, `render_monitors_list`, `render_new_monitor_form`) for significantly better maintainability.
+- **WASM Interop Serialization**: Implemented strict serialization for native ES6 `Set` and `Map` collections directly into the Rullst Wasm Island debug hydration logger (`rullst_blog_example.js`).
+- **Server Boot Refactoring**: Extracted `run` logic in `rullst/src/server.rs` into smaller modular methods (`load_config`, `setup_tracing`, `resolve_storage`, etc.) to stay under the 100-line limit per function. Removed dead commented-out code block from `rullst/src/server.rs`.
+- **Security Middleware Decoupling**: Split the monolithic `csrf_middleware` in `rullst/src/security.rs` into distinct GET and state-modifying handlers (`handle_csrf_get`, `handle_csrf_state_modifying`) for better clarity.
+- **Nexus Admin Refactoring**: Decomposed complex HTML rendering macros in `rullst/src/nexus.rs` (`render_table_rows`, `render_record_form`) into smaller, focused internal helpers, ensuring no single function exceeds 100 lines.
+- **Examples Cleanup**: Refactored the blog demo (`index` in `examples/blog/src/lib.rs`) and omni-app demo (`App` in `examples/blog/omni-app/src/main.rs`) to use modular helper functions and extracted components, keeping UI templates small and readable.
+- **CLI Code Generators Refactoring**: Decomposed large generator functions in `cargo-rullst` (`run_upgrade` and `run_dev_server` in `build.rs`, `create_new_middleware` in `middleware.rs`) into private helper methods. Extracted large inline CSS strings from `login_page` and `register_page` in `auth.rs` into a shared helper function (`auth_styles`).
+- **CLI UI and Blueprint Refactoring**: Decomposed large functions in `cargo-rullst` (`run_foundry_deploy` and `scaffold_foundry_config` in `foundry.rs`, `show_interactive_dashboard` and `show_help_reference` in `ui/components.rs`, `pricing_page` in `blueprints/saas.rs`, and `render` in `blueprints/portfolio.rs`) into smaller, focused private helper methods to adhere to the 100-line limit and improve maintainability.
+- **Test Coverage Expansion**: Added comprehensive unit tests for `active_requests`, `db_latency`, `event_loop_lag`, `per_minute`, `per_second` and `per_hour` (RateLimiter/TrafficShield) in `rullst/src/resilience.rs`, `needs_rehash`, `get_app_key` and `extract_session_cookie` in `rullst/src/auth.rs`, uninitialized state checks for `safe_driver` in `rullst/src/db.rs`, router nesting and websockets (`test_nest_axum`, `test_ws_routing`) in `rullst/src/routing.rs`, and custom driver (`test_custom_cache_driver`) in `rullst/src/cache.rs`.
+- **Security hardening**: 
+  - Fixed a potential arbitrary file deletion vulnerability in `rullst/src/server.rs`. The background `.so`/`.dll` cleanup routine now strictly validates the exact dynamic library prefix using `starts_with(&format!("{}_active_", filename))` instead of loose `.contains()`, ensuring only active framework binaries are pruned.
+  - Mitigated a Path Traversal risk in the AI Error Console (`rullst/src/error_console.rs`) by strictly rejecting paths containing parent directory (`../`) components prior to canonicalization.
+  - Prevented potential Command Injection in the CLI scaffolding tools (`cargo-rullst/src/generators/project.rs`) by ensuring the binary name strictly contains only alphanumeric characters, dashes, or underscores before passing to `std::process::Command`.
 ### Changed
 - **Ecosystem Diet**: Audited the entire workspace with `cargo-machete` and removed unused "ghost" dependencies from `cargo-rullst` and internal benchmark projects (`tower-http`, `tokio`, `async-trait`, `serde`), keeping the codebase as lightweight as possible.
 

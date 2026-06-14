@@ -7,22 +7,8 @@ $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path "results" | Out-Null
 
 $frameworks = @(
-    # --- Fast & Ready (Rust/Go/Python/Node/Zig microframeworks) ---
-    @{ id = "axum"; port = 3000 },
-    @{ id = "actix"; port = 3000 },
-    @{ id = "rocket"; port = 8000 },
     @{ id = "rullst"; port = 3000 },
-    @{ id = "gin"; port = 3000 },
-    @{ id = "fiber"; port = 3000 },
-    @{ id = "django"; port = 8000 },
-    @{ id = "nextjs"; port = 3000 },
-    @{ id = "nestjs"; port = 3000 },
-    @{ id = "zap"; port = 3000 },
-
-    # --- Slower to compile/boot (Full-stack Rust / Java / PHP) ---
-    @{ id = "springboot"; port = 8080 },
-    @{ id = "loco"; port = 3000 },
-    @{ id = "leptos"; port = 3000 },
+    @{ id = "laravel"; port = 8000 },
     @{ id = "rails"; port = 3000 }
 )
 

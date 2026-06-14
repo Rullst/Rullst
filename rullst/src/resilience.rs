@@ -377,4 +377,68 @@ mod tests {
         let req4 = Request::builder().body(axum::body::Body::empty()).unwrap();
         assert_eq!(default_key_extractor(&req4), "anonymous");
     }
+
+    #[tokio::test]
+    async fn test_traffic_shield_active_requests() {
+        let config = TrafficShieldConfig::new().with_db_probe(false);
+        let shield = TrafficShield::new(config);
+        
+        assert_eq!(shield.active_requests(), 0);
+        shield.active_requests.fetch_add(5, std::sync::atomic::Ordering::SeqCst);
+        assert_eq!(shield.active_requests(), 5);
+    }
+
+    #[test]
+    fn test_rate_limit_config_per_minute() {
+        let config = RateLimitConfig::per_minute(60.0);
+        assert_eq!(config.max_tokens, 60.0);
+        assert_eq!(config.refill_rate, 1.0);
+    }
+
+    #[test]
+    fn test_rate_limit_config_per_second() {
+        let config = RateLimitConfig::per_second(10.0);
+        assert_eq!(config.max_tokens, 10.0);
+        assert_eq!(config.refill_rate, 10.0);
+    }
+
+    #[test]
+    fn test_rate_limit_config_per_hour() {
+        let config = RateLimitConfig::per_hour(3600.0);
+        assert_eq!(config.max_tokens, 3600.0);
+        assert_eq!(config.refill_rate, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_traffic_shield_db_latency() {
+        let config = TrafficShieldConfig::new().with_db_probe(false);
+        let shield = TrafficShield::new(config);
+        
+        assert_eq!(shield.db_latency().as_millis(), 0);
+        shield.db_latency_ms.store(50, std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(shield.db_latency().as_millis(), 50);
+    }
+
+    #[tokio::test]
+    async fn test_traffic_shield_event_loop_lag() {
+        let config = TrafficShieldConfig::new().with_db_probe(false);
+        let shield = TrafficShield::new(config);
+        
+        assert_eq!(shield.event_loop_lag().as_millis(), 0);
+        shield.event_loop_lag_ms.store(100, std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(shield.event_loop_lag().as_millis(), 100);
+    }
+
+    #[test]
+    fn test_check_and_consume() {
+        let config = RateLimitConfig::per_second(2.0); // 2 tokens per second
+        let limiter = RateLimiter::new(config);
+
+        // Consume 1st token
+        assert!(limiter.check_and_consume("test_key"));
+        // Consume 2nd token
+        assert!(limiter.check_and_consume("test_key"));
+        // 3rd token should fail (out of tokens)
+        assert!(!limiter.check_and_consume("test_key"));
+    }
 }

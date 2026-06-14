@@ -234,70 +234,129 @@ where
 // ─── Interactive Dashboard ────────────────────────────────────────────────────
 
 /// Shows the beautiful interactive Rullst CLI dashboard when called with no arguments.
-pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
-    // Clear screen and print the neon ASCII banner
-    print!("\x1B[2J\x1B[1;1H");
+fn print_neon_logo() {
     let color_logo = |s: &str| s.truecolor(255, 165, 0).bold(); // Orange
+    println!("\n{}", color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#));
+    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#));
+    println!("{}", color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#));
+    println!("{}", color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#));
+    println!("{}", color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#));
+    println!("{}", color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#));
+    println!("\n  {} {} {}", "The".white(), "Ultimate Full-Stack Rust Framework".bright_cyan().bold(), format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow());
+    println!("  {}\n", "⚡ Security · Speed · Developer Experience ⚡".bright_magenta().bold());
+}
 
-    println!();
-    println!(
-        "{}",
-        color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#)
-    );
-    println!();
-    println!(
-        "  {} {} {}",
-        "The".white(),
-        "Ultimate Full-Stack Rust Framework".bright_cyan().bold(),
-        format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow()
-    );
-    println!(
-        "  {}",
-        "⚡ Security · Speed · Developer Experience ⚡"
-            .bright_magenta()
-            .bold()
-    );
+fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse_from(cmd_args);
+    run_cli_command(&cli.command)
+}
 
-    println!();
+fn handle_scaffold_code(theme: &dialoguer::theme::ColorfulTheme) -> Result<(), Box<dyn std::error::Error>> {
+    let choices = [
+        "🎮  Controller            (cargo rullst make:controller)",
+        "💾  Model & Migration     (cargo rullst make:model -m)",
+        "🚪  Middleware            (cargo rullst make:middleware)",
+        "⚙️  Background Worker     (cargo rullst make:worker)",
+        "📂  Blank Migration       (cargo rullst make:migration)",
+    ];
+    let selection = dialoguer::Select::with_theme(theme).with_prompt("Choose component to scaffold:\n").default(0).items(&choices[..]).interact()?;
+
+    let (prompt, action, extra_args) = match selection {
+        0 => ("Enter controller name (e.g. UsersController):", "make:controller", vec![]),
+        1 => ("Enter model name (e.g. Product):", "make:model", vec!["-m".to_string()]),
+        2 => ("Enter middleware name (e.g. RateLimiter):", "make:middleware", vec![]),
+        3 => ("Enter worker name (e.g. EmailSender):", "make:worker", vec![]),
+        4 => ("Enter migration name (e.g. add_status_to_users):", "make:migration", vec![]),
+        _ => return Ok(()),
+    };
+
+    let name: String = dialoguer::Input::with_theme(theme).with_prompt(prompt).interact_text()?;
+    let mut args = vec![std::env::args().next().unwrap_or_default(), action.to_string(), name];
+    args.extend(extra_args);
+    execute_command(args)
+}
+
+fn handle_database_operations(theme: &dialoguer::theme::ColorfulTheme) -> Result<(), Box<dyn std::error::Error>> {
+    let choices = [
+        "🚀  Run Migrations       (cargo rullst db:migrate)",
+        "🔄  Rollback Last Batch  (cargo rullst db:rollback)",
+        "📊  Migration Status     (cargo rullst db:status)",
+        "🌱  Run Seeders          (cargo rullst db:seed)",
+        "🖥️  Open Studio Browser  (cargo rullst studio)",
+    ];
+    let selection = dialoguer::Select::with_theme(theme).with_prompt("Choose database operation:\n").default(0).items(&choices[..]).interact()?;
+    let cmd = match selection {
+        0 => "db:migrate", 1 => "db:rollback", 2 => "db:status", 3 => "db:seed", 4 => "studio", _ => return Ok(()),
+    };
+    execute_command(vec![std::env::args().next().unwrap_or_default(), cmd.to_string()])
+}
+
+fn handle_auth_billing(theme: &dialoguer::theme::ColorfulTheme) -> Result<(), Box<dyn std::error::Error>> {
+    let choices = [
+        "🔐  Scaffold Full Auth System  (cargo rullst auth)",
+        "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
+        "🌐  Add CORS Middleware        (cargo rullst make:cors)",
+        "🔑  Add JWT Middleware         (cargo rullst make:jwt)",
+    ];
+    let selection = dialoguer::Select::with_theme(theme).with_prompt("Choose auth & billing action:\n").default(0).items(&choices[..]).interact()?;
+    let cmd = match selection {
+        0 => "auth", 1 => "make:billing", 2 => "make:cors", 3 => "make:jwt", _ => return Ok(()),
+    };
+    execute_command(vec![std::env::args().next().unwrap_or_default(), cmd.to_string()])
+}
+
+fn handle_deploy(theme: &dialoguer::theme::ColorfulTheme) -> Result<(), Box<dyn std::error::Error>> {
+    let choices = [
+        "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
+        "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
+    ];
+    let selection = dialoguer::Select::with_theme(theme).with_prompt("Choose deployment action:\n").default(0).items(&choices[..]).interact()?;
+    let cmd = match selection {
+        0 => "foundry:init", 1 => "foundry:deploy", _ => return Ok(()),
+    };
+    execute_command(vec![std::env::args().next().unwrap_or_default(), cmd.to_string()])
+}
+
+fn handle_existing_project(theme: &dialoguer::theme::ColorfulTheme) -> Result<(), Box<dyn std::error::Error>> {
+    let choices = [
+        format!("🚀  Start Dev Server         {}", "(Fast dev build + Hot Reload)".dimmed()),
+        format!("🛠  Scaffold Code            {}", "(Controllers, Models, Middlewares, Workers)".dimmed()),
+        format!("🗄  Database Operations      {}", "(Migrate, Rollback, Status, Seed)".dimmed()),
+        format!("🔐  Integrate Auth & Billing {}", "(Auth, Stripe/LemonSqueezy, Passkeys)".dimmed()),
+        format!("🖥  Package for Desktop/App  {}", "(Omni Desktop & Mobile)".dimmed()),
+        format!("🐳  Dockerize Project        {}", "(Generate Dockerfile & docker-compose)".dimmed()),
+        format!("🚀  Deploy to Cloud          {}", "(Foundry: AWS, GCP, Hetzner, Azure, DO)".dimmed()),
+        format!("🔄  Safe Upgrade             {}", "(Self-Healing Updates & Codemods)".dimmed()),
+        "🔙  Back to Main Menu        ".to_string(),
+    ];
+
+    let selection = dialoguer::Select::with_theme(theme).with_prompt("Project Operations:\n").default(0).items(&choices[..]).interact()?;
+    let base_cmd = std::env::args().next().unwrap_or_default();
+
+    match selection {
+        0 => execute_command(vec![base_cmd, "dev".to_string()]),
+        1 => handle_scaffold_code(theme),
+        2 => handle_database_operations(theme),
+        3 => handle_auth_billing(theme),
+        4 => execute_command(vec![base_cmd, "make:omni".to_string()]),
+        5 => execute_command(vec![base_cmd, "dockerize".to_string()]),
+        6 => handle_deploy(theme),
+        7 => execute_command(vec![base_cmd, "upgrade".to_string()]),
+        8 => show_interactive_dashboard(),
+        _ => Ok(())
+    }
+}
+
+pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
+    print!("\x1B[2J\x1B[1;1H");
+    print_neon_logo();
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let choices = [
-        format!(
-            "✨  Create New Project       {}",
-            "(API, Fullstack or Dockerized)".dimmed()
-        ),
-        format!(
-            "📁  Already have a project?  {}",
-            "(Dev, Scaffold, DB, Auth, Deploy...)".dimmed()
-        ),
-        format!(
-            "💡  View Help & Commands     {}",
-            "(Framework Reference)".dimmed()
-        ),
-        format!(
-            "❌  Exit                     {}",
-            "(Close interactive menu)".dimmed()
-        ),
+        format!("✨  Create New Project       {}", "(API, Fullstack or Dockerized)".dimmed()),
+        format!("📁  Already have a project?  {}", "(Dev, Scaffold, DB, Auth, Deploy...)".dimmed()),
+        format!("💡  View Help & Commands     {}", "(Framework Reference)".dimmed()),
+        format!("❌  Exit                     {}", "(Close interactive menu)".dimmed()),
     ];
 
     let selection = dialoguer::Select::with_theme(&theme)
@@ -307,384 +366,69 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
         .interact()?;
 
     match selection {
-        0 => {
-            // Create new project — run the wizard
-            let args_vec: Vec<String> = vec![
-                std::env::args().next().unwrap_or_default(),
-                "new".to_string(),
-            ];
-            let cli = Cli::parse_from(args_vec);
-            run_cli_command(&cli.command)?;
-        }
-        1 => {
-            // Already have a project?
-            let project_choices = &[
-                format!(
-                    "🚀  Start Dev Server         {}",
-                    "(Fast dev build + Hot Reload)".dimmed()
-                ),
-                format!(
-                    "🛠  Scaffold Code            {}",
-                    "(Controllers, Models, Middlewares, Workers)".dimmed()
-                ),
-                format!(
-                    "🗄  Database Operations      {}",
-                    "(Migrate, Rollback, Status, Seed)".dimmed()
-                ),
-                format!(
-                    "🔐  Integrate Auth & Billing {}",
-                    "(Auth, Stripe/LemonSqueezy, Passkeys)".dimmed()
-                ),
-                format!(
-                    "🖥  Package for Desktop/App  {}",
-                    "(Omni Desktop & Mobile)".dimmed()
-                ),
-                format!(
-                    "🐳  Dockerize Project        {}",
-                    "(Generate Dockerfile & docker-compose)".dimmed()
-                ),
-                format!(
-                    "🚀  Deploy to Cloud          {}",
-                    "(Foundry: AWS, GCP, Hetzner, Azure, DO)".dimmed()
-                ),
-                format!(
-                    "🔄  Safe Upgrade             {}",
-                    "(Self-Healing Updates & Codemods)".dimmed()
-                ),
-                "🔙  Back to Main Menu        ".to_string(),
-            ];
-
-            let project_selection = dialoguer::Select::with_theme(&theme)
-                .with_prompt("Project Operations:\n")
-                .default(0)
-                .items(&project_choices[..])
-                .interact()?;
-
-            match project_selection {
-                0 => {
-                    // Dev Server
-                    let args_vec: Vec<String> = vec![
-                        std::env::args().next().unwrap_or_default(),
-                        "dev".to_string(),
-                    ];
-                    let cli = Cli::parse_from(args_vec);
-                    run_cli_command(&cli.command)?;
-                }
-                1 => {
-                    // Scaffold Code
-                    let scaffold_choices = &[
-                        "🎮  Controller            (cargo rullst make:controller)",
-                        "💾  Model & Migration     (cargo rullst make:model -m)",
-                        "🚪  Middleware            (cargo rullst make:middleware)",
-                        "⚙️  Background Worker     (cargo rullst make:worker)",
-                        "📂  Blank Migration       (cargo rullst make:migration)",
-                    ];
-                    let scaffold_selection = dialoguer::Select::with_theme(&theme)
-                        .with_prompt("Choose component to scaffold:\n")
-                        .default(0)
-                        .items(&scaffold_choices[..])
-                        .interact()?;
-
-                    match scaffold_selection {
-                        0 => {
-                            let name: String = dialoguer::Input::with_theme(&theme)
-                                .with_prompt("Enter controller name (e.g. UsersController):")
-                                .interact_text()?;
-                            let args_vec = vec![
-                                std::env::args().next().unwrap_or_default(),
-                                "make:controller".to_string(),
-                                name,
-                            ];
-                            let cli = Cli::parse_from(args_vec);
-                            run_cli_command(&cli.command)?;
-                        }
-                        1 => {
-                            let name: String = dialoguer::Input::with_theme(&theme)
-                                .with_prompt("Enter model name (e.g. Product):")
-                                .interact_text()?;
-                            let args_vec = vec![
-                                std::env::args().next().unwrap_or_default(),
-                                "make:model".to_string(),
-                                name,
-                                "-m".to_string(),
-                            ];
-                            let cli = Cli::parse_from(args_vec);
-                            run_cli_command(&cli.command)?;
-                        }
-                        2 => {
-                            let name: String = dialoguer::Input::with_theme(&theme)
-                                .with_prompt("Enter middleware name (e.g. RateLimiter):")
-                                .interact_text()?;
-                            let args_vec = vec![
-                                std::env::args().next().unwrap_or_default(),
-                                "make:middleware".to_string(),
-                                name,
-                            ];
-                            let cli = Cli::parse_from(args_vec);
-                            run_cli_command(&cli.command)?;
-                        }
-                        3 => {
-                            let name: String = dialoguer::Input::with_theme(&theme)
-                                .with_prompt("Enter worker name (e.g. EmailSender):")
-                                .interact_text()?;
-                            let args_vec = vec![
-                                std::env::args().next().unwrap_or_default(),
-                                "make:worker".to_string(),
-                                name,
-                            ];
-                            let cli = Cli::parse_from(args_vec);
-                            run_cli_command(&cli.command)?;
-                        }
-                        4 => {
-                            let name: String = dialoguer::Input::with_theme(&theme)
-                                .with_prompt("Enter migration name (e.g. add_status_to_users):")
-                                .interact_text()?;
-                            let args_vec = vec![
-                                std::env::args().next().unwrap_or_default(),
-                                "make:migration".to_string(),
-                                name,
-                            ];
-                            let cli = Cli::parse_from(args_vec);
-                            run_cli_command(&cli.command)?;
-                        }
-                        _ => {}
-                    }
-                }
-                2 => {
-                    // Database Operations
-                    let db_choices = &[
-                        "🚀  Run Migrations       (cargo rullst db:migrate)",
-                        "🔄  Rollback Last Batch  (cargo rullst db:rollback)",
-                        "📊  Migration Status     (cargo rullst db:status)",
-                        "🌱  Run Seeders          (cargo rullst db:seed)",
-                        "🖥️  Open Studio Browser  (cargo rullst studio)",
-                    ];
-                    let db_selection = dialoguer::Select::with_theme(&theme)
-                        .with_prompt("Choose database operation:\n")
-                        .default(0)
-                        .items(&db_choices[..])
-                        .interact()?;
-                    let cmd_str = match db_selection {
-                        0 => "db:migrate",
-                        1 => "db:rollback",
-                        2 => "db:status",
-                        3 => "db:seed",
-                        4 => "studio",
-                        _ => "",
-                    };
-                    if !cmd_str.is_empty() {
-                        let args_vec = vec![
-                            std::env::args().next().unwrap_or_default(),
-                            cmd_str.to_string(),
-                        ];
-                        let cli = Cli::parse_from(args_vec);
-                        run_cli_command(&cli.command)?;
-                    }
-                }
-                3 => {
-                    // Auth & Billing
-                    let auth_choices = &[
-                        "🔐  Scaffold Full Auth System  (cargo rullst auth)",
-                        "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
-                        "🌐  Add CORS Middleware        (cargo rullst make:cors)",
-                        "🔑  Add JWT Middleware         (cargo rullst make:jwt)",
-                    ];
-                    let auth_selection = dialoguer::Select::with_theme(&theme)
-                        .with_prompt("Choose auth & billing action:\n")
-                        .default(0)
-                        .items(&auth_choices[..])
-                        .interact()?;
-                    let cmd_str = match auth_selection {
-                        0 => "auth",
-                        1 => "make:billing",
-                        2 => "make:cors",
-                        3 => "make:jwt",
-                        _ => "",
-                    };
-                    if !cmd_str.is_empty() {
-                        let args_vec = vec![
-                            std::env::args().next().unwrap_or_default(),
-                            cmd_str.to_string(),
-                        ];
-                        let cli = Cli::parse_from(args_vec);
-                        run_cli_command(&cli.command)?;
-                    }
-                }
-                4 => {
-                    // Package for Desktop/App (Omni)
-                    let args_vec = vec![
-                        std::env::args().next().unwrap_or_default(),
-                        "make:omni".to_string(),
-                    ];
-                    let cli = Cli::parse_from(args_vec);
-                    run_cli_command(&cli.command)?;
-                }
-                5 => {
-                    // Dockerize Project
-                    let args_vec: Vec<String> = vec![
-                        std::env::args().next().unwrap_or_default(),
-                        "dockerize".to_string(),
-                    ];
-                    let cli = Cli::parse_from(args_vec);
-                    run_cli_command(&cli.command)?;
-                }
-                6 => {
-                    // Deploy to Cloud
-                    let deploy_choices = &[
-                        "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
-                        "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
-                    ];
-                    let deploy_selection = dialoguer::Select::with_theme(&theme)
-                        .with_prompt("Choose deployment action:\n")
-                        .default(0)
-                        .items(&deploy_choices[..])
-                        .interact()?;
-                    let cmd_str = match deploy_selection {
-                        0 => "foundry:init",
-                        1 => "foundry:deploy",
-                        _ => "",
-                    };
-                    if !cmd_str.is_empty() {
-                        let args_vec = vec![
-                            std::env::args().next().unwrap_or_default(),
-                            cmd_str.to_string(),
-                        ];
-                        let cli = Cli::parse_from(args_vec);
-                        run_cli_command(&cli.command)?;
-                    }
-                }
-                7 => {
-                    // Upgrade
-                    let args_vec: Vec<String> = vec![
-                        std::env::args().next().unwrap_or_default(),
-                        "upgrade".to_string(),
-                    ];
-                    let cli = Cli::parse_from(args_vec);
-                    run_cli_command(&cli.command)?;
-                }
-                8 => {
-                    // Back to Main Menu
-                    return show_interactive_dashboard();
-                }
-                _ => {}
-            }
-        }
-        2 => {
-            // View Help
-            show_help_reference();
-        }
-        _ => {
-            // Exit
-            println!("{}", "Exiting. Happy coding with Rullst! 🦀🚀".dimmed());
-        }
+        0 => execute_command(vec![std::env::args().next().unwrap_or_default(), "new".to_string()]),
+        1 => handle_existing_project(&theme),
+        2 => { show_help_reference(); Ok(()) },
+        _ => { println!("{}", "Exiting. Happy coding with Rullst! 🦀🚀".dimmed()); Ok(()) }
     }
-    Ok(())
 }
 
-// ─── Help Reference ───────────────────────────────────────────────────────────
+fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
+    vec![
+        ("🗂️  PROJECT", vec![
+            ("cargo rullst new [name]", "Create a new Rullst application"),
+            ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
+        ]),
+        ("🛠️  SCAFFOLDING", vec![
+            ("cargo rullst make:controller <Name>", "New controller"),
+            ("cargo rullst make:model <Name> -m", "New model (+migration)"),
+            ("cargo rullst make:middleware <Name>", "New middleware"),
+            ("cargo rullst make:worker <Name>", "New background worker"),
+            ("cargo rullst make:migration <name>", "Blank migration"),
+        ]),
+        ("🗄️  DATABASE", vec![
+            ("cargo rullst db:migrate", "Run pending migrations"),
+            ("cargo rullst db:rollback", "Rollback last batch"),
+            ("cargo rullst db:status", "Show migration status"),
+            ("cargo rullst db:seed", "Run seeders"),
+            ("cargo rullst studio", "Open DB studio browser"),
+        ]),
+        ("🔐  AUTH & BILLING", vec![
+            ("cargo rullst auth", "Scaffold full auth system"),
+            ("cargo rullst make:billing", "Scaffold Stripe billing"),
+            ("cargo rullst make:cors", "Add CORS middleware"),
+            ("cargo rullst make:jwt", "Add JWT middleware"),
+        ]),
+        ("🖥️  DESKTOP & MOBILE (OMNI)", vec![
+            ("cargo rullst make:omni", "Scaffold Omni desktop & mobile app wrapper"),
+            ("cargo rullst omni [target]", "Run Omni app (desktop, android, ios)"),
+        ]),
+        ("🚀  DEPLOY", vec![
+            ("cargo rullst dockerize", "Generate Docker files"),
+            ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
+            ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),
+        ]),
+        ("📦  BUILD & DOCS", vec![
+            ("cargo rullst build", "Production binary + Brotli/Zstd assets"),
+            ("cargo rullst build:client", "Compile Wasm Islands"),
+            ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
+            ("cargo rullst docs dev", "Live docs preview server"),
+            ("cargo rullst docs build", "Build static docs site"),
+        ]),
+    ]
+}
 
-/// Prints a beautiful grouped cheat-sheet of all Rullst CLI commands.
 pub fn show_help_reference() {
     print!("\x1B[2J\x1B[1;1H");
-    println!();
-    println!(
-        "  {}",
-        "╔══════════════════════════════════════════╗"
-            .bright_cyan()
-            .bold()
-    );
-    println!(
-        "  {}  💡 Rullst CLI - Full Command Reference  {}",
-        "║".bright_cyan().bold(),
-        "║".bright_cyan().bold()
-    );
-    println!(
-        "  {}",
-        "╚══════════════════════════════════════════╝"
-            .bright_cyan()
-            .bold()
-    );
-    let groups = [
-        (
-            "🗂️  PROJECT",
-            vec![
-                ("cargo rullst new [name]", "Create a new Rullst application"),
-                ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
-            ],
-        ),
-        (
-            "🛠️  SCAFFOLDING",
-            vec![
-                ("cargo rullst make:controller <Name>", "New controller"),
-                (
-                    "cargo rullst make:model <Name> -m",
-                    "New model (+migration)",
-                ),
-                ("cargo rullst make:middleware <Name>", "New middleware"),
-                ("cargo rullst make:worker <Name>", "New background worker"),
-                ("cargo rullst make:migration <name>", "Blank migration"),
-            ],
-        ),
-        (
-            "🗄️  DATABASE",
-            vec![
-                ("cargo rullst db:migrate", "Run pending migrations"),
-                ("cargo rullst db:rollback", "Rollback last batch"),
-                ("cargo rullst db:status", "Show migration status"),
-                ("cargo rullst db:seed", "Run seeders"),
-                ("cargo rullst studio", "Open DB studio browser"),
-            ],
-        ),
-        (
-            "🔐  AUTH & BILLING",
-            vec![
-                ("cargo rullst auth", "Scaffold full auth system"),
-                ("cargo rullst make:billing", "Scaffold Stripe billing"),
-                ("cargo rullst make:cors", "Add CORS middleware"),
-                ("cargo rullst make:jwt", "Add JWT middleware"),
-            ],
-        ),
-        (
-            "🖥️  DESKTOP & MOBILE (OMNI)",
-            vec![
-                (
-                    "cargo rullst make:omni",
-                    "Scaffold Omni desktop & mobile app wrapper",
-                ),
-                (
-                    "cargo rullst omni [target]",
-                    "Run Omni app (desktop, android, ios)",
-                ),
-            ],
-        ),
-        (
-            "🚀  DEPLOY",
-            vec![
-                ("cargo rullst dockerize", "Generate Docker files"),
-                ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
-                ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),
-            ],
-        ),
-        (
-            "📦  BUILD & DOCS",
-            vec![
-                (
-                    "cargo rullst build",
-                    "Production binary + Brotli/Zstd assets",
-                ),
-                ("cargo rullst build:client", "Compile Wasm Islands"),
-                ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
-                ("cargo rullst docs dev", "Live docs preview server"),
-                ("cargo rullst docs build", "Build static docs site"),
-            ],
-        ),
-    ];
-    for (group_name, cmds) in &groups {
-        println!("  {}", group_name.bright_yellow().bold(),);
+    println!("\n  {}", "╔══════════════════════════════════════════╗".bright_cyan().bold());
+    println!("  {}  💡 Rullst CLI - Full Command Reference  {}", "║".bright_cyan().bold(), "║".bright_cyan().bold());
+    println!("  {}", "╚══════════════════════════════════════════╝".bright_cyan().bold());
+    
+    for (group_name, cmds) in get_help_groups() {
+        println!("  {}", group_name.bright_yellow().bold());
         for (cmd, desc) in cmds {
-            println!("    {:<35} {}", cmd.bright_cyan(), desc.white(),);
+            println!("    {:<35} {}", cmd.bright_cyan(), desc.white());
         }
         println!();
     }
-    println!();
 }

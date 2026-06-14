@@ -1,0 +1,58 @@
+﻿Bombarding http://rails:3000/ for 10s using 125 connection(s)
+
+
+
+
+
+
+ 00m09s
+ 00m09s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m08s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m07s
+ 00m06s
+ 00m06s
+ 00m05s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m04s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m03s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m02s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+ 00m01s
+
+
+
+
+
+ 10s
+Done!
+Statistics        Avg      Stdev        Max
+  Reqs/sec      5084.95    6606.95   35008.91
+  Latency       34.94ms   198.71ms      2.00s
+  HTTP codes:
+    1xx - 0, 2xx - 0, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 41382
+  Errors:
+    dial tcp 172.19.0.2:3000: connect: connection refused - 41007
+    dial tcp: lookup rails: i/o timeout - 250
+    dial tcp 172.19.0.2:3000: i/o timeout - 125
+  Throughput:       0.00/s

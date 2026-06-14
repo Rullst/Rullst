@@ -42,41 +42,7 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Step 1: Update Cargo.toml
-    println!(
-        "{}",
-        format!(
-            "📦 Updating Rullst dependency versions to {} in Cargo.toml...",
-            latest_version
-        )
-        .yellow()
-    );
-    let cargo_path = Path::new("Cargo.toml");
-    if cargo_path.exists() {
-        let mut cargo_content = std::fs::read_to_string(cargo_path)?;
-
-        let re_rullst = regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_rullst
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"{}""#, &caps[1], latest_version)
-            })
-            .into_owned();
-
-        let re_macros = regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_macros
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"{}""#, &caps[1], latest_version)
-            })
-            .into_owned();
-
-        let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#)?;
-        cargo_content = re_eloquent
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"4.0.4""#, &caps[1])
-            })
-            .into_owned();
-
-        std::fs::write(cargo_path, cargo_content)?;
-    }
+    update_cargo_toml(&latest_version)?;
 
     // Step 2: Run cargo update
     let update_success = with_spinner("Refreshing dependencies and lockfile...", || {
@@ -97,82 +63,7 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Step 3: Run self-healing codemod AST & regex rules
-    println!(
-        "{}",
-        "\n🔧 Executing self-healing codemod AST & regex rules over project files...".yellow()
-    );
-
-    let rules = vec![
-        (
-            r#"\bold_initializer\s*\(\s*\)"#,
-            "Router::new()",
-            "Legacy old_initializer() -> Router::new()",
-        ),
-        (
-            r#"\brullst::routing::old_initializer\b"#,
-            "rullst::routing::Router::new",
-            "Legacy router initialization path",
-        ),
-        (
-            r#"\buse\s+sqlx::"#,
-            "use rullst::db::sqlx::",
-            "Enforce Dependency Shielding for sqlx",
-        ),
-        (
-            r#"\buse\s+axum::"#,
-            "use rullst::server::",
-            "Enforce Dependency Shielding for axum",
-        ),
-        (
-            r#"\buse\s+tokio::"#,
-            "use rullst::runtime::",
-            "Enforce Dependency Shielding for tokio",
-        ),
-    ];
-
-    let mut compiled_rules = Vec::new();
-    for (pattern, replacement, desc) in rules {
-        compiled_rules.push((regex::Regex::new(pattern)?, replacement, desc));
-    }
-
-    let mut applied_count = 0;
-    if Path::new("src").exists() {
-        let walker = walkdir::WalkDir::new("src");
-        for entry in walker.into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("rs") {
-                let mut file_content = std::fs::read_to_string(path)?;
-                let mut modified = false;
-
-                for (re, replacement, desc) in &compiled_rules {
-                    if re.is_match(&file_content) {
-                        file_content = re.replace_all(&file_content, *replacement).into_owned();
-                        println!(
-                            "  [{}] Applied codemod: {} in {}",
-                            "Codemod".green().bold(),
-                            desc.cyan(),
-                            path.display()
-                        );
-                        modified = true;
-                        applied_count += 1;
-                    }
-                }
-
-                if modified {
-                    std::fs::write(path, file_content)?;
-                }
-            }
-        }
-    }
-
-    if applied_count == 0 {
-        println!("  ✨ No legacy APIs or shielding patterns required patching in this codebase.");
-    } else {
-        println!(
-            "  ✨ Successfully executed {} codemod modifications.",
-            applied_count
-        );
-    }
+    apply_self_healing_codemods()?;
 
     // Step 4: Run `cargo fix`
     let fix_success = with_spinner("Applying additional code fixes via cargo fix...", || {
@@ -226,6 +117,133 @@ pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{}",
+        format!(
+            "📦 Updating Rullst dependency versions to {} in Cargo.toml...",
+            latest_version
+        )
+        .yellow()
+    );
+    let cargo_path = Path::new("Cargo.toml");
+    if cargo_path.exists() {
+        let mut cargo_content = std::fs::read_to_string(cargo_path)?;
+
+        static RE_RULLST: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let re_rullst = RE_RULLST.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#).unwrap());
+        cargo_content = re_rullst
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"{}""#, &caps[1], latest_version)
+            })
+            .into_owned();
+
+        static RE_MACROS: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let re_macros = RE_MACROS.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#).unwrap());
+        cargo_content = re_macros
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"{}""#, &caps[1], latest_version)
+            })
+            .into_owned();
+
+        static RE_ELOQUENT: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let re_eloquent = RE_ELOQUENT.get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#).unwrap());
+        cargo_content = re_eloquent
+            .replace_all(&cargo_content, |caps: &regex::Captures| {
+                format!(r#"{}"4.0.4""#, &caps[1])
+            })
+            .into_owned();
+
+        std::fs::write(cargo_path, cargo_content)?;
+    }
+    Ok(())
+}
+
+fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{}",
+        "\n🔧 Executing self-healing codemod AST & regex rules over project files...".yellow()
+    );
+
+    static COMPILED_RULES: std::sync::OnceLock<Vec<(regex::Regex, &'static str, &'static str)>> =
+        std::sync::OnceLock::new();
+    let compiled_rules = COMPILED_RULES.get_or_init(|| {
+        let rules = vec![
+            (
+                r#"\bold_initializer\s*\(\s*\)"#,
+                "Router::new()",
+                "Legacy old_initializer() -> Router::new()",
+            ),
+            (
+                r#"\brullst::routing::old_initializer\b"#,
+                "rullst::routing::Router::new",
+                "Legacy router initialization path",
+            ),
+            (
+                r#"\buse\s+sqlx::"#,
+                "use rullst::db::sqlx::",
+                "Enforce Dependency Shielding for sqlx",
+            ),
+            (
+                r#"\buse\s+axum::"#,
+                "use rullst::server::",
+                "Enforce Dependency Shielding for axum",
+            ),
+            (
+                r#"\buse\s+tokio::"#,
+                "use rullst::runtime::",
+                "Enforce Dependency Shielding for tokio",
+            ),
+        ];
+
+        let mut compiled = Vec::new();
+        for (pattern, replacement, desc) in rules {
+            compiled.push((regex::Regex::new(pattern).unwrap(), replacement, desc));
+        }
+        compiled
+    });
+
+    let mut applied_count = 0;
+    if Path::new("src").exists() {
+        let walker = walkdir::WalkDir::new("src");
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                let mut file_content = std::fs::read_to_string(path)?;
+                let mut modified = false;
+
+                for (re, replacement, desc) in compiled_rules {
+                    if re.is_match(&file_content) {
+                        file_content = re.replace_all(&file_content, *replacement).into_owned();
+                        println!(
+                            "  [{}] Applied codemod: {} in {}",
+                            "Codemod".green().bold(),
+                            desc.cyan(),
+                            path.display()
+                        );
+                        modified = true;
+                        applied_count += 1;
+                    }
+                }
+
+                if modified {
+                    std::fs::write(path, file_content)?;
+                }
+            }
+        }
+    }
+
+    if applied_count == 0 {
+        println!("  ✨ No legacy APIs or shielding patterns required patching in this codebase.");
+    } else {
+        println!(
+            "  ✨ Successfully executed {} codemod modifications.",
+            applied_count
+        );
+    }
+    Ok(())
+}
+
 pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
@@ -244,6 +262,26 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
+    build_app_for_dev();
+
+    println!(
+        "{}\n",
+        "✨ Compilation successful! Starting the hot-reloader...".green()
+    );
+
+    ensure_cargo_watch_installed()?;
+
+    println!(
+        "{}",
+        "✨ Watching for file changes...\n(Press Ctrl+C to stop the development server)\n".green()
+    );
+
+    start_cargo_watch()?;
+
+    Ok(())
+}
+
+fn build_app_for_dev() {
     let output_result =
         crate::ui::components::with_spinner("Compiling Rullst Application...", || {
             Command::new("cargo").arg("build").arg("-q").output()
@@ -273,13 +311,9 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
     }
+}
 
-    println!(
-        "{}\n",
-        "✨ Compilation successful! Starting the hot-reloader...".green()
-    );
-
-    // Check if cargo-watch is installed
+fn ensure_cargo_watch_installed() -> Result<(), Box<dyn std::error::Error>> {
     let watch_check = Command::new("cargo").arg("watch").arg("--version").output();
 
     let is_installed = match watch_check {
@@ -304,12 +338,10 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         }
         println!("{}", "✅ 'cargo-watch' installed successfully!\n".green());
     }
+    Ok(())
+}
 
-    println!(
-        "{}",
-        "✨ Watching for file changes...\n(Press Ctrl+C to stop the development server)\n".green()
-    );
-
+fn start_cargo_watch() -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
         .arg("watch")
         .arg("-q")
@@ -325,7 +357,6 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
     if !status.success() {
         std::process::exit(1);
     }
-
     Ok(())
 }
 

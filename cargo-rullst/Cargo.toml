@@ -1,6 +1,7 @@
 [package]
 name = "cargo-rullst"
-version = "2.0.9"
+version = "2.0.10"
+authors = ["Rullst Core Team"]
 edition = "2024"
 description = "⌨️ $ The official command-line interface (CLI) for managing Rullst applications.📜🦀🌐"
 license = "MIT"

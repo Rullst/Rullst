@@ -109,6 +109,22 @@ impl Server {
 
     /// Start the HTTP server on the specified port
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+        let app_config = Self::load_config().await;
+        
+        self.init_database(&app_config).await;
+        self.start_scheduler();
+        
+        let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+        let addr = Self::setup_networking(port, is_dev);
+
+        if let Some(lib_path) = self.hot_reload_lib.take() {
+            self.run_hot_reload(lib_path, addr, is_dev).await
+        } else {
+            self.run_static(app_config, addr, is_dev).await
+        }
+    }
+
+    async fn load_config() -> crate::config::RullstConfig {
         let mut app_config = crate::config::RullstConfig::new();
         if std::path::Path::new("Rullst.toml").exists() {
             match crate::config::RullstConfig::load_from_file("Rullst.toml").await {
@@ -124,7 +140,10 @@ impl Server {
         } else {
             let _ = crate::config::RullstConfig::set_global(app_config.clone());
         }
+        app_config
+    }
 
+    async fn init_database(&mut self, app_config: &crate::config::RullstConfig) {
         if self.db_url.is_none() {
             if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
                 self.db_url = Some(env_db_url);
@@ -133,9 +152,9 @@ impl Server {
             }
         }
 
-        if let Some(db_url) = self.db_url {
+        if let Some(db_url) = &self.db_url {
             println!("Initializing Orm database pool...");
-            match Orm::init(&db_url).await {
+            match Orm::init(db_url).await {
                 Ok(_) => println!("Database initialized successfully."),
                 Err(e) => eprintln!(
                     "⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.",
@@ -143,14 +162,15 @@ impl Server {
                 ),
             }
         }
+    }
 
-        // Start the scheduler if one was attached
+    fn start_scheduler(&mut self) {
         if let Some(scheduler) = self.scheduler.take() {
             scheduler.start();
         }
+    }
 
-        let is_dev =
-            std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    fn setup_networking(port: u16, is_dev: bool) -> SocketAddr {
         if is_dev && std::env::var("RUST_BACKTRACE").is_err() {
             eprintln!(
                 "⚠️  Rullst Dev: Set RUST_BACKTRACE=1 in your environment for richer error traces."
@@ -168,7 +188,6 @@ impl Server {
             .parse()
             .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], port)));
 
-        // I-1: Warn when dev-only routes are exposed on a non-loopback address
         if is_dev && addr.ip().is_unspecified() {
             eprintln!(
                 "⚠️  Rullst Dev: Self-Healing Console mounted on /_rullst/*\n\
@@ -176,224 +195,225 @@ impl Server {
             );
         }
 
-        if let Some(lib_path) = self.hot_reload_lib {
-            if !cfg!(debug_assertions) {
-                panic!("CRITICAL SECURITY: Hot-Reloading is strictly disabled in release mode!");
-            }
+        addr
+    }
 
-            // --- Hot Reloading Mode ---
-            println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
-
-            // Load initial router and library
-            let (initial_router, library) = match load_dylib_router(&lib_path, is_dev) {
-                Ok(r) => r,
-                Err(e) => {
-                    println!(
-                        "\x1b[31m❌ Falha ao carregar dylib inicial: {}. Certifique-se de que a biblioteca dinâmica foi compilada rodando 'cargo build --lib'.\x1b[0m",
-                        e
-                    );
-                    return Err(e);
-                }
-            };
-
-            let current_router = Arc::new(RwLock::new(initial_router));
-            let active_libraries = Arc::new(Mutex::new(vec![library]));
-
-            // Setup file watcher
-            let (tx, rx) = std::sync::mpsc::channel();
-            use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-            let mut watcher = RecommendedWatcher::new(
-                move |res| {
-                    if let Ok(event) = res {
-                        let _ = tx.send(event);
-                    }
-                },
-                notify::Config::default(),
-            )?;
-
-            if std::path::Path::new("src").exists() {
-                watcher.watch(std::path::Path::new("src"), RecursiveMode::Recursive)?;
-            }
-
-            // Spawn dynamic loader watch thread
-            let current_router_clone = current_router.clone();
-            let active_libraries_clone = active_libraries.clone();
-            let lib_path_clone = lib_path.clone();
-
-            std::thread::spawn(move || {
-                let mut last_build = std::time::Instant::now();
-                while let Ok(_event) = rx.recv() {
-                    // Debounce
-                    std::thread::sleep(std::time::Duration::from_millis(300));
-                    while rx.try_recv().is_ok() {}
-
-                    if last_build.elapsed() < std::time::Duration::from_secs(1) {
-                        continue;
-                    }
-
-                    let (tx, rx_build) = std::sync::mpsc::channel();
-                    let current_dir =
-                        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-                    std::thread::spawn(move || {
-                        let res = std::process::Command::new("cargo")
-                            .arg("build")
-                            .arg("--lib")
-                            .current_dir(current_dir)
-                            .status();
-                        let _ = tx.send(res);
-                    });
-
-                    // Timeout of 120 seconds to prevent hanging build processes
-                    let build_success = match rx_build
-                        .recv_timeout(std::time::Duration::from_secs(120))
-                    {
-                        Ok(Ok(status)) => status.success(),
-                        Ok(Err(e)) => {
-                            eprintln!("⚠️ Rullst Hot-Reload: failed to execute cargo build: {}", e);
-                            false
-                        }
-                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                            eprintln!(
-                                "⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!"
-                            );
-                            false
-                        }
-                        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,
-                    };
-
-                    if build_success {
-                        println!(
-                            "\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m"
-                        );
-                        match load_dylib_router(&lib_path_clone, is_dev) {
-                            Ok((new_router, new_lib)) => {
-                                // H-1: Recover from poisoned write lock rather than panicking
-                                match current_router_clone.write() {
-                                    Ok(mut guard) => *guard = new_router,
-                                    Err(poisoned) => *poisoned.into_inner() = new_router,
-                                };
-
-                                // Keep all loaded libraries in memory to prevent segmentation faults
-                                // for concurrent requests executing handlers from older versions.
-                                // We cap this to the last 3 versions to prevent infinite memory growth.
-                                let mut active_libs = active_libraries_clone
-                                    .lock()
-                                    .unwrap_or_else(|p| p.into_inner());
-                                active_libs.push(new_lib);
-                                if active_libs.len() > 3 {
-                                    active_libs.remove(0);
-                                }
-
-                                println!(
-                                    "\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m"
-                                );
-                            }
-                            Err(e) => {
-                                println!(
-                                    "\x1b[31m❌ Rullst Hot-Reload: Erro ao carregar dylib recém-compilada: {}\x1b[0m",
-                                    e
-                                );
-                            }
-                        }
-                    } else {
-                        println!(
-                            "\x1b[31m❌ Rullst Hot-Reload: Falha ao compilar o código fonte. Corrija os erros para aplicar o hot-swap.\x1b[0m"
-                        );
-                    }
-
-                    last_build = std::time::Instant::now();
-                }
-            });
-
-            let hotswap_service = HotSwapService {
-                current_router,
-                shield: self.shield.clone(),
-                limiter: self.limiter.clone(),
-            };
-
-            println!(
-                "Rullst framework serving on http://{} (Hot-Reload Ativo)",
-                addr
-            );
-            println!(
-                "🚀 Visit: http://localhost:{} to see the result!",
-                addr.port()
-            );
-
-            let listener = tokio::net::TcpListener::bind(addr).await?;
-            axum::serve(listener, hotswap_service).await?;
-        } else {
-            // --- Standard Static Routing Mode ---
-            let mut app = self.router.into_axum();
-
-            // Inject Security Config for middlewares to extract
-            app = app.layer(axum::Extension(app_config.security.clone()));
-
-            // Apply CORS if configured
-            if !app_config.security.cors_allow_origins.is_empty() {
-                use tower_http::cors::{Any, CorsLayer};
-                // NOTE: This is a basic CORS setup. You may want to expose more options via config.
-                app = app.layer(CorsLayer::new().allow_origin(Any));
-            }
-
-            // Serve static files from "static" directory if it exists
-            if std::path::Path::new("static").exists() {
-                app = app
-                    .nest_service(
-                        "/static",
-                        tower_http::services::ServeDir::new("static").precompressed_br(),
-                    )
-                    .layer(axum::middleware::from_fn(zstd_static_middleware));
-            }
-
-            if is_dev {
-                app = app
-                    .route(
-                        "/_rullst/explain",
-                        axum::routing::get(crate::error_console::handle_explain),
-                    )
-                    .route(
-                        "/_rullst/autofix",
-                        axum::routing::post(crate::error_console::handle_autofix),
-                    )
-                    .layer(axum::middleware::from_fn(
-                        crate::error_console::catch_panic_middleware,
-                    ));
-            }
-
-            if let Some(limiter) = self.limiter {
-                app = app.layer(axum::middleware::from_fn(move |req, next| {
-                    crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
-                }));
-            }
-
-            if let Some(shield) = self.shield {
-                app = app.layer(axum::middleware::from_fn(move |req, next| {
-                    crate::resilience::backpressure_middleware(shield.clone(), req, next)
-                }));
-            }
-
-            if !is_dev {
-                app = app
-                    .layer(axum::middleware::from_fn(
-                        crate::security::pii_masking_middleware,
-                    ))
-                    .layer(axum::middleware::from_fn(
-                        crate::security::headers_middleware,
-                    ))
-                    .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
-                    .layer(axum::middleware::from_fn(crate::security::waf_middleware));
-            }
-
-            println!("Rullst framework serving on http://{}", addr);
-            println!(
-                "🚀 Visit: http://localhost:{} to see the result!",
-                addr.port()
-            );
-
-            let listener = tokio::net::TcpListener::bind(addr).await?;
-            axum::serve(listener, app).await?;
+    async fn run_hot_reload(
+        self,
+        lib_path: String,
+        addr: SocketAddr,
+        is_dev: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if !cfg!(debug_assertions) {
+            panic!("CRITICAL SECURITY: Hot-Reloading is strictly disabled in release mode!");
         }
+
+        println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
+
+        let (initial_router, library) = match load_dylib_router(&lib_path, is_dev) {
+            Ok(r) => r,
+            Err(e) => {
+                println!(
+                    "\x1b[31m❌ Falha ao carregar dylib inicial: {}. Certifique-se de que a biblioteca dinâmica foi compilada rodando 'cargo build --lib'.\x1b[0m",
+                    e
+                );
+                return Err(e);
+            }
+        };
+
+        let current_router = Arc::new(RwLock::new(initial_router));
+        let active_libraries = Arc::new(Mutex::new(vec![library]));
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+        let mut watcher = RecommendedWatcher::new(
+            move |res| {
+                if let Ok(event) = res {
+                    let _ = tx.send(event);
+                }
+            },
+            notify::Config::default(),
+        )?;
+
+        if std::path::Path::new("src").exists() {
+            watcher.watch(std::path::Path::new("src"), RecursiveMode::Recursive)?;
+        }
+
+        let current_router_clone = current_router.clone();
+        let active_libraries_clone = active_libraries.clone();
+        let lib_path_clone = lib_path.clone();
+
+        std::thread::spawn(move || {
+            let mut last_build = std::time::Instant::now();
+            while let Ok(_event) = rx.recv() {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                while rx.try_recv().is_ok() {}
+
+                if last_build.elapsed() < std::time::Duration::from_secs(1) {
+                    continue;
+                }
+
+                let (tx, rx_build) = std::sync::mpsc::channel();
+                let current_dir =
+                    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                std::thread::spawn(move || {
+                    let res = std::process::Command::new("cargo")
+                        .arg("build")
+                        .arg("--lib")
+                        .current_dir(current_dir)
+                        .status();
+                    let _ = tx.send(res);
+                });
+
+                let build_success = match rx_build
+                    .recv_timeout(std::time::Duration::from_secs(120))
+                {
+                    Ok(Ok(status)) => status.success(),
+                    Ok(Err(e)) => {
+                        eprintln!("⚠️ Rullst Hot-Reload: failed to execute cargo build: {}", e);
+                        false
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                        eprintln!(
+                            "⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!"
+                        );
+                        false
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,
+                };
+
+                if build_success {
+                    println!(
+                        "\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m"
+                    );
+                    match load_dylib_router(&lib_path_clone, is_dev) {
+                        Ok((new_router, new_lib)) => {
+                            match current_router_clone.write() {
+                                Ok(mut guard) => *guard = new_router,
+                                Err(poisoned) => *poisoned.into_inner() = new_router,
+                            };
+
+                            let mut active_libs = active_libraries_clone
+                                .lock()
+                                .unwrap_or_else(|p| p.into_inner());
+                            active_libs.push(new_lib);
+                            if active_libs.len() > 3 {
+                                active_libs.remove(0);
+                            }
+
+                            println!(
+                                "\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m"
+                            );
+                        }
+                        Err(e) => {
+                            println!(
+                                "\x1b[31m❌ Rullst Hot-Reload: Erro ao carregar dylib recém-compilada: {}\x1b[0m",
+                                e
+                            );
+                        }
+                    }
+                } else {
+                    println!(
+                        "\x1b[31m❌ Rullst Hot-Reload: Falha ao compilar o código fonte. Corrija os erros para aplicar o hot-swap.\x1b[0m"
+                    );
+                }
+
+                last_build = std::time::Instant::now();
+            }
+        });
+
+        let hotswap_service = HotSwapService {
+            current_router,
+            shield: self.shield,
+            limiter: self.limiter,
+        };
+
+        println!(
+            "Rullst framework serving on http://{} (Hot-Reload Ativo)",
+            addr
+        );
+        println!(
+            "🚀 Visit: http://localhost:{} to see the result!",
+            addr.port()
+        );
+
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        axum::serve(listener, hotswap_service).await?;
+
+        Ok(())
+    }
+
+    async fn run_static(
+        self,
+        app_config: crate::config::RullstConfig,
+        addr: SocketAddr,
+        is_dev: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut app = self.router.into_axum();
+
+        app = app.layer(axum::Extension(app_config.security.clone()));
+
+        if !app_config.security.cors_allow_origins.is_empty() {
+            use tower_http::cors::{Any, CorsLayer};
+            app = app.layer(CorsLayer::new().allow_origin(Any));
+        }
+
+        if std::path::Path::new("static").exists() {
+            app = app
+                .nest_service(
+                    "/static",
+                    tower_http::services::ServeDir::new("static").precompressed_br(),
+                )
+                .layer(axum::middleware::from_fn(zstd_static_middleware));
+        }
+
+        if is_dev {
+            app = app
+                .route(
+                    "/_rullst/explain",
+                    axum::routing::get(crate::error_console::handle_explain),
+                )
+                .route(
+                    "/_rullst/autofix",
+                    axum::routing::post(crate::error_console::handle_autofix),
+                )
+                .layer(axum::middleware::from_fn(
+                    crate::error_console::catch_panic_middleware,
+                ));
+        }
+
+        if let Some(limiter) = self.limiter {
+            app = app.layer(axum::middleware::from_fn(move |req, next| {
+                crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
+            }));
+        }
+
+        if let Some(shield) = self.shield {
+            app = app.layer(axum::middleware::from_fn(move |req, next| {
+                crate::resilience::backpressure_middleware(shield.clone(), req, next)
+            }));
+        }
+
+        if !is_dev {
+            app = app
+                .layer(axum::middleware::from_fn(
+                    crate::security::pii_masking_middleware,
+                ))
+                .layer(axum::middleware::from_fn(
+                    crate::security::headers_middleware,
+                ))
+                .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
+                .layer(axum::middleware::from_fn(crate::security::waf_middleware));
+        }
+
+        println!("Rullst framework serving on http://{}", addr);
+        println!(
+            "🚀 Visit: http://localhost:{} to see the result!",
+            addr.port()
+        );
+
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        axum::serve(listener, app).await?;
 
         Ok(())
     }
@@ -547,14 +567,12 @@ fn load_dylib_router(
         })?;
 
     // Clean up older active files that are no longer locked by any process
+    let expected_prefix = format!("{}_active_", filename);
     if let Ok(entries) = std::fs::read_dir(parent) {
         for entry in entries.flatten() {
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with(filename)
-                    && name.contains("_active_")
-                    && name.ends_with(lib_extension)
-                {
+                if name.starts_with(&expected_prefix) && name.ends_with(lib_extension) {
                     let _ = std::fs::remove_file(path);
                 }
             }

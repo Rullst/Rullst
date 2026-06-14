@@ -207,4 +207,57 @@ mod tests {
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
+
+    #[tokio::test]
+    async fn test_nest_axum() {
+        let axum_router = AxumRouter::new().route("/raw", axum::routing::get(mock_handler));
+        let router = Router::new().nest_axum("/api", axum_router);
+        let app = router.into_axum();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/raw")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_ws_routing() {
+        let router = Router::new().ws("/chat", mock_handler);
+        let app = router.into_axum();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/chat")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_merge_axum() {
+        let axum_router = AxumRouter::new().route("/merged", axum::routing::get(mock_handler));
+        let router = Router::new().merge_axum(axum_router);
+        let app = router.into_axum();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/merged")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 }

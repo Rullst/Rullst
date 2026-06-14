@@ -63,6 +63,10 @@ pub fn extract_source_context(
         .ok()?;
 
     let target_path = Path::new(file_path);
+    if target_path.components().any(|c| c == std::path::Component::ParentDir) {
+        return None;
+    }
+
     let canonical = target_path.canonicalize().ok()?;
     if !canonical.starts_with(&project_root) {
         return None;
@@ -155,7 +159,12 @@ pub async fn handle_explain(
         Err(_) => return "Unable to determine project root directory.".to_string(),
     };
 
-    let canonical_res = std::path::Path::new(&query.file).canonicalize();
+    let target_path = std::path::Path::new(&query.file);
+    if target_path.components().any(|c| c == std::path::Component::ParentDir) {
+        return "Access denied: Path traversal detected.".to_string();
+    }
+
+    let canonical_res = target_path.canonicalize();
     let canonical = match canonical_res {
         Ok(p) if p.starts_with(&project_root) => p,
         _ => return "File not found or access denied.".to_string(),
@@ -239,7 +248,15 @@ pub async fn handle_autofix(
     };
 
     // 2. Resolve and verify the file is within the project root (prevents path traversal and existence oracles)
-    let canonical_res = Path::new(&payload.file_path).canonicalize();
+    let target_path = Path::new(&payload.file_path);
+    if target_path.components().any(|c| c == std::path::Component::ParentDir) {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Access denied: Path traversal detected"
+        }));
+    }
+
+    let canonical_res = target_path.canonicalize();
     let canonical_target = match canonical_res {
         Ok(p) if p.starts_with(&project_root) => p,
         _ => {

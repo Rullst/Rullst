@@ -254,4 +254,42 @@ mod tests {
         assert!(logout_cookie.starts_with("rullst_session=;"));
         assert!(logout_cookie.contains("Max-Age=0"));
     }
+
+    #[test]
+    fn test_needs_rehash() {
+        let p = "super_secret";
+        let hash = hash_password(p).expect("Failed to hash password");
+        assert!(!needs_rehash(&hash));
+
+        let old_hash = "$argon2i$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$YhhQvA1/zHGEoWnUBY/J2iY/R/hG93WqG2k73D655b0";
+        assert!(needs_rehash(old_hash));
+
+        assert!(!needs_rehash("invalid"));
+    }
+
+    #[test]
+    fn test_extract_session_cookie() {
+        let mut headers = HeaderMap::new();
+        assert_eq!(extract_session_cookie(&headers), None);
+
+        headers.insert(
+            axum::http::header::COOKIE,
+            "rullst_session=my_secret_token; other=123".parse().unwrap()
+        );
+        assert_eq!(extract_session_cookie(&headers), Some("my_secret_token".to_string()));
+
+        headers.insert(
+            axum::http::header::COOKIE,
+            "other=123; rullst_session=my_secret_token_2".parse().unwrap()
+        );
+        assert_eq!(extract_session_cookie(&headers), Some("my_secret_token_2".to_string()));
+    }
+
+    #[test]
+    fn test_get_app_key() {
+        // Just verify that the application key can be successfully resolved.
+        // We avoid mutating `std::env::set_var` here because it races with concurrent tests.
+        let key = get_app_key().unwrap();
+        assert!(!key.is_empty());
+    }
 }

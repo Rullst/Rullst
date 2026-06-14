@@ -138,4 +138,11 @@ mod tests {
         let pool = safe_pool();
         assert!(pool.is_none());
     }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn test_safe_driver_uninitialized() {
+        let driver = safe_driver();
+        assert!(driver.is_none());
+    }
 }

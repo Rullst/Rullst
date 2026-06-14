@@ -17,6 +17,7 @@ frameworks = [
     {"id": "nestjs", "name": "NestJS", "lang": "JavaScript"},
     {"id": "zap", "name": "Zap (Zig)", "lang": "Zig"},
     {"id": "springboot", "name": "Spring Boot", "lang": "Java"},
+    {"id": "rails", "name": "Ruby on Rails", "lang": "Ruby"},
 ]
 
 def parse_content(content):

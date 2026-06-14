@@ -13,46 +13,84 @@ fn main() {
     dioxus::launch(App);
 }
 
+async fn fetch_backend_status() -> BackendStatus {
+    let client = reqwest::Client::new();
+    if let Ok(res) = client.get("http://localhost:3000/api/status").send().await {
+        if let Ok(data) = res.json::<BackendStatus>().await {
+            return data;
+        }
+    }
+    BackendStatus {
+        version: "1.0.5".to_string(),
+        status: "Running (Offline Simulation)".to_string(),
+        uptime: "2h 45m".to_string(),
+    }
+}
+
+#[component]
+fn Sidebar(backend_data: Signal<Option<BackendStatus>>, on_refresh: EventHandler<dioxus::events::MouseEvent>) -> Element {
+    rsx! {
+        div { class: "sidebar-panel",
+            h3 { "System Status" }
+            div { class: "status-indicator active",
+                div { class: "ping-dot" }
+                span { "Connected to Dual-Engine Backend" }
+            }
+            
+            div { class: "stats-list",
+                div { class: "stat-item",
+                    span { class: "stat-label", "Backend Version:" }
+                    span { class: "stat-value", 
+                        if let Some(ref data) = *backend_data.read() {
+                            "{data.version}"
+                        } else {
+                            "Fetching..."
+                        }
+                    }
+                }
+                div { class: "stat-item",
+                    span { class: "stat-label", "Engine State:" }
+                    span { class: "stat-value state-ok", 
+                        if let Some(ref data) = *backend_data.read() {
+                            "{data.status}"
+                        } else {
+                            "Connecting..."
+                        }
+                    }
+                }
+                div { class: "stat-item",
+                    span { class: "stat-label", "API Uptime:" }
+                    span { class: "stat-value", 
+                        if let Some(ref data) = *backend_data.read() {
+                            "{data.uptime}"
+                        } else {
+                            "..."
+                        }
+                    }
+                }
+            }
+
+            button { 
+                class: "primary-btn",
+                onclick: move |evt| on_refresh.call(evt),
+                "Refresh Backend Link"
+            }
+        }
+    }
+}
+
 #[component]
 fn App() -> Element {
     let mut backend_data = use_signal(|| None::<BackendStatus>);
 
-    let mut fetch_status = move |_| {
+    let fetch_status = move |_| {
         spawn(async move {
-            let client = reqwest::Client::new();
-            match client.get("http://localhost:3000/api/status").send().await {
-                Ok(res) => {
-                    if let Ok(data) = res.json::<BackendStatus>().await {
-                        backend_data.set(Some(data));
-                    }
-                }
-                Err(_) => {
-                    backend_data.set(Some(BackendStatus {
-                        version: "1.0.5".to_string(),
-                        status: "Running (Offline Simulation)".to_string(),
-                        uptime: "2h 45m".to_string(),
-                    }));
-                }
-            }
+            backend_data.set(Some(fetch_backend_status().await));
         });
     };
 
     use_future(move || async move {
-        let client = reqwest::Client::new();
-        match client.get("http://localhost:3000/api/status").send().await {
-            Ok(res) => {
-                if let Ok(data) = res.json::<BackendStatus>().await {
-                    backend_data.set(Some(data));
-                }
-            }
-            Err(_) => {
-                backend_data.set(Some(BackendStatus {
-                    version: "1.0.5".to_string(),
-                    status: "Running (Offline Simulation)".to_string(),
-                    uptime: "2h 45m".to_string(),
-                }));
-            }
-        }
+        backend_data.set(Some(fetch_backend_status().await));
     });
 
     rsx! {
@@ -72,52 +110,7 @@ fn App() -> Element {
                 }
 
                 div { class: "main-grid",
-                    div { class: "sidebar-panel",
-                        h3 { "System Status" }
-                        div { class: "status-indicator active",
-                            div { class: "ping-dot" }
-                            span { "Connected to Dual-Engine Backend" }
-                        }
-                        
-                        div { class: "stats-list",
-                            div { class: "stat-item",
-                                span { class: "stat-label", "Backend Version:" }
-                                span { class: "stat-value", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.version}"
-                                    } else {
-                                        "Fetching..."
-                                    }
-                                }
-                            }
-                            div { class: "stat-item",
-                                span { class: "stat-label", "Engine State:" }
-                                span { class: "stat-value state-ok", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.status}"
-                                    } else {
-                                        "Connecting..."
-                                    }
-                                }
-                            }
-                            div { class: "stat-item",
-                                span { class: "stat-label", "API Uptime:" }
-                                span { class: "stat-value", 
-                                    if let Some(ref data) = *backend_data.read() {
-                                        "{data.uptime}"
-                                    } else {
-                                        "..."
-                                    }
-                                }
-                            }
-                        }
-
-                        button { 
-                            class: "primary-btn",
-                            onclick: fetch_status,
-                            "Refresh Backend Link"
-                        }
-                    }
+                    Sidebar { backend_data, on_refresh: fetch_status }
 
                     div { class: "content-panel",
                         h2 { "Multi-Platform Frontend Engine" }

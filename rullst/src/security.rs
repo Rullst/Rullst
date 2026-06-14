@@ -36,41 +36,47 @@ fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 pub async fn csrf_middleware(req: Request, next: Next) -> Response {
     let method = req.method();
 
-    // 1. GET requests: bypass validation but ensure CSRF token cookie is set
     if method == axum::http::Method::GET {
-        let has_cookie = req
-            .headers()
-            .get(header::COOKIE)
-            .and_then(|v| v.to_str().ok())
-            .map(|cookie_str| cookie_str.contains("rullst_csrf="))
-            .unwrap_or(false);
+        handle_csrf_get(req, next).await
+    } else {
+        handle_csrf_state_modifying(req, next).await
+    }
+}
 
-        if !has_cookie {
-            let token = generate_csrf_token();
-            let same_site = req
-                .extensions()
-                .get::<crate::config::SecurityConfig>()
-                .map(|cfg| cfg.csrf_same_site.clone())
-                .unwrap_or_else(|| "Lax".to_string());
+async fn handle_csrf_get(req: Request, next: Next) -> Response {
+    let has_cookie = req
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .map(|cookie_str| cookie_str.contains("rullst_csrf="))
+        .unwrap_or(false);
 
-            let mut response = next.run(req).await;
+    if !has_cookie {
+        let token = generate_csrf_token();
+        let same_site = req
+            .extensions()
+            .get::<crate::config::SecurityConfig>()
+            .map(|cfg| cfg.csrf_same_site.clone())
+            .unwrap_or_else(|| "Lax".to_string());
 
-            let secure_attr = if is_production() { "; Secure" } else { "" };
-            if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-                "rullst_csrf={}; Path=/; SameSite={}; HttpOnly{}",
-                token, same_site, secure_attr
-            )) {
-                response
-                    .headers_mut()
-                    .append(header::SET_COOKIE, cookie_val);
-            }
-            return response;
+        let mut response = next.run(req).await;
+
+        let secure_attr = if is_production() { "; Secure" } else { "" };
+        if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
+            "rullst_csrf={}; Path=/; SameSite={}; HttpOnly{}",
+            token, same_site, secure_attr
+        )) {
+            response
+                .headers_mut()
+                .append(header::SET_COOKIE, cookie_val);
         }
-
-        return next.run(req).await;
+        return response;
     }
 
-    // 2. State-modifying requests: validate the token
+    next.run(req).await
+}
+
+async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
     let csrf_cookie = req
         .headers()
         .get(header::COOKIE)

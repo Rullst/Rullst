@@ -500,4 +500,32 @@ mod tests {
         cache.put("key", "v2", None).await.unwrap();
         assert_eq!(cache.get("key").await.unwrap(), Some("v2".to_string()));
     }
+
+    struct MockDriver;
+    #[async_trait]
+    impl CacheDriver for MockDriver {
+        async fn get(&self, _key: &str) -> Result<Option<String>, CacheError> {
+            Ok(Some("mocked".to_string()))
+        }
+        async fn put(&self, _k: &str, _v: &str, _t: Option<u64>) -> Result<(), CacheError> { Ok(()) }
+        async fn forget(&self, _k: &str) -> Result<(), CacheError> { Ok(()) }
+        async fn flush(&self) -> Result<(), CacheError> { Ok(()) }
+        async fn has(&self, _k: &str) -> Result<bool, CacheError> { Ok(true) }
+    }
+
+    #[tokio::test]
+    async fn test_custom_cache_driver() {
+        let cache = Cache::custom(Box::new(MockDriver));
+        let result = cache.get("anything").await.unwrap();
+        assert_eq!(result, Some("mocked".to_string()));
+    }
+
+    #[cfg(feature = "cache-redis")]
+    #[test]
+    fn test_redis_cache_initialization() {
+        // Just verify that the constructor exists and returns a Result
+        // We use an invalid URL so it fails fast without a real Redis instance
+        let result = Cache::redis("redis://invalid-host:9999");
+        assert!(result.is_err());
+    }
 }

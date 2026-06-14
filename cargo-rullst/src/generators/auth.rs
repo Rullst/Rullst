@@ -300,6 +300,137 @@ const PASSKEY_SCRIPT: &str = r#"<script>
     }
 </script>"#;
 
+pub fn auth_styles() -> &'static str {
+    r#"
+    body {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+    .card {
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 1rem;
+        padding: 2.5rem;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        text-align: center;
+    }
+    h1 {
+        font-size: 2rem;
+        margin: 0 0 0.5rem 0;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+    p.subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+        margin: 0 0 2rem 0;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+        text-align: left;
+    }
+    label {
+        display: block;
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+    input[type='text'], input[type='email'], input[type='password'] {
+        width: 100%;
+        box-sizing: border-box;
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        color: #fff;
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type='text']:focus, input[type='email']:focus, input[type='password']:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    button.btn-primary {
+        width: 100%;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: #fff;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.85rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.1s, opacity 0.2s;
+        margin-top: 0.5rem;
+    }
+    button.btn-primary:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    .divider {
+        display: flex;
+        align-items: center;
+        color: #475569;
+        font-size: 0.8rem;
+        margin: 1.5rem 0;
+    }
+    .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #1f2937;
+    }
+    .divider:not(:empty)::before { margin-right: .5em; }
+    .divider:not(:empty)::after { margin-left: .5em; }
+    .oauth-btn {
+        width: 100%;
+        background: #1f2937;
+        color: #fff;
+        border: 1px solid #374151;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: background-color 0.2s;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+    .oauth-btn:hover {
+        background: #374151;
+    }
+    .footer-link {
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+    .footer-link a {
+        color: #38bdf8;
+        text-decoration: none;
+    }
+    .footer-link a:hover {
+        text-decoration: underline;
+    }
+    "#
+}
+
 pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
     let error_html = if let Some(err) = error {
         html! {
@@ -318,134 +449,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                 <title>"Login - Rullst"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
-                    "
-                    body {
-                        background-color: #0b0f19;
-                        color: #f1f5f9;
-                        font-family: system-ui, -apple-system, sans-serif;
-                        margin: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        padding: 1rem;
-                        box-sizing: border-box;
-                    }
-                    .card {
-                        background: #111827;
-                        border: 1px solid #1f2937;
-                        border-radius: 1rem;
-                        padding: 2.5rem;
-                        width: 100%;
-                        max-width: 420px;
-                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-                        text-align: center;
-                    }
-                    h1 {
-                        font-size: 2rem;
-                        margin: 0 0 0.5rem 0;
-                        background: linear-gradient(135deg, #38bdf8, #818cf8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        font-weight: 800;
-                    }
-                    p.subtitle {
-                        color: #64748b;
-                        font-size: 0.95rem;
-                        margin: 0 0 2rem 0;
-                    }
-                    .form-group {
-                        margin-bottom: 1.25rem;
-                        text-align: left;
-                    }
-                    label {
-                        display: block;
-                        font-size: 0.85rem;
-                        color: #94a3b8;
-                        margin-bottom: 0.5rem;
-                        font-weight: 500;
-                    }
-                    input[type='email'], input[type='password'] {
-                        width: 100%;
-                        box-sizing: border-box;
-                        background: #1f2937;
-                        border: 1px solid #374151;
-                        border-radius: 0.5rem;
-                        padding: 0.75rem 1rem;
-                        color: #fff;
-                        font-size: 0.95rem;
-                        transition: border-color 0.2s, box-shadow 0.2s;
-                    }
-                    input[type='email']:focus, input[type='password']:focus {
-                        outline: none;
-                        border-color: #6366f1;
-                        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-                    }
-                    button.btn-primary {
-                        width: 100%;
-                        background: linear-gradient(135deg, #6366f1, #4f46e5);
-                        color: #fff;
-                        border: none;
-                        border-radius: 0.5rem;
-                        padding: 0.85rem;
-                        font-size: 0.95rem;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: transform 0.1s, opacity 0.2s;
-                        margin-top: 0.5rem;
-                    }
-                    button.btn-primary:hover {
-                        opacity: 0.9;
-                        transform: translateY(-1px);
-                    }
-                    .divider {
-                        display: flex;
-                        align-items: center;
-                        color: #475569;
-                        font-size: 0.8rem;
-                        margin: 1.5rem 0;
-                    }
-                    .divider::before, .divider::after {
-                        content: '';
-                        flex: 1;
-                        border-bottom: 1px solid #1f2937;
-                    }
-                    .divider:not(:empty)::before { margin-right: .5em; }
-                    .divider:not(:empty)::after { margin-left: .5em; }
-                    .oauth-btn {
-                        width: 100%;
-                        background: #1f2937;
-                        color: #fff;
-                        border: 1px solid #374151;
-                        border-radius: 0.5rem;
-                        padding: 0.75rem;
-                        font-size: 0.9rem;
-                        font-weight: 500;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 0.5rem;
-                        transition: background-color 0.2s;
-                        text-decoration: none;
-                        box-sizing: border-box;
-                    }
-                    .oauth-btn:hover {
-                        background: #374151;
-                    }
-                    .footer-link {
-                        margin-top: 1.5rem;
-                        font-size: 0.85rem;
-                        color: #94a3b8;
-                    }
-                    .footer-link a {
-                        color: #38bdf8;
-                        text-decoration: none;
-                    }
-                    .footer-link a:hover {
-                        text-decoration: underline;
-                    }
-                    "
+                    { rullst::html::RawHtml(auth_styles().to_string()) }
                 </style>
             </head>
             <body>
@@ -510,99 +514,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                 <title>"Create Account - Rullst"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
-                    "
-                    body {
-                        background-color: #0b0f19;
-                        color: #f1f5f9;
-                        font-family: system-ui, -apple-system, sans-serif;
-                        margin: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        padding: 1rem;
-                        box-sizing: border-box;
-                    }
-                    .card {
-                        background: #111827;
-                        border: 1px solid #1f2937;
-                        border-radius: 1rem;
-                        padding: 2.5rem;
-                        width: 100%;
-                        max-width: 420px;
-                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-                        text-align: center;
-                    }
-                    h1 {
-                        font-size: 2rem;
-                        margin: 0 0 0.5rem 0;
-                        background: linear-gradient(135deg, #38bdf8, #818cf8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        font-weight: 800;
-                    }
-                    p.subtitle {
-                        color: #64748b;
-                        font-size: 0.95rem;
-                        margin: 0 0 2rem 0;
-                    }
-                    .form-group {
-                        margin-bottom: 1.25rem;
-                        text-align: left;
-                    }
-                    label {
-                        display: block;
-                        font-size: 0.85rem;
-                        color: #94a3b8;
-                        margin-bottom: 0.5rem;
-                        font-weight: 500;
-                    }
-                    input[type='text'], input[type='email'], input[type='password'] {
-                        width: 100%;
-                        box-sizing: border-box;
-                        background: #1f2937;
-                        border: 1px solid #374151;
-                        border-radius: 0.5rem;
-                        padding: 0.75rem 1rem;
-                        color: #fff;
-                        font-size: 0.95rem;
-                        transition: border-color 0.2s, box-shadow 0.2s;
-                    }
-                    input[type='text']:focus, input[type='email']:focus, input[type='password']:focus {
-                        outline: none;
-                        border-color: #6366f1;
-                        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-                    }
-                    button.btn-primary {
-                        width: 100%;
-                        background: linear-gradient(135deg, #6366f1, #4f46e5);
-                        color: #fff;
-                        border: none;
-                        border-radius: 0.5rem;
-                        padding: 0.85rem;
-                        font-size: 0.95rem;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: transform 0.1s, opacity 0.2s;
-                        margin-top: 0.5rem;
-                    }
-                    button.btn-primary:hover {
-                        opacity: 0.9;
-                        transform: translateY(-1px);
-                    }
-                    .footer-link {
-                        margin-top: 1.5rem;
-                        font-size: 0.85rem;
-                        color: #94a3b8;
-                    }
-                    .footer-link a {
-                        color: #38bdf8;
-                        text-decoration: none;
-                    }
-                    .footer-link a:hover {
-                        text-decoration: underline;
-                    }
-                    "
+                    { rullst::html::RawHtml(auth_styles().to_string()) }
                 </style>
             </head>
             <body>

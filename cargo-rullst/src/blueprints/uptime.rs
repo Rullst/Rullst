@@ -432,7 +432,193 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
     // 10. Uptime Page View
     let uptime_page = r##"use rullst::html;
 use crate::models::monitor::Monitor;
-use crate::models::heartbeat::Heartbeat;
+use crate::models::heartbpub fn render_head() -> String {
+    html! {
+        <head>
+            <link rel="icon" type="image/png" href="data:image/png;base64,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" />
+            <meta charset="UTF-8" />
+            <title>"Rullst Radar — Painel de Monitoramento"</title>
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+            <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                "
+                body { font-family: 'Outfit', sans-serif; background-color: #03060f; }
+                .glass { background: rgba(8, 14, 28, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
+                .pulse { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 2s infinite; }
+                @keyframes pulse {
+                    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+                    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
+                "
+            </style>
+        </head>
+    }
+}
+
+pub fn render_header() -> String {
+    html! {
+        <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
+            <div class="flex items-center gap-4">
+                <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 pulse"></div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst Uptime Radar"</h1>
+                    <p class="text-sm text-slate-400 mt-1">"Monitoramento contínuo de APIs e sites em tempo real."</p>
+                </div>
+            </div>
+            <span class="px-3.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-950/40 rounded-full border border-emerald-800/40">"Sistema Operacional"</span>
+        </header>
+    }
+}
+
+pub fn render_kpi_cards(global_uptime: f64, avg_resp_time: u64, active_monitors_count: usize, total_monitors: usize) -> String {
+    html! {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Uptime Global (Últimas 20 pings)"</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">{format!("{:.2}%", global_uptime)}</span>
+                <span class="text-xs text-emerald-500/80 mt-1">"Disponibilidade total da rede"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Tempo de Resposta Médio"</span>
+                <span class="text-3xl font-bold mt-2 text-sky-400">{format!("{} ms", avg_resp_time)}</span>
+                <span class="text-xs text-sky-400/80 mt-1">"Latência de resposta HTTP"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Monitores Ativos"</span>
+                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{} / {}", active_monitors_count, total_monitors)}</span>
+                <span class="text-xs text-orange-400/80 mt-1">"Alvos ativos de varredura"</span>
+            </div>
+        </div>
+    }
+}
+
+pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
+    html! {
+        <div class="lg:col-span-2 space-y-6">
+            <h2 class="text-xl font-bold text-slate-200">"Monitores Registrados"</h2>
+            
+            { rullst::html::RawHtml::new(monitors.iter().map(|(monitor, history)| {
+                let is_active = monitor.is_active == 1;
+                let last_hb = history.last();
+                let is_currently_up = last_hb.map(|h| h.is_up == 1).unwrap_or(false);
+                
+                // Calculate individual uptime
+                let checks = history.len();
+                let success = history.iter().filter(|h| h.is_up == 1).count();
+                let uptime_pct = if checks > 0 { (success as f64 / checks as f64) * 100.0 } else { 100.0 };
+                
+                let card_border = if !is_active {
+                    "border-slate-800/40 opacity-60"
+                } else if is_currently_up {
+                    "border-emerald-500/20"
+                } else {
+                    "border-rose-500/20"
+                };
+
+                let toggle_text = if is_active { "Pausar" } else { "Ativar" };
+
+                html! {
+                    <div class={format!("glass p-6 rounded-2xl border transition-all duration-300 hover:border-slate-700/80 {}", card_border)}>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-white">{&monitor.name}</h3>
+                                <a href={&monitor.url} target="_blank" class="text-xs text-slate-400 font-mono hover:text-emerald-400 transition-colors">{&monitor.url}</a>
+                            </div>
+                            
+                            // --- Status Badge ---
+                            <div class="flex items-center gap-2">
+                                { if !is_active {
+                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-900 text-slate-400 border border-slate-800">"Inativo"</span> }
+                                } else if is_currently_up {
+                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">"Online"</span> }
+                                } else {
+                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-950/40 text-rose-400 border border-rose-800/40">"Offline"</span> }
+                                } }
+                            </div>
+                        </div>
+
+                        // --- Uptime Metrics ---
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-800/40 text-sm">
+                            <div>
+                                <span class="text-xs text-slate-400 block">"Uptime"</span>
+                                <span class="font-bold text-slate-200">{format!("{:.2}%", uptime_pct)}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400 block">"Latência Recente"</span>
+                                <span class="font-bold text-slate-200">{format!("{} ms", last_hb.map(|h| h.response_time_ms).unwrap_or(0))}</span>
+                            </div>
+                            <div class="col-span-2 sm:col-span-1 text-right">
+                                <form action={format!("/monitors/{}/toggle", monitor.id)} method="POST">
+                                    <button type="submit" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-orange-400 bg-slate-900/40 text-slate-300 hover:text-orange-400 transition-all">
+                                        {toggle_text}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        // --- Visual History Blocks ---
+                        <div class="mt-5">
+                            <span class="text-xs text-slate-400 block mb-2">"Histórico de Batimentos (Esquerda &rarr; Direita)"</span>
+                            <div class="flex gap-1.5 overflow-x-auto py-1">
+                                { if history.is_empty() {
+                                    html! { <span class="text-xs text-slate-500">"Aguardando primeira verificação..."</span> }
+                                } else {
+                                    html! { { rullst::html::RawHtml::new(history.iter().map(|hb| {
+                                        let block_color = if hb.is_up == 1 {
+                                            "bg-emerald-500 hover:bg-emerald-400"
+                                        } else {
+                                            "bg-rose-500 hover:bg-rose-400"
+                                        };
+                                        let title = if hb.is_up == 1 {
+                                            format!("Uptime: {}ms (Código {})", hb.response_time_ms, hb.status_code)
+                                        } else {
+                                            format!("Offline: {}", hb.error_message.clone().unwrap_or_default())
+                                        };
+                                        html! {
+                                            <div 
+                                                title={title}
+                                                class={format!("w-5 h-8 rounded-sm transition-all duration-150 hover:scale-110 cursor-pointer {}", block_color)}
+                                            ></div>
+                                        }
+                                    }).collect::<Vec<_>>().join("")) } }
+                                } }
+                            </div>
+                        </div>
+
+                    </div>
+                }
+            }).collect::<Vec<_>>().join("")) }
+
+        </div>
+    }
+}
+
+pub fn render_new_monitor_form() -> String {
+    html! {
+        <div>
+            <div class="glass p-6 rounded-2xl sticky top-8">
+                <h3 class="text-lg font-bold mb-4 text-slate-200">"Novo Monitor"</h3>
+                <p class="text-xs text-slate-400 mb-4">"Adicione uma URL HTTP ou HTTPS para monitoramento de latência e disponibilidade a cada 60 segundos."</p>
+                
+                <form action="/monitors" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Serviço"</label>
+                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="Ex: Meu Blog" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Endereço URL"</label>
+                        <input type="url" name="url" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="https://meusite.com" />
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Adicionar Monitor"
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}
 
 pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
     // Calculators
@@ -471,185 +657,20 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
 
     html! {
         <html lang="pt-BR" class="dark">
-            <head>
-            <link rel="icon" type="image/png" href="data:image/png;base64,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" />
-                <meta charset="UTF-8" />
-                <title>"Rullst Radar — Painel de Monitoramento"</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-                <script src="https://cdn.tailwindcss.com"></script>
-                <style>
-                    "
-                    body { font-family: 'Outfit', sans-serif; background-color: #03060f; }
-                    .glass { background: rgba(8, 14, 28, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
-                    .pulse { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 2s infinite; }
-                    @keyframes pulse {
-                        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-                        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-                        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-                    }
-                    "
-                </style>
-            </head>
+            { rullst::html::RawHtml(render_head()) }
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-5xl mx-auto px-4 pt-8">
-                    
-                    // --- Header ---
-                    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
-                        <div class="flex items-center gap-4">
-                            <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 pulse"></div>
-                            <div>
-                                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst Uptime Radar"</h1>
-                                <p class="text-sm text-slate-400 mt-1">"Monitoramento contínuo de APIs e sites em tempo real."</p>
-                            </div>
-                        </div>
-                        <span class="px-3.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-950/40 rounded-full border border-emerald-800/40">"Sistema Operacional"</span>
-                    </header>
+                    { rullst::html::RawHtml(render_header()) }
+                    { rullst::html::RawHtml(render_kpi_cards(global_uptime, avg_resp_time, active_monitors_count, monitors.len())) }
 
-                    // --- KPI Cards ---
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Uptime Global (Últimas 20 pings)"</span>
-                            <span class="text-3xl font-bold mt-2 text-emerald-400">{format!("{:.2}%", global_uptime)}</span>
-                            <span class="text-xs text-emerald-500/80 mt-1">"Disponibilidade total da rede"</span>
-                        </div>
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Tempo de Resposta Médio"</span>
-                            <span class="text-3xl font-bold mt-2 text-sky-400">{format!("{} ms", avg_resp_time)}</span>
-                            <span class="text-xs text-sky-400/80 mt-1">"Latência de resposta HTTP"</span>
-                        </div>
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Monitores Ativos"</span>
-                            <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{} / {}", active_monitors_count, monitors.len())}</span>
-                            <span class="text-xs text-orange-400/80 mt-1">"Alvos ativos de varredura"</span>
-                        </div>
-                    </div>
-
-                    // --- List & Form ---
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        
-                        // --- Monitores ---
-                        <div class="lg:col-span-2 space-y-6">
-                            <h2 class="text-xl font-bold text-slate-200">"Monitores Registrados"</h2>
-                            
-                            { rullst::html::RawHtml::new(monitors.into_iter().map(|(monitor, history)| {
-                                let is_active = monitor.is_active == 1;
-                                let last_hb = history.last();
-                                let is_currently_up = last_hb.map(|h| h.is_up == 1).unwrap_or(false);
-                                
-                                // Calculate individual uptime
-                                let checks = history.len();
-                                let success = history.iter().filter(|h| h.is_up == 1).count();
-                                let uptime_pct = if checks > 0 { (success as f64 / checks as f64) * 100.0 } else { 100.0 };
-                                
-                                let card_border = if !is_active {
-                                    "border-slate-800/40 opacity-60"
-                                } else if is_currently_up {
-                                    "border-emerald-500/20"
-                                } else {
-                                    "border-rose-500/20"
-                                };
-
-                                let toggle_text = if is_active { "Pausar" } else { "Ativar" };
-
-                                html! {
-                                    <div class={format!("glass p-6 rounded-2xl border transition-all duration-300 hover:border-slate-700/80 {}", card_border)}>
-                                        <div class="flex items-start justify-between gap-4">
-                                            <div>
-                                                <h3 class="text-lg font-bold text-white">{&monitor.name}</h3>
-                                                <a href={&monitor.url} target="_blank" class="text-xs text-slate-400 font-mono hover:text-emerald-400 transition-colors">{&monitor.url}</a>
-                                            </div>
-                                            
-                                            // --- Status Badge ---
-                                            <div class="flex items-center gap-2">
-                                                { if !is_active {
-                                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-900 text-slate-400 border border-slate-800">"Inativo"</span> }
-                                                } else if is_currently_up {
-                                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">"Online"</span> }
-                                                } else {
-                                                    html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-950/40 text-rose-400 border border-rose-800/40">"Offline"</span> }
-                                                } }
-                                            </div>
-                                        </div>
-
-                                        // --- Uptime Metrics ---
-                                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-800/40 text-sm">
-                                            <div>
-                                                <span class="text-xs text-slate-400 block">"Uptime"</span>
-                                                <span class="font-bold text-slate-200">{format!("{:.2}%", uptime_pct)}</span>
-                                            </div>
-                                            <div>
-                                                <span class="text-xs text-slate-400 block">"Latência Recente"</span>
-                                                <span class="font-bold text-slate-200">{format!("{} ms", last_hb.map(|h| h.response_time_ms).unwrap_or(0))}</span>
-                                            </div>
-                                            <div class="col-span-2 sm:col-span-1 text-right">
-                                                <form action={format!("/monitors/{}/toggle", monitor.id)} method="POST">
-                                                    <button type="submit" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-orange-400 bg-slate-900/40 text-slate-300 hover:text-orange-400 transition-all">
-                                                        {toggle_text}
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-
-                                        // --- Visual History Blocks ---
-                                        <div class="mt-5">
-                                            <span class="text-xs text-slate-400 block mb-2">"Histórico de Batimentos (Esquerda &rarr; Direita)"</span>
-                                            <div class="flex gap-1.5 overflow-x-auto py-1">
-                                                { if history.is_empty() {
-                                                    html! { <span class="text-xs text-slate-500">"Aguardando primeira verificação..."</span> }
-                                                } else {
-                                                    html! { { rullst::html::RawHtml::new(history.iter().map(|hb| {
-                                                        let block_color = if hb.is_up == 1 {
-                                                            "bg-emerald-500 hover:bg-emerald-400"
-                                                        } else {
-                                                            "bg-rose-500 hover:bg-rose-400"
-                                                        };
-                                                        let title = if hb.is_up == 1 {
-                                                            format!("Uptime: {}ms (Código {})", hb.response_time_ms, hb.status_code)
-                                                        } else {
-                                                            format!("Offline: {}", hb.error_message.clone().unwrap_or_default())
-                                                        };
-                                                        html! {
-                                                            <div 
-                                                                title={title}
-                                                                class={format!("w-5 h-8 rounded-sm transition-all duration-150 hover:scale-110 cursor-pointer {}", block_color)}
-                                                            ></div>
-                                                        }
-                                                    }).collect::<Vec<_>>().join("")) } }
-                                                } }
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                }
-                            }).collect::<Vec<_>>().join("")) }
-
-                        </div>
-
-                        // --- Lateral Form ---
-                        <div>
-                            <div class="glass p-6 rounded-2xl sticky top-8">
-                                <h3 class="text-lg font-bold mb-4 text-slate-200">"Novo Monitor"</h3>
-                                <p class="text-xs text-slate-400 mb-4">"Adicione uma URL HTTP ou HTTPS para monitoramento de latência e disponibilidade a cada 60 segundos."</p>
-                                
-                                <form action="/monitors" method="POST" class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Serviço"</label>
-                                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="Ex: Meu Blog" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Endereço URL"</label>
-                                        <input type="url" name="url" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="https://meusite.com" />
-                                    </div>
-                                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                                        "Adicionar Monitor"
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
+                        { rullst::html::RawHtml(render_monitors_list(&monitors)) }
+                        { rullst::html::RawHtml(render_new_monitor_form()) }
                     </div>
                 </div>
+            </body>
+        </html>
+    }
             </body>
         </html>
     }

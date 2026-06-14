@@ -1,4 +1,4 @@
-﻿Bombarding http://rocket:8000/ for 10s using 125 connection(s)
+﻿Bombarding http://rails:3000/json for 10s using 125 connection(s)
 
 
 
@@ -6,7 +6,7 @@
 
 
  00m09s
- 00m09s
+ 00m08s
  00m08s
  00m08s
  00m08s
@@ -54,9 +54,12 @@
  10s
 Done!
 Statistics        Avg      Stdev        Max
-  Reqs/sec     19909.55    7403.93   38135.43
-  Latency        6.31ms     4.32ms   275.83ms
+  Reqs/sec        62.88     562.25    6229.77
+  Latency         2.00s    10.07ms      2.01s
   HTTP codes:
-    1xx - 0, 2xx - 197440, 3xx - 0, 4xx - 0, 5xx - 0
-    others - 0
-  Throughput:     5.78MB/s
+    1xx - 0, 2xx - 0, 3xx - 0, 4xx - 0, 5xx - 0
+    others - 750
+  Errors:
+    dial tcp: lookup rails: i/o timeout - 625
+    dial tcp: lookup rails on 127.0.0.11:53: no such host - 125
+  Throughput:       0.00/s

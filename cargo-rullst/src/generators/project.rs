@@ -5,6 +5,9 @@ use std::fs;
 use std::path::Path;
 
 pub fn has_binary(name: &str) -> bool {
+    if name.chars().any(|c| !c.is_alphanumeric() && c != '-' && c != '_') {
+        return false;
+    }
     let cmd = if cfg!(windows) { "where" } else { "which" };
     std::process::Command::new(cmd)
         .arg(name)
@@ -17,9 +20,9 @@ pub fn has_binary(name: &str) -> bool {
 
 fn generate_secure_app_key() -> String {
     use rand::RngExt;
-    let mut rng = rand::rng();
     let mut key = String::new();
     let chars = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let mut rng = rand::rng();
     for _ in 0..32 {
         let idx = rng.random_range(0..chars.len());
         key.push(chars[idx] as char);

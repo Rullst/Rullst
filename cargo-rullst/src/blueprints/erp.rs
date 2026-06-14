@@ -397,16 +397,11 @@ use crate::models::product::Product;
 use crate::models::order::Order;
 
 pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
-    // Calculadoras
     let total_sales: f64 = orders.iter()
         .filter(|o| o.status == "Pago")
         .map(|o| o.total_price)
         .sum();
-
-    let low_stock_alerts = products.iter()
-        .filter(|p| p.stock <= 5)
-        .count();
-
+    let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
     let total_orders = orders.len();
 
     html! {
@@ -428,189 +423,201 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
             </head>
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-6xl mx-auto px-4 pt-8">
-                    
-                    // --- Header ---
-                    <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
-                        <div>
-                            <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
-                            <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
-                            <p class="text-sm text-slate-400 mt-1">"Gerenciamento ágil de inventário e vendas em tempo de execução."</p>
-                        </div>
-                        <div class="flex gap-3">
-                            <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
-                            <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
-                        </div>
-                    </header>
-
-                    // --- KPI Cards ---
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Faturamento Total"</span>
-                            <span class="text-3xl font-bold mt-2 text-emerald-400">"R$ "{format!("{:.2}", total_sales)}</span>
-                            <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Receitas confirmadas"</span>
-                        </div>
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Pedidos Realizados"</span>
-                            <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
-                            <span class="text-xs text-orange-400/80 mt-1">"Fluxo de vendas ativo"</span>
-                        </div>
-                        <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Alertas de Estoque Crítico"</span>
-                            <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
-                            <span class="text-xs text-rose-400/80 mt-1">"Itens com estoque &le; 5 un."</span>
-                        </div>
-                    </div>
-
-                    // --- Main Panels ---
+                    { rullst::html::RawHtml::new(render_header()) }
+                    { rullst::html::RawHtml::new(render_kpi_cards(total_sales, total_orders, low_stock_alerts)) }
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        
-                        // --- Coluna Esquerda: Produtos & Reabastecimento ---
                         <div class="lg:col-span-2 flex flex-col gap-8">
-                            <div class="glass p-6 rounded-2xl">
-                                <h2 class="text-xl font-bold mb-4 text-slate-200">"Estoque de Produtos"</h2>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                                                <th class="py-3 px-4">"Produto"</th>
-                                                <th class="py-3 px-4">"SKU"</th>
-                                                <th class="py-3 px-4">"Preço"</th>
-                                                <th class="py-3 px-4">"Estoque"</th>
-                                                <th class="py-3 px-4 text-right">"Ações"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-800/40 text-sm">
-                                            { rullst::html::RawHtml::new(products.iter().map(|p| {
-                                                let badge_color = if p.stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
-                                                html! {
-                                                    <tr>
-                                                        <td class="py-3.5 px-4 font-medium text-white">{&p.name}</td>
-                                                        <td class="py-3.5 px-4 text-slate-400 font-mono">{&p.sku}</td>
-                                                        <td class="py-3.5 px-4 text-slate-300">"R$ "{format!("{:.2}", p.price)}</td>
-                                                        <td class="py-3.5 px-4">
-                                                            <span id={format!("stock-badge-{}", p.id)} class={format!("px-2.5 py-1 text-xs font-semibold rounded-full {}", badge_color)}>
-                                                                {format!("{}", p.stock)} " Un."
-                                                            </span>
-                                                        </td>
-                                                        <td class="py-3.5 px-4 text-right">
-                                                            <button 
-                                                                hx-post={format!("/products/{}/add-stock", p.id)}
-                                                                hx-target={format!("#stock-badge-{}", p.id)}
-                                                                hx-swap="outerHTML"
-                                                                class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95"
-                                                            >
-                                                                "+1 Estoque"
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            }).collect::<Vec<_>>().join("")) }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            // --- Pedidos Recentes ---
-                            <div class="glass p-6 rounded-2xl">
-                                <h2 class="text-xl font-bold mb-4 text-slate-200">"Pedidos Recentes"</h2>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                                                <th class="py-3 px-4">"ID"</th>
-                                                <th class="py-3 px-4">"Cliente"</th>
-                                                <th class="py-3 px-4">"Qtd / Prod ID"</th>
-                                                <th class="py-3 px-4">"Total"</th>
-                                                <th class="py-3 px-4">"Status"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-800/40 text-sm">
-                                            { rullst::html::RawHtml::new(orders.iter().map(|o| html! {
-                                                <tr>
-                                                    <td class="py-3.5 px-4 text-slate-400 font-mono">"#{}"{format!("{}", o.id)}</td>
-                                                    <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
-                                                    <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
-                                                    <td class="py-3.5 px-4 text-emerald-400 font-medium">"R$ "{format!("{:.2}", o.total_price)}</td>
-                                                    <td class="py-3.5 px-4">
-                                                        <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900/60">
-                                                            {&o.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            }).collect::<Vec<_>>().join("")) }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            { rullst::html::RawHtml::new(render_products_table(&products)) }
+                            { rullst::html::RawHtml::new(render_orders_table(&orders)) }
                         </div>
-
-                        // --- Coluna Direita: Cadastro & Operações ---
                         <div class="flex flex-col gap-8">
-                            
-                            // --- Nova Venda / Pedido ---
-                            <div class="glass p-6 rounded-2xl border border-indigo-900/20">
-                                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Registrar Nova Venda"</h3>
-                                <form action="/orders" method="POST" class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
-                                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
-                                        <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
-                                            // Usamos os produtos mapeados
-                                            // Nota: no formulário passamos apenas a lista simples para seleção
-                                            { rullst::html::RawHtml::new(products.iter().map(|p| {
-                                                let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
-                                                html! {
-                                                    <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
-                                                }
-                                            }).collect::<Vec<_>>().join("")) }
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
-                                        <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
-                                    </div>
-                                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                                        "Finalizar Pedido"
-                                    </button>
-                                </form>
-                            </div>
-
-                            // --- Novo Produto ---
-                            <div class="glass p-6 rounded-2xl">
-                                <h3 class="text-lg font-bold mb-4 text-slate-200">"Cadastrar Produto"</h3>
-                                <form action="/products" method="POST" class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
-                                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
-                                            <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
-                                            <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
-                                        <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
-                                    </div>
-                                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                                        "Salvar Produto"
-                                    </button>
-                                </form>
-                            </div>
-
+                            { rullst::html::RawHtml::new(render_forms(&products)) }
                         </div>
                     </div>
                 </div>
             </body>
         </html>
+    }
+}
+
+fn render_header() -> String {
+    html! {
+        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
+            <div>
+                <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
+                <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
+                <p class="text-sm text-slate-400 mt-1">"Gerenciamento ágil de inventário e vendas em tempo de execução."</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
+                <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
+            </div>
+        </header>
+    }
+}
+
+fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usize) -> String {
+    html! {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Faturamento Total"</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">"R$ "{format!("{:.2}", total_sales)}</span>
+                <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Receitas confirmadas"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Pedidos Realizados"</span>
+                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
+                <span class="text-xs text-orange-400/80 mt-1">"Fluxo de vendas ativo"</span>
+            </div>
+            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Alertas de Estoque Crítico"</span>
+                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
+                <span class="text-xs text-rose-400/80 mt-1">"Itens com estoque &le; 5 un."</span>
+            </div>
+        </div>
+    }
+}
+
+fn render_products_table(products: &[Product]) -> String {
+    html! {
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Estoque de Produtos"</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                            <th class="py-3 px-4">"Produto"</th>
+                            <th class="py-3 px-4">"SKU"</th>
+                            <th class="py-3 px-4">"Preço"</th>
+                            <th class="py-3 px-4">"Estoque"</th>
+                            <th class="py-3 px-4 text-right">"Ações"</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/40 text-sm">
+                        { rullst::html::RawHtml::new(products.iter().map(|p| {
+                            let badge_color = if p.stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
+                            html! {
+                                <tr>
+                                    <td class="py-3.5 px-4 font-medium text-white">{&p.name}</td>
+                                    <td class="py-3.5 px-4 text-slate-400 font-mono">{&p.sku}</td>
+                                    <td class="py-3.5 px-4 text-slate-300">"R$ "{format!("{:.2}", p.price)}</td>
+                                    <td class="py-3.5 px-4">
+                                        <span id={format!("stock-badge-{}", p.id)} class={format!("px-2.5 py-1 text-xs font-semibold rounded-full {}", badge_color)}>
+                                            {format!("{}", p.stock)} " Un."
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-right">
+                                        <button 
+                                            hx-post={format!("/products/{}/add-stock", p.id)}
+                                            hx-target={format!("#stock-badge-{}", p.id)}
+                                            hx-swap="outerHTML"
+                                            class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95"
+                                        >
+                                            "+1 Estoque"
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }).collect::<Vec<_>>().join("")) }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+fn render_orders_table(orders: &[Order]) -> String {
+    html! {
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Pedidos Recentes"</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                            <th class="py-3 px-4">"ID"</th>
+                            <th class="py-3 px-4">"Cliente"</th>
+                            <th class="py-3 px-4">"Qtd / Prod ID"</th>
+                            <th class="py-3 px-4">"Total"</th>
+                            <th class="py-3 px-4">"Status"</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/40 text-sm">
+                        { rullst::html::RawHtml::new(orders.iter().map(|o| html! {
+                            <tr>
+                                <td class="py-3.5 px-4 text-slate-400 font-mono">"#{}"{format!("{}", o.id)}</td>
+                                <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
+                                <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
+                                <td class="py-3.5 px-4 text-emerald-400 font-medium">"R$ "{format!("{:.2}", o.total_price)}</td>
+                                <td class="py-3.5 px-4">
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900/60">
+                                        {&o.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        }).collect::<Vec<_>>().join("")) }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+fn render_forms(products: &[Product]) -> String {
+    html! {
+        <div class="glass p-6 rounded-2xl border border-indigo-900/20">
+            <h3 class="text-lg font-bold mb-4 text-indigo-400">"Registrar Nova Venda"</h3>
+            <form action="/orders" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
+                    <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
+                    <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
+                        { rullst::html::RawHtml::new(products.iter().map(|p| {
+                            let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
+                            html! {
+                                <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
+                            }
+                        }).collect::<Vec<_>>().join("")) }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
+                    <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                    "Finalizar Pedido"
+                </button>
+            </form>
+        </div>
+
+        <div class="glass p-6 rounded-2xl mt-8">
+            <h3 class="text-lg font-bold mb-4 text-slate-200">"Cadastrar Produto"</h3>
+            <form action="/products" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
+                    <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
+                        <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
+                        <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
+                    <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
+                </div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                    "Salvar Produto"
+                </button>
+            </form>
+        </div>
     }
 }
 "##;

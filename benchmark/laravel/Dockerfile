@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     libssl-dev \
+    libbrotli-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -42,4 +43,4 @@ RUN php artisan octane:install --server=swoole
 
 EXPOSE 8000
 
-CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=8000", "--workers=4"]
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=8000", "--workers=16", "--task-workers=16"]
