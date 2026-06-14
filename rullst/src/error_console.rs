@@ -63,11 +63,17 @@ pub fn extract_source_context(
         .ok()?;
 
     let target_path = Path::new(file_path);
-    if target_path.components().any(|c| c == std::path::Component::ParentDir) {
+    if target_path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return None;
     }
 
-    let canonical = target_path.canonicalize().ok()?;
+    let absolute_path = if target_path.is_absolute() {
+        target_path.to_path_buf()
+    } else {
+        project_root.join(target_path)
+    };
+
+    let canonical = absolute_path.canonicalize().ok()?;
     if !canonical.starts_with(&project_root) {
         return None;
     }

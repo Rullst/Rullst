@@ -1,0 +1,31 @@
+[package]
+name = "test1"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rullst = { path = "C:/Users/venelouis/Desktop/REPOS/Rullst/rullst" }
+tokio = { version = "1.43", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+axum = "0.8"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
+
+# ⚡ Rullst God-Mode: Instant Incremental Compilation (<100ms)
+# If you want development speed close to interpreted languages,
+# you can use the official Cranelift backend for the Rust compiler.
+# 
+# Requirements:
+#   1. Install nightly toolchain: rustup toolchain install nightly
+#   2. Install the component: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+#   3. Enable by uncommenting the block below and running the project with the nightly toolchain (e.g.: cargo +nightly run)
+# 
+# [profile.dev]
+# codegen-backend = "cranelift"
+
+[workspace]
