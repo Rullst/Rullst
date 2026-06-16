@@ -209,7 +209,7 @@ mod tests {
             .with_body(vec![1, 2, 3]);
         assert_eq!(req.method, "POST");
         assert_eq!(req.path, "/test");
-        assert_eq!(req.headers.get("X-Foo").unwrap(), "bar");
+        assert_eq!(req.headers.get("X-Foo").map(|s| s.as_str()), Some("bar"));
         assert_eq!(req.body, vec![1, 2, 3]);
     }
 
@@ -219,7 +219,7 @@ mod tests {
             .with_header("Content-Type", "application/json")
             .with_body(vec![123, 125]);
         assert_eq!(res.status, 201);
-        assert_eq!(res.headers.get("Content-Type").unwrap(), "application/json");
+        assert_eq!(res.headers.get("Content-Type").map(|s| s.as_str()), Some("application/json"));
         assert_eq!(res.body, vec![123, 125]);
     }
 }

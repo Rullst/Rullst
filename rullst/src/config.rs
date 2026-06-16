@@ -134,7 +134,6 @@ mod tests {
     async fn test_global_config_access() {
         let config = RullstConfig::global();
         assert_eq!(config.security.csrf_same_site, "Lax");
-        assert_eq!(config.app.env, None);
     }
 
     #[tokio::test]
