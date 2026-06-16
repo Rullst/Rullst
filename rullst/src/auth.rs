@@ -49,7 +49,7 @@ pub fn needs_rehash(hash: &str) -> bool {
 }
 
 #[cfg(feature = "oauth")]
-pub mod socialite {
+pub mod connect {
     //! Re-export do rullst-connect para fornecer autenticação OAuth2 (Google, GitHub, etc.) nativamente no framework.
     pub use rullst_connect::*;
 }

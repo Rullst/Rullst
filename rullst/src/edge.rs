@@ -197,3 +197,29 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_edge_request_builder() {
+        let req = EdgeRequest::new("POST", "/test")
+            .with_header("X-Foo", "bar")
+            .with_body(vec![1, 2, 3]);
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.path, "/test");
+        assert_eq!(req.headers.get("X-Foo").unwrap(), "bar");
+        assert_eq!(req.body, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_edge_response_builder() {
+        let res = EdgeResponse::new(201)
+            .with_header("Content-Type", "application/json")
+            .with_body(vec![123, 125]);
+        assert_eq!(res.status, 201);
+        assert_eq!(res.headers.get("Content-Type").unwrap(), "application/json");
+        assert_eq!(res.body, vec![123, 125]);
+    }
+}

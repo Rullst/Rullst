@@ -100,4 +100,10 @@ mod tests {
         assert_eq!(escape_str("<script>"), "&lt;script&gt;");
         assert_eq!(escape_str("\"'"), "&quot;&#x27;");
     }
+
+    #[test]
+    fn test_raw_html_new() {
+        let raw = RawHtml::new("<b>bold</b>");
+        assert_eq!(raw.0, "<b>bold</b>");
+    }
 }

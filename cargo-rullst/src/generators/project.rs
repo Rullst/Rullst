@@ -207,7 +207,7 @@ pub fn create_new_project(
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!("rullst = {{ path = \"{}\" }}", path)
     } else {
-        r#"rullst = "2.0.8""#.to_string()
+        r#"rullst = "3.0.0""#.to_string()
     };
 
     let rullst_png_path = rullst_dir
@@ -273,7 +273,7 @@ axum = "0.8"
 
     if db_needed {
         cargo_toml.push_str(&format!(
-            r#"rullst-orm = "5.0.0"
+            r#"rullst-orm = "5.0"
 sqlx = {{ version = "0.9.0", {sqlx_features} }}
 "#,
             sqlx_features = sqlx_features
@@ -295,7 +295,7 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
                 .replace("\\", "/");
             format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
         } else {
-            "rullst-connect = \"7.0.1\"\n".to_string()
+            "rullst-connect = \"8.0.0\"\n".to_string()
         };
         cargo_toml.push_str(&connect_dep);
     }
@@ -663,8 +663,8 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Cache dependency compilation
 COPY Cargo.toml Cargo.lock* ./
-RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "2.0.8"/g' Cargo.toml && \
-    sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "7.0.1"/g' Cargo.toml || true
+RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "3.0.0"/g' Cargo.toml && \
+    sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "8.0.0"/g' Cargo.toml || true
 RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
 
 # Build the actual application

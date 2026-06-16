@@ -564,59 +564,61 @@ fn render_orders_table(orders: &[Order]) -> String {
 
 fn render_forms(products: &[Product]) -> String {
     html! {
-        <div class="glass p-6 rounded-2xl border border-indigo-900/20">
-            <h3 class="text-lg font-bold mb-4 text-indigo-400">"Registrar Nova Venda"</h3>
-            <form action="/orders" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
-                    <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
-                    <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
-                        { rullst::html::RawHtml::new(products.iter().map(|p| {
-                            let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
-                            html! {
-                                <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
-                            }
-                        }).collect::<Vec<_>>().join("")) }
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
-                    <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                    "Finalizar Pedido"
-                </button>
-            </form>
-        </div>
+        <div class="flex flex-col">
+            <div class="glass p-6 rounded-2xl border border-indigo-900/20">
+                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Registrar Nova Venda"</h3>
+                <form action="/orders" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
+                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
+                        <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
+                            { rullst::html::RawHtml::new(products.iter().map(|p| {
+                                let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
+                                html! {
+                                    <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
+                                }
+                            }).collect::<Vec<_>>().join("")) }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
+                        <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Finalizar Pedido"
+                    </button>
+                </form>
+            </div>
 
-        <div class="glass p-6 rounded-2xl mt-8">
-            <h3 class="text-lg font-bold mb-4 text-slate-200">"Cadastrar Produto"</h3>
-            <form action="/products" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
-                    <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+            <div class="glass p-6 rounded-2xl mt-8">
+                <h3 class="text-lg font-bold mb-4 text-slate-200">"Cadastrar Produto"</h3>
+                <form action="/products" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
-                        <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
+                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
+                            <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
+                            <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
-                        <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
+                        <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
                     </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
-                    <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
-                </div>
-                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                    "Salvar Produto"
-                </button>
-            </form>
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Salvar Produto"
+                    </button>
+                </form>
+            </div>
         </div>
     }
 }

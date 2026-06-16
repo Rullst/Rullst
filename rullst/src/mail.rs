@@ -242,7 +242,9 @@ pub struct ResendDriver {
 #[async_trait]
 impl MailDriver for ResendDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
-        let client = reqwest::Client::new();
+        static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+        let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
+        
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
         let mut body = serde_json::json!({
             "to": message.to,
@@ -283,7 +285,9 @@ pub struct SendGridDriver {
 #[async_trait]
 impl MailDriver for SendGridDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
-        let client = reqwest::Client::new();
+        static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+        let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
+        
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
 
         let personalizations = vec![serde_json::json!({
@@ -342,9 +346,11 @@ impl Mail {
     }
 
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
-        let driver_name = std::env::var("MAIL_DRIVER").unwrap_or_else(|_| {
-            let mut found_driver = None;
-            if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
+        // Resolve the driver either from env or Rullst.toml
+        let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
+        
+        if driver_name_opt.is_none() {
+            if let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await {
                 let mut in_mail = false;
                 for line in toml_content.lines() {
                     let trimmed = line.trim();
@@ -355,14 +361,15 @@ impl Mail {
                     if in_mail && trimmed.starts_with("driver") {
                         if let Some(val) = trimmed.split('=').nth(1) {
                             let clean_val = val.split('#').next().unwrap_or(val).trim();
-                            found_driver =
+                            driver_name_opt =
                                 Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
                         }
                     }
                 }
             }
-            found_driver.unwrap_or_else(|| "log".to_string())
-        });
+        }
+        
+        let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
 
         match driver_name.as_str() {
             "log" => Ok(Box::new(LogDriver)),

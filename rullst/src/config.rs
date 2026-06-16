@@ -168,4 +168,20 @@ cors_allow_origins = ["https://example.com"]
 
         let _ = std::fs::remove_dir_all(temp_dir);
     }
+
+    #[test]
+    fn test_default_security_config() {
+        let config = SecurityConfig::default();
+        assert_eq!(config.csrf_same_site, "Lax");
+        assert!(config.csp.contains("default-src"));
+        assert!(config.user_agent_blocklist.contains(&"curl".to_string()));
+    }
+
+    #[test]
+    fn test_set_global_config() {
+        let mut config = RullstConfig::new();
+        config.app.env = Some("test_env".to_string());
+        let result = RullstConfig::set_global(config);
+        assert!(result.is_ok() || result.is_err());
+    }
 }

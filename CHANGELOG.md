@@ -4,6 +4,19 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-06-15 🚀
+
+### Breaking Changes
+- **Rullst Connect v8 API**: Upgraded `rullst-connect` from `7.0.2` to `8.0.0`. Since `rullst-connect` is directly re-exported via `rullst::auth::connect` under the `oauth` feature, developers integrating social logins will need to adapt to the new `v8.0.0` breaking changes in their own application code. 
+- **OAuth Module Renamed**: Renamed the `rullst::auth::socialite` module to `rullst::auth::connect` to standardize nomenclature. Applications upgrading to `3.0.0` must update their `use` imports accordingly.
+
+### Changed
+- **Dependencies Upgrade**: 
+  - `tower-http` bumped from `0.6` to `0.7.0`.
+  - Upgraded `rullst-orm` to `=5.0.2`.
+  - Updated scaffolding generator templates for `cargo rullst` to automatically wire new projects using the latest `rullst-orm` and `rullst-connect` versions.
+  - Performed a workspace-wide `cargo update` which bumped 16 transitive crates (including `brotli`, `redis`, `time`, `wasm-bindgen`, and `libsqlite3-sys`) to their latest secure and performant patch versions.
+
 ## [2.0.10] - 2026-06-13 🚀
 
 ### Refactoring & Code Quality (Jules' suggestions)

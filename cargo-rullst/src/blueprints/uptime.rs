@@ -432,7 +432,9 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
     // 10. Uptime Page View
     let uptime_page = r##"use rullst::html;
 use crate::models::monitor::Monitor;
-use crate::models::heartbpub fn render_head() -> String {
+use crate::models::heartbeat::Heartbeat;
+
+pub fn render_head() -> String {
     html! {
         <head>
             <link rel="icon" type="image/png" href="data:image/png;base64,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" />
@@ -529,13 +531,13 @@ pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
                             
                             // --- Status Badge ---
                             <div class="flex items-center gap-2">
-                                { if !is_active {
+                                { rullst::html::RawHtml::new(if !is_active {
                                     html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-900 text-slate-400 border border-slate-800">"Inativo"</span> }
                                 } else if is_currently_up {
                                     html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">"Online"</span> }
                                 } else {
                                     html! { <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-950/40 text-rose-400 border border-rose-800/40">"Offline"</span> }
-                                } }
+                                }) }
                             </div>
                         </div>
 
@@ -562,10 +564,10 @@ pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
                         <div class="mt-5">
                             <span class="text-xs text-slate-400 block mb-2">"Histórico de Batimentos (Esquerda &rarr; Direita)"</span>
                             <div class="flex gap-1.5 overflow-x-auto py-1">
-                                { if history.is_empty() {
+                                { rullst::html::RawHtml::new(if history.is_empty() {
                                     html! { <span class="text-xs text-slate-500">"Aguardando primeira verificação..."</span> }
                                 } else {
-                                    html! { { rullst::html::RawHtml::new(history.iter().map(|hb| {
+                                    history.iter().map(|hb| {
                                         let block_color = if hb.is_up == 1 {
                                             "bg-emerald-500 hover:bg-emerald-400"
                                         } else {
@@ -582,8 +584,8 @@ pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
                                                 class={format!("w-5 h-8 rounded-sm transition-all duration-150 hover:scale-110 cursor-pointer {}", block_color)}
                                             ></div>
                                         }
-                                    }).collect::<Vec<_>>().join("")) } }
-                                } }
+                                    }).collect::<Vec<_>>().join("")
+                                }) }
                             </div>
                         </div>
 
@@ -657,20 +659,17 @@ pub fn dashboard_page(monitors: Vec<(Monitor, Vec<Heartbeat>)>) -> String {
 
     html! {
         <html lang="pt-BR" class="dark">
-            { rullst::html::RawHtml(render_head()) }
+            { rullst::html::RawHtml::new(render_head()) }
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-5xl mx-auto px-4 pt-8">
-                    { rullst::html::RawHtml(render_header()) }
-                    { rullst::html::RawHtml(render_kpi_cards(global_uptime, avg_resp_time, active_monitors_count, monitors.len())) }
+                    { rullst::html::RawHtml::new(render_header()) }
+                    { rullst::html::RawHtml::new(render_kpi_cards(global_uptime, avg_resp_time, active_monitors_count, monitors.len())) }
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        { rullst::html::RawHtml(render_monitors_list(&monitors)) }
-                        { rullst::html::RawHtml(render_new_monitor_form()) }
+                        { rullst::html::RawHtml::new(render_monitors_list(&monitors)) }
+                        { rullst::html::RawHtml::new(render_new_monitor_form()) }
                     </div>
                 </div>
-            </body>
-        </html>
-    }
             </body>
         </html>
     }

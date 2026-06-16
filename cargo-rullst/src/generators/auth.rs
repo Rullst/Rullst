@@ -848,7 +848,7 @@ pub async fn oauth_github_redirect() -> Response {
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "dummy_client_id".to_string());
     let redirect_url = std::env::var("GITHUB_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/auth/github/callback".to_string());
     
-    if let Some(provider) = rullst_connect::Socialite::driver("github", client_id, String::new(), redirect_url) {
+    if let Some(provider) = rullst_connect::Connect::driver("github", client_id, String::new(), redirect_url) {
         return Redirect::to(&provider.redirect_url()).into_response();
     }
     
@@ -860,7 +860,7 @@ pub async fn oauth_github_callback(Query(query): Query<OAuthCallbackQuery>) -> R
     let client_secret = std::env::var("GITHUB_CLIENT_SECRET").unwrap_or_else(|_| "dummy_client_secret".to_string());
     let redirect_url = std::env::var("GITHUB_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/auth/github/callback".to_string());
 
-    if let Some(provider) = rullst_connect::Socialite::driver("github", client_id, client_secret, redirect_url) {
+    if let Some(provider) = rullst_connect::Connect::driver("github", client_id, client_secret, redirect_url) {
         if let Ok(social_user) = provider.get_user(&query.code).await {
             let mut existing_user = None;
             if let Ok(users) = User::all().await {
@@ -1147,7 +1147,7 @@ pub async fn passkey_login_finish(
                         .replace("\\", "/");
                     format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
                 } else {
-                    "rullst-connect = \"7.0.1\"\n".to_string()
+                    "rullst-connect = \"8.0.0\"\n".to_string()
                 };
 
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {
