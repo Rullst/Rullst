@@ -117,30 +117,32 @@ impl Scheduler {
     /// server startup (typically via `Server::schedule()`).
     pub fn start(self) {
         for task in self.tasks {
-            let schedule = task.schedule;
-            let handler = task.handler;
-            let label = task.label;
+            tokio::spawn(run_task_loop(task));
+        }
+    }
+}
 
+async fn run_task_loop(task: ScheduledTask) {
+    let schedule = task.schedule;
+    let handler = task.handler;
+    let label = task.label;
+
+    println!("📅 Scheduler: task '{}' registered.", label);
+    loop {
+        let now = chrono::Utc::now();
+        if let Some(next) = schedule.upcoming(chrono::Utc).next() {
+            let duration = (next - now)
+                .to_std()
+                .unwrap_or(std::time::Duration::from_secs(60));
+            tokio::time::sleep(duration).await;
+
+            let handler_clone = Arc::clone(&handler);
             tokio::spawn(async move {
-                println!("📅 Scheduler: task '{}' registered.", label);
-                loop {
-                    let now = chrono::Utc::now();
-                    if let Some(next) = schedule.upcoming(chrono::Utc).next() {
-                        let duration = (next - now)
-                            .to_std()
-                            .unwrap_or(std::time::Duration::from_secs(60));
-                        tokio::time::sleep(duration).await;
-
-                        let handler_clone = Arc::clone(&handler);
-                        tokio::spawn(async move {
-                            handler_clone().await;
-                        });
-                    } else {
-                        // No more upcoming executions — this shouldn't happen with standard cron
-                        break;
-                    }
-                }
+                handler_clone().await;
             });
+        } else {
+            // No more upcoming executions — this shouldn't happen with standard cron
+            break;
         }
     }
 }

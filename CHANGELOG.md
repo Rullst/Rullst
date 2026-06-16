@@ -4,6 +4,13 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - Unreleased 🚀
+
+### Refactoring & Code Quality
+- **Authentication Key Derivation**: Extracted duplicated `Aes256Gcm` cipher initialization into a centralized `derive_cipher` helper in `rullst/src/auth.rs`, improving code maintainability.
+- **Task Scheduler Loop**: Decomposed the infinite polling loop in `rullst/src/scheduler.rs` into a standalone `run_task_loop` asynchronous function, significantly cleaning up the `start` method.
+- **Nexus N+1 Query Elimination**: Optimized `render_form_fields_html` in `rullst/src/nexus.rs` by pre-fetching all `ForeignKey` relational options concurrently using `tokio::task::JoinSet`, eliminating the N+1 database query bottleneck during form rendering.
+
 ## [3.0.0] - 2026-06-15 🚀
 
 ### Breaking Changes

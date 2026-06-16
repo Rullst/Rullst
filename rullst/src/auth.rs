@@ -104,15 +104,18 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
     Ok(key_vec)
 }
 
-/// Encrypts a user_id into a secure base64-encoded string.
-pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
+fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, String> {
     let mut hasher = sha2::Sha256::new();
     hasher.update(app_key);
     let key_hash = hasher.finalize();
     let mut key_bytes = [0u8; 32];
     key_bytes.copy_from_slice(&key_hash);
+    Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())
+}
 
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
+/// Encrypts a user_id into a secure base64-encoded string.
+pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
+    let cipher = derive_cipher(app_key)?;
 
     let mut nonce_bytes = [0u8; 12];
     rand::fill(&mut nonce_bytes);
@@ -132,13 +135,7 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
 
 /// Decrypts a secure base64-encoded string back into a user_id.
 pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(app_key);
-    let key_hash = hasher.finalize();
-    let mut key_bytes = [0u8; 32];
-    key_bytes.copy_from_slice(&key_hash);
-
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())?;
+    let cipher = derive_cipher(app_key)?;
 
     let combined = general_purpose::URL_SAFE_NO_PAD
         .decode(token)

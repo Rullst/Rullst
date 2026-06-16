@@ -1179,6 +1179,45 @@ async fn render_form_fields_html(
     entry: &RegistryEntry,
     record_data: &std::collections::HashMap<String, String>,
 ) -> String {
+    let mut fk_set = tokio::task::JoinSet::new();
+    let pool_opt = crate::db::safe_pool().cloned();
+
+    for f in &entry.fields {
+        if let FieldKind::ForeignKey { table: target_table, label_col } = &f.kind {
+            if let Some(pool) = pool_opt.clone() {
+                let target_pk = state
+                    .registry
+                    .iter()
+                    .find(|e| e.table == *target_table)
+                    .map(|e| e.pk)
+                    .unwrap_or("id");
+
+                let clean_target_pk = sanitize_identifier(target_pk);
+                let clean_label_col = sanitize_identifier(label_col);
+                let clean_target_table = sanitize_identifier(target_table);
+                let sql = format!(
+                    "SELECT {} as key_id, {} as val_label FROM {}",
+                    clean_target_pk, clean_label_col, clean_target_table
+                );
+                
+                let fname = f.name.to_string();
+                fk_set.spawn(async move {
+                    let res = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+                        .fetch_all(&pool)
+                        .await;
+                    (fname, res)
+                });
+            }
+        }
+    }
+
+    let mut fk_results = std::collections::HashMap::new();
+    while let Some(res) = fk_set.join_next().await {
+        if let Ok((name, Ok(rows))) = res {
+            fk_results.insert(name, rows);
+        }
+    }
+
     let mut fields_html = String::new();
     for f in &entry.fields {
         let is_pk = f.name == entry.pk;
@@ -1208,57 +1247,33 @@ async fn render_form_fields_html(
                  </div>",
                 f.label, f.name, f.label, val_esc
             ));
-        } else if let FieldKind::ForeignKey {
-            table: target_table,
-            label_col,
-        } = &f.kind
-        {
-            let target_pk = state
-                .registry
-                .iter()
-                .find(|e| e.table == *target_table)
-                .map(|e| e.pk)
-                .unwrap_or("id");
-
+        } else if let FieldKind::ForeignKey { .. } = &f.kind {
             let mut options_html = String::new();
             options_html.push_str("<option value=\"\">-- Select --</option>");
 
-            let clean_target_pk = sanitize_identifier(target_pk);
-            let clean_label_col = sanitize_identifier(label_col);
-            let clean_target_table = sanitize_identifier(target_table);
-            let sql = format!(
-                "SELECT {} as key_id, {} as val_label FROM {}",
-                clean_target_pk, clean_label_col, clean_target_table
-            );
-            if let Some(pool) = crate::db::safe_pool() {
+            if let Some(rows) = fk_results.get(f.name) {
                 use rullst_orm::_sqlx::Row;
-                if let Ok(rows) =
-                    rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
-                        .fetch_all(pool)
-                        .await
-                {
-                    for r in rows {
-                        let id_val: String = match r.try_get::<String, _>("key_id") {
-                            Ok(s) => s,
-                            Err(_) => match r.try_get::<i64, _>("key_id") {
+                for r in rows {
+                    let id_val: String = match r.try_get::<String, _>("key_id") {
+                        Ok(s) => s,
+                        Err(_) => match r.try_get::<i64, _>("key_id") {
+                            Ok(i) => i.to_string(),
+                            Err(_) => match r.try_get::<i32, _>("key_id") {
                                 Ok(i) => i.to_string(),
-                                Err(_) => match r.try_get::<i32, _>("key_id") {
-                                    Ok(i) => i.to_string(),
-                                    Err(_) => "0".to_string(),
-                                },
+                                Err(_) => "0".to_string(),
                             },
-                        };
-                        let label_val = r
-                            .try_get::<String, _>("val_label")
-                            .unwrap_or_else(|_| "Unknown".to_string());
-                        let selected = if id_val == val { "selected" } else { "" };
-                        options_html.push_str(&format!(
-                            "<option value=\"{}\" {}>{}</option>",
-                            id_val,
-                            selected,
-                            crate::html::escape_str(&label_val)
-                        ));
-                    }
+                        },
+                    };
+                    let label_val = r
+                        .try_get::<String, _>("val_label")
+                        .unwrap_or_else(|_| "Unknown".to_string());
+                    let selected = if id_val == val { "selected" } else { "" };
+                    options_html.push_str(&format!(
+                        "<option value=\"{}\" {}>{}</option>",
+                        id_val,
+                        selected,
+                        crate::html::escape_str(&label_val)
+                    ));
                 }
             }
 
