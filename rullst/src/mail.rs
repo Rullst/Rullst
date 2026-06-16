@@ -244,7 +244,7 @@ impl MailDriver for ResendDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
         let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
-        
+
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
         let mut body = serde_json::json!({
             "to": message.to,
@@ -287,7 +287,7 @@ impl MailDriver for SendGridDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
         let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
-        
+
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
 
         let personalizations = vec![serde_json::json!({
@@ -348,7 +348,7 @@ impl Mail {
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         // Resolve the driver either from env or Rullst.toml
         let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
-        
+
         if driver_name_opt.is_none() {
             if let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await {
                 let mut in_mail = false;
@@ -368,7 +368,7 @@ impl Mail {
                 }
             }
         }
-        
+
         let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
 
         match driver_name.as_str() {

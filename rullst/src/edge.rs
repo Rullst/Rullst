@@ -219,7 +219,10 @@ mod tests {
             .with_header("Content-Type", "application/json")
             .with_body(vec![123, 125]);
         assert_eq!(res.status, 201);
-        assert_eq!(res.headers.get("Content-Type").map(|s| s.as_str()), Some("application/json"));
+        assert_eq!(
+            res.headers.get("Content-Type").map(|s| s.as_str()),
+            Some("application/json")
+        );
         assert_eq!(res.body, vec![123, 125]);
     }
 }
