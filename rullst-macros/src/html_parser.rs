@@ -171,13 +171,17 @@ impl HtmlElement {
             match &attr.value {
                 HtmlAttrValue::Static(lit) => {
                     let val = lit.value();
+                    let static_attr = format!(" {}=\"{}\"", attr_name, val);
                     attr_tokens.push(quote! {
-                        let _ = std::fmt::Write::write_fmt(&mut s, format_args!(" {}=\"{}\"", #attr_name, #val));
+                        s.push_str(#static_attr);
                     });
                 }
                 HtmlAttrValue::Dynamic(expr) => {
+                    let attr_prefix = format!(" {}=\"", attr_name);
                     attr_tokens.push(quote! {
-                        let _ = std::fmt::Write::write_fmt(&mut s, format_args!(" {}=\"{}\"", #attr_name, rullst::html::escape_attr(&(#expr))));
+                        s.push_str(#attr_prefix);
+                        s.push_str(&rullst::html::escape_attr(&(#expr)));
+                        s.push_str("\"");
                     });
                 }
             }

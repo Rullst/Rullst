@@ -246,8 +246,10 @@ impl Nexus {
                                             if let Some((parts_user, parts_pass)) =
                                                 decoded_str.split_once(':')
                                             {
+                                                use subtle::ConstantTimeEq;
                                                 if parts_user == expected_username
-                                                    && parts_pass == expected_password
+                                                    && parts_pass.len() == expected_password.len()
+                                                    && parts_pass.as_bytes().ct_eq(expected_password.as_bytes()).into()
                                                 {
                                                     return next.run(req).await;
                                                 }

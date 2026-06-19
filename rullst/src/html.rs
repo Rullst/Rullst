@@ -57,22 +57,34 @@ impl_safe_primitives!(
 
 /// Helper function to escape standard strings
 pub fn escape_str(s: &str) -> String {
-    if let Some(pos) = s.bytes().position(|b| matches!(b, b'<' | b'>' | b'&' | b'"' | b'\'')) {
-        let mut escaped = String::with_capacity(s.len() + 4);
-        escaped.push_str(&s[..pos]);
-        for c in s[pos..].chars() {
-            match c {
-                '<' => escaped.push_str("&lt;"),
-                '>' => escaped.push_str("&gt;"),
-                '&' => escaped.push_str("&amp;"),
-                '"' => escaped.push_str("&quot;"),
-                '\'' => escaped.push_str("&#x27;"),
-                _ => escaped.push(c),
-            }
+    let bytes = s.as_bytes();
+    let mut last_pos = 0;
+    let mut escaped = String::new();
+    
+    for (i, &b) in bytes.iter().enumerate() {
+        let replacement = match b {
+            b'<' => "&lt;",
+            b'>' => "&gt;",
+            b'&' => "&amp;",
+            b'"' => "&quot;",
+            b'\'' => "&#x27;",
+            _ => continue,
+        };
+        
+        if last_pos == 0 {
+            escaped.reserve(s.len() + 16);
         }
-        escaped
-    } else {
+        
+        escaped.push_str(&s[last_pos..i]);
+        escaped.push_str(replacement);
+        last_pos = i + 1;
+    }
+    
+    if last_pos == 0 {
         s.to_string()
+    } else {
+        escaped.push_str(&s[last_pos..]);
+        escaped
     }
 }
 
