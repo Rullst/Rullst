@@ -60,7 +60,7 @@ impl std::error::Error for CacheError {}
 #[async_trait]
 pub trait CacheDriver: Send + Sync {
     /// Retrieve a value by key. Returns `None` if the key doesn't exist or has expired.
-    async fn get(&self, key: &str) -> Result<Option<String>, CacheError>;
+    async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError>;
     /// Store a value with an optional TTL in seconds.
     async fn put(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), CacheError>;
     /// Remove a key from the cache.
@@ -76,7 +76,7 @@ pub trait CacheDriver: Send + Sync {
 /// Cache entry holding the value and optional expiration time.
 #[derive(Clone)]
 struct CacheEntry {
-    value: String,
+    value: Arc<String>,
     expires_at: Option<Instant>,
 }
 
@@ -119,7 +119,7 @@ impl Default for MemoryDriver {
 
 #[async_trait]
 impl CacheDriver for MemoryDriver {
-    async fn get(&self, key: &str) -> Result<Option<String>, CacheError> {
+    async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError> {
         if let Some(entry) = self.store.get(key) {
             // Check TTL expiration
             if let Some(expires_at) = entry.expires_at
@@ -130,6 +130,7 @@ impl CacheDriver for MemoryDriver {
                 self.store.remove(key);
                 return Ok(None);
             }
+            // Cheap pointer clone instead of deep string copy
             Ok(Some(entry.value.clone()))
         } else {
             Ok(None)
@@ -141,7 +142,7 @@ impl CacheDriver for MemoryDriver {
         self.store.insert(
             key.to_string(),
             CacheEntry {
-                value: value.to_string(),
+                value: Arc::new(value.to_string()),
                 expires_at,
             },
         );
@@ -199,7 +200,7 @@ pub mod redis_driver {
 
     #[async_trait]
     impl CacheDriver for RedisDriver {
-        async fn get(&self, key: &str) -> Result<Option<String>, CacheError> {
+        async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError> {
             let mut con = self
                 .client
                 .get_multiplexed_async_connection()
@@ -210,7 +211,7 @@ pub mod redis_driver {
                 .query_async(&mut con)
                 .await
                 .map_err(|e| CacheError::Driver(format!("Redis GET failed: {}", e)))?;
-            Ok(result)
+            Ok(result.map(Arc::new))
         }
 
         async fn put(
@@ -351,7 +352,7 @@ impl Cache {
     }
 
     /// Retrieve a value by key.
-    pub async fn get(&self, key: &str) -> Result<Option<String>, CacheError> {
+    pub async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError> {
         self.driver.get(key).await
     }
 
@@ -398,7 +399,7 @@ impl Cache {
         key: &str,
         ttl_secs: u64,
         f: F,
-    ) -> Result<String, CacheError>
+    ) -> Result<Arc<String>, CacheError>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<String, CacheError>>,
@@ -411,7 +412,7 @@ impl Cache {
         let value = f().await?;
         // Store in cache
         self.put(key, &value, Some(ttl_secs)).await?;
-        Ok(value)
+        Ok(Arc::new(value))
     }
 }
 
@@ -427,7 +428,7 @@ mod tests {
         let cache = Cache::memory();
         cache.put("key1", "value1", None).await.unwrap();
         let result = cache.get("key1").await.unwrap();
-        assert_eq!(result, Some("value1".to_string()));
+        assert_eq!(result, Some(Arc::new("value1".to_string())));
     }
 
     #[tokio::test]
@@ -471,10 +472,10 @@ mod tests {
             .remember("computed", 60, || async { Ok("hello".to_string()) })
             .await
             .unwrap();
-        assert_eq!(value, "hello");
+        assert_eq!(*value, "hello");
         // Should be cached now
         let cached = cache.get("computed").await.unwrap();
-        assert_eq!(cached, Some("hello".to_string()));
+        assert_eq!(cached, Some(Arc::new("hello".to_string())));
     }
 
     #[tokio::test]
@@ -490,7 +491,7 @@ mod tests {
             })
             .await
             .unwrap();
-        assert_eq!(value, "already_cached");
+        assert_eq!(*value, "already_cached");
     }
 
     #[tokio::test]
@@ -498,14 +499,14 @@ mod tests {
         let cache = Cache::memory();
         cache.put("key", "v1", None).await.unwrap();
         cache.put("key", "v2", None).await.unwrap();
-        assert_eq!(cache.get("key").await.unwrap(), Some("v2".to_string()));
+        assert_eq!(cache.get("key").await.unwrap(), Some(Arc::new("v2".to_string())));
     }
 
     struct MockDriver;
     #[async_trait]
     impl CacheDriver for MockDriver {
-        async fn get(&self, _key: &str) -> Result<Option<String>, CacheError> {
-            Ok(Some("mocked".to_string()))
+        async fn get(&self, _key: &str) -> Result<Option<Arc<String>>, CacheError> {
+            Ok(Some(Arc::new("mocked".to_string())))
         }
         async fn put(&self, _k: &str, _v: &str, _t: Option<u64>) -> Result<(), CacheError> {
             Ok(())
@@ -525,7 +526,7 @@ mod tests {
     async fn test_custom_cache_driver() {
         let cache = Cache::custom(Box::new(MockDriver));
         let result = cache.get("anything").await.unwrap();
-        assert_eq!(result, Some("mocked".to_string()));
+        assert_eq!(result, Some(Arc::new("mocked".to_string())));
     }
 
     #[cfg(feature = "cache-redis")]

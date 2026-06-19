@@ -15,6 +15,7 @@ pub mod pages;
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {
     let nexus = rullst::nexus::Nexus::new()
+        .with_auth("admin", "password")
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
@@ -82,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     rullst::artisan!(crate::migrations::get_migrations());
 
     let nexus = rullst::nexus::Nexus::new()
+        .with_auth("admin", "password")
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()

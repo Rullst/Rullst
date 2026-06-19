@@ -24,6 +24,7 @@ rullst-macros = { version = "3.0.0", path = "../rullst-macros" }
 redis = { version = "1.2.2", features = ["tokio-comp", "aio"], optional = true }
 lettre = { version = "0.11.22", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
 rullst-connect = { version = "10.0.1", optional = true }
+urlencoding = "2.1.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }

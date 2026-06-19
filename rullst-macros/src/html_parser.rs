@@ -172,12 +172,12 @@ impl HtmlElement {
                 HtmlAttrValue::Static(lit) => {
                     let val = lit.value();
                     attr_tokens.push(quote! {
-                        format!(" {}=\"{}\"", #attr_name, #val)
+                        let _ = std::fmt::Write::write_fmt(&mut s, format_args!(" {}=\"{}\"", #attr_name, #val));
                     });
                 }
                 HtmlAttrValue::Dynamic(expr) => {
                     attr_tokens.push(quote! {
-                        format!(" {}=\"{}\"", #attr_name, rullst::html::escape_attr(&(#expr)))
+                        let _ = std::fmt::Write::write_fmt(&mut s, format_args!(" {}=\"{}\"", #attr_name, rullst::html::escape_attr(&(#expr))));
                     });
                 }
             }
@@ -197,7 +197,7 @@ impl HtmlElement {
                     let mut s = String::with_capacity(#capacity);
                     s.push_str("<");
                     s.push_str(#tag);
-                    #( s.push_str(&#attr_tokens); )*
+                    #( #attr_tokens )*
                     s.push_str(" />");
                     s
                 }
@@ -208,7 +208,7 @@ impl HtmlElement {
                     let mut s = String::with_capacity(#capacity);
                     s.push_str("<");
                     s.push_str(#tag);
-                    #( s.push_str(&#attr_tokens); )*
+                    #( #attr_tokens )*
                     s.push_str(">");
                     #( s.push_str(&#child_tokens); )*
                     s.push_str("</");

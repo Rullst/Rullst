@@ -227,7 +227,7 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
             "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-4 border-transparent"
         };
 
-        let path = format!("/tables/{}", t);
+        let path = format!("/tables/{}", urlencoding::encode(t));
         let link_html = html! {
             <a href="#"
                hx-get={path.as_str()}
@@ -480,15 +480,15 @@ pub async fn handle_table(
 
     let prev_hx = format!(
         "/tables/{}?page={}&search={}",
-        table_name,
+        urlencoding::encode(&table_name),
         prev_page,
-        escape_html_attr(search)
+        urlencoding::encode(search)
     );
     let next_hx = format!(
         "/tables/{}?page={}&search={}",
-        table_name,
+        urlencoding::encode(&table_name),
         next_page,
-        escape_html_attr(search)
+        urlencoding::encode(search)
     );
 
     let prev_disabled = if page <= 1 {
@@ -526,7 +526,7 @@ pub async fn handle_table(
                                name="search"
                                value={search}
                                placeholder="Search records..."
-                               hx-get={format!("/tables/{}", table_name).as_str()}
+                               hx-get={format!("/tables/{}", urlencoding::encode(&table_name)).as_str()}
                                hx-trigger="keyup[target.value.length == 0 || target.value.length > 2] delay:400ms, search"
                                hx-target="#studio-content"
                                class="w-64 pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/80 focus:ring-1 focus:ring-sky-500/50 transition-all duration-200" />

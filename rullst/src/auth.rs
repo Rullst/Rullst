@@ -31,10 +31,19 @@ pub fn hash_password(password: &str) -> Result<String, String> {
 
 /// Verifies a plain-text password against a hashed Argon2 password.
 pub fn verify_password(password: &str, hash: &str) -> bool {
+    let parsed_hash_result = PasswordHash::new(hash);
+    
     if password.len() > 72 {
+        // Dummy Hash Verification to prevent Timing Attacks.
+        // We compute a valid Argon2 hash check on a dummy string to equalize execution time,
+        // preventing attackers from measuring if the request was short-circuited due to length limits.
+        if let Ok(parsed_hash) = parsed_hash_result {
+            let _ = Argon2::default().verify_password("dummy_password".as_bytes(), &parsed_hash);
+        }
         return false;
     }
-    if let Ok(parsed_hash) = PasswordHash::new(hash) {
+
+    if let Ok(parsed_hash) = parsed_hash_result {
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
             .is_ok()

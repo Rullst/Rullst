@@ -168,7 +168,11 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
     );
     headers.insert(
         "Strict-Transport-Security",
-        header::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+        header::HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+    );
+    headers.insert(
+        "Permissions-Policy",
+        header::HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
     );
 
     if !csp.is_empty() {
@@ -244,30 +248,34 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
         }
     }
 
-    // 2. Inspect query parameters for common attack vectors (SQLi, XSS, Path Traversal)
-    if let Some(query) = req.uri().query() {
-        let query_decoded = url_decode(query);
-        let query_lower = query_decoded.to_lowercase();
+    // 2. Inspect query parameters and headers for common attack vectors (SQLi, XSS, Path Traversal, CMD Injection)
+    let malicious_patterns = [
+        "select ", "union ", "insert ", "delete ", "drop table", "alter table", // SQLi
+        "<script", "javascript:", "onload=", "onerror=", "document.cookie",     // XSS
+        "../", "..\\", "/etc/passwd", "win.ini",                               // Path Traversal
+        "; ls", "&& cat", "| bash", "| sh", "wget ", "curl ", "ping -c",       // Command Injection
+    ];
 
-        let malicious_patterns = [
-            "select ",
-            "union ",
-            "insert ",
-            "delete ",
-            "drop table",
-            "alter table",
-            "<script",
-            "javascript:",
-            "onload=",
-            "onerror=",
-            "../",
-            "..\\",
-            "/etc/passwd",
-            "win.ini",
-        ];
+    let mut payloads_to_check = Vec::new();
+
+    if let Some(query) = req.uri().query() {
+        payloads_to_check.push(query.to_string());
+    }
+
+    if let Some(referer) = req.headers().get(header::REFERER).and_then(|v| v.to_str().ok()) {
+        payloads_to_check.push(referer.to_string());
+    }
+
+    if let Some(cookie) = req.headers().get(header::COOKIE).and_then(|v| v.to_str().ok()) {
+        payloads_to_check.push(cookie.to_string());
+    }
+
+    for payload in payloads_to_check {
+        let payload_decoded = url_decode(&payload);
+        let payload_lower = payload_decoded.to_lowercase();
 
         for pattern in malicious_patterns {
-            if query_lower.contains(pattern) {
+            if payload_lower.contains(pattern) {
                 match Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
@@ -476,6 +484,8 @@ mod tests {
         assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
         assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(headers.get("X-XSS-Protection").unwrap(), "1; mode=block");
+        assert_eq!(headers.get("Strict-Transport-Security").unwrap(), "max-age=31536000; includeSubDomains; preload");
+        assert_eq!(headers.get("Permissions-Policy").unwrap(), "geolocation=(), camera=(), microphone=()");
     }
 
     #[test]

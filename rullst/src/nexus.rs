@@ -842,7 +842,7 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
         let t = m.table;
         let lb = m.label;
         let ic = m.icon;
-        out.push_str(&format!(
+        let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
             "<a href=\"/nexus/table/{t}\" class=\"nexus-nav-link{active_class}\" \
              hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
              <span class=\"nexus-nav-icon\">{ic}</span><span>{lb}</span></a>"
@@ -896,7 +896,7 @@ fn build_table_query(
 
     let limit = 20;
     let offset = (page.max(1) - 1) * limit;
-    sql.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut sql, format_args!(
         " ORDER BY {} DESC LIMIT {} OFFSET {}",
         clean_pk, limit, offset
     ));
@@ -1066,12 +1066,12 @@ async fn render_table_view(
     let mut out = String::new();
     out.push_str("<div class=\"nexus-page-header\">");
     out.push_str("<div>");
-    out.push_str(&format!("<h1 class=\"nexus-page-title\">{ic} {lb}</h1>"));
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<h1 class=\"nexus-page-title\">{ic} {lb}</h1>"));
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<p class=\"nexus-page-subtitle\">Manage all records in the <code>{t}</code> table.</p>"
     ));
     out.push_str("</div>");
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<button class=\"nexus-btn nexus-btn-primary\" \
          hx-get=\"/nexus/table/{t}/new\" \
          hx-target=\"#nexus-modal-body\" \
@@ -1083,7 +1083,7 @@ async fn render_table_view(
     out.push_str("<div class=\"nexus-toolbar\">");
     out.push_str("<div class=\"nexus-search-wrap\">");
     out.push_str("<span class=\"nexus-search-icon\">&#128269;</span>");
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<input type=\"text\" class=\"nexus-search-input\" \
          placeholder=\"Search {lb}...\" value=\"{q_esc}\" \
          hx-get=\"/nexus/table/{t}/search\" \
@@ -1092,7 +1092,7 @@ async fn render_table_view(
          name=\"q\" />"
     ));
     out.push_str("</div>");
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<span class=\"nexus-page-badge\">Page {page}</span>"
     ));
     out.push_str("</div>");
@@ -1109,7 +1109,7 @@ async fn render_table_view(
 
     out.push_str("<div class=\"nexus-pagination\">");
     out.push_str(&prev_btn);
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<span class=\"nexus-page-indicator\">Page {page}</span>"
     ));
     out.push_str(&next_btn);
@@ -1234,7 +1234,7 @@ async fn render_form_fields_html(
 
         if f.kind == FieldKind::Boolean {
             let checked = if val == "true" { "checked" } else { "" };
-            fields_html.push_str(&format!(
+            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
                 "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <input type=\"checkbox\" name=\"{}\" value=\"true\" {checked} {readonly}>\
@@ -1242,7 +1242,7 @@ async fn render_form_fields_html(
                 f.label, f.name
             ));
         } else if f.kind == FieldKind::Textarea {
-            fields_html.push_str(&format!(
+            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
                 "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <textarea name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" {readonly}>{}</textarea>\
@@ -1270,7 +1270,7 @@ async fn render_form_fields_html(
                         .try_get::<String, _>("val_label")
                         .unwrap_or_else(|_| "Unknown".to_string());
                     let selected = if id_val == val { "selected" } else { "" };
-                    options_html.push_str(&format!(
+                    let _ = std::fmt::Write::write_fmt(&mut options_html, format_args!(
                         "<option value=\"{}\" {}>{}</option>",
                         id_val,
                         selected,
@@ -1279,7 +1279,7 @@ async fn render_form_fields_html(
                 }
             }
 
-            fields_html.push_str(&format!(
+            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
                 "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <select name=\"{}\" class=\"nexus-input\" {readonly}>\
@@ -1295,7 +1295,7 @@ async fn render_form_fields_html(
                 FieldKind::Date => "date",
                 _ => "text",
             };
-            fields_html.push_str(&format!(
+            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
                 "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <input type=\"{type_attr}\" name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" value=\"{}\" {readonly}>\
@@ -1353,7 +1353,7 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"dark\">\n<head>\n");
     out.push_str("<meta charset=\"UTF-8\" />\n");
     out.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n");
-    out.push_str(&format!("<title>{brand} &mdash; Nexus Panel</title>\n"));
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<title>{brand} &mdash; Nexus Panel</title>\n"));
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
     out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\" defer></script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
@@ -1365,13 +1365,13 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str("<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\">");
     out.push_str("<div class=\"nexus-brand\">");
     out.push_str("<span class=\"nexus-brand-icon\">&#127963;&#65039;</span>");
-    out.push_str(&format!("<span class=\"nexus-brand-name\">{brand}</span>"));
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<span class=\"nexus-brand-name\">{brand}</span>"));
     out.push_str("</div>");
     out.push_str("<div class=\"nexus-nav-label\">MODELS</div>");
     out.push_str(sidebar);
     out.push_str("<div class=\"nexus-sidebar-footer\">");
     out.push_str("<a href=\"/\" class=\"nexus-nav-link nexus-nav-home\"><span class=\"nexus-nav-icon\">&#127968;</span><span>Back to App</span></a>");
-    out.push_str(&format!(
+    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
         "<div class=\"nexus-version\">Rullst Nexus v{}</div>",
         env!("CARGO_PKG_VERSION")
     ));
