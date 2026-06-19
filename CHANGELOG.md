@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Task Scheduler Loop**: Decomposed the infinite polling loop in `rullst/src/scheduler.rs` into a standalone `run_task_loop` asynchronous function, significantly cleaning up the `start` method.
 - **Nexus N+1 Query Elimination**: Optimized `render_form_fields_html` in `rullst/src/nexus.rs` by pre-fetching all `ForeignKey` relational options concurrently using `tokio::task::JoinSet`, eliminating the N+1 database query bottleneck during form rendering.
 - **Clippy Optimization**: Removed an unnecessary `let out =` binding and return statement inside `rullst/src/nexus.rs` (identified by the `clippy::let_and_return` lint) to allow the `.fold()` expression to return implicitly.
+- **HTML Escaping Performance**: Optimized the `escape_str` utility (`rullst/src/html.rs`) by introducing a fast-path byte scan. Strings without special HTML characters are now returned immediately without character-by-character iteration or intermediate reallocation, resulting in a massive execution speedup during `html!` macro rendering.
 
 ## [3.0.0] - 2026-06-15 🚀
 
