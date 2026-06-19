@@ -145,7 +145,7 @@ where
                         }
                     }
 
-                    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+                    let body_bytes = match axum::body::to_bytes(body, 2 * 1024 * 1024).await {
                         Ok(bytes) => bytes.to_vec(),
                         Err(_) => Vec::new(),
                     };
