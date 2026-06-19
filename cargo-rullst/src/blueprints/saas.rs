@@ -302,6 +302,9 @@ pub async fn login_view(headers: HeaderMap) -> impl IntoResponse {
 
 pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> Response {
     let token = get_csrf_token(&headers);
+    if payload.password.len() > 72 {
+        return auth::login_page(&token, Some("Password must be at most 72 characters")).into_response();
+    }
     let users = match User::all().await {
         Ok(u) => u,
         Err(_) => return auth::login_page(&token, Some("Internal error")).into_response(),
@@ -338,6 +341,9 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
     let token = get_csrf_token(&headers);
     if payload.password.len() < 6 {
         return auth::register_page(&token, Some("Password must be at least 6 characters")).into_response();
+    }
+    if payload.password.len() > 72 {
+        return auth::register_page(&token, Some("Password must be at most 72 characters")).into_response();
     }
     if let Ok(users) = User::all().await {
         if users.iter().any(|u| u.email == payload.email) {

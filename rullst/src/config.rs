@@ -60,6 +60,9 @@ pub struct SecurityConfig {
     /// User-Agent strings or substrings to block in the WAF middleware.
     #[serde(default = "default_user_agent_blocklist")]
     pub user_agent_blocklist: Vec<String>,
+    /// Enable global automatic PII masking middleware on all textual responses (heavy performance cost).
+    #[serde(default = "default_false")]
+    pub enable_pii_masking: bool,
 }
 
 fn default_csp() -> String {
@@ -87,6 +90,10 @@ fn default_same_site() -> String {
     "Lax".to_string()
 }
 
+fn default_false() -> bool {
+    false
+}
+
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
@@ -94,6 +101,7 @@ impl Default for SecurityConfig {
             cors_allow_origins: vec![],
             csp: default_csp(),
             user_agent_blocklist: default_user_agent_blocklist(),
+            enable_pii_masking: false,
         }
     }
 }

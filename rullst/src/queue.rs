@@ -164,6 +164,14 @@ impl SqliteDriver {
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs table: {}", e)))?;
 
+        // Add index for fast polling of pending jobs
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_status_created ON rullst_jobs(status, created_at)"
+        )
+        .execute(&pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs indexes: {}", e)))?;
+
         Ok(Self { pool })
     }
 

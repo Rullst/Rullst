@@ -190,17 +190,21 @@ fn hex_decode_char(c1: u8, c2: u8) -> Option<u8> {
 /// WebAssembly-compatible URL decoding helper.
 fn url_decode(s: &str) -> String {
     let mut decoded = String::new();
-    let mut bytes = s.bytes();
-    while let Some(b) = bytes.next() {
-        if b == b'%' {
-            if let (Some(h1), Some(h2)) = (bytes.next(), bytes.next()) {
-                if let Some(d) = hex_decode_char(h1, h2) {
-                    decoded.push(d as char);
-                    continue;
-                }
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'%' && i + 2 < bytes.len() {
+            let h1 = bytes[i + 1];
+            let h2 = bytes[i + 2];
+            if let Some(d) = hex_decode_char(h1, h2) {
+                decoded.push(d as char);
+                i += 3;
+                continue;
             }
         }
         decoded.push(b as char);
+        i += 1;
     }
     decoded
 }

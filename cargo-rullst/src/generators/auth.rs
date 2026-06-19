@@ -744,6 +744,9 @@ pub async fn login_view(headers: HeaderMap) -> impl IntoResponse {
 
 pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> Response {
     let token = get_csrf_token(&headers);
+    if payload.password.len() > 72 {
+        return auth::login_page(&token, Some("Password must be at most 72 characters")).into_response();
+    }
     
     let users = match User::all().await {
         Ok(u) => u,
@@ -784,6 +787,9 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
     
     if payload.password.len() < 6 {
         return auth::register_page(&token, Some("Password must be at least 6 characters")).into_response();
+    }
+    if payload.password.len() > 72 {
+        return auth::register_page(&token, Some("Password must be at most 72 characters")).into_response();
     }
 
     if let Ok(users) = User::all().await {
@@ -1147,7 +1153,7 @@ pub async fn passkey_login_finish(
                         .replace("\\", "/");
                     format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
                 } else {
-                    "rullst-connect = \"8.0.0\"\n".to_string()
+                    "rullst-connect = \"10.0.0\"\n".to_string()
                 };
 
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {

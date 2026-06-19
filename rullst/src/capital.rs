@@ -96,14 +96,14 @@ pub trait BillingProvider: Send + Sync {
 
 /// Helper to url-encode string values without relying on external dependencies.
 fn url_encode(s: &str) -> String {
-    let mut encoded = String::new();
+    let mut encoded = String::with_capacity(s.len());
     for b in s.bytes() {
         match b {
             b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
                 encoded.push(b as char);
             }
             _ => {
-                encoded.push_str(&format!("%{:02X}", b));
+                let _ = std::fmt::Write::write_fmt(&mut encoded, format_args!("%{:02X}", b));
             }
         }
     }
@@ -465,7 +465,7 @@ impl BillingProvider for LemonSqueezyProvider {
 // Helper module for hex-encoding/decoding since hex crate is in target target_arch="wasm32" but we can implement it simply.
 mod hex {
     pub fn decode(s: &str) -> Result<Vec<u8>, String> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(s.len() / 2);
         let mut chars = s.chars();
         while let (Some(c1), Some(c2)) = (chars.next(), chars.next()) {
             let b1 = c1.to_digit(16).ok_or("Invalid hex character")? as u8;

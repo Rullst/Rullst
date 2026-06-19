@@ -250,11 +250,11 @@ pub mod redis_driver {
                 .get_multiplexed_async_connection()
                 .await
                 .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            redis::cmd("DEL")
+            redis::cmd("UNLINK")
                 .arg(self.prefixed_key(key))
                 .query_async::<i64>(&mut con)
                 .await
-                .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
+                .map_err(|e| CacheError::Driver(format!("Redis UNLINK failed: {}", e)))?;
             Ok(())
         }
 
@@ -278,11 +278,11 @@ pub mod redis_driver {
                     .map_err(|e| CacheError::Driver(format!("Redis SCAN failed: {}", e)))?;
 
                 if !keys.is_empty() {
-                    redis::cmd("DEL")
+                    redis::cmd("UNLINK")
                         .arg(&keys)
                         .query_async::<i64>(&mut con)
                         .await
-                        .map_err(|e| CacheError::Driver(format!("Redis DEL failed: {}", e)))?;
+                        .map_err(|e| CacheError::Driver(format!("Redis UNLINK failed: {}", e)))?;
                 }
 
                 cursor = next_cursor;

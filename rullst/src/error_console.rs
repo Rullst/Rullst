@@ -63,18 +63,15 @@ pub fn extract_source_context(
         .ok()?;
 
     let target_path = Path::new(file_path);
-    if target_path
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
+    if target_path.is_absolute()
+        || target_path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
     {
         return None;
     }
 
-    let absolute_path = if target_path.is_absolute() {
-        target_path.to_path_buf()
-    } else {
-        project_root.join(target_path)
-    };
+    let absolute_path = project_root.join(target_path);
 
     let canonical = absolute_path.canonicalize().ok()?;
     if !canonical.starts_with(&project_root) {
@@ -169,9 +166,10 @@ pub async fn handle_explain(
     };
 
     let target_path = std::path::Path::new(&query.file);
-    if target_path
-        .components()
-        .any(|c| c == std::path::Component::ParentDir)
+    if target_path.is_absolute()
+        || target_path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
     {
         return "Access denied: Path traversal detected.".to_string();
     }
@@ -261,9 +259,10 @@ pub async fn handle_autofix(
 
     // 2. Resolve and verify the file is within the project root (prevents path traversal and existence oracles)
     let target_path = Path::new(&payload.file_path);
-    if target_path
-        .components()
-        .any(|c| c == std::path::Component::ParentDir)
+    if target_path.is_absolute()
+        || target_path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
     {
         return Json(serde_json::json!({
             "success": false,
@@ -376,25 +375,21 @@ pub(crate) async fn render_console_html(
         source_loc.clone()
     {
         let code_snippet = if let Some(context) = extract_source_context(&file, line, 5) {
-            let mut html = String::new();
-            for (idx, content, is_target) in context {
-                let escaped = content
-                    .replace('&', "&amp;")
-                    .replace('<', "&lt;")
-                    .replace('>', "&gt;");
+            context.into_iter().fold(String::with_capacity(512), |mut html, (idx, content, is_target)| {
+                let escaped = crate::html::escape_str(content);
                 if is_target {
-                    html.push_str(&format!(
+                    let _ = std::fmt::Write::write_fmt(&mut html, format_args!(
                         "<div class='code-line active'><span class='line-num'>{}</span><span class='line-content'>{}</span></div>",
                         idx, escaped
                     ));
                 } else {
-                    html.push_str(&format!(
+                    let _ = std::fmt::Write::write_fmt(&mut html, format_args!(
                         "<div class='code-line'><span class='line-num'>{}</span><span class='line-content'>{}</span></div>",
                         idx, escaped
                     ));
                 }
-            }
-            html
+                html
+            })
         } else {
             "<div class='empty-state'>Failed to read source file context.</div>".to_string()
         };
@@ -410,11 +405,10 @@ pub(crate) async fn render_console_html(
     };
 
     // Filter and clean stack trace lines for presentation
-    let mut trace_html = String::new();
-    for (i, line) in bt_str.lines().enumerate() {
+    let trace_html = bt_str.lines().enumerate().fold(String::with_capacity(1024), |mut trace_html, (i, line)| {
         let trimmed = line.trim();
         if trimmed.is_empty() {
-            continue;
+            return trace_html;
         }
         let is_dev_frame = trimmed.contains("src/")
             || trimmed.contains("src\\")
@@ -425,16 +419,14 @@ pub(crate) async fn render_console_html(
         } else {
             "trace-line"
         };
-        trace_html.push_str(&format!(
+        let _ = std::fmt::Write::write_fmt(&mut trace_html, format_args!(
             "<div class='{}'><span class='trace-idx'>#{}</span><span class='trace-val'>{}</span></div>",
-            class, i, trimmed.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+            class, i, crate::html::escape_str(trimmed)
         ));
-    }
+        trace_html
+    });
 
-    let escaped_err = error_message
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;");
+    let escaped_err = crate::html::escape_str(error_message);
 
     let escaped_err_js = escaped_err
         .replace('\\', "\\\\")

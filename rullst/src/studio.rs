@@ -9,6 +9,7 @@ use rullst_macros::html;
 
 use serde::Deserialize;
 use sqlx::{Any, QueryBuilder, Row};
+use std::fmt::Write;
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
@@ -160,39 +161,38 @@ fn sanitize_identifier(id: &str) -> String {
 
 /// Helper to build table headers HTML
 fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> String {
-    let mut headers_html = String::new();
-    for (i, col) in col_names.iter().enumerate() {
-        let is_pk = primary_keys.contains(&i);
-        let pk_badge = if is_pk {
-            "<span class=\"ml-1.5 text-[9px] font-extrabold tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1 py-0.2 rounded font-mono\">PK</span>"
-        } else {
-            ""
-        };
-        headers_html.push_str(&format!(
-            "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">
-                <div class=\"flex items-center\">{} {}</div>
-            </th>",
-            escape_html_attr(col), pk_badge
-        ));
-    }
-    headers_html
+    col_names.iter().enumerate().fold(
+        String::with_capacity(col_names.len() * 128),
+        |mut acc, (i, col)| {
+            let is_pk = primary_keys.contains(&i);
+            let pk_badge = if is_pk {
+                "<span class=\"ml-1.5 text-[9px] font-extrabold tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1 py-0.2 rounded font-mono\">PK</span>"
+            } else {
+                ""
+            };
+            let _ = write!(
+                acc,
+                "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">\n                <div class=\"flex items-center\">{} {}</div>\n            </th>",
+                escape_html_attr(col), pk_badge
+            );
+            acc
+        },
+    )
 }
 
 /// Helper to build table rows HTML
 fn build_rows_html(records: &[sqlx::any::AnyRow], col_names: &[String]) -> String {
-    let mut rows_html = String::new();
     if records.is_empty() {
         let cols_len = col_names.len().max(1);
-        rows_html.push_str(&format!(
-            "<tr>
-                <td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">
-                    No records found inside this table.
-                </td>
-            </tr>",
+        return format!(
+            "<tr>\n                <td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">\n                    No records found inside this table.\n                </td>\n            </tr>",
             cols_len
-        ));
-    } else {
-        for row in records {
+        );
+    }
+
+    records.iter().fold(
+        String::with_capacity(records.len() * col_names.len() * 64),
+        |mut rows_html, row| {
             rows_html.push_str("<tr class=\"border-b border-slate-800/40 hover:bg-slate-900/30 transition duration-150\">");
             for i in 0..col_names.len() {
                 let cell_val = get_any_value_as_string(row, i);
@@ -202,16 +202,17 @@ fn build_rows_html(records: &[sqlx::any::AnyRow], col_names: &[String]) -> Strin
                 } else {
                     "text-slate-300"
                 };
-                rows_html.push_str(&format!(
+                let _ = write!(
+                    rows_html,
                     "<td class=\"px-6 py-4 text-sm truncate max-w-xs {}\">{}</td>",
                     text_class,
                     escape_html_attr(&cell_val)
-                ));
+                );
             }
             rows_html.push_str("</tr>");
-        }
-    }
-    rows_html
+            rows_html
+        },
+    )
 }
 
 /// Base visual template wrapper

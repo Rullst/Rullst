@@ -4,9 +4,32 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.1] - Unreleased 🚀
+## [4.0.0] - Unreleased 🚀
+
+### Breaking Changes
+- **Rullst Connect v10 API**: Upgraded `rullst-connect` from `8.0.0` directly to `10.0.0`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes introduced in `rullst-connect` versions 9 and 10.
+- **Rullst ORM v5 API**: Upgraded `rullst-orm` to `=5.0.3` across the framework, scaffolding templates, and examples. Projects utilizing the ORM must adapt to the new `v5.0.3` API.
+
+### Changed
+- **Dependencies Upgrade**:
+  - Upgraded `cron` from `0.16.0` to `0.17.0`.
+
+### Security
+- **URL Decoding Integrity (WAF Bypass Mitigation)**: Fixed the WebAssembly-compatible `url_decode` function in `rullst/src/security.rs` which was silently dropping invalid hex sequences (e.g. `%XY`). It now safely preserves the intact invalid sequences, preventing WAF bypass attacks where an attacker could construct malicious payloads that trick the firewall but execute on the backend.
+- **Scaffolding Password Length Limits**: Integrated the strict 72-character maximum password length validation directly into the `cargo-rullst/src/blueprints/saas.rs` and `cargo-rullst/src/generators/auth.rs` scaffolding generators, providing immediate UI error feedback to the user and securing all newly generated Rullst projects out-of-the-box against Argon2 resource exhaustion DoS attacks.
+- **Password Length Limits (DoS Mitigation)**: Enforced a strict maximum password length of 72 characters in `rullst/src/auth.rs` (`hash_password` and `verify_password`). This prevents Denial of Service (DoS) attacks where maliciously oversized inputs could exhaust CPU and memory resources during Argon2 hashing.
+- **Path Traversal Mitigation**: Strengthened the `rullst/src/error_console.rs` AI auto-fix and explain endpoints by strictly rejecting all absolute paths. This completely mitigates subtle path traversal bypasses that could occur via symlinks combined with `canonicalize()`.
+
+### Fixed
+- **Gitignore Cleanup**: Removed duplicate and corrupted lines containing null bytes (`NUL`) from `.gitignore`.
 
 ### Refactoring & Code Quality
+- **URL Encoding Micro-Optimization**: Eliminated multiple heap allocations and intermediate string formatting in `url_encode` (`rullst/src/capital.rs`). It now pre-allocates `String::with_capacity(s.len())` and utilizes `std::fmt::Write::write_fmt` directly, drastically speeding up Stripe and LemonSqueezy checkout session generations.
+- **Hex Decoder Micro-Optimization**: Eliminated dynamic vector reallocation in the `hex::decode` utility (`rullst/src/capital.rs`) by using `Vec::with_capacity(s.len() / 2)` instead of `Vec::new()`, removing overhead in high-frequency cryptographic and webhook signature validation loops.
+- **PII Masking Bottleneck Removal**: Disabled the `pii_masking_middleware` by default. Previously, this security layer was buffering and scanning up to 2MB of memory for every single outgoing text/json response in production, severely crippling the framework's maximum throughput (Req/s) compared to raw Axum. It is now strictly opt-in via `SecurityConfig::enable_pii_masking`.
+- **Redis Cache Flushing Optimization**: Upgraded the `flush` and `forget` methods in the Redis cache driver (`rullst/src/cache.rs`) to use the non-blocking `UNLINK` command instead of `DEL`. This massively improves performance when invalidating large caches by deleting keys asynchronously on the server side, completely eliminating Redis event loop stalls.
+- **Job Queue Performance**: Added a composite database index (`idx_rullst_jobs_status_created`) on `status` and `created_at` fields for the SQLite background queue driver (`rullst/src/queue.rs`), completely eliminating full table scans during job polling and massively improving worker throughput.
+- **Studio HTML Generation Optimization**: Replaced `push_str(&format!(...))` anti-patterns with `.fold()`, `String::with_capacity()`, and the `write!` macro in `rullst/src/studio.rs` (`build_rows_html`, `build_headers_html`), `rullst/src/nexus.rs` (`render_table_view`, `render_table_rows`), and `rullst/src/error_console.rs` (`render_console_html`), completely eliminating intermediate string allocations in the critical rendering paths. Also replaced chained `.replace()` calls with the single-pass `crate::html::escape_str` utility in `error_console.rs` to eliminate further allocations.
 - **Authentication Key Derivation**: Extracted duplicated `Aes256Gcm` cipher initialization into a centralized `derive_cipher` helper in `rullst/src/auth.rs`, improving code maintainability.
 - **Task Scheduler Loop**: Decomposed the infinite polling loop in `rullst/src/scheduler.rs` into a standalone `run_task_loop` asynchronous function, significantly cleaning up the `start` method.
 - **Nexus N+1 Query Elimination**: Optimized `render_form_fields_html` in `rullst/src/nexus.rs` by pre-fetching all `ForeignKey` relational options concurrently using `tokio::task::JoinSet`, eliminating the N+1 database query bottleneck during form rendering.

@@ -957,73 +957,76 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
         return render_empty_state_html(visible_fields.len() + 1, entry.table, q);
     }
 
-    let mut out = String::new();
     let t = entry.table;
     let pk = entry.pk;
 
-    for row in db_rows {
-        let row_id: String = match row.try_get::<String, _>(pk) {
-            Ok(s) => s,
-            Err(_) => match row.try_get::<i64, _>(pk) {
-                Ok(i) => i.to_string(),
-                Err(_) => match row.try_get::<i32, _>(pk) {
+    let out = db_rows.into_iter().fold(
+        String::with_capacity(2048),
+        |mut out, row| {
+            let row_id: String = match row.try_get::<String, _>(pk) {
+                Ok(s) => s,
+                Err(_) => match row.try_get::<i64, _>(pk) {
                     Ok(i) => i.to_string(),
-                    Err(_) => "0".to_string(),
+                    Err(_) => match row.try_get::<i32, _>(pk) {
+                        Ok(i) => i.to_string(),
+                        Err(_) => "0".to_string(),
+                    },
                 },
-            },
-        };
-
-        let mut cells = String::new();
-        for f in &visible_fields {
-            let val_str = match f.kind {
-                FieldKind::Boolean => {
-                    let b = row.try_get::<bool, _>(f.name).unwrap_or(false);
-                    if b {
-                        "&#9989; Yes".to_string()
-                    } else {
-                        "&#10060; No".to_string()
-                    }
-                }
-                FieldKind::Number | FieldKind::ForeignKey { .. } => {
-                    if let Ok(v) = row.try_get::<i64, _>(f.name) {
-                        v.to_string()
-                    } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
-                        v.to_string()
-                    } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
-                        v.to_string()
-                    } else {
-                        "0".to_string()
-                    }
-                }
-                _ => row
-                    .try_get::<String, _>(f.name)
-                    .unwrap_or_else(|_| "-".to_string()),
             };
 
-            let clean_val = if val_str.starts_with("&#") {
-                val_str
-            } else {
-                crate::html::escape_str(&val_str)
-            };
+            let cells = visible_fields.iter().fold(String::with_capacity(256), |mut cells, f| {
+                let val_str = match f.kind {
+                    FieldKind::Boolean => {
+                        let b = row.try_get::<bool, _>(f.name).unwrap_or(false);
+                        if b {
+                            "&#9989; Yes".to_string()
+                        } else {
+                            "&#10060; No".to_string()
+                        }
+                    }
+                    FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                        if let Ok(v) = row.try_get::<i64, _>(f.name) {
+                            v.to_string()
+                        } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
+                            v.to_string()
+                        } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
+                            v.to_string()
+                        } else {
+                            "0".to_string()
+                        }
+                    }
+                    _ => row
+                        .try_get::<String, _>(f.name)
+                        .unwrap_or_else(|_| "-".to_string()),
+                };
 
-            cells.push_str(&format!("<td class=\"nexus-td\">{}</td>", clean_val));
+                let clean_val = if val_str.starts_with("&#") {
+                    val_str
+                } else {
+                    crate::html::escape_str(&val_str)
+                };
+
+                let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
+                cells
+            });
+
+            let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
+                "<tr id=\"row-{row_id}\" class=\"nexus-tr\">\
+                 {cells}\
+                 <td class=\"nexus-td nexus-td-actions\">\
+                 <button class=\"nexus-action-btn nexus-action-edit\" \
+                 hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
+                 hx-target=\"#nexus-modal-body\" \
+                 hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">&#9999;&#65039;</button>\
+                 <button class=\"nexus-action-btn nexus-action-delete\" \
+                 hx-delete=\"/nexus/table/{t}/{row_id}\" \
+                 hx-target=\"#row-{row_id}\" \
+                 hx-confirm=\"Delete this record?\">&#128465;&#65039;</button>\
+                 </td></tr>"
+            ));
+            out
         }
-
-        out.push_str(&format!(
-            "<tr id=\"row-{row_id}\" class=\"nexus-tr\">\
-             {cells}\
-             <td class=\"nexus-td nexus-td-actions\">\
-             <button class=\"nexus-action-btn nexus-action-edit\" \
-             hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
-             hx-target=\"#nexus-modal-body\" \
-             hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">&#9999;&#65039;</button>\
-             <button class=\"nexus-action-btn nexus-action-delete\" \
-             hx-delete=\"/nexus/table/{t}/{row_id}\" \
-             hx-target=\"#row-{row_id}\" \
-             hx-confirm=\"Delete this record?\">&#128465;&#65039;</button>\
-             </td></tr>"
-        ));
-    }
+    );
     out
 }
 
@@ -1040,10 +1043,10 @@ async fn render_table_view(
     let lb_singular = entry.label.trim_end_matches('s');
     let q_esc = crate::html::escape_str(q);
 
-    let mut headers = String::new();
-    for f in &visible_fields {
-        headers.push_str(&format!("<th class=\"nexus-th\">{}</th>", f.label));
-    }
+    let headers = visible_fields.iter().fold(String::with_capacity(256), |mut acc, f| {
+        let _ = std::fmt::Write::write_fmt(&mut acc, format_args!("<th class=\"nexus-th\">{}</th>", f.label));
+        acc
+    });
     let rows = render_table_rows(entry, q, page).await;
 
     let prev_btn = if page > 1 {

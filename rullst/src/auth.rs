@@ -18,6 +18,9 @@ pub mod passkey;
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, String> {
+    if password.len() > 72 {
+        return Err("Password exceeds maximum length of 72 characters".to_string());
+    }
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     argon2
@@ -28,6 +31,9 @@ pub fn hash_password(password: &str) -> Result<String, String> {
 
 /// Verifies a plain-text password against a hashed Argon2 password.
 pub fn verify_password(password: &str, hash: &str) -> bool {
+    if password.len() > 72 {
+        return false;
+    }
     if let Ok(parsed_hash) = PasswordHash::new(hash) {
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)

@@ -393,10 +393,12 @@ impl Server {
         }
 
         if !is_dev {
-            app = app
-                .layer(axum::middleware::from_fn(
+            if app_config.security.enable_pii_masking {
+                app = app.layer(axum::middleware::from_fn(
                     crate::security::pii_masking_middleware,
-                ))
+                ));
+            }
+            app = app
                 .layer(axum::middleware::from_fn(
                     crate::security::headers_middleware,
                 ))
