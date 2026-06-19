@@ -352,8 +352,14 @@ impl Server {
         app = app.layer(axum::Extension(app_config.security.clone()));
 
         if !app_config.security.cors_allow_origins.is_empty() {
-            use tower_http::cors::{Any, CorsLayer};
-            app = app.layer(CorsLayer::new().allow_origin(Any));
+            use tower_http::cors::CorsLayer;
+            let origins: Vec<axum::http::HeaderValue> = app_config
+                .security
+                .cors_allow_origins
+                .iter()
+                .filter_map(|o| o.parse().ok())
+                .collect();
+            app = app.layer(CorsLayer::new().allow_origin(origins));
         }
 
         if std::path::Path::new("static").exists() {
