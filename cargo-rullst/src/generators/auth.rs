@@ -378,8 +378,12 @@ pub fn auth_styles() -> &'static str {
         margin-top: 0.5rem;
     }
     button.btn-primary:hover {
-        opacity: 0.9;
         transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    button.btn-primary:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
     }
     .divider {
         display: flex;
@@ -415,6 +419,10 @@ pub fn auth_styles() -> &'static str {
     }
     .oauth-btn:hover {
         background: #374151;
+    }
+    .oauth-btn:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
     }
     .footer-link {
         margin-top: 1.5rem;
@@ -463,11 +471,11 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
                             <label for="email">"Email"</label>
-                            <input type="email" id="email" name="email" placeholder="seu@email.com" required="required" />
+                            <input type="email" id="email" name="email" placeholder="seu@email.com" autocomplete="email" required="required" />
                         </div>
                         <div class="form-group">
                             <label for="password">"Password"</label>
-                            <input type="password" id="password" name="password" placeholder="••••••••" required="required" />
+                            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required="required" />
                         </div>
                         <button type="submit" class="btn-primary" aria-label="Sign In" aria-busy="false">"Sign In"</button>
                     </form>
@@ -532,11 +540,11 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         </div>
                         <div class="form-group">
                             <label for="email">"Email"</label>
-                            <input type="email" id="email" name="email" placeholder="seu@email.com" required="required" />
+                            <input type="email" id="email" name="email" placeholder="seu@email.com" autocomplete="email" required="required" />
                         </div>
                         <div class="form-group">
                             <label for="password">"Password"</label>
-                            <input type="password" id="password" name="password" placeholder="Minimum 6 characters" required="required" />
+                            <input type="password" id="password" name="password" placeholder="Minimum 6 characters" autocomplete="new-password" required="required" />
                         </div>
                         <button type="submit" class="btn-primary" aria-label="Register account" aria-busy="false">"Registrar"</button>
                     </form>

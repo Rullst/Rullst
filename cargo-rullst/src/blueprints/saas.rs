@@ -554,6 +554,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                     label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; }
                     input { width: 100%; box-sizing: border-box; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; }
                     button.btn-primary { width: 100%; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; border-radius: 0.5rem; padding: 0.85rem; font-weight: 600; cursor: pointer; }
+                    button.btn-primary:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
                     .oauth-btn { width: 100%; background: #1f2937; color: #fff; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 1rem; }
                     "
                 </style>
@@ -566,11 +567,11 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <input type="hidden" name="_token" value={csrf_token} />
                         <div class="form-group">
                             <label>"Email"</label>
-                            <input type="email" id="email" name="email" required="required" />
+                            <input type="email" id="email" name="email" autocomplete="email" required="required" />
                         </div>
                         <div class="form-group">
                             <label>"Password"</label>
-                            <input type="password" id="password" name="password" required="required" />
+                            <input type="password" id="password" name="password" autocomplete="current-password" required="required" />
                         </div>
                         <button type="submit" class="btn-primary" aria-label="Sign In" aria-busy="false">"Sign In"</button>
                     </form>
@@ -612,6 +613,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                     label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; }
                     input { width: 100%; box-sizing: border-box; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; }
                     button.btn-primary { width: 100%; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; border-radius: 0.5rem; padding: 0.85rem; font-weight: 600; cursor: pointer; }
+                    button.btn-primary:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
                     "
                 </style>
             </head>
@@ -627,11 +629,11 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         </div>
                         <div class="form-group">
                             <label>"Email"</label>
-                            <input type="email" id="email" name="email" required="required" />
+                            <input type="email" id="email" name="email" autocomplete="email" required="required" />
                         </div>
                         <div class="form-group">
                             <label>"Password"</label>
-                            <input type="password" id="password" name="password" required="required" />
+                            <input type="password" id="password" name="password" autocomplete="new-password" required="required" />
                         </div>
                         <button type="submit" class="btn-primary" aria-label="Sign Up" aria-busy="false">"Sign Up"</button>
                     </form>
