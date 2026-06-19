@@ -63,10 +63,9 @@ pub fn extract_source_context(
         .ok()?;
 
     let target_path = Path::new(file_path);
-    if target_path.is_absolute()
-        || target_path
-            .components()
-            .any(|c| matches!(c, std::path::Component::ParentDir))
+    if target_path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
     {
         return None;
     }
@@ -166,10 +165,9 @@ pub async fn handle_explain(
     };
 
     let target_path = std::path::Path::new(&query.file);
-    if target_path.is_absolute()
-        || target_path
-            .components()
-            .any(|c| c == std::path::Component::ParentDir)
+    if target_path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
     {
         return "Access denied: Path traversal detected.".to_string();
     }
@@ -259,10 +257,9 @@ pub async fn handle_autofix(
 
     // 2. Resolve and verify the file is within the project root (prevents path traversal and existence oracles)
     let target_path = Path::new(&payload.file_path);
-    if target_path.is_absolute()
-        || target_path
-            .components()
-            .any(|c| c == std::path::Component::ParentDir)
+    if target_path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
     {
         return Json(serde_json::json!({
             "success": false,
@@ -376,7 +373,7 @@ pub(crate) async fn render_console_html(
     {
         let code_snippet = if let Some(context) = extract_source_context(&file, line, 5) {
             context.into_iter().fold(String::with_capacity(512), |mut html, (idx, content, is_target)| {
-                let escaped = crate::html::escape_str(content);
+                let escaped = crate::html::escape_str(&content);
                 if is_target {
                     let _ = std::fmt::Write::write_fmt(&mut html, format_args!(
                         "<div class='code-line active'><span class='line-num'>{}</span><span class='line-content'>{}</span></div>",

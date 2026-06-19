@@ -960,7 +960,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let t = entry.table;
     let pk = entry.pk;
 
-    let out = db_rows.into_iter().fold(
+    db_rows.into_iter().fold(
         String::with_capacity(2048),
         |mut out, row| {
             let row_id: String = match row.try_get::<String, _>(pk) {
@@ -1026,8 +1026,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
             ));
             out
         }
-    );
-    out
+    )
 }
 
 async fn render_table_view(

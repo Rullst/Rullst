@@ -7,8 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [4.0.0] - Unreleased 🚀
 
 ### Breaking Changes
-- **Rullst Connect v10 API**: Upgraded `rullst-connect` from `8.0.0` directly to `10.0.0`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes introduced in `rullst-connect` versions 9 and 10.
-- **Rullst ORM v5 API**: Upgraded `rullst-orm` to `=5.0.3` across the framework, scaffolding templates, and examples. Projects utilizing the ORM must adapt to the new `v5.0.3` API.
+- **Rullst Connect v10.0.1 API**: Upgraded `rullst-connect` to `10.0.1`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes.
+- **Rullst ORM v6 API**: Upgraded `rullst-orm` to `=6.0.0` across the framework, scaffolding templates, and examples. Projects utilizing the ORM must adapt to the new `v6.0.0` API.
 
 ### Changed
 - **Dependencies Upgrade**:
@@ -18,10 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **URL Decoding Integrity (WAF Bypass Mitigation)**: Fixed the WebAssembly-compatible `url_decode` function in `rullst/src/security.rs` which was silently dropping invalid hex sequences (e.g. `%XY`). It now safely preserves the intact invalid sequences, preventing WAF bypass attacks where an attacker could construct malicious payloads that trick the firewall but execute on the backend.
 - **Scaffolding Password Length Limits**: Integrated the strict 72-character maximum password length validation directly into the `cargo-rullst/src/blueprints/saas.rs` and `cargo-rullst/src/generators/auth.rs` scaffolding generators, providing immediate UI error feedback to the user and securing all newly generated Rullst projects out-of-the-box against Argon2 resource exhaustion DoS attacks.
 - **Password Length Limits (DoS Mitigation)**: Enforced a strict maximum password length of 72 characters in `rullst/src/auth.rs` (`hash_password` and `verify_password`). This prevents Denial of Service (DoS) attacks where maliciously oversized inputs could exhaust CPU and memory resources during Argon2 hashing.
-- **Path Traversal Mitigation**: Strengthened the `rullst/src/error_console.rs` AI auto-fix and explain endpoints by strictly rejecting all absolute paths. This completely mitigates subtle path traversal bypasses that could occur via symlinks combined with `canonicalize()`.
+- **Path Traversal Mitigation (Workspace Bound)**: Strengthened the `rullst/src/error_console.rs` AI auto-fix and explain endpoints to mitigate path traversal bypasses. Previously, the endpoints unconditionally rejected all absolute paths, which inadvertently blocked legitimate internal file reads during error displays and caused panics. The `extract_source_context`, `handle_explain`, and `autofix` functions now correctly verify absolute paths against the `project_root`, safely permitting workspace-bound access while preventing directory traversal attacks.
 
 ### Fixed
 - **Gitignore Cleanup**: Removed duplicate and corrupted lines containing null bytes (`NUL`) from `.gitignore`.
+- **HTML Escaping Reference Bug**: Fixed a compilation error and type mismatch in `rullst/src/error_console.rs` by correctly passing `&str` references instead of `String` ownership to the `escape_str` utility.
 
 ### Refactoring & Code Quality
 - **URL Encoding Micro-Optimization**: Eliminated multiple heap allocations and intermediate string formatting in `url_encode` (`rullst/src/capital.rs`). It now pre-allocates `String::with_capacity(s.len())` and utilizes `std::fmt::Write::write_fmt` directly, drastically speeding up Stripe and LemonSqueezy checkout session generations.
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Authentication Key Derivation**: Extracted duplicated `Aes256Gcm` cipher initialization into a centralized `derive_cipher` helper in `rullst/src/auth.rs`, improving code maintainability.
 - **Task Scheduler Loop**: Decomposed the infinite polling loop in `rullst/src/scheduler.rs` into a standalone `run_task_loop` asynchronous function, significantly cleaning up the `start` method.
 - **Nexus N+1 Query Elimination**: Optimized `render_form_fields_html` in `rullst/src/nexus.rs` by pre-fetching all `ForeignKey` relational options concurrently using `tokio::task::JoinSet`, eliminating the N+1 database query bottleneck during form rendering.
+- **Clippy Optimization**: Removed an unnecessary `let out =` binding and return statement inside `rullst/src/nexus.rs` (identified by the `clippy::let_and_return` lint) to allow the `.fold()` expression to return implicitly.
 
 ## [3.0.0] - 2026-06-15 🚀
 
