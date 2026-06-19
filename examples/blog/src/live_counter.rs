@@ -43,12 +43,14 @@ impl LiveComponent for CounterComponent {
 
                     <button
                         hx-vals=r#"{"action": "decrement"}"#
+                        aria-label="Decrease counter"
                         style="padding: 0.75rem 1.5rem; background: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
                         "- Diminuir"
                     </button>
                     <button
                         hx-vals=r#"{"action": "increment"}"#
+                        aria-label="Increase counter"
                         style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
                         "+ Aumentar"

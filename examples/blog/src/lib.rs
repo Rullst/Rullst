@@ -226,11 +226,11 @@ pub mod app {
                             <div class="form-title">"Create New Post"</div>
                             <form method="post" action="/posts">
                                 <div class="form-group">
-                                    <label htmlFor="title">"Post Title"</label>
+                                    <label for="title">"Post Title"</label>
                                     <input type="text" id="title" name="title" placeholder="What's on your mind?" required="required" />
                                 </div>
                                 <div class="form-group">
-                                    <label htmlFor="body">"Content"</label>
+                                    <label for="body">"Content"</label>
                                     <textarea id="body" name="body" rows="5" placeholder="Share your Rust thoughts here..." required="required"></textarea>
                                 </div>
                                 <button type="submit">"Publish Post"</button>

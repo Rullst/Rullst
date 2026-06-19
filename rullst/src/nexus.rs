@@ -38,6 +38,7 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use std::sync::Arc;
 
 fn sanitize_identifier(id: &str) -> String {
@@ -305,20 +306,24 @@ async fn nexus_dashboard(
 ) -> Html<String> {
     let models_sidebar = render_sidebar(&state, None);
 
-    let mut stats_cards = String::new();
-    for m in state.registry.iter() {
-        let t = m.table;
-        let ic = m.icon;
-        let lb = m.label;
-        stats_cards.push_str(&format!(
-            "<a href=\"/nexus/table/{t}\" class=\"nexus-stat-card\" \
-             hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
-             <div class=\"nexus-stat-icon\">{ic}</div>\
-             <div class=\"nexus-stat-label\">{lb}</div>\
-             <div class=\"nexus-stat-hint\">Click to manage &rarr;</div>\
-             </a>"
-        ));
-    }
+    let stats_cards = state.registry.iter().fold(
+        String::with_capacity(state.registry.len() * 256),
+        |mut acc, m| {
+            let t = m.table;
+            let ic = m.icon;
+            let lb = m.label;
+            let _ = write!(
+                acc,
+                "<a href=\"/nexus/table/{t}\" class=\"nexus-stat-card\" \
+                 hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
+                 <div class=\"nexus-stat-icon\">{ic}</div>\
+                 <div class=\"nexus-stat-label\">{lb}</div>\
+                 <div class=\"nexus-stat-hint\">Click to manage &rarr;</div>\
+                 </a>"
+            );
+            acc
+        },
+    );
 
     let mut content = String::new();
     content.push_str("<div class=\"nexus-page-header\">");
@@ -703,7 +708,7 @@ async fn nexus_chat_page(
     content.push_str("<div class=\"nexus-chat-text\">Hello! I know your full database schema. Ask me anything &mdash; for example:<br><em>\"List all users created this week\"</em> or <em>\"How many posts are published?\"</em><br><br><small style=\"color: var(--text-300);\">&#128161; <b>Tip:</b> To execute real natural-language queries, you can inject an AI provider into your Nexus instance:<br><code class=\"nexus-code\" style=\"margin-top: 8px; display: block;\">.with_ai(AiClient::new(AiProvider::Gemini { api_key: env!(\"GEMINI_KEY\") }))<br>// Or use AiProvider::OpenAI, AiProvider::Anthropic, etc.</code></small></div>");
     content.push_str("</div></div>");
     content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on::after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
-    content.push_str("<input type=\"text\" name=\"message\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" autocomplete=\"off\" required />");
+    content.push_str("<input type=\"text\" name=\"message\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" aria-label=\"Ask the AI assistant\" autocomplete=\"off\" required />");
     content.push_str(
         "<button type=\"submit\" class=\"nexus-btn nexus-btn-ai\">Send &#9992;&#65039;</button>",
     );
@@ -1084,7 +1089,7 @@ async fn render_table_view(
     out.push_str("<div class=\"nexus-search-wrap\">");
     out.push_str("<span class=\"nexus-search-icon\">&#128269;</span>");
     let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<input type=\"text\" class=\"nexus-search-input\" \
+        "<input type=\"text\" class=\"nexus-search-input\" aria-label=\"Search records\" \
          placeholder=\"Search {lb}...\" value=\"{q_esc}\" \
          hx-get=\"/nexus/table/{t}/search\" \
          hx-trigger=\"keyup changed delay:300ms\" \

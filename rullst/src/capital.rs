@@ -6,6 +6,7 @@
 use async_trait::async_trait;
 use ring::hmac;
 use serde::{Deserialize, Serialize};
+use subtle::ConstantTimeEq;
 use std::collections::HashMap;
 
 /// The semantic status of a SaaS Subscription.
@@ -155,11 +156,16 @@ impl StripeProvider {
         let sig_bytes =
             hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
 
-        let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(payload));
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
+        let mut ctx = hmac::Context::with_key(&key);
+        ctx.update(timestamp.as_bytes());
+        ctx.update(b".");
+        ctx.update(payload);
 
-        hmac::verify(&key, signed_payload.as_bytes(), &sig_bytes)
-            .map_err(|_| "Stripe signature verification failed".to_string())?;
+        let tag = ctx.sign();
+        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
+            return Err("Stripe signature verification failed".to_string());
+        }
 
         Ok(())
     }

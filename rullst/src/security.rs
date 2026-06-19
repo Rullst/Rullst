@@ -103,7 +103,7 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         .map(|s| s.to_string());
 
     if let Some(token) = header_token {
-        if token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
+        if token.len() == cookie_token.len() && token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
             return next.run(req).await;
         }
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
@@ -132,10 +132,10 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         // Reconstruct the request so it can be parsed by subsequent handlers
         let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
 
-        if let Some(token) = body_token
-            && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
-        {
-            return next.run(reconstructed_req).await;
+        if let Some(token) = body_token {
+            if token.len() == cookie_token.len() && token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
+                return next.run(reconstructed_req).await;
+            }
         }
     }
 
@@ -193,7 +193,7 @@ fn hex_decode_char(c1: u8, c2: u8) -> Option<u8> {
 
 /// WebAssembly-compatible URL decoding helper.
 fn url_decode(s: &str) -> String {
-    let mut decoded = String::new();
+    let mut decoded_bytes = Vec::with_capacity(s.len());
     let bytes = s.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
@@ -202,15 +202,15 @@ fn url_decode(s: &str) -> String {
             let h1 = bytes[i + 1];
             let h2 = bytes[i + 2];
             if let Some(d) = hex_decode_char(h1, h2) {
-                decoded.push(d as char);
+                decoded_bytes.push(d);
                 i += 3;
                 continue;
             }
         }
-        decoded.push(b as char);
+        decoded_bytes.push(b);
         i += 1;
     }
-    decoded
+    String::from_utf8_lossy(&decoded_bytes).into_owned()
 }
 
 /// WebAssembly-compatible WAF middleware for traffic control and malicious bot protection.
@@ -361,8 +361,6 @@ pub fn mask_pii(text: &str) -> String {
         i += 1;
     }
 
-    let text_str = chars.into_iter().collect::<String>();
-    let mut chars: Vec<char> = text_str.chars().collect();
     let mut idx = 0;
     while idx < chars.len() {
         if chars[idx] == '@' {

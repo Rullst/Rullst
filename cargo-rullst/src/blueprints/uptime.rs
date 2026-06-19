@@ -553,7 +553,7 @@ pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
                             </div>
                             <div class="col-span-2 sm:col-span-1 text-right">
                                 <form action={format!("/monitors/{}/toggle", monitor.id)} method="POST">
-                                    <button type="submit" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-orange-400 bg-slate-900/40 text-slate-300 hover:text-orange-400 transition-all">
+                                    <button type="submit" aria-label="Pause Monitor" aria-busy="false" class="px-3 py-1 text-xs font-semibold rounded border border-slate-700/80 hover:border-orange-400 bg-slate-900/40 text-slate-300 hover:text-orange-400 transition-all">
                                         {toggle_text}
                                     </button>
                                 </form>
@@ -613,7 +613,7 @@ pub fn render_new_monitor_form() -> String {
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Endereço URL"</label>
                         <input type="url" name="url" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200" placeholder="https://meusite.com" />
                     </div>
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                    <button type="submit" aria-label="Add Monitor" aria-busy="false" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                         "Adicionar Monitor"
                     </button>
                 </form>

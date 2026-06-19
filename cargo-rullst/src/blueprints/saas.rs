@@ -572,7 +572,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                             <label>"Password"</label>
                             <input type="password" id="password" name="password" required="required" />
                         </div>
-                        <button type="submit" class="btn-primary">"Sign In"</button>
+                        <button type="submit" class="btn-primary" aria-label="Sign In" aria-busy="false">"Sign In"</button>
                     </form>
                     <div style="margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #94a3b8;">
                         "Don't have an account? " <a href="/register" style="color: #10b981; text-decoration: none; font-weight: 600;">"Register here"</a>
@@ -633,7 +633,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                             <label>"Password"</label>
                             <input type="password" id="password" name="password" required="required" />
                         </div>
-                        <button type="submit" class="btn-primary">"Sign Up"</button>
+                        <button type="submit" class="btn-primary" aria-label="Sign Up" aria-busy="false">"Sign Up"</button>
                     </form>
                 </div>
             </body>
@@ -770,9 +770,9 @@ fn pricing_plans() -> String {
                     <span class="period">"/mo"</span>
                 </div>
                 <ul class="features-list">
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Up to 5 Projects"</li>
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Standard SQLite Database"</li>
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Email Support"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Up to 5 Projects"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Standard SQLite Database"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Email Support"</li>
                 </ul>
                 <a href="/billing/checkout?plan=price_starter" class="btn-checkout secondary">"Get Started"</a>
             </div>
@@ -786,10 +786,10 @@ fn pricing_plans() -> String {
                     <span class="period">"/mo"</span>
                 </div>
                 <ul class="features-list">
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Unlimited Projects"</li>
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"PostgreSQL & SQLite Support"</li>
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Adaptive WAF & Bot Management"</li>
-                    <li><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Priority Support (Sub-1 hour)"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Unlimited Projects"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"PostgreSQL & SQLite Support"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Adaptive WAF & Bot Management"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Priority Support (Sub-1 hour)"</li>
                 </ul>
                 <a href="/billing/checkout?plan=price_pro" class="btn-checkout primary">"Go Pro"</a>
             </div>

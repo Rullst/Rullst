@@ -17,10 +17,10 @@ pub fn InteractiveCounter(initial_count: i32) -> String {
                 </div>
 
                 <div style="display: flex; gap: 1rem; justify-content: center;">
-                    <button id="counter-dec" style="padding: 0.75rem 1.75rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
+                    <button id="counter-dec" aria-label="Decrease counter" style="padding: 0.75rem 1.75rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
                         "- Diminuir"
                     </button>
-                    <button id="counter-inc" style="padding: 0.75rem 1.75rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
+                    <button id="counter-inc" aria-label="Increase counter" style="padding: 0.75rem 1.75rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
                         "+ Aumentar"
                     </button>
                 </div>

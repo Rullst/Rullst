@@ -589,7 +589,7 @@ fn render_forms(products: &[Product]) -> String {
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
                         <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
                     </div>
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                    <button type="submit" aria-label="Finalizar Pedido" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                         "Finalizar Pedido"
                     </button>
                 </form>
@@ -616,7 +616,7 @@ fn render_forms(products: &[Product]) -> String {
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
                         <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
                     </div>
-                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                    <button type="submit" aria-label="Salvar Produto" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
                         "Salvar Produto"
                     </button>
                 </form>
