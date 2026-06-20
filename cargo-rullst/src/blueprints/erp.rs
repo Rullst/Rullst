@@ -165,15 +165,15 @@ impl Migration for MigrationImpl {
         
         rullst::db::sqlx::query(
             "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
-             (1, 'Café Arábica Especial', 'CAF-001', 34.90, 18, datetime('now'), datetime('now')),
-             (2, 'Caneca Cerâmica Rullst', 'CAN-002', 19.90, 4, datetime('now'), datetime('now')),
-             (3, 'Prensa Francesa', 'PRE-003', 89.00, 12, datetime('now'), datetime('now'))"
+             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18, datetime('now'), datetime('now')),
+             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4, datetime('now'), datetime('now')),
+             (3, 'French Press', 'PRE-003', 89.00, 12, datetime('now'), datetime('now'))"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
             "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status, created_at, updated_at) VALUES 
-             (1, 'Carlos Silva', 1, 2, 69.80, 'Pago', datetime('now'), datetime('now')),
-             (2, 'Mariana Souza', 2, 1, 19.90, 'Pendente', datetime('now'), datetime('now'))"
+             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid', datetime('now'), datetime('now')),
+             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending', datetime('now'), datetime('now'))"
         ).execute(pool).await?;
 
         Ok(())
@@ -330,7 +330,7 @@ pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
     // Render only the updated stock badge with HTMX
     let badge_color = if stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
     Html(format!(
-        r#"<span id="stock-badge-{}" class="px-2.5 py-1 text-xs font-semibold rounded-full {}">{} Un.</span>"#,
+        r#"<span id="stock-badge-{}" class="px-2.5 py-1 text-xs font-semibold rounded-full {}">{} Units</span>"#,
         id, badge_color, stock
     ))
 }
@@ -373,7 +373,7 @@ pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoRe
             .bind(payload.product_id)
             .bind(payload.quantity)
             .bind(total_price)
-            .bind("Pago")
+            .bind("Paid")
             .execute(pool)
             .await;
         }
@@ -400,7 +400,7 @@ use crate::models::order::Order;
 
 pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
     let total_sales: f64 = orders.iter()
-        .filter(|o| o.status == "Pago")
+        .filter(|o| o.status == "Paid")
         .map(|o| o.total_price)
         .sum();
     let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
@@ -411,7 +411,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
             <head>
             <link rel="icon" type="image/png" href="data:image/png;base64,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" />
                 <meta charset="UTF-8" />
-                <title>"Rullst ERP Pocket — Painel de Estoque"</title>
+                <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
                 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
                 <script src="https://cdn.tailwindcss.com"></script>
@@ -448,11 +448,14 @@ fn render_header() -> String {
             <div>
                 <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
                 <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
-                <p class="text-sm text-slate-400 mt-1">"Gerenciamento ágil de inventário e vendas em tempo de execução."</p>
+                <p class="text-sm text-slate-400 mt-1">"Agile inventory and sales management at runtime."</p>
             </div>
-            <div class="flex gap-3">
-                <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
-                <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
+            <div class="flex flex-col items-end gap-1">
+                <div class="flex gap-3">
+                    <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
+                    <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
+                </div>
+                <span class="text-[10px] text-slate-500 mr-2">"(Login: admin / password)"</span>
             </div>
         </header>
     }
@@ -462,19 +465,19 @@ fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usi
     html! {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Faturamento Total"</span>
-                <span class="text-3xl font-bold mt-2 text-emerald-400">"R$ "{format!("{:.2}", total_sales)}</span>
-                <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Receitas confirmadas"</span>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Total Revenue"</span>
+                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", total_sales)}</span>
+                <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Confirmed revenues"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Pedidos Realizados"</span>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Orders Placed"</span>
                 <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
-                <span class="text-xs text-orange-400/80 mt-1">"Fluxo de vendas ativo"</span>
+                <span class="text-xs text-orange-400/80 mt-1">"Active sales flow"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Alertas de Estoque Crítico"</span>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Critical Stock Alerts"</span>
                 <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
-                <span class="text-xs text-rose-400/80 mt-1">"Itens com estoque &le; 5 un."</span>
+                <span class="text-xs text-rose-400/80 mt-1">"Items with stock &le; 5 units"</span>
             </div>
         </div>
     }
@@ -483,16 +486,16 @@ fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usi
 fn render_products_table(products: &[Product]) -> String {
     html! {
         <div class="glass p-6 rounded-2xl">
-            <h2 class="text-xl font-bold mb-4 text-slate-200">"Estoque de Produtos"</h2>
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                            <th class="py-3 px-4">"Produto"</th>
+                            <th class="py-3 px-4">"Product"</th>
                             <th class="py-3 px-4">"SKU"</th>
-                            <th class="py-3 px-4">"Preço"</th>
-                            <th class="py-3 px-4">"Estoque"</th>
-                            <th class="py-3 px-4 text-right">"Ações"</th>
+                            <th class="py-3 px-4">"Price"</th>
+                            <th class="py-3 px-4">"Stock"</th>
+                            <th class="py-3 px-4 text-right">"Actions"</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/40 text-sm">
@@ -502,10 +505,10 @@ fn render_products_table(products: &[Product]) -> String {
                                 <tr>
                                     <td class="py-3.5 px-4 font-medium text-white">{&p.name}</td>
                                     <td class="py-3.5 px-4 text-slate-400 font-mono">{&p.sku}</td>
-                                    <td class="py-3.5 px-4 text-slate-300">"R$ "{format!("{:.2}", p.price)}</td>
+                                    <td class="py-3.5 px-4 text-slate-300">"$ "{format!("{:.2}", p.price)}</td>
                                     <td class="py-3.5 px-4">
                                         <span id={format!("stock-badge-{}", p.id)} class={format!("px-2.5 py-1 text-xs font-semibold rounded-full {}", badge_color)}>
-                                            {format!("{}", p.stock)} " Un."
+                                            {format!("{}", p.stock)} " Units"
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-right">
@@ -515,7 +518,7 @@ fn render_products_table(products: &[Product]) -> String {
                                             hx-swap="outerHTML"
                                             class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95"
                                         >
-                                            "+1 Estoque"
+                                            "+1 Stock"
                                         </button>
                                     </td>
                                 </tr>
@@ -531,14 +534,14 @@ fn render_products_table(products: &[Product]) -> String {
 fn render_orders_table(orders: &[Order]) -> String {
     html! {
         <div class="glass p-6 rounded-2xl">
-            <h2 class="text-xl font-bold mb-4 text-slate-200">"Pedidos Recentes"</h2>
+            <h2 class="text-xl font-bold mb-4 text-slate-200">"Recent Orders"</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
                             <th class="py-3 px-4">"ID"</th>
-                            <th class="py-3 px-4">"Cliente"</th>
-                            <th class="py-3 px-4">"Qtd / Prod ID"</th>
+                            <th class="py-3 px-4">"Customer"</th>
+                            <th class="py-3 px-4">"Qty / Prod ID"</th>
                             <th class="py-3 px-4">"Total"</th>
                             <th class="py-3 px-4">"Status"</th>
                         </tr>
@@ -549,7 +552,7 @@ fn render_orders_table(orders: &[Order]) -> String {
                                 <td class="py-3.5 px-4 text-slate-400 font-mono">"#{}"{format!("{}", o.id)}</td>
                                 <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
                                 <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
-                                <td class="py-3.5 px-4 text-emerald-400 font-medium">"R$ "{format!("{:.2}", o.total_price)}</td>
+                                <td class="py-3.5 px-4 text-emerald-400 font-medium">"$ "{format!("{:.2}", o.total_price)}</td>
                                 <td class="py-3.5 px-4">
                                     <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900/60">
                                         {&o.status}
@@ -568,39 +571,39 @@ fn render_forms(products: &[Product]) -> String {
     html! {
         <div class="flex flex-col">
             <div class="glass p-6 rounded-2xl border border-indigo-900/20">
-                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Registrar Nova Venda"</h3>
+                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
                 <form action="/orders" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Cliente"</label>
-                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="Ex: João Silva" />
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Customer Name"</label>
+                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Selecionar Produto"</label>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Select Product"</label>
                         <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
                             { rullst::html::RawHtml::new(products.iter().map(|p| {
-                                let disabled_flag = if p.stock <= 0 { " (Sem Estoque)" } else { "" };
+                                let disabled_flag = if p.stock <= 0 { " (Out of Stock)" } else { "" };
                                 html! {
-                                    <option value={format!("{}", p.id)}>{&p.name} " - R$ "{format!("{:.2}", p.price)}{disabled_flag}</option>
+                                    <option value={format!("{}", p.id)}>{&p.name} " - $ "{format!("{:.2}", p.price)}{disabled_flag}</option>
                                 }
                             }).collect::<Vec<_>>().join("")) }
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantidade"</label>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantity"</label>
                         <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
                     </div>
-                    <button type="submit" aria-label="Finalizar Pedido" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                        "Finalizar Pedido"
+                    <button type="submit" aria-label="Complete Order" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Complete Order"
                     </button>
                 </form>
             </div>
 
             <div class="glass p-6 rounded-2xl mt-8">
-                <h3 class="text-lg font-bold mb-4 text-slate-200">"Cadastrar Produto"</h3>
+                <h3 class="text-lg font-bold mb-4 text-slate-200">"Register Product"</h3>
                 <form action="/products" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Nome do Produto"</label>
-                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="Ex: Filtro Hario V60" />
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Product Name"</label>
+                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -608,16 +611,16 @@ fn render_forms(products: &[Product]) -> String {
                             <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-400 font-medium mb-1">"Preço Unitário"</label>
+                            <label class="block text-xs text-slate-400 font-medium mb-1">"Unit Price"</label>
                             <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Estoque Inicial"</label>
+                        <label class="block text-xs text-slate-400 font-medium mb-1">"Initial Stock"</label>
                         <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
                     </div>
-                    <button type="submit" aria-label="Salvar Produto" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                        "Salvar Produto"
+                    <button type="submit" aria-label="Save Product" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
+                        "Save Product"
                     </button>
                 </form>
             </div>

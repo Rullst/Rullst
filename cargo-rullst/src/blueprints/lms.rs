@@ -375,8 +375,11 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
                             <h1>"Rullst LMS Academy"</h1>
                             <p class="sub">"Explore high-fidelity systems engineering with Rust"</p>
                         </div>
-                        <div style="display: flex; gap: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a class="btn" href="/nexus" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                        </div>
                             <a class="btn" href="http://localhost:5555" target="_blank" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"📊 Rullst Studio"</a>
                         </div>
                     </header>

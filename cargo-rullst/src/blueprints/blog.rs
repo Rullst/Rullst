@@ -259,8 +259,11 @@ pub fn index_page(posts: Vec<Post>) -> String {
                             <h1>"RullstPress Feed"</h1>
                             <p class="sub">"Insights on hyper-performance fullstack development"</p>
                         </div>
-                        <div style="display: flex; gap: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a href="/nexus" style="background: rgba(5, 150, 105, 0.2); border: 1px solid rgba(5, 150, 105, 0.5); color: #10b981; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                        </div>
                             <a href="http://localhost:5555" target="_blank" style="background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"📊 Rullst Studio"</a>
                         </div>
                     </header>

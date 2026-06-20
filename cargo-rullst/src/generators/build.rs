@@ -265,6 +265,26 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
+    println!(
+        "{}",
+        "📦 Executing pending database migrations automatically..."
+            .yellow()
+    );
+    let migration_status = Command::new("cargo")
+        .arg("run")
+        .arg("-q")
+        .arg("--")
+        .arg("db:migrate")
+        .status();
+
+    if let Ok(status) = migration_status {
+        if status.success() {
+            println!("{}", "✅ Migrations applied successfully!\n".green());
+        } else {
+            println!("{}", "⚠️ Warning: Failed to apply migrations automatically. You may need to run `cargo run -- db:migrate` manually.\n".yellow());
+        }
+    }
+
     build_app_for_dev();
 
     println!(

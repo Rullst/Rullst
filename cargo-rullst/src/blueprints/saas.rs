@@ -580,8 +580,11 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
                         <br/><br/>
                         <span style="opacity: 0.7;">"(Register a new account if you want to test the flow)"</span>
                     </div>
-                    <div style="margin-top: 1.5rem; border-top: 1px solid #374151; padding-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <a href="/nexus" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem;">"⚙️ Nexus CMS"</a>
+                    <div style="margin-top: 1.5rem; border-top: 1px solid #374151; padding-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: flex-start;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                            <a href="/nexus" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem;">"⚙️ Nexus CMS"</a>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                        </div>
                         <a href="http://localhost:5555" target="_blank" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem;">"📊 Studio"</a>
                         <a href="/pricing" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #047857; font-size: 0.85rem;">"💳 Capital"</a>
                     </div>
@@ -662,8 +665,11 @@ pub fn dashboard_page(user_name: &str) -> Html<String> {
                 <div class="container">
                     <h1>"Hello, " {user_name} "!"</h1>
                     <p>"Welcome to your secure Rullst SaaS Dashboard."</p>
-                    <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
-                        <a href="/nexus" style="background: #1e293b; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151;">"⚙️ Nexus CMS"</a>
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; align-items: flex-start;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                            <a href="/nexus" style="background: #1e293b; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151;">"⚙️ Nexus CMS"</a>
+                            <span style="font-size: 0.75rem; color: #94a3b8;">"(login: admin / password)"</span>
+                        </div>
                         <a href="http://localhost:5555" target="_blank" style="background: #1e293b; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151;">"📊 Rullst Studio"</a>
                         <a href="/pricing" style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #047857;">"💳 Capital"</a>
                         <a href="/logout" class="btn-logout" style="margin-top: 0;">"Sign Out"</a>
@@ -729,9 +735,12 @@ fn pricing_head() -> String {
 
 fn pricing_navbar() -> String {
     html! {
-        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: flex-end; align-items: flex-start; gap: 1rem; margin-bottom: 2rem;">
             <a href="/login" style="background: rgba(255,255,255,0.05); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; transition: all 0.2s;">"🔑 Login"</a>
-            <a href="/nexus" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem; transition: all 0.2s;">"⚙️ Nexus CMS"</a>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+                <a href="/nexus" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem; transition: all 0.2s;">"⚙️ Nexus CMS"</a>
+                <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+            </div>
             <a href="http://localhost:5555" target="_blank" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem; transition: all 0.2s;">"📊 Studio"</a>
         </div>
     }

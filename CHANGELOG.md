@@ -10,7 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Rullst Connect v10.0.1 API**: Upgraded `rullst-connect` to `10.0.1`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes.
 - **Rullst ORM v6 API**: Upgraded `rullst-orm` to `=6.0.0` across the framework, scaffolding templates, and examples. Projects utilizing the ORM must adapt to the new `v6.0.0` API.
 
+### Added
+- **Auto-Migrations in Dev Server**: Automated the database migration workflow. The `cargo rullst dev` command now silently executes `cargo run -q -- db:migrate` behind the scenes to apply any pending migrations before starting the hot-reloader, vastly improving Developer Experience (DX).
+
 ### Changed
+- **ERP Blueprint Translation**: Translated the entire ERP Pocket scaffolding blueprint (`erp.rs`) from Portuguese to English to standardize the framework's default language.
+- **Nexus Panel Scaffolding UX**: Standardized the display of the Nexus CMS button across all blueprints (SaaS, LMS, ERP, Blog) to include a helper text `(login: admin / password)` perfectly aligned using flexbox layout.
 - **Dependencies Upgrade**:
   - Upgraded `cron` from `0.16.0` to `0.17.0`.
 
