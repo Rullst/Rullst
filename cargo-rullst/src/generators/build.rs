@@ -267,8 +267,7 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "📦 Executing pending database migrations automatically..."
-            .yellow()
+        "📦 Executing pending database migrations automatically...".yellow()
     );
     let migration_status = Command::new("cargo")
         .arg("run")
