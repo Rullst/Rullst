@@ -1,7 +1,9 @@
+use std::borrow::Cow;
+
 /// Trait implemented by types that can be rendered safely into HTML.
 pub trait HtmlEscape {
     /// Escapes characters in `self` so they can be rendered safely as HTML.
-    fn escape_html(&self) -> String;
+    fn escape_html(&self) -> Cow<'_, str>;
 }
 
 /// A wrapper to mark a string as safe raw HTML that should NOT be escaped.
@@ -15,25 +17,25 @@ impl RawHtml {
 }
 
 impl HtmlEscape for RawHtml {
-    fn escape_html(&self) -> String {
-        self.0.clone()
+    fn escape_html(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.0)
     }
 }
 
 impl HtmlEscape for String {
-    fn escape_html(&self) -> String {
+    fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self)
     }
 }
 
 impl HtmlEscape for &str {
-    fn escape_html(&self) -> String {
+    fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self)
     }
 }
 
 impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
-    fn escape_html(&self) -> String {
+    fn escape_html(&self) -> Cow<'_, str> {
         (*self).escape_html()
     }
 }
@@ -43,8 +45,8 @@ macro_rules! impl_safe_primitives {
     ($($t:ty),*) => {
         $(
             impl HtmlEscape for $t {
-                fn escape_html(&self) -> String {
-                    self.to_string()
+                fn escape_html(&self) -> Cow<'_, str> {
+                    Cow::Owned(self.to_string())
                 }
             }
         )*
@@ -56,7 +58,7 @@ impl_safe_primitives!(
 );
 
 /// Helper function to escape standard strings
-pub fn escape_str(s: &str) -> String {
+pub fn escape_str(s: &str) -> Cow<'_, str> {
     let bytes = s.as_bytes();
     let mut last_pos = 0;
     let mut escaped = String::new();
@@ -81,20 +83,20 @@ pub fn escape_str(s: &str) -> String {
     }
     
     if last_pos == 0 {
-        s.to_string()
+        Cow::Borrowed(s)
     } else {
         escaped.push_str(&s[last_pos..]);
-        escaped
+        Cow::Owned(escaped)
     }
 }
 
 /// The core escape function invoked by the `html!` macro
-pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> String {
+pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
 
 /// Helper function to escape attribute values
-pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> String {
+pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
 

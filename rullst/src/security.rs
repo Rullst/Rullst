@@ -198,6 +198,11 @@ fn url_decode(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         let b = bytes[i];
+        if b == b'+' {
+            decoded_bytes.push(b' ');
+            i += 1;
+            continue;
+        }
         if b == b'%' && i + 2 < bytes.len() {
             let h1 = bytes[i + 1];
             let h2 = bytes[i + 2];
@@ -310,6 +315,15 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         if let Ok(bytes) = axum::body::to_bytes(body, 2 * 1024 * 1024).await {
             let body_str = String::from_utf8_lossy(&bytes);
             let masked_body = mask_pii(&body_str);
+            
+            let mut parts = parts;
+            if parts.headers.contains_key(header::CONTENT_LENGTH) {
+                parts.headers.insert(
+                    header::CONTENT_LENGTH,
+                    axum::http::HeaderValue::from_str(&masked_body.len().to_string()).unwrap(),
+                );
+            }
+            
             let new_body = axum::body::Body::from(masked_body);
             return Response::from_parts(parts, new_body);
         } else {

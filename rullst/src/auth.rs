@@ -136,7 +136,13 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
     rand::fill(&mut nonce_bytes);
     let nonce = Nonce::from(nonce_bytes);
 
-    let payload = user_id.to_string();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs();
+    let exp = now + (30 * 24 * 60 * 60); // 30 days
+
+    let payload = format!("{}|{}", user_id, exp);
     let ciphertext = cipher
         .encrypt(&nonce, payload.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -170,8 +176,23 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
         .decrypt(&nonce, ciphertext)
         .map_err(|e| e.to_string())?;
 
-    let user_id_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
-    user_id_str.parse::<i32>().map_err(|e| e.to_string())
+    let payload_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
+    
+    if let Some((user_id_str, exp_str)) = payload_str.split_once('|') {
+        let exp = exp_str.parse::<u64>().map_err(|e| e.to_string())?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_secs();
+            
+        if now > exp {
+            return Err("Session expired".to_string());
+        }
+        user_id_str.parse::<i32>().map_err(|e| e.to_string())
+    } else {
+        // Fallback for legacy tokens
+        payload_str.parse::<i32>().map_err(|e| e.to_string())
+    }
 }
 
 /// Extracts the secure session cookie value from the request's Cookie headers.

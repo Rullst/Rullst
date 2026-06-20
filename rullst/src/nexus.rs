@@ -1010,7 +1010,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
                 let clean_val = if val_str.starts_with("&#") {
                     val_str
                 } else {
-                    crate::html::escape_str(&val_str)
+                    crate::html::escape_str(&val_str).to_string()
                 };
 
                 let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
