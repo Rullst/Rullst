@@ -268,8 +268,8 @@ pub mod app {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst Live Demo"</title>
-                <script src="https://unpkg.com/htmx.org@1.9.11"></script>
-                <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js" integrity="sha384-QILjBFil9/FrWrP1Y9Qh3vBfd7kiQE8h1BX9auwiVgsFlGwe4tEl7Y966BG178W6" crossorigin="anonymous"></script>
             </head>
             <body style="background: #0b0f19; margin: 0; padding: 2rem;">
                 { rullst::html::RawHtml(component_mount) }
@@ -300,6 +300,31 @@ pub mod app {
     pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoResponse {
         rullst::live::live_ws_handler::<CounterComponent>(ws).await
     }
+
+    pub async fn robots_txt() -> impl IntoResponse {
+        (axum::http::StatusCode::OK, "User-agent: *\nDisallow: /")
+    }
+
+    pub async fn sitemap_xml() -> impl IntoResponse {
+        (
+            axum::http::StatusCode::OK,
+            [(axum::http::header::CONTENT_TYPE, "application/xml")],
+            r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>http://localhost:3000/</loc></url></urlset>"#
+        )
+    }
+
+    pub async fn set_security_headers(mut response: axum::response::Response) -> axum::response::Response {
+        let headers = response.headers_mut();
+        headers.insert("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:;".parse().unwrap());
+        headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
+        headers.insert("Cross-Origin-Resource-Policy", "cross-origin".parse().unwrap());
+        headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
+        headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
+        headers.insert("X-Frame-Options", "DENY".parse().unwrap());
+        headers.insert("X-XSS-Protection", "1; mode=block".parse().unwrap());
+        headers.insert("Cache-Control", "no-store, max-age=0".parse().unwrap());
+        response
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -317,7 +342,10 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
         get("/live-counter" => live_demo),
         get("/_live" => live_ws),
         get("/wasm-counter" => wasm_demo),
+        get("/robots.txt" => robots_txt),
+        get("/sitemap.xml" => sitemap_xml),
     ]
+    .layer(axum::middleware::map_response(set_security_headers))
     .layer(rullst::tenant_layer(config));
 
     Box::into_raw(Box::new(router))
