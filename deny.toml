@@ -23,8 +23,10 @@ allow = [
     "Zlib",
     "OpenSSL",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "BSL-1.0",
     "0BSD",
+    "MPL-2.0",
 ]
 confidence-threshold = 0.8
 exceptions = []
