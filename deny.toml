@@ -9,7 +9,7 @@ ignore = [
     "RUSTSEC-2026-0104",
     "RUSTSEC-2026-0002",
     "RUSTSEC-2023-0071",
-
+]
 
 [licenses]
 # We allow typical open-source licenses compatible with MIT framework
