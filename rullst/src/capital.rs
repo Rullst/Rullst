@@ -6,8 +6,8 @@
 use async_trait::async_trait;
 use ring::hmac;
 use serde::{Deserialize, Serialize};
-use subtle::ConstantTimeEq;
 use std::collections::HashMap;
+use subtle::ConstantTimeEq;
 
 /// The semantic status of a SaaS Subscription.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

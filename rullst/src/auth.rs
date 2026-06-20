@@ -32,7 +32,7 @@ pub fn hash_password(password: &str) -> Result<String, String> {
 /// Verifies a plain-text password against a hashed Argon2 password.
 pub fn verify_password(password: &str, hash: &str) -> bool {
     let parsed_hash_result = PasswordHash::new(hash);
-    
+
     if password.len() > 72 {
         // Dummy Hash Verification to prevent Timing Attacks.
         // We compute a valid Argon2 hash check on a dummy string to equalize execution time,
@@ -177,14 +177,14 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
         .map_err(|e| e.to_string())?;
 
     let payload_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
-    
+
     if let Some((user_id_str, exp_str)) = payload_str.split_once('|') {
         let exp = exp_str.parse::<u64>().map_err(|e| e.to_string())?;
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|e| e.to_string())?
             .as_secs();
-            
+
         if now > exp {
             return Err("Session expired".to_string());
         }

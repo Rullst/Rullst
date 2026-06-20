@@ -85,10 +85,13 @@ impl IntoResponse for ValidationError {
                     let mut list_items = String::new();
                     for (field, msgs) in &formatted {
                         for msg in msgs {
-                            let _ = std::fmt::Write::write_fmt(&mut list_items, format_args!(
-                                r#"<li><span class="font-semibold text-red-300 capitalize">{}</span>: {}</li>"#,
-                                field, msg
-                            ));
+                            let _ = std::fmt::Write::write_fmt(
+                                &mut list_items,
+                                format_args!(
+                                    r#"<li><span class="font-semibold text-red-300 capitalize">{}</span>: {}</li>"#,
+                                    field, msg
+                                ),
+                            );
                         }
                     }
 
