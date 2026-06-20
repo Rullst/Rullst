@@ -12,6 +12,8 @@ exclude = [
     "benchmark/loco",
     "benchmark/rocket",
     "benchmark/leptos",
+    "benchmark/poem",
+    "benchmark/warp",
 ]
 resolver = "2"
 

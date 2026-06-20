@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS world (
+    id SERIAL PRIMARY KEY,
+    randomnumber INT NOT NULL DEFAULT 0
+);
+
+INSERT INTO world (id, randomnumber) VALUES (1, 42) ON CONFLICT (id) DO NOTHING;
