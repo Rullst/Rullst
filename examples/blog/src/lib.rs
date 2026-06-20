@@ -309,15 +309,23 @@ pub mod app {
         (
             axum::http::StatusCode::OK,
             [(axum::http::header::CONTENT_TYPE, "application/xml")],
-            r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>http://localhost:3000/</loc></url></urlset>"#
+            r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>http://localhost:3000/</loc></url></urlset>"#,
         )
     }
 
-    pub async fn set_security_headers(mut response: axum::response::Response) -> axum::response::Response {
+    pub async fn set_security_headers(
+        mut response: axum::response::Response,
+    ) -> axum::response::Response {
         let headers = response.headers_mut();
         headers.insert("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:;".parse().unwrap());
-        headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
-        headers.insert("Cross-Origin-Resource-Policy", "cross-origin".parse().unwrap());
+        headers.insert(
+            "Cross-Origin-Embedder-Policy",
+            "require-corp".parse().unwrap(),
+        );
+        headers.insert(
+            "Cross-Origin-Resource-Policy",
+            "cross-origin".parse().unwrap(),
+        );
         headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
         headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
         headers.insert("X-Frame-Options", "DENY".parse().unwrap());
