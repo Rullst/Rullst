@@ -178,6 +178,14 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
         "Permissions-Policy",
         header::HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
     );
+    headers.insert(
+        "Cross-Origin-Opener-Policy",
+        header::HeaderValue::from_static("same-origin"),
+    );
+    headers.insert(
+        "Cross-Origin-Resource-Policy",
+        header::HeaderValue::from_static("same-site"),
+    );
 
     if !csp.is_empty() {
         if let Ok(csp_val) = header::HeaderValue::from_str(&csp) {
