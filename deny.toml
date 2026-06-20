@@ -12,7 +12,6 @@ ignore = [
     "RUSTSEC-2024-0388", # proc-macro-error2 unmaintained
 ]
 vulnerability = "deny"
-unmaintained = "warn"
 yanked = "warn"
 notice = "warn"
 

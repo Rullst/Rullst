@@ -1,10 +1,7 @@
 name: Mutation Testing (cargo-mutants)
 
 on:
-  push:
-    branches: [ "main" ]
-  schedule:
-    - cron: '0 3 * * 0' # Run weekly early Sunday morning
+  workflow_dispatch: # Manual trigger only
 
 permissions:
   contents: read

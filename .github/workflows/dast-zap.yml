@@ -22,7 +22,7 @@ jobs:
 
       - name: Scaffold Rullst SaaS Blueprint
         run: |
-          cargo rullst new zap_test --blueprint saas
+          cargo rullst new zap_test
           # Configure dummy keys to allow server start
           echo "APP_KEY=12345678901234567890123456789012" >> zap_test/.env
           echo "APP_ENV=development" >> zap_test/.env

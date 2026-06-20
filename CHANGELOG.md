@@ -22,7 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Security
 - **Native Security Matrix (CI/CD)**: Upgraded the framework's CI/CD pipeline to Enterprise-grade "Secure by Design" status using hardcore Rust-native tooling.
   - Added **cargo-deny** to ban unapproved licenses and vulnerable dependencies.
-  - Added **Miri** to mathematically validate the memory safety of Rullst's internal `unsafe` blocks.
   - Added **OSSF Scorecards** to establish a public, enterprise security score.
   - Added **OWASP ZAP** DAST pipeline to proactively attack generated SaaS blueprints in real-time.
   - Added **cargo-tarpaulin** for native, terminal-based code coverage reporting within PRs.
