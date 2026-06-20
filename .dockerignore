@@ -4,3 +4,6 @@
 .idea/
 **/*.rs.bk
 node_modules/
+benchmark/rails/vendor/bundle/
+benchmark/phoenix/deps/
+benchmark/phoenix/_build/

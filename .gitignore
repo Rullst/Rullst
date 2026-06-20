@@ -29,4 +29,6 @@ test.db
 test.db-journal
 test.db-shm
 test.db-wal
-.rullst_dev_key
+.rullst_dev_keybenchmark/rails/vendor/bundle/
+benchmark/phoenix/deps/
+benchmark/phoenix/_build/

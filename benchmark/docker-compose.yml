@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: benchmark
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rails_app:
+    build: ./rails
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/benchmark
+    depends_on:
+      db:
+        condition: service_healthy
+
+  phoenix_app:
+    build: ./phoenix
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: ecto://postgres:password@db:5432/benchmark
+      SECRET_KEY_BASE: dummy_secret_key_base_for_phoenix_benchmark_12345678901234567890
+    depends_on:
+      db:
+        condition: service_healthy
