@@ -1,0 +1,29 @@
+name: Miri (Undefined Behavior Check)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+  schedule:
+    - cron: '0 0 * * 0' # Run weekly
+
+permissions:
+  contents: read
+
+jobs:
+  miri:
+    name: Check for Undefined Behavior
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Nightly with Miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+
+      - name: Run Miri on Rullst (Core)
+        run: cargo miri test -p rullst
+        env:
+          MIRIFLAGS: "-Zmiri-disable-isolation"

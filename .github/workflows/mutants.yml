@@ -1,0 +1,36 @@
+name: Mutation Testing (cargo-mutants)
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 3 * * 0' # Run weekly early Sunday morning
+
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    name: Run cargo-mutants
+    runs-on: ubuntu-latest
+    # Mutation testing can take a long time, so we set a timeout
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants
+
+      - name: Run cargo-mutants (Core Library)
+        # We focus mutation testing on the core 'rullst' crate to avoid mutating examples or scaffolding generators which may not have exhaustive tests
+        run: cargo mutants -p rullst -v
+        
+      - name: Archive Mutants Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutants-report
+          path: mutants.out/

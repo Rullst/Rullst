@@ -1,0 +1,29 @@
+name: Fuzzing (cargo-fuzz)
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 4 * * 0' # Run weekly
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Run Fuzzers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+
+      - name: Run Fuzzer for 5 minutes (mask_pii)
+        working-directory: rullst/fuzz
+        # We run the fuzzer for a maximum of 5 minutes (300 seconds) in CI to prevent timeout limits.
+        # If the fuzzer finds a panic, it will exit with a non-zero status and fail the job.
+        run: cargo +nightly fuzz run mask_pii -- -max_total_time=300

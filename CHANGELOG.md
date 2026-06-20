@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Upgraded `cron` from `0.16.0` to `0.17.0`.
 
 ### Security
+- **Native Security Matrix (CI/CD)**: Upgraded the framework's CI/CD pipeline to Enterprise-grade "Secure by Design" status using hardcore Rust-native tooling.
+  - Added **cargo-deny** to ban unapproved licenses and vulnerable dependencies.
+  - Added **Miri** to mathematically validate the memory safety of Rullst's internal `unsafe` blocks.
+  - Added **OSSF Scorecards** to establish a public, enterprise security score.
+  - Added **OWASP ZAP** DAST pipeline to proactively attack generated SaaS blueprints in real-time.
+  - Added **cargo-tarpaulin** for native, terminal-based code coverage reporting within PRs.
+  - Added **cargo-mutants** to enforce test suite quality via deliberate mutation injections.
+  - Added **cargo-fuzz** with an initial target (`mask_pii`) to guarantee DoS immunity against malformed byte sequences.
 - **URL Decoding Integrity (WAF Bypass Mitigation)**: Fixed the WebAssembly-compatible `url_decode` function in `rullst/src/security.rs` which was silently dropping invalid hex sequences (e.g. `%XY`). It now safely preserves the intact invalid sequences, preventing WAF bypass attacks where an attacker could construct malicious payloads that trick the firewall but execute on the backend.
 - **Scaffolding Password Length Limits**: Integrated the strict 72-character maximum password length validation directly into the `cargo-rullst/src/blueprints/saas.rs` and `cargo-rullst/src/generators/auth.rs` scaffolding generators, providing immediate UI error feedback to the user and securing all newly generated Rullst projects out-of-the-box against Argon2 resource exhaustion DoS attacks.
 - **Password Length Limits (DoS Mitigation)**: Enforced a strict maximum password length of 72 characters in `rullst/src/auth.rs` (`hash_password` and `verify_password`). This prevents Denial of Service (DoS) attacks where maliciously oversized inputs could exhaust CPU and memory resources during Argon2 hashing.

@@ -1,0 +1,25 @@
+name: Cargo Deny (SAST)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+  schedule:
+    - cron: '0 0 * * 0' # Run weekly
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-deny:
+    name: Check Dependencies (Licenses, Vulnerabilities)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install cargo-deny
+      uses: EmbarkStudios/cargo-deny-action@v2
+      with:
+        command: check
+        arguments: --workspace
