@@ -19,6 +19,7 @@
 <p align="center">
   <a href="https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/dast-zap.yml?style=for-the-badge&label=OWASP%20ZAP" alt="OWASP ZAP DAST"></a>
   <a href="https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?label=OSSF%20Scorecard&style=for-the-badge" alt="OSSF Scorecard"></a>
+  <a href="https://www.bestpractices.dev/projects/13321"><img src="https://www.bestpractices.dev/projects/13321/badge" alt="OpenSSF Best Practices"></a>
   <a href="https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=for-the-badge&label=Cargo%20Deny" alt="Cargo Deny"></a>
   <a href="https://github.com/Rullst/Rullst/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?style=for-the-badge&label=Cargo%20Tarpaulin" alt="Cargo Tarpaulin"></a>
 </p>
