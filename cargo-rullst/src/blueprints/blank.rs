@@ -63,7 +63,7 @@ pub async fn home() -> impl IntoResponse {{
 pub extern "C" fn rullst_router_init() -> *mut Router {{
     let router = routes![
         get("/" => home),
-    ];
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
     Box::into_raw(Box::new(router))
 }}
 "##,
@@ -145,7 +145,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
     let router = routes![
         get("/" => home),
         post("/clicked" => clicked),
-    ];
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
     Box::into_raw(Box::new(router))
 }}
 "##,
@@ -221,7 +221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
     let router = routes![
         get("/" => home),
-    ];
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
 
     Server::new(router)
         .run(3000)
@@ -309,7 +309,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let router = routes![
         get("/" => home),
         post("/clicked" => clicked),
-    ];
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
 
     Server::new(router)
         .run(3000)

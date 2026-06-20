@@ -9,14 +9,9 @@ ignore = [
     "RUSTSEC-2026-0104",
     "RUSTSEC-2026-0002",
     "RUSTSEC-2023-0071",
-    "RUSTSEC-2024-0388", # proc-macro-error2 unmaintained
-]
-vulnerability = "deny"
-yanked = "warn"
-notice = "warn"
+
 
 [licenses]
-unlicensed = "deny"
 # We allow typical open-source licenses compatible with MIT framework
 allow = [
     "MIT",

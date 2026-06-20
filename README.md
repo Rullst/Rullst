@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
 <h1 align="center">Rullst 📜🦀🌐🚀</h1>
@@ -14,6 +14,13 @@
   <a href="https://rullst.github.io">
     <img src="https://img.shields.io/badge/Website-Official%20Site-blue?logo=github&logoColor=white&style=for-the-badge" alt="Official Website">
   </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/dast-zap.yml?style=for-the-badge&label=OWASP%20ZAP" alt="OWASP ZAP DAST"></a>
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?label=OSSF%20Scorecard&style=for-the-badge" alt="OSSF Scorecard"></a>
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=for-the-badge&label=Cargo%20Deny" alt="Cargo Deny"></a>
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?style=for-the-badge&label=Cargo%20Tarpaulin" alt="Cargo Tarpaulin"></a>
 </p>
 
 <br/>
@@ -95,4 +102,4 @@ We've rewritten our entire documentation from scratch into a beautiful, high-per
 
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
-> **Found a bug?** [Report an Issue](https://github.com/venelouis/Rullst/issues)
+> **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)

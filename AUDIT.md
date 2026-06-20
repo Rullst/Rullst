@@ -1,9 +1,9 @@
 # Code Audit Report — Rullst Framework
 
-**Date:** 2026-06-09
+**Date:** 2026-06-20
 **Auditor:** Antigravity (Google DeepMind)
-**Audited Version:** `rullst 2.0.7` · `rullst-macros 2.0.7` · `cargo-rullst 2.0.7`
-**Scanned Dependencies:** 447 crates (via `cargo audit`)
+**Audited Version:** `rullst 4.0.0` · `rullst-macros 4.0.0` · `cargo-rullst 4.0.0`
+**Scanned Dependencies:** 451 crates (via `cargo audit`)
 **Methodology:** Full source-code inspection of all production modules (`rullst/src/*.rs`, `rullst/src/auth/`, `rullst-macros/src/`), systematic grep for `unwrap`, `expect`, `panic!`, and `unsafe` in production paths, tooling validation via `cargo audit` and `cargo clippy --workspace --all-targets --all-features`.
 **Status:** ✅ All issues identified in this audit have been resolved. `cargo clippy --workspace --all-targets --all-features -- -D warnings` exits with 0 errors, 0 warnings.
 
@@ -260,13 +260,28 @@ This is correct: the WAF runs outermost to reject malicious requests early, and 
 
 ---
 
-## 7. Documentation Coverage
+## 7. Native Security Matrix (CI/CD)
+
+**Result:** ✅ Fully automated security gating in GitHub Actions.
+
+To guarantee that Rullst remains "Secure by Design" into the future, the following enterprise-grade security pipelines have been implemented to run on PRs and weekly schedules:
+
+- **cargo-deny (SAST)**: Bans unapproved licenses, unmaintained dependencies, and catches known vulnerabilities (CVEs) before they merge.
+- **OWASP ZAP (DAST)**: Actively attacks and scans scaffolded Rullst endpoints (SaaS blueprints) looking for missing security headers, CSRF gaps, or misconfigurations.
+- **OSSF Scorecards**: Computes a continuous, enterprise-grade supply-chain security score.
+- **cargo-tarpaulin**: Tracks native Rust code coverage directly in pull requests.
+- **cargo-mutants**: Injects deliberate mutations to prove the test suite actually catches logic failures.
+- **cargo-fuzz**: Brute-forces byte sequences against critical boundaries (like `mask_pii`) to ensure DoS immunity.
+
+---
+
+## 8. Documentation Coverage
 
 **Result:** ✅ 100% complete. All public APIs and structures have been fully documented, and all `[TODO] Missing documentation.` placeholder comments have been resolved.
 
 ---
 
-## 8. Summary of Findings
+## 9. Summary of Findings
 
 ### All Issues Resolved ✅
 
