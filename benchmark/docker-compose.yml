@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: benchmark
+      POSTGRES_PASSWORD: benchmark
+      POSTGRES_DB: benchmark
+    volumes:
+      - ./db_init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U benchmark -d benchmark"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  go-gin:
+    build:
+      context: ./go-gin
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=host=db user=benchmark password=benchmark dbname=benchmark port=5432 sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  go-fiber:
+    build:
+      context: ./go-fiber
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=host=db user=benchmark password=benchmark dbname=benchmark port=5432 sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  aspnet-core:
+    build:
+      context: ./aspnet-core
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=Host=db;Username=benchmark;Password=benchmark;Database=benchmark;Port=5432;Include Error Detail=true
+    depends_on:
+      db:
+        condition: service_healthy
