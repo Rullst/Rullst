@@ -30,3 +30,25 @@ test.db-journal
 test.db-shm
 test.db-wal
 .rullst_dev_key
+benchmark/.venv/
+.venv/
+benchmark/laravel/vendor/
+benchmark/symfony/vendor/
+benchmark/symfony/var/
+benchmark/django/bench/__pycache__/
+benchmark/django/django_bench/__pycache__/
+benchmark/fastapi/__pycache__/
+benchmark/django/django_bench/__pycache__
+benchmark/django/bench/__pycache__
+benchmark/django/__pycache__
+benchmark/fastapi/__pycache__
+benchmark/django/**/__pycache__/
+benchmark/fastapi/**/__pycache__/
+# Benchmarks
+benchmark/laravel/vendor/
+benchmark/symfony/vendor/
+benchmark/symfony/var/
+benchmark/django/**/__pycache__/
+benchmark/fastapi/**/__pycache__/
+benchmark/.venv/
+RESULTS10.md

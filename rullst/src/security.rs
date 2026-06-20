@@ -103,7 +103,9 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         .map(|s| s.to_string());
 
     if let Some(token) = header_token {
-        if token.len() == cookie_token.len() && token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
+        if token.len() == cookie_token.len()
+            && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
+        {
             return next.run(req).await;
         }
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
@@ -133,7 +135,9 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
 
         if let Some(token) = body_token {
-            if token.len() == cookie_token.len() && token.as_bytes().ct_eq(cookie_token.as_bytes()).into() {
+            if token.len() == cookie_token.len()
+                && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
+            {
                 return next.run(reconstructed_req).await;
             }
         }
@@ -255,10 +259,28 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
 
     // 2. Inspect query parameters and headers for common attack vectors (SQLi, XSS, Path Traversal, CMD Injection)
     let malicious_patterns = [
-        "select ", "union ", "insert ", "delete ", "drop table", "alter table", // SQLi
-        "<script", "javascript:", "onload=", "onerror=", "document.cookie",     // XSS
-        "../", "..\\", "/etc/passwd", "win.ini",                               // Path Traversal
-        "; ls", "&& cat", "| bash", "| sh", "wget ", "curl ", "ping -c",       // Command Injection
+        "select ",
+        "union ",
+        "insert ",
+        "delete ",
+        "drop table",
+        "alter table", // SQLi
+        "<script",
+        "javascript:",
+        "onload=",
+        "onerror=",
+        "document.cookie", // XSS
+        "../",
+        "..\\",
+        "/etc/passwd",
+        "win.ini", // Path Traversal
+        "; ls",
+        "&& cat",
+        "| bash",
+        "| sh",
+        "wget ",
+        "curl ",
+        "ping -c", // Command Injection
     ];
 
     let mut payloads_to_check = Vec::new();
@@ -267,11 +289,19 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
         payloads_to_check.push(query.to_string());
     }
 
-    if let Some(referer) = req.headers().get(header::REFERER).and_then(|v| v.to_str().ok()) {
+    if let Some(referer) = req
+        .headers()
+        .get(header::REFERER)
+        .and_then(|v| v.to_str().ok())
+    {
         payloads_to_check.push(referer.to_string());
     }
 
-    if let Some(cookie) = req.headers().get(header::COOKIE).and_then(|v| v.to_str().ok()) {
+    if let Some(cookie) = req
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+    {
         payloads_to_check.push(cookie.to_string());
     }
 
@@ -315,7 +345,7 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         if let Ok(bytes) = axum::body::to_bytes(body, 2 * 1024 * 1024).await {
             let body_str = String::from_utf8_lossy(&bytes);
             let masked_body = mask_pii(&body_str);
-            
+
             let mut parts = parts;
             if parts.headers.contains_key(header::CONTENT_LENGTH) {
                 parts.headers.insert(
@@ -323,7 +353,7 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
                     axum::http::HeaderValue::from_str(&masked_body.len().to_string()).unwrap(),
                 );
             }
-            
+
             let new_body = axum::body::Body::from(masked_body);
             return Response::from_parts(parts, new_body);
         } else {
@@ -496,8 +526,14 @@ mod tests {
         assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
         assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(headers.get("X-XSS-Protection").unwrap(), "1; mode=block");
-        assert_eq!(headers.get("Strict-Transport-Security").unwrap(), "max-age=31536000; includeSubDomains; preload");
-        assert_eq!(headers.get("Permissions-Policy").unwrap(), "geolocation=(), camera=(), microphone=()");
+        assert_eq!(
+            headers.get("Strict-Transport-Security").unwrap(),
+            "max-age=31536000; includeSubDomains; preload"
+        );
+        assert_eq!(
+            headers.get("Permissions-Policy").unwrap(),
+            "geolocation=(), camera=(), microphone=()"
+        );
     }
 
     #[test]

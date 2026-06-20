@@ -499,7 +499,10 @@ mod tests {
         let cache = Cache::memory();
         cache.put("key", "v1", None).await.unwrap();
         cache.put("key", "v2", None).await.unwrap();
-        assert_eq!(cache.get("key").await.unwrap(), Some(Arc::new("v2".to_string())));
+        assert_eq!(
+            cache.get("key").await.unwrap(),
+            Some(Arc::new("v2".to_string()))
+        );
     }
 
     struct MockDriver;
