@@ -61,7 +61,7 @@ impl_safe_primitives!(
 pub fn escape_str(s: &str) -> Cow<'_, str> {
     let bytes = s.as_bytes();
     let mut last_pos = 0;
-    let mut escaped = String::new();
+    let mut escaped = String::with_capacity(0);
     
     for (i, &b) in bytes.iter().enumerate() {
         let replacement = match b {
@@ -74,7 +74,7 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
         };
         
         if last_pos == 0 {
-            escaped.reserve(s.len() + 16);
+            escaped.reserve_exact(s.len() + 16);
         }
         
         escaped.push_str(&s[last_pos..i]);
