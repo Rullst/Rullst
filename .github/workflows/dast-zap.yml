@@ -6,15 +6,16 @@ on:
   schedule:
     - cron: '0 2 * * 0' # Run weekly
 
-permissions:
-  issues: write
-  pull-requests: write
-  contents: read
+permissions: read-all
 
 jobs:
   zap_scan:
     name: ZAP Baseline Scan
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
