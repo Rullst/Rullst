@@ -44,7 +44,7 @@ jobs:
           curl -s --retry 5 --retry-connrefused http://localhost:3000 > /dev/null
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@906a3c93ffde4864839d31a93daadcbd2737b4da # v0.12.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: 'http://localhost:3000'
           fail_action: false # Only warn for now, avoid breaking CI on first run
