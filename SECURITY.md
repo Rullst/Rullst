@@ -11,7 +11,7 @@ Rullst is currently in active development. Only the latest major release (v4.x) 
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within Rullst, please DO NOT open a public issue. Instead, send an email to the core maintainers team. 
+If you discover a security vulnerability within Rullst, please DO NOT open a public issue. Instead, send an email to the core maintainers team at rullst.rullst@creio.eu.
 
 Please include the following information in your report:
 - The type of vulnerability (e.g., XSS, SQLi, CSRF, Path Traversal).
