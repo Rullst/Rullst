@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  express:
+    build:
+      context: ./express
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  fastify:
+    build:
+      context: ./fastify
+    ports:
+      - "3002:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  hono:
+    build:
+      context: ./hono
+    ports:
+      - "3003:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nestjs:
+    build:
+      context: ./nestjs
+    ports:
+      - "3004:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nextjs:
+    build:
+      context: ./nextjs
+    ports:
+      - "3005:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
