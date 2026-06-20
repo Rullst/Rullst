@@ -8,14 +8,15 @@ on:
   schedule:
     - cron: '0 0 * * 0' # Run weekly
 
-permissions:
-  contents: read
-  security-events: write
+permissions: read-all
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false
