@@ -249,7 +249,10 @@ impl Nexus {
                                                 use subtle::ConstantTimeEq;
                                                 if parts_user == expected_username
                                                     && parts_pass.len() == expected_password.len()
-                                                    && parts_pass.as_bytes().ct_eq(expected_password.as_bytes()).into()
+                                                    && parts_pass
+                                                        .as_bytes()
+                                                        .ct_eq(expected_password.as_bytes())
+                                                        .into()
                                                 {
                                                     return next.run(req).await;
                                                 }
@@ -849,11 +852,14 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
         let t = m.table;
         let lb = m.label;
         let ic = m.icon;
-        let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-            "<a href=\"/nexus/table/{t}\" class=\"nexus-nav-link{active_class}\" \
+        let _ = std::fmt::Write::write_fmt(
+            &mut out,
+            format_args!(
+                "<a href=\"/nexus/table/{t}\" class=\"nexus-nav-link{active_class}\" \
              hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
              <span class=\"nexus-nav-icon\">{ic}</span><span>{lb}</span></a>"
-        ));
+            ),
+        );
     }
     out.push_str("<div class=\"nexus-nav-divider\"></div>");
     out.push_str(
@@ -903,10 +909,13 @@ fn build_table_query(
 
     let limit = 20;
     let offset = (page.max(1) - 1) * limit;
-    let _ = std::fmt::Write::write_fmt(&mut sql, format_args!(
-        " ORDER BY {} DESC LIMIT {} OFFSET {}",
-        clean_pk, limit, offset
-    ));
+    let _ = std::fmt::Write::write_fmt(
+        &mut sql,
+        format_args!(
+            " ORDER BY {} DESC LIMIT {} OFFSET {}",
+            clean_pk, limit, offset
+        ),
+    );
 
     (sql, binds)
 }
@@ -1049,10 +1058,15 @@ async fn render_table_view(
     let lb_singular = entry.label.trim_end_matches('s');
     let q_esc = crate::html::escape_str(q);
 
-    let headers = visible_fields.iter().fold(String::with_capacity(256), |mut acc, f| {
-        let _ = std::fmt::Write::write_fmt(&mut acc, format_args!("<th class=\"nexus-th\">{}</th>", f.label));
-        acc
-    });
+    let headers = visible_fields
+        .iter()
+        .fold(String::with_capacity(256), |mut acc, f| {
+            let _ = std::fmt::Write::write_fmt(
+                &mut acc,
+                format_args!("<th class=\"nexus-th\">{}</th>", f.label),
+            );
+            acc
+        });
     let rows = render_table_rows(entry, q, page).await;
 
     let prev_btn = if page > 1 {
@@ -1073,35 +1087,48 @@ async fn render_table_view(
     let mut out = String::new();
     out.push_str("<div class=\"nexus-page-header\">");
     out.push_str("<div>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<h1 class=\"nexus-page-title\">{ic} {lb}</h1>"));
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<p class=\"nexus-page-subtitle\">Manage all records in the <code>{t}</code> table.</p>"
-    ));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!("<h1 class=\"nexus-page-title\">{ic} {lb}</h1>"),
+    );
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<p class=\"nexus-page-subtitle\">Manage all records in the <code>{t}</code> table.</p>"
+        ),
+    );
     out.push_str("</div>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<button class=\"nexus-btn nexus-btn-primary\" \
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<button class=\"nexus-btn nexus-btn-primary\" \
          hx-get=\"/nexus/table/{t}/new\" \
          hx-target=\"#nexus-modal-body\" \
          hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">\
          &#xFF0B; New {lb_singular}</button>"
-    ));
+        ),
+    );
     out.push_str("</div>");
 
     out.push_str("<div class=\"nexus-toolbar\">");
     out.push_str("<div class=\"nexus-search-wrap\">");
     out.push_str("<span class=\"nexus-search-icon\">&#128269;</span>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<input type=\"text\" class=\"nexus-search-input\" aria-label=\"Search records\" \
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<input type=\"text\" class=\"nexus-search-input\" aria-label=\"Search records\" \
          placeholder=\"Search {lb}...\" value=\"{q_esc}\" \
          hx-get=\"/nexus/table/{t}/search\" \
          hx-trigger=\"keyup changed delay:300ms\" \
          hx-target=\"#nexus-table-body\" \
          name=\"q\" />"
-    ));
+        ),
+    );
     out.push_str("</div>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<span class=\"nexus-page-badge\">Page {page}</span>"
-    ));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!("<span class=\"nexus-page-badge\">Page {page}</span>"),
+    );
     out.push_str("</div>");
 
     out.push_str("<div class=\"nexus-table-wrap\">");
@@ -1116,9 +1143,10 @@ async fn render_table_view(
 
     out.push_str("<div class=\"nexus-pagination\">");
     out.push_str(&prev_btn);
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<span class=\"nexus-page-indicator\">Page {page}</span>"
-    ));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!("<span class=\"nexus-page-indicator\">Page {page}</span>"),
+    );
     out.push_str(&next_btn);
     out.push_str("</div>");
 
@@ -1192,7 +1220,11 @@ async fn render_form_fields_html(
     let pool_opt = crate::db::safe_pool().cloned();
 
     for f in &entry.fields {
-        if let FieldKind::ForeignKey { table: target_table, label_col } = &f.kind {
+        if let FieldKind::ForeignKey {
+            table: target_table,
+            label_col,
+        } = &f.kind
+        {
             if let Some(pool) = pool_opt.clone() {
                 let target_pk = state
                     .registry
@@ -1208,12 +1240,13 @@ async fn render_form_fields_html(
                     "SELECT {} as key_id, {} as val_label FROM {}",
                     clean_target_pk, clean_label_col, clean_target_table
                 );
-                
+
                 let fname = f.name.to_string();
                 fk_set.spawn(async move {
-                    let res = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
-                        .fetch_all(&pool)
-                        .await;
+                    let res =
+                        rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+                            .fetch_all(&pool)
+                            .await;
                     (fname, res)
                 });
             }
@@ -1241,21 +1274,27 @@ async fn render_form_fields_html(
 
         if f.kind == FieldKind::Boolean {
             let checked = if val == "true" { "checked" } else { "" };
-            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
-                "<div class=\"nexus-form-group\">\
+            let _ = std::fmt::Write::write_fmt(
+                &mut fields_html,
+                format_args!(
+                    "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <input type=\"checkbox\" name=\"{}\" value=\"true\" {checked} {readonly}>\
                  </div>",
-                f.label, f.name
-            ));
+                    f.label, f.name
+                ),
+            );
         } else if f.kind == FieldKind::Textarea {
-            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
-                "<div class=\"nexus-form-group\">\
+            let _ = std::fmt::Write::write_fmt(
+                &mut fields_html,
+                format_args!(
+                    "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <textarea name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" {readonly}>{}</textarea>\
                  </div>",
-                f.label, f.name, f.label, val_esc
-            ));
+                    f.label, f.name, f.label, val_esc
+                ),
+            );
         } else if let FieldKind::ForeignKey { .. } = &f.kind {
             let mut options_html = String::new();
             options_html.push_str("<option value=\"\">-- Select --</option>");
@@ -1277,24 +1316,30 @@ async fn render_form_fields_html(
                         .try_get::<String, _>("val_label")
                         .unwrap_or_else(|_| "Unknown".to_string());
                     let selected = if id_val == val { "selected" } else { "" };
-                    let _ = std::fmt::Write::write_fmt(&mut options_html, format_args!(
-                        "<option value=\"{}\" {}>{}</option>",
-                        id_val,
-                        selected,
-                        crate::html::escape_str(&label_val)
-                    ));
+                    let _ = std::fmt::Write::write_fmt(
+                        &mut options_html,
+                        format_args!(
+                            "<option value=\"{}\" {}>{}</option>",
+                            id_val,
+                            selected,
+                            crate::html::escape_str(&label_val)
+                        ),
+                    );
                 }
             }
 
-            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
-                "<div class=\"nexus-form-group\">\
+            let _ = std::fmt::Write::write_fmt(
+                &mut fields_html,
+                format_args!(
+                    "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <select name=\"{}\" class=\"nexus-input\" {readonly}>\
                  {}\
                  </select>\
                  </div>",
-                f.label, f.name, options_html
-            ));
+                    f.label, f.name, options_html
+                ),
+            );
         } else {
             let type_attr = match f.kind {
                 FieldKind::Number => "number",
@@ -1302,13 +1347,16 @@ async fn render_form_fields_html(
                 FieldKind::Date => "date",
                 _ => "text",
             };
-            let _ = std::fmt::Write::write_fmt(&mut fields_html, format_args!(
-                "<div class=\"nexus-form-group\">\
+            let _ = std::fmt::Write::write_fmt(
+                &mut fields_html,
+                format_args!(
+                    "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
                  <input type=\"{type_attr}\" name=\"{}\" class=\"nexus-input\" placeholder=\"Enter {}...\" value=\"{}\" {readonly}>\
                  </div>",
-                f.label, f.name, f.label, val_esc
-            ));
+                    f.label, f.name, f.label, val_esc
+                ),
+            );
         }
     }
     fields_html
@@ -1360,7 +1408,10 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"dark\">\n<head>\n");
     out.push_str("<meta charset=\"UTF-8\" />\n");
     out.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<title>{brand} &mdash; Nexus Panel</title>\n"));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!("<title>{brand} &mdash; Nexus Panel</title>\n"),
+    );
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
     out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\" defer></script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
@@ -1372,16 +1423,22 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out.push_str("<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\">");
     out.push_str("<div class=\"nexus-brand\">");
     out.push_str("<span class=\"nexus-brand-icon\">&#127963;&#65039;</span>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!("<span class=\"nexus-brand-name\">{brand}</span>"));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!("<span class=\"nexus-brand-name\">{brand}</span>"),
+    );
     out.push_str("</div>");
     out.push_str("<div class=\"nexus-nav-label\">MODELS</div>");
     out.push_str(sidebar);
     out.push_str("<div class=\"nexus-sidebar-footer\">");
     out.push_str("<a href=\"/\" class=\"nexus-nav-link nexus-nav-home\"><span class=\"nexus-nav-icon\">&#127968;</span><span>Back to App</span></a>");
-    let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-        "<div class=\"nexus-version\">Rullst Nexus v{}</div>",
-        env!("CARGO_PKG_VERSION")
-    ));
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<div class=\"nexus-version\">Rullst Nexus v{}</div>",
+            env!("CARGO_PKG_VERSION")
+        ),
+    );
     out.push_str("</div></nav>");
 
     out.push_str("<main class=\"nexus-main\">");
