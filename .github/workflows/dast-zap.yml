@@ -6,16 +6,21 @@ on:
   schedule:
     - cron: '0 2 * * 0' # Run weekly
 
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
 jobs:
   zap_scan:
     name: ZAP Baseline Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Install cargo-rullst
         run: cargo install --path cargo-rullst
@@ -38,7 +43,7 @@ jobs:
           curl -s --retry 5 --retry-connrefused http://localhost:3000 > /dev/null
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@906a3c93ffde4864839d31a93daadcbd2737b4da # v0.12.0
         with:
           target: 'http://localhost:3000'
           fail_action: false # Only warn for now, avoid breaking CI on first run

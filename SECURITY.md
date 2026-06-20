@@ -2,22 +2,24 @@
 
 ## Supported Versions
 
-Rullst is currently under active development. The following versions receive security updates:
+Rullst is currently in active development. Only the latest major release (v4.x) receives security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v1.x.x  | :white_check_mark: |
-| < v1.0  | :x:                |
+| 4.x.x   | :white_check_mark: |
+| < 4.0.0 | :x:                |
 
 ## Reporting a Vulnerability
 
-We take the security of Rullst and its users very seriously. If you discover a vulnerability in Rullst, please **do not open a public issue**. 
+If you discover a security vulnerability within Rullst, please DO NOT open a public issue. Instead, send an email to the core maintainers team. 
 
-Instead, please report the vulnerability using the **[GitHub Security Advisories](https://github.com/venelouis/Rullst/security/advisories/new)** feature.
+Please include the following information in your report:
+- The type of vulnerability (e.g., XSS, SQLi, CSRF, Path Traversal).
+- The steps to reproduce the vulnerability.
+- Any potential impact on user data or server integrity.
 
-**What to expect:**
-- We will acknowledge receipt of your vulnerability report within 48 hours.
-- We will send you regular updates about our progress.
-- Once the issue is resolved, we will publish a security advisory and credit you for the discovery (if you wish).
+All security vulnerabilities will be promptly addressed. We practice coordinated disclosure and will credit you in the release notes if your report leads to a patch.
 
-Thank you for helping keep Rullst and its ecosystem safe!
+## Security Posture
+
+Rullst adopts a "Secure by Design" philosophy and runs continuous automated security pipelines (DAST via OWASP ZAP, SAST via Cargo Deny, and Fuzzing) to prevent regressions. Please refer to our `audit.md` for our latest comprehensive Code Audit report.

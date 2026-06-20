@@ -24,7 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Added **cargo-deny** to ban unapproved licenses and vulnerable dependencies.
   - Added **OSSF Scorecards** to establish a public, enterprise security score.
   - Added **OWASP ZAP** DAST pipeline to proactively attack generated SaaS blueprints in real-time.
+    - Updated the `blank` blueprint generation to natively include `headers_middleware`, ensuring all new projects pass DAST scanning out-of-the-box.
   - Added **cargo-tarpaulin** for native, terminal-based code coverage reporting within PRs.
+  - Showcased GitHub Actions badges in the `README.md`.
   - Added **cargo-mutants** to enforce test suite quality via deliberate mutation injections.
   - Added **cargo-fuzz** with an initial target (`mask_pii`) to guarantee DoS immunity against malformed byte sequences.
 - **URL Decoding Integrity (WAF Bypass Mitigation)**: Fixed the WebAssembly-compatible `url_decode` function in `rullst/src/security.rs` which was silently dropping invalid hex sequences (e.g. `%XY`). It now safely preserves the intact invalid sequences, preventing WAF bypass attacks where an attacker could construct malicious payloads that trick the firewall but execute on the backend.
