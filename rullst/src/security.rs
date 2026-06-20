@@ -348,10 +348,9 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
 
             let mut parts = parts;
             if parts.headers.contains_key(header::CONTENT_LENGTH) {
-                parts.headers.insert(
-                    header::CONTENT_LENGTH,
-                    axum::http::HeaderValue::from_str(&masked_body.len().to_string()).unwrap(),
-                );
+                if let Ok(val) = axum::http::HeaderValue::from_str(&masked_body.len().to_string()) {
+                    parts.headers.insert(header::CONTENT_LENGTH, val);
+                }
             }
 
             let new_body = axum::body::Body::from(masked_body);
