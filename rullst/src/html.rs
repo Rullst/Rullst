@@ -62,7 +62,7 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
     let bytes = s.as_bytes();
     let mut last_pos = 0;
     let mut escaped = String::new();
-    
+
     for (i, &b) in bytes.iter().enumerate() {
         let replacement = match b {
             b'<' => "&lt;",
@@ -72,16 +72,16 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
             b'\'' => "&#x27;",
             _ => continue,
         };
-        
+
         if last_pos == 0 {
             escaped.reserve(s.len() + 16);
         }
-        
+
         escaped.push_str(&s[last_pos..i]);
         escaped.push_str(replacement);
         last_pos = i + 1;
     }
-    
+
     if last_pos == 0 {
         Cow::Borrowed(s)
     } else {
