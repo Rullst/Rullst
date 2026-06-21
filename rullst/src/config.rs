@@ -203,6 +203,6 @@ cors_allow_origins = ["https://example.com"]
     #[test]
     fn test_deserialize_security_config_defaults() {
         let config: SecurityConfig = toml::from_str("").unwrap();
-        assert_eq!(config.enable_pii_masking, false);
+        assert!(!config.enable_pii_masking);
     }
 }
