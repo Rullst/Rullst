@@ -1,0 +1,16 @@
+{
+  "name": "fastify-benchmark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "fastify": "^4.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.0.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "hono-benchmark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.4.0",
+    "@prisma/client": "^5.0.0",
+    "hono": "^3.12.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.0.0"
+  }
+}
