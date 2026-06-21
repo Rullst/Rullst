@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "rullst"
 version = "4.0.0"
 authors = ["Rullst Core Team"]
@@ -14,6 +14,9 @@ queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 mail-smtp = ["dep:lettre"]
 oauth = ["dep:rullst-connect"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }

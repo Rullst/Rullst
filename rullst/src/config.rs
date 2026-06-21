@@ -142,7 +142,10 @@ mod tests {
     async fn test_global_config_access() {
         let config1 = RullstConfig::global();
         let config2 = RullstConfig::global();
-        assert!(std::ptr::eq(config1, config2), "global() should return the same instance");
+        assert!(
+            std::ptr::eq(config1, config2),
+            "global() should return the same instance"
+        );
         assert_eq!(config1.security.csrf_same_site, "Lax");
     }
 
