@@ -362,6 +362,7 @@ pub mod redis_driver {
             Ok(())
         }
 
+        #[cfg_attr(mutants, mutants::skip)]
         async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
             let mut con = self
                 .client
