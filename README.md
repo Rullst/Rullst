@@ -99,7 +99,7 @@ async fn main() {
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
 
-👉 **[Explore the Official Website & Docs](https://venelouis.github.io/Rullst/)**
+👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
 
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
