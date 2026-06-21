@@ -466,6 +466,12 @@ mod tests {
         let masked = mask_pii(raw);
         assert!(masked.contains("****-****-****-5678"));
         assert!(!masked.contains("1234-5678-1234"));
+
+        // Ensure that too many spaces/hyphens prevents it from being recognized as a single card.
+        // This catches the cargo-mutants mutation: replace `+=` with `*=` on `non_digits`.
+        let raw_gaps = "1234---5678-1234-5678";
+        let masked_gaps = mask_pii(raw_gaps);
+        assert_eq!(masked_gaps, raw_gaps);
     }
 
     #[test]
