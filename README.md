@@ -21,7 +21,7 @@
   <a href="https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?label=OSSF%20Scorecard&style=for-the-badge" alt="OSSF Scorecard"></a>
   <a href="https://www.bestpractices.dev/projects/13321"><img src="https://img.shields.io/cii/level/13321?style=for-the-badge&label=OpenSSF%20Best%20Practices" alt="OpenSSF Best Practices"></a>
   <a href="https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=for-the-badge&label=Cargo%20Deny" alt="Cargo Deny"></a>
-  <a href="https://github.com/Rullst/Rullst/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?style=for-the-badge&label=Cargo%20Tarpaulin" alt="Cargo Tarpaulin"></a>
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?style=for-the-badge&label=LLVM%20Coverage" alt="LLVM Coverage"></a>
 </p>
 
 <br/>
