@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "p/4x2fMvggc=",
+  "success": true,
+  "projectFilePath": "/app/benchmark/aspnet-core/AspNetCoreBench.csproj",
+  "expectedPackageFiles": [
+    "/home/jules/.nuget/packages/microsoft.entityframeworkcore/10.0.4/microsoft.entityframeworkcore.10.0.4.nupkg.sha512",
+    "/home/jules/.nuget/packages/microsoft.entityframeworkcore.abstractions/10.0.4/microsoft.entityframeworkcore.abstractions.10.0.4.nupkg.sha512",
+    "/home/jules/.nuget/packages/microsoft.entityframeworkcore.analyzers/10.0.4/microsoft.entityframeworkcore.analyzers.10.0.4.nupkg.sha512",
+    "/home/jules/.nuget/packages/microsoft.entityframeworkcore.relational/10.0.4/microsoft.entityframeworkcore.relational.10.0.4.nupkg.sha512",
+    "/home/jules/.nuget/packages/npgsql/10.0.3/npgsql.10.0.3.nupkg.sha512",
+    "/home/jules/.nuget/packages/npgsql.entityframeworkcore.postgresql/10.0.2/npgsql.entityframeworkcore.postgresql.10.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}

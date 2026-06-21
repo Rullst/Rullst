@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 members = [
     "rullst",
     "rullst-macros",
@@ -10,8 +10,11 @@ exclude = [
     "benchmark/axum",
     "benchmark/actix",
     "benchmark/loco",
-    "benchmark/rocket",
+
     "benchmark/leptos",
+    "benchmark/poem",
+    "benchmark/warp",
+    "benchmark/dioxus",
 ]
 resolver = "2"
 

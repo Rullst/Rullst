@@ -1,0 +1,5 @@
+FROM alpine:3.18
+RUN apk add --no-cache curl tar libc6-compat
+RUN curl -L https://github.com/codesenberg/bombardier/releases/download/v1.2.6/bombardier-linux-amd64 -o /usr/local/bin/bombardier \
+    && chmod +x /usr/local/bin/bombardier
+ENTRYPOINT ["bombardier"]

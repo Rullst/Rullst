@@ -1,0 +1,35 @@
+[package]
+name = "poem-bench"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+poem = { version = "3.0", features = ["anyhow"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
+askama = "0.12"
+dotenvy = "0.15"
+
+[dev-dependencies]
+askama = "0.12"
+criterion = { version = "0.5", features = ["async_tokio"] }
+futures-util = "0.3.32"
+poem = "3.0"
+reqwest = { version = "0.12", features = ["json"] }
+serde = "1.0"
+serde_json = "1.0"
+sqlx = "0.8"
+tokio = "1.0"
+
+[[bench]]
+name = "poem_benchmarks"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+panic = "abort"
