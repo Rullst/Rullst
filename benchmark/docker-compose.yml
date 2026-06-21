@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  poem:
+    build:
+      context: ./poem
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgres://benchmark:benchmark@localhost:5432/benchmark
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  warp:
+    build:
+      context: ./warp
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - DATABASE_URL=postgres://benchmark:benchmark@localhost:5432/benchmark
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
