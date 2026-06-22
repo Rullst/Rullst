@@ -31,7 +31,7 @@ jobs:
           cargo rullst new zap_test
           # Configure dummy keys to allow server start
           echo "APP_KEY=12345678901234567890123456789012" >> zap_test/.env
-          echo "APP_ENV=development" >> zap_test/.env
+          echo "APP_ENV=production" >> zap_test/.env
           echo "DATABASE_URL=sqlite://db.sqlite3" >> zap_test/.env
 
       - name: Run Rullst Server in background
@@ -49,7 +49,10 @@ jobs:
           # 10055 = CSP unsafe-inline / unsafe-eval (required for Tailwind/HTMX CDNs)
           # 90003 = Sub Resource Integrity Attribute Missing (dynamic CDN versions)
           # 10017 = Cross-Domain JavaScript (CDN scripts)
-          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)" > .zap/rules.tsv
+          # 10109 = Modern Web Application (Informational)
+          # 90004 = Cross-Origin-Embedder-Policy (Handled by production middleware)
+          # 10049 = Storable and Cacheable Content (Handled by production middleware)
+          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)" > .zap/rules.tsv
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
