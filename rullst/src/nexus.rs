@@ -1804,8 +1804,8 @@ mod tests {
         assert_eq!(field_kind_sql(&FieldKind::Boolean), "INTEGER");
         assert_eq!(
             field_kind_sql(&FieldKind::ForeignKey {
-                table: "".into(),
-                label_col: "".into()
+                table: "",
+                label_col: ""
             }),
             "INTEGER"
         );
@@ -1835,8 +1835,8 @@ mod tests {
         assert_eq!(field_kind_input_type(&FieldKind::Url), "url");
         assert_eq!(
             field_kind_input_type(&FieldKind::ForeignKey {
-                table: "".into(),
-                label_col: "".into()
+                table: "",
+                label_col: ""
             }),
             "select"
         );
