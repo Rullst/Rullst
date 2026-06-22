@@ -20,12 +20,6 @@ cargo fmt ; cargo publish --dry-run
 
 Lançamento da nova versão:
 
-git tag -a v2.0.7 -m "Release v2.0.7"
+git tag -a v4.0.1 -m "Release v4.0.1"
 
-git push origin v2.0.7
-
-
-git checkout -b new
-git add .
-git commit -m "anything"
-git push -u origin new
+git push origin v4.0.1
