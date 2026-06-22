@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "rullst-macros"
 version = "4.0.1"
 authors = ["Rullst Core Team"]

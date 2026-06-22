@@ -4,16 +4,6 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.1] - 2026-06-22 🚀
-
-### Security
-- **ZAP Baseline Scan Compliance**: Fixed false-positives and vulnerabilities reported by the OWASP ZAP Baseline Scan.
-  - Added strict `Cache-Control` (`no-cache, no-store, must-revalidate`) to `headers_middleware`.
-  - Added `Cross-Origin-Embedder-Policy: require-corp` to `headers_middleware`.
-  - Configured a secure-by-default `Content-Security-Policy` that strictly restricts asset loading but safely allows CDNs for rapid prototyping.
-  - Added Subresource Integrity (SRI) hashes to all HTMX CDN scripts in the starter blueprints (`erp`, `lms`, `uptime`).
-  - Updated the ZAP GitHub Action workflow to explicitly ignore the `unsafe-inline` CSP warnings (`10055`) and `90003` which are unavoidable false positives when compiling Tailwind CSS dynamically via CDN.
-
 ## [4.0.0] - 2026-06-19 🚀
 
 ### Breaking Changes

@@ -1,4 +1,4 @@
-// src/generators/project.rs â€” Project wizard generator and scaffolding orchestrator.
+// src/generators/project.rs — Project wizard generator and scaffolding orchestrator.
 
 use colored::*;
 use std::fs;
@@ -40,17 +40,17 @@ pub fn create_new_project(
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "  {}",
-        "â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”".bright_cyan()
+        "┌────────────────────────────────────────────────────┐".bright_cyan()
     );
     println!(
-        "  {} ðŸŽ¯ {} APP CREATOR â€” Let's build something new! {}",
-        "â”‚".bright_cyan(),
+        "  {} 🎯 {} APP CREATOR — Let's build something new! {}",
+        "│".bright_cyan(),
         "RULLST".truecolor(255, 165, 0).bold(),
-        "â”‚".bright_cyan()
+        "│".bright_cyan()
     );
     println!(
         "  {}",
-        "â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜".bright_cyan()
+        "└────────────────────────────────────────────────────┘".bright_cyan()
     );
     println!();
 
@@ -58,37 +58,39 @@ pub fn create_new_project(
 
     let name = match name_arg {
         Some(n) => n.to_string(),
-        None => loop {
-            let val: String = dialoguer::Input::with_theme(&theme)
-                    .with_prompt("ðŸš€ What's the New App Name? (lowercase, no spaces, must start with a letter)")
+        None => {
+            loop {
+                let val: String = dialoguer::Input::with_theme(&theme)
+                    .with_prompt("🚀 What's the New App Name? (lowercase, no spaces, must start with a letter)")
                     .interact_text()?;
-            let val_trim = val.trim();
-            if val_trim.is_empty() {
-                continue;
+                let val_trim = val.trim();
+                if val_trim.is_empty() {
+                    continue;
+                }
+                if val_trim.contains(' ') {
+                    println!(
+                        "{}",
+                        "❌ Spaces are not allowed in the project name. Please try again.".red()
+                    );
+                    continue;
+                }
+                if val_trim.chars().next().unwrap().is_ascii_digit() {
+                    println!(
+                        "{}",
+                        "❌ The project name cannot start with a number. Please try again.".red()
+                    );
+                    continue;
+                }
+                if !val_trim
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                {
+                    println!("{}", "❌ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
+                    continue;
+                }
+                break val_trim.to_string();
             }
-            if val_trim.contains(' ') {
-                println!(
-                    "{}",
-                    "âŒ Spaces are not allowed in the project name. Please try again.".red()
-                );
-                continue;
-            }
-            if val_trim.chars().next().unwrap().is_ascii_digit() {
-                println!(
-                    "{}",
-                    "âŒ The project name cannot start with a number. Please try again.".red()
-                );
-                continue;
-            }
-            if !val_trim
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-            {
-                println!("{}", "âŒ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
-                continue;
-            }
-            break val_trim.to_string();
-        },
+        }
     };
 
     let mut api = api_arg;
@@ -99,7 +101,7 @@ pub fn create_new_project(
 
     if name_arg.is_none() {
         let portfolio_title = format!(
-            "Portfolio ðŸ”¥ (showcase for Rullst/AI developers) - {}",
+            "Portfolio 🔥 (showcase for Rullst/AI developers) - {}",
             "HOT".bright_red().bold()
         );
         let blueprint_choices = vec![
@@ -112,7 +114,7 @@ pub fn create_new_project(
             "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)".to_string(),
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("ðŸ§­ Select a Starter Blueprint")
+            .with_prompt("🧭 Select a Starter Blueprint")
             .default(0)
             .items(&blueprint_choices)
             .interact()?;
@@ -123,14 +125,14 @@ pub fn create_new_project(
                 "Headless REST API",
             ];
             let build_selection = dialoguer::Select::with_theme(&theme)
-                .with_prompt("ðŸ—ï¸ What would you like to build?")
+                .with_prompt("🏗️ What would you like to build?")
                 .default(0)
                 .items(&build_options[..])
                 .interact()?;
             api = build_selection == 1;
 
             db_needed = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("ðŸ—„ï¸ Will your project need a Database?")
+                .with_prompt("🗄️ Will your project need a Database?")
                 .default(true)
                 .interact()?;
 
@@ -141,7 +143,7 @@ pub fn create_new_project(
                     "MySQL/MariaDB (Requires localhost:3306 running)",
                 ];
                 let db_selection = dialoguer::Select::with_theme(&theme)
-                    .with_prompt("ðŸ’¾ Select a DB Provider (Network DBs will hang on setup if not running locally)")
+                    .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
                     .default(0)
                     .items(&db_options[..])
                     .interact()?;
@@ -160,14 +162,14 @@ pub fn create_new_project(
         }
 
         hot_reload = dialoguer::Confirm::with_theme(&theme)
-            .with_prompt("ðŸ”¥ Enable Hot Reloading by default? (Auto-recompiles on save)")
+            .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
             .default(true)
             .interact()?;
     }
 
     println!(
         "{}",
-        format!("ðŸš€ Creating new Rullst app: {}...", name)
+        format!("🚀 Creating new Rullst app: {}...", name)
             .green()
             .bold()
     );
@@ -176,7 +178,7 @@ pub fn create_new_project(
     if path.exists() {
         println!(
             "{}",
-            format!("âŒ Error: Directory '{}' already exists.", name).red()
+            format!("❌ Error: Directory '{}' already exists.", name).red()
         );
         std::process::exit(1);
     }
@@ -303,7 +305,7 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 
-# âš¡ Rullst God-Mode: Instant Incremental Compilation (<100ms)
+# ⚡ Rullst God-Mode: Instant Incremental Compilation (<100ms)
 # If you want development speed close to interpreted languages,
 # you can use the official Cranelift backend for the Rust compiler.
 # 
@@ -321,7 +323,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
 
     fs::write(path.join("Cargo.toml"), cargo_toml)?;
 
-    // Criar diretÃ³rio .cargo e escrever config.toml inteligente
+    // Criar diretório .cargo e escrever config.toml inteligente
     let cargo_dir = path.join(".cargo");
     fs::create_dir_all(&cargo_dir)?;
 
@@ -330,14 +332,14 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
 
     let mut config_toml = String::new();
     config_toml.push_str(
-        r#"# ðŸš€ Rullst Compiler & Linker Optimization Configuration
+        r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
 # This file configures ultra-fast linkers for local development.
 # Rullst has detected your environment and configured the appropriate options.
 
 "#,
     );
 
-    // ConfiguraÃ§Ã£o para Windows (MSVC usa lld-link ou lld)
+    // Configuração para Windows (MSVC usa lld-link ou lld)
     if has_lld && cfg!(windows) {
         config_toml.push_str(
             r#"[target.x86_64-pc-windows-msvc]
@@ -355,7 +357,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         );
     }
 
-    // ConfiguraÃ§Ã£o para Linux (GNU usa mold ou lld)
+    // Configuração para Linux (GNU usa mold ou lld)
     if has_mold && cfg!(target_os = "linux") {
         config_toml.push_str(
             r#"[target.x86_64-unknown-linux-gnu]
@@ -380,7 +382,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         );
     }
 
-    // ConfiguraÃ§Ã£o para macOS (Darwin usa lld)
+    // Configuração para macOS (Darwin usa lld)
     if has_lld && cfg!(target_os = "macos") {
         config_toml.push_str(
             r#"[target.x86_64-apple-darwin]
@@ -447,15 +449,15 @@ Foundry.toml
     };
 
     let mut env_content = format!(
-        r#"# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        r#"# ─────────────────────────────────────────────────────────────
 #  Rullst Application Environment Configuration
 #  Generated automatically by cargo rullst new
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────
 
-# âš ï¸ SECURITY: This file must NEVER be committed to git.
+# ⚠️ SECURITY: This file must NEVER be committed to git.
 # It is automatically added to .gitignore by the Rullst CLI.
 
-# â”€â”€ Application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Application ───────────────────────────────────────────────
 APP_KEY={app_key}
 APP_ENV=development
 "#,
@@ -463,12 +465,12 @@ APP_ENV=development
     );
 
     let mut env_example_content =
-        r#"# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        r#"# ─────────────────────────────────────────────────────────────
 #  Rullst Application Environment Configuration
 #  Generated automatically by cargo rullst new
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────
 
-# â”€â”€ Application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Application ───────────────────────────────────────────────
 APP_KEY=REPLACE_WITH_YOUR_32_CHAR_APP_KEY
 APP_ENV=development
 "#
@@ -476,18 +478,18 @@ APP_ENV=development
 
     if db_needed {
         let db_env_str = format!(
-            "\n# â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\nDATABASE_URL={}\n",
+            "\n# ── Database ──────────────────────────────────────────────────\nDATABASE_URL={}\n",
             db_url
         );
         env_content.insert_str(
             env_content
-                .find("# â”€â”€ Application")
+                .find("# ── Application")
                 .unwrap_or(env_content.len()),
             &db_env_str,
         );
         env_example_content.insert_str(
             env_example_content
-                .find("# â”€â”€ Application")
+                .find("# ── Application")
                 .unwrap_or(env_example_content.len()),
             &db_env_str,
         );
@@ -495,7 +497,7 @@ APP_ENV=development
 
     if blueprint_selection == 2 || blueprint_selection == 3 {
         let stripe_template = r#"
-# â”€â”€ Stripe Billing (replace with your real keys from stripe.com/dashboard) â”€â”€
+# ── Stripe Billing (replace with your real keys from stripe.com/dashboard) ──
 # STRIPE_SECRET_KEY=sk_test_REPLACE_WITH_YOUR_SECRET_KEY
 # STRIPE_WEBHOOK_SECRET=whsec_REPLACE_WITH_YOUR_WEBHOOK_SECRET
 # STRIPE_PRICE_ID_MONTHLY=price_REPLACE_WITH_YOUR_PRICE_ID
@@ -531,7 +533,7 @@ APP_ENV=development
 
     // Automatically run initial migrations if a database was selected
     if db_needed {
-        println!("\n{}", "ðŸ“¦ Bootstrapping Database...".cyan().bold());
+        println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
         let migrate_success = crate::ui::components::with_spinner(
             "Running initial migrations (this may take a moment to compile)...",
             || {
@@ -548,16 +550,16 @@ APP_ENV=development
         );
 
         if migrate_success {
-            println!("{}", "  âœ… Database tables created successfully.".green());
+            println!("{}", "  ✅ Database tables created successfully.".green());
         } else {
-            println!("{}", "  âš ï¸ Warning: Failed to run initial database migrations. You may need to run `cargo rullst db:migrate` manually.".yellow());
+            println!("{}", "  ⚠️ Warning: Failed to run initial database migrations. You may need to run `cargo rullst db:migrate` manually.".yellow());
         }
     }
 
     if !has_mold && !has_lld {
         println!(
             "\n{}",
-            "âš¡ Rullst Dev Tip: Speed up compile times up to 10x!"
+            "⚡ Rullst Dev Tip: Speed up compile times up to 10x!"
                 .yellow()
                 .bold()
         );
@@ -567,13 +569,13 @@ APP_ENV=development
                 .white()
         );
         if cfg!(windows) {
-            println!("{}", "  ðŸ‘‰ Install LLD: winget install LLVM.LLVM".cyan());
+            println!("{}", "  👉 Install LLD: winget install LLVM.LLVM".cyan());
         } else if cfg!(target_os = "macos") {
-            println!("{}", "  ðŸ‘‰ Install LLD: brew install llvm".cyan());
+            println!("{}", "  👉 Install LLD: brew install llvm".cyan());
         } else {
             println!(
                 "{}",
-                "  ðŸ‘‰ Install Mold: sudo apt install mold (or dnf install mold)".cyan()
+                "  👉 Install Mold: sudo apt install mold (or dnf install mold)".cyan()
             );
         }
         println!(
@@ -583,7 +585,7 @@ APP_ENV=development
     } else {
         println!(
             "\n{}",
-            "ðŸš€ High-performance linker automatically detected and configured!"
+            "🚀 High-performance linker automatically detected and configured!"
                 .green()
                 .bold()
         );
@@ -591,7 +593,7 @@ APP_ENV=development
 
     println!(
         "{}",
-        format!("âœ¨ Project '{}' created successfully!", name)
+        format!("✨ Project '{}' created successfully!", name)
             .green()
             .bold()
     );
@@ -601,7 +603,7 @@ APP_ENV=development
     if docker {
         println!(
             "{}",
-            "\nðŸ³ Docker files generated! To run with Docker:".cyan()
+            "\n🐳 Docker files generated! To run with Docker:".cyan()
         );
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  docker compose up --build".cyan());
@@ -616,7 +618,7 @@ pub fn generate_docker_files(
     db_provider_arg: Option<&str>,
     redis_arg: Option<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("{}", "ðŸ³ Generating Docker files...".cyan().bold());
+    println!("{}", "🐳 Generating Docker files...".cyan().bold());
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let db_provider = match db_provider_arg {
@@ -646,13 +648,13 @@ pub fn generate_docker_files(
 
     // --- Dockerfile (multi-stage, distroless) ---
     let dockerfile = format!(
-        r#"# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        r#"# ══════════════════════════════════════════════════════════════
 # Rullst Production Dockerfile (auto-generated)
-# Multi-stage build: Rust builder â†’ Distroless runtime
+# Multi-stage build: Rust builder → Distroless runtime
 # Final image: ~20MB | Zero CVEs | Ultra-fast cold start
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════
 
-# â”€â”€ Stage 1: Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Stage 1: Builder ─────────────────────────────────────────
 FROM rust:1.96-slim-bookworm AS builder
 WORKDIR /app
 
@@ -669,7 +671,7 @@ RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && carg
 COPY . .
 RUN find src -type f -name "*.rs" -exec touch {{}} + && cargo build --release
 
-# â”€â”€ Stage 2: Runtime â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Stage 2: Runtime ─────────────────────────────────────────
 FROM docker.io/library/debian:bookworm-slim
 WORKDIR /app
 
@@ -691,9 +693,9 @@ CMD ["/app/{project_name}"]
 
     // --- docker-compose.yml ---
     let mut compose = format!(
-        r#"# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        r#"# ══════════════════════════════════════════════════════════════
 # Rullst Docker Compose (auto-generated)
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ══════════════════════════════════════════════════════════════
 
 services:
   app:
@@ -880,9 +882,9 @@ LICENSE
     fs::write(project_path.join("docker-compose.yml"), compose)?;
     fs::write(project_path.join(".dockerignore"), dockerignore)?;
 
-    println!("{}", "  âœ… Dockerfile (multi-stage distroless)".green());
-    println!("{}", "  âœ… docker-compose.yml (Customized)".green());
-    println!("{}", "  âœ… .dockerignore".green());
+    println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
+    println!("{}", "  ✅ docker-compose.yml (Customized)".green());
+    println!("{}", "  ✅ .dockerignore".green());
 
     Ok(())
 }
