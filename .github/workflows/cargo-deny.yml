@@ -16,7 +16,7 @@ jobs:
     name: Check Dependencies (Licenses, Vulnerabilities)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+    - uses: actions/checkout@v4
     
     - name: Install cargo-deny
       uses: EmbarkStudios/cargo-deny-action@8f84122a46a358a27cb0625d85ad60ab436a1b87 # v2
