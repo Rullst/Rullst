@@ -479,6 +479,11 @@ mod tests {
         assert!(masked.contains("****-****-****-5678"));
         assert!(!masked.contains("1234-5678-1234"));
 
+        // Space-separated credit card to catch `replace == with !=` mutant on `c == ' '`
+        let raw_spaces = "Another card 4321 8765 4321 8765 here.";
+        let masked_spaces = mask_pii(raw_spaces);
+        assert!(masked_spaces.contains("**** **** **** 8765"));
+
         // Ensure that too many spaces/hyphens prevents it from being recognized as a single card.
         // This catches the cargo-mutants mutation: replace `+=` with `*=` on `non_digits`.
         let raw_gaps = "1234---5678-1234-5678";
