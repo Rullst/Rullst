@@ -413,7 +413,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                 <meta charset="UTF-8" />
                 <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
                 <script src="https://cdn.tailwindcss.com"></script>
                 <style>
                     "

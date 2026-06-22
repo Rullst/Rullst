@@ -347,7 +347,7 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
                 <meta charset="UTF-8" />
                 <title>"Rullst Academy - Courses"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
                 <style>
                     "
                     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
@@ -416,7 +416,7 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                 <meta charset="UTF-8" />
                 <title>{&course.title}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
                 <style>
                     "
                     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }

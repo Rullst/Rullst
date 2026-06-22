@@ -186,11 +186,23 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
         "Cross-Origin-Resource-Policy",
         header::HeaderValue::from_static("same-site"),
     );
+    headers.insert(
+        "Cross-Origin-Embedder-Policy",
+        header::HeaderValue::from_static("require-corp"),
+    );
+    headers.insert(
+        "Cache-Control",
+        header::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+    );
 
-    if !csp.is_empty() {
-        if let Ok(csp_val) = header::HeaderValue::from_str(&csp) {
-            headers.insert("Content-Security-Policy", csp_val);
-        }
+    let final_csp = if csp.is_empty() {
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data: https:; object-src 'none'".to_string()
+    } else {
+        csp
+    };
+
+    if let Ok(csp_val) = header::HeaderValue::from_str(&final_csp) {
+        headers.insert("Content-Security-Policy", csp_val);
     }
 
     response

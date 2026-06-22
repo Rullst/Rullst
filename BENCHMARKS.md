@@ -1,4 +1,4 @@
-# Rullst Framework: Official Benchmarks & Performance
+# Rullst Framework v2.0.9: Official Benchmarks & Performance (May 2026)
 
 This document records the official performance metrics of the Rullst Framework compared against other web frameworks across different languages and architectures. 
 

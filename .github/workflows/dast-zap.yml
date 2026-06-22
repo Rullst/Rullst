@@ -43,8 +43,17 @@ jobs:
           sleep 15
           curl -s --retry 5 --retry-connrefused http://localhost:3000 > /dev/null
 
+      - name: Generate ZAP Rules to Ignore CDN False Positives
+        run: |
+          mkdir -p .zap
+          # 10055 = CSP unsafe-inline / unsafe-eval (required for Tailwind/HTMX CDNs)
+          # 90003 = Sub Resource Integrity Attribute Missing (dynamic CDN versions)
+          # 10017 = Cross-Domain JavaScript (CDN scripts)
+          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)" > .zap/rules.tsv
+
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: 'http://localhost:3000'
+          rules_file_name: '.zap/rules.tsv'
           fail_action: false # Only warn for now, avoid breaking CI on first run
