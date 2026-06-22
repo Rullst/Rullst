@@ -7,7 +7,7 @@ Rullst is currently in active development. Only the latest major release (v4.x) 
 | Version | Supported          |
 | ------- | ------------------ |
 | 4.x.x   | :white_check_mark: |
-| < 4.0.0 | :x:                |
+| < 4.0.1 | :x:                |
 
 ## Reporting a Vulnerability
 

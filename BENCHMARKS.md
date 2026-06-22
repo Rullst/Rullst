@@ -1,4 +1,4 @@
-# Rullst Framework v2.0.9: Official Benchmarks & Performance (May 2026)
+# Rullst Framework v4.0.1: Official Benchmarks & Performance (May 2026)
 
 This document records the official performance metrics of the Rullst Framework compared against other web frameworks across different languages and architectures. 
 
@@ -55,19 +55,19 @@ While raw throughput is important, Developer Experience (DX) dictates how fast y
 
 | Framework | Language | Raw Performance | Developer Experience | Notes |
 |---|---|---|---|---|
-| **Fiber / Gin**| Go | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | Very fast and simple, but lacks the massive built-in features of a true fullstack framework. |
-| **Loco** | Rust | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Rails-like experience in Rust, excellent speed but slightly steeper learning curve. |
-| **Axum / Actix** | Rust | ⭐⭐⭐⭐⭐ | ⭐⭐ | Absolute maximum speed, but you must build everything (auth, db, routers) from scratch. |
-| **Leptos** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | The king of Rust fullstack WASM frontend, but backend API patterns are tied to SSR. |
-| **Rocket** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Fantastic DX for pure Rust, but less "batteries included" than Rullst or Loco. |
-| **Rullst** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | High-level fullstack APIs, ORM, Auth, and Hot-Reloading with Rust's memory safety. |
-| **Zap** | Zig | ⭐⭐⭐ | ⭐ | Extremely low-level C-like performance, but almost non-existent ecosystem/DX for web. |
-| **Spring Boot**| Java | ⭐⭐⭐ | ⭐⭐⭐ | Enterprise standard, decent speed, but heavy memory footprint and boilerplate. |
-| **Ruby on Rails** | Ruby | ⭐⭐ | ⭐⭐⭐⭐⭐ | The original "batteries included" framework. Beautiful DX, but scales poorly under high load. |
-| **NestJS** | JS/TS | ⭐⭐ | ⭐⭐⭐⭐ | Beautiful architecture (Angular-like), but heavily bottlenecked by Node.js single thread under load. |
-| **Django** | Python | ⭐ | ⭐⭐⭐⭐⭐ | Great "batteries included" framework, but heavily bottlenecks under high load. |
-| **Laravel** | PHP | ⭐ | ⭐⭐⭐⭐⭐ | Incredible ecosystem and DX, but poor raw throughput under high concurrency. |
-| **Next.js** | JS/TS | ⭐ | ⭐⭐⭐⭐ | Fantastic for frontend SSR, but backend API routes are very slow under load. |
+| **Fiber / Gin**| Go | â­â­â­â­â­ | â­â­â­ | Very fast and simple, but lacks the massive built-in features of a true fullstack framework. |
+| **Loco** | Rust | â­â­â­â­â­ | â­â­â­â­ | Rails-like experience in Rust, excellent speed but slightly steeper learning curve. |
+| **Axum / Actix** | Rust | â­â­â­â­â­ | â­â­ | Absolute maximum speed, but you must build everything (auth, db, routers) from scratch. |
+| **Leptos** | Rust | â­â­â­â­ | â­â­â­â­ | The king of Rust fullstack WASM frontend, but backend API patterns are tied to SSR. |
+| **Rocket** | Rust | â­â­â­â­ | â­â­â­â­ | Fantastic DX for pure Rust, but less "batteries included" than Rullst or Loco. |
+| **Rullst** | Rust | â­â­â­â­ | â­â­â­â­â­ | High-level fullstack APIs, ORM, Auth, and Hot-Reloading with Rust's memory safety. |
+| **Zap** | Zig | â­â­â­ | â­ | Extremely low-level C-like performance, but almost non-existent ecosystem/DX for web. |
+| **Spring Boot**| Java | â­â­â­ | â­â­â­ | Enterprise standard, decent speed, but heavy memory footprint and boilerplate. |
+| **Ruby on Rails** | Ruby | â­â­ | â­â­â­â­â­ | The original "batteries included" framework. Beautiful DX, but scales poorly under high load. |
+| **NestJS** | JS/TS | â­â­ | â­â­â­â­ | Beautiful architecture (Angular-like), but heavily bottlenecked by Node.js single thread under load. |
+| **Django** | Python | â­ | â­â­â­â­â­ | Great "batteries included" framework, but heavily bottlenecks under high load. |
+| **Laravel** | PHP | â­ | â­â­â­â­â­ | Incredible ecosystem and DX, but poor raw throughput under high concurrency. |
+| **Next.js** | JS/TS | â­ | â­â­â­â­ | Fantastic for frontend SSR, but backend API routes are very slow under load. |
 
 ---
 
@@ -76,10 +76,10 @@ While raw throughput is important, Developer Experience (DX) dictates how fast y
 > [!TIP]
 > Measured using `Criterion.rs`, testing the CPU time required to render a complex HTML layout with dynamic list loops.
 
-- **Rullst (`html!` macro)**: ~1.11 µs
-- **Tera Template Engine**: ~2.07 µs
-- **Dioxus (Virtual DOM)**: ~4.72 µs
-- **Leptos (Virtual DOM)**: ~9.54 µs
+- **Rullst (`html!` macro)**: ~1.11 Âµs
+- **Tera Template Engine**: ~2.07 Âµs
+- **Dioxus (Virtual DOM)**: ~4.72 Âµs
+- **Leptos (Virtual DOM)**: ~9.54 Âµs
 
 ### Why Rullst Excels at HTML
 Because Rullst's `html!` macro compiles directly to zero-allocation `String` concatenations at compile-time, it completely bypasses the overhead of creating Virtual DOM trees in memory or parsing text templates at runtime. If your application relies heavily on returning HTMX components or traditional Server-Side Rendered views, Rullst provides unmatched latency.
@@ -89,4 +89,4 @@ Because Rullst's `html!` macro compiles directly to zero-allocation `String` con
 ## Final Verdict: The Best of Both Worlds
 If your goal is to build an API that does absolutely nothing but return a string 120,000 times per second, use **Axum**, **Actix-web**, or **Fiber**. 
 
-If your goal is to build a full-fledged, secure, and maintainable SaaS product with databases, queues, AI integrations, Hot-Reloading, and an Auto-CMS in a matter of days—while still comfortably supporting over 10,000 requests per second—**Rullst** is your framework.
+If your goal is to build a full-fledged, secure, and maintainable SaaS product with databases, queues, AI integrations, Hot-Reloading, and an Auto-CMS in a matter of daysâ€”while still comfortably supporting over 10,000 requests per secondâ€”**Rullst** is your framework.
