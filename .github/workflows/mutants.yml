@@ -18,10 +18,10 @@ jobs:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
         total: [8]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants
@@ -32,7 +32,7 @@ jobs:
         
       - name: Archive Mutants Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mutants-report-shard-${{ matrix.shard }}
           path: mutants.out/
