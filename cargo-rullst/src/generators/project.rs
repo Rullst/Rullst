@@ -114,7 +114,7 @@ pub fn create_new_project(
             "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)".to_string(),
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("🧭 Select a Starter Blueprint")
+            .with_prompt("👉 Select a Starter Blueprint")
             .default(0)
             .items(&blueprint_choices)
             .interact()?;
