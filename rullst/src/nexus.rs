@@ -1802,6 +1802,17 @@ mod tests {
         assert_eq!(field_kind_sql(&FieldKind::Number), "INTEGER");
         assert_eq!(field_kind_sql(&FieldKind::Text), "TEXT");
         assert_eq!(field_kind_sql(&FieldKind::Boolean), "INTEGER");
+        assert_eq!(field_kind_sql(&FieldKind::ForeignKey{table: "".into(), label_col: "".into()}), "INTEGER");
+        assert_eq!(field_kind_sql(&FieldKind::Date), "TEXT");
+        assert_eq!(field_kind_sql(&FieldKind::DateTime), "TEXT");
+        assert_eq!(field_kind_sql(&FieldKind::Json), "TEXT");
+    }
+
+    #[test]
+    fn test_field_kind_label() {
+        assert_eq!(field_kind_label(&FieldKind::Url), "url");
+        assert_eq!(field_kind_label(&FieldKind::Json), "json");
+        assert_eq!(field_kind_label(&FieldKind::Text), "text");
     }
 
     #[test]
@@ -1815,6 +1826,8 @@ mod tests {
             field_kind_input_type(&FieldKind::DateTime),
             "datetime-local"
         );
+        assert_eq!(field_kind_input_type(&FieldKind::Url), "url");
+        assert_eq!(field_kind_input_type(&FieldKind::ForeignKey{table: "".into(), label_col: "".into()}), "select"); 
     }
 
     #[tokio::test]
@@ -1940,12 +1953,99 @@ mod tests {
     fn test_mock_ai_response_list() {
         let resp = generate_mock_ai_response("list all users", "");
         assert!(resp.contains("SELECT"));
+        let resp2 = generate_mock_ai_response("show me the records", "");
+        assert!(resp2.contains("SELECT"));
     }
 
     #[test]
     fn test_mock_ai_response_count() {
         let resp = generate_mock_ai_response("how many posts are there?", "");
         assert!(resp.contains("COUNT"));
+        let resp2 = generate_mock_ai_response("quantos usuários temos?", "");
+        assert!(resp2.contains("COUNT"));
+    }
+
+    #[test]
+    fn test_build_table_query() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "👤",
+            pk: "id",
+            fields: vec![],
+        };
+        let visible_fields = vec![];
+        let (sql, binds) = build_table_query(&entry, &visible_fields, "", 1);
+        assert_eq!(sql, "SELECT * FROM users ORDER BY id DESC LIMIT 20 OFFSET 0");
+        assert!(binds.is_empty());
+
+        let f = FieldMeta {
+            name: "email",
+            label: "Email",
+            kind: FieldKind::Email,
+            hidden: false,
+            readonly: false,
+        };
+        let visible_fields = vec![&f];
+        let (sql2, binds2) = build_table_query(&entry, &visible_fields, "test", 2);
+        assert!(sql2.contains("email LIKE ?")); // Assuming SQLite by default
+        assert!(sql2.contains("LIMIT 20 OFFSET 20"));
+        assert_eq!(binds2.len(), 1);
+        assert_eq!(binds2[0], "%test%");
+    }
+
+    #[tokio::test]
+    async fn test_render_form_fields_html_all_kinds() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "👤",
+            pk: "id",
+            fields: vec![
+                FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: false, readonly: true },
+                FieldMeta { name: "active", label: "Active", kind: FieldKind::Boolean, hidden: false, readonly: false },
+                FieldMeta { name: "email", label: "Email", kind: FieldKind::Email, hidden: false, readonly: false },
+                FieldMeta { name: "dob", label: "DOB", kind: FieldKind::Date, hidden: false, readonly: false },
+            ],
+        };
+        let state = NexusState {
+            registry: std::sync::Arc::new(vec![entry.clone()]),
+            brand: std::sync::Arc::new("Test App".to_string()),
+            db_url: std::sync::Arc::new(None),
+        };
+        let mut data = std::collections::HashMap::new();
+        data.insert("id".to_string(), "42".to_string());
+        data.insert("active".to_string(), "true".to_string());
+        
+        let html = render_form_fields_html(&state, &entry, &data).await;
+        assert!(html.contains("value=\"42\""));
+        assert!(html.contains("readonly"));
+        assert!(html.contains("checkbox"));
+        assert!(html.contains("checked"));
+        assert!(html.contains("type=\"email\""));
+        assert!(html.contains("type=\"date\""));
+    }
+
+    #[tokio::test]
+    async fn test_render_table_view_pagination() {
+        init_test_db().await;
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "👤",
+            pk: "id",
+            fields: TestUser::nexus_fields(),
+        };
+        let state = NexusState {
+            registry: std::sync::Arc::new(vec![entry.clone()]),
+            brand: std::sync::Arc::new("Test App".to_string()),
+            db_url: std::sync::Arc::new(None),
+        };
+        let html = render_table_view(&state, &entry, 2, "").await;
+        assert!(html.contains("&larr; Prev")); 
+        
+        let html2 = render_table_view(&state, &entry, 1, "").await;
+        assert!(html2.contains("<span></span>"));
     }
 
     #[test]

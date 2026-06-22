@@ -529,5 +529,91 @@ mod tests {
             SubscriptionStatus::parse_status("trialing"),
             SubscriptionStatus::Trialing
         );
+        // Added for mutants
+        assert_eq!(
+            SubscriptionStatus::parse_status("past_due"),
+            SubscriptionStatus::PastDue
+        );
+        assert_eq!(
+            SubscriptionStatus::parse_status("unpaid"),
+            SubscriptionStatus::Unpaid
+        );
+        assert_eq!(
+            SubscriptionStatus::parse_status("paused"),
+            SubscriptionStatus::Paused
+        );
+        assert_eq!(
+            SubscriptionStatus::parse_status("unknown_garbage"),
+            SubscriptionStatus::Unpaid
+        );
+    }
+
+    #[test]
+    fn test_subscription_status_as_str() {
+        assert_eq!(SubscriptionStatus::Active.as_str(), "active");
+        assert_eq!(SubscriptionStatus::Canceled.as_str(), "canceled");
+        assert_eq!(SubscriptionStatus::PastDue.as_str(), "past_due");
+        assert_eq!(SubscriptionStatus::Unpaid.as_str(), "unpaid");
+        assert_eq!(SubscriptionStatus::Trialing.as_str(), "trialing");
+        assert_eq!(SubscriptionStatus::Paused.as_str(), "paused");
+    }
+
+    #[test]
+    fn test_hex_decode() {
+        assert_eq!(hex::decode("00010a0f").unwrap(), vec![0x00, 0x01, 0x0a, 0x0f]);
+        assert_eq!(hex::decode("ffFF").unwrap(), vec![0xff, 0xff]);
+        assert!(hex::decode("zz").is_err());
+    }
+
+    #[test]
+    fn test_stripe_signature_verification() {
+        let provider = StripeProvider::new("mock".to_string(), "secret".to_string());
+        
+        // Missing stripe-signature header
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing stripe-signature header");
+
+        // Invalid signature format
+        headers.insert("stripe-signature".to_string(), "invalid_format".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(res2.unwrap_err(), "Invalid Stripe-Signature header format");
+
+        // Valid timestamp but invalid hex characters
+        headers.insert("stripe-signature".to_string(), "t=123,v1=not_hex!!".to_string());
+        let res3 = provider.handle_webhook(b"{}", &headers);
+        assert!(res3.is_err());
+        assert_eq!(res3.unwrap_err(), "Invalid hex signature: Invalid hex character");
+        
+        // Hex decodes but doesn't match
+        headers.insert("stripe-signature".to_string(), "t=123,v1=deadbeef".to_string());
+        let res4 = provider.handle_webhook(b"{}", &headers);
+        assert!(res4.is_err());
+        assert_eq!(res4.unwrap_err(), "Stripe signature verification failed");
+    }
+
+    #[test]
+    fn test_lemonsqueezy_signature_verification() {
+        let provider = LemonSqueezyProvider::new("mock".to_string(), "secret".to_string());
+        
+        // Missing x-signature
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing X-Signature header");
+
+        // Invalid signature hex
+        headers.insert("x-signature".to_string(), "invalid".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(res2.unwrap_err(), "Invalid hex signature: Invalid hex character");
+        
+        // Hex decodes but doesn't match
+        headers.insert("x-signature".to_string(), "deadbeef".to_string());
+        let res3 = provider.handle_webhook(b"{}", &headers);
+        assert!(res3.is_err());
+        assert_eq!(res3.unwrap_err(), "LemonSqueezy signature verification failed");
     }
 }

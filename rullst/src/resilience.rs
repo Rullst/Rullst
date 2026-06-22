@@ -447,4 +447,77 @@ mod tests {
         // 3rd token should fail (out of tokens)
         assert!(!limiter.check_and_consume("test_key"));
     }
+    #[tokio::test]
+    async fn test_traffic_shield_config_builders() {
+        let config = TrafficShieldConfig::new()
+            .with_max_event_loop_lag(Duration::from_millis(999))
+            .with_max_db_latency(Duration::from_millis(888))
+            .with_max_active_requests(777);
+
+        assert_eq!(config.max_event_loop_lag, Duration::from_millis(999));
+        assert_eq!(config.max_db_latency, Duration::from_millis(888));
+        assert_eq!(config.max_active_requests, 777);
+    }
+
+    #[tokio::test]
+    async fn test_check_and_consume_refill() {
+        let config = RateLimitConfig::per_second(2.0); // max 2, refill 2/s
+        let limiter = RateLimiter::new(config);
+        
+        assert!(limiter.check_and_consume("test_key"));
+        assert!(limiter.check_and_consume("test_key"));
+        assert!(!limiter.check_and_consume("test_key")); // 0 tokens left
+
+        // wait for refill
+        tokio::time::sleep(Duration::from_millis(600)).await; // 0.6s * 2 = 1.2 tokens
+        assert!(limiter.check_and_consume("test_key"));
+        assert!(!limiter.check_and_consume("test_key")); // Should only be 1 token restored
+    }
+
+    #[tokio::test]
+    async fn test_backpressure_middleware_critical() {
+        use axum::{routing::get, Router};
+        use tower::ServiceExt;
+        
+        let config = TrafficShieldConfig::new().with_max_active_requests(0); // instant shed
+        let shield = TrafficShield::new(config);
+        
+        let app = Router::new()
+            .route("/", get(|| async { "OK" }))
+            .layer(axum::middleware::from_fn(move |req, next| {
+                let s = shield.clone();
+                async move { backpressure_middleware(s, req, next).await }
+            }));
+            
+        let req = axum::http::Request::builder().uri("/").body(axum::body::Body::empty()).unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn test_backpressure_middleware_moderate() {
+        use axum::{routing::get, Router};
+        use tower::ServiceExt;
+        use std::time::Instant;
+        
+        let config = TrafficShieldConfig::new()
+            .with_max_active_requests(100);
+        let shield = TrafficShield::new(config);
+        shield.active_requests.store(50, std::sync::atomic::Ordering::SeqCst); // moderate (>= max/2)
+        
+        let app = Router::new()
+            .route("/", get(|| async { "OK" }))
+            .layer(axum::middleware::from_fn(move |req, next| {
+                let s = shield.clone();
+                async move { backpressure_middleware(s, req, next).await }
+            }));
+            
+        let req = axum::http::Request::builder().uri("/").body(axum::body::Body::empty()).unwrap();
+        let start = Instant::now();
+        let res = app.oneshot(req).await.unwrap();
+        let elapsed = start.elapsed();
+        
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
+        assert!(elapsed >= Duration::from_millis(25)); // moderate load causes 25ms sleep
+    }
 }

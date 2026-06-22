@@ -333,4 +333,44 @@ mod tests {
         assert_eq!(results2.len(), 1);
         assert_eq!(results2[0].1.id, "doc2");
     }
+
+    #[tokio::test]
+    async fn test_ai_providers_network_errors() {
+        // These tests verify that network failures or invalid API keys correctly propagate as Err()
+        // and kill mutants that hardcode Ok() returns.
+        
+        let openai = providers::openai::OpenAiProvider::new("fake");
+        assert!(openai.prompt("test").await.is_err());
+        assert!(openai.chat(&[Message::user("test")]).await.is_err());
+        assert!(openai.embed("test").await.is_err());
+
+        let anthropic = providers::anthropic::AnthropicProvider::new("fake");
+        assert!(anthropic.prompt("test").await.is_err());
+        assert!(anthropic.chat(&[Message::user("test")]).await.is_err());
+        assert!(anthropic.embed("test").await.is_err());
+
+        let gemini = providers::gemini::GeminiProvider::new("fake");
+        assert!(gemini.prompt("test").await.is_err());
+        assert!(gemini.chat(&[Message::user("test")]).await.is_err());
+        assert!(gemini.embed("test").await.is_err());
+
+        let ollama = providers::ollama::OllamaProvider::new("http://127.0.0.1:59999", "fake");
+        assert!(ollama.prompt("test").await.is_err());
+        assert!(ollama.chat(&[Message::user("test")]).await.is_err());
+        assert!(ollama.embed("test").await.is_err());
+        
+        // AiClient wrapper tests
+        let client = AiClient::new(openai);
+        assert!(client.prompt("test").await.is_err());
+        assert!(client.chat().user("test").send().await.is_err());
+        assert!(client.embed("test").await.is_err());
+    }
+
+    #[test]
+    fn test_ai_error_formatting() {
+        let err = AiError::ApiError("test API".into());
+        assert_eq!(err.to_string(), "API error: test API");
+        let err2 = AiError::ConfigError("test conf".into());
+        assert_eq!(err2.to_string(), "Configuration error: test conf");
+    }
 }
