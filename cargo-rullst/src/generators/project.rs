@@ -58,39 +58,37 @@ pub fn create_new_project(
 
     let name = match name_arg {
         Some(n) => n.to_string(),
-        None => {
-            loop {
-                let val: String = dialoguer::Input::with_theme(&theme)
+        None => loop {
+            let val: String = dialoguer::Input::with_theme(&theme)
                     .with_prompt("ðŸš€ What's the New App Name? (lowercase, no spaces, must start with a letter)")
                     .interact_text()?;
-                let val_trim = val.trim();
-                if val_trim.is_empty() {
-                    continue;
-                }
-                if val_trim.contains(' ') {
-                    println!(
-                        "{}",
-                        "âŒ Spaces are not allowed in the project name. Please try again.".red()
-                    );
-                    continue;
-                }
-                if val_trim.chars().next().unwrap().is_ascii_digit() {
-                    println!(
-                        "{}",
-                        "âŒ The project name cannot start with a number. Please try again.".red()
-                    );
-                    continue;
-                }
-                if !val_trim
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-                {
-                    println!("{}", "âŒ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
-                    continue;
-                }
-                break val_trim.to_string();
+            let val_trim = val.trim();
+            if val_trim.is_empty() {
+                continue;
             }
-        }
+            if val_trim.contains(' ') {
+                println!(
+                    "{}",
+                    "âŒ Spaces are not allowed in the project name. Please try again.".red()
+                );
+                continue;
+            }
+            if val_trim.chars().next().unwrap().is_ascii_digit() {
+                println!(
+                    "{}",
+                    "âŒ The project name cannot start with a number. Please try again.".red()
+                );
+                continue;
+            }
+            if !val_trim
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+            {
+                println!("{}", "âŒ Only letters, numbers, underscores, and dashes are allowed. Please try again.".red());
+                continue;
+            }
+            break val_trim.to_string();
+        },
     };
 
     let mut api = api_arg;
