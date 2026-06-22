@@ -36,14 +36,18 @@ jobs:
           echo "APP_ENV=production" >> zap_test/.env
           echo "DATABASE_URL=sqlite://db.sqlite3" >> zap_test/.env
 
+      - name: Build Rullst Server
+        working-directory: zap_test
+        run: cargo build
+
       - name: Run Rullst Server in background
         working-directory: zap_test
         run: |
-          # We use cargo run to compile and run the backend
+          # We use cargo run to start the backend (compilation is already done)
           cargo run &
           # Wait for the server to be ready on port 3000
-          sleep 15
-          curl -s --retry 5 --retry-connrefused http://localhost:3000 > /dev/null
+          sleep 5
+          curl -s --retry 10 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
 
       - name: Generate ZAP Rules to Ignore CDN False Positives
         run: |
