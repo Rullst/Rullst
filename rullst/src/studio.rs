@@ -612,7 +612,7 @@ mod tests {
         assert_eq!(sanitize_identifier("valid_table_123"), "valid_table_123");
         assert_eq!(sanitize_identifier("invalid-table!@#"), "invalidtable");
         assert_eq!(sanitize_identifier("drop table users;--"), "droptableusers");
-        
+
         // Test length limit 64
         let long_id = "a".repeat(100);
         assert_eq!(sanitize_identifier(&long_id).len(), 64);
@@ -623,11 +623,11 @@ mod tests {
         let cols = vec!["id".to_string(), "name".to_string()];
         let pks = vec![0];
         let html = build_headers_html(&cols, &pks);
-        
+
         assert!(html.contains("id"));
         assert!(html.contains("name"));
         assert!(html.contains("PK")); // id is PK
-        
+
         let cols2 = vec!["created_at".to_string()];
         let html2 = build_headers_html(&cols2, &[]);
         assert!(html2.contains("created_at"));
@@ -638,14 +638,14 @@ mod tests {
     fn test_studio_layout() {
         let tables = vec!["users".to_string(), "posts".to_string()];
         let content = "<h1>Main Content</h1>".to_string();
-        
+
         let html = studio_layout(content, Some("users"), &tables);
-        
+
         assert!(html.contains("Main Content"));
         assert!(html.contains("users"));
         assert!(html.contains("posts"));
         assert!(html.contains("bg-gradient-to-r from-sky-500/10")); // Active class should be applied
-        
+
         let inactive_html = studio_layout("content".into(), Some("nonexistent"), &tables);
         assert!(inactive_html.contains("users"));
         assert!(inactive_html.contains("hover:text-slate-200")); // Inactive class

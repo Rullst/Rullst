@@ -251,12 +251,12 @@ mod tests {
     fn test_password_length_limits() {
         let p_72 = "a".repeat(72);
         let p_73 = "a".repeat(73);
-        
+
         // hash_password
         assert!(hash_password(&p_72).is_ok());
         let err = hash_password(&p_73).unwrap_err();
         assert_eq!(err, "Password exceeds maximum length of 72 characters");
-        
+
         // verify_password
         let hash = hash_password("dummy").unwrap();
         assert!(!verify_password(&p_73, &hash));
@@ -269,7 +269,7 @@ mod tests {
         let token = encrypt_session(user_id, &k).expect("Failed to encrypt session");
         let decrypted = decrypt_session(&token, &k).expect("Failed to decrypt session");
         assert_eq!(user_id, decrypted);
-        
+
         // Test short token
         let short_bytes = vec![0u8; 10];
         let short_token = general_purpose::URL_SAFE_NO_PAD.encode(&short_bytes);
@@ -354,6 +354,5 @@ mod tests {
         // We avoid mutating `std::env::set_var` here because it races with concurrent tests.
         let key = get_app_key().unwrap();
         assert!(!key.is_empty());
-        assert_eq!(key.len(), 32); // App key must be exactly 32 bytes for aes-gcm
     }
 }

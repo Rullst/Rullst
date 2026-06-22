@@ -338,7 +338,7 @@ mod tests {
     async fn test_ai_providers_network_errors() {
         // These tests verify that network failures or invalid API keys correctly propagate as Err()
         // and kill mutants that hardcode Ok() returns.
-        
+
         let openai = providers::openai::OpenAiProvider::new("fake");
         assert!(openai.prompt("test").await.is_err());
         assert!(openai.chat(&[Message::user("test")]).await.is_err());
@@ -358,7 +358,7 @@ mod tests {
         assert!(ollama.prompt("test").await.is_err());
         assert!(ollama.chat(&[Message::user("test")]).await.is_err());
         assert!(ollama.embed("test").await.is_err());
-        
+
         // AiClient wrapper tests
         let client = AiClient::new(openai);
         assert!(client.prompt("test").await.is_err());

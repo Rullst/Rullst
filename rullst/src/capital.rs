@@ -560,7 +560,10 @@ mod tests {
 
     #[test]
     fn test_hex_decode() {
-        assert_eq!(hex::decode("00010a0f").unwrap(), vec![0x00, 0x01, 0x0a, 0x0f]);
+        assert_eq!(
+            hex::decode("00010a0f").unwrap(),
+            vec![0x00, 0x01, 0x0a, 0x0f]
+        );
         assert_eq!(hex::decode("ffFF").unwrap(), vec![0xff, 0xff]);
         assert!(hex::decode("zz").is_err());
     }
@@ -568,7 +571,7 @@ mod tests {
     #[test]
     fn test_stripe_signature_verification() {
         let provider = StripeProvider::new("mock".to_string(), "secret".to_string());
-        
+
         // Missing stripe-signature header
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
@@ -582,13 +585,22 @@ mod tests {
         assert_eq!(res2.unwrap_err(), "Invalid Stripe-Signature header format");
 
         // Valid timestamp but invalid hex characters
-        headers.insert("stripe-signature".to_string(), "t=123,v1=not_hex!!".to_string());
+        headers.insert(
+            "stripe-signature".to_string(),
+            "t=123,v1=not_hex!!".to_string(),
+        );
         let res3 = provider.handle_webhook(b"{}", &headers);
         assert!(res3.is_err());
-        assert_eq!(res3.unwrap_err(), "Invalid hex signature: Invalid hex character");
-        
+        assert_eq!(
+            res3.unwrap_err(),
+            "Invalid hex signature: Invalid hex character"
+        );
+
         // Hex decodes but doesn't match
-        headers.insert("stripe-signature".to_string(), "t=123,v1=deadbeef".to_string());
+        headers.insert(
+            "stripe-signature".to_string(),
+            "t=123,v1=deadbeef".to_string(),
+        );
         let res4 = provider.handle_webhook(b"{}", &headers);
         assert!(res4.is_err());
         assert_eq!(res4.unwrap_err(), "Stripe signature verification failed");
@@ -597,7 +609,7 @@ mod tests {
     #[test]
     fn test_lemonsqueezy_signature_verification() {
         let provider = LemonSqueezyProvider::new("mock".to_string(), "secret".to_string());
-        
+
         // Missing x-signature
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
@@ -608,12 +620,18 @@ mod tests {
         headers.insert("x-signature".to_string(), "invalid".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(res2.unwrap_err(), "Invalid hex signature: Invalid hex character");
-        
+        assert_eq!(
+            res2.unwrap_err(),
+            "Invalid hex signature: Invalid hex character"
+        );
+
         // Hex decodes but doesn't match
         headers.insert("x-signature".to_string(), "deadbeef".to_string());
         let res3 = provider.handle_webhook(b"{}", &headers);
         assert!(res3.is_err());
-        assert_eq!(res3.unwrap_err(), "LemonSqueezy signature verification failed");
+        assert_eq!(
+            res3.unwrap_err(),
+            "LemonSqueezy signature verification failed"
+        );
     }
 }

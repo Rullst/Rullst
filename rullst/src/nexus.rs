@@ -1802,7 +1802,13 @@ mod tests {
         assert_eq!(field_kind_sql(&FieldKind::Number), "INTEGER");
         assert_eq!(field_kind_sql(&FieldKind::Text), "TEXT");
         assert_eq!(field_kind_sql(&FieldKind::Boolean), "INTEGER");
-        assert_eq!(field_kind_sql(&FieldKind::ForeignKey{table: "".into(), label_col: "".into()}), "INTEGER");
+        assert_eq!(
+            field_kind_sql(&FieldKind::ForeignKey {
+                table: "".into(),
+                label_col: "".into()
+            }),
+            "INTEGER"
+        );
         assert_eq!(field_kind_sql(&FieldKind::Date), "TEXT");
         assert_eq!(field_kind_sql(&FieldKind::DateTime), "TEXT");
         assert_eq!(field_kind_sql(&FieldKind::Json), "TEXT");
@@ -1827,7 +1833,13 @@ mod tests {
             "datetime-local"
         );
         assert_eq!(field_kind_input_type(&FieldKind::Url), "url");
-        assert_eq!(field_kind_input_type(&FieldKind::ForeignKey{table: "".into(), label_col: "".into()}), "select"); 
+        assert_eq!(
+            field_kind_input_type(&FieldKind::ForeignKey {
+                table: "".into(),
+                label_col: "".into()
+            }),
+            "select"
+        );
     }
 
     #[tokio::test]
@@ -1976,7 +1988,10 @@ mod tests {
         };
         let visible_fields = vec![];
         let (sql, binds) = build_table_query(&entry, &visible_fields, "", 1);
-        assert_eq!(sql, "SELECT * FROM users ORDER BY id DESC LIMIT 20 OFFSET 0");
+        assert_eq!(
+            sql,
+            "SELECT * FROM users ORDER BY id DESC LIMIT 20 OFFSET 0"
+        );
         assert!(binds.is_empty());
 
         let f = FieldMeta {
@@ -2002,10 +2017,34 @@ mod tests {
             icon: "👤",
             pk: "id",
             fields: vec![
-                FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: false, readonly: true },
-                FieldMeta { name: "active", label: "Active", kind: FieldKind::Boolean, hidden: false, readonly: false },
-                FieldMeta { name: "email", label: "Email", kind: FieldKind::Email, hidden: false, readonly: false },
-                FieldMeta { name: "dob", label: "DOB", kind: FieldKind::Date, hidden: false, readonly: false },
+                FieldMeta {
+                    name: "id",
+                    label: "ID",
+                    kind: FieldKind::Number,
+                    hidden: false,
+                    readonly: true,
+                },
+                FieldMeta {
+                    name: "active",
+                    label: "Active",
+                    kind: FieldKind::Boolean,
+                    hidden: false,
+                    readonly: false,
+                },
+                FieldMeta {
+                    name: "email",
+                    label: "Email",
+                    kind: FieldKind::Email,
+                    hidden: false,
+                    readonly: false,
+                },
+                FieldMeta {
+                    name: "dob",
+                    label: "DOB",
+                    kind: FieldKind::Date,
+                    hidden: false,
+                    readonly: false,
+                },
             ],
         };
         let state = NexusState {
@@ -2016,7 +2055,7 @@ mod tests {
         let mut data = std::collections::HashMap::new();
         data.insert("id".to_string(), "42".to_string());
         data.insert("active".to_string(), "true".to_string());
-        
+
         let html = render_form_fields_html(&state, &entry, &data).await;
         assert!(html.contains("value=\"42\""));
         assert!(html.contains("readonly"));
@@ -2042,8 +2081,8 @@ mod tests {
             db_url: std::sync::Arc::new(None),
         };
         let html = render_table_view(&state, &entry, 2, "").await;
-        assert!(html.contains("&larr; Prev")); 
-        
+        assert!(html.contains("&larr; Prev"));
+
         let html2 = render_table_view(&state, &entry, 1, "").await;
         assert!(html2.contains("<span></span>"));
     }

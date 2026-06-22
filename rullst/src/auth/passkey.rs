@@ -671,30 +671,48 @@ mod tests {
     fn test_parse_cbor_integer() {
         // info < 24
         let (val, _) = parse_cbor(&[0x05]).unwrap();
-        if let CborValue::Integer(i) = val { assert_eq!(i, 5); } else { panic!(); }
+        if let CborValue::Integer(i) = val {
+            assert_eq!(i, 5);
+        } else {
+            panic!();
+        }
         // info 24 (1 byte)
         let (val, _) = parse_cbor(&[0x18, 0x1A]).unwrap();
-        if let CborValue::Integer(i) = val { assert_eq!(i, 26); } else { panic!(); }
+        if let CborValue::Integer(i) = val {
+            assert_eq!(i, 26);
+        } else {
+            panic!();
+        }
         // info 25 (2 bytes)
         let (val, _) = parse_cbor(&[0x19, 0x01, 0x00]).unwrap();
-        if let CborValue::Integer(i) = val { assert_eq!(i, 256); } else { panic!(); }
+        if let CborValue::Integer(i) = val {
+            assert_eq!(i, 256);
+        } else {
+            panic!();
+        }
         // Negative integer
         let (val, _) = parse_cbor(&[0x25]).unwrap();
-        if let CborValue::Integer(i) = val { assert_eq!(i, -6); } else { panic!(); }
+        if let CborValue::Integer(i) = val {
+            assert_eq!(i, -6);
+        } else {
+            panic!();
+        }
     }
 
     #[test]
     fn test_finish_register_mismatches() {
         let config = PasskeyConfig::new("App", "app.com", "https://app.com");
         let auth = PasskeyAuth::new(&config).unwrap();
-        
+
         let client_data_json = serde_json::json!({
             "challenge": "correct_challenge",
             "origin": "https://app.com",
             "type": "webauthn.create"
-        }).to_string();
-        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
-        
+        })
+        .to_string();
+        let client_data_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+
         let mut cred = RegisterPublicKeyCredential {
             id: "id".into(),
             raw_id: "raw".into(),
@@ -702,7 +720,7 @@ mod tests {
             response: AuthenticatorAttestationResponse {
                 attestation_object: "dummy".into(),
                 client_data_json: client_data_b64.clone(),
-            }
+            },
         };
 
         // Challenge mismatch
@@ -714,9 +732,11 @@ mod tests {
             "challenge": "correct_challenge",
             "origin": "https://wrong.com",
             "type": "webauthn.create"
-        }).to_string();
-        cred.response.client_data_json = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
-        
+        })
+        .to_string();
+        cred.response.client_data_json =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
+
         let res2 = auth.finish_register(&cred, "correct_challenge");
         assert_eq!(res2.unwrap_err(), "Origin mismatch");
     }
@@ -725,14 +745,16 @@ mod tests {
     fn test_finish_authenticate_mismatches() {
         let config = PasskeyConfig::new("App", "app.com", "https://app.com");
         let auth = PasskeyAuth::new(&config).unwrap();
-        
+
         let client_data_json = serde_json::json!({
             "challenge": "correct_challenge",
             "origin": "https://app.com",
             "type": "webauthn.get"
-        }).to_string();
-        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
-        
+        })
+        .to_string();
+        let client_data_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+
         let mut cred = PublicKeyCredential {
             id: "id".into(),
             raw_id: "raw".into(),
@@ -741,10 +763,14 @@ mod tests {
                 authenticator_data: "dummy".into(),
                 signature: "dummy".into(),
                 client_data_json: client_data_b64.clone(),
-            }
+            },
         };
 
-        let pk = Passkey { credential_id: vec![], public_key: vec![], sign_count: 0 };
+        let pk = Passkey {
+            credential_id: vec![],
+            public_key: vec![],
+            sign_count: 0,
+        };
 
         // Challenge mismatch
         let res = auth.finish_authenticate(&cred, "wrong_challenge", pk.clone());
@@ -755,9 +781,11 @@ mod tests {
             "challenge": "correct_challenge",
             "origin": "https://wrong.com",
             "type": "webauthn.get"
-        }).to_string();
-        cred.response.client_data_json = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
-        
+        })
+        .to_string();
+        cred.response.client_data_json =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
+
         let res2 = auth.finish_authenticate(&cred, "correct_challenge", pk);
         assert_eq!(res2.unwrap_err(), "Origin mismatch");
     }
