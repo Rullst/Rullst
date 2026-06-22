@@ -27,7 +27,6 @@ jobs:
 
       - name: Run cargo-llvm-cov
         run: |
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex "examples/|cargo-rullst/src/blueprints/" --html
           cargo llvm-cov --all-features --workspace --ignore-filename-regex "examples/|cargo-rullst/src/blueprints/" --lcov --output-path lcov.info
       
       - name: Upload coverage to Codecov
@@ -36,9 +35,3 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Archive Code Coverage HTML Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: coverage-report
-          path: target/llvm-cov/html
