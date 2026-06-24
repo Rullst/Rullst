@@ -27,7 +27,7 @@ jobs:
 
       - name: Run cargo-llvm-cov
         run: |
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex "examples/|cargo-rullst/" --lcov --output-path lcov.info
+          cargo llvm-cov --all-features --workspace --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/" --lcov --output-path lcov.info
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@04b047e8bb82a0c002c8312c1c880fbc6a999d45 # v5

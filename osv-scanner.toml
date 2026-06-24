@@ -1,0 +1,3 @@
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0173"
+reason = "proc-macro-error2 is an unmaintained build-time dependency used by validator. It poses no runtime risk, and there is currently no update available from the upstream crate."
