@@ -803,17 +803,21 @@ mod tests {
 
         let res = service.call(req).await.unwrap();
         assert_eq!(res.status(), axum::http::StatusCode::OK);
-        
+
         let body_bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
         assert_eq!(body_bytes, "swap ok");
     }
 
     #[tokio::test]
+    #[allow(unreachable_code)]
     async fn test_hot_swap_service_panic() {
-        let router = axum::Router::new().route("/panic", axum::routing::get(|| async {
-            panic!("Oops");
-            ""
-        }));
+        let router = axum::Router::new().route(
+            "/panic",
+            axum::routing::get(|| async {
+                panic!("Oops");
+                ""
+            }),
+        );
         let current_router = Arc::new(RwLock::new(router));
         let mut service = HotSwapService {
             current_router,
@@ -833,14 +837,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_hot_swap_service_poisoned_lock() {
-        let router = axum::Router::new().route("/test", axum::routing::get(|| async { "recovered" }));
+        let router =
+            axum::Router::new().route("/test", axum::routing::get(|| async { "recovered" }));
         let current_router = Arc::new(RwLock::new(router));
         // Poison the lock by panicking in a write guard thread
         let lock_clone = current_router.clone();
         let _ = std::thread::spawn(move || {
             let _guard = lock_clone.write().unwrap();
             panic!("poisoning lock");
-        }).join();
+        })
+        .join();
 
         assert!(current_router.is_poisoned());
 

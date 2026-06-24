@@ -72,7 +72,8 @@ async fn test_studio_table_details_htmx() {
     let app = TestApp::new(build_studio_router());
 
     // With HTMX header, it should return a partial HTML (no layout/header)
-    let response = app.get("/tables/studio_users")
+    let response = app
+        .get("/tables/studio_users")
         .header("hx-request", "true")
         .await;
 

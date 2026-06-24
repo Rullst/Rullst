@@ -654,12 +654,16 @@ mod tests {
     #[tokio::test]
     async fn test_db_operations() {
         let db_path = "sqlite:file:studio_test_db?mode=memory&cache=shared";
-        
+
         let _ = rullst_orm::Orm::init(db_path).await;
         let pool = crate::db::safe_pool().expect("pool should be initialized");
 
-        let _ = sqlx::query("DROP TABLE IF EXISTS test_users").execute(pool).await;
-        let _ = sqlx::query("DROP TABLE IF EXISTS test_posts").execute(pool).await;
+        let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
+            .execute(pool)
+            .await;
+        let _ = sqlx::query("DROP TABLE IF EXISTS test_posts")
+            .execute(pool)
+            .await;
 
         // Create dummy tables
         sqlx::query("CREATE TABLE test_users (id INTEGER PRIMARY KEY, name TEXT);")

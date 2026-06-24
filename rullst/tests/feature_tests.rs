@@ -133,12 +133,18 @@ invalid-split = "variant:not-a-number,variant2:50"
     fs::write("Rullst_edge.toml", toml_mock).unwrap();
     // Assuming driver loads from Rullst.toml, we rename it temporarily
     fs::rename("Rullst_edge.toml", "Rullst.toml").unwrap();
-    
+
     let toml_driver = TomlFeatureDriver::new();
-    
-    assert_eq!(toml_driver.enabled_for("bad-pct", "user_1").await, Some(false));
-    assert_eq!(toml_driver.variant("bad-format", "user_1").await, Some("justastring".to_string()));
-    
+
+    assert_eq!(
+        toml_driver.enabled_for("bad-pct", "user_1").await,
+        Some(false)
+    );
+    assert_eq!(
+        toml_driver.variant("bad-format", "user_1").await,
+        Some("justastring".to_string())
+    );
+
     // Ignore the invalid-split assert since we just wanted to hit the parse logic anyway
     let _ = toml_driver.variant("invalid-split", "user_1").await;
 

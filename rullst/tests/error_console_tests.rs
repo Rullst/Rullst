@@ -60,8 +60,8 @@ async fn test_error_console_extract_source_context() {
     assert!(ctx.is_none());
 }
 
-use axum::extract::{ConnectInfo, Query, Json};
-use rullst::error_console::{handle_explain, handle_autofix, ExplainQuery, AutoFixPayload};
+use axum::extract::{ConnectInfo, Json, Query};
+use rullst::error_console::{AutoFixPayload, ExplainQuery, handle_autofix, handle_explain};
 use std::net::SocketAddr;
 
 #[tokio::test]
@@ -71,11 +71,14 @@ async fn test_handle_explain_non_loopback() {
         "file": "src/lib.rs",
         "line": 10,
         "err": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_explain(ConnectInfo(addr), Query(query)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -87,11 +90,14 @@ async fn test_handle_explain_loopback_invalid_file() {
         "file": "../../../etc/passwd",
         "line": 10,
         "err": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_explain(ConnectInfo(addr), Query(query)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -103,11 +109,14 @@ async fn test_handle_autofix_non_loopback() {
         "file_path": "src/lib.rs",
         "line": 10,
         "error_message": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -119,11 +128,14 @@ async fn test_handle_autofix_path_traversal() {
         "file_path": "../../../etc/passwd",
         "line": 10,
         "error_message": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -140,7 +152,7 @@ async fn test_error_console_extract_source_context_valid() {
     assert_eq!(ctx[1].0, 3);
     assert_eq!(ctx[1].1, "line3");
     assert_eq!(ctx[1].2, true);
-    
+
     let _ = std::fs::remove_file("test_extract.rs");
 }
 
@@ -151,11 +163,14 @@ async fn test_handle_explain_sensitive_file() {
         "file": "Cargo.toml",
         "line": 10,
         "err": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_explain(ConnectInfo(addr), Query(query)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -168,11 +183,14 @@ async fn test_handle_explain_wrong_extension() {
         "file": "test_explain.txt",
         "line": 10,
         "err": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_explain(ConnectInfo(addr), Query(query)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
     let _ = std::fs::remove_file("test_explain.txt");
@@ -190,13 +208,18 @@ async fn test_handle_explain_valid_file_ai_offline() {
         "file": "test_ai.rs",
         "line": 1,
         "err": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_explain(ConnectInfo(addr), Query(query)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
-    assert!(body_str.contains("AI Engine offline") || body_str.contains("Failed to generate solution"));
+    assert!(
+        body_str.contains("AI Engine offline") || body_str.contains("Failed to generate solution")
+    );
     let _ = std::fs::remove_file("test_ai.rs");
 }
 
@@ -207,11 +230,14 @@ async fn test_handle_autofix_sensitive_file() {
         "file_path": "Cargo.toml",
         "line": 10,
         "error_message": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Access denied"));
 }
@@ -224,11 +250,14 @@ async fn test_handle_autofix_wrong_extension() {
         "file_path": "test_autofix.txt",
         "line": 10,
         "error_message": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("Autofix is restricted"));
     let _ = std::fs::remove_file("test_autofix.txt");
@@ -246,11 +275,14 @@ async fn test_handle_autofix_valid_file_ai_offline() {
         "file_path": "test_autofix_offline.rs",
         "line": 1,
         "error_message": "some error"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let res = handle_autofix(ConnectInfo(addr), Json(payload)).await;
     let res_body = axum::response::IntoResponse::into_response(res);
-    let bytes = axum::body::to_bytes(res_body.into_body(), 1024).await.unwrap();
+    let bytes = axum::body::to_bytes(res_body.into_body(), 1024)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(body_str.contains("\"success\":false"));
     let _ = std::fs::remove_file("test_autofix_offline.rs");

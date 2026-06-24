@@ -798,7 +798,7 @@ mod tests {
             panic!();
         }
         assert!(rest.is_empty());
-        
+
         // Unexpected EOF
         let res = parse_cbor(&[0x44, 0x01, 0x02]);
         assert!(res.is_err());
@@ -883,8 +883,10 @@ mod tests {
             "challenge": "correct_challenge",
             "origin": "https://app.com",
             "type": "webauthn.create"
-        }).to_string();
-        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+        })
+        .to_string();
+        let client_data_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
         let mut cred = RegisterPublicKeyCredential {
             id: "id".into(),
@@ -898,38 +900,64 @@ mod tests {
 
         // 1. Invalid base64 in attestationObject
         cred.response.attestation_object = "invalid base64!!!".into();
-        assert!(auth.finish_register(&cred, "correct_challenge").unwrap_err().contains("Failed to decode attestationObject"));
+        assert!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err()
+                .contains("Failed to decode attestationObject")
+        );
 
         // 2. attestationObject not a map
         // CBOR Array instead of Map: [1, 2] -> 0x82, 0x01, 0x02
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x82, 0x01, 0x02]);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "attestationObject is not a map");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x82, 0x01, 0x02]);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "attestationObject is not a map"
+        );
 
         // 3. authData not found in map
         // Map with one string "test" -> "test"
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0xA1, 0x64, b't', b'e', b's', b't', 0x64, b't', b'e', b's', b't']);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData not found in attestationObject");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[
+                0xA1, 0x64, b't', b'e', b's', b't', 0x64, b't', b'e', b's', b't',
+            ]);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "authData not found in attestationObject"
+        );
 
         // 4. authData too short
         let mut map_with_short_authdata = vec![0xA1, 0x68];
         map_with_short_authdata.extend_from_slice(b"authData");
         map_with_short_authdata.extend_from_slice(&[0x44, 1, 2, 3, 4]); // Byte string of length 4
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_authdata);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData too short");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_authdata);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "authData too short"
+        );
 
         // 5. rpIdHash mismatch
-        let mut auth_data_bytes = vec![0u8; 60]; 
+        let mut auth_data_bytes = vec![0u8; 60];
         // Fill first 32 bytes with garbage (not the hash of "app.com")
         auth_data_bytes[0] = 0xFF;
-        
+
         let mut map_with_bad_hash = vec![0xA1, 0x68];
         map_with_bad_hash.extend_from_slice(b"authData");
         map_with_bad_hash.push(0x58);
         map_with_bad_hash.push(auth_data_bytes.len() as u8);
         map_with_bad_hash.extend_from_slice(&auth_data_bytes);
 
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_bad_hash);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "rpIdHash mismatch in authData");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_bad_hash);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "rpIdHash mismatch in authData"
+        );
 
         // 6. No attested credential data
         let mut rp_hasher = sha2::Sha256::new();
@@ -943,21 +971,31 @@ mod tests {
         map_with_no_at.push(0x58);
         map_with_no_at.push(auth_data_bytes.len() as u8);
         map_with_no_at.extend_from_slice(&auth_data_bytes);
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_no_at);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "No attested credential data present in authData");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_no_at);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "No attested credential data present in authData"
+        );
 
         // 7. authData too short for credential ID
         auth_data_bytes[32] = 0x40; // flags with AT (0x40)
         auth_data_bytes[53] = 0x00;
         auth_data_bytes[54] = 0xFF; // Expects 255 bytes of credential ID but we only have 60 total
-        
+
         let mut map_with_short_id = vec![0xA1, 0x68];
         map_with_short_id.extend_from_slice(b"authData");
         map_with_short_id.push(0x58);
         map_with_short_id.push(auth_data_bytes.len() as u8);
         map_with_short_id.extend_from_slice(&auth_data_bytes);
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_id);
-        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData too short for credential ID");
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_id);
+        assert_eq!(
+            auth.finish_register(&cred, "correct_challenge")
+                .unwrap_err(),
+            "authData too short for credential ID"
+        );
     }
 
     #[test]
@@ -969,8 +1007,10 @@ mod tests {
             "challenge": "correct_challenge",
             "origin": "https://app.com",
             "type": "webauthn.get"
-        }).to_string();
-        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+        })
+        .to_string();
+        let client_data_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
         let passkey = Passkey {
             credential_id: vec![],
@@ -991,27 +1031,51 @@ mod tests {
 
         // 1. Invalid base64 auth data
         cred.response.authenticator_data = "invalid base 64!!!".into();
-        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("Failed to decode authenticatorData"));
+        assert!(
+            auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
+                .unwrap_err()
+                .contains("Failed to decode authenticatorData")
+        );
 
         // 2. Auth data too short
-        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x01, 0x02]);
-        assert_eq!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err(), "authenticatorData too short");
+        cred.response.authenticator_data =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x01, 0x02]);
+        assert_eq!(
+            auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
+                .unwrap_err(),
+            "authenticatorData too short"
+        );
 
         // 3. rpIdHash mismatch
         let mut auth_data_bytes = vec![0u8; 37];
-        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
-        assert_eq!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err(), "rpIdHash mismatch in authenticatorData");
+        cred.response.authenticator_data =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
+        assert_eq!(
+            auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
+                .unwrap_err(),
+            "rpIdHash mismatch in authenticatorData"
+        );
 
         // 4. Invalid base64 signature
         let mut rp_hasher = sha2::Sha256::new();
         rp_hasher.update(b"app.com");
         auth_data_bytes[..32].copy_from_slice(&rp_hasher.finalize());
-        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
+        cred.response.authenticator_data =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
         cred.response.signature = "invalid sig!!!".into();
-        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("Failed to decode signature"));
+        assert!(
+            auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
+                .unwrap_err()
+                .contains("Failed to decode signature")
+        );
 
         // 5. ECDSA verification failed (bad signature)
-        cred.response.signature = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x00; 64]);
-        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("ECDSA P-256 signature verification failed"));
+        cred.response.signature =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x00; 64]);
+        assert!(
+            auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
+                .unwrap_err()
+                .contains("ECDSA P-256 signature verification failed")
+        );
     }
 }
