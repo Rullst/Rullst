@@ -304,7 +304,7 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
 }
 
 /// Dashboard index page
-async fn handle_dashboard() -> impl IntoResponse {
+pub async fn handle_dashboard() -> impl IntoResponse {
     let tables = match fetch_tables().await {
         Ok(t) => t,
         Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
@@ -649,5 +649,43 @@ mod tests {
         let inactive_html = studio_layout("content".into(), Some("nonexistent"), &tables);
         assert!(inactive_html.contains("users"));
         assert!(inactive_html.contains("hover:text-slate-200")); // Inactive class
+    }
+
+    #[tokio::test]
+    async fn test_db_operations() {
+        let db_path = "sqlite:file:studio_test_db?mode=memory&cache=shared";
+        
+        let _ = rullst_orm::Orm::init(db_path).await;
+        let pool = crate::db::safe_pool().expect("pool should be initialized");
+
+        let _ = sqlx::query("DROP TABLE IF EXISTS test_users").execute(pool).await;
+        let _ = sqlx::query("DROP TABLE IF EXISTS test_posts").execute(pool).await;
+
+        // Create dummy tables
+        sqlx::query("CREATE TABLE test_users (id INTEGER PRIMARY KEY, name TEXT);")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        sqlx::query("CREATE TABLE test_posts (id INTEGER PRIMARY KEY, title TEXT);")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // Insert dummy data
+        sqlx::query("INSERT INTO test_users (name) VALUES ('Alice'), ('Bob')")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        let tables = fetch_tables().await.unwrap();
+        assert!(tables.contains(&"test_users".to_string()));
+        assert!(tables.contains(&"test_posts".to_string()));
+
+        let users_count = count_table_rows("test_users", None).await.unwrap();
+        assert_eq!(users_count, 2);
+
+        let search_count = count_table_rows("test_users", Some("Alice")).await.unwrap();
+        assert_eq!(search_count, 1);
     }
 }

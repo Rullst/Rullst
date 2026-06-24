@@ -789,4 +789,229 @@ mod tests {
         let res2 = auth.finish_authenticate(&cred, "correct_challenge", pk);
         assert_eq!(res2.unwrap_err(), "Origin mismatch");
     }
+    #[test]
+    fn test_parse_cbor_byte_string() {
+        let (val, rest) = parse_cbor(&[0x44, 0x01, 0x02, 0x03, 0x04]).unwrap();
+        if let CborValue::ByteString(b) = val {
+            assert_eq!(b, vec![1, 2, 3, 4]);
+        } else {
+            panic!();
+        }
+        assert!(rest.is_empty());
+        
+        // Unexpected EOF
+        let res = parse_cbor(&[0x44, 0x01, 0x02]);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_parse_cbor_text_string() {
+        let (val, rest) = parse_cbor(&[0x63, b'a', b'b', b'c']).unwrap();
+        if let CborValue::TextString(s) = val {
+            assert_eq!(s, "abc");
+        } else {
+            panic!();
+        }
+        assert!(rest.is_empty());
+
+        // Unexpected EOF
+        let res = parse_cbor(&[0x63, b'a']);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_parse_cbor_array() {
+        // [1, 2] -> 0x82, 0x01, 0x02
+        let (val, rest) = parse_cbor(&[0x82, 0x01, 0x02]).unwrap();
+        if let CborValue::Array(arr) = val {
+            assert_eq!(arr.len(), 2);
+        } else {
+            panic!();
+        }
+        assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn test_parse_cbor_map() {
+        // {"a": 1} -> 0xA1, 0x61, b'a', 0x01
+        let (val, rest) = parse_cbor(&[0xA1, 0x61, b'a', 0x01]).unwrap();
+        if let CborValue::Map(map) = val {
+            assert_eq!(map.len(), 1);
+        } else {
+            panic!();
+        }
+        assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn test_parse_cbor_invalid_types() {
+        // Empty bytes
+        let res = parse_cbor(&[]);
+        assert!(res.is_err());
+
+        // Info 24 with EOF
+        let res = parse_cbor(&[0x18]);
+        assert!(res.is_err());
+
+        // Info 25 with 1 byte (EOF)
+        let res = parse_cbor(&[0x19, 0x01]);
+        assert!(res.is_err());
+
+        // Info 26 with 3 bytes (EOF)
+        let res = parse_cbor(&[0x1A, 0x01, 0x02, 0x03]);
+        assert!(res.is_err());
+
+        // Info 27 with 7 bytes (EOF)
+        let res = parse_cbor(&[0x1B, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]);
+        assert!(res.is_err());
+
+        // Unsupported info
+        let res = parse_cbor(&[0x1C]);
+        assert!(res.is_err());
+
+        // Unsupported major type (e.g., 6) -> 0xC0
+        let res = parse_cbor(&[0xC0]);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_finish_register_edge_cases() {
+        let config = PasskeyConfig::new("App", "app.com", "https://app.com");
+        let auth = PasskeyAuth::new(&config).unwrap();
+
+        let client_data_json = serde_json::json!({
+            "challenge": "correct_challenge",
+            "origin": "https://app.com",
+            "type": "webauthn.create"
+        }).to_string();
+        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+
+        let mut cred = RegisterPublicKeyCredential {
+            id: "id".into(),
+            raw_id: "raw".into(),
+            r#type: "public-key".into(),
+            response: AuthenticatorAttestationResponse {
+                attestation_object: "dummy".into(),
+                client_data_json: client_data_b64.clone(),
+            },
+        };
+
+        // 1. Invalid base64 in attestationObject
+        cred.response.attestation_object = "invalid base64!!!".into();
+        assert!(auth.finish_register(&cred, "correct_challenge").unwrap_err().contains("Failed to decode attestationObject"));
+
+        // 2. attestationObject not a map
+        // CBOR Array instead of Map: [1, 2] -> 0x82, 0x01, 0x02
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x82, 0x01, 0x02]);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "attestationObject is not a map");
+
+        // 3. authData not found in map
+        // Map with one string "test" -> "test"
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0xA1, 0x64, b't', b'e', b's', b't', 0x64, b't', b'e', b's', b't']);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData not found in attestationObject");
+
+        // 4. authData too short
+        let mut map_with_short_authdata = vec![0xA1, 0x68];
+        map_with_short_authdata.extend_from_slice(b"authData");
+        map_with_short_authdata.extend_from_slice(&[0x44, 1, 2, 3, 4]); // Byte string of length 4
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_authdata);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData too short");
+
+        // 5. rpIdHash mismatch
+        let mut auth_data_bytes = vec![0u8; 60]; 
+        // Fill first 32 bytes with garbage (not the hash of "app.com")
+        auth_data_bytes[0] = 0xFF;
+        
+        let mut map_with_bad_hash = vec![0xA1, 0x68];
+        map_with_bad_hash.extend_from_slice(b"authData");
+        map_with_bad_hash.push(0x58);
+        map_with_bad_hash.push(auth_data_bytes.len() as u8);
+        map_with_bad_hash.extend_from_slice(&auth_data_bytes);
+
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_bad_hash);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "rpIdHash mismatch in authData");
+
+        // 6. No attested credential data
+        let mut rp_hasher = sha2::Sha256::new();
+        rp_hasher.update(b"app.com");
+        let expected_rp_id_hash = rp_hasher.finalize();
+        auth_data_bytes[..32].copy_from_slice(&expected_rp_id_hash);
+        auth_data_bytes[32] = 0x00; // flags without AT (0x40)
+
+        let mut map_with_no_at = vec![0xA1, 0x68];
+        map_with_no_at.extend_from_slice(b"authData");
+        map_with_no_at.push(0x58);
+        map_with_no_at.push(auth_data_bytes.len() as u8);
+        map_with_no_at.extend_from_slice(&auth_data_bytes);
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_no_at);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "No attested credential data present in authData");
+
+        // 7. authData too short for credential ID
+        auth_data_bytes[32] = 0x40; // flags with AT (0x40)
+        auth_data_bytes[53] = 0x00;
+        auth_data_bytes[54] = 0xFF; // Expects 255 bytes of credential ID but we only have 60 total
+        
+        let mut map_with_short_id = vec![0xA1, 0x68];
+        map_with_short_id.extend_from_slice(b"authData");
+        map_with_short_id.push(0x58);
+        map_with_short_id.push(auth_data_bytes.len() as u8);
+        map_with_short_id.extend_from_slice(&auth_data_bytes);
+        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&map_with_short_id);
+        assert_eq!(auth.finish_register(&cred, "correct_challenge").unwrap_err(), "authData too short for credential ID");
+    }
+
+    #[test]
+    fn test_finish_authenticate_edge_cases() {
+        let config = PasskeyConfig::new("App", "app.com", "https://app.com");
+        let auth = PasskeyAuth::new(&config).unwrap();
+
+        let client_data_json = serde_json::json!({
+            "challenge": "correct_challenge",
+            "origin": "https://app.com",
+            "type": "webauthn.get"
+        }).to_string();
+        let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+
+        let passkey = Passkey {
+            credential_id: vec![],
+            public_key: vec![],
+            sign_count: 0,
+        };
+
+        let mut cred = PublicKeyCredential {
+            id: "id".into(),
+            raw_id: "raw".into(),
+            r#type: "public-key".into(),
+            response: AuthenticatorAssertionResponse {
+                authenticator_data: "dummy".into(),
+                signature: "dummy".into(),
+                client_data_json: client_data_b64.clone(),
+            },
+        };
+
+        // 1. Invalid base64 auth data
+        cred.response.authenticator_data = "invalid base 64!!!".into();
+        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("Failed to decode authenticatorData"));
+
+        // 2. Auth data too short
+        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x01, 0x02]);
+        assert_eq!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err(), "authenticatorData too short");
+
+        // 3. rpIdHash mismatch
+        let mut auth_data_bytes = vec![0u8; 37];
+        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
+        assert_eq!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err(), "rpIdHash mismatch in authenticatorData");
+
+        // 4. Invalid base64 signature
+        let mut rp_hasher = sha2::Sha256::new();
+        rp_hasher.update(b"app.com");
+        auth_data_bytes[..32].copy_from_slice(&rp_hasher.finalize());
+        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_data_bytes);
+        cred.response.signature = "invalid sig!!!".into();
+        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("Failed to decode signature"));
+
+        // 5. ECDSA verification failed (bad signature)
+        cred.response.signature = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&[0x00; 64]);
+        assert!(auth.finish_authenticate(&cred, "correct_challenge", passkey.clone()).unwrap_err().contains("ECDSA P-256 signature verification failed"));
+    }
 }

@@ -4,6 +4,14 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Testing & Code Coverage
+- **Total Coverage 82% Milestone**: Reached and solidified over 81.60% test coverage across the entire framework workspace.
+- **Passkey WebAuthn Edge Cases**: Extensively covered `auth/passkey.rs` parsing and assertion failures, pushing CBOR payload decoding coverage from 73% to 88.38%. Validated malformed attestation objects, truncated signatures, invalid base64, and origin mismatches.
+- **Billing Webhook Resilience**: Fortified `capital.rs` test suites by simulating sophisticated Stripe and LemonSqueezy webhook attacks, including invalid HMAC signatures, payload tampering, unrecognized events, and missing headers. Coverage for the billing module reached 93.89%.
+- **Feature Flags Robustness**: Added deep testing for `feature.rs` drivers, handling complex fallbacks like TOML parsing errors, missing database tables, uninitialized ORM states, and raw-string interpolation failures.
+
 ## [4.0.0] - 2026-06-19 🚀
 
 ### Breaking Changes

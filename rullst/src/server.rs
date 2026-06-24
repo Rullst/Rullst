@@ -784,4 +784,81 @@ mod tests {
         assert!(server.shield.is_some());
         assert!(server.limiter.is_some());
     }
+
+    #[tokio::test]
+    async fn test_hot_swap_service_call() {
+        let router = axum::Router::new().route("/test", axum::routing::get(|| async { "swap ok" }));
+        let current_router = Arc::new(RwLock::new(router));
+        let mut service = HotSwapService {
+            current_router,
+            shield: None,
+            limiter: None,
+        };
+
+        use tower_service::Service;
+        let req = axum::http::Request::builder()
+            .uri("/test")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let res = service.call(req).await.unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
+        
+        let body_bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(body_bytes, "swap ok");
+    }
+
+    #[tokio::test]
+    async fn test_hot_swap_service_panic() {
+        let router = axum::Router::new().route("/panic", axum::routing::get(|| async {
+            panic!("Oops");
+            ""
+        }));
+        let current_router = Arc::new(RwLock::new(router));
+        let mut service = HotSwapService {
+            current_router,
+            shield: None,
+            limiter: None,
+        };
+
+        use tower_service::Service;
+        let req = axum::http::Request::builder()
+            .uri("/panic")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let res = service.call(req).await.unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_hot_swap_service_poisoned_lock() {
+        let router = axum::Router::new().route("/test", axum::routing::get(|| async { "recovered" }));
+        let current_router = Arc::new(RwLock::new(router));
+        // Poison the lock by panicking in a write guard thread
+        let lock_clone = current_router.clone();
+        let _ = std::thread::spawn(move || {
+            let _guard = lock_clone.write().unwrap();
+            panic!("poisoning lock");
+        }).join();
+
+        assert!(current_router.is_poisoned());
+
+        let mut service = HotSwapService {
+            current_router,
+            shield: None,
+            limiter: None,
+        };
+
+        use tower_service::Service;
+        let req = axum::http::Request::builder()
+            .uri("/test")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let res = service.call(req).await.unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(body_bytes, "recovered");
+    }
 }
