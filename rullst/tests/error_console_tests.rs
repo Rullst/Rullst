@@ -151,7 +151,7 @@ async fn test_error_console_extract_source_context_valid() {
     assert_eq!(ctx[0].1, "line2");
     assert_eq!(ctx[1].0, 3);
     assert_eq!(ctx[1].1, "line3");
-    assert_eq!(ctx[1].2, true);
+    assert!(ctx[1].2);
 
     let _ = std::fs::remove_file("test_extract.rs");
 }

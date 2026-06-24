@@ -55,6 +55,7 @@ async fn test_memory_feature_driver() {
 
 use tokio::sync::Mutex;
 static ENV_LOCK: Mutex<()> = Mutex::const_new(());
+static TOML_LOCK: Mutex<()> = Mutex::const_new(());
 
 #[tokio::test]
 async fn test_env_feature_driver() {
@@ -92,6 +93,7 @@ async fn test_env_feature_driver() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_toml_feature_driver() {
+    let _guard = TOML_LOCK.lock().await;
     // Mock a Rullst.toml file
     let toml_mock = r#"
 [server]
@@ -124,6 +126,7 @@ home-ab = "control:40,treatment:60"
 
 #[tokio::test]
 async fn test_toml_feature_driver_edge_cases() {
+    let _guard = TOML_LOCK.lock().await;
     let toml_mock = r#"
 [features]
 bad-pct = "not-a-number%"
