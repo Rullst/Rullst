@@ -127,4 +127,3 @@ async fn test_server_run_production_middlewares() {
         std::env::remove_var("APP_ENV");
     }
 }
-

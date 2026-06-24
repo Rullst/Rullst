@@ -335,31 +335,55 @@ async fn test_nexus_invalid_tables_and_errors() {
     );
 
     // 1. Invalid Table Read
-    let res = app.get("/table/invalid_table").header("Authorization", &auth_header).await;
+    let res = app
+        .get("/table/invalid_table")
+        .header("Authorization", &auth_header)
+        .await;
     res.assert_see("Table not found");
 
     // 2. Invalid Table Search
-    let res = app.get("/table/invalid_table/search?q=1").header("Authorization", &auth_header).await;
+    let res = app
+        .get("/table/invalid_table/search?q=1")
+        .header("Authorization", &auth_header)
+        .await;
     res.assert_see("Table not found");
 
     // 3. Invalid Table Edit Form
-    let res = app.get("/table/invalid_table/1/edit").header("Authorization", &auth_header).await;
+    let res = app
+        .get("/table/invalid_table/1/edit")
+        .header("Authorization", &auth_header)
+        .await;
     res.assert_see("Table not found");
 
     // 4. Invalid Table PUT
-    let res = app.put("/table/invalid_table/1").header("Authorization", &auth_header).form(&[("name", "Bob")]).await;
+    let res = app
+        .put("/table/invalid_table/1")
+        .header("Authorization", &auth_header)
+        .form(&[("name", "Bob")])
+        .await;
     res.assert_status(404);
 
     // 5. Invalid Table DELETE
-    let res = app.delete("/table/invalid_table/1").header("Authorization", &auth_header).await;
+    let res = app
+        .delete("/table/invalid_table/1")
+        .header("Authorization", &auth_header)
+        .await;
     res.assert_status(404);
 
     // 6. DB Error Simulation (Create without required fields, or missing table)
-    let res = app.post("/table/invalid_table").header("Authorization", &auth_header).form(&[("name", "Bob")]).await;
+    let res = app
+        .post("/table/invalid_table")
+        .header("Authorization", &auth_header)
+        .form(&[("name", "Bob")])
+        .await;
     res.assert_status(404);
 
     // 7. Chat Query Testing
-    let res = app.post("/chat/query").header("Authorization", &auth_header).form(&[("message", "Show all users")]).await;
+    let res = app
+        .post("/chat/query")
+        .header("Authorization", &auth_header)
+        .form(&[("message", "Show all users")])
+        .await;
     // We expect it to hit the endpoint (though the AI config might be offline and return an error HTML block)
     res.assert_status(200);
 }
