@@ -908,7 +908,8 @@ mod tests {
 
         // 2. attestationObject not a map
         // CBOR Array instead of Map: [1, 2] -> 0x82, 0x01, 0x02
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x82, 0x01, 0x02]);
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x82, 0x01, 0x02]);
         assert_eq!(
             auth.finish_register(&cred, "correct_challenge")
                 .unwrap_err(),
@@ -917,7 +918,10 @@ mod tests {
 
         // 3. authData not found in map
         // Map with one string "test" -> "test"
-        cred.response.attestation_object = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0xA1, 0x64, b't', b'e', b's', b't', 0x64, b't', b'e', b's', b't']);
+        cred.response.attestation_object =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([
+                0xA1, 0x64, b't', b'e', b's', b't', 0x64, b't', b'e', b's', b't',
+            ]);
         assert_eq!(
             auth.finish_register(&cred, "correct_challenge")
                 .unwrap_err(),
@@ -1034,7 +1038,8 @@ mod tests {
         );
 
         // 2. Auth data too short
-        cred.response.authenticator_data = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x01, 0x02]);
+        cred.response.authenticator_data =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x01, 0x02]);
         assert_eq!(
             auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
                 .unwrap_err(),
@@ -1065,7 +1070,8 @@ mod tests {
         );
 
         // 5. ECDSA verification failed (bad signature)
-        cred.response.signature = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x00; 64]);
+        cred.response.signature =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([0x00; 64]);
         assert!(
             auth.finish_authenticate(&cred, "correct_challenge", passkey.clone())
                 .unwrap_err()
