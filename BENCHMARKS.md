@@ -1,5 +1,7 @@
 # Rullst Framework v4.0.1: Official Benchmarks & Performance (May 2026)
 
+See also this new benchmark: https://rullst.github.io/Benchmarks/
+
 This document records the official performance metrics of the Rullst Framework compared against other web frameworks across different languages and architectures. 
 
 Rullst is designed to offer a "Best of Both Worlds" approach: the extreme productivity and feature-rich environment of full-stack frameworks (like Laravel, Django, Ruby on Rails, or Spring Boot) combined with the memory safety and high throughput of Rust.
@@ -17,15 +19,14 @@ Rullst is designed to offer a "Best of Both Worlds" approach: the extreme produc
 | **Loco** | Rust | 90,338.83 | 1.38ms | 103,706.65 | 1.20ms |
 | **Leptos** | Rust | 43,919.60 | 2.86ms | 61,585.17 | 2.03ms |
 | **Gin (Go)** | Go | 34,484.73 | 3.61ms | 35,856.79 | 3.48ms |
-| **Zap (Zig)** | Zig | 29,933.82 | 4.17ms | 25,616.38 | 4.87ms |
 | **Axum** | Rust | 27,418.26 | 4.55ms | 19,468.15 | 6.46ms |
 | **Actix-web** | Rust | 25,250.49 | 5.00ms | 21,216.37 | 6.03ms |
-| **Rocket** | Rust | 19,909.55 | 6.31ms | 19,073.33 | 6.55ms |
 | **Rullst** | Rust | 13,063.31 | 9.71ms | 10,847.17 | 11.58ms |
 | **Spring Boot** | Java | 7,483.75 | 16.74ms | 3,480.63 | 37.72ms |
 | **Ruby on Rails** | Ruby | 5,084.95 | 34.94ms | 62.88 | 2.00s |
 | **NestJS** | JavaScript | 1,084.24 | 116.34ms | 1,565.11 | 82.38ms |
 | **Laravel Octane** | PHP | 566.08 | 218.65ms | 536.45 | 233.78ms |
+| **Zap (Zig)** | Zig | 29,933.82 | 4.17ms | 25,616.38 | 4.87ms |
 | **Django** | Python | 489.30 | 254.28ms | 692.12 | 179.23ms |
 | **Next.js** | JavaScript | 82.00 | 1.39s | 190.91 | 799.50ms |
 
@@ -59,7 +60,6 @@ While raw throughput is important, Developer Experience (DX) dictates how fast y
 | **Loco** | Rust | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Rails-like experience in Rust, excellent speed but slightly steeper learning curve. |
 | **Axum / Actix** | Rust | ⭐⭐⭐⭐⭐ | ⭐⭐ | Absolute maximum speed, but you must build everything (auth, db, routers) from scratch. |
 | **Leptos** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | The king of Rust fullstack WASM frontend, but backend API patterns are tied to SSR. |
-| **Rocket** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Fantastic DX for pure Rust, but less "batteries included" than Rullst or Loco. |
 | **Rullst** | Rust | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | High-level fullstack APIs, ORM, Auth, and Hot-Reloading with Rust's memory safety. |
 | **Zap** | Zig | ⭐⭐⭐ | ⭐ | Extremely low-level C-like performance, but almost non-existent ecosystem/DX for web. |
 | **Spring Boot**| Java | ⭐⭐⭐ | ⭐⭐⭐ | Enterprise standard, decent speed, but heavy memory footprint and boilerplate. |
