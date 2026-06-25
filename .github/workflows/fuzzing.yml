@@ -8,8 +8,12 @@ permissions:
 
 jobs:
   fuzz:
-    name: Run Fuzzers
+    name: Run Fuzzers (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [mask_pii, html_escape, routing]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
@@ -21,8 +25,8 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz
 
-      - name: Run Fuzzer for 5 minutes (mask_pii)
+      - name: Run Fuzzer for ~6 hours (${{ matrix.target }})
         working-directory: rullst/fuzz
-        # We run the fuzzer for a maximum of 5 minutes (300 seconds) in CI to prevent timeout limits.
-        # If the fuzzer finds a panic, it will exit with a non-zero status and fail the job.
-        run: cargo +nightly fuzz run mask_pii -- -max_total_time=300
+        # We run the fuzzer for a maximum of 21000 seconds (5 hours 50 minutes)
+        # to ensure it completes before the 6h GitHub Actions hard limit.
+        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=21000

@@ -13,6 +13,12 @@ libfuzzer-sys = "0.4"
 [dependencies.rullst]
 path = ".."
 
+[dependencies]
+libfuzzer-sys = "0.4"
+axum = "0.8.1"
+tokio = { version = "1.0", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+
 # Prevent this from interfering with workspaces
 [workspace]
 members = ["."]
@@ -20,5 +26,17 @@ members = ["."]
 [[bin]]
 name = "mask_pii"
 path = "fuzz_targets/mask_pii.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "html_escape"
+path = "fuzz_targets/html_escape.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "routing"
+path = "fuzz_targets/routing.rs"
 test = false
 doc = false

@@ -55,9 +55,20 @@
 </a>
 </p>
 
-<p align="center">Rullst LMS Blueprint from CLI
-  <img src="gifs/gif2.gif" alt="Navigating Rullst LMS Blueprint" width="100%" />
-</p>
+<table align="center" width="100%">
+  <tr>
+    <th align="center" width="50%"><h2>SaaS Blueprint</h2></th>
+    <th align="center" width="50%"><h2>LMS Blueprint</h2></th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+    </td>
+    <td align="center">
+      <img src="gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+    </td>
+  </tr>
+</table>
 
 
 ---
