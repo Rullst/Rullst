@@ -7,9 +7,6 @@ edition = "2021"
 [package.metadata]
 cargo-fuzz = true
 
-[dependencies]
-libfuzzer-sys = "0.4"
-
 [dependencies.rullst]
 path = ".."
 
@@ -38,5 +35,59 @@ doc = false
 [[bin]]
 name = "routing"
 path = "fuzz_targets/routing.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "validation_json"
+path = "fuzz_targets/validation_json.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "auth_crypto"
+path = "fuzz_targets/auth_crypto.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "auth_session"
+path = "fuzz_targets/auth_session.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "security_csrf"
+path = "fuzz_targets/security_csrf.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "security_waf"
+path = "fuzz_targets/security_waf.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "htmx_headers"
+path = "fuzz_targets/htmx_headers.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "config_parser"
+path = "fuzz_targets/config_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "multitenant_resolver"
+path = "fuzz_targets/multitenant_resolver.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "ws_payload"
+path = "fuzz_targets/ws_payload.rs"
 test = false
 doc = false
