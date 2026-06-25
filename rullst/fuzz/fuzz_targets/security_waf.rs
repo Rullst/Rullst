@@ -6,7 +6,7 @@ use tower::ServiceExt;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
         rt.block_on(async {
             let app = Router::new()
                 .route("/", get(|| async { "OK" }))

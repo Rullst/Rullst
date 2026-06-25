@@ -6,7 +6,7 @@ use axum::http::Request;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
             if let Ok(req) = Request::builder()
                 .header("HX-Trigger", s)
                 .header("HX-Target", s)

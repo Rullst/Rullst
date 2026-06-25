@@ -8,8 +8,8 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
         let router = rullst::routes![
             get("/" => || async { "home" }),
-            post("/api/:id" => || async { "api" }),
-            get("/files/*path" => || async { "files" }),
+            post("/api/{id}" => || async { "api" }),
+            get("/files/{*path}" => || async { "files" }),
         ];
         
         let app = router.into_axum();
