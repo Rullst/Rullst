@@ -42,15 +42,23 @@
 | **Mutation Testing** | [![Mutation Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Validating test suite exhaustiveness |
 -->
 
+<br>
+<h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
+<p align="center">
+  <img src="gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="100%"/>
+</p>
 
-  
-<h2 align="center">How to build a SaaS Blueprint with Rullst </h2>
+<h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
 <p align="center">
 <a href="https://www.youtube.com/watch?v=nDXLeNM327g">
   <img src="https://img.youtube.com/vi/nDXLeNM327g/hqdefault.jpg" alt="How to build a SaaS with Rullst" width="430" />
 </a>
-
 </p>
+
+<p align="center">Rullst LMS Blueprint from CLI
+  <img src="gifs/gif2.gif" alt="Navigating Rullst LMS Blueprint" width="100%" />
+</p>
+
 
 ---
 
@@ -71,22 +79,6 @@ Rullst brings the ergonomics of Laravel and Ruby on Rails to the blazing-fast, m
 - **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Deployments.
 
 ---
-
-### 🚀 Quick Start
-
-Get your next SaaS up and running in under 60 seconds:
-
-```bash
-# 1. Install the CLI
-cargo install cargo-rullst
-
-# 2. Create a new full-stack project (Interactive Wizard)
-cargo rullst new my-startup
-
-# 3. Start the Hot-Reloading Dev Server
-cd my-startup
-cargo rullst dev
-```
 
 ### 💻 The Beauty of Rullst
 
