@@ -3,13 +3,13 @@
 use libfuzzer_sys::fuzz_target;
 use axum::http::Request;
 use axum::body::Body;
-
+use rullst::routing::{get, post};
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
         let router = rullst::routes![
-            rullst::routing::get("/" => || async { "home" }),
-            rullst::routing::post("/api/:id" => || async { "api" }),
-            rullst::routing::get("/files/*path" => || async { "files" }),
+            get("/" => || async { "home" }),
+            post("/api/:id" => || async { "api" }),
+            get("/files/*path" => || async { "files" }),
         ];
         
         let app = router.into_axum();

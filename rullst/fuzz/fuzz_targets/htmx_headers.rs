@@ -18,14 +18,16 @@ fuzz_target!(|data: &[u8]| {
             
             let _res = HtmxResponse::new(s).trigger(s).redirect(s).refresh();
             
-            let req_htmx = HtmxRequest {
-                is_htmx: true,
-                trigger: Some(s.to_string()),
-                target: None,
-                prompt: None,
-                current_url: None,
-            };
-            let _ = render_page(&req_htmx, s, s.to_string());
+            if let Ok(req) = Request::builder()
+                .header("HX-Trigger", s)
+                .header("HX-Request", "true")
+                .body(())
+            {
+                let (mut parts, _) = req.into_parts();
+                if let Ok(req_htmx) = HtmxRequest::from_request_parts(&mut parts, &()).await {
+                    let _ = render_page(&req_htmx, s, s.to_string());
+                }
+            }
         });
     }
 });
