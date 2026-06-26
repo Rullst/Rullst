@@ -1,0 +1,19 @@
+name: Cargo Machete
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  machete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@cargo-machete
+      - name: Run Cargo Machete
+        run: cargo machete

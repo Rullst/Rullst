@@ -208,7 +208,7 @@ pub fn create_new_project(
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!("rullst = {{ path = \"{}\" }}", path)
     } else {
-        r#"rullst = "4.0.1""#.to_string()
+        r#"rullst = "4.0.2""#.to_string()
     };
 
     let rullst_png_path = rullst_dir
@@ -677,7 +677,7 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Cache dependency compilation
 COPY Cargo.toml Cargo.lock* ./
-RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "4.0.1"/g' Cargo.toml && \
+RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "4.0.2"/g' Cargo.toml && \
     sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "10.0.0"/g' Cargo.toml || true
 RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
 
