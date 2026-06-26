@@ -1,17 +1,26 @@
 name: SemVer Checks
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
   semver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8060a52c0f28aca3 # stable
+        with:
+          toolchain: stable
       - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@cargo-semver-checks
+        uses: taiki-e/install-action@54d190130d20d43a5951d8b2d7d23d8c116c4ed1 # v2.46.1
+        with:
+          tool: cargo-semver-checks
       - name: Run SemVer checks
         run: cargo semver-checks check-release
