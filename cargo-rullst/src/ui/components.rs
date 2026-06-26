@@ -444,6 +444,10 @@ fn handle_existing_project(
             "(Generate Dockerfile & docker-compose)".dimmed()
         ),
         format!(
+            "❄️  Nixify Project           {}",
+            "(Generate Nix flake for reproducible env)".dimmed()
+        ),
+        format!(
             "🚀  Deploy to Cloud          {}",
             "(Foundry: AWS, GCP, Hetzner, Azure, DO)".dimmed()
         ),
@@ -468,9 +472,10 @@ fn handle_existing_project(
         3 => handle_auth_billing(theme),
         4 => execute_command(vec![base_cmd, "make:omni".to_string()]),
         5 => execute_command(vec![base_cmd, "dockerize".to_string()]),
-        6 => handle_deploy(theme),
-        7 => execute_command(vec![base_cmd, "upgrade".to_string()]),
-        8 => show_interactive_dashboard(),
+        6 => execute_command(vec![base_cmd, "nixify".to_string()]),
+        7 => handle_deploy(theme),
+        8 => execute_command(vec![base_cmd, "upgrade".to_string()]),
+        9 => show_interactive_dashboard(),
         _ => Ok(()),
     }
 }
@@ -528,6 +533,7 @@ fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
             "🗂️  PROJECT",
             vec![
                 ("cargo rullst new [name]", "Create a new Rullst application"),
+                ("cargo rullst dev", "Start the dev server with hot reload"),
                 ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
             ],
         ),
@@ -580,6 +586,7 @@ fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
             "🚀  DEPLOY",
             vec![
                 ("cargo rullst dockerize", "Generate Docker files"),
+                ("cargo rullst nixify", "Generate Nix environment files"),
                 ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
                 ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),
             ],

@@ -37,6 +37,7 @@ pub fn create_new_project(
     name_arg: Option<&str>,
     api_arg: bool,
     docker: bool,
+    nix: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "  {}",
@@ -531,6 +532,10 @@ APP_ENV=development
         generate_docker_files(path, &project_name, Some(&db_provider), Some(wants_redis))?;
     }
 
+    if nix {
+        generate_nix_files(path)?;
+    }
+
     // Automatically run initial migrations if a database was selected
     if db_needed {
         println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
@@ -607,6 +612,15 @@ APP_ENV=development
         );
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  docker compose up --build".cyan());
+    }
+
+    if nix {
+        println!(
+            "{}",
+            "\n❄️  Nix files generated! To run with Nix:".cyan()
+        );
+        println!("{}", format!("  cd {}", name).cyan());
+        println!("{}", "  direnv allow".cyan());
     }
 
     Ok(())
@@ -885,6 +899,56 @@ LICENSE
     println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
     println!("{}", "  ✅ docker-compose.yml (Customized)".green());
     println!("{}", "  ✅ .dockerignore".green());
+
+    Ok(())
+}
+
+pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let flake_nix = r#"{
+  description = "A Rullst Application";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+        rustVersion = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" "rust-analyzer" ];
+        };
+      in
+      {
+        devShell = pkgs.mkShell {
+          buildInputs = [
+            rustVersion
+            pkgs.pkg-config
+            pkgs.openssl
+            pkgs.sqlite
+          ];
+          shellHook = ''
+            echo "🦀 Welcome to the Rullst Nix Development Environment 🦀"
+          '';
+        };
+      }
+    );
+}
+"#;
+
+    let envrc = r#"use flake
+"#;
+
+    fs::write(project_path.join("flake.nix"), flake_nix)?;
+    fs::write(project_path.join(".envrc"), envrc)?;
+
+    println!("{}", "  ✅ flake.nix (Nix reproducible environment)".green());
+    println!("{}", "  ✅ .envrc (direnv support)".green());
 
     Ok(())
 }

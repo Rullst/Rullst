@@ -4,7 +4,14 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.2] - Unreleased
+
+### Added
+- **CLI**: Added the `cargo rullst nixify` command to generate a reproducible Nix development environment (`flake.nix` and `.envrc`).
+- **CLI**: Added `--nix` flag to `cargo rullst new` for scaffolding Nix-enabled projects directly.
+- **CLI**: Added missing `cargo rullst dev` command to the "View Help & Commands" list.
+
+## [4.0.1]
 
 ### Testing & Code Coverage
 - **Total Coverage 82% Milestone**: Reached and solidified over 81.60% test coverage across the entire framework workspace.

@@ -43,6 +43,9 @@ pub enum Commands {
         /// Optional: generates Dockerfile, docker-compose.yml, and .dockerignore for production
         #[arg(long)]
         docker: bool,
+        /// Optional: generates Nix flake and direnv setup for reproducible environments
+        #[arg(long)]
+        nix: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -102,6 +105,8 @@ pub enum Commands {
     FoundryDeploy,
     /// Generates Dockerfile and docker-compose.yml for the project
     Dockerize,
+    /// Generates Nix environment files (flake.nix, .envrc)
+    Nixify,
     /// Scaffolds and configures CORS middleware
     #[command(name = "make:cors")]
     MakeCors,
@@ -149,8 +154,8 @@ pub enum Commands {
 /// Central command dispatcher. Routes each CLI command to its generator function.
 pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Commands::New { name, api, docker } => {
-            create_new_project(name.as_deref(), *api, *docker)?;
+        Commands::New { name, api, docker, nix } => {
+            create_new_project(name.as_deref(), *api, *docker, *nix)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
@@ -211,6 +216,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 None,
                 None,
             )?;
+        }
+        Commands::Nixify => {
+            crate::generators::project::generate_nix_files(std::path::Path::new("."))?;
         }
         Commands::MakeCors => {
             create_cors_middleware()?;
