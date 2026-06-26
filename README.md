@@ -121,6 +121,29 @@ async fn main() {
 
 ---
 
+<h2 align="center">🥊 Rullst vs The Ecosystem (Honest Comparison)</h2>
+
+<p align="center">
+Rust has a breathtaking ecosystem, but finding the right tool can be overwhelming.<br>
+Here is an honest, objective breakdown of where Rullst stands compared to other beloved frameworks.
+</p>
+
+### 🔬 HTTP & API Frameworks (Actix-Web, Axum, Rocket, Salvo, Poem)
+These are the **titans of the Rust web ecosystem**. They provide pristine routing, middlewares, and blazing-fast HTTP primitives. Actix-Web and Rocket pioneered the space, while Axum, Salvo, and Poem brought new paradigms.
+* **The Catch:** They are fundamentally focused on HTTP. You have to wire the rest of the application yourself. You must choose, configure, and integrate your own Database ORM, Auth logic, Webhooks, CLI, and Background Workers.
+* **Where Rullst Excels:** **Batteries Included.** Rullst actually uses *Axum* under the hood for its HTTP routing! But instead of leaving you in an empty room, Rullst gives you a fully furnished house. You get a CLI, ORM, Auth, Stripe integration, and Background Workers out-of-the-box in 1 minute.
+
+### 🚂 Full-Stack Frameworks (Loco)
+Loco is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.
+* **Where Rullst Excels:** **Emotional Productivity & DX.** Rullst takes a radically opinionated stance on Developer Experience. We provide immersive CLI interactive dashboards (`cargo rullst studio`), built-in Wasm Islands, zero-panic architectural guarantees, Nix reproducibility, and native Omni (Desktop/Mobile via Tauri) scaffolding. If you want the absolute easiest, most visually pleasing DX in Rust, Rullst is your home.
+
+### 🎨 Isomorphic Full-Stack Frameworks (Dioxus, Leptos)
+These are cutting-edge frameworks that let you write both frontend and backend in a single Rust file using Server Functions and SSR (similar to Next.js or Nuxt).
+* **The Catch:** They are heavily **Frontend/Component-Driven**. Your server's primary job is to hydrate and serve UI components. If you need a traditional backend architecture (dedicated Workers, Stripe webhooks, robust ORM migrations, pure REST APIs for mobile apps), an isomorphic model can sometimes feel restrictive or overly coupled to the UI.
+* **Where Rullst Excels:** **Architectural Freedom & Synergy.** Rullst is an **API-First / Traditional Full-Stack** (like Rails or Laravel). It gives you an uncompromised, heavy-duty backend layer. But we don't compete with Dioxus/Leptos—we *embrace* them! Rullst allows you to use Dioxus for your UI layer natively via Wasm Islands (`cargo rullst build:client`) or Omni Desktop apps (`cargo rullst make:omni`), combining a hardcore Rullst backend with a beautiful Dioxus frontend.
+
+---
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
