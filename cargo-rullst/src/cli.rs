@@ -154,7 +154,12 @@ pub enum Commands {
 /// Central command dispatcher. Routes each CLI command to its generator function.
 pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Commands::New { name, api, docker, nix } => {
+        Commands::New {
+            name,
+            api,
+            docker,
+            nix,
+        } => {
             create_new_project(name.as_deref(), *api, *docker, *nix)?;
         }
         Commands::MakeController { name, api } => {

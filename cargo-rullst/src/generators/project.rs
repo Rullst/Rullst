@@ -615,10 +615,7 @@ APP_ENV=development
     }
 
     if nix {
-        println!(
-            "{}",
-            "\n❄️  Nix files generated! To run with Nix:".cyan()
-        );
+        println!("{}", "\n❄️  Nix files generated! To run with Nix:".cyan());
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  direnv allow".cyan());
     }
@@ -947,7 +944,10 @@ pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error:
     fs::write(project_path.join("flake.nix"), flake_nix)?;
     fs::write(project_path.join(".envrc"), envrc)?;
 
-    println!("{}", "  ✅ flake.nix (Nix reproducible environment)".green());
+    println!(
+        "{}",
+        "  ✅ flake.nix (Nix reproducible environment)".green()
+    );
     println!("{}", "  ✅ .envrc (direnv support)".green());
 
     Ok(())
