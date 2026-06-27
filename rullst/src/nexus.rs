@@ -135,8 +135,6 @@ struct RegistryEntry {
 struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
-    #[allow(dead_code)] // reserved for future live-query features
-    pub db_url: Arc<Option<String>>,
 }
 
 // ─── Nexus Builder ────────────────────────────────────────────────────────────
@@ -148,14 +146,12 @@ struct NexusState {
 /// # use rullst::nexus::Nexus;
 /// let nexus_router = Nexus::new()
 ///     .with_brand("My SaaS")
-///     .with_db("sqlite://./db.sqlite3")
 ///     .with_auth("admin", "secret_pass")
 ///     .build();
 /// ```
 pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
-    db_url: Option<String>,
     auth: Option<(String, String)>,
 }
 
@@ -171,7 +167,6 @@ impl Nexus {
         Nexus {
             registry: Vec::new(),
             brand: "Rullst Nexus".to_string(),
-            db_url: None,
             auth: None,
         }
     }
@@ -200,19 +195,12 @@ impl Nexus {
         self
     }
 
-    /// Sets the database URL used by the panel to execute live queries.
-    pub fn with_db(mut self, url: impl Into<String>) -> Self {
-        self.db_url = Some(url.into());
-        self
-    }
-
     /// Builds and returns an Axum Router for the Nexus Panel.
     /// Mount it with `.nest("/nexus", nexus.build())` on your app's router.
     pub fn build(self) -> AxumRouter {
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
             brand: Arc::new(self.brand),
-            db_url: Arc::new(self.db_url),
         });
 
         let router = AxumRouter::new()
@@ -225,7 +213,8 @@ impl Nexus {
             .route("/table/{table}/{id}", put(nexus_update_record))
             .route("/table/{table}/{id}", delete(nexus_delete_record))
             .route("/chat", get(nexus_chat_page))
-            .route("/chat/query", post(nexus_chat_query));
+            .route("/chat/query", post(nexus_chat_query))
+            .layer(axum::middleware::from_fn(crate::security::csrf_middleware));
 
         let router = if let Some((username, password)) = self.auth {
             router.layer(axum::middleware::from_fn(
@@ -798,7 +787,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
     }
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
@@ -1414,6 +1403,16 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     );
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
     out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\" defer></script>\n");
+    out.push_str("<script>\n");
+    out.push_str("document.addEventListener('htmx:configRequest', function(evt) {\n");
+    out.push_str(
+        "    let match = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)'));\n",
+    );
+    out.push_str("    if (match) {\n");
+    out.push_str("        evt.detail.headers['X-CSRF-Token'] = match[2];\n");
+    out.push_str("    }\n");
+    out.push_str("});\n");
+    out.push_str("</script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
     out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n");
     out.push_str("<style>\n");
@@ -1790,10 +1789,7 @@ mod tests {
 
     #[test]
     fn test_nexus_build_returns_router() {
-        let nexus = Nexus::new()
-            .register::<TestUser>()
-            .with_brand("My App")
-            .with_db("sqlite://./test.db");
+        let nexus = Nexus::new().register::<TestUser>().with_brand("My App");
         let _router = nexus.build();
     }
 
@@ -1891,7 +1887,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-            db_url: Arc::new(None),
         };
         let form = render_record_form(&state, &entry, None).await;
         assert!(
@@ -1924,7 +1919,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![entry.clone()]),
             brand: Arc::new("Test App".to_string()),
-            db_url: Arc::new(None),
         };
         let form = render_record_form(&state, &entry, Some("42")).await;
         assert!(
@@ -1955,7 +1949,6 @@ mod tests {
                 fields: TestUser::nexus_fields(),
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
         };
         assert!(find_entry(&state, "users").is_some());
         assert!(find_entry(&state, "missing").is_none());
@@ -2050,7 +2043,6 @@ mod tests {
         let state = NexusState {
             registry: std::sync::Arc::new(vec![entry.clone()]),
             brand: std::sync::Arc::new("Test App".to_string()),
-            db_url: std::sync::Arc::new(None),
         };
         let mut data = std::collections::HashMap::new();
         data.insert("id".to_string(), "42".to_string());
@@ -2078,7 +2070,6 @@ mod tests {
         let state = NexusState {
             registry: std::sync::Arc::new(vec![entry.clone()]),
             brand: std::sync::Arc::new("Test App".to_string()),
-            db_url: std::sync::Arc::new(None),
         };
         let html = render_table_view(&state, &entry, 2, "").await;
         assert!(html.contains("&larr; Prev"));
@@ -2098,7 +2089,6 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
         };
         let sidebar = render_sidebar(&state, None);
         assert!(sidebar.contains("/nexus/table/users"));
@@ -2117,7 +2107,6 @@ mod tests {
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
-            db_url: Arc::new(None),
         };
         let sidebar = render_sidebar(&state, Some("users"));
         assert!(sidebar.contains("nexus-nav-active"));
@@ -2128,7 +2117,6 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![]),
             brand: Arc::new("MySaaS".to_string()),
-            db_url: Arc::new(None),
         };
         let html = render_shell(&state, "", "<p>content</p>");
         assert!(html.contains("MySaaS"));

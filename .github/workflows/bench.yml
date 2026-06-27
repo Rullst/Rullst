@@ -1,0 +1,53 @@
+name: Benchmark Regression
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: Rullst
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Rullst
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          path: Rullst
+
+      - name: Checkout rullst-orm
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: venelouis/rullst-orm
+          path: rullst-orm
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
+
+      - name: Run cargo bench
+        run: cargo bench -p rullst | tee output.txt
+
+      - name: GitHub Action Benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'cargo'
+          output-file-path: Rullst/output.txt
+          fail-on-alert: true
+          # Alert threshold set to 130% to avoid noisy neighbors on GitHub Actions runners
+          alert-threshold: '130%'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          # Only push to gh-pages when running on main branch, not on PRs
+          auto-push: ${{ github.event_name != 'pull_request' }}

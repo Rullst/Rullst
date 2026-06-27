@@ -169,43 +169,45 @@ impl Migration for MigrationImpl {
         ).execute(pool).await?;
 
         // Seed historical heartbeats for visualization
+        let mut tx = pool.begin().await?;
+
         // Google: 20 successful pings
+        let mut google_values = Vec::new();
         for i in 1..=20 {
-            rullst::db::sqlx::query(
-                "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
-                 VALUES (1, 200, ?, 1, '', datetime('now', ?), datetime('now', ?))"
-            )
-            .bind(40 + (i % 15)) // response time
-            .bind(format!("-{} minutes", 20 - i))
-            .bind(format!("-{} minutes", 20 - i))
-            .execute(pool)
-            .await?;
+            google_values.push(format!("(1, 200, {}, 1, '', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 40 + (i % 15), 20 - i, 20 - i));
         }
+        rullst::db::sqlx::query(&format!(
+            "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
+            google_values.join(", ")
+        ))
+        .execute(&mut *tx)
+        .await?;
 
         // GitHub: 20 successful pings
+        let mut github_values = Vec::new();
         for i in 1..=20 {
-            rullst::db::sqlx::query(
-                "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
-                 VALUES (2, 200, ?, 1, '', datetime('now', ?), datetime('now', ?))"
-            )
-            .bind(90 + (i % 30)) // response time
-            .bind(format!("-{} minutes", 20 - i))
-            .bind(format!("-{} minutes", 20 - i))
-            .execute(pool)
-            .await?;
+            github_values.push(format!("(2, 200, {}, 1, '', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 90 + (i % 30), 20 - i, 20 - i));
         }
+        rullst::db::sqlx::query(&format!(
+            "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
+            github_values.join(", ")
+        ))
+        .execute(&mut *tx)
+        .await?;
 
         // Invalid service: 20 failing heartbeats
+        let mut invalid_values = Vec::new();
         for i in 1..=20 {
-            rullst::db::sqlx::query(
-                "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
-                 VALUES (3, 0, 0, 0, 'DNS Resolution Failed', datetime('now', ?), datetime('now', ?))"
-            )
-            .bind(format!("-{} minutes", 20 - i))
-            .bind(format!("-{} minutes", 20 - i))
-            .execute(pool)
-            .await?;
+            invalid_values.push(format!("(3, 0, 0, 0, 'DNS Resolution Failed', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 20 - i, 20 - i));
         }
+        rullst::db::sqlx::query(&format!(
+            "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
+            invalid_values.join(", ")
+        ))
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -319,37 +321,22 @@ pub struct CreateMonitorPayload {
 }
 
 pub async fn store_monitor(Form(payload): Form<CreateMonitorPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
-    let _ = rullst::db::sqlx::query(
-        "INSERT INTO monitors (name, url, is_active, created_at, updated_at) VALUES ($1, $2, 1, datetime('now'), datetime('now'))"
-    )
-    .bind(payload.name)
-    .bind(payload.url)
-    .execute(pool)
-    .await;
+    let mut monitor = Monitor {
+        id: 0,
+        name: payload.name,
+        url: payload.url,
+        is_active: 1,
+    };
+    let _ = monitor.save().await;
 
     Redirect::to("/")
 }
 
 pub async fn toggle_monitor(Path(id): Path<i32>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
-    
-    // Get active state
-    let state: (i32,) = rullst::db::sqlx::query_as("SELECT is_active FROM monitors WHERE id = $1")
-        .bind(id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((1,));
-
-    let new_state = if state.0 == 1 { 0 } else { 1 };
-
-    let _ = rullst::db::sqlx::query(
-        "UPDATE monitors SET is_active = $1, updated_at = datetime('now') WHERE id = $2"
-    )
-    .bind(new_state)
-    .bind(id)
-    .execute(pool)
-    .await;
+    if let Ok(mut monitor) = Monitor::find(id).await {
+        monitor.is_active = if monitor.is_active == 1 { 0 } else { 1 };
+        let _ = monitor.save().await;
+    }
 
     Redirect::to("/")
 }
@@ -359,11 +346,7 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
     let pool = rullst::db::Orm::pool();
     
     // Get active monitors
-    let active_monitors: Vec<Monitor> = rullst::db::sqlx::query_as(
-        "SELECT * FROM monitors WHERE is_active = 1"
-    )
-    .fetch_all(pool)
-    .await?;
+    let active_monitors: Vec<Monitor> = Monitor::all().await.unwrap_or_default().into_iter().filter(|m| m.is_active == 1).collect();
 
     // Create a non-reusable client to prevent session caching issues
     let client = reqwest::Client::builder()
@@ -376,7 +359,6 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
 
     for monitor in active_monitors {
         let client_clone = client.clone();
-        let pool_clone = pool.clone();
         
         handles.push(tokio::spawn(async move {
             let start = Instant::now();
@@ -395,17 +377,15 @@ pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             // Write heartbeat log
-            let _ = rullst::db::sqlx::query(
-                "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) 
-                 VALUES ($1, $2, $3, $4, $5, datetime('now'), datetime('now'))"
-            )
-            .bind(monitor.id)
-            .bind(status_code)
-            .bind(duration)
-            .bind(is_up)
-            .bind(error_msg)
-            .execute(&pool_clone)
-            .await;
+            let mut heartbeat = Heartbeat {
+                id: 0,
+                monitor_id: monitor.id,
+                status_code,
+                response_time_ms: duration,
+                is_up,
+                error_message: if error_msg.is_empty() { None } else { Some(error_msg) },
+            };
+            let _ = heartbeat.save().await;
 
             println!("📡 Checked '{}' ({}): {} | {}ms", monitor.name, monitor.url, status_code, duration);
         }));

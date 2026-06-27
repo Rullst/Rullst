@@ -33,28 +33,19 @@ fn generate_secure_app_key() -> String {
     key
 }
 
-pub fn create_new_project(
-    name_arg: Option<&str>,
-    api_arg: bool,
-    docker: bool,
-    nix: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "  {}",
-        "┌────────────────────────────────────────────────────┐".bright_cyan()
-    );
-    println!(
-        "  {} 🎯 {} APP CREATOR — Let's build something new! {}",
-        "│".bright_cyan(),
-        "RULLST".truecolor(255, 165, 0).bold(),
-        "│".bright_cyan()
-    );
-    println!(
-        "  {}",
-        "└────────────────────────────────────────────────────┘".bright_cyan()
-    );
-    println!();
+pub struct ProjectWizardOptions {
+    pub name: String,
+    pub api: bool,
+    pub db_provider: String,
+    pub db_needed: bool,
+    pub hot_reload: bool,
+    pub blueprint_selection: usize,
+}
 
+fn run_project_wizard(
+    name_arg: Option<&str>,
+    mut api: bool,
+) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
     let theme = dialoguer::theme::ColorfulTheme::default();
 
     let name = match name_arg {
@@ -94,7 +85,6 @@ pub fn create_new_project(
         }
     };
 
-    let mut api = api_arg;
     let mut db_provider = "Sqlite".to_string();
     let mut db_needed = true;
     let mut hot_reload = false;
@@ -157,7 +147,6 @@ pub fn create_new_project(
         } else if blueprint_selection == 1 {
             db_needed = false;
         } else {
-            // LMS, SaaS, and Blog blueprints require database configuration (always Sqlite by default)
             db_needed = true;
             db_provider = "Sqlite".to_string();
         }
@@ -167,6 +156,46 @@ pub fn create_new_project(
             .default(true)
             .interact()?;
     }
+
+    Ok(ProjectWizardOptions {
+        name,
+        api,
+        db_provider,
+        db_needed,
+        hot_reload,
+        blueprint_selection,
+    })
+}
+
+pub fn create_new_project(
+    name_arg: Option<&str>,
+    api_arg: bool,
+    docker: bool,
+    nix: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "  {}",
+        "┌────────────────────────────────────────────────────┐".bright_cyan()
+    );
+    println!(
+        "  {} 🎯 {} APP CREATOR — Let's build something new! {}",
+        "│".bright_cyan(),
+        "RULLST".truecolor(255, 165, 0).bold(),
+        "│".bright_cyan()
+    );
+    println!(
+        "  {}",
+        "└────────────────────────────────────────────────────┘".bright_cyan()
+    );
+    println!();
+
+    let wizard_opts = run_project_wizard(name_arg, api_arg)?;
+    let name = wizard_opts.name;
+    let api = wizard_opts.api;
+    let db_provider = wizard_opts.db_provider;
+    let db_needed = wizard_opts.db_needed;
+    let hot_reload = wizard_opts.hot_reload;
+    let blueprint_selection = wizard_opts.blueprint_selection;
 
     println!(
         "{}",
@@ -657,7 +686,19 @@ pub fn generate_docker_files(
             .interact()?,
     };
 
-    // --- Dockerfile (multi-stage, distroless) ---
+    create_dockerfile(project_path, project_name)?;
+    create_docker_compose(project_path, project_name, &db_provider, wants_redis)?;
+    create_dockerignore(project_path)?;
+    create_env_files(project_path, project_name, &db_provider, wants_redis)?;
+
+    println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
+    println!("{}", "  ✅ docker-compose.yml (Customized)".green());
+    println!("{}", "  ✅ .dockerignore".green());
+
+    Ok(())
+}
+
+fn create_dockerfile(project_path: &Path, project_name: &str) -> Result<(), std::io::Error> {
     let dockerfile = format!(
         r#"# ══════════════════════════════════════════════════════════════
 # Rullst Production Dockerfile (auto-generated)
@@ -702,7 +743,17 @@ CMD ["/app/{project_name}"]
 "#
     );
 
-    // --- docker-compose.yml ---
+    let dockerfile_path = project_path.join("Dockerfile");
+    std::fs::write(&dockerfile_path, dockerfile)?;
+    Ok(())
+}
+
+fn create_docker_compose(
+    project_path: &Path,
+    project_name: &str,
+    db_provider: &str,
+    wants_redis: bool,
+) -> Result<(), std::io::Error> {
     let mut compose = format!(
         r#"# ══════════════════════════════════════════════════════════════
 # Rullst Docker Compose (auto-generated)
@@ -769,7 +820,6 @@ services:
             project_name = project_name
         ));
     } else {
-        // Sqlite
         compose = compose.replace(
             "    restart: unless-stopped\n",
             "    volumes:\n      - ./rullst.db:/app/rullst.db\n    restart: unless-stopped\n",
@@ -829,7 +879,11 @@ services:
         compose.push_str(&volumes_str);
     }
 
-    // --- .dockerignore ---
+    fs::write(project_path.join("docker-compose.yml"), compose)?;
+    Ok(())
+}
+
+fn create_dockerignore(project_path: &Path) -> Result<(), std::io::Error> {
     let dockerignore = r#"**/target/
 .git/
 .gitignore
@@ -840,11 +894,16 @@ LICENSE
 *.db
 *.sqlite
 "#;
+    fs::write(project_path.join(".dockerignore"), dockerignore)?;
+    Ok(())
+}
 
-    let dockerfile_path = project_path.join("Dockerfile");
-    std::fs::write(&dockerfile_path, dockerfile)?;
-
-    // --- .env File Generation ---
+fn create_env_files(
+    project_path: &Path,
+    project_name: &str,
+    db_provider: &str,
+    wants_redis: bool,
+) -> Result<(), std::io::Error> {
     let env_path = project_path.join(".env");
     let env_example_path = project_path.join(".env.example");
     let mut env_content = String::from(
@@ -889,14 +948,6 @@ LICENSE
 
     std::fs::write(&env_path, &env_content)?;
     std::fs::write(&env_example_path, &env_content)?;
-
-    fs::write(project_path.join("docker-compose.yml"), compose)?;
-    fs::write(project_path.join(".dockerignore"), dockerignore)?;
-
-    println!("{}", "  ✅ Dockerfile (multi-stage distroless)".green());
-    println!("{}", "  ✅ docker-compose.yml (Customized)".green());
-    println!("{}", "  ✅ .dockerignore".green());
-
     Ok(())
 }
 

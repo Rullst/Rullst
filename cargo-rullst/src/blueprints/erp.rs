@@ -293,39 +293,25 @@ pub struct CreateProductPayload {
 }
 
 pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
-    let _ = rullst::db::sqlx::query(
-        "INSERT INTO products (name, sku, price, stock, created_at, updated_at) VALUES ($1, $2, $3, $4, datetime('now'), datetime('now'))"
-    )
-    .bind(payload.name)
-    .bind(payload.sku)
-    .bind(payload.price)
-    .bind(payload.stock)
-    .execute(pool)
-    .await;
+    let mut product = Product {
+        id: 0,
+        name: payload.name,
+        sku: payload.sku,
+        price: payload.price,
+        stock: payload.stock,
+    };
+    let _ = product.save().await;
 
     Redirect::to("/")
 }
 
 pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
-    
-    // Increment stock
-    let _ = rullst::db::sqlx::query(
-        "UPDATE products SET stock = stock + 1, updated_at = datetime('now') WHERE id = $1"
-    )
-    .bind(id)
-    .execute(pool)
-    .await;
-
-    // Get current stock
-    let row: (i32,) = rullst::db::sqlx::query_as("SELECT stock FROM products WHERE id = $1")
-        .bind(id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((0,));
-
-    let stock = row.0;
+    let mut stock = 0;
+    if let Ok(mut product) = Product::find(id).await {
+        product.stock += 1;
+        let _ = product.save().await;
+        stock = product.stock;
+    }
     
     // Render only the updated stock badge with HTMX
     let badge_color = if stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
@@ -343,39 +329,23 @@ pub struct CreateOrderPayload {
 }
 
 pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoResponse {
-    let pool = rullst::db::Orm::pool();
+    if let Ok(mut product) = Product::find(payload.product_id).await {
+        if product.stock >= payload.quantity {
+            // Deduct stock and save order
+            product.stock -= payload.quantity;
+            let _ = product.save().await;
 
-    // Get product price and stock
-    let product_row: Result<(f64, i32), _> = rullst::db::sqlx::query_as(
-        "SELECT price, stock FROM products WHERE id = $1"
-    )
-    .bind(payload.product_id)
-    .fetch_one(pool)
-    .await;
+            let total_price = product.price * (payload.quantity as f64);
 
-    if let Ok((price, stock)) = product_row {
-        if stock >= payload.quantity {
-            // Deduct stock and save order in sequential steps
-            let _ = rullst::db::sqlx::query(
-                "UPDATE products SET stock = stock - $1, updated_at = datetime('now') WHERE id = $2"
-            )
-            .bind(payload.quantity)
-            .bind(payload.product_id)
-            .execute(pool)
-            .await;
-
-            let total_price = price * (payload.quantity as f64);
-
-            let _ = rullst::db::sqlx::query(
-                "INSERT INTO orders (customer_name, product_id, quantity, total_price, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, datetime('now'), datetime('now'))"
-            )
-            .bind(payload.customer_name)
-            .bind(payload.product_id)
-            .bind(payload.quantity)
-            .bind(total_price)
-            .bind("Paid")
-            .execute(pool)
-            .await;
+            let mut order = Order {
+                id: 0,
+                customer_name: payload.customer_name,
+                product_id: payload.product_id,
+                quantity: payload.quantity,
+                total_price,
+                status: "Paid".to_string(),
+            };
+            let _ = order.save().await;
         }
     }
 

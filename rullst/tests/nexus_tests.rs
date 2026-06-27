@@ -209,6 +209,8 @@ async fn test_nexus_full_flow() {
     let res_create = app
         .post("/table/nexus_users")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&form_data)
         .await;
     res_create.assert_status(200);
@@ -234,6 +236,8 @@ async fn test_nexus_full_flow() {
     let res_update = app
         .put("/table/nexus_users/2")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&update_data)
         .await;
     res_update.assert_status(200);
@@ -243,6 +247,8 @@ async fn test_nexus_full_flow() {
     let res_delete = app
         .delete("/table/nexus_users/2")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .await;
     res_delete.assert_status(200);
     res_delete.assert_see("deleted");
@@ -312,9 +318,21 @@ async fn test_nexus_foreign_key_and_kinds() {
     let res_create = app
         .post("/table/nexus_posts")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&form_data)
         .await;
     res_create.assert_status(200);
+
+    let chat_data = [("message", "Show all users")];
+    let res_chat = app
+        .post("/chat/query")
+        .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
+        .form(&chat_data)
+        .await;
+    res_chat.assert_status(200);
 }
 
 static NEXUS_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
@@ -359,6 +377,8 @@ async fn test_nexus_invalid_tables_and_errors() {
     let res = app
         .put("/table/invalid_table/1")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&[("name", "Bob")])
         .await;
     res.assert_status(404);
@@ -367,6 +387,8 @@ async fn test_nexus_invalid_tables_and_errors() {
     let res = app
         .delete("/table/invalid_table/1")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .await;
     res.assert_status(404);
 
@@ -374,6 +396,8 @@ async fn test_nexus_invalid_tables_and_errors() {
     let res = app
         .post("/table/invalid_table")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&[("name", "Bob")])
         .await;
     res.assert_status(404);
@@ -382,6 +406,8 @@ async fn test_nexus_invalid_tables_and_errors() {
     let res = app
         .post("/chat/query")
         .header("Authorization", &auth_header)
+        .header("cookie", "rullst_csrf=test_csrf")
+        .header("x-csrf-token", "test_csrf")
         .form(&[("message", "Show all users")])
         .await;
     // We expect it to hit the endpoint (though the AI config might be offline and return an error HTML block)

@@ -485,4 +485,31 @@ mod tests {
             std::env::remove_var("STORAGE_ROOT");
         }
     }
+
+    #[tokio::test]
+    async fn test_storage_global_facade() {
+        // Set env var to avoid polluting actual storage root
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("STORAGE_ROOT", "storage/facade_test");
+        }
+        let _ = std::fs::remove_dir_all("storage/facade_test");
+
+        let res_put = Storage::put("facade.txt", b"hello global").await;
+        assert!(res_put.is_ok());
+
+        let res_exists = Storage::exists("facade.txt").await.unwrap();
+        assert!(res_exists);
+
+        let data = Storage::get("facade.txt").await.unwrap();
+        assert_eq!(data, b"hello global");
+
+        Storage::delete("facade.txt").await.unwrap();
+        let _ = std::fs::remove_dir_all("storage/facade_test");
+
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("STORAGE_ROOT");
+        }
+    }
 }

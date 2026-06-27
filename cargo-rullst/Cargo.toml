@@ -31,3 +31,6 @@ brotli = "8.0.3"
 zstd = "0.13.3"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "blocking"] }
 rand = "0.10.1"
+
+[dev-dependencies]
+insta = { version = "1.41", features = ["yaml"] }

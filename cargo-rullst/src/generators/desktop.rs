@@ -542,7 +542,12 @@ pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Erro
             let backend_guard = ChildGuard(backend);
 
             println!("⏳ Waiting for backend to bind...");
-            std::thread::sleep(std::time::Duration::from_secs(3));
+            for _ in 0..60 {
+                if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
 
             println!(
                 "📱 Starting Omni mobile client ({}) via Omni Engine...",

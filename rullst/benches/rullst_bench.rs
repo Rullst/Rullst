@@ -97,5 +97,9 @@ fn bench_middlewares(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_router, bench_html_macro, bench_middlewares);
+criterion_group!(
+    name = benches;
+    config = Criterion::default().sample_size(100);
+    targets = bench_router, bench_html_macro, bench_middlewares
+);
 criterion_main!(benches);

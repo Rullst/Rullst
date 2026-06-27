@@ -312,16 +312,22 @@ pub async fn index() -> impl IntoResponse {
 }
 
 pub async fn show_course(Path(id): Path<i32>) -> impl IntoResponse {
-    let course = Course::find(id).await.unwrap().unwrap();
+    let course = match Course::find(id).await.unwrap_or(None) {
+        Some(c) => c,
+        None => return Html("<h1>404 Course Not Found</h1>".to_string()).into_response(),
+    };
     let all_lessons = Lesson::all().await.unwrap_or_default();
     let course_lessons: Vec<Lesson> = all_lessons.into_iter().filter(|l| l.course_id == id).collect();
     
-    Html(lms::course_detail_page(course, course_lessons))
+    Html(lms::course_detail_page(course, course_lessons)).into_response()
 }
 
 pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
-    let lesson = Lesson::find(id).await.unwrap().unwrap();
-    Html(lms::video_player_snippet(&lesson.title, &lesson.video_url))
+    let lesson = match Lesson::find(id).await.unwrap_or(None) {
+        Some(l) => l,
+        None => return Html("<h1>404 Lesson Not Found</h1>".to_string()).into_response(),
+    };
+    Html(lms::video_player_snippet(&lesson.title, &lesson.video_url)).into_response()
 }
 "##;
     manifest.push((

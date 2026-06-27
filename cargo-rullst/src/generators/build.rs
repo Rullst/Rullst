@@ -171,39 +171,33 @@ fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
     static COMPILED_RULES: std::sync::OnceLock<Vec<(regex::Regex, &'static str, &'static str)>> =
         std::sync::OnceLock::new();
     let compiled_rules = COMPILED_RULES.get_or_init(|| {
-        let rules = vec![
+        vec![
             (
-                r#"\bold_initializer\s*\(\s*\)"#,
+                regex::Regex::new(r#"\bold_initializer\s*\(\s*\)"#).unwrap(),
                 "Router::new()",
                 "Legacy old_initializer() -> Router::new()",
             ),
             (
-                r#"\brullst::routing::old_initializer\b"#,
+                regex::Regex::new(r#"\brullst::routing::old_initializer\b"#).unwrap(),
                 "rullst::routing::Router::new",
                 "Legacy router initialization path",
             ),
             (
-                r#"\buse\s+sqlx::"#,
+                regex::Regex::new(r#"\buse\s+sqlx::"#).unwrap(),
                 "use rullst::db::sqlx::",
                 "Enforce Dependency Shielding for sqlx",
             ),
             (
-                r#"\buse\s+axum::"#,
+                regex::Regex::new(r#"\buse\s+axum::"#).unwrap(),
                 "use rullst::server::",
                 "Enforce Dependency Shielding for axum",
             ),
             (
-                r#"\buse\s+tokio::"#,
+                regex::Regex::new(r#"\buse\s+tokio::"#).unwrap(),
                 "use rullst::runtime::",
                 "Enforce Dependency Shielding for tokio",
             ),
-        ];
-
-        let mut compiled = Vec::new();
-        for (pattern, replacement, desc) in rules {
-            compiled.push((regex::Regex::new(pattern).unwrap(), replacement, desc));
-        }
-        compiled
+        ]
     });
 
     let mut applied_count = 0;
@@ -383,6 +377,57 @@ fn start_cargo_watch() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{} Building Wasm client artifacts...",
+        "[2/3]".bold().dimmed()
+    );
+
+    check_workspace_root();
+
+    println!(
+        "{}",
+        "\n🏝️  Iniciando a compilação do Rullst Wasm Island Client...\n"
+            .cyan()
+            .bold()
+    );
+
+    let mut cargo_content = fs::read_to_string("Cargo.toml")?;
+    inject_lib_crate_type_if_missing(&mut cargo_content)?;
+
+    install_wasm32_target();
+    compile_wasm_target(debug)?;
+
+    let (package_name, wasm_file_path) = locate_compiled_wasm(&cargo_content, debug);
+
+    ensure_wasm_bindgen_cli()?;
+
+    let static_dir = Path::new("static");
+    if !static_dir.exists() {
+        fs::create_dir_all(static_dir)?;
+    }
+
+    run_wasm_bindgen(&wasm_file_path)?;
+    inject_hydration_orchestrator(&package_name)?;
+
+    println!(
+        "{}",
+        "✨ Rullst Wasm Islands successfully compiled and generated!"
+            .green()
+            .bold()
+    );
+    println!("{}", "How to load in your HTML page:".cyan());
+    println!(
+        "{}",
+        format!(
+            "  <script type=\"module\">\n    import init from '/static/{}.js';\n    init();\n  </script>",
+            package_name
+        )
+        .cyan()
+    );
+    Ok(())
+}
+
+fn check_workspace_root() {
     if !is_rullst_project() {
         println!(
             "{}",
@@ -392,26 +437,21 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         );
         std::process::exit(1);
     }
+}
 
-    println!(
-        "{}",
-        "\n🏝️  Iniciando a compilação do Rullst Wasm Island Client...\n"
-            .cyan()
-            .bold()
-    );
-
-    // 1. Check and inject [lib] crate-type into Cargo.toml if missing
-    let mut cargo_content = fs::read_to_string("Cargo.toml")?;
+fn inject_lib_crate_type_if_missing(cargo_content: &mut String) -> Result<(), std::io::Error> {
     if !cargo_content.contains("[lib]") {
         cargo_content.push_str("\n\n[lib]\ncrate-type = [\"cdylib\", \"rlib\"]\n");
-        fs::write("Cargo.toml", &cargo_content)?;
+        fs::write("Cargo.toml", cargo_content)?;
         println!(
             "{}",
             "ℹ️ Automatically injected [lib] crate-type into your Cargo.toml.".cyan()
         );
     }
+    Ok(())
+}
 
-    // 2. Proactively try to add the wasm32 target using rustup
+fn install_wasm32_target() {
     println!(
         "{}",
         "⚙️ Verificando e instalando target wasm32-unknown-unknown...".yellow()
@@ -421,8 +461,9 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         .arg("add")
         .arg("wasm32-unknown-unknown")
         .status();
+}
 
-    // 3. Compile the target
+fn compile_wasm_target(debug: bool) -> Result<(), std::io::Error> {
     println!(
         "{}",
         "📦 Compilando componentes frontend para wasm32-unknown-unknown...".yellow()
@@ -444,8 +485,10 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         );
         std::process::exit(1);
     }
+    Ok(())
+}
 
-    // 4. Extract package name to locate the compiled wasm file
+fn locate_compiled_wasm(cargo_content: &str, debug: bool) -> (String, String) {
     let package_name = cargo_content
         .lines()
         .find(|line| line.trim().starts_with("name"))
@@ -485,8 +528,10 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         );
         std::process::exit(1);
     }
+    (package_name, wasm_file_path)
+}
 
-    // 5. Ensure wasm-bindgen-cli is installed
+fn ensure_wasm_bindgen_cli() -> Result<(), std::io::Error> {
     println!("{}", "🔍 Checking wasm-bindgen-cli...".yellow());
     let wasm_bindgen_installed = Command::new("wasm-bindgen")
         .arg("--version")
@@ -512,17 +557,13 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
     }
+    Ok(())
+}
 
-    // 6. Ensure static/ directory exists
-    let static_dir = Path::new("static");
-    if !static_dir.exists() {
-        fs::create_dir_all(static_dir)?;
-    }
-
-    // 7. Run wasm-bindgen compiler
+fn run_wasm_bindgen(wasm_file_path: &str) -> Result<(), std::io::Error> {
     println!("{}", "⚡ Running wasm-bindgen bindings...".yellow());
     let bindgen_status = Command::new("wasm-bindgen")
-        .arg(&wasm_file_path)
+        .arg(wasm_file_path)
         .arg("--out-dir")
         .arg("static")
         .arg("--target")
@@ -537,8 +578,10 @@ pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
         );
         std::process::exit(1);
     }
+    Ok(())
+}
 
-    // 8. Append the orchestrator to the generated JS file
+fn inject_hydration_orchestrator(package_name: &str) -> Result<(), std::io::Error> {
     let js_file_path = format!("static/{}.js", package_name);
     if Path::new(&js_file_path).exists() {
         let mut js_content = fs::read_to_string(&js_file_path)?;
@@ -583,23 +626,6 @@ if (typeof document !== 'undefined') {{
         js_content.push_str(&orchestrator);
         fs::write(&js_file_path, js_content)?;
     }
-
-    println!(
-        "{}",
-        "✨ Rullst Wasm Islands successfully compiled and generated!"
-            .green()
-            .bold()
-    );
-    println!("{}", "How to load in your HTML page:".cyan());
-    println!(
-        "{}",
-        format!(
-            "  <script type=\"module\">\n    import init from '/static/{}.js';\n    init();\n  </script>",
-            package_name
-        )
-        .cyan()
-    );
-
     Ok(())
 }
 

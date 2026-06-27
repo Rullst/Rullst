@@ -339,6 +339,107 @@ pub async fn handle_dashboard() -> impl IntoResponse {
     Html(studio_layout(dash_content, None, &tables)).into_response()
 }
 
+async fn fetch_table_schema(
+    pool: &sqlx::Pool<Any>,
+    driver: &str,
+    clean_table: &str,
+) -> Result<(Vec<String>, Vec<usize>), String> {
+    let columns_query = match driver {
+        "postgres" => format!("
+            SELECT CAST(c.column_name AS VARCHAR) as name,
+            CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END as pk
+            FROM information_schema.columns c
+            LEFT JOIN information_schema.key_column_usage kcu
+              ON c.table_name = kcu.table_name AND CAST(c.column_name AS VARCHAR) = CAST(kcu.column_name AS VARCHAR) AND kcu.table_schema = 'public'
+            LEFT JOIN information_schema.table_constraints tc
+              ON kcu.constraint_name = tc.constraint_name AND tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
+            WHERE c.table_name = '{}' AND c.table_schema = 'public'
+        ", clean_table),
+        "mysql" => format!("
+            SELECT column_name as name,
+            CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END as pk
+            FROM information_schema.columns
+            WHERE table_name = '{}' AND table_schema = DATABASE()
+        ", clean_table),
+        _ => format!("PRAGMA table_info(\"{}\")", clean_table),
+    };
+
+    let columns_rows = match QueryBuilder::<Any>::new(columns_query)
+        .build()
+        .fetch_all(pool)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => return Err(format!("Error loading schema: {}", e)),
+    };
+
+    let mut col_names = Vec::new();
+    let mut primary_keys = Vec::new();
+    for r in &columns_rows {
+        if let Ok(name) = r.try_get::<String, _>("name") {
+            let is_pk = if let Ok(pk) = r.try_get::<i64, _>("pk") {
+                pk > 0
+            } else if let Ok(pk) = r.try_get::<i32, _>("pk") {
+                pk > 0
+            } else {
+                false
+            };
+
+            if is_pk {
+                primary_keys.push(col_names.len());
+            }
+            col_names.push(name);
+        }
+    }
+    Ok((col_names, primary_keys))
+}
+
+async fn fetch_table_records(
+    pool: &sqlx::Pool<Any>,
+    driver: &str,
+    clean_table: &str,
+    col_names: &[String],
+    search: &str,
+    page_size: usize,
+    offset: usize,
+) -> Result<Vec<sqlx::any::AnyRow>, String> {
+    let quoted_table = if driver == "mysql" {
+        format!("`{}`", clean_table)
+    } else {
+        format!("\"{}\"", clean_table)
+    };
+
+    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
+
+    if !search.is_empty() && !col_names.is_empty() {
+        qb.push(" WHERE ");
+        let mut separated = qb.separated(" OR ");
+        for col in col_names {
+            if driver == "postgres" {
+                separated.push(format!(
+                    "CAST(\"{}\" AS TEXT) ILIKE ",
+                    sanitize_identifier(col)
+                ));
+            } else if driver == "mysql" {
+                separated.push(format!(
+                    "CAST(`{}` AS CHAR) LIKE ",
+                    sanitize_identifier(col)
+                ));
+            } else {
+                separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
+            }
+            separated.push_bind_unseparated(format!("%{}%", search));
+        }
+    }
+
+    qb.push(format!(" LIMIT {} OFFSET {}", page_size, offset));
+
+    match qb.build().fetch_all(pool).await {
+        Ok(recs) => Ok(recs),
+        Err(e) => Err(format!("Error loading records: {}", e)),
+    }
+}
+
 /// HTMX-aware handler for rendering a paginated, searchable table view inside Rullst Studio.
 /// Responds with a full HTML page on direct load, or an HTML fragment for HTMX partial updates.
 pub async fn handle_table(
@@ -379,90 +480,24 @@ pub async fn handle_table(
     };
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table_name);
-
-    let columns_query = match driver {
-        "postgres" => format!("
-            SELECT CAST(c.column_name AS VARCHAR) as name,
-            CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END as pk
-            FROM information_schema.columns c
-            LEFT JOIN information_schema.key_column_usage kcu
-              ON c.table_name = kcu.table_name AND CAST(c.column_name AS VARCHAR) = CAST(kcu.column_name AS VARCHAR) AND kcu.table_schema = 'public'
-            LEFT JOIN information_schema.table_constraints tc
-              ON kcu.constraint_name = tc.constraint_name AND tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
-            WHERE c.table_name = '{}' AND c.table_schema = 'public'
-        ", clean_table),
-        "mysql" => format!("
-            SELECT column_name as name,
-            CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END as pk
-            FROM information_schema.columns
-            WHERE table_name = '{}' AND table_schema = DATABASE()
-        ", clean_table),
-        _ => format!("PRAGMA table_info(\"{}\")", clean_table),
+    let (col_names, primary_keys) = match fetch_table_schema(pool, driver, &clean_table).await {
+        Ok(schema) => schema,
+        Err(e) => return Html(e).into_response(),
     };
 
-    let columns_rows = match QueryBuilder::<Any>::new(columns_query)
-        .build()
-        .fetch_all(pool)
-        .await
+    let records = match fetch_table_records(
+        pool,
+        driver,
+        &clean_table,
+        &col_names,
+        search,
+        page_size,
+        offset,
+    )
+    .await
     {
-        Ok(r) => r,
-        Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
-    };
-
-    let mut col_names = Vec::new();
-    let mut primary_keys = Vec::new();
-    for r in &columns_rows {
-        if let Ok(name) = r.try_get::<String, _>("name") {
-            let is_pk = if let Ok(pk) = r.try_get::<i64, _>("pk") {
-                pk > 0
-            } else if let Ok(pk) = r.try_get::<i32, _>("pk") {
-                pk > 0
-            } else {
-                false
-            };
-
-            if is_pk {
-                primary_keys.push(col_names.len());
-            }
-            col_names.push(name);
-        }
-    }
-
-    let quoted_table = if driver == "mysql" {
-        format!("`{}`", clean_table)
-    } else {
-        format!("\"{}\"", clean_table)
-    };
-
-    // Dynamic records list
-    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
-
-    if !search.is_empty() && !col_names.is_empty() {
-        qb.push(" WHERE ");
-        let mut separated = qb.separated(" OR ");
-        for col in &col_names {
-            if driver == "postgres" {
-                separated.push(format!(
-                    "CAST(\"{}\" AS TEXT) ILIKE ",
-                    sanitize_identifier(col)
-                ));
-            } else if driver == "mysql" {
-                separated.push(format!(
-                    "CAST(`{}` AS CHAR) LIKE ",
-                    sanitize_identifier(col)
-                ));
-            } else {
-                separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
-            }
-            separated.push_bind_unseparated(format!("%{}%", search));
-        }
-    }
-
-    qb.push(format!(" LIMIT {} OFFSET {}", page_size, offset));
-
-    let records = match qb.build().fetch_all(pool).await {
         Ok(recs) => recs,
-        Err(e) => return Html(format!("Error loading records: {}", e)).into_response(),
+        Err(e) => return Html(e).into_response(),
     };
 
     // Build headers HTML

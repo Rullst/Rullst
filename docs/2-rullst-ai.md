@@ -14,7 +14,7 @@ These are the heart of AI-assisted development. The `AGENTS.md` file acts as the
 
 Example of the default content:
 ```markdown
-1. **Strict Type Safety**: Do not use `dyn Trait` unless absolutely necessary.
+1. **Static Dispatch over Dynamic**: Prefer static dispatch (`impl Trait` or generics) over `dyn Trait` to ensure explicit concrete types for AI context tracking and optimization.
 2. **Explicit APIs**: Avoid hidden state. Every controller and middleware should be explicit in its arguments.
 3. **HTML Macros**: Boolean attributes in the `html!` macro must be quoted (e.g., `required="true"`).
 4. **No Panics**: Never use `unwrap()` or `expect()` in production routes.

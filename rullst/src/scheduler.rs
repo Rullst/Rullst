@@ -22,15 +22,18 @@ use std::sync::Arc;
 
 // ─── Scheduled Task ─────────────────────────────────────────────────────────
 
+/// The boxed async handler function type for scheduled tasks.
+pub type ScheduledHandler =
+    Arc<Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>>;
+
 /// A single scheduled task with a cron expression and an async handler.
-#[allow(clippy::type_complexity)]
 pub struct ScheduledTask {
     /// Human-readable label for logging (derived from cron expression).
     label: String,
     /// The parsed cron schedule.
     schedule: cron::Schedule,
     /// The async handler to execute when the schedule fires.
-    handler: Arc<Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>>,
+    handler: ScheduledHandler,
 }
 
 // ─── Scheduler ──────────────────────────────────────────────────────────────
@@ -96,13 +99,12 @@ impl Scheduler {
             .map_err(|e| format!("Invalid cron expression '{}': {}", cron_expr, e))?;
 
         let label = cron_expr.to_string();
-        let boxed: Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync> =
-            Box::new(move || Box::pin(handler()));
+        let boxed: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));
 
         self.tasks.push(ScheduledTask {
             label,
             schedule,
-            handler: Arc::new(boxed),
+            handler: boxed,
         });
 
         Ok(self)

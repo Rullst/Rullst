@@ -710,4 +710,35 @@ mod tests {
         // bucket 101 is out of bounds
         assert_eq!(resolve_variant(&variants, 101), None);
     }
+
+    #[tokio::test]
+    async fn test_memory_driver_override_enabled() {
+        let driver = MemoryFeatureDriver::new();
+
+        // Assert initial state is None
+        assert_eq!(driver.enabled("test-flag").await, None);
+
+        // Override to true
+        driver.override_enabled("test-flag", true);
+        assert_eq!(driver.enabled("test-flag").await, Some(true));
+
+        // Override to false
+        driver.override_enabled("test-flag-2", false);
+        assert_eq!(driver.enabled("test-flag-2").await, Some(false));
+    }
+
+    #[test]
+    fn test_feature_init() {
+        let manager1 = FeatureManager::new();
+        // Since tests run concurrently, FEATURE_CELL might already be initialized.
+        // We just ensure we can call init and manager safely.
+        let _ = super::init(manager1);
+
+        let manager2 = FeatureManager::new();
+        // Any subsequent init must fail since it's already set (either by us or another test).
+        assert!(super::init(manager2).is_err());
+
+        // manager() should return a valid reference without panicking
+        let _m = super::manager();
+    }
 }

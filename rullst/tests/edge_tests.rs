@@ -103,3 +103,38 @@ async fn test_replication_manager_mock_start() {
 
 #[tokio::test]
 async fn test_edge_module_exists() {}
+
+#[tokio::test]
+async fn test_edge_server_run_integration() {
+    let handler = |req: EdgeRequest| async move {
+        EdgeResponse::new(200)
+            .with_header("X-Edge-Test", "Passed")
+            .with_body(b"Hello from EdgeServer!".to_vec())
+    };
+
+    let server = EdgeServer::new(handler).with_port(9998);
+
+    // Spawn the server in the background
+    tokio::spawn(async move {
+        let _ = server.run().await;
+    });
+
+    // Give it a tiny moment to bind
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+    // Perform real HTTP request using reqwest
+    let client = reqwest::Client::new();
+    let res = client
+        .get("http://127.0.0.1:9998/test/integration")
+        .send()
+        .await
+        .expect("Failed to execute request");
+
+    assert_eq!(res.status().as_u16(), 200);
+    assert_eq!(
+        res.headers().get("X-Edge-Test").unwrap().to_str().unwrap(),
+        "Passed"
+    );
+    let body = res.text().await.unwrap();
+    assert_eq!(body, "Hello from EdgeServer!");
+}

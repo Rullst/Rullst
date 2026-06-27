@@ -210,6 +210,17 @@ impl NexusModel for Subscription {
         ]
     }
 }
+
+impl Subscription {
+    pub async fn find_by_subscription_id(subscription_id: &str) -> Option<Self> {
+        let pool = rullst::db::Orm::pool();
+        rullst::db::sqlx::query_as("SELECT * FROM subscriptions WHERE subscription_id = $1")
+            .bind(subscription_id)
+            .fetch_optional(pool)
+            .await
+            .unwrap_or(None)
+    }
+}
 "##;
     manifest.push(("src/models/subscription.rs", subscription_model.to_string()));
 
@@ -481,34 +492,29 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid signature").into_response(),
     };
 
-    let pool = rullst_orm::Orm::pool();
-    let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
-        .bind(&event.subscription_id)
-        .fetch_optional(pool)
-        .await;
+    let existing = crate::models::subscription::Subscription::find_by_subscription_id(&event.subscription_id).await;
 
     match existing {
-        Ok(Some(row)) => {
-            let id: i32 = row.get("id");
-            let _ = rullst::db::sqlx::query("UPDATE subscriptions SET status = ?1, plan_id = ?2, ends_at = ?3, updated_at = datetime('now') WHERE id = ?4")
-                .bind(event.status.as_str())
-                .bind(&event.plan_id)
-                .bind(event.ends_at)
-                .bind(id)
-                .execute(pool)
-                .await;
+        Some(mut sub) => {
+            sub.status = event.status.clone();
+            sub.plan_id = event.plan_id.clone();
+            sub.ends_at = event.ends_at;
+            let _ = sub.save().await;
         }
-        Ok(None) => {
-            let _ = rullst::db::sqlx::query("INSERT INTO subscriptions (user_id, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at) VALUES (1, ?1, ?2, ?3, ?4, ?5, datetime('now'), datetime('now'))")
-                .bind(&event.customer_id)
-                .bind(&event.subscription_id)
-                .bind(&event.plan_id)
-                .bind(event.status.as_str())
-                .bind(event.ends_at)
-                .execute(pool)
-                .await;
+        None => {
+            let mut sub = crate::models::subscription::Subscription {
+                id: 0,
+                user_id: 1,
+                customer_id: event.customer_id.clone(),
+                subscription_id: event.subscription_id.clone(),
+                plan_id: event.plan_id.clone(),
+                status: event.status.clone(),
+                ends_at: event.ends_at,
+                created_at: String::new(),
+                updated_at: String::new(),
+            };
+            let _ = sub.save().await;
         }
-        Err(_) => {}
     }
 
     (StatusCode::OK, "OK").into_response()

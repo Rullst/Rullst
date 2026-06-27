@@ -131,7 +131,7 @@ where
 
         let handler = self.handler.clone();
         let app = Router::new().route(
-            "/*path",
+            "/{*path}",
             any(move |req: Request| {
                 let handler = handler.clone();
                 async move {

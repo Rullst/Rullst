@@ -70,6 +70,8 @@ getrandom = { version = "0.4.2", features = ["wasm_js"] }
 futures-util = "0.3.32"
 tokio-tungstenite = "0.29.0"
 criterion = { version = "0.8.2", features = ["html_reports", "async_tokio"] }
+proptest = "1.11.0"
+insta = { version = "1.41", features = ["yaml"] }
 
 [[bench]]
 name = "rullst_bench"

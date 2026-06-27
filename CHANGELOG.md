@@ -10,6 +10,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **CLI**: Added the `cargo rullst nixify` command to generate a reproducible Nix development environment (`flake.nix` and `.envrc`).
 - **CLI**: Added `--nix` flag to `cargo rullst new` for scaffolding Nix-enabled projects directly.
 - **CLI**: Added missing `cargo rullst dev` command to the "View Help & Commands" list.
+- **AI Directives**: Refined `AGENTS.md` and `docs/spec.md` with explicit instructions: "Static Dispatch over Dynamic", allowing `unwrap()` in test scenarios, explicit quotation of HTML macro attributes, and the strict prohibition of raw SQL macros within controllers in favor of ORM delegation.
+- **Testing**: Added rigorous global facade coverage verifying the `Storage::put` and `feature::init` API capabilities, ensuring local disk storage defaults and singleton initialization work flawlessly across test environments.
+- **Testing**: Increased edge-case test coverage for `htmx::render_page` (testing empty contents and unescaped HTML characters) and `MemoryFeatureDriver` manual override functionality.
+
+### Refactoring & Code Quality
+- **Job Queue Type Refactoring**: Extracted a complex tuple return type `Vec<(String, ...)>` into a dedicated `JobRow` structure in the SQLite queue driver (`queue.rs`), enhancing code readability and complying with strict `clippy::type_complexity` limits.
+- **Codegen Optimization**: Simplified the self-healing AST codemod regex compilation (`build.rs`) to map patterns natively within the `OnceLock` initialization, eliminating redundant regex construction during `cargo-rullst` execution.
+- **Nexus Panel Maintenance**: Eliminated unused dead code (`db_url`) within the internal `NexusState` and `Nexus` auto-CMS builder, streamlining the component struct architectures.
+- **Blueprint Enterprise Architecture (MVC)**: Extensively refactored the generated blueprints (SaaS, ERP, and Uptime) to decouple database logic from controllers. All raw `sqlx::query` invocations inside controllers were systematically replaced with native Rullst Active Record (`.save()`, `.all()`, `.find()`) or explicitly delegated to `impl Model` repositories.
+- **Studio Readability**: Significantly reduced cyclomatic complexity within `handle_table` (`studio.rs`) by extracting the SQL generation, schema introspection, and raw record fetching logic into concise independent functions.
+- **Scheduler Complexity**: Addressed `clippy::type_complexity` warnings inside `scheduler.rs` by exporting a clean `ScheduledHandler` trait alias for the recurrent callback functions, removing the need for `#[allow]` suppression pragmas.
+
+### Performance & CI
+- **Benchmark Regression Testing**: Integrated a GitHub Actions pipeline (`bench.yml`) utilizing `github-action-benchmark` to enforce a maximum 30% latency degradation (`alert-threshold: '130%'`) on pull requests. The routing, HTML macros, and WAF middleware `Criterion` benchmarks now run with an expanded sample size (`sample_size(100)`) to mitigate false positives caused by noisy neighbor CPU throttling in shared environments.
+- **Insta Snapshot Testing**: Adotada a biblioteca `insta` no ecossistema de testes para garantir precisão e ausência de regressões na renderização de macros HTML e em geradores de código. O primeiro teste de snapshot foi adicionado para a engine da macro `html!`.
+- **Dead Code Extirpation**: Converted `field_kind_input_type` in `nexus.rs` strictly into a test-only `#[cfg(test)]` function since it is not utilized anywhere in the active production paths, decreasing build footprints.
+- **Desktop Generator Reliability**: Removed synchronous `std::thread::sleep(3)` delays from the Tauri mobile initialization scripts inside `desktop.rs`, converting them into an active rapid polling mechanism against `127.0.0.1:3000`, making local mobile/desktop test runs faster and fail-fast capable.
+- **Uptime Seeder Optimization (N+1 Elimination)**: Wrapped multiple sequential heartbeat inserts inside the Uptime Monitor generator within a single database transaction (`pool.begin()`) using a single batch insert query string, significantly optimizing startup time for new generated projects and eliminating all N+1 querying.
+- **Generator Complexity**: Split the monolithic `generate_docker_files` function in `cargo-rullst/src/generators/project.rs` into smaller, focused helpers (`create_dockerfile`, `create_docker_compose`, `create_env_files`). Similarly modularized `run_build_client` in `cargo-rullst/src/generators/build.rs` to vastly improve readability and maintainability.
+
+### Security
+- **Nexus CSRF Hardening**: Enforced robust CSRF protection on the Rullst Nexus auto-CMS by applying the `csrf_middleware` directly to the Nexus router buildup. Additionally injected HTMX config event listeners in the `render_shell` to seamlessly attach the `X-CSRF-Token` header on all dynamic admin requests.
+- **Timing Attack Mitigation (Auth Scaffolding)**: Resolved a user enumeration vector within the `cargo-rullst` authentication generator. Login attempts for nonexistent email addresses now dynamically trigger a dummy Argon2 hash verification to ensure constant-time execution against brute-force enumeration bots.
+- **LMS Denial of Service (DoS) Mitigation**: Removed unsafe `unwrap()` invocations inside the `lms.rs` blueprint template. Unsafe access to non-existent courses or lessons could panic the Axum server process. The blueprint now safely delegates missing IDs to a `404 Not Found` response in accordance with the Zero-Panic policy.
+
+### Testing & Code Coverage
+- **Edge Server Emulation**: Added integration tests for `EdgeServer::run` in `tests/edge_tests.rs`, spawning the emulator on a background tokio thread and executing actual HTTP requests via `reqwest` to validate end-to-end edge router initialization.
+
+### Fixed
+- **Axum 0.8 Wildcard Syntax**: Updated the Edge emulation router (`EdgeServer::run`) to use the new `/{*path}` syntax mandated by Axum 0.8, fixing a startup panic when testing integration scenarios.
+- **Console Style Invocation**: Fixed a compilation error in `cargo-rullst/src/generators/build.rs` where an invalid method `.dim()` was called instead of the correct `colored::Colorize::dimmed()`.
+
 
 ## [4.0.1]
 

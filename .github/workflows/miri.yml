@@ -1,0 +1,28 @@
+name: Miri UB Detection
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+permissions:
+  contents: read
+
+jobs:
+  miri:
+    name: Run Miri (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Sharding the execution by workspace packages to prevent timeouts
+        package: [rullst, rullst-macros, cargo-rullst]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Nightly with Miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: miri
+
+      - name: Run Cargo Miri
+        run: cargo +nightly miri test -p ${{ matrix.package }}

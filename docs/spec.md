@@ -110,8 +110,9 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 ## 🧱 5. Controller Architecture
 
 Controllers handle business logic and HTTP responses.
-* **Module Structure:** Each controller is a separate module inside `src/controllers/` (e.g., `users_controller.rs`).
-* **Function Signatures:** Functions must be asynchronous and return a type that implements `axum::response::IntoResponse` (or `Result<impl IntoResponse, AppError>`).
+* **Module Structure**: Each controller is a separate module inside `src/controllers/` (e.g., `users_controller.rs`).
+* **Function Signatures**: Functions must be asynchronous and return a type that implements `axum::response::IntoResponse` (or `Result<impl IntoResponse, AppError>`).
+* **Database Access**: Controllers must **never** contain raw `sqlx::query!` macros inline. Database logic must be delegated to the Active Record ORM methods (`.save()`, `.all()`, etc.) or encapsulated within specific `impl Model` functions.
 * **Standard Actions:** 
   * `pub async fn index()`: List all resources.
   * `pub async fn show(Path(id): Path<i32>)`: Show a specific resource.

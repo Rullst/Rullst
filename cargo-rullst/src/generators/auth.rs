@@ -763,14 +763,22 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
     
     let user = users.into_iter().find(|u| u.email == payload.email);
     
-    let Some(u) = user else {
-        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
+    let (hash, user_found) = match user.as_ref() {
+        Some(u) => (u.password_hash.clone().unwrap_or_default(), true),
+        None => (
+            // Dummy hash to prevent timing attacks when the user is not found
+            "$argon2id$v=19$m=19456,t=2,p=1$VE9CZ2d5dHVyWldOajNXZA$M0zU6o5hE/R6B+nJ9hX8+A".to_string(),
+            false,
+        ),
     };
 
-    let hash = u.password_hash.as_deref().unwrap_or("");
-    if !rullst_auth::verify_password(&payload.password, hash) {
+    let valid_password = rullst_auth::verify_password(&payload.password, &hash);
+
+    if !user_found || !valid_password {
         return auth::login_page(&token, Some("Incorrect email or password")).into_response();
     }
+
+    let u = user.unwrap();
 
     match rullst_auth::make_login_cookie(u.id) {
         Ok(cookie) => {

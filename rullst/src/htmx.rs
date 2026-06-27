@@ -271,4 +271,32 @@ mod tests {
         assert!(res_normal.0.contains("https://cdn.tailwindcss.com"));
         assert!(res_normal.0.contains("https://unpkg.com/htmx.org"));
     }
+
+    #[test]
+    fn test_render_page_edge_cases() {
+        let req_normal = HtmxRequest {
+            is_htmx: false,
+            trigger: None,
+            target: None,
+            prompt: None,
+            current_url: None,
+        };
+
+        // Empty content
+        let res_empty = render_page(&req_normal, "Empty Title", "".to_string());
+        assert!(res_empty.0.contains("<title>Empty Title</title>"));
+        assert!(res_empty.0.contains("<body class=\"h-full\">"));
+
+        // Unusual titles
+        let res_special = render_page(
+            &req_normal,
+            "<script>alert(1)</script>",
+            "content".to_string(),
+        );
+        assert!(
+            res_special
+                .0
+                .contains("<title>&lt;script&gt;alert(1)&lt;/script&gt;</title>")
+        );
+    }
 }
