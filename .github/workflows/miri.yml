@@ -16,7 +16,7 @@ jobs:
         # Sharding the execution by workspace packages to prevent timeouts
         package: [rullst, rullst-macros, cargo-rullst]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Install Rust Nightly with Miri
         uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly
@@ -27,4 +27,12 @@ jobs:
       - name: Run Cargo Miri
         env:
           MIRIFLAGS: -Zmiri-disable-isolation
-        run: cargo +nightly miri test -p ${{ matrix.package }}
+        # Skip tests that invoke C FFI via ring/aws-lc-rs (TLS, crypto, passkey).
+        # Miri cannot emulate foreign C functions — these are network/crypto integration
+        # tests already covered by the regular CI test suite.
+        run: |
+          cargo +nightly miri test -p ${{ matrix.package }} -- \
+            --skip auth::passkey \
+            --skip auth::jwt \
+            --skip auth::oauth \
+            --skip ai::tests::test_ai_providers_network_errors
