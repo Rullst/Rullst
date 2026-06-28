@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782685485562,
+  "lastUpdate": 1782686857150,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -431,6 +431,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2317,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "85e41336d82360e3a30d16814087e286d3471176",
+          "message": "ci: fix Miri aws-lc-rs test, Kani MSRV conflict, upgrade all checkout to v4.3.1 (Node 24)",
+          "timestamp": "2026-06-28T19:44:08-03:00",
+          "tree_id": "13cd514d4acda1db44f314c5dbbc0e0b318fefc3",
+          "url": "https://github.com/Rullst/Rullst/commit/85e41336d82360e3a30d16814087e286d3471176"
+        },
+        "date": 1782686856817,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 752,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1021,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 640,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2322,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
