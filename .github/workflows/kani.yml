@@ -21,4 +21,5 @@ jobs:
         # crate which has no MSRV or crypto deps that would conflict.
         # NOTE: requires at least one #[kani::proof] harness to verify.
         working-directory: rullst-macros
-        run: cargo kani || echo "No proof harnesses found yet — add #[kani::proof] to enable formal verification."
+        continue-on-error: true
+        run: cargo kani
