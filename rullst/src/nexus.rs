@@ -189,10 +189,9 @@ impl Nexus {
         self
     }
 
-    /// DEPRECATED: The Nexus panel now extracts the database pool directly from the application's extensions.
+    /// The Nexus panel now extracts the database pool directly from the application's extensions.
     /// This method is maintained solely for backward compatibility and is a no-op.
-    #[deprecated(since = "4.0.2", note = "Database pool is now extracted from app extensions. This method is a no-op.")]
-    pub fn with_db<T>(self, _pool: T) -> Self {
+    pub fn with_db(self, _db_url: &str) -> Self {
         self
     }
 

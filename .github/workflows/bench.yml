@@ -37,7 +37,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
 
       - name: Run cargo bench
-        run: cargo bench -p rullst | tee output.txt
+        run: cargo bench -p rullst --bench rullst_bench | tee output.txt
 
       - name: GitHub Action Benchmark
         uses: benchmark-action/github-action-benchmark@v1
