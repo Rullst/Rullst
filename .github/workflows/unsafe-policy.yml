@@ -18,4 +18,6 @@ jobs:
         with:
           toolchain: stable
       - run: cargo install cargo-geiger
-      - run: cargo geiger --workspace
+      - run: cd rullst && cargo geiger
+      - run: cd rullst-macros && cargo geiger
+      - run: cd cargo-rullst && cargo geiger
