@@ -42,7 +42,7 @@ jobs:
         run: cargo bench -p rullst --bench rullst_bench -- --output-format bencher | tee output.txt
 
       - name: GitHub Action Benchmark
-        uses: benchmark-action/github-action-benchmark@59eb48c089c2c62c954ab696e54580bf37b3f9ff # v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         with:
           tool: 'cargo'
           output-file-path: Rullst/output.txt
