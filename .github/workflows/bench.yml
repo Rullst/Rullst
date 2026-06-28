@@ -7,8 +7,7 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,14 +20,17 @@ jobs:
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout Rullst
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: Rullst
 
       - name: Checkout rullst-orm
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: venelouis/rullst-orm
           path: rullst-orm
@@ -37,10 +39,10 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
 
       - name: Run cargo bench
-        run: cargo bench -p rullst --bench rullst_bench | tee output.txt
+        run: cargo bench -p rullst --bench rullst_bench -- --output-format bencher | tee output.txt
 
       - name: GitHub Action Benchmark
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@59eb48c089c2c62c954ab696e54580bf37b3f9ff # v1
         with:
           tool: 'cargo'
           output-file-path: Rullst/output.txt

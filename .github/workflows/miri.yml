@@ -16,10 +16,10 @@ jobs:
         # Sharding the execution by workspace packages to prevent timeouts
         package: [rullst, rullst-macros, cargo-rullst]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust Nightly with Miri
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly
         with:
           toolchain: nightly
           components: miri
