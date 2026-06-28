@@ -25,4 +25,6 @@ jobs:
           components: miri
 
       - name: Run Cargo Miri
+        env:
+          MIRIFLAGS: -Zmiri-disable-isolation
         run: cargo +nightly miri test -p ${{ matrix.package }}
