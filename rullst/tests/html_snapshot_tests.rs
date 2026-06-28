@@ -17,7 +17,7 @@ fn test_html_macro_snapshot_simple() {
 fn test_html_macro_snapshot_dynamic() {
     let user_name = "Alice";
     let is_admin = true;
-    let items = vec!["Rust", "Security", "Performance"];
+    let items = ["Rust", "Security", "Performance"];
 
     let result = html! {
         <div class="dashboard">

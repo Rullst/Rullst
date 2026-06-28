@@ -189,6 +189,13 @@ impl Nexus {
         self
     }
 
+    /// DEPRECATED: The Nexus panel now extracts the database pool directly from the application's extensions.
+    /// This method is maintained solely for backward compatibility and is a no-op.
+    #[deprecated(since = "4.0.2", note = "Database pool is now extracted from app extensions. This method is a no-op.")]
+    pub fn with_db<T>(self, _pool: T) -> Self {
+        self
+    }
+
     /// Exposes optional HTTP Basic Authentication credentials to secure the panel.
     pub fn with_auth(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
         self.auth = Some((username.into(), password.into()));

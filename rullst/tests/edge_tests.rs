@@ -106,7 +106,7 @@ async fn test_edge_module_exists() {}
 
 #[tokio::test]
 async fn test_edge_server_run_integration() {
-    let handler = |req: EdgeRequest| async move {
+    let handler = |_req: EdgeRequest| async move {
         EdgeResponse::new(200)
             .with_header("X-Edge-Test", "Passed")
             .with_body(b"Hello from EdgeServer!".to_vec())
