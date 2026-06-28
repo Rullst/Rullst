@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782686857150,
+  "lastUpdate": 1782690491217,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -485,6 +485,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2322,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c6d152350a73bd8995b7587427a87efeb45024b6",
+          "message": "ci: upgrade all checkout to v5 (Node 24), skip crypto FFI in Miri, fix Kani no-harness exit",
+          "timestamp": "2026-06-28T20:45:37-03:00",
+          "tree_id": "25d5544afed6c20bc82f2a16119044aa36485eae",
+          "url": "https://github.com/Rullst/Rullst/commit/c6d152350a73bd8995b7587427a87efeb45024b6"
+        },
+        "date": 1782690490772,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 738,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 976,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 619,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2373,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
