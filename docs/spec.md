@@ -37,7 +37,7 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 * **File Names:** Standard Rust `snake_case` (e.g. `users_controller.rs`, `post_model.rs`).
 * **Struct / Model / Documentation Names:** Standard `PascalCase` (e.g. `UsersController`, `PostModel`).
-* **URL Paths:** Lowecase kebab-case (e.g. `/users`, `/user-profiles`).
+* **URL Paths:** Lowercase kebab-case (e.g. `/users`, `/user-profiles`).
 
 ---
 

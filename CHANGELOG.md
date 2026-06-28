@@ -343,7 +343,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Milestone 10: Instant Incremental Compilation & Linker Hacking)
 - **Dynamic Linker Hacking Detection**: Added runtime capability to detect fast modern linkers (`mold` on Linux/macOS and `lld` on Windows/Linux/macOS) in `cargo-rullst`.
-- **Smart Scaffolding Otimization**: Automatically generates the `.cargo/` structure and `.cargo/config.toml` configuring high-performance linkers if they are found in the developer's system path. Prevents build breaks by elegantly generating them commented out with precise activation instructions if not installed.
+- **Smart Scaffolding Optimization**: Automatically generates the `.cargo/` structure and `.cargo/config.toml` configuring high-performance linkers if they are found in the developer's system path. Prevents build breaks by elegantly generating them commented out with precise activation instructions if not installed.
 - **Cranelift Compiling Integration**: Scaffolds new projects with a ready-to-use, well-documented `[profile.dev] codegen-backend = "cranelift"` block inside `Cargo.toml`, guiding users on how to achieve sub-100ms compilation times in development.
 - **Interactive Performance Scaffold Banners**: Renders a beautiful tip banner at the end of the new project scaffolding wizard, recommending exact commands to install LLD or Mold based on the developer's operating system (e.g. `winget install LLVM.LLVM` for Windows).
 
