@@ -12,10 +12,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: Rullst
-
 jobs:
   benchmark:
     name: Run Benchmarks
@@ -26,14 +22,6 @@ jobs:
     steps:
       - name: Checkout Rullst
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          path: Rullst
-
-      - name: Checkout rullst-orm
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          repository: venelouis/rullst-orm
-          path: rullst-orm
 
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
@@ -45,7 +33,7 @@ jobs:
         uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
         with:
           tool: 'cargo'
-          output-file-path: Rullst/output.txt
+          output-file-path: output.txt
           fail-on-alert: true
           # Alert threshold set to 130% to avoid noisy neighbors on GitHub Actions runners
           alert-threshold: '130%'
