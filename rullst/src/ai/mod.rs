@@ -335,6 +335,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn test_ai_providers_network_errors() {
         // These tests verify that network failures or invalid API keys correctly propagate as Err()
         // and kill mutants that hardcode Ok() returns.
