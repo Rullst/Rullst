@@ -116,6 +116,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_ollama_provider_builder() {
         let provider = OllamaProvider::new("http://localhost:11434/", "llama-test")
             .with_embedding_model("nomic-test");

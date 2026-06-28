@@ -8,6 +8,7 @@ license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
 exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
+rust-version = "1.94.0"
 [features]
 default = []
 queue-redis = ["dep:redis"]

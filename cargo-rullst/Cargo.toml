@@ -7,6 +7,7 @@ description = "âŒ¨ï¸  $ The official command-line interface (CLI) for manag
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
+rust-version = "1.94.0"
 
 [[bin]]
 name = "cargo-rullst"

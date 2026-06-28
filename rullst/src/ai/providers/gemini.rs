@@ -152,6 +152,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_gemini_provider_builder() {
         let provider = GeminiProvider::new("test-key")
             .with_model("gemini-test")

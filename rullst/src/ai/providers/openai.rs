@@ -121,6 +121,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_openai_provider_builder() {
         let provider = OpenAiProvider::new("test-key")
             .with_model("gpt-4")
