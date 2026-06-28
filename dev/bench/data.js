@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782684394433,
+  "lastUpdate": 1782684886358,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -323,6 +323,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2322,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6d1d4b120604775bd980d8041516c15cc72599eb",
+          "message": "ci: run cargo-geiger individually per package",
+          "timestamp": "2026-06-28T19:13:10-03:00",
+          "tree_id": "19e380da523b837e979cb8401ad09b39b9859dcd",
+          "url": "https://github.com/Rullst/Rullst/commit/6d1d4b120604775bd980d8041516c15cc72599eb"
+        },
+        "date": 1782684885589,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 758,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1002,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 596,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2291,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
