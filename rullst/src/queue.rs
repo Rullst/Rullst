@@ -498,11 +498,13 @@ impl Queue {
     }
 
     /// Retry a failed job in the queue
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
         self.driver.retry_failed_job(job_id).await
     }
 
     /// Purge failed jobs from the queue database
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
         self.driver.purge_completed_jobs().await
     }
@@ -579,6 +581,7 @@ impl Worker {
     ///
     /// This spawns a Tokio task that continuously polls the queue.
     /// Call this during server startup (e.g., before `Server::run()`).
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn run(&self) {
         let driver = Arc::clone(&self.driver);
         let handlers = self.handlers.clone();

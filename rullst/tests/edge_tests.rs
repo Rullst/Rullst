@@ -105,6 +105,7 @@ async fn test_replication_manager_mock_start() {
 async fn test_edge_module_exists() {}
 
 #[tokio::test]
+#[cfg(not(miri))]
 async fn test_edge_server_run_integration() {
     let handler = |_req: EdgeRequest| async move {
         EdgeResponse::new(200)

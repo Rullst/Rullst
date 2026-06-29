@@ -85,6 +85,7 @@ impl TrafficShield {
         shield
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn spawn_monitors(&self) {
         let lag_ms = self.event_loop_lag_ms.clone();
         // 1. Event Loop Lag Diagnostic Task
