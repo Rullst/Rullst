@@ -165,7 +165,7 @@ where
             let color = colors[(i / 2) % colors.len()];
 
             let mut animated_msg = String::new();
-            
+
             let mut found_target = None;
             if let Some(mat) = re.find(&msg) {
                 found_target = Some((mat.as_str(), mat.start()));

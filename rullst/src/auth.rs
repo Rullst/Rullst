@@ -50,7 +50,8 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 /// Performs a dummy hash verification to equalize execution time and prevent timing attacks.
 /// If a valid hash is provided, it uses it; otherwise, it falls back to a hardcoded dummy hash.
 pub fn dummy_verify(hash: Option<&str>) {
-    let dummy_hash_str = "$argon2id$v=19$m=19456,t=2,p=1$VE9CZ2d5dHVyWldOajNXZA$M0zU6o5hE/R6B+nJ9hX8+A";
+    let dummy_hash_str =
+        "$argon2id$v=19$m=19456,t=2,p=1$VE9CZ2d5dHVyWldOajNXZA$M0zU6o5hE/R6B+nJ9hX8+A";
     let hash_to_use = hash.unwrap_or(dummy_hash_str);
     if let Ok(parsed_hash) = PasswordHash::new(hash_to_use) {
         let _ = Argon2::default().verify_password("dummy_password".as_bytes(), &parsed_hash);
@@ -287,16 +288,16 @@ mod tests {
     #[test]
     fn test_session_encryption_error_paths() {
         let k = vec![42u8; 32];
-        
+
         // Decrypt with invalid base64
         assert!(decrypt_session("invalid-base64-!", &k).is_err());
-        
+
         // Decrypt with valid base64 but too short
         let short_token = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 10]);
         assert!(decrypt_session(&short_token, &k).is_err());
 
         // Decrypt with valid base64 but invalid ciphertext (MAC mismatch)
-        let mut bad_cipher = vec![0u8; 32];
+        let bad_cipher = vec![0u8; 32];
         let bad_token = general_purpose::URL_SAFE_NO_PAD.encode(&bad_cipher);
         assert!(decrypt_session(&bad_token, &k).is_err());
     }

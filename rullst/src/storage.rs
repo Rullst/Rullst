@@ -103,8 +103,9 @@ impl LocalDriver {
             // Check for symlink escapes if the path exists
             if normalized.exists() {
                 if let Ok(canon) = tokio::fs::canonicalize(&normalized).await {
-                    let canon_root =
-                        tokio::fs::canonicalize(&self.root).await.unwrap_or_else(|_| self.root.clone());
+                    let canon_root = tokio::fs::canonicalize(&self.root)
+                        .await
+                        .unwrap_or_else(|_| self.root.clone());
                     if !canon.starts_with(&canon_root) {
                         return Err(StorageError::DriverError(
                             "Access denied: Symlink traversal attempt detected".to_string(),

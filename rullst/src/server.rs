@@ -813,10 +813,7 @@ mod tests {
         async fn panic_handler() -> &'static str {
             panic!("Oops");
         }
-        let router = axum::Router::new().route(
-            "/panic",
-            axum::routing::get(panic_handler),
-        );
+        let router = axum::Router::new().route("/panic", axum::routing::get(panic_handler));
         let current_router = Arc::new(RwLock::new(router));
         let mut service = HotSwapService {
             current_router,

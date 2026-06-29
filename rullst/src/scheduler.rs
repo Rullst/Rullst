@@ -205,8 +205,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_scheduler_start() {
-        use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
 
         let executed = Arc::new(AtomicBool::new(false));
         let executed_clone = Arc::clone(&executed);
@@ -223,7 +223,7 @@ mod tests {
             .unwrap();
 
         scheduler.start();
-        // Since we cannot easily control the clock, we verify basic execution 
+        // Since we cannot easily control the clock, we verify basic execution
         // mechanics or integration logic here.
     }
 }

@@ -156,7 +156,7 @@ mod tests {
             .with_sync_url("https://sync.rullst.dev")
             .with_sync_interval(1);
         ReplicationManager::start(config);
-        
+
         // Wait briefly to let the background task spawn and run
         tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
     }
