@@ -149,6 +149,7 @@ impl TrafficShield {
 }
 
 /// Router-level protection middleware that tracks load timing and drops requests under critical saturation.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
     let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
 

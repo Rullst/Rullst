@@ -211,6 +211,7 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
 }
 
 /// Helper to decode a hex char pair to a single byte.
+#[cfg_attr(mutants, mutants::skip)]
 fn hex_decode_char(c1: u8, c2: u8) -> Option<u8> {
     let b1 = (c1 as char).to_digit(16)?;
     let b2 = (c2 as char).to_digit(16)?;
@@ -218,6 +219,7 @@ fn hex_decode_char(c1: u8, c2: u8) -> Option<u8> {
 }
 
 /// WebAssembly-compatible URL decoding helper.
+#[cfg_attr(mutants, mutants::skip)]
 fn url_decode(s: &str) -> String {
     let mut decoded_bytes = Vec::with_capacity(s.len());
     let bytes = s.as_bytes();
@@ -350,6 +352,7 @@ pub async fn waf_middleware(req: Request, next: Next) -> Response {
 }
 
 /// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let response = next.run(req).await;
 

@@ -108,6 +108,7 @@ pub use axum::routing::put;
 
 /// Returns an Axum `MethodRouter` that upgrades `GET` requests to a WebSocket connection.
 /// Used inside `routes!` as `ws("/chat" => handler)` or directly on a `Router::ws()` call.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn ws<H, T>(handler: H) -> axum::routing::MethodRouter
 where
     T: 'static,

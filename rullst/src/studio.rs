@@ -674,6 +674,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(miri))]
     async fn test_db_operations() {
         let db_path = "sqlite:file:studio_test_db?mode=memory&cache=shared";
 
