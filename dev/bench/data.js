@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782767530355,
+  "lastUpdate": 1782768298605,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -809,6 +809,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2323,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3d4feca23c646823f5c30695464c15e5c0b1f73e",
+          "message": "feat: implement CLI UI components and initialize foundational service modules for auth, database, scheduler, server, and storage",
+          "timestamp": "2026-06-29T18:22:57-03:00",
+          "tree_id": "94c313687a554458a48c8c2b25d2ef3b3a6633b3",
+          "url": "https://github.com/Rullst/Rullst/commit/3d4feca23c646823f5c30695464c15e5c0b1f73e"
+        },
+        "date": 1782768297640,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 727,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 967,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 662,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2297,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
