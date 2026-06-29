@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782768298605,
+  "lastUpdate": 1782769012366,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -863,6 +863,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2297,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7fe94fbcaa2589cfc2a5df93d8c8894f1fe7b33d",
+          "message": "feat: add capital module with billing provider traits and Stripe implementation",
+          "timestamp": "2026-06-29T18:35:08-03:00",
+          "tree_id": "7d2bfcca76bdbd0bf48fdc4547dd652db04ae3eb",
+          "url": "https://github.com/Rullst/Rullst/commit/7fe94fbcaa2589cfc2a5df93d8c8894f1fe7b33d"
+        },
+        "date": 1782769012028,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 784,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1023,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2384,
+            "range": "± 132",
             "unit": "ns/iter"
           }
         ]
