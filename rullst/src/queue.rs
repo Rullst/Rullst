@@ -638,6 +638,7 @@ impl Worker {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+#[cfg(not(miri))]
 mod tests {
     use super::*;
 
@@ -1106,6 +1107,7 @@ mod tests {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+#[cfg(not(miri))]
 mod tests_additional {
     use super::tests::MockPendingCountDriver;
     use super::*;

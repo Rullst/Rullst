@@ -342,6 +342,7 @@ fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
+#[cfg(not(miri))]
 mod tests {
     use super::*;
     use axum::body::Body;
