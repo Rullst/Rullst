@@ -1,3 +1,7 @@
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0173"
 reason = "proc-macro-error2 is an unmaintained build-time dependency used by validator. It poses no runtime risk, and there is currently no update available from the upstream crate."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0071"
+reason = "The rsa crate has a known timing sidechannel vulnerability (Marvin Attack). There is currently no fixed upgrade available from the upstream crate, and it is a deep dependency (e.g. via jsonwebtoken)."
