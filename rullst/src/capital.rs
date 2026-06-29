@@ -569,6 +569,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(miri))]
     fn test_stripe_signature_verification() {
         let provider = StripeProvider::new("mock".to_string(), "secret".to_string());
 
@@ -607,6 +608,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(miri))]
     fn test_lemonsqueezy_signature_verification() {
         let provider = LemonSqueezyProvider::new("mock".to_string(), "secret".to_string());
 
