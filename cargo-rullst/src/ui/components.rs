@@ -158,19 +158,17 @@ where
             colored::Color::Blue,
         ];
 
+        let re = regex::Regex::new(r"Application|migrations|Omni").unwrap();
+
         while is_running_clone.load(Ordering::SeqCst) {
             let frame = frames[i % frames.len()];
             let color = colors[(i / 2) % colors.len()];
 
             let mut animated_msg = String::new();
-            let targets = ["Application", "migrations", "Omni"];
+            
             let mut found_target = None;
-
-            for target in targets {
-                if let Some(pos) = msg.find(target) {
-                    found_target = Some((target, pos));
-                    break;
-                }
+            if let Some(mat) = re.find(&msg) {
+                found_target = Some((mat.as_str(), mat.start()));
             }
 
             if let Some((target, pos)) = found_target {

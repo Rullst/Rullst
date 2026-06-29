@@ -307,7 +307,7 @@ pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl In
 
 pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
     let mut stock = 0;
-    if let Ok(mut product) = Product::find(id).await {
+    if let Ok(Some(mut product)) = Product::find(id).await {
         product.stock += 1;
         let _ = product.save().await;
         stock = product.stock;
@@ -329,7 +329,7 @@ pub struct CreateOrderPayload {
 }
 
 pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoResponse {
-    if let Ok(mut product) = Product::find(payload.product_id).await {
+    if let Ok(Some(mut product)) = Product::find(payload.product_id).await {
         if product.stock >= payload.quantity {
             // Deduct stock and save order
             product.stock -= payload.quantity;

@@ -126,19 +126,7 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
                     qb.push(" WHERE ");
                     let mut separated = qb.separated(" OR ");
                     for col in &col_names {
-                        if driver == "postgres" {
-                            separated.push(format!(
-                                "CAST(\"{}\" AS TEXT) ILIKE ",
-                                sanitize_identifier(col)
-                            ));
-                        } else if driver == "mysql" {
-                            separated.push(format!(
-                                "CAST(`{}` AS CHAR) LIKE ",
-                                sanitize_identifier(col)
-                            ));
-                        } else {
-                            separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
-                        }
+                        separated.push(build_search_clause(driver, col));
                         separated.push_bind_unseparated(format!("%{}%", search));
                     }
                 }
@@ -157,6 +145,17 @@ fn sanitize_identifier(id: &str) -> String {
         .filter(|c| c.is_alphanumeric() || *c == '_')
         .take(64) // Strict length limit for security
         .collect()
+}
+
+/// Helper to build a search clause taking driver syntax into account
+fn build_search_clause(driver: &str, col: &str) -> String {
+    if driver == "postgres" {
+        format!("CAST(\"{}\" AS TEXT) ILIKE ", sanitize_identifier(col))
+    } else if driver == "mysql" {
+        format!("CAST(`{}` AS CHAR) LIKE ", sanitize_identifier(col))
+    } else {
+        format!("\"{}\" LIKE ", sanitize_identifier(col))
+    }
 }
 
 /// Helper to build table headers HTML
@@ -415,19 +414,7 @@ async fn fetch_table_records(
         qb.push(" WHERE ");
         let mut separated = qb.separated(" OR ");
         for col in col_names {
-            if driver == "postgres" {
-                separated.push(format!(
-                    "CAST(\"{}\" AS TEXT) ILIKE ",
-                    sanitize_identifier(col)
-                ));
-            } else if driver == "mysql" {
-                separated.push(format!(
-                    "CAST(`{}` AS CHAR) LIKE ",
-                    sanitize_identifier(col)
-                ));
-            } else {
-                separated.push(format!("\"{}\" LIKE ", sanitize_identifier(col)));
-            }
+            separated.push(build_search_clause(driver, col));
             separated.push_bind_unseparated(format!("%{}%", search));
         }
     }

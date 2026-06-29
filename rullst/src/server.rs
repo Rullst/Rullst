@@ -809,14 +809,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(unreachable_code)]
     async fn test_hot_swap_service_panic() {
+        async fn panic_handler() -> &'static str {
+            panic!("Oops");
+        }
         let router = axum::Router::new().route(
             "/panic",
-            axum::routing::get(|| async {
-                panic!("Oops");
-                ""
-            }),
+            axum::routing::get(panic_handler),
         );
         let current_router = Arc::new(RwLock::new(router));
         let mut service = HotSwapService {

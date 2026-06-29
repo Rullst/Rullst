@@ -148,4 +148,23 @@ mod tests {
         let driver = safe_driver();
         assert!(driver.is_none());
     }
+
+    #[tokio::test]
+    async fn test_replication_manager_start() {
+        // Test it handles a config with a sync URL
+        let config = ReplicationConfig::new("test.db")
+            .with_sync_url("https://sync.rullst.dev")
+            .with_sync_interval(1);
+        ReplicationManager::start(config);
+        
+        // Wait briefly to let the background task spawn and run
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    }
+
+    #[tokio::test]
+    async fn test_replication_manager_start_no_url() {
+        // Test it handles a config without a sync URL
+        let config = ReplicationConfig::new("test.db");
+        ReplicationManager::start(config);
+    }
 }

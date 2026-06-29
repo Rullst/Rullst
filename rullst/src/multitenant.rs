@@ -253,4 +253,18 @@ mod tests {
         // Outside scope, it should return None
         assert_eq!(current_tenant_id(), None);
     }
+    #[tokio::test]
+    async fn test_current_tenant_id_uninitialized() {
+        assert_eq!(current_tenant_id(), None);
+    }
+
+    #[tokio::test]
+    async fn test_current_tenant_id_initialized() {
+        let cell = RefCell::new(Some("tenant-456".to_string()));
+        TENANT_CONTEXT
+            .scope(cell, async {
+                assert_eq!(current_tenant_id(), Some("tenant-456".to_string()));
+            })
+            .await;
+    }
 }

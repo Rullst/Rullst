@@ -259,6 +259,8 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
+    build_app_for_dev();
+
     println!(
         "{}",
         "📦 Executing pending database migrations automatically...".yellow()
@@ -277,8 +279,6 @@ pub fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", "⚠️ Warning: Failed to apply migrations automatically. You may need to run `cargo run -- db:migrate` manually.\n".yellow());
         }
     }
-
-    build_app_for_dev();
 
     println!(
         "{}\n",

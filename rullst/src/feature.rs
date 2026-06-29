@@ -194,47 +194,52 @@ impl EnvFeatureDriver {
     }
 
     fn parse_env_value(&self, value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
-        let cleaned = value.trim();
-        if cleaned.is_empty() {
-            return None;
-        }
-
-        // 1. Check if simple boolean
-        if cleaned == "true" || cleaned == "1" || cleaned == "yes" {
-            return Some("enabled".to_string());
-        }
-        if cleaned == "false" || cleaned == "0" || cleaned == "no" {
-            return Some("disabled".to_string());
-        }
-
-        // 2. Check if percentage rollout (e.g., "30%")
-        if cleaned.ends_with('%')
-            && let Some(pct) = parse_rollout(cleaned)
-        {
-            if let Some(ident) = identifier {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return Some(if bucket < pct {
-                    "enabled".to_string()
-                } else {
-                    "disabled".to_string()
-                });
-            }
-            return Some("disabled".to_string());
-        }
-
-        // 3. Check if A/B splits (e.g., "variant-a:50,variant-b:50")
-        if cleaned.contains(':') {
-            let variants = parse_variants(cleaned);
-            if !variants.is_empty()
-                && let Some(ident) = identifier
-            {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return resolve_variant(&variants, bucket);
-            }
-        }
-
-        Some(cleaned.to_string())
+        parse_feature_string_value(value, flag, identifier)
     }
+}
+
+/// Helper function to parse feature toggles string formats uniformly
+fn parse_feature_string_value(value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
+    let cleaned = value.trim();
+    if cleaned.is_empty() {
+        return None;
+    }
+
+    // 1. Check if simple boolean
+    if cleaned == "true" || cleaned == "1" || cleaned == "yes" {
+        return Some("enabled".to_string());
+    }
+    if cleaned == "false" || cleaned == "0" || cleaned == "no" {
+        return Some("disabled".to_string());
+    }
+
+    // 2. Check if percentage rollout (e.g., "30%")
+    if cleaned.ends_with('%')
+        && let Some(pct) = parse_rollout(cleaned)
+    {
+        if let Some(ident) = identifier {
+            let bucket = calculate_hash_bucket(flag, ident);
+            return Some(if bucket < pct {
+                "enabled".to_string()
+            } else {
+                "disabled".to_string()
+            });
+        }
+        return Some("disabled".to_string());
+    }
+
+    // 3. Check if A/B splits (e.g., "variant-a:50,variant-b:50")
+    if cleaned.contains(':') {
+        let variants = parse_variants(cleaned);
+        if !variants.is_empty()
+            && let Some(ident) = identifier
+        {
+            let bucket = calculate_hash_bucket(flag, ident);
+            return resolve_variant(&variants, bucket);
+        }
+    }
+
+    Some(cleaned.to_string())
 }
 
 impl Default for EnvFeatureDriver {
@@ -338,39 +343,7 @@ impl TomlFeatureDriver {
     }
 
     fn evaluate(&self, value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
-        let cleaned = value.trim();
-        if cleaned == "true" || cleaned == "1" || cleaned == "yes" {
-            return Some("enabled".to_string());
-        }
-        if cleaned == "false" || cleaned == "0" || cleaned == "no" {
-            return Some("disabled".to_string());
-        }
-
-        if cleaned.ends_with('%')
-            && let Some(pct) = parse_rollout(cleaned)
-        {
-            if let Some(ident) = identifier {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return Some(if bucket < pct {
-                    "enabled".to_string()
-                } else {
-                    "disabled".to_string()
-                });
-            }
-            return Some("disabled".to_string());
-        }
-
-        if cleaned.contains(':') {
-            let variants = parse_variants(cleaned);
-            if !variants.is_empty()
-                && let Some(ident) = identifier
-            {
-                let bucket = calculate_hash_bucket(flag, ident);
-                return resolve_variant(&variants, bucket);
-            }
-        }
-
-        Some(cleaned.to_string())
+        parse_feature_string_value(value, flag, identifier)
     }
 }
 

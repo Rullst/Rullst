@@ -59,7 +59,7 @@ impl LocalDriver {
         LocalDriver { root: root.into() }
     }
 
-    fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
+    async fn resolve_path(&self, path: &str) -> Result<PathBuf, StorageError> {
         // Ensure no absolute paths or Windows drive letters are injected before we strip slashes
         if std::path::Path::new(path).is_absolute()
             || path.contains(':')
@@ -102,9 +102,9 @@ impl LocalDriver {
         if normalized.starts_with(&self.root) {
             // Check for symlink escapes if the path exists
             if normalized.exists() {
-                if let Ok(canon) = std::fs::canonicalize(&normalized) {
+                if let Ok(canon) = tokio::fs::canonicalize(&normalized).await {
                     let canon_root =
-                        std::fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
+                        tokio::fs::canonicalize(&self.root).await.unwrap_or_else(|_| self.root.clone());
                     if !canon.starts_with(&canon_root) {
                         return Err(StorageError::DriverError(
                             "Access denied: Symlink traversal attempt detected".to_string(),
@@ -124,7 +124,7 @@ impl LocalDriver {
 #[async_trait]
 impl StorageDriver for LocalDriver {
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError> {
-        let full_path = self.resolve_path(path)?;
+        let full_path = self.resolve_path(path).await?;
         if let Some(parent) = full_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
@@ -133,18 +133,18 @@ impl StorageDriver for LocalDriver {
     }
 
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError> {
-        let full_path = self.resolve_path(path)?;
+        let full_path = self.resolve_path(path).await?;
         let data = tokio::fs::read(full_path).await?;
         Ok(data)
     }
 
     async fn exists(&self, path: &str) -> Result<bool, StorageError> {
-        let full_path = self.resolve_path(path)?;
+        let full_path = self.resolve_path(path).await?;
         Ok(tokio::fs::metadata(full_path).await.is_ok())
     }
 
     async fn delete(&self, path: &str) -> Result<(), StorageError> {
-        let full_path = self.resolve_path(path)?;
+        let full_path = self.resolve_path(path).await?;
         if tokio::fs::metadata(&full_path).await.is_ok() {
             tokio::fs::remove_file(full_path).await?;
         }

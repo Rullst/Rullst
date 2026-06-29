@@ -778,14 +778,16 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
         return auth::login_page(&token, Some("Incorrect email or password")).into_response();
     }
 
-    let u = user.unwrap();
+    let Some(u) = user else {
+        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
+    };
 
     match rullst_auth::make_login_cookie(u.id) {
         Ok(cookie) => {
             let mut res = Redirect::to("/dashboard").into_response();
             res.headers_mut().append(
                 rullst::server::header::SET_COOKIE,
-                rullst::server::HeaderValue::from_str(&cookie).unwrap()
+                rullst::server::HeaderValue::from_str(&cookie).unwrap_or_else(|_| rullst::server::HeaderValue::from_static(""))
             );
             res
         }

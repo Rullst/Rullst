@@ -176,10 +176,10 @@ impl Migration for MigrationImpl {
         for i in 1..=20 {
             google_values.push(format!("(1, 200, {}, 1, '', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 40 + (i % 15), 20 - i, 20 - i));
         }
-        rullst::db::sqlx::query(&format!(
+        rullst::db::sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(&format!(
             "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
             google_values.join(", ")
-        ))
+        )))
         .execute(&mut *tx)
         .await?;
 
@@ -188,10 +188,10 @@ impl Migration for MigrationImpl {
         for i in 1..=20 {
             github_values.push(format!("(2, 200, {}, 1, '', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 90 + (i % 30), 20 - i, 20 - i));
         }
-        rullst::db::sqlx::query(&format!(
+        rullst::db::sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(&format!(
             "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
             github_values.join(", ")
-        ))
+        )))
         .execute(&mut *tx)
         .await?;
 
@@ -200,10 +200,10 @@ impl Migration for MigrationImpl {
         for i in 1..=20 {
             invalid_values.push(format!("(3, 0, 0, 0, 'DNS Resolution Failed', datetime('now', '-{} minutes'), datetime('now', '-{} minutes'))", 20 - i, 20 - i));
         }
-        rullst::db::sqlx::query(&format!(
+        rullst::db::sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(&format!(
             "INSERT INTO heartbeats (monitor_id, status_code, response_time_ms, is_up, error_message, created_at, updated_at) VALUES {}",
             invalid_values.join(", ")
-        ))
+        )))
         .execute(&mut *tx)
         .await?;
 
@@ -298,12 +298,13 @@ pub async fn index() -> impl IntoResponse {
 
     // Package monitors with their heartbeats
     let mut monitors_with_history = Vec::new();
+    let mut history_map: std::collections::HashMap<i32, Vec<Heartbeat>> = std::collections::HashMap::new();
+    for h in history_flat {
+        history_map.entry(h.monitor_id).or_default().push(h);
+    }
+    
     for monitor in monitors {
-        let mut history: Vec<Heartbeat> = history_flat
-            .iter()
-            .filter(|h| h.monitor_id == monitor.id)
-            .cloned()
-            .collect();
+        let mut history = history_map.remove(&monitor.id).unwrap_or_default();
         
         // Reverse so chronological order is left-to-right
         history.reverse();
@@ -333,7 +334,7 @@ pub async fn store_monitor(Form(payload): Form<CreateMonitorPayload>) -> impl In
 }
 
 pub async fn toggle_monitor(Path(id): Path<i32>) -> impl IntoResponse {
-    if let Ok(mut monitor) = Monitor::find(id).await {
+    if let Ok(Some(mut monitor)) = Monitor::find(id).await {
         monitor.is_active = if monitor.is_active == 1 { 0 } else { 1 };
         let _ = monitor.save().await;
     }
@@ -343,8 +344,6 @@ pub async fn toggle_monitor(Path(id): Path<i32>) -> impl IntoResponse {
 
 // Background Ping Job execution
 pub async fn ping_monitors() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = rullst::db::Orm::pool();
-    
     // Get active monitors
     let active_monitors: Vec<Monitor> = Monitor::all().await.unwrap_or_default().into_iter().filter(|m| m.is_active == 1).collect();
 

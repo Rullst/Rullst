@@ -66,7 +66,7 @@ pub struct SecurityConfig {
 }
 
 fn default_csp() -> String {
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';".to_string()
+    "".to_string()
 }
 
 fn default_user_agent_blocklist() -> Vec<String> {

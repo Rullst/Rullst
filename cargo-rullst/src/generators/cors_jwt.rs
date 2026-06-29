@@ -244,8 +244,11 @@ pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
         return (StatusCode::UNAUTHORIZED, "Invalid Authorization Header Format").into_response();
     }
 
-    let token = &auth_str["Bearer ".len()...];
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| panic!("JWT_SECRET must be set"));
+    let token = &auth_str["Bearer ".len()..];
+    let secret = match std::env::var("JWT_SECRET") {
+        Ok(s) => s,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "JWT_SECRET must be set").into_response(),
+    };
 
     match decode::<Claims>(
         token,
@@ -262,8 +265,8 @@ pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
 }
 
 /// Helper para gerar um novo token JWT com duração de 1 dia.
-pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| panic!("JWT_SECRET must be set"));
+pub fn generate_token(user_id: &str) -> Result<String, String> {
+    let secret = std::env::var("JWT_SECRET").map_err(|_| "JWT_SECRET must be set".to_string())?;
     let expiration = chrono::Utc::now()
         .checked_add_signed(chrono::Duration::days(1))
         .expect("valid timestamp")
@@ -278,7 +281,7 @@ pub fn generate_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Err
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
-    )
+    ).map_err(|e| e.to_string())
 }
 "#;
         fs::write(&middleware_path, template)?;

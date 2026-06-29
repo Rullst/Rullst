@@ -429,7 +429,6 @@ pub async fn dashboard(rullst::server::Extension(user_id): rullst::server::Exten
 use serde::Deserialize;
 use std::collections::HashMap;
 use rullst::capital::{BillingProvider, StripeProvider, LemonSqueezyProvider};
-use rullst::db::sqlx::Row;
 use crate::pages::billing;
 
 #[derive(Deserialize)]
@@ -496,7 +495,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
 
     match existing {
         Some(mut sub) => {
-            sub.status = event.status.clone();
+            sub.status = event.status.as_str().to_string();
             sub.plan_id = event.plan_id.clone();
             sub.ends_at = event.ends_at;
             let _ = sub.save().await;
@@ -508,7 +507,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
                 customer_id: event.customer_id.clone(),
                 subscription_id: event.subscription_id.clone(),
                 plan_id: event.plan_id.clone(),
-                status: event.status.clone(),
+                status: event.status.as_str().to_string(),
                 ends_at: event.ends_at,
                 created_at: String::new(),
                 updated_at: String::new(),

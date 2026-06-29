@@ -64,7 +64,7 @@ async fn handle_csrf_get(req: Request, next: Next) -> Response {
 
         let secure_attr = if is_production() { "; Secure" } else { "" };
         if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-            "rullst_csrf={}; Path=/; SameSite={}; HttpOnly{}",
+            "rullst_csrf={}; Path=/; SameSite={}{}",
             token, same_site, secure_attr
         )) {
             response
@@ -190,7 +190,7 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
     );
     headers.insert(
         "Cross-Origin-Embedder-Policy",
-        header::HeaderValue::from_static("require-corp"),
+        header::HeaderValue::from_static("unsafe-none"),
     );
     headers.insert(
         "Cache-Control",
