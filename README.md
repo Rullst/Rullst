@@ -24,19 +24,17 @@
   Our continuous pipeline guarantees absolute safety for production edge infrastructure:
 </p>
 
+
 <div align="center">
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
 | **OSSF Scorecard** | [![OSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?label=&style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) | Supply-chain security & best practices |
-| **SLSA Level 3** | [![SLSA 3](https://img.shields.io/badge/SLSA-Level_3-brightgreen?style=flat-square&label=)](https://slsa.dev/) | Supply-chain Levels for Software Artifacts |
 | **Codecov** | [![Codecov](https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=)](https://codecov.io/gh/Rullst/Rullst) | Strict code coverage enforcement |
 | **OpenSSF** | [![OpenSSF](https://img.shields.io/badge/status-passing-brightgreen?style=flat-square&label=)](https://www.bestpractices.dev/projects/13321) | Open source security standards |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/rullst-orm/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/rullst-orm/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Dockerized PostgreSQL & MySQL integration tests |
 | **Continuous Fuzzing** | [![Continuous Fuzzing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Fuzzing against edge cases & panics |
 | **Property Testing** | [![Property Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Validating complex logic against edge cases |
-| **Miri UB Detection** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Detecting Undefined Behavior and memory leaks |
-| **Kani Verifier** | [![Kani Verifier](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Automated reasoning and formal verification |
-| **Mutation Testing** | [![Mutation Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
 | **CodeQL SAST** | [![CodeQL SAST](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
 | **OWASP ZAP DAST** | [![OWASP ZAP DAST](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/dast-zap.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Dynamic vulnerability scanning |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
@@ -48,10 +46,15 @@
 | **Spellcheck CI** | [![Spellcheck CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
 | **Clippy Lints** | [![Clippy Lints](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml) | Strict compiler & style linting |
 | **Unsafe Policy** | [![Unsafe Policy](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | 100% memory safe. No unsafe code blocks |
+| **Miri UB Detection** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Detecting Undefined Behavior and memory leaks |
+| **Kani Verifier** | [![Kani Verifier](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Automated reasoning and formal verification |
+| **Mutation Testing** | [![Mutation Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
+| **SLSA Level 3** | [![SLSA 3](https://img.shields.io/badge/SLSA-Level_3-brightgreen?style=flat-square&label=)](https://slsa.dev/) | Supply-chain Levels for Software Artifacts |
 | **Panic Policy** | [![Zero Panics](https://img.shields.io/badge/status-zero_tolerance-brightgreen?style=flat-square&label=)](https://github.com/Rullst/Rullst/blob/main/SECURITY.md) | Graceful error handling across the framework |
 | **MSRV** | [![MSRV](https://img.shields.io/badge/MSRV-1.94.0-orange?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Minimum Supported Rust Version |
 
 </div>
+
 
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
