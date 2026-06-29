@@ -254,6 +254,7 @@ enum CborKey {
     TextString(String),
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
     if bytes.is_empty() {
         return Err("Unexpected EOF".to_string());

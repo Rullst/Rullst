@@ -3,11 +3,11 @@ name = "cargo-rullst"
 version = "4.0.2"
 authors = ["Rullst Core Team"]
 edition = "2024"
-description = "âŒ¨ï¸  $ The official command-line interface (CLI) for managing Rullst applications.ðŸ“œðŸ¦€ðŸŒ "
+description = "The official command-line interface (CLI) for managing Rullst applications."
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
-rust-version = "1.94.0"
+rust-version = "1.96.0"
 
 [[bin]]
 name = "cargo-rullst"

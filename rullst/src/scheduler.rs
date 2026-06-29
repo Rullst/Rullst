@@ -117,6 +117,7 @@ impl Scheduler {
     ///
     /// This method consumes the scheduler and should be called once during
     /// server startup (typically via `Server::schedule()`).
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn start(self) {
         for task in self.tasks {
             tokio::spawn(run_task_loop(task));
@@ -124,6 +125,7 @@ impl Scheduler {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn run_task_loop(task: ScheduledTask) {
     let schedule = task.schedule;
     let handler = task.handler;

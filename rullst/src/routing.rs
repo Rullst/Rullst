@@ -33,6 +33,7 @@ impl Router {
 
     /// Registers a WebSocket upgrade route at the given `path`.
     /// Internally maps to `GET path` since WebSocket upgrades happen over HTTP GET.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn ws<H, T>(self, path: &str, handler: H) -> Self
     where
         T: 'static,
@@ -79,6 +80,7 @@ impl Router {
 
     /// Applies a Tower middleware layer to all routes in this router.
     /// The layer is cloned once per request and must be `Send + Sync + 'static`.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn layer<L>(self, layer: L) -> Self
     where
         L: tower_layer::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,

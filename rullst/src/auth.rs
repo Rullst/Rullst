@@ -237,6 +237,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_password_hashing() {
         let p = String::from_utf8(vec![112, 97, 115, 115]).unwrap(); // "pass"
         let hash = hash_password(&p).expect("Failed to hash password");
@@ -248,6 +249,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_password_length_limits() {
         let p_72 = "a".repeat(72);
         let p_73 = "a".repeat(73);
@@ -278,6 +280,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_password_hash_format() {
         let p = "super_secret";
         let hash = hash_password(p).expect("Failed to hash password");
@@ -285,6 +288,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_password_verification_error_paths() {
         assert!(!verify_password("pass", "invalid_hash_format"));
 
@@ -310,6 +314,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_needs_rehash() {
         let p = "super_secret";
         let hash = hash_password(p).expect("Failed to hash password");

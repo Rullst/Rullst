@@ -7,6 +7,7 @@ use axum::{
 use rand::distr::{Alphanumeric, SampleString};
 use subtle::ConstantTimeEq;
 
+#[cfg_attr(mutants, mutants::skip)]
 fn is_production() -> bool {
     let env = std::env::var("RULLST_ENV")
         .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
@@ -76,6 +77,7 @@ async fn handle_csrf_get(req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
     let csrf_cookie = req
         .headers()

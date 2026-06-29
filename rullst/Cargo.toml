@@ -3,12 +3,12 @@ name = "rullst"
 version = "4.0.2"
 authors = ["Rullst Core Team"]
 edition = "2024"
-description = "ðŸ“œðŸ¦€ðŸŒ  Framework Web FullStack for Rust language ðŸŒ ðŸ¦€ðŸ“œ"
+description = "The Full-Stack Web Framework for Rust Language"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/venelouis/Rullst"
 exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
-rust-version = "1.94.0"
+rust-version = "1.96.0"
 [features]
 default = []
 queue-redis = ["dep:redis"]

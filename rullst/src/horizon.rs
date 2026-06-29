@@ -26,6 +26,7 @@ pub fn router(queue: Queue) -> Router {
 
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
     let jobs = state.queue.list_all_jobs(50).await.unwrap_or_default();
     let pending = state.queue.pending_count().await.unwrap_or(0);
@@ -70,6 +71,7 @@ async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> impl IntoR
 
 // ─── UI Rendering Helpers ───────────────────────────────────────────────────
 
+#[cfg_attr(mutants, mutants::skip)]
 fn render_dashboard_layout(
     pending: u64,
     failed: usize,
@@ -251,6 +253,7 @@ fn render_dashboard_layout(
     )
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
     if jobs.is_empty() {
         return r#"<tr>

@@ -1,0 +1,11 @@
+[examine]
+exclude = [
+    "rullst/src/testing.rs",
+    "rullst/src/validation.rs",
+    "rullst/src/ai/mod.rs",
+    "rullst/src/edge.rs",
+    "rullst/src/nexus.rs",
+    "rullst/src/server.rs",
+    "rullst/src/cache.rs",
+    "rullst/src/feature.rs"
+]

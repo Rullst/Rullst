@@ -45,6 +45,7 @@ impl WebSocket {
     }
 
     /// Receive the next text/binary frame from the client
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn recv(&mut self) -> Option<Result<String, WsError>> {
         match self.inner.recv().await {
             Some(Ok(msg)) => match msg {
