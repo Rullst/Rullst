@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782769012366,
+  "lastUpdate": 1782769237926,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -917,6 +917,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2384,
             "range": "± 132",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7970f318a728d9f6aabac1965fb1977e81a6e044",
+          "message": "chore: add ignore entry for RUSTSEC-2023-0071 in osv-scanner.toml",
+          "timestamp": "2026-06-29T18:38:52-03:00",
+          "tree_id": "4573a51f7e2c039e04c5601e54d1ec94300a5eef",
+          "url": "https://github.com/Rullst/Rullst/commit/7970f318a728d9f6aabac1965fb1977e81a6e044"
+        },
+        "date": 1782769237601,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 759,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 975,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 642,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2302,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
