@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782769237926,
+  "lastUpdate": 1782770263606,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -971,6 +971,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2302,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "649d77dda62eadc6b87a74baf92ad9dac7a31416",
+          "message": "feat: add Horizon dashboard with Axum routing and HTMX-based job management",
+          "timestamp": "2026-06-29T18:56:06-03:00",
+          "tree_id": "54ed92104e1c28912416738278bd072861b69417",
+          "url": "https://github.com/Rullst/Rullst/commit/649d77dda62eadc6b87a74baf92ad9dac7a31416"
+        },
+        "date": 1782770263303,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 774,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1038,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 657,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2357,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
