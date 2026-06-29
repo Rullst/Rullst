@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782773809950,
+  "lastUpdate": 1782774568534,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1079,6 +1079,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2343,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "95609252df11f7a8f1954801512fd654bbc4787f",
+          "message": "feat: initialize Nexus admin panel with core modules for schema management, security, and AI-driven studio interactions.",
+          "timestamp": "2026-06-29T20:07:45-03:00",
+          "tree_id": "7779578e5c8c879b68505fb3cea11a5e1fc6af95",
+          "url": "https://github.com/Rullst/Rullst/commit/95609252df11f7a8f1954801512fd654bbc4787f"
+        },
+        "date": 1782774567716,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 641,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2349,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
