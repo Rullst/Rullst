@@ -66,7 +66,7 @@ pub struct SecurityConfig {
 }
 
 fn default_csp() -> String {
-    "".to_string()
+    "default-src 'self';".to_string()
 }
 
 fn default_user_agent_blocklist() -> Vec<String> {
