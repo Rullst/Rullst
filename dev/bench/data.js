@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782774568534,
+  "lastUpdate": 1782777491440,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1133,6 +1133,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2349,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9e976b6e0a4f3539c6056512373da2b9088e59e0",
+          "message": "feat: implement adaptive backpressure middleware and token-bucket rate limiting for system resilience",
+          "timestamp": "2026-06-29T20:56:32-03:00",
+          "tree_id": "f0798fa7be0a54fa9e2bc3e7bf10e6cfdd91a6ec",
+          "url": "https://github.com/Rullst/Rullst/commit/9e976b6e0a4f3539c6056512373da2b9088e59e0"
+        },
+        "date": 1782777490959,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 826,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1093,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 643,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2375,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
