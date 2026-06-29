@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782692389727,
+  "lastUpdate": 1782749000639,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -647,6 +647,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2319,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "80b9ba606138a74278fffa7bc73134ab0256548f",
+          "message": "feat: add task scheduler module, Horizon dashboard routing, and initial auth/security boilerplate",
+          "timestamp": "2026-06-29T13:01:11-03:00",
+          "tree_id": "3f6f125257eabc18db64507d5e51368fd1aca5e6",
+          "url": "https://github.com/Rullst/Rullst/commit/80b9ba606138a74278fffa7bc73134ab0256548f"
+        },
+        "date": 1782749000350,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 988,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 637,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2252,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
