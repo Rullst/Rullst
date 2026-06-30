@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use base64::Engine;
 use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
 use rullst::testing::TestApp;

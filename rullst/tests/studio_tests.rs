@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use axum::{Router, routing::get};
 use rullst::studio::{handle_dashboard, handle_table};
 use rullst::testing::TestApp;

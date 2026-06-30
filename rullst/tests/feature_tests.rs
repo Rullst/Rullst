@@ -155,6 +155,7 @@ invalid-split = "variant:not-a-number,variant2:50"
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database
     let _ = Orm::init("sqlite:file:memdb1?mode=memory&cache=shared").await;
