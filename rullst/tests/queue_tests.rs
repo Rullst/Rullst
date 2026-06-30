@@ -2,6 +2,7 @@ use rullst::queue::{Queue, Worker};
 use serde_json::json;
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_queue_dispatch_and_worker() {
     let queue = Queue::sqlite("sqlite::memory:")
         .await
