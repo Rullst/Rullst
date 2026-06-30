@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782777491440,
+  "lastUpdate": 1782778510629,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1187,6 +1187,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2375,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8689c8709dd3e49e14980ccb64235b5cedd85ff3",
+          "message": "feat: implement Server builder API and add GitHub Action to enforce zero-panic policy",
+          "timestamp": "2026-06-29T21:13:14-03:00",
+          "tree_id": "35ae80c13ae95be7b380eff966a368fc23cbad8c",
+          "url": "https://github.com/Rullst/Rullst/commit/8689c8709dd3e49e14980ccb64235b5cedd85ff3"
+        },
+        "date": 1782778510098,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 757,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1011,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 632,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2342,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
