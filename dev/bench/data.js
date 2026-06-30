@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782781768730,
+  "lastUpdate": 1782782493543,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1403,6 +1403,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2347,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ae63cd4f516a55756ae15d9ad8293b43980e5d03",
+          "message": "feat: implement core Server builder with optional database, scheduler, and hot-reloading capabilities",
+          "timestamp": "2026-06-29T22:19:46-03:00",
+          "tree_id": "5bda8e7d88d6ddf6d3d5b16b8b3f9168a3de8042",
+          "url": "https://github.com/Rullst/Rullst/commit/ae63cd4f516a55756ae15d9ad8293b43980e5d03"
+        },
+        "date": 1782782493257,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 724,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1029,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 655,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2387,
+            "range": "± 61",
             "unit": "ns/iter"
           }
         ]
