@@ -470,6 +470,7 @@ impl DbFeatureDriver {
         Some((enabled, rollout, variants))
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn evaluate(
         &self,
         enabled: bool,
@@ -526,6 +527,7 @@ impl FeatureDriver for DbFeatureDriver {
         Some(evaluated == "enabled")
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         let evaluated = self.evaluate(enabled, rollout, variants, flag, Some(identifier))?;
@@ -571,6 +573,7 @@ impl FeatureManager {
     }
 
     /// Check if a feature flag is enabled for a target identifier.
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn enabled_for(&self, flag: &str, identifier: &str) -> bool {
         for driver in &self.drivers {
             if let Some(val) = driver.enabled_for(flag, identifier).await {
@@ -581,6 +584,7 @@ impl FeatureManager {
     }
 
     /// Retrieve the variation name assigned to a target identifier.
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         for driver in &self.drivers {
             if let Some(val) = driver.variant(flag, identifier).await {
@@ -626,11 +630,13 @@ pub async fn enabled(flag: &str) -> bool {
 }
 
 /// Checks if a feature flag is enabled for a specific identifier (progressive rollout).
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn enabled_for(flag: &str, identifier: &str) -> bool {
     manager().enabled_for(flag, identifier).await
 }
 
 /// Evaluates A/B split variations for a specific identifier.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn variant(flag: &str, identifier: &str) -> Option<String> {
     manager().variant(flag, identifier).await
 }

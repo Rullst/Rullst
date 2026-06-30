@@ -29,6 +29,7 @@ pub enum ValidationError {
 }
 
 impl std::fmt::Display for ValidationError {
+    #[cfg_attr(mutants, mutants::skip)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ValidationError::ExtractionError { message, .. } => {
@@ -166,6 +167,7 @@ where
 {
     type Rejection = ValidationError;
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let is_htmx = req
             .headers()

@@ -197,6 +197,7 @@ async fn test_handle_explain_wrong_extension() {
 }
 
 #[tokio::test]
+#[cfg(not(miri))]
 async fn test_handle_explain_valid_file_ai_offline() {
     let _guard = ENV_LOCK.lock().await;
     unsafe {

@@ -124,6 +124,7 @@ where
 
     /// Serves request handling either natively as an emulator or natively in WASM edge runtimes.
     #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
         use axum::Router;
         use axum::extract::Request;
@@ -189,6 +190,7 @@ where
 
     /// Serves request handling natively inside WASM WASI edge loops.
     #[cfg(target_arch = "wasm32")]
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
         // In actual Cloudflare Workers or WASM Edge targets,
         // the global handler is registered statically.

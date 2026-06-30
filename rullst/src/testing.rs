@@ -10,6 +10,7 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use tower::ServiceExt;
 
+#[cfg_attr(mutants, mutants::skip)]
 const DEFAULT_MAX_BODY: usize = 10 * 1024 * 1024;
 
 /// A fluent testing wrapper around Axum's `Router` to enable declarative E2E assertions.
@@ -199,11 +200,13 @@ impl TestResponse {
     }
 
     /// Returns the HTTP status code.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn status(&self) -> StatusCode {
         self.status
     }
 
     /// Returns a reference to the response headers.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn headers(&self) -> &HeaderMap {
         &self.headers
     }

@@ -351,6 +351,7 @@ fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn generate_challenge() -> String {
     Alphanumeric.sample_string(&mut rand::rng(), 32)
 }

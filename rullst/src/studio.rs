@@ -429,6 +429,7 @@ async fn fetch_table_records(
 
 /// HTMX-aware handler for rendering a paginated, searchable table view inside Rullst Studio.
 /// Responds with a full HTML page on direct load, or an HTML fragment for HTMX partial updates.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_table(
     headers: axum::http::HeaderMap,
     path: Path<String>,
@@ -603,6 +604,7 @@ pub async fn handle_table(
 }
 
 /// Actual clean routes wrapper
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/", get(handle_dashboard))

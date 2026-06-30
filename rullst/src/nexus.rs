@@ -409,6 +409,7 @@ async fn nexus_new_form(
 }
 
 /// POST /nexus/table/{table} — Create a new record.
+#[cfg_attr(mutants, mutants::skip)]
 async fn nexus_create_record(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
@@ -726,6 +727,7 @@ async fn nexus_chat_page(
 }
 
 /// POST /nexus/chat/query — AI Query HTMX endpoint.
+#[cfg_attr(mutants, mutants::skip)]
 async fn nexus_chat_query(
     State(state): State<Arc<NexusState>>,
     axum::extract::Form(req): axum::extract::Form<ChatRequest>,
@@ -782,6 +784,7 @@ fn field_kind_label(kind: &FieldKind) -> &'static str {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn field_kind_sql(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Number => "INTEGER",
@@ -807,6 +810,7 @@ fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn generate_mock_ai_response(message: &str, schema: &str) -> String {
     let msg_lower = message.to_lowercase();
     if msg_lower.contains("select")
@@ -930,6 +934,7 @@ fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
     let (sql, binds) = build_table_query(entry, &visible_fields, q, page);

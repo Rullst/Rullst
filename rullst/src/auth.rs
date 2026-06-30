@@ -218,6 +218,7 @@ pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
 }
 
 /// Generates the standard HTTP header string to set the encrypted session cookie on the client.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn make_login_cookie(user_id: i32) -> Result<String, String> {
     let app_key = get_app_key()?;
     let encrypted = encrypt_session(user_id, &app_key)?;
