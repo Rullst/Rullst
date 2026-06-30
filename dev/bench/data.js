@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782783857100,
+  "lastUpdate": 1782784996399,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1511,6 +1511,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2313,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34e2f18e6ee8a2e8bf6f4a3d079f2b8b07b1a918",
+          "message": "test: add HTML macro snapshot tests and update documentation for version 4.0.2",
+          "timestamp": "2026-06-29T23:01:27-03:00",
+          "tree_id": "2de61e6bf334a1ac441c61679145b7b715868975",
+          "url": "https://github.com/Rullst/Rullst/commit/34e2f18e6ee8a2e8bf6f4a3d079f2b8b07b1a918"
+        },
+        "date": 1782784996070,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 764,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1008,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 628,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2344,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
