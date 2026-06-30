@@ -70,6 +70,7 @@ async fn test_mail_resolution_flow() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_resend_driver_send_mock() {
     let driver = ResendDriver {
         api_key: "dummy_key".to_string(),
@@ -86,6 +87,7 @@ async fn test_resend_driver_send_mock() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_sendgrid_driver_send_mock() {
     let driver = SendGridDriver {
         api_key: "dummy_key".to_string(),

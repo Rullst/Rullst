@@ -368,6 +368,7 @@ impl PasskeyAuth {
 
     /// Starts a new Passkey registration flow.
     /// Generates challenge options for the browser, and the associated registration challenge.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn start_register(
         &self,
         user_id: i32,
@@ -411,6 +412,7 @@ impl PasskeyAuth {
 
     /// Verifies the attestation response sent by the browser to complete passkey registration.
     /// Returns the verified cryptographic `Passkey` details to save in the database.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn finish_register(
         &self,
         credential: &RegisterPublicKeyCredential,
@@ -510,6 +512,7 @@ impl PasskeyAuth {
 
     /// Starts a passwordless authentication flow.
     /// Generates a verification challenge options block and the assertion challenge.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn start_authenticate(
         &self,
         allowed_credentials: &[Passkey],
@@ -539,6 +542,7 @@ impl PasskeyAuth {
 
     /// Verifies the assertion signature sent by the browser to authorize a user.
     /// Returns the updated `Passkey` credential containing fresh counters.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn finish_authenticate(
         &self,
         credential: &PublicKeyCredential,

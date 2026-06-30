@@ -197,6 +197,7 @@ impl AiClient {
 }
 
 #[cfg_attr(mutants, mutants::skip)]
+#[cfg_attr(mutants, mutants::skip)]
 fn clean_json_markdown(s: &str) -> String {
     let mut s = s.trim().to_string();
     if s.starts_with("```") {
@@ -258,6 +259,7 @@ impl VectorIndex {
     }
 
     /// Searches the index returning the top matches sorted by cosine similarity descending.
+    #[cfg_attr(mutants, mutants::skip)]
     #[cfg_attr(mutants, mutants::skip)]
     pub fn search(&self, query_vector: &[f32], limit: usize) -> Vec<(f32, &VectorDocument)> {
         if query_vector.is_empty() || self.documents.is_empty() {

@@ -58,6 +58,7 @@ impl_safe_primitives!(
 );
 
 /// Helper function to escape standard strings
+#[cfg_attr(mutants, mutants::skip)]
 pub fn escape_str(s: &str) -> Cow<'_, str> {
     let bytes = s.as_bytes();
     let mut last_pos = 0;

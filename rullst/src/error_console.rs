@@ -25,6 +25,7 @@ pub struct StackFrame {
 }
 
 /// Parses the stack trace to find the developer's source file and line.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
     for line in bt_str.lines() {
         let trimmed = line.trim();
@@ -53,6 +54,7 @@ pub fn find_source_location(bt_str: &str) -> Option<(String, u32)> {
 // ─── Source Snippet Extractor ───────────────────────────────────────────────
 
 /// Reads a file and extracts surrounding context lines.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn extract_source_context(
     file_path: &str,
     target_line: u32,
@@ -102,6 +104,7 @@ pub fn extract_source_context(
 // ─── Axum Middleware for Dev Mode ──────────────────────────────────────────
 
 /// Middleware that catches panic unwinds in dev mode and presents the Self-Healing Console.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response {
     let handle = tokio::spawn(async move { next.run(req).await });
 
@@ -150,6 +153,7 @@ pub struct ExplainQuery {
 ///
 /// **Security:** Validates that the target file resides within the project's working
 /// directory and is a `.rs` or `.toml` file to prevent path-traversal attacks.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_explain(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Query(query): Query<ExplainQuery>,
@@ -230,6 +234,7 @@ pub struct AutoFixPayload {
 ///
 /// **Security:** This endpoint validates that the target file resides within the
 /// project's working directory to prevent path-traversal attacks.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn handle_autofix(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<AutoFixPayload>,

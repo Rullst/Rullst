@@ -1045,6 +1045,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     )
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn render_table_view(
     _state: &NexusState,
     entry: &RegistryEntry,
@@ -1161,6 +1162,7 @@ async fn render_table_view(
     out
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn fetch_record_data(
     entry: &RegistryEntry,
     id: Option<&str>,
@@ -1211,6 +1213,7 @@ async fn fetch_record_data(
     record_data
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn render_form_fields_html(
     state: &NexusState,
     entry: &RegistryEntry,

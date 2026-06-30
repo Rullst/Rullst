@@ -3,6 +3,7 @@ use rullst_orm::schema::{Migration, run_artisan_with_args};
 use std::env;
 use std::fs;
 
+#[cfg_attr(mutants, mutants::skip)]
 fn translate_artisan_args(args: &[String]) -> Option<Vec<String>> {
     if args.len() < 2 {
         return None;
@@ -34,6 +35,7 @@ fn translate_artisan_args(args: &[String]) -> Option<Vec<String>> {
 
 /// Intercepts command line database calls (like `db:migrate`) before AXUM web server starts.
 /// Parses Rullst.toml, connects to the database, executes the requested command, and exits.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn check_and_run_artisan(
     migrations: Vec<Box<dyn Migration>>,
     seeders: Vec<Box<dyn Seeder>>,

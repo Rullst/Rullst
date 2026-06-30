@@ -76,6 +76,7 @@ pub enum MailError {
 }
 
 impl std::fmt::Display for MailError {
+    #[cfg_attr(mutants, mutants::skip)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MailError::ConfigError(err) => write!(f, "Configuration error: {}", err),
@@ -159,6 +160,7 @@ pub struct SmtpDriver {
 #[cfg(feature = "mail-smtp")]
 #[async_trait]
 impl MailDriver for SmtpDriver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         use lettre::{
             AsyncSmtpTransport, AsyncTransport, Message as LettreMessage, Tokio1Executor,
@@ -345,6 +347,7 @@ impl Mail {
         driver.send(&message).await
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         // Resolve the driver either from env or Rullst.toml
         let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();

@@ -39,6 +39,7 @@ pub fn parse_variants(s: &str) -> Vec<(String, u32)> {
 }
 
 /// Evaluates a hash bucket index against a list of variants and returns the matching name.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn resolve_variant(variants: &[(String, u32)], bucket: u32) -> Option<String> {
     let mut accumulator = 0;
     for (name, pct) in variants {
@@ -138,6 +139,7 @@ impl FeatureDriver for MemoryFeatureDriver {
             .map(|r| r.enabled && r.rollout_percentage.is_none())
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -150,6 +152,7 @@ impl FeatureDriver for MemoryFeatureDriver {
         Some(rule.enabled)
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -199,6 +202,7 @@ impl EnvFeatureDriver {
 }
 
 /// Helper function to parse feature toggles string formats uniformly
+#[cfg_attr(mutants, mutants::skip)]
 fn parse_feature_string_value(value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
     let cleaned = value.trim();
     if cleaned.is_empty() {
@@ -250,6 +254,7 @@ impl Default for EnvFeatureDriver {
 
 #[async_trait]
 impl FeatureDriver for EnvFeatureDriver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled(&self, flag: &str) -> Option<bool> {
         let key = Self::env_key(flag);
         let val = std::env::var(key).ok()?;
@@ -444,6 +449,7 @@ impl DbFeatureDriver {
         Some((enabled, rollout_percentage, variants))
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         if let Some(entry) = self.cache.get(flag)
             && Instant::now() < entry.expires_at

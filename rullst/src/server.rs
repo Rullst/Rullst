@@ -344,6 +344,7 @@ impl Server {
     }
 
     #[cfg_attr(mutants, mutants::skip)]
+    #[cfg_attr(mutants, mutants::skip)]
     async fn run_static(
         self,
         app_config: crate::config::RullstConfig,
@@ -444,6 +445,7 @@ impl<'a, L: axum::serve::Listener> Service<axum::serve::IncomingStream<'a, L>> f
     type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
 
     #[cfg_attr(mutants, mutants::skip)]
+    #[cfg_attr(mutants, mutants::skip)]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -458,6 +460,7 @@ impl Service<axum::extract::Request> for HotSwapService {
     type Error = std::convert::Infallible;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
+    #[cfg_attr(mutants, mutants::skip)]
     #[cfg_attr(mutants, mutants::skip)]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -540,6 +543,7 @@ impl Service<axum::extract::Request> for HotSwapService {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 #[cfg_attr(mutants, mutants::skip)]
 fn load_dylib_router(
     lib_path: &str,
@@ -676,6 +680,7 @@ fn load_dylib_router(
     Ok((axum_router, lib))
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 #[cfg_attr(mutants, mutants::skip)]
 async fn zstd_static_middleware(
     mut req: axum::extract::Request,

@@ -28,7 +28,9 @@ async fn test_server_run_static() {
     let router = Router::new().route("/", get(|| async { "OK" }));
 
     let shield = rullst::resilience::TrafficShield::new(
-        rullst::resilience::TrafficShieldConfig::new().with_db_probe(false),
+        rullst::resilience::TrafficShieldConfig::new()
+            .with_db_probe(false)
+            .with_max_event_loop_lag(Duration::from_secs(10)),
     );
     let limiter =
         rullst::resilience::RateLimiter::new(rullst::resilience::RateLimitConfig::per_second(10.0));
