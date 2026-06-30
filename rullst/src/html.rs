@@ -59,6 +59,7 @@ impl_safe_primitives!(
 
 /// Helper function to escape standard strings
 #[cfg_attr(mutants, mutants::skip)]
+#[inline(always)]
 pub fn escape_str(s: &str) -> Cow<'_, str> {
     let bytes = s.as_bytes();
     let mut last_pos = 0;
@@ -92,11 +93,13 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
 }
 
 /// The core escape function invoked by the `html!` macro
+#[inline(always)]
 pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
 
 /// Helper function to escape attribute values
+#[inline(always)]
 pub fn escape_attr<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
 }
