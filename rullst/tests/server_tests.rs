@@ -18,6 +18,7 @@ async fn test_server_new() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_server_run_static() {
     // 1. Create static files
     let _ = std::fs::create_dir_all("static");
@@ -96,6 +97,7 @@ async fn test_server_new_hot_debug() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_server_run_production_middlewares() {
     unsafe {
         std::env::set_var("APP_ENV", "production");
