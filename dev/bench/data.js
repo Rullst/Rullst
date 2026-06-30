@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782778510629,
+  "lastUpdate": 1782779131835,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1241,6 +1241,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2342,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "805252e8fc740f08f0465560778541e0be98d21c",
+          "message": "test: add comprehensive integration tests for error console middleware, source context extraction, and access control handlers",
+          "timestamp": "2026-06-29T21:23:44-03:00",
+          "tree_id": "08fbc5c51ea5a28d009e2c44061210cabfd9fc08",
+          "url": "https://github.com/Rullst/Rullst/commit/805252e8fc740f08f0465560778541e0be98d21c"
+        },
+        "date": 1782779131019,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 621,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 900,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 614,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1909,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
