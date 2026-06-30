@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782784996399,
+  "lastUpdate": 1782855813370,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1565,6 +1565,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2344,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d24b47a04280c0e466a4a08d5db906f7ad25f957",
+          "message": "feat: implement core WebAuthn passkey authentication and registration structures",
+          "timestamp": "2026-06-30T18:39:04-03:00",
+          "tree_id": "8d77ec4e6b85c834fbc30b974d818147bc874a78",
+          "url": "https://github.com/Rullst/Rullst/commit/d24b47a04280c0e466a4a08d5db906f7ad25f957"
+        },
+        "date": 1782855812853,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 627,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 917,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 646,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1767,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
