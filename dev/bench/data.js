@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782858270540,
+  "lastUpdate": 1782860377554,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1727,6 +1727,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2296,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "44ee7f87f7c82f12e36349ae07123026b2dbc189",
+          "message": "fix: ignore server_tests using reqwest/TLS under miri",
+          "timestamp": "2026-06-30T19:57:52-03:00",
+          "tree_id": "f0a40c3a7a864ea6c47de53caa203720ec5e9b80",
+          "url": "https://github.com/Rullst/Rullst/commit/44ee7f87f7c82f12e36349ae07123026b2dbc189"
+        },
+        "date": 1782860376629,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 741,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1024,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 652,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2280,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
