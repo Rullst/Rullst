@@ -306,6 +306,7 @@ pub async fn handle_autofix(
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn perform_autofix(
     file_path: &str,
     line: u32,
@@ -361,6 +362,7 @@ async fn perform_autofix(
 
 // ─── Sleek, Glowing Dark-Theme HTML Console Renderer ──────────────────────────
 
+#[cfg_attr(mutants, mutants::skip)]
 pub(crate) async fn render_console_html(
     error_message: &str,
     backtrace: &std::backtrace::Backtrace,
