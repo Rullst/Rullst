@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782779722376,
+  "lastUpdate": 1782781768730,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1349,6 +1349,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2333,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1e70398f6ffaa410f144cd4f0f22e20ed494cfd6",
+          "message": "feat: add Rullst edge runtime support and modular feature flagging system",
+          "timestamp": "2026-06-29T22:07:39-03:00",
+          "tree_id": "b4f343df8c307fcea1ac2a575cb5ce3be941f403",
+          "url": "https://github.com/Rullst/Rullst/commit/1e70398f6ffaa410f144cd4f0f22e20ed494cfd6"
+        },
+        "date": 1782781767946,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 734,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1017,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 668,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2347,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
