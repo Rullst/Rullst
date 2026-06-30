@@ -1,0 +1,38 @@
+name: Zero Panics Policy
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: Rullst
+
+jobs:
+  check-panics:
+    name: Enforce Zero Panics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Rullst
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          path: Rullst
+
+      - name: Checkout rullst-orm
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: venelouis/rullst-orm
+          path: rullst-orm
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
+        with:
+          components: clippy
+
+      - name: Run Clippy (Deny Panics)
+        run: cargo clippy -p rullst --lib --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented

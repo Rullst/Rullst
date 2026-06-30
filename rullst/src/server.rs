@@ -53,6 +53,7 @@ impl Server {
     /// Creates a `Server` in **hot-reload** mode that loads the application router from
     /// a compiled `cdylib` dynamic library at the given `lib_path`.
     /// The background file-watcher recompiles and hot-swaps the router on source changes.
+    #[allow(clippy::panic)]
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
         if !cfg!(debug_assertions) {
             panic!(
@@ -199,6 +200,7 @@ impl Server {
         addr
     }
 
+    #[allow(clippy::panic)]
     async fn run_hot_reload(
         self,
         lib_path: String,
