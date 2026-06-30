@@ -1,6 +1,7 @@
 use rullst::html;
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_html_macro_snapshot_simple() {
     let result = html! {
         <div class="test-container" id="main">
@@ -14,6 +15,7 @@ fn test_html_macro_snapshot_simple() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_html_macro_snapshot_dynamic() {
     let user_name = "Alice";
     let is_admin = true;
