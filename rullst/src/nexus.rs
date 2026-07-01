@@ -1791,9 +1791,15 @@ mod tests {
 
     struct TestDefaultIcon;
     impl NexusModel for TestDefaultIcon {
-        fn nexus_table() -> &'static str { "def" }
-        fn nexus_label() -> &'static str { "Defs" }
-        fn nexus_fields() -> Vec<FieldMeta> { vec![] }
+        fn nexus_table() -> &'static str {
+            "def"
+        }
+        fn nexus_label() -> &'static str {
+            "Defs"
+        }
+        fn nexus_fields() -> Vec<FieldMeta> {
+            vec![]
+        }
     }
 
     #[test]
@@ -1804,7 +1810,9 @@ mod tests {
 
     #[test]
     fn test_nexus_with_db() {
-        let nexus = Nexus::new().register::<TestUser>().with_db("sqlite::memory:");
+        let nexus = Nexus::new()
+            .register::<TestUser>()
+            .with_db("sqlite::memory:");
         // Kills the mutant that replaces with_db with Default::default()
         assert_eq!(nexus.registry.len(), 1);
     }
@@ -1832,12 +1840,15 @@ mod tests {
     async fn test_nexus_auth_failures() {
         use axum::http::{Request, StatusCode, header};
         use tower::Service;
-        
+
         let nexus = Nexus::new().with_auth("admin", "secret").build();
         let mut app = nexus.into_service();
 
         // No auth
-        let req1 = Request::builder().uri("/").body(axum::body::Body::empty()).unwrap();
+        let req1 = Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
         let res1 = app.call(req1).await.unwrap();
         assert_eq!(res1.status(), StatusCode::UNAUTHORIZED);
 
@@ -2256,5 +2267,3 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
-
-

@@ -75,6 +75,7 @@ pub mod connect {
     pub use rullst_connect::*;
 }
 
+/// Parses the application key from a given TOML content string.
 pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
     for line in toml_content.lines() {
         let trimmed = line.trim();
@@ -282,7 +283,10 @@ mod tests {
         // Timing test for dummy_verify (kills dummy_verify replaced with ())
         let start = std::time::Instant::now();
         verify_password(&p_73, &hash);
-        assert!(start.elapsed().as_millis() >= 2, "dummy_verify was not called or executed too fast");
+        assert!(
+            start.elapsed().as_millis() >= 2,
+            "dummy_verify was not called or executed too fast"
+        );
     }
 
     #[test]
@@ -333,7 +337,10 @@ mod tests {
         combined.extend_from_slice(&nonce_bytes);
         combined.extend_from_slice(&ciphertext);
         let expired_token = general_purpose::URL_SAFE_NO_PAD.encode(&combined);
-        assert_eq!(decrypt_session(&expired_token, &k).unwrap_err(), "Session expired");
+        assert_eq!(
+            decrypt_session(&expired_token, &k).unwrap_err(),
+            "Session expired"
+        );
     }
 
     #[test]
@@ -421,14 +428,18 @@ mod tests {
     #[test]
     fn test_parse_app_key_from_toml() {
         let toml_valid = "app_key=\"my_secret_key\"\nother=1";
-        assert_eq!(parse_app_key_from_toml(toml_valid).unwrap(), b"my_secret_key".to_vec());
+        assert_eq!(
+            parse_app_key_from_toml(toml_valid).unwrap(),
+            b"my_secret_key".to_vec()
+        );
 
         let toml_valid_2 = "key = \"another_key\"";
-        assert_eq!(parse_app_key_from_toml(toml_valid_2).unwrap(), b"another_key".to_vec());
+        assert_eq!(
+            parse_app_key_from_toml(toml_valid_2).unwrap(),
+            b"another_key".to_vec()
+        );
 
         let toml_invalid = "app=42";
         assert!(parse_app_key_from_toml(toml_invalid).is_none());
     }
 }
-
-

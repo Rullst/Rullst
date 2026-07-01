@@ -24,6 +24,7 @@ impl AnthropicProvider {
         self
     }
 
+    /// Builds the JSON payload for a chat completion request to the Anthropic API.
     pub fn build_chat_payload(&self, messages: &[Message]) -> serde_json::Value {
         let mut system_text = None;
         let mut chat_messages = Vec::new();
@@ -125,14 +126,12 @@ mod tests {
             Message::assistant("Hi"),
         ];
         let payload = provider.build_chat_payload(&msgs);
-        
+
         assert_eq!(payload["system"], "You are a helpful AI");
-        
+
         let messages = payload["messages"].as_array().unwrap();
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0]["role"], "user");
         assert_eq!(messages[1]["role"], "assistant"); // Kills match arm mutant
     }
 }
-
-

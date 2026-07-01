@@ -354,8 +354,12 @@ mod tests {
             let msg = err.to_string();
             // Either a network error, or a proper HTTP error status intercepted by our !is_success() check
             assert!(
-                msg.contains("error status") || msg.contains("error sending request") || msg.contains("dns error") || msg.contains("ConnectError"),
-                "Unexpected error message (mutant might have deleted !is_success() check): {}", msg
+                msg.contains("error status")
+                    || msg.contains("error sending request")
+                    || msg.contains("dns error")
+                    || msg.contains("ConnectError"),
+                "Unexpected error message (mutant might have deleted !is_success() check): {}",
+                msg
             );
         };
 
@@ -394,5 +398,3 @@ mod tests {
         assert_eq!(err2.to_string(), "Configuration error: test conf");
     }
 }
-
-

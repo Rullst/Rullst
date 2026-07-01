@@ -139,7 +139,6 @@ impl FeatureDriver for MemoryFeatureDriver {
             .map(|r| r.enabled && r.rollout_percentage.is_none())
     }
 
-    
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -152,7 +151,6 @@ impl FeatureDriver for MemoryFeatureDriver {
         Some(rule.enabled)
     }
 
-    
     async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -254,7 +252,6 @@ impl Default for EnvFeatureDriver {
 
 #[async_trait]
 impl FeatureDriver for EnvFeatureDriver {
-    
     async fn enabled(&self, flag: &str) -> Option<bool> {
         let key = Self::env_key(flag);
         let val = std::env::var(key).ok()?;
@@ -449,7 +446,6 @@ impl DbFeatureDriver {
         Some((enabled, rollout_percentage, variants))
     }
 
-    
     async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         if let Some(entry) = self.cache.get(flag)
             && Instant::now() < entry.expires_at
@@ -476,7 +472,6 @@ impl DbFeatureDriver {
         Some((enabled, rollout, variants))
     }
 
-    
     fn evaluate(
         &self,
         enabled: bool,
@@ -533,7 +528,6 @@ impl FeatureDriver for DbFeatureDriver {
         Some(evaluated == "enabled")
     }
 
-    
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         let evaluated = self.evaluate(enabled, rollout, variants, flag, Some(identifier))?;
@@ -579,7 +573,7 @@ impl FeatureManager {
     }
 
     /// Check if a feature flag is enabled for a target identifier.
-    
+
     pub async fn enabled_for(&self, flag: &str, identifier: &str) -> bool {
         for driver in &self.drivers {
             if let Some(val) = driver.enabled_for(flag, identifier).await {
@@ -590,7 +584,7 @@ impl FeatureManager {
     }
 
     /// Retrieve the variation name assigned to a target identifier.
-    
+
     pub async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         for driver in &self.drivers {
             if let Some(val) = driver.variant(flag, identifier).await {
@@ -704,24 +698,33 @@ mod tests {
         driver.override_enabled("test-flag", true);
         assert_eq!(driver.enabled("test-flag").await, Some(true));
         assert_eq!(driver.enabled_for("test-flag", "user1").await, Some(true));
-        assert_eq!(driver.variant("test-flag", "user1").await, Some("enabled".to_string()));
+        assert_eq!(
+            driver.variant("test-flag", "user1").await,
+            Some("enabled".to_string())
+        );
 
         driver.override_enabled("test-flag-2", false);
         assert_eq!(driver.enabled("test-flag-2").await, Some(false));
-        assert_eq!(driver.enabled_for("test-flag-2", "user1").await, Some(false));
-        assert_eq!(driver.variant("test-flag-2", "user1").await, Some("disabled".to_string()));
+        assert_eq!(
+            driver.enabled_for("test-flag-2", "user1").await,
+            Some(false)
+        );
+        assert_eq!(
+            driver.variant("test-flag-2", "user1").await,
+            Some("disabled".to_string())
+        );
     }
 
     #[tokio::test]
     async fn test_memory_driver_rollout() {
         let driver = MemoryFeatureDriver::new();
         driver.override_rollout("rollout-flag", 50); // 50%
-        
+
         let bucket = calculate_hash_bucket("rollout-flag", "user-in");
         // We just verify it doesn't crash and returns boolean based on bucket
         let res = driver.enabled_for("rollout-flag", "user-in").await.unwrap();
         assert_eq!(res, bucket < 50);
-        
+
         let variant = driver.variant("rollout-flag", "user-in").await.unwrap();
         assert_eq!(variant, if bucket < 50 { "enabled" } else { "disabled" });
     }
@@ -730,40 +733,72 @@ mod tests {
     async fn test_memory_driver_variants() {
         let driver = MemoryFeatureDriver::new();
         driver.override_variants("variant-flag", vec![("a".to_string(), 100)]);
-        assert_eq!(driver.variant("variant-flag", "user1").await, Some("a".to_string()));
+        assert_eq!(
+            driver.variant("variant-flag", "user1").await,
+            Some("a".to_string())
+        );
     }
 
     #[test]
     fn test_parse_feature_string_value() {
-        assert_eq!(parse_feature_string_value(" true ", "f", None), Some("enabled".to_string()));
-        assert_eq!(parse_feature_string_value(" 0 ", "f", None), Some("disabled".to_string()));
+        assert_eq!(
+            parse_feature_string_value(" true ", "f", None),
+            Some("enabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value(" 0 ", "f", None),
+            Some("disabled".to_string())
+        );
         assert_eq!(parse_feature_string_value("", "f", None), None);
-        assert_eq!(parse_feature_string_value("100%", "f", Some("u")), Some("enabled".to_string()));
-        assert_eq!(parse_feature_string_value("0%", "f", Some("u")), Some("disabled".to_string()));
-        assert_eq!(parse_feature_string_value("0%", "f", None), Some("disabled".to_string()));
-        assert_eq!(parse_feature_string_value("a:100", "f", Some("u")), Some("a".to_string()));
-        assert_eq!(parse_feature_string_value("custom-string", "f", None), Some("custom-string".to_string()));
+        assert_eq!(
+            parse_feature_string_value("100%", "f", Some("u")),
+            Some("enabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value("0%", "f", Some("u")),
+            Some("disabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value("0%", "f", None),
+            Some("disabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value("a:100", "f", Some("u")),
+            Some("a".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value("custom-string", "f", None),
+            Some("custom-string".to_string())
+        );
     }
 
     #[tokio::test]
     async fn test_env_driver() {
         let driver = EnvFeatureDriver::new();
-        unsafe { std::env::set_var("FEATURE_MY_FLAG", "true"); }
+        unsafe {
+            std::env::set_var("FEATURE_MY_FLAG", "true");
+        }
         assert_eq!(driver.enabled("my-flag").await, Some(true));
         assert_eq!(driver.enabled_for("my-flag", "u").await, Some(true));
-        assert_eq!(driver.variant("my-flag", "u").await, Some("enabled".to_string()));
+        assert_eq!(
+            driver.variant("my-flag", "u").await,
+            Some("enabled".to_string())
+        );
     }
 
     #[tokio::test]
     async fn test_feature_manager() {
         let driver = MemoryFeatureDriver::new();
         driver.override_enabled("global-flag", true);
-        
+
         let manager = FeatureManager::new().add_driver(Box::new(driver));
         assert!(manager.enabled("global-flag").await);
         assert!(manager.enabled_for("global-flag", "u").await);
-        assert_eq!(manager.variant("global-flag", "u").await.unwrap(), "enabled");
-        
+        assert_eq!(
+            manager.variant("global-flag", "u").await.unwrap(),
+            "enabled"
+        );
+
         assert!(!manager.enabled("unknown").await);
         assert!(!manager.enabled_for("unknown", "u").await);
         assert_eq!(manager.variant("unknown", "u").await, None);
@@ -778,5 +813,3 @@ mod tests {
         let _m = super::manager();
     }
 }
-
-

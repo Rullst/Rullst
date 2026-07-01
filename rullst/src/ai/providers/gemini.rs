@@ -31,6 +31,7 @@ impl GeminiProvider {
         self.embedding_model = model.into();
         self
     }
+    /// Builds the JSON payload for a chat completion request to the Gemini API.
     pub fn build_chat_payload(messages: &[Message]) -> serde_json::Value {
         let mut contents = Vec::new();
         let mut system_instruction = None;
@@ -71,8 +72,6 @@ impl AiProvider for GeminiProvider {
         let messages = vec![Message::user(text)];
         self.chat(&messages).await
     }
-
-
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
         let url = format!(
@@ -176,15 +175,13 @@ mod tests {
             Message::assistant("Hi"),
         ];
         let payload = GeminiProvider::build_chat_payload(&msgs);
-        
+
         let sys = payload.get("systemInstruction").unwrap();
         assert_eq!(sys["parts"][0]["text"], "You are a helpful AI");
-        
+
         let contents = payload.get("contents").unwrap().as_array().unwrap();
         assert_eq!(contents.len(), 2);
         assert_eq!(contents[0]["role"], "user");
         assert_eq!(contents[1]["role"], "model"); // kills assistant match arm mutant
     }
 }
-
-
