@@ -52,11 +52,15 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace
 
-  # Step 2: Publish to crates.io only if all tests pass
   publish:
-    name: Publish to crates.io
+    name: Publish to crates.io and GitHub
     needs: verify
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - name: Checkout Rullst
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -72,19 +76,57 @@ jobs:
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
 
-      - name: Publish rullst-macros
-        run: cargo publish -p rullst-macros --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Package crates
+        run: |
+          cargo package -p rullst-macros
+          cargo package -p rullst
+          cargo package -p cargo-rullst
 
-      # Wait for crates.io to index rullst-macros before publishing rullst
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish rullst-macros
+        run: cargo publish -p rullst-macros
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
       - name: Wait for rullst-macros to be indexed
         run: sleep 30
 
       - name: Publish rullst
-        run: cargo publish -p rullst --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p rullst
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
 
-      # Wait for crates.io to index rullst before publishing cargo-rullst
       - name: Wait for rullst to be indexed
         run: sleep 30
 
       - name: Publish cargo-rullst
-        run: cargo publish -p cargo-rullst --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p cargo-rullst
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Generate Hashes for SLSA
+        id: hash
+        run: |
+          cd target/package
+          sha256sum *.crate > checksums.txt
+          echo "hashes=$(cat checksums.txt | base64 -w0)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release and Upload Crates
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Rullst/target/package/*.crate
+
+  provenance:
+    name: Generate SLSA 3 Provenance
+    needs: [publish]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.publish.outputs.hashes }}"
+      upload-assets: true
