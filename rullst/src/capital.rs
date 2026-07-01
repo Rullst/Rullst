@@ -41,7 +41,7 @@ impl SubscriptionStatus {
     }
 
     /// Parses a string representation of a subscription status.
-    #[cfg_attr(mutants, mutants::skip)]
+    
     pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
@@ -178,7 +178,7 @@ impl BillingProvider for StripeProvider {
         "stripe"
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
+    
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -639,3 +639,5 @@ mod tests {
         );
     }
 }
+
+

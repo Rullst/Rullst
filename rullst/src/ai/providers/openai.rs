@@ -131,3 +131,5 @@ mod tests {
         assert_eq!(provider.embedding_model, "text-emb");
     }
 }
+
+

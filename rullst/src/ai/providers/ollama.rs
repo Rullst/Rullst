@@ -125,3 +125,5 @@ mod tests {
         assert_eq!(provider.embedding_model, "nomic-test");
     }
 }
+
+

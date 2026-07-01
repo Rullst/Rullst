@@ -75,6 +75,18 @@ pub mod connect {
     pub use rullst_connect::*;
 }
 
+pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
+    for line in toml_content.lines() {
+        let trimmed = line.trim();
+        if (trimmed.starts_with("app_key") || trimmed.starts_with("key"))
+            && let Some(val) = trimmed.split('=').nth(1)
+        {
+            return Some(val.trim().trim_matches('"').as_bytes().to_vec());
+        }
+    }
+    None
+}
+
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
 pub fn get_app_key() -> Result<Vec<u8>, String> {
@@ -83,13 +95,8 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
     }
 
     if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
-        for line in toml_content.lines() {
-            let trimmed = line.trim();
-            if (trimmed.starts_with("app_key") || trimmed.starts_with("key"))
-                && let Some(val) = trimmed.split('=').nth(1)
-            {
-                return Ok(val.trim().trim_matches('"').as_bytes().to_vec());
-            }
+        if let Some(key) = parse_app_key_from_toml(&toml_content) {
+            return Ok(key);
         }
     }
 
@@ -267,8 +274,15 @@ mod tests {
         assert_eq!(err, "Password exceeds maximum length of 72 characters");
 
         // verify_password
-        let hash = hash_password("dummy").unwrap();
+        let hash = hash_password(&p_72).unwrap();
+        // Boundary condition (kills > replaced with >=)
+        assert!(verify_password(&p_72, &hash));
         assert!(!verify_password(&p_73, &hash));
+
+        // Timing test for dummy_verify (kills dummy_verify replaced with ())
+        let start = std::time::Instant::now();
+        verify_password(&p_73, &hash);
+        assert!(start.elapsed().as_millis() >= 2, "dummy_verify was not called or executed too fast");
     }
 
     #[test]
@@ -297,10 +311,29 @@ mod tests {
         let short_token = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 10]);
         assert!(decrypt_session(&short_token, &k).is_err());
 
+        // Test exact length 12 boundary (kills < replaced with <=)
+        let exact_12 = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 12]);
+        let err_12 = decrypt_session(&exact_12, &k).unwrap_err();
+        assert_ne!(err_12, "Invalid token length");
+
         // Decrypt with valid base64 but invalid ciphertext (MAC mismatch)
         let bad_cipher = vec![0u8; 32];
         let bad_token = general_purpose::URL_SAFE_NO_PAD.encode(&bad_cipher);
         assert!(decrypt_session(&bad_token, &k).is_err());
+
+        // Expired session test (kills > replaced with ==)
+        let cipher = derive_cipher(&k).unwrap();
+        let mut nonce_bytes = [0u8; 12];
+        rand::fill(&mut nonce_bytes);
+        let nonce = Nonce::from(nonce_bytes);
+        let exp = 1000; // UNIX epoch + 1000s, way in the past
+        let payload = format!("{}|{}", 42, exp);
+        let ciphertext = cipher.encrypt(&nonce, payload.as_bytes()).unwrap();
+        let mut combined = Vec::new();
+        combined.extend_from_slice(&nonce_bytes);
+        combined.extend_from_slice(&ciphertext);
+        let expired_token = general_purpose::URL_SAFE_NO_PAD.encode(&combined);
+        assert_eq!(decrypt_session(&expired_token, &k).unwrap_err(), "Session expired");
     }
 
     #[test]
@@ -382,6 +415,20 @@ mod tests {
         // Just verify that the application key can be successfully resolved.
         // We avoid mutating `std::env::set_var` here because it races with concurrent tests.
         let key = get_app_key().unwrap();
-        assert!(!key.is_empty());
+        assert!(key.len() > 1); // Kills Ok(vec![1]) mutant
+    }
+
+    #[test]
+    fn test_parse_app_key_from_toml() {
+        let toml_valid = "app_key=\"my_secret_key\"\nother=1";
+        assert_eq!(parse_app_key_from_toml(toml_valid).unwrap(), b"my_secret_key".to_vec());
+
+        let toml_valid_2 = "key = \"another_key\"";
+        assert_eq!(parse_app_key_from_toml(toml_valid_2).unwrap(), b"another_key".to_vec());
+
+        let toml_invalid = "app=42";
+        assert!(parse_app_key_from_toml(toml_invalid).is_none());
     }
 }
+
+

@@ -23,18 +23,8 @@ impl AnthropicProvider {
         self.model = model.into();
         self
     }
-}
 
-#[async_trait]
-impl AiProvider for AnthropicProvider {
-    async fn prompt(&self, text: &str) -> Result<String, AiError> {
-        let messages = vec![Message::user(text)];
-        self.chat(&messages).await
-    }
-
-    async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
-        let url = "https://api.anthropic.com/v1/messages";
-
+    pub fn build_chat_payload(&self, messages: &[Message]) -> serde_json::Value {
         let mut system_text = None;
         let mut chat_messages = Vec::new();
 
@@ -64,6 +54,21 @@ impl AiProvider for AnthropicProvider {
         {
             obj.insert("system".to_string(), serde_json::json!(sys_prompt));
         }
+        body
+    }
+}
+
+#[async_trait]
+impl AiProvider for AnthropicProvider {
+    async fn prompt(&self, text: &str) -> Result<String, AiError> {
+        let messages = vec![Message::user(text)];
+        self.chat(&messages).await
+    }
+
+    async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        let url = "https://api.anthropic.com/v1/messages";
+
+        let body = self.build_chat_payload(messages);
 
         let res = self
             .client
@@ -110,4 +115,24 @@ mod tests {
         assert_eq!(provider.api_key, "test-key");
         assert_eq!(provider.model, "claude-test");
     }
+
+    #[test]
+    fn test_anthropic_build_chat_payload() {
+        let provider = AnthropicProvider::new("test-key");
+        let msgs = vec![
+            Message::system("You are a helpful AI"),
+            Message::user("Hello"),
+            Message::assistant("Hi"),
+        ];
+        let payload = provider.build_chat_payload(&msgs);
+        
+        assert_eq!(payload["system"], "You are a helpful AI");
+        
+        let messages = payload["messages"].as_array().unwrap();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0]["role"], "user");
+        assert_eq!(messages[1]["role"], "assistant"); // Kills match arm mutant
+    }
 }
+
+

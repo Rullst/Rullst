@@ -310,10 +310,16 @@ mod tests {
         let b = vec![1.0, 0.0, 0.0];
         let c = vec![0.0, 1.0, 0.0];
         let d = vec![-1.0, 0.0, 0.0];
+        let e = vec![2.0, 0.0, 0.0]; // Different norm to kill * vs / mutant
 
         assert!((cosine_similarity(&a, &b) - 1.0).abs() < 1e-6);
         assert!(cosine_similarity(&a, &c).abs() < 1e-6);
         assert!((cosine_similarity(&a, &d) - (-1.0)).abs() < 1e-6);
+        assert!((cosine_similarity(&a, &e) - 1.0).abs() < 1e-6);
+
+        // Kills `||` replaced with `&&` mutant
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[1.0, 1.0]), 0.0);
+        assert_eq!(cosine_similarity(&[1.0, 1.0], &[0.0, 0.0]), 0.0);
 
         // Mismatched lengths
         assert_eq!(cosine_similarity(&a, &[1.0, 0.0]), 0.0);
@@ -342,33 +348,42 @@ mod tests {
     #[cfg_attr(miri, ignore)]
     async fn test_ai_providers_network_errors() {
         // These tests verify that network failures or invalid API keys correctly propagate as Err()
-        // and kill mutants that hardcode Ok() returns.
+        // and kill mutants that hardcode Ok() returns or delete the `!is_success()` checks.
+
+        let check_err = |err: AiError| {
+            let msg = err.to_string();
+            // Either a network error, or a proper HTTP error status intercepted by our !is_success() check
+            assert!(
+                msg.contains("error status") || msg.contains("error sending request") || msg.contains("dns error") || msg.contains("ConnectError"),
+                "Unexpected error message (mutant might have deleted !is_success() check): {}", msg
+            );
+        };
 
         let openai = providers::openai::OpenAiProvider::new("fake");
-        assert!(openai.prompt("test").await.is_err());
-        assert!(openai.chat(&[Message::user("test")]).await.is_err());
-        assert!(openai.embed("test").await.is_err());
+        check_err(openai.prompt("test").await.unwrap_err());
+        check_err(openai.chat(&[Message::user("test")]).await.unwrap_err());
+        check_err(openai.embed("test").await.unwrap_err());
 
         let anthropic = providers::anthropic::AnthropicProvider::new("fake");
-        assert!(anthropic.prompt("test").await.is_err());
-        assert!(anthropic.chat(&[Message::user("test")]).await.is_err());
-        assert!(anthropic.embed("test").await.is_err());
+        check_err(anthropic.prompt("test").await.unwrap_err());
+        check_err(anthropic.chat(&[Message::user("test")]).await.unwrap_err());
+        // Anthropic does not support native embeddings, so we don't test it here.
 
         let gemini = providers::gemini::GeminiProvider::new("fake");
-        assert!(gemini.prompt("test").await.is_err());
-        assert!(gemini.chat(&[Message::user("test")]).await.is_err());
-        assert!(gemini.embed("test").await.is_err());
+        check_err(gemini.prompt("test").await.unwrap_err());
+        check_err(gemini.chat(&[Message::user("test")]).await.unwrap_err());
+        check_err(gemini.embed("test").await.unwrap_err());
 
         let ollama = providers::ollama::OllamaProvider::new("http://127.0.0.1:59999", "fake");
-        assert!(ollama.prompt("test").await.is_err());
-        assert!(ollama.chat(&[Message::user("test")]).await.is_err());
-        assert!(ollama.embed("test").await.is_err());
+        check_err(ollama.prompt("test").await.unwrap_err());
+        check_err(ollama.chat(&[Message::user("test")]).await.unwrap_err());
+        check_err(ollama.embed("test").await.unwrap_err());
 
         // AiClient wrapper tests
         let client = AiClient::new(openai);
-        assert!(client.prompt("test").await.is_err());
-        assert!(client.chat().user("test").send().await.is_err());
-        assert!(client.embed("test").await.is_err());
+        check_err(client.prompt("test").await.unwrap_err());
+        check_err(client.chat().user("test").send().await.unwrap_err());
+        check_err(client.embed("test").await.unwrap_err());
     }
 
     #[test]
@@ -379,3 +394,5 @@ mod tests {
         assert_eq!(err2.to_string(), "Configuration error: test conf");
     }
 }
+
+

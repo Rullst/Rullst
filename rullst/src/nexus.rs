@@ -1789,6 +1789,26 @@ mod tests {
         assert_eq!(fields[2].kind, FieldKind::Boolean);
     }
 
+    struct TestDefaultIcon;
+    impl NexusModel for TestDefaultIcon {
+        fn nexus_table() -> &'static str { "def" }
+        fn nexus_label() -> &'static str { "Defs" }
+        fn nexus_fields() -> Vec<FieldMeta> { vec![] }
+    }
+
+    #[test]
+    fn test_nexus_icon_default() {
+        // Kills the mutant replacing "📋" with "" or "xyzzy"
+        assert_eq!(TestDefaultIcon::nexus_icon(), "📋");
+    }
+
+    #[test]
+    fn test_nexus_with_db() {
+        let nexus = Nexus::new().register::<TestUser>().with_db("sqlite::memory:");
+        // Kills the mutant that replaces with_db with Default::default()
+        assert_eq!(nexus.registry.len(), 1);
+    }
+
     #[test]
     fn test_nexus_builder_registers_models() {
         let nexus = Nexus::new()
@@ -1806,6 +1826,41 @@ mod tests {
     fn test_nexus_build_returns_router() {
         let nexus = Nexus::new().register::<TestUser>().with_brand("My App");
         let _router = nexus.build();
+    }
+
+    #[tokio::test]
+    async fn test_nexus_auth_failures() {
+        use axum::http::{Request, StatusCode, header};
+        use tower::Service;
+        
+        let nexus = Nexus::new().with_auth("admin", "secret").build();
+        let mut app = nexus.into_service();
+
+        // No auth
+        let req1 = Request::builder().uri("/").body(axum::body::Body::empty()).unwrap();
+        let res1 = app.call(req1).await.unwrap();
+        assert_eq!(res1.status(), StatusCode::UNAUTHORIZED);
+
+        // Wrong password (kills && replaced with || mutant)
+        use base64::Engine;
+        let encoded = base64::engine::general_purpose::STANDARD.encode("admin:wrongpass");
+        let req2 = Request::builder()
+            .uri("/")
+            .header(header::AUTHORIZATION, format!("Basic {}", encoded))
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res2 = app.call(req2).await.unwrap();
+        assert_eq!(res2.status(), StatusCode::UNAUTHORIZED);
+
+        // Wrong username (kills && replaced with || mutant)
+        let encoded3 = base64::engine::general_purpose::STANDARD.encode("user:secret");
+        let req3 = Request::builder()
+            .uri("/")
+            .header(header::AUTHORIZATION, format!("Basic {}", encoded3))
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res3 = app.call(req3).await.unwrap();
+        assert_eq!(res3.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[test]
@@ -2201,3 +2256,5 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
+
+

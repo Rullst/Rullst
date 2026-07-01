@@ -340,3 +340,13 @@ impl TestResponse {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_max_body() {
+        assert_eq!(DEFAULT_MAX_BODY, 10 * 1024 * 1024); // Kills * replaced with + mutant
+    }
+}

@@ -640,6 +640,18 @@ impl Worker {
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+mod formatting_tests {
+    use super::*;
+    #[test]
+    fn test_queue_error_display() {
+        assert_eq!(QueueError::Driver("db error".into()).to_string(), "Queue driver error: db error");
+        assert_eq!(QueueError::Serialization("bad json".into()).to_string(), "Queue serialization error: bad json");
+        assert_eq!(QueueError::HandlerNotFound("job_a".into()).to_string(), "No handler registered for job: job_a");
+        assert_eq!(QueueError::JobFailed("crash".into()).to_string(), "Job execution failed: crash");
+    }
+}
+
+#[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(not(miri))]
 mod tests {
@@ -679,6 +691,14 @@ mod tests {
 
         // Mark complete and pop next
         driver.mark_complete("job-1").await.unwrap();
+        
+        // Assert job-1 is actually deleted (kills mark_complete replaced with Ok(()))
+        let row: Option<(i32,)> = sqlx::query_as("SELECT 1 FROM rullst_jobs WHERE id = 'job-1'")
+            .fetch_optional(&driver.pool)
+            .await
+            .unwrap();
+        assert!(row.is_none());
+
         let job2 = driver.pop().await.unwrap().unwrap();
         assert_eq!(job2.id, "job-2");
         assert_eq!(job2.name, "process_image");
@@ -718,9 +738,17 @@ mod tests {
             .await
             .unwrap();
 
-        // Job should no longer be pending
         let count = driver.pending_count().await.unwrap();
         assert_eq!(count, 0);
+
+        // Kills mark_failed replaced with Ok(())
+        let status_row: (String, String) = sqlx::query_as("SELECT status, error FROM rullst_jobs WHERE id = ?")
+            .bind(&job.id)
+            .fetch_one(&driver.pool)
+            .await
+            .unwrap();
+        assert_eq!(status_row.0, "failed");
+        assert_eq!(status_row.1, "Something went wrong");
     }
 
     #[tokio::test]
@@ -924,14 +952,42 @@ mod tests {
         let pending = driver.pending_count().await.unwrap();
         assert_eq!(pending, 1);
 
+        // Kills purge replaced with Ok(())
+        let failed_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'failed'")
+            .fetch_one(&driver.pool)
+            .await
+            .unwrap();
+        assert_eq!(failed_count.0, 0);
+
         // Pop the pending job to verify it's the right one
         let job2 = driver.pop().await.unwrap().unwrap();
         assert_eq!(job2.id, "job-pending");
 
-        // The failed job should not be retryable anymore (it's deleted)
         let _retry_result = driver.retry_failed_job("job-to-fail").await;
-        // The retry function doesn't actually throw an error if job is not found,
-        // it just updates 0 rows, so we will manually check via list_all_jobs or just rely on the above checks.
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_queue_retry_failed_job() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver.push("retry-job", "retry_job", r#"{}"#).await.unwrap();
+        
+        let job = driver.pop().await.unwrap().unwrap();
+        driver.mark_failed(&job.id, "Err").await.unwrap();
+        
+        let failed_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'failed'")
+            .fetch_one(&driver.pool)
+            .await
+            .unwrap();
+        assert_eq!(failed_count.0, 1);
+        
+        driver.retry_failed_job(&job.id).await.unwrap();
+        
+        // Kills retry_failed_job replaced with Ok(())
+        let pending_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'pending'")
+            .fetch_one(&driver.pool)
+            .await
+            .unwrap();
+        assert_eq!(pending_count.0, 1);
     }
 
     #[tokio::test]
@@ -1150,3 +1206,5 @@ mod tests_additional {
         assert_eq!(res.unwrap(), 42);
     }
 }
+
+

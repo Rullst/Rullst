@@ -31,21 +31,7 @@ impl GeminiProvider {
         self.embedding_model = model.into();
         self
     }
-}
-
-#[async_trait]
-impl AiProvider for GeminiProvider {
-    async fn prompt(&self, text: &str) -> Result<String, AiError> {
-        let messages = vec![Message::user(text)];
-        self.chat(&messages).await
-    }
-
-    async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
-        let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-            self.model, self.api_key
-        );
-
+    pub fn build_chat_payload(messages: &[Message]) -> serde_json::Value {
         let mut contents = Vec::new();
         let mut system_instruction = None;
 
@@ -75,6 +61,26 @@ impl AiProvider for GeminiProvider {
         {
             obj.insert("systemInstruction".to_string(), sys_inst);
         }
+        body
+    }
+}
+
+#[async_trait]
+impl AiProvider for GeminiProvider {
+    async fn prompt(&self, text: &str) -> Result<String, AiError> {
+        let messages = vec![Message::user(text)];
+        self.chat(&messages).await
+    }
+
+
+
+    async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        let url = format!(
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+            self.model, self.api_key
+        );
+
+        let body = Self::build_chat_payload(messages);
 
         let res = self
             .client
@@ -161,4 +167,24 @@ mod tests {
         assert_eq!(provider.model, "gemini-test");
         assert_eq!(provider.embedding_model, "text-emb");
     }
+
+    #[test]
+    fn test_gemini_build_chat_payload() {
+        let msgs = vec![
+            Message::system("You are a helpful AI"),
+            Message::user("Hello"),
+            Message::assistant("Hi"),
+        ];
+        let payload = GeminiProvider::build_chat_payload(&msgs);
+        
+        let sys = payload.get("systemInstruction").unwrap();
+        assert_eq!(sys["parts"][0]["text"], "You are a helpful AI");
+        
+        let contents = payload.get("contents").unwrap().as_array().unwrap();
+        assert_eq!(contents.len(), 2);
+        assert_eq!(contents[0]["role"], "user");
+        assert_eq!(contents[1]["role"], "model"); // kills assistant match arm mutant
+    }
 }
+
+
