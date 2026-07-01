@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782860377554,
+  "lastUpdate": 1782869660372,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1781,6 +1781,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2280,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "835761c132dd1bdae07c1a175200e7ae1c5f3e32",
+          "message": "feat: implement core authentication, AI provider integration, and storage infrastructure modules",
+          "timestamp": "2026-06-30T22:32:30-03:00",
+          "tree_id": "4a28573314df190fa9da651b9a165544c9058d3e",
+          "url": "https://github.com/Rullst/Rullst/commit/835761c132dd1bdae07c1a175200e7ae1c5f3e32"
+        },
+        "date": 1782869659429,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 747,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1007,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 633,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2328,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
