@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782870213566,
+  "lastUpdate": 1782930145080,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1889,6 +1889,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2392,
             "range": "± 38",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6807125294d2c04e89df6d8c8c12e62b593bdcc3",
+          "message": "ci: add automated crates.io release workflow and update versioning documentation",
+          "timestamp": "2026-07-01T15:20:34-03:00",
+          "tree_id": "3e3a9928a5d74f9328d1a648159d534b60e63c83",
+          "url": "https://github.com/Rullst/Rullst/commit/6807125294d2c04e89df6d8c8c12e62b593bdcc3"
+        },
+        "date": 1782930144090,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 740,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1005,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 622,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2304,
+            "range": "± 30",
             "unit": "ns/iter"
           }
         ]
