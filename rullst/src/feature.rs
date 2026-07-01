@@ -39,7 +39,6 @@ pub fn parse_variants(s: &str) -> Vec<(String, u32)> {
 }
 
 /// Evaluates a hash bucket index against a list of variants and returns the matching name.
-
 pub fn resolve_variant(variants: &[(String, u32)], bucket: u32) -> Option<String> {
     let mut accumulator = 0;
     for (name, pct) in variants {
@@ -200,7 +199,6 @@ impl EnvFeatureDriver {
 }
 
 /// Helper function to parse feature toggles string formats uniformly
-
 fn parse_feature_string_value(value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
     let cleaned = value.trim();
     if cleaned.is_empty() {
@@ -573,7 +571,6 @@ impl FeatureManager {
     }
 
     /// Check if a feature flag is enabled for a target identifier.
-
     pub async fn enabled_for(&self, flag: &str, identifier: &str) -> bool {
         for driver in &self.drivers {
             if let Some(val) = driver.enabled_for(flag, identifier).await {
@@ -584,7 +581,6 @@ impl FeatureManager {
     }
 
     /// Retrieve the variation name assigned to a target identifier.
-
     pub async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         for driver in &self.drivers {
             if let Some(val) = driver.variant(flag, identifier).await {
@@ -630,18 +626,17 @@ pub async fn enabled(flag: &str) -> bool {
 }
 
 /// Checks if a feature flag is enabled for a specific identifier (progressive rollout).
-
 pub async fn enabled_for(flag: &str, identifier: &str) -> bool {
     manager().enabled_for(flag, identifier).await
 }
 
 /// Evaluates A/B split variations for a specific identifier.
-
 pub async fn variant(flag: &str, identifier: &str) -> Option<String> {
     manager().variant(flag, identifier).await
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

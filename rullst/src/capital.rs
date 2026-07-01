@@ -41,7 +41,6 @@ impl SubscriptionStatus {
     }
 
     /// Parses a string representation of a subscription status.
-
     pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
