@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783478446578,
+  "lastUpdate": 1783479318336,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1997,6 +1997,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2386,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f38d4bb49ac6a9603c42d5227fed78db31a6ad2f",
+          "message": "feat: implement extensible cache system with in-memory and optional Redis drivers",
+          "timestamp": "2026-07-07T23:52:48-03:00",
+          "tree_id": "26c18f174bfe2957e60ce93499cce9477987bd82",
+          "url": "https://github.com/Rullst/Rullst/commit/f38d4bb49ac6a9603c42d5227fed78db31a6ad2f"
+        },
+        "date": 1783479317441,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 732,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 987,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 629,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2359,
+            "range": "± 69",
             "unit": "ns/iter"
           }
         ]
