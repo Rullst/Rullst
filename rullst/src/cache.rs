@@ -513,12 +513,12 @@ mod tests {
                 Err(CacheError::Driver("computation failed".to_string()))
             })
             .await;
-        
+
         assert!(result.is_err());
         if let Err(CacheError::Driver(msg)) = result {
             assert_eq!(msg, "computation failed");
         }
-        
+
         // Ensure nothing was cached
         let cached = cache.get("error_key").await.unwrap();
         assert!(cached.is_none());
