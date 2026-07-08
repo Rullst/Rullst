@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782930145080,
+  "lastUpdate": 1783478446578,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1943,6 +1943,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2304,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "58e28312b3ca69c5877d02c0a2e43fe28d2386ee",
+          "message": "feat: implement HTMX integration module with request extraction and response builders",
+          "timestamp": "2026-07-07T23:38:16-03:00",
+          "tree_id": "b3afd1ebf30f4f84572c883b2a14c9983bea48a8",
+          "url": "https://github.com/Rullst/Rullst/commit/58e28312b3ca69c5877d02c0a2e43fe28d2386ee"
+        },
+        "date": 1783478445723,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 756,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 989,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 666,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2386,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
