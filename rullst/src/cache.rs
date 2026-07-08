@@ -505,6 +505,25 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_memory_cache_remember_error() {
+        let cache = Cache::memory();
+        let result = cache
+            .remember("error_key", 60, || async {
+                Err(CacheError::Driver("computation failed".to_string()))
+            })
+            .await;
+        
+        assert!(result.is_err());
+        if let Err(CacheError::Driver(msg)) = result {
+            assert_eq!(msg, "computation failed");
+        }
+        
+        // Ensure nothing was cached
+        let cached = cache.get("error_key").await.unwrap();
+        assert!(cached.is_none());
+    }
+
     struct MockDriver;
     #[async_trait]
     impl CacheDriver for MockDriver {

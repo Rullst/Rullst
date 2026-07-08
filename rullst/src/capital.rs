@@ -608,6 +608,13 @@ mod tests {
     }
 
     #[test]
+    fn test_stripe_signature_empty_secret() {
+        let provider = StripeProvider::new("mock".to_string(), "".to_string());
+        let res = provider.verify_signature(b"{}", "invalid_signature");
+        assert!(res.is_ok());
+    }
+
+    #[test]
     #[cfg(not(miri))]
     fn test_lemonsqueezy_signature_verification() {
         let provider = LemonSqueezyProvider::new("mock".to_string(), "secret".to_string());

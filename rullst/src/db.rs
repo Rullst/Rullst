@@ -135,6 +135,18 @@ mod tests {
     }
 
     #[test]
+    fn test_replication_config_with_sync_url() {
+        let config = ReplicationConfig::new("test.db").with_sync_url("http://sync");
+        assert_eq!(config.sync_url, Some("http://sync".to_string()));
+    }
+
+    #[test]
+    fn test_replication_config_with_auth_token() {
+        let config = ReplicationConfig::new("test.db").with_auth_token("token123");
+        assert_eq!(config.auth_token, Some("token123".to_string()));
+    }
+
+    #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn test_safe_pool_uninitialized() {
         // Assuming Orm isn't initialized in this isolated test, safe_pool should safely return None

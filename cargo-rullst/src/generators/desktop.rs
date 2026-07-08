@@ -375,8 +375,8 @@ To run on an iOS simulator or device:
 
     // 9.5. Run npm install to populate node_modules with @tauri-apps/cli
     let has_npm = if cfg!(windows) {
-        std::process::Command::new("cmd")
-            .args(&["/C", "npm --version"])
+        std::process::Command::new("npm.cmd")
+            .args(&["--version"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -391,8 +391,8 @@ To run on an iOS simulator or device:
     if has_npm {
         println!("📦 Installing project dependencies via npm...");
         let mut npm_install = if cfg!(windows) {
-            let mut c = std::process::Command::new("cmd");
-            c.args(&["/C", "npm", "install"]);
+            let mut c = std::process::Command::new("npm.cmd");
+            c.args(&["install"]);
             c
         } else {
             let mut c = std::process::Command::new("npm");
@@ -630,8 +630,8 @@ fn get_tauri_command(
     }
 
     let has_npx = if cfg!(windows) {
-        std::process::Command::new("cmd")
-            .args(&["/C", "npx --version"])
+        std::process::Command::new("npx.cmd")
+            .args(&["--version"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -645,8 +645,8 @@ fn get_tauri_command(
 
     if has_npx {
         let cmd = if cfg!(windows) {
-            let mut c = std::process::Command::new("cmd");
-            c.args(&["/C", "npx", "--yes", "@tauri-apps/cli"]);
+            let mut c = std::process::Command::new("npx.cmd");
+            c.args(&["--yes", "@tauri-apps/cli"]);
             c
         } else {
             let mut c = std::process::Command::new("npx");

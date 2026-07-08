@@ -439,6 +439,51 @@ pub struct HotSwapService {
     limiter: Option<crate::resilience::RateLimiter>,
 }
 
+impl HotSwapService {
+    fn handle_oneshot_error() -> Result<axum::response::Response, std::convert::Infallible> {
+        match axum::response::Response::builder()
+            .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            .body(axum::body::Body::empty())
+        {
+            Ok(res) => Ok(res),
+            Err(_) => {
+                let mut res = axum::response::Response::new(axum::body::Body::empty());
+                *res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                Ok(res)
+            }
+        }
+    }
+
+    async fn handle_panic_error(
+        join_err: tokio::task::JoinError,
+    ) -> Result<axum::response::Response, std::convert::Infallible> {
+        let message = if join_err.is_panic() {
+            let panic_payload = join_err.into_panic();
+            if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unhandled application panic".to_string()
+            }
+        } else {
+            "Request task was cancelled or aborted".to_string()
+        };
+
+        let backtrace = std::backtrace::Backtrace::capture();
+        let html_content = crate::error_console::render_console_html(&message, &backtrace).await;
+
+        match axum::response::Response::builder()
+            .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+            .header(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .body(axum::body::Body::from(html_content))
+        {
+            Ok(res) => Ok(res),
+            Err(_) => Self::handle_oneshot_error(),
+        }
+    }
+}
+
 impl<'a, L: axum::serve::Listener> Service<axum::serve::IncomingStream<'a, L>> for HotSwapService {
     type Response = HotSwapService;
     type Error = std::convert::Infallible;
@@ -492,52 +537,8 @@ impl Service<axum::extract::Request> for HotSwapService {
             let handle = tokio::spawn(async move { fut.await });
             match handle.await {
                 Ok(Ok(res)) => Ok(res),
-                Ok(Err(_)) => {
-                    // H-2: Handle oneshot error gracefully
-                    match axum::response::Response::builder()
-                        .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(axum::body::Body::empty())
-                    {
-                        Ok(res) => Ok(res),
-                        Err(_) => {
-                            let mut res = axum::response::Response::new(axum::body::Body::empty());
-                            *res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
-                            Ok(res)
-                        }
-                    }
-                }
-                Err(join_err) => {
-                    // I-2: If a panic occurred during the oneshot invocation, catch it and present the Self-Healing Console
-                    let message = if join_err.is_panic() {
-                        let panic_payload = join_err.into_panic();
-                        if let Some(s) = panic_payload.downcast_ref::<&str>() {
-                            s.to_string()
-                        } else if let Some(s) = panic_payload.downcast_ref::<String>() {
-                            s.clone()
-                        } else {
-                            "Unhandled application panic".to_string()
-                        }
-                    } else {
-                        "Request task was cancelled or aborted".to_string()
-                    };
-
-                    let backtrace = std::backtrace::Backtrace::capture();
-                    let html_content =
-                        crate::error_console::render_console_html(&message, &backtrace).await;
-
-                    match axum::response::Response::builder()
-                        .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .header(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")
-                        .body(axum::body::Body::from(html_content))
-                    {
-                        Ok(res) => Ok(res),
-                        Err(_) => {
-                            let mut res = axum::response::Response::new(axum::body::Body::empty());
-                            *res.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
-                            Ok(res)
-                        }
-                    }
-                }
+                Ok(Err(_)) => Self::handle_oneshot_error(),
+                Err(join_err) => Self::handle_panic_error(join_err).await,
             }
         })
     }

@@ -4,6 +4,18 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **Supply Chain Security**: Pinned `softprops/action-gh-release` and `rust-lang/crates-io-auth-action` to their absolute commit SHAs in the release workflow to resolve Scorecard Pinned-Dependencies alerts.
+- **Windows Shell Injection Mitigation**: Replaced unsafe `cmd /C npm` invocations with direct `npm.cmd` and `npx.cmd` binary executions in the `cargo-rullst` desktop generator to prevent potential command injection on Windows environments.
+
+### Refactoring & Code Quality
+- **Server Router Readability**: Extracted `handle_oneshot_error` and `handle_panic_error` helper functions in `rullst/src/server.rs` to flatten deep nesting and improve maintainability of the `HotSwapService` response handler.
+
+### Testing
+- **Edge Cases & Builders Coverage**: Added rigorous unit tests for `HtmxResponse::refresh` builders, `ReplicationConfig` sync/auth token builders, memory cache `remember` error closures, and a crucial edge case testing empty Stripe webhook secrets in `capital.rs`.
+
 ## [4.0.2] - 2026-06-29
 
 ### Added

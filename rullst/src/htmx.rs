@@ -239,6 +239,22 @@ mod tests {
     }
 
     #[test]
+    fn test_htmx_response_refresh_builder() {
+        let res = HtmxResponse::new("Hello").refresh();
+        assert!(res.refresh);
+    }
+
+    #[tokio::test]
+    async fn test_htmx_response_refresh_into_response() {
+        use axum::response::IntoResponse;
+        let res = HtmxResponse::new("Hello world").refresh().into_response();
+        let headers = res.headers();
+        assert_eq!(headers.get("HX-Refresh").unwrap(), "true");
+        assert!(headers.get("HX-Trigger").is_none());
+        assert!(headers.get("HX-Redirect").is_none());
+    }
+
+    #[test]
     fn test_render_page_helper() {
         let req_htmx = HtmxRequest {
             is_htmx: true,
