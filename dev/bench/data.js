@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783479318336,
+  "lastUpdate": 1783834338783,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2051,6 +2051,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2359,
             "range": "± 69",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "47eec42fcf3e8315cdab4abe99f0a751d3c81eee",
+          "message": "security: harden deployment command execution against injection and add rate limit middleware rejection tests",
+          "timestamp": "2026-07-12T02:20:04-03:00",
+          "tree_id": "30df64eb1960c80405597a4de27e9b76c6d0537b",
+          "url": "https://github.com/Rullst/Rullst/commit/47eec42fcf3e8315cdab4abe99f0a751d3c81eee"
+        },
+        "date": 1783834338468,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 733,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 979,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 650,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2296,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
