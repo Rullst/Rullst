@@ -531,4 +531,43 @@ mod tests {
         assert_eq!(res.status(), axum::http::StatusCode::OK);
         assert!(elapsed >= Duration::from_millis(25)); // moderate load causes 25ms sleep
     }
+
+    #[tokio::test]
+    async fn test_rate_limit_middleware_rejection() {
+        use axum::{Router, routing::get};
+        use tower::ServiceExt;
+
+        let config = RateLimitConfig::per_second(1.0); // 1 request per second capacity
+        let limiter = RateLimiter::new(config);
+
+        let app =
+            Router::new()
+                .route("/", get(|| async { "OK" }))
+                .layer(axum::middleware::from_fn(move |req, next| {
+                    let l = limiter.clone();
+                    async move { rate_limit_middleware(l, req, next).await }
+                }));
+
+        // 1st request should succeed
+        let req1 = axum::http::Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res1 = app.clone().oneshot(req1).await.unwrap();
+        assert_eq!(res1.status(), axum::http::StatusCode::OK);
+
+        // 2nd request should be rejected by rate_limit_middleware
+        let req2 = axum::http::Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res2 = app.oneshot(req2).await.unwrap();
+        assert_eq!(res2.status(), axum::http::StatusCode::TOO_MANY_REQUESTS);
+
+        let body_bytes = axum::body::to_bytes(res2.into_body(), 1024).await.unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&body_bytes),
+            "Rate limit exceeded. Please try again later."
+        );
+    }
 }

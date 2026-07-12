@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Security
+- **SSH/SCP Option & Command Injection Defense**: Hardened `cargo-rullst` deployment generator (`foundry.rs`) by adding POSIX option delimiters (`--`) before destination arguments in `ssh` and `scp` invocations, enforcing strict character validation on upload binary names (`bin_name`), and validating environment variable keys and values to prevent newline or argument injection during remote server provisioning.
 - **Supply Chain Security**: Pinned `softprops/action-gh-release` and `rust-lang/crates-io-auth-action` to their absolute commit SHAs in the release workflow to resolve Scorecard Pinned-Dependencies alerts.
 - **Windows Shell Injection Mitigation**: Replaced unsafe `cmd /C npm` invocations with direct `npm.cmd` and `npx.cmd` binary executions in the `cargo-rullst` desktop generator to prevent potential command injection on Windows environments.
 
@@ -14,7 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Server Router Readability**: Extracted `handle_oneshot_error` and `handle_panic_error` helper functions in `rullst/src/server.rs` to flatten deep nesting and improve maintainability of the `HotSwapService` response handler.
 
 ### Testing
+- **Rate Limit Middleware Rejection Coverage**: Added integration test `test_rate_limit_middleware_rejection` in `rullst/src/resilience.rs` verifying that `rate_limit_middleware` properly intercepts requests exceeding the rate limit and returns HTTP `429 Too Many Requests` with the expected rejection text body.
 - **Edge Cases & Builders Coverage**: Added rigorous unit tests for `HtmxResponse::refresh` builders, `ReplicationConfig` sync/auth token builders, memory cache `remember` error closures, and a crucial edge case testing empty Stripe webhook secrets in `capital.rs`.
+
 
 ## [4.0.2] - 2026-06-29
 

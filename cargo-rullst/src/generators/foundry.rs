@@ -283,6 +283,20 @@ fn validate_foundry_config(cfg: &FoundryConfig) {
         );
         std::process::exit(1);
     }
+    for (k, v) in &cfg.env_vars {
+        if !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+            || v.contains('\n')
+            || v.contains('\r')
+        {
+            println!(
+                "{}",
+                "❌ Error: Invalid environment variable in Foundry.toml. Keys must be alphanumeric/underscores and values cannot contain newlines."
+                    .red()
+                    .bold()
+            );
+            std::process::exit(1);
+        }
+    }
 }
 
 fn get_ssh_base_args(cfg: &FoundryConfig) -> Vec<String> {
@@ -305,6 +319,7 @@ fn get_ssh_base_args(cfg: &FoundryConfig) -> Vec<String> {
     }
     args.push("-o".to_string());
     args.push("StrictHostKeyChecking=accept-new".to_string());
+    args.push("--".to_string());
     args.push(format!("{}@{}", cfg.user, cfg.host));
     args
 }
@@ -419,11 +434,26 @@ fn execute_upload_step(
     }
     scp_args.push("-o".to_string());
     scp_args.push("StrictHostKeyChecking=accept-new".to_string());
-    scp_args.push(local_bin.to_string());
     let bin_name = std::path::Path::new(local_bin)
         .file_name()
         .unwrap()
         .to_string_lossy();
+    if bin_name.is_empty()
+        || bin_name.starts_with('-')
+        || !bin_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
+    {
+        println!(
+            "{}",
+            "❌ Error: Invalid binary name for deployment. Only ASCII alphanumeric characters, dots, underscores, and dashes are allowed."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+    scp_args.push("--".to_string());
+    scp_args.push(local_bin.to_string());
     scp_args.push(format!("{}@{}:/app/bin/{}", cfg.user, cfg.host, bin_name));
 
     if !Command::new("scp").args(&scp_args).status()?.success() {
