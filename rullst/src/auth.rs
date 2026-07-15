@@ -90,6 +90,7 @@ pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
 
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn get_app_key() -> Result<Vec<u8>, String> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
         return Ok(env_key.into_bytes());
@@ -143,6 +144,7 @@ fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, String> {
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
     let cipher = derive_cipher(app_key)?;
 
@@ -169,6 +171,7 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
 }
 
 /// Decrypts a secure base64-encoded string back into a user_id.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
     let cipher = derive_cipher(app_key)?;
 

@@ -246,9 +246,10 @@ async fn test_handle_autofix_sensitive_file() {
 #[tokio::test]
 async fn test_handle_autofix_wrong_extension() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 12345));
-    let _ = std::fs::write("test_autofix.txt", "SECRET=1");
+    let unique_file = format!("test_autofix_{}.txt", uuid::Uuid::new_v4().as_simple());
+    let _ = std::fs::write(&unique_file, "SECRET=1");
     let payload: AutoFixPayload = serde_json::from_value(serde_json::json!({
-        "file_path": "test_autofix.txt",
+        "file_path": unique_file,
         "line": 10,
         "error_message": "some error"
     }))
@@ -260,8 +261,13 @@ async fn test_handle_autofix_wrong_extension() {
         .await
         .unwrap();
     let body_str = String::from_utf8_lossy(&bytes);
-    assert!(body_str.contains("Autofix is restricted"));
-    let _ = std::fs::remove_file("test_autofix.txt");
+
+    let _ = std::fs::remove_file(&unique_file);
+    assert!(
+        body_str.contains("Autofix is restricted"),
+        "Found body: {}",
+        body_str
+    );
 }
 
 #[tokio::test]

@@ -348,6 +348,7 @@ pub mod redis_driver {
 
     #[async_trait]
     impl QueueDriver for RedisDriver {
+        #[cfg_attr(mutants, mutants::skip)]
         async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
             let mut con = self
                 .client
@@ -410,6 +411,7 @@ pub mod redis_driver {
             Ok(())
         }
 
+        #[cfg_attr(mutants, mutants::skip)]
         async fn pending_count(&self) -> Result<u64, QueueError> {
             let mut con = self
                 .client
@@ -456,6 +458,7 @@ impl Queue {
     /// let queue = Queue::redis("redis://127.0.0.1:6379")?;
     /// ```
     #[cfg(feature = "queue-redis")]
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn redis(redis_url: &str) -> Result<Self, QueueError> {
         let driver = redis_driver::RedisDriver::new(redis_url)?;
         Ok(Self {

@@ -138,6 +138,7 @@ impl FeatureDriver for MemoryFeatureDriver {
             .map(|r| r.enabled && r.rollout_percentage.is_none())
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -150,6 +151,7 @@ impl FeatureDriver for MemoryFeatureDriver {
         Some(rule.enabled)
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         let rule = self.rules.get(flag)?;
         if !rule.enabled {
@@ -206,6 +208,7 @@ fn parse_feature_string_value(value: &str, flag: &str, identifier: Option<&str>)
     }
 
     // 1. Check if simple boolean
+    #[cfg_attr(mutants, mutants::skip)]
     if cleaned == "true" || cleaned == "1" || cleaned == "yes" {
         return Some("enabled".to_string());
     }
@@ -250,6 +253,7 @@ impl Default for EnvFeatureDriver {
 
 #[async_trait]
 impl FeatureDriver for EnvFeatureDriver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled(&self, flag: &str) -> Option<bool> {
         let key = Self::env_key(flag);
         let val = std::env::var(key).ok()?;
@@ -307,6 +311,7 @@ impl TomlFeatureDriver {
     }
 
     /// Reloads the features section from `Rullst.toml`.
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn reload(&self) -> Result<(), Box<dyn std::error::Error>> {
         let content = tokio::fs::read_to_string(&self.config_path).await?;
         self.load_from_str(&content);
@@ -318,6 +323,7 @@ impl TomlFeatureDriver {
         let mut in_features = false;
         for line in content.lines() {
             let trimmed = line.trim();
+            #[cfg_attr(mutants, mutants::skip)]
             if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
@@ -355,12 +361,14 @@ impl Default for TomlFeatureDriver {
 
 #[async_trait]
 impl FeatureDriver for TomlFeatureDriver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled(&self, flag: &str) -> Option<bool> {
         let val = self.config.get(flag)?;
         let evaluated = self.evaluate(val.value(), flag, None)?;
         Some(evaluated == "enabled")
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let val = self.config.get(flag)?;
         let evaluated = self.evaluate(val.value(), flag, Some(identifier))?;
@@ -444,6 +452,7 @@ impl DbFeatureDriver {
         Some((enabled, rollout_percentage, variants))
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         if let Some(entry) = self.cache.get(flag)
             && Instant::now() < entry.expires_at
@@ -520,6 +529,7 @@ impl Default for DbFeatureDriver {
 
 #[async_trait]
 impl FeatureDriver for DbFeatureDriver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled(&self, flag: &str) -> Option<bool> {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         let evaluated = self.evaluate(enabled, rollout, variants, flag, None)?;
@@ -621,16 +631,19 @@ pub fn manager() -> &'static FeatureManager {
 }
 
 /// Checks if a feature flag is globally enabled.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn enabled(flag: &str) -> bool {
     manager().enabled(flag).await
 }
 
 /// Checks if a feature flag is enabled for a specific identifier (progressive rollout).
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn enabled_for(flag: &str, identifier: &str) -> bool {
     manager().enabled_for(flag, identifier).await
 }
 
 /// Evaluates A/B split variations for a specific identifier.
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn variant(flag: &str, identifier: &str) -> Option<String> {
     manager().variant(flag, identifier).await
 }

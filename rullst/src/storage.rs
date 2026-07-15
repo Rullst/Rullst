@@ -456,21 +456,8 @@ mod tests {
 
     #[test]
     fn test_storage_disk_factory() {
-        // SAFETY: This test must not run concurrently with other tests that read STORAGE_ROOT.
-        // In a parallel test run, prefer running with `cargo test -- --test-threads=1` if
-        // STORAGE_ROOT is also checked by other tests, or use the `serial_test` crate.
-        // set_var is safe here because this file's tests are independent of STORAGE_ROOT.
-        #[allow(unsafe_code)]
-        // SAFETY: No other thread reads STORAGE_ROOT during this test in the test suite.
-        unsafe {
-            std::env::set_var("STORAGE_ROOT", "storage/factory_test");
-        }
         let _driver = Storage::disk("local");
-        // We just ensure it doesn't panic and returns a valid LocalDriver via Box<dyn StorageDriver>
-        // Downcasting is not straight-forward, but we can call a method if we want, or just rely on instantiation.
-
         let err_driver = Storage::disk("unknown_disk");
-        // Unknown disk should return an ErrorDriver
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let err_res = runtime.block_on(err_driver.exists("test"));
         assert!(err_res.is_err());
@@ -480,37 +467,21 @@ mod tests {
                 .to_string()
                 .contains("Unknown storage disk")
         );
-        // Restore env to avoid polluting other tests
-        #[allow(unsafe_code)]
-        unsafe {
-            std::env::remove_var("STORAGE_ROOT");
-        }
     }
 
     #[tokio::test]
     async fn test_storage_global_facade() {
-        // Set env var to avoid polluting actual storage root
-        #[allow(unsafe_code)]
-        unsafe {
-            std::env::set_var("STORAGE_ROOT", "storage/facade_test");
-        }
-        let _ = std::fs::remove_dir_all("storage/facade_test");
+        let unique_file = format!("facade_{}.txt", uuid::Uuid::new_v4().as_simple());
 
-        let res_put = Storage::put("facade.txt", b"hello global").await;
+        let res_put = Storage::put(&unique_file, b"hello global").await;
         assert!(res_put.is_ok());
 
-        let res_exists = Storage::exists("facade.txt").await.unwrap();
+        let res_exists = Storage::exists(&unique_file).await.unwrap();
         assert!(res_exists);
 
-        let data = Storage::get("facade.txt").await.unwrap();
+        let data = Storage::get(&unique_file).await.unwrap();
         assert_eq!(data, b"hello global");
 
-        Storage::delete("facade.txt").await.unwrap();
-        let _ = std::fs::remove_dir_all("storage/facade_test");
-
-        #[allow(unsafe_code)]
-        unsafe {
-            std::env::remove_var("STORAGE_ROOT");
-        }
+        Storage::delete(&unique_file).await.unwrap();
     }
 }

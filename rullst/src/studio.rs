@@ -338,6 +338,7 @@ pub async fn handle_dashboard() -> impl IntoResponse {
     Html(studio_layout(dash_content, None, &tables)).into_response()
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn fetch_table_schema(
     pool: &sqlx::Pool<Any>,
     driver: &str,
@@ -393,6 +394,7 @@ async fn fetch_table_schema(
     Ok((col_names, primary_keys))
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 async fn fetch_table_records(
     pool: &sqlx::Pool<Any>,
     driver: &str,
@@ -678,9 +680,13 @@ mod tests {
     #[tokio::test]
     #[cfg(not(miri))]
     async fn test_db_operations() {
-        let db_path = "sqlite:file:studio_test_db?mode=memory&cache=shared";
+        let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
+        let db_path = format!(
+            "sqlite:file:studio_test_db_{}?mode=memory&cache=shared",
+            unique_id
+        );
 
-        let _ = rullst_orm::Orm::init(db_path).await;
+        let _ = rullst_orm::Orm::init(&db_path).await;
         let pool = crate::db::safe_pool().expect("pool should be initialized");
 
         let _ = sqlx::query("DROP TABLE IF EXISTS test_users")

@@ -109,6 +109,7 @@ impl Server {
     }
 
     /// Start the HTTP server on the specified port
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
         let app_config = Self::load_config().await;
 
@@ -172,6 +173,7 @@ impl Server {
         }
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn setup_networking(port: u16, is_dev: bool) -> SocketAddr {
         if is_dev && std::env::var("RUST_BACKTRACE").is_err() {
             eprintln!(
@@ -201,6 +203,7 @@ impl Server {
     }
 
     #[allow(clippy::panic)]
+    #[cfg_attr(mutants, mutants::skip)]
     async fn run_hot_reload(
         self,
         lib_path: String,

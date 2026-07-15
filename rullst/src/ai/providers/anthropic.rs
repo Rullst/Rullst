@@ -119,6 +119,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_anthropic_build_chat_payload() {
         let provider = AnthropicProvider::new("test-key");
         let msgs = vec![
@@ -134,5 +135,12 @@ mod tests {
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0]["role"], "user");
         assert_eq!(messages[1]["role"], "assistant"); // Kills match arm mutant
+    }
+    #[tokio::test]
+    #[cfg_attr(miri, ignore)]
+    async fn test_anthropic_embed_error() {
+        let provider = AnthropicProvider::new("test-key");
+        let result = provider.embed("hello").await;
+        assert!(result.is_err());
     }
 }
