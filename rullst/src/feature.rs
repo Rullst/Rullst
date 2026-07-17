@@ -830,13 +830,13 @@ mod tests {
             
             # this comment has an = sign
             flag2 = false
-            "
+            ",
         );
         assert_eq!(driver.config.get("flag1").unwrap().value(), "true");
         assert_eq!(driver.config.get("flag2").unwrap().value(), "false");
         assert_eq!(driver.config.len(), 2);
     }
-    
+
     #[tokio::test]
     async fn test_feature_manager() {
         let driver = MemoryFeatureDriver::new();
