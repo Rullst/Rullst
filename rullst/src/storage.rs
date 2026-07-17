@@ -493,4 +493,27 @@ mod tests {
 
         Storage::delete(&unique_file).await.unwrap();
     }
+
+    #[tokio::test]
+    async fn test_error_driver_methods() {
+        let driver = ErrorDriver {
+            message: "err".to_string(),
+        };
+        assert!(driver.put("test", b"abc").await.is_err());
+        assert!(driver.get("test").await.is_err());
+        assert!(driver.exists("test").await.is_err());
+        assert!(driver.delete("test").await.is_err());
+        assert!(driver.url("test").await.is_err());
+    }
+
+    #[tokio::test]
+    #[cfg(not(feature = "storage-s3"))]
+    async fn test_s3_driver_placeholder() {
+        let driver = S3Driver;
+        assert!(driver.put("test", b"abc").await.is_err());
+        assert!(driver.get("test").await.is_err());
+        assert!(driver.exists("test").await.is_err());
+        assert!(driver.delete("test").await.is_err());
+        assert!(driver.url("test").await.is_err());
+    }
 }

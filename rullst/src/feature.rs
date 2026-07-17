@@ -318,7 +318,7 @@ impl TomlFeatureDriver {
         Ok(())
     }
 
-    fn load_from_str(&self, content: &str) {
+    pub(crate) fn load_from_str(&self, content: &str) {
         self.config.clear();
         let mut in_features = false;
         for line in content.lines() {
@@ -756,7 +756,23 @@ mod tests {
             Some("enabled".to_string())
         );
         assert_eq!(
+            parse_feature_string_value(" 1 ", "f", None),
+            Some("enabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value(" yes ", "f", None),
+            Some("enabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value(" false ", "f", None),
+            Some("disabled".to_string())
+        );
+        assert_eq!(
             parse_feature_string_value(" 0 ", "f", None),
+            Some("disabled".to_string())
+        );
+        assert_eq!(
+            parse_feature_string_value(" no ", "f", None),
             Some("disabled".to_string())
         );
         assert_eq!(parse_feature_string_value("", "f", None), None);
@@ -796,6 +812,31 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_feature_manager_default() {
+        let manager = FeatureManager::default();
+        assert!(!manager.enabled("non-existent").await);
+        assert!(!manager.enabled_for("non-existent", "user").await);
+        assert_eq!(manager.variant("non-existent", "user").await, None);
+    }
+
+    #[test]
+    fn test_toml_feature_driver_load() {
+        let driver = TomlFeatureDriver::new();
+        driver.load_from_str(
+            "
+            [features]
+            flag1 = true
+            
+            # this comment has an = sign
+            flag2 = false
+            "
+        );
+        assert_eq!(driver.config.get("flag1").unwrap().value(), "true");
+        assert_eq!(driver.config.get("flag2").unwrap().value(), "false");
+        assert_eq!(driver.config.len(), 2);
+    }
+    
     #[tokio::test]
     async fn test_feature_manager() {
         let driver = MemoryFeatureDriver::new();

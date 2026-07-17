@@ -774,6 +774,29 @@ mod tests {
         assert!(result.is_none());
     }
 
+    #[tokio::test]
+    async fn test_sqlite_queue_trait_methods() {
+        let driver_impl = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let driver: Box<dyn QueueDriver> = Box::new(driver_impl);
+        
+        driver.push("job-1", "test", "{}").await.unwrap();
+        
+        let job = driver.pop().await.unwrap().unwrap();
+        driver.mark_failed(&job.id, "error").await.unwrap();
+        
+        assert_eq!(driver.pending_count().await.unwrap(), 0);
+        
+        driver.retry_failed_job(&job.id).await.unwrap();
+        assert_eq!(driver.pending_count().await.unwrap(), 1);
+        
+        let job2 = driver.pop().await.unwrap().unwrap();
+        driver.mark_failed(&job2.id, "error2").await.unwrap();
+        
+        driver.purge_completed_jobs().await.unwrap();
+        let jobs = driver.list_all_jobs(10).await.unwrap();
+        assert_eq!(jobs.len(), 0);
+    }
+
     #[test]
     #[cfg(feature = "queue-redis")]
     fn test_queue_redis_creation() {
