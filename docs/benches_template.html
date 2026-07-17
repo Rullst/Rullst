@@ -292,8 +292,9 @@
       const data = window.BENCHMARK_DATA;
       
       // Get the first suite name (e.g. "Rullst Benchmark")
-      const suiteName = Object.keys(data)[0];
-      const commits = data[suiteName];
+      const entries = data.entries || data; // Fallback if data is already the entries map
+      const suiteName = Object.keys(entries)[0];
+      const commits = entries[suiteName];
 
       if (!commits || commits.length === 0) {
         dashboard.innerHTML = '<p>No benchmark entries available yet.</p>';
