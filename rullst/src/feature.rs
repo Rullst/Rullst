@@ -826,7 +826,7 @@ mod tests {
     #[test]
     fn test_resolve_variant_boundary() {
         let variants = vec![("a".to_string(), 50), ("b".to_string(), 50)];
-        // If bucket is exactly 50, it should hit the second variant because accumulator for 'a' is 50, 
+        // If bucket is exactly 50, it should hit the second variant because accumulator for 'a' is 50,
         // and 50 < 50 is false. So it moves to 'b'.
         let v = resolve_variant(&variants, 50);
         assert_eq!(v, Some("b".to_string()));

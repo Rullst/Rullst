@@ -59,7 +59,7 @@
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="100%"/>
+  <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="100%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -76,10 +76,10 @@
   </tr>
   <tr>
     <td align="center">
-      <img src="gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>

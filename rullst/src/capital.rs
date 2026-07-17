@@ -592,12 +592,18 @@ mod tests {
         headers.insert("stripe-signature".to_string(), "t=123".to_string());
         let res_missing_v1 = provider.handle_webhook(b"{}", &headers);
         assert!(res_missing_v1.is_err());
-        assert_eq!(res_missing_v1.unwrap_err(), "Invalid Stripe-Signature header format");
+        assert_eq!(
+            res_missing_v1.unwrap_err(),
+            "Invalid Stripe-Signature header format"
+        );
 
         headers.insert("stripe-signature".to_string(), "v1=deadbeef".to_string());
         let res_missing_t = provider.handle_webhook(b"{}", &headers);
         assert!(res_missing_t.is_err());
-        assert_eq!(res_missing_t.unwrap_err(), "Invalid Stripe-Signature header format");
+        assert_eq!(
+            res_missing_t.unwrap_err(),
+            "Invalid Stripe-Signature header format"
+        );
 
         // Valid timestamp but invalid hex characters
         headers.insert(
