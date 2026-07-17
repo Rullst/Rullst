@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784253530681,
+  "lastUpdate": 1784254011828,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -161,6 +161,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2288,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f2d2b5de2ac5a8e3adea9b7df74f6d1f89aac7f5",
+          "message": "feat: add performance benchmark dashboard template for tracking historical metrics",
+          "timestamp": "2026-07-16T22:54:35-03:00",
+          "tree_id": "70f6ddea09b8ea01c701c41e5a0088c181d4606c",
+          "url": "https://github.com/Rullst/Rullst/commit/f2d2b5de2ac5a8e3adea9b7df74f6d1f89aac7f5"
+        },
+        "date": 1784254010923,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 542,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 787,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 531,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1653,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
