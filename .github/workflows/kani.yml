@@ -23,3 +23,8 @@ jobs:
         working-directory: rullst-macros
         continue-on-error: true
         run: cargo kani
+
+      - name: Verify rullst (main framework) with Kani
+        working-directory: rullst
+        continue-on-error: true
+        run: cargo kani

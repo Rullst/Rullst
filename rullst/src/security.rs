@@ -198,7 +198,7 @@ pub async fn headers_middleware(req: Request, next: Next) -> Response {
     );
 
     let final_csp = if csp.is_empty() {
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data: https:; object-src 'none'".to_string()
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data: https:; object-src 'none'".to_string()
     } else {
         csp
     };
