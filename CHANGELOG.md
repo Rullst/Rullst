@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-07-16 🚀
+
+### Breaking Changes
+- **Rullst Connect v11.0.0 API**: Upgraded `rullst-connect` to `11.0.0`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes.
+- **Major Version Bump**: Rullst was upgraded to `5.0.0` to respect SemVer due to the `rullst-connect` API breaking changes.
+
+### Changed
+- **Dependencies Upgrade**: Updated all dependencies in the workspace to their latest stable compatible versions.
+
 ### Security
 - **SSH/SCP Option & Command Injection Defense**: Hardened `cargo-rullst` deployment generator (`foundry.rs`) by adding POSIX option delimiters (`--`) before destination arguments in `ssh` and `scp` invocations, enforcing strict character validation on upload binary names (`bin_name`), and validating environment variable keys and values to prevent newline or argument injection during remote server provisioning.
 - **Supply Chain Security**: Pinned `softprops/action-gh-release` and `rust-lang/crates-io-auth-action` to their absolute commit SHAs in the release workflow to resolve Scorecard Pinned-Dependencies alerts.

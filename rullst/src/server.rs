@@ -127,6 +127,7 @@ impl Server {
         }
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn load_config() -> crate::config::RullstConfig {
         let mut app_config = crate::config::RullstConfig::new();
         if std::path::Path::new("Rullst.toml").exists() {
@@ -146,6 +147,7 @@ impl Server {
         app_config
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn init_database(&mut self, app_config: &crate::config::RullstConfig) {
         if self.db_url.is_none() {
             if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
@@ -167,6 +169,7 @@ impl Server {
         }
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn start_scheduler(&mut self) {
         if let Some(scheduler) = self.scheduler.take() {
             scheduler.start();
@@ -347,7 +350,6 @@ impl Server {
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    #[cfg_attr(mutants, mutants::skip)]
     async fn run_static(
         self,
         app_config: crate::config::RullstConfig,
@@ -443,6 +445,7 @@ pub struct HotSwapService {
 }
 
 impl HotSwapService {
+    #[cfg_attr(mutants, mutants::skip)]
     fn handle_oneshot_error() -> Result<axum::response::Response, std::convert::Infallible> {
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)

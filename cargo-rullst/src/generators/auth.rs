@@ -1171,7 +1171,7 @@ pub async fn passkey_login_finish(
                         .replace("\\", "/");
                     format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
                 } else {
-                    "rullst-connect = \"10.0.0\"\n".to_string()
+                    "rullst-connect = \"11.0.0\"\n".to_string()
                 };
 
                 if let Some(pos) = cargo_toml_content.find("[dependencies]") {

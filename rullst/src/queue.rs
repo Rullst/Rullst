@@ -1227,4 +1227,37 @@ mod tests_additional {
         let res = queue.pending_count().await;
         assert_eq!(res.unwrap(), 42);
     }
+
+    #[tokio::test]
+    async fn test_sqlite_driver_purge_completed_jobs() {
+        let driver = crate::queue::SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let pool = driver.get_pool();
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, status) VALUES ('1', 'test', '{}', 'completed')")
+            .execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, status) VALUES ('2', 'test', '{}', 'failed')")
+            .execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, status) VALUES ('3', 'test', '{}', 'pending')")
+            .execute(pool).await.unwrap();
+
+        driver.purge_completed_jobs().await.unwrap();
+
+        // purge_completed_jobs deletes 'failed' jobs
+        let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'failed'").fetch_one(pool).await.unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_driver_retry_failed_job() {
+        let driver = crate::queue::SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let pool = driver.get_pool();
+        sqlx::query("INSERT INTO rullst_jobs (id, name, payload, status, attempts, error) VALUES ('1', 'test', '{}', 'failed', 3, 'err')")
+            .execute(pool).await.unwrap();
+
+        driver.retry_failed_job("1").await.unwrap();
+
+        let (status, attempts, error): (String, i32, Option<String>) = sqlx::query_as("SELECT status, attempts, error FROM rullst_jobs WHERE id = '1'").fetch_one(pool).await.unwrap();
+        assert_eq!(status, "pending");
+        assert_eq!(attempts, 0);
+        assert!(error.is_none());
+    }
 }

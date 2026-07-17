@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rullst Performance Benchmarks</title>
+  
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #020617;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #10b981;
+      --secondary: #38bdf8;
+      --accent: #d946ef;
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --glass-border: rgba(255, 255, 255, 0.05);
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Ambient Background Glow */
+    .blob {
+      position: fixed;
+      filter: blur(100px);
+      z-index: -1;
+      opacity: 0.4;
+      border-radius: 50%;
+    }
+    .blob-1 {
+      top: -10%; left: -10%;
+      width: 500px; height: 500px;
+      background: var(--primary);
+    }
+    .blob-2 {
+      bottom: -10%; right: -10%;
+      width: 600px; height: 600px;
+      background: var(--secondary);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.05em;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto 2rem auto;
+      line-height: 1.6;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn-outline {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--text-main);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .info-card {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: transform 0.2s ease;
+    }
+
+    .info-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .info-card h3 {
+      font-size: 1.1rem;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      color: var(--secondary);
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    th {
+      color: var(--secondary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    td.mono {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--primary);
+    }
+    
+    .badge.regression {
+      background: rgba(244, 63, 94, 0.2);
+      color: #f43f5e;
+    }
+
+    #loading {
+      text-align: center;
+      padding: 4rem;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="container">
+    <header>
+      <h1>Rullst Performance Benchmarks</h1>
+      <p class="subtitle">Real-time historical performance data of the Rullst Framework. We track memory usage, throughput, and CPU time to ensure zero regressions.</p>
+      <a href="/Rullst/" class="btn btn-outline">🏠 Back to Home</a>
+    </header>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>⚡ Continuous Benchmarking</h3>
+        <p>Every commit pushed to the <code>main</code> branch triggers our benchmarking suite using Criterion.rs, ensuring we never merge a performance regression.</p>
+      </div>
+      <div class="info-card">
+        <h3>📊 Throughput Analysis</h3>
+        <p>We measure <code>requests per second</code> on synthetic HTTP loads to ensure the core routing and middleware layers remain blazing fast.</p>
+      </div>
+      <div class="info-card">
+        <h3>🧠 Memory & SSR</h3>
+        <p>Our <code>html!</code> macro and ORM mapping logic are heavily monitored for zero-allocation and CPU nanosecond times.</p>
+      </div>
+    </div>
+
+    <div id="loading">Loading benchmark data...</div>
+    <div id="dashboard" style="display: none;">
+      
+      <div class="glass">
+        <h2>📈 Performance History</h2>
+        <div class="chart-container">
+          <canvas id="historyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="glass" style="overflow-x: auto;">
+        <h2>📝 Recent Commits</h2>
+        <table id="commitsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Commit</th>
+              <th>Benchmark</th>
+              <th>Value</th>
+              <th>Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Load the generated data from github-action-benchmark -->
+  <script src="./data.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loading = document.getElementById('loading');
+      const dashboard = document.getElementById('dashboard');
+      
+      if (!window.BENCHMARK_DATA) {
+        loading.innerHTML = '⚠️ No benchmark data found. Did the GitHub Action run successfully?';
+        return;
+      }
+
+      loading.style.display = 'none';
+      dashboard.style.display = 'block';
+
+      // Parse data
+      const data = window.BENCHMARK_DATA;
+      
+      // Get the first suite name (e.g. "Rullst Benchmark")
+      const suiteName = Object.keys(data)[0];
+      const commits = data[suiteName];
+
+      if (!commits || commits.length === 0) {
+        dashboard.innerHTML = '<p>No benchmark entries available yet.</p>';
+        return;
+      }
+
+      // Prepare Chart Data
+      // Group by benchmark name
+      const datasets = {};
+      const labels = [];
+      
+      // Get last 30 commits for the chart
+      const recentCommits = commits.slice(-30);
+      
+      recentCommits.forEach(entry => {
+        labels.push(new Date(entry.commit.timestamp).toLocaleDateString() + " " + entry.commit.id.substring(0, 7));
+        
+        entry.benches.forEach(bench => {
+          if (!datasets[bench.name]) {
+            datasets[bench.name] = [];
+          }
+        });
+      });
+
+      // Fill datasets
+      recentCommits.forEach(entry => {
+        const benchMap = {};
+        entry.benches.forEach(b => {
+          benchMap[b.name] = b.value;
+        });
+        
+        Object.keys(datasets).forEach(name => {
+          datasets[name].push(benchMap[name] || null);
+        });
+      });
+
+      // Avoid css var in script object, define colors explicitly
+      const primaryColor = '#10b981';
+      const bgColor = '#020617';
+      const colors = [
+        '#10b981', '#38bdf8', '#d946ef', '#fbbf24', '#f43f5e'
+      ];
+
+      const chartDatasets = Object.keys(datasets).map((name, i) => {
+        return {
+          label: name,
+          data: datasets[name],
+          borderColor: colors[i % colors.length],
+          backgroundColor: colors[i % colors.length] + '33',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointBackgroundColor: bgColor,
+          pointBorderColor: colors[i % colors.length]
+        };
+      });
+
+      // Render Chart
+      const ctx = document.getElementById('historyChart').getContext('2d');
+      Chart.defaults.color = '#94a3b8';
+      Chart.defaults.font.family = 'Inter';
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: chartDatasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#f8fafc',
+                usePointStyle: true,
+                padding: 20
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#38bdf8',
+              bodyColor: '#f8fafc',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1,
+              padding: 12
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { maxTicksLimit: 10 }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              title: {
+                display: true,
+                text: 'Time (ns/iter) / Value',
+                color: '#94a3b8'
+              }
+            }
+          }
+        }
+      });
+
+      // Render Table
+      const tbody = document.querySelector('#commitsTable tbody');
+      // Show latest 10 commits backwards
+      const reversedCommits = [...commits].reverse().slice(0, 10);
+      
+      let prevEntry = commits[commits.length - 2] || null;
+
+      reversedCommits.forEach((entry, idx) => {
+        const tr = document.createElement('tr');
+        
+        const date = new Date(entry.commit.timestamp).toLocaleString();
+        const msg = entry.commit.message.split('\\n')[0].substring(0, 50);
+        const link = `https://github.com/Rullst/Rullst/commit/${entry.commit.id}`;
+        
+        // Show the first benchmark value as an example in the table
+        const mainBench = entry.benches[0];
+        let valStr = mainBench ? `${mainBench.value} ${mainBench.unit}` : '-';
+        
+        let changeStr = '<span class="badge">Baseline</span>';
+        
+        if (mainBench && prevEntry) {
+          const prevBench = prevEntry.benches.find(b => b.name === mainBench.name);
+          if (prevBench) {
+            const diff = mainBench.value - prevBench.value;
+            const pct = (diff / prevBench.value) * 100;
+            if (pct > 2) {
+              changeStr = `<span class="badge regression">📈 +${pct.toFixed(2)}% (Slower)</span>`;
+            } else if (pct < -2) {
+              changeStr = `<span class="badge">📉 ${pct.toFixed(2)}% (Faster)</span>`;
+            } else {
+              changeStr = `<span style="color: #64748b;">~ 0.00%</span>`;
+            }
+          }
+        }
+
+        prevEntry = [...commits].reverse()[idx + 1] || null;
+
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td><a href="${link}" target="_blank" style="color: var(--secondary); text-decoration: none;">${entry.commit.id.substring(0, 7)}</a>: ${msg}</td>
+          <td>${mainBench ? mainBench.name : '-'}</td>
+          <td class="mono">${valStr}</td>
+          <td>${changeStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  </script>
+</body>
+</html>

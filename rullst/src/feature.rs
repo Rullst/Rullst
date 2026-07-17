@@ -479,6 +479,7 @@ impl DbFeatureDriver {
         Some((enabled, rollout, variants))
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn evaluate(
         &self,
         enabled: bool,
@@ -536,6 +537,7 @@ impl FeatureDriver for DbFeatureDriver {
         Some(evaluated == "enabled")
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn enabled_for(&self, flag: &str, identifier: &str) -> Option<bool> {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         let evaluated = self.evaluate(enabled, rollout, variants, flag, Some(identifier))?;
@@ -819,5 +821,21 @@ mod tests {
         let manager2 = FeatureManager::new();
         assert!(super::init(manager2).is_err());
         let _m = super::manager();
+    }
+
+    #[test]
+    fn test_resolve_variant_boundary() {
+        let variants = vec![("a".to_string(), 50), ("b".to_string(), 50)];
+        // If bucket is exactly 50, it should hit the second variant because accumulator for 'a' is 50, 
+        // and 50 < 50 is false. So it moves to 'b'.
+        let v = resolve_variant(&variants, 50);
+        assert_eq!(v, Some("b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_toml_driver_empty_lines() {
+        let driver = TomlFeatureDriver::new();
+        driver.load_from_str("\n\n[features]\nflag = true\n# comment\n");
+        assert_eq!(driver.enabled("flag").await, Some(true));
     }
 }

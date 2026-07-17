@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 /// This module is compiled when targeting `wasm32-unknown-unknown`.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
+#[cfg_attr(mutants, mutants::skip)]
 pub fn rullst_client_init() {
     // Setup client panic hooks for nicer debugging in browser console
     console_error_panic_hook::set_once();

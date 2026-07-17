@@ -41,3 +41,29 @@ jobs:
           comment-on-alert: true
           # Only push to gh-pages when running on main branch, not on PRs
           auto-push: ${{ github.event_name != 'pull_request' }}
+          benchmark-data-dir-path: 'benches'
+
+      - name: Deploy Custom Dashboard Templates
+        if: github.event_name != 'pull_request'
+        run: |
+          # Fetch the latest gh-pages branch pushed by the previous step
+          git fetch origin gh-pages
+          git checkout gh-pages
+          
+          # Grab templates from main branch
+          git checkout origin/main -- docs/home_template.html docs/benches_template.html
+          
+          # Apply them
+          cp docs/home_template.html index.html
+          mkdir -p benches
+          cp docs/benches_template.html benches/index.html
+          
+          # Clean up
+          rm -rf docs
+          
+          # Commit and push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html benches/index.html
+          git commit -m "style: Apply custom beautiful templates to gh-pages" || echo "No changes to commit"
+          git push origin gh-pages

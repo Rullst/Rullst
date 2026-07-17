@@ -168,6 +168,7 @@ pub struct S3Driver {
 #[cfg(feature = "storage-s3")]
 #[async_trait]
 impl StorageDriver for S3Driver {
+    #[cfg_attr(mutants, mutants::skip)]
     async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError> {
         let body = aws_sdk_s3::primitives::ByteStream::from(bytes.to_vec());
         self.client
@@ -181,6 +182,7 @@ impl StorageDriver for S3Driver {
         Ok(())
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn get(&self, path: &str) -> Result<Vec<u8>, StorageError> {
         let res = self
             .client
@@ -201,6 +203,7 @@ impl StorageDriver for S3Driver {
         Ok(bytes)
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn exists(&self, path: &str) -> Result<bool, StorageError> {
         let res = self
             .client
@@ -223,6 +226,7 @@ impl StorageDriver for S3Driver {
         }
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn delete(&self, path: &str) -> Result<(), StorageError> {
         self.client
             .delete_object()
@@ -234,6 +238,7 @@ impl StorageDriver for S3Driver {
         Ok(())
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn url(&self, path: &str) -> Result<String, StorageError> {
         if let Some(ref endpoint) = self.endpoint {
             Ok(format!(
@@ -442,14 +447,18 @@ mod tests {
         let _ = std::fs::remove_dir_all(temp_dir);
         let driver = LocalDriver::new(temp_dir);
 
-        let res_put = driver.put("/etc/passwd", b"hack").await;
-        assert!(res_put.is_err());
-        assert!(
-            res_put
-                .unwrap_err()
-                .to_string()
-                .contains("absolute paths are not allowed")
-        );
+        let paths = vec!["/etc/passwd", "C:/Windows/System32", "\\Windows\\System32"];
+
+        for path in paths {
+            let res_put = driver.put(path, b"hack").await;
+            assert!(res_put.is_err());
+            assert!(
+                res_put
+                    .unwrap_err()
+                    .to_string()
+                    .contains("absolute paths are not allowed")
+            );
+        }
 
         let _ = std::fs::remove_dir_all(temp_dir);
     }

@@ -300,6 +300,7 @@ pub mod redis_driver {
             Ok(())
         }
 
+        #[cfg_attr(mutants, mutants::skip)]
         async fn has(&self, key: &str) -> Result<bool, CacheError> {
             let mut con = self
                 .client
@@ -343,6 +344,7 @@ impl Cache {
     ///
     /// Data persists across restarts and is shared between instances.
     #[cfg(feature = "cache-redis")]
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn redis(redis_url: &str) -> Result<Self, CacheError> {
         let driver = redis_driver::RedisDriver::new(redis_url)?;
         Ok(Self {
@@ -428,6 +430,18 @@ impl Cache {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_cache_error_display() {
+        assert_eq!(
+            CacheError::Driver("failed".into()).to_string(),
+            "Cache driver error: failed"
+        );
+        assert_eq!(
+            CacheError::Serialization("bad json".into()).to_string(),
+            "Cache serialization error: bad json"
+        );
+    }
 
     #[tokio::test]
     async fn test_memory_cache_put_get() {

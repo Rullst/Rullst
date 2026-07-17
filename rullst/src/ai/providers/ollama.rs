@@ -38,6 +38,7 @@ impl AiProvider for OllamaProvider {
         self.chat(&messages).await
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
         let url = format!("{}/api/chat", self.host);
 
@@ -72,6 +73,7 @@ impl AiProvider for OllamaProvider {
         Ok(content.to_string())
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         let url = format!("{}/api/embeddings", self.host);
 

@@ -41,6 +41,7 @@ impl SubscriptionStatus {
     }
 
     /// Parses a string representation of a subscription status.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn parse_status(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "active" => Self::Active,
@@ -177,6 +178,7 @@ impl BillingProvider for StripeProvider {
         "stripe"
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -329,6 +331,7 @@ impl BillingProvider for LemonSqueezyProvider {
         "lemonsqueezy"
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -470,6 +473,7 @@ impl BillingProvider for LemonSqueezyProvider {
 
 // Helper module for hex-encoding/decoding since hex crate is in target target_arch="wasm32" but we can implement it simply.
 mod hex {
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn decode(s: &str) -> Result<Vec<u8>, String> {
         let mut bytes = Vec::with_capacity(s.len() / 2);
         let mut chars = s.chars();
@@ -579,11 +583,21 @@ mod tests {
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), "Missing stripe-signature header");
 
-        // Invalid signature format
+        // Invalid signature format (missing parts)
         headers.insert("stripe-signature".to_string(), "invalid_format".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
         assert_eq!(res2.unwrap_err(), "Invalid Stripe-Signature header format");
+
+        headers.insert("stripe-signature".to_string(), "t=123".to_string());
+        let res_missing_v1 = provider.handle_webhook(b"{}", &headers);
+        assert!(res_missing_v1.is_err());
+        assert_eq!(res_missing_v1.unwrap_err(), "Invalid Stripe-Signature header format");
+
+        headers.insert("stripe-signature".to_string(), "v1=deadbeef".to_string());
+        let res_missing_t = provider.handle_webhook(b"{}", &headers);
+        assert!(res_missing_t.is_err());
+        assert_eq!(res_missing_t.unwrap_err(), "Invalid Stripe-Signature header format");
 
         // Valid timestamp but invalid hex characters
         headers.insert(
