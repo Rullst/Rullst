@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784255726862,
+  "lastUpdate": 1784257668603,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -323,6 +323,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2288,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "cf9720c983f5f0d945cb3ceba3414c14b8333f34",
+          "message": "feat: implement feature flagging and A/B testing infrastructure with memory, env, and TOML drivers",
+          "timestamp": "2026-07-17T00:03:31-03:00",
+          "tree_id": "fc6ffb8aa364a80197ca4c2d44605f4d66d11651",
+          "url": "https://github.com/Rullst/Rullst/commit/cf9720c983f5f0d945cb3ceba3414c14b8333f34"
+        },
+        "date": 1784257667706,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 742,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 973,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 627,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2222,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
