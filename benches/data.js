@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784254736023,
+  "lastUpdate": 1784255726862,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -269,6 +269,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2240,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "5a893445b9ae9f07523a1a640c259136f846ad10",
+          "message": "Update landing page, clean up node_modules and increase bench alert threshold",
+          "timestamp": "2026-07-16T23:31:17-03:00",
+          "tree_id": "808fde5a501f7a306aa6b88c64ab21f014a6cd78",
+          "url": "https://github.com/Rullst/Rullst/commit/5a893445b9ae9f07523a1a640c259136f846ad10"
+        },
+        "date": 1784255725993,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 744,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1011,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 598,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2288,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
