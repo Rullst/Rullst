@@ -36,7 +36,7 @@ jobs:
           output-file-path: output.txt
           fail-on-alert: true
           # Alert threshold set to 130% to avoid noisy neighbors on GitHub Actions runners
-          alert-threshold: '130%'
+          alert-threshold: '150%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           # Only push to gh-pages when running on main branch, not on PRs

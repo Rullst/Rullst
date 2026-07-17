@@ -34,3 +34,4 @@ test.db-wal
 *.br
 *.zst  
  
+node_modules/
