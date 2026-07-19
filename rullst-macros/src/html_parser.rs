@@ -225,6 +225,7 @@ impl HtmlElement {
     }
 }
 
+#[allow(unexpected_cfgs)]
 #[cfg(kani)]
 mod kani_proofs {
     use super::*;
@@ -275,12 +276,12 @@ mod kani_proofs {
             "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
             "source", "track", "wbr",
         ];
-        
+
         let i: usize = kani::any();
         kani::assume(i < void_elements.len());
-        
+
         let tag = void_elements[i];
-        
+
         // Assert that the parsing logic's void element check works correctly
         let is_void = void_elements.contains(&tag);
         assert!(is_void);

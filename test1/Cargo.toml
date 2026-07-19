@@ -31,3 +31,6 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
 # codegen-backend = "cranelift"
 
 [workspace]
+
+[package.metadata.cargo-machete]
+ignored = ["axum", "serde", "serde_json", "sqlx", "tokio"]
