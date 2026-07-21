@@ -82,40 +82,105 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 use rullst::response::Html;
 use crate::pages::home;
 
+pub struct Experience {
+    pub role: &'static str,
+    pub company: &'static str,
+    pub period: &'static str,
+    pub description: &'static str,
+}
+
+pub struct Education {
+    pub degree: &'static str,
+    pub institution: &'static str,
+    pub year: &'static str,
+}
+
+pub struct SkillGroup {
+    pub category: &'static str,
+    pub skills: Vec<&'static str>,
+}
+
 pub struct Project {
-    pub id: &'static str,
     pub title: &'static str,
     pub description: &'static str,
-    pub image: &'static str,
     pub tags: Vec<&'static str>,
+    pub link: &'static str,
+}
+
+pub struct CvData {
+    pub name: &'static str,
+    pub title: &'static str,
+    pub email: &'static str,
+    pub github: &'static str,
+    pub linkedin: &'static str,
+    pub summary: &'static str,
+    pub experiences: Vec<Experience>,
+    pub education: Vec<Education>,
+    pub skill_groups: Vec<SkillGroup>,
+    pub projects: Vec<Project>,
 }
 
 pub async fn index() -> impl IntoResponse {
-    let projects = vec![
-        Project {
-            id: "neural-engine",
-            title: "Neural Engine Cortex",
-            description: "A high-performance Rust AI inference engine leveraging hyper-optimized matrix multiplications.",
-            image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop",
-            tags: vec!["Rust", "AI", "CUDA"],
-        },
-        Project {
-            id: "quantum-ui",
-            title: "Quantum UI",
-            description: "Next-generation glassmorphism component library for building immersive web experiences.",
-            image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop",
-            tags: vec!["HTML/CSS", "Design", "Rullst"],
-        },
-        Project {
-            id: "agentic-swarm",
-            title: "Agentic Swarm Framework",
-            description: "Distributed autonomous agents communicating via WebSockets for collaborative task execution.",
-            image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop",
-            tags: vec!["Rust", "Axum", "WebSockets"],
-        },
-    ];
+    let data = CvData {
+        name: "Rullst Developer",
+        title: "Senior AI & Rust Engineer",
+        email: "hello@example.com",
+        github: "github.com/Rullst",
+        linkedin: "linkedin.com/in/Rullst",
+        summary: "Specialized in high-performance fullstack systems, agentic AI frameworks, and immersive web experiences powered by Rust. I build reliable distributed systems that scale effortlessly.",
+        experiences: vec![
+            Experience {
+                role: "Senior Rullst Engineer",
+                company: "TechNova AI",
+                period: "2024 - Present",
+                description: "Architected a highly concurrent distributed task queue in Rust processing 10k+ jobs per second. Migrated legacy microservices to Rullst framework, reducing memory footprint by 80%.",
+            },
+            Experience {
+                role: "Junior Rullst Developer",
+                company: "Quantum Startup",
+                period: "2021 - 2024",
+                description: "Built end-to-end SAAS products using modern web technologies. Led a team of 4 engineers and implemented CI/CD pipelines.",
+            },
+        ],
+        education: vec![
+            Education {
+                degree: "Rullst School",
+                institution: "Tech University",
+                year: "2021",
+            },
+            Education {
+                degree: "Rullst College",
+                institution: "State College",
+                year: "2019",
+            },
+        ],
+        skill_groups: vec![
+            SkillGroup {
+                category: "Languages",
+                skills: vec!["Rust", "TypeScript", "Python", "Go"],
+            },
+            SkillGroup {
+                category: "Frameworks & Tools",
+                skills: vec!["Rullst", "Axum", "Tokio", "Docker", "PostgreSQL"],
+            },
+        ],
+        projects: vec![
+            Project {
+                title: "Rullst SAAS",
+                description: "A high-performance Rust AI inference engine leveraging hyper-optimized matrix multiplications.",
+                tags: vec!["Rust", "AI", "CUDA"],
+                link: "#",
+            },
+            Project {
+                title: "Rullst LMS",
+                description: "Distributed autonomous agents communicating via WebSockets for collaborative task execution.",
+                tags: vec!["WebSockets", "Axum", "Rullst"],
+                link: "#",
+            },
+        ],
+    };
     
-    Html(home::render(projects))
+    Html(home::render(data))
 }
 "##;
     manifest.push((
@@ -128,149 +193,244 @@ pub async fn index() -> impl IntoResponse {
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
     let home_page = r##"use rullst::html;
-use crate::controllers::portfolio_controller::Project;
+use crate::controllers::portfolio_controller::{CvData, Experience, Education, SkillGroup, Project};
 
-fn home_styles() -> String {
+fn cv_styles() -> String {
     r#"
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-    body { background: #050505; color: #f3f4f6; min-height: 100vh; overflow-x: hidden; position: relative; }
     
-    /* Dynamic glowing background */
-    .glow-blob { position: absolute; border-radius: 50%; filter: blur(100px); z-index: -1; animation: float 10s infinite ease-in-out alternate; }
-    .glow-1 { top: 10%; left: 10%; width: 500px; height: 500px; background: rgba(249, 115, 22, 0.15); }
-    .glow-2 { bottom: 10%; right: 10%; width: 600px; height: 600px; background: rgba(5, 150, 105, 0.15); animation-delay: -5s; }
-    .glow-3 { top: 50%; left: 40%; width: 400px; height: 400px; background: rgba(249, 115, 22, 0.1); animation-delay: -2s; }
-    
-    @keyframes float {
-        0% { transform: translate(0, 0) scale(1); }
-        100% { transform: translate(30px, 50px) scale(1.1); }
+    :root {
+        --bg-color: #050505;
+        --sidebar-bg: rgba(15, 15, 20, 0.6);
+        --accent: #00ffcc;
+        --accent-glow: rgba(0, 255, 204, 0.2);
+        --text-main: #f3f4f6;
+        --text-muted: #9ca3af;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --glass-bg: rgba(25, 25, 30, 0.4);
     }
 
-    .container { max-width: 1200px; margin: 0 auto; padding: 4rem 2rem; z-index: 1; }
+    body { background: var(--bg-color); color: var(--text-main); line-height: 1.6; }
     
-    header { text-align: center; margin-bottom: 4rem; margin-top: 4rem; }
-    .badge { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 0.5rem 1.5rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; display: inline-block; margin-bottom: 1.5rem; backdrop-filter: blur(10px); }
-    h1 { font-size: 4.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; background: linear-gradient(135deg, #34d399 0%, #f97316 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    p.sub { color: #9ca3af; font-size: 1.25rem; max-width: 600px; margin: 0 auto; line-height: 1.6; }
+    /* Cyber Grid Background */
+    .bg-grid {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -3;
+        background-image: 
+            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(circle at center, black, transparent 80%);
+        -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        animation: gridMove 20s linear infinite;
+    }
+    
+    @keyframes gridMove {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(40px); }
+    }
 
-    .section-title { font-size: 2.5rem; font-weight: 800; color: #fff; margin-bottom: 2rem; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; display: inline-block; }
-    
-    /* Skills Section */
-    .skills-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 6rem; justify-content: center; }
-    .skill-pill { background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem 1.5rem; border-radius: 999px; font-weight: 600; transition: all 0.3s ease; cursor: default; }
-    .skill-pill:hover { background: rgba(52, 211, 153, 0.2); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(52, 211, 153, 0.15); }
+    /* Scanlines */
+    .scanlines {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+        background-size: 100% 4px; pointer-events: none;
+    }
 
-    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2.5rem; margin-bottom: 6rem; }
+    .glow-blob { position: fixed; border-radius: 50%; filter: blur(120px); z-index: -2; animation: pulseGlow 8s infinite alternate; }
+    .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(0, 255, 204, 0.08); }
+    .glow-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vh; background: rgba(138, 43, 226, 0.08); }
     
-    .project-card { background: rgba(17, 24, 39, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-    .project-card:hover { transform: translateY(-10px); border-color: rgba(52, 211, 153, 0.4); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
-    .project-img-wrapper { width: 100%; height: 220px; overflow: hidden; }
-    .project-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-    .project-card:hover .project-img { transform: scale(1.05); }
+    @keyframes pulseGlow {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .layout { display: flex; min-height: 100vh; max-width: 1400px; margin: 0 auto; padding: 2rem; gap: 3rem; }
     
-    .project-content { padding: 2rem; }
-    .project-title { font-size: 1.5rem; font-weight: 600; color: #ffffff; margin-bottom: 0.75rem; }
-    .project-desc { color: #9ca3af; font-size: 1rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    /* Sidebar */
+    .sidebar {
+        width: 350px; flex-shrink: 0; position: sticky; top: 2rem; height: calc(100vh - 4rem);
+        background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 24px;
+        padding: 2.5rem; display: flex; flex-direction: column; gap: 2rem;
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow-y: auto;
+    }
     
-    .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .tag { background: rgba(249, 115, 22, 0.15); color: #fed7aa; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid rgba(249, 115, 22, 0.2); }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    .profile-img { width: 160px; height: auto; max-height: 120px; border-radius: 12px; margin-bottom: 1rem; object-fit: contain; }
+    h1 { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h2.role { color: var(--accent); font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .summary { color: var(--text-muted); font-size: 0.95rem; }
+
+    .contact-info { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+    .contact-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: var(--text-muted); transition: color 0.2s; }
+    .contact-item:hover { color: var(--accent); cursor: pointer; }
+    .contact-icon { width: 20px; height: 20px; opacity: 0.8; }
+
+    .skill-cat { font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tag { background: rgba(255, 255, 255, 0.05); color: #ddd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid var(--border-color); transition: all 0.3s; }
+    .tag:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); }
+
+    /* Main Content */
+    .content { flex-grow: 1; display: flex; flex-direction: column; gap: 4rem; padding-bottom: 4rem; }
     
-    footer { text-align: center; padding: 4rem 2rem; border-top: 1px solid rgba(255,255,255,0.05); color: #6b7280; font-size: 0.9rem; margin-top: 2rem; }
-    .contact-btn { display: inline-block; margin-top: 2rem; padding: 1rem 2.5rem; background: #f97316; color: #050505; font-weight: 800; border-radius: 999px; text-decoration: none; transition: all 0.3s ease; font-size: 1.1rem; }
-    .contact-btn:hover { background: #ea580c; transform: scale(1.05); box-shadow: 0 10px 25px rgba(249, 115, 22, 0.3); }
+    .section-title { font-size: 2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+    .section-title::after { content: ''; flex-grow: 1; height: 1px; background: linear-gradient(90deg, var(--border-color), transparent); }
+
+    /* Timeline */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--border-color); }
+    
+    .timeline-item { position: relative; margin-bottom: 3rem; }
+    .timeline-item::before {
+        content: ''; position: absolute; left: -2.35rem; top: 0.3rem; width: 12px; height: 12px;
+        border-radius: 50%; background: var(--bg-color); border: 2px solid var(--accent);
+        transition: all 0.3s ease; box-shadow: 0 0 0 4px var(--bg-color);
+    }
+    .timeline-item:hover::before { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+    
+    .exp-period { display: inline-block; font-size: 0.85rem; color: var(--accent); background: var(--accent-glow); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; margin-bottom: 0.5rem; }
+    .exp-role { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .exp-company { font-size: 1rem; color: #bbb; font-weight: 500; margin-bottom: 1rem; }
+    .exp-desc { color: var(--text-muted); font-size: 1rem; }
+
+    /* Project Cards */
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .project-card { 
+        background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; 
+        padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .project-card::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        transform: translateX(-100%); transition: transform 0.6s ease;
+    }
+    .project-card:hover { transform: translateY(-5px); border-color: rgba(0, 255, 204, 0.3); background: rgba(25, 25, 30, 0.6); }
+    .project-card:hover::before { transform: translateX(100%); }
+    
+    .project-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .project-desc { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .project-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-main); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.2s; }
+    .project-link:hover { color: var(--accent); }
+
+    @media (max-width: 900px) {
+        .layout { flex-direction: column; padding: 1rem; gap: 2rem; }
+        .sidebar { width: 100%; position: relative; height: auto; top: 0; }
+    }
     "#.to_string()
 }
 
-fn home_header() -> String {
+fn render_sidebar(data: &CvData) -> String {
     html! {
-        <header>
-            <div class="badge">"Available for Hire"</div>
-            <h1>"Building the Future with AI & Rust"</h1>
-            <p class="sub">"I specialize in high-performance fullstack systems, agentic AI frameworks, and immersive web experiences powered by Rullst."</p>
-            <a href="mailto:hello@example.com" class="contact-btn">"Let's Build Something"</a>
-        </header>
-    }
-}
-
-fn home_skills() -> String {
-    html! {
-        <div>
+        <aside class="sidebar">
             <div style="text-align: center;">
-                <h2 class="section-title">"Core Technologies"</h2>
+                <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" class="profile-img" />
+                <h1>{data.name}</h1>
+                <h2 class="role">{data.title}</h2>
+                <p class="summary">{data.summary}</p>
             </div>
-            <div class="skills-container">
-                <div class="skill-pill">"Rust 🦀"</div>
-                <div class="skill-pill">"Rullst Framework"</div>
-                <div class="skill-pill">"Axum / Tokio"</div>
-                <div class="skill-pill">"LLM Prompt Engineering"</div>
-                <div class="skill-pill">"WebAssembly (Wasm)"</div>
-                <div class="skill-pill">"HTMX & TailwindCSS"</div>
-                <div class="skill-pill">"PostgreSQL & Redis"</div>
+            
+            <div class="contact-info">
+                <div class="contact-item">
+                    <svg class="contact-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    {data.email}
+                </div>
+                <div class="contact-item">
+                    <svg class="contact-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    {data.github}
+                </div>
             </div>
-        </div>
+
+            <div>
+                { rullst::html::RawHtml::new(data.skill_groups.iter().map(|g| format!(
+                    "<div>\
+                        <div class=\"skill-cat\">{}</div>\
+                        <div class=\"tags\">{}</div>\
+                    </div>",
+                    g.category,
+                    g.skills.iter().map(|s| format!("<span class=\"tag\">{}</span>", s)).collect::<Vec<_>>().join("")
+                )).collect::<Vec<_>>().join("")) }
+            </div>
+        </aside>
     }
 }
 
-fn home_projects(projects: Vec<Project>) -> String {
+fn render_content(data: &CvData) -> String {
     html! {
-        <div>
-            <div style="text-align: center;">
-                <h2 class="section-title">"Featured Projects"</h2>
-            </div>
-            <div class="projects-grid">
-                { rullst::html::RawHtml::new(projects.into_iter().map(|p| html! {
-                    <div class="project-card">
-                        <div class="project-img-wrapper">
-                            <img class="project-img" src={p.image} alt={p.title} />
-                        </div>
-                        <div class="project-content">
-                            <h2 class="project-title">{p.title}</h2>
-                            <p class="project-desc">{p.description}</p>
-                            <div class="tags">
-                                { rullst::html::RawHtml::new(p.tags.into_iter().map(|tag| html! {
-                                    <span class="tag">{tag}</span>
-                                }).collect::<Vec<_>>().join("")) }
-                            </div>
-                        </div>
-                    </div>
-                }).collect::<Vec<_>>().join("")) }
-            </div>
-        </div>
+        <main class="content">
+            <section>
+                <h2 class="section-title">"Experience"</h2>
+                <div class="timeline">
+                    { rullst::html::RawHtml::new(data.experiences.iter().map(|e| format!(
+                        "<div class=\"timeline-item\">\
+                            <div class=\"exp-period\">{}</div>\
+                            <h3 class=\"exp-role\">{}</h3>\
+                            <div class=\"exp-company\">{}</div>\
+                            <p class=\"exp-desc\">{}</p>\
+                        </div>", e.period, e.role, e.company, e.description
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">"Education"</h2>
+                <div class="timeline">
+                    { rullst::html::RawHtml::new(data.education.iter().map(|edu| format!(
+                        "<div class=\"timeline-item\">\
+                            <div class=\"exp-period\">{}</div>\
+                            <h3 class=\"exp-role\">{}</h3>\
+                            <div class=\"exp-company\">{}</div>\
+                        </div>", edu.year, edu.degree, edu.institution
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">"Projects"</h2>
+                <div class="projects-grid">
+                    { rullst::html::RawHtml::new(data.projects.iter().map(|p| format!(
+                        "<div class=\"project-card\">\
+                            <h3 class=\"project-title\">{}</h3>\
+                            <p class=\"project-desc\">{}</p>\
+                            <div class=\"tags\">{}</div>\
+                            <a href=\"{}\" class=\"project-link\">\
+                                View Project\
+                                <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M5 12h14M12 5l7 7-7 7\"/></svg>\
+                            </a>\
+                        </div>",
+                        p.title, p.description,
+                        p.tags.iter().map(|t| format!("<span class=\"tag\">{}</span>", t)).collect::<Vec<_>>().join(""),
+                        p.link
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+        </main>
     }
 }
 
-fn home_footer() -> String {
+pub fn render(data: CvData) -> String {
     html! {
-        <footer>
-            <p>"© 2026 AI Developer. Built with the speed of Rust and Rullst Framework."</p>
-        </footer>
-    }
-}
-
-pub fn render(projects: Vec<Project>) -> String {
-    html! {
-        <html lang="en" class="dark">
+        <html lang="en">
             <head>
                 <meta charset="UTF-8" />
-                <title>"AI Developer Portfolio"</title>
-                <link rel="icon" type="image/png" href="/static/favicon.png" />
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet" />
-                <style>
-                    { rullst::html::RawHtml(home_styles()) }
-                </style>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>{data.name} " - CV"</title>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+                <style>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
             <body>
+                <div class="bg-grid"></div>
+                <div class="scanlines"></div>
                 <div class="glow-blob glow-1"></div>
                 <div class="glow-blob glow-2"></div>
-                <div class="glow-blob glow-3"></div>
-
-                <div class="container">
-                    { rullst::html::RawHtml(home_header()) }
-                    { rullst::html::RawHtml(home_skills()) }
-                    { rullst::html::RawHtml(home_projects(projects)) }
+                
+                <div class="layout">
+                    { rullst::html::RawHtml(render_sidebar(&data)) }
+                    { rullst::html::RawHtml(render_content(&data)) }
                 </div>
-
-                { rullst::html::RawHtml(home_footer()) }
             </body>
         </html>
     }

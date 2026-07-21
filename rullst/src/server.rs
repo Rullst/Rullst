@@ -111,6 +111,7 @@ impl Server {
     /// Start the HTTP server on the specified port
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await;
 
         self.init_database(&app_config).await;
@@ -191,9 +192,15 @@ impl Server {
                 "0.0.0.0".to_string()
             }
         });
-        let addr: SocketAddr = format!("{}:{}", host_str, port)
+        
+        let env_port = std::env::var("PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(port);
+
+        let addr: SocketAddr = format!("{}:{}", host_str, env_port)
             .parse()
-            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], port)));
+            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], env_port)));
 
         if is_dev && addr.ip().is_unspecified() {
             eprintln!(
@@ -233,109 +240,17 @@ impl Server {
         let current_router = Arc::new(RwLock::new(initial_router));
         let active_libraries = Arc::new(Mutex::new(vec![library]));
 
-        let (tx, rx) = std::sync::mpsc::channel();
-        use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                if let Ok(event) = res {
-                    let _ = tx.send(event);
-                }
-            },
-            notify::Config::default(),
-        )?;
-
-        if std::path::Path::new("src").exists() {
-            watcher.watch(std::path::Path::new("src"), RecursiveMode::Recursive)?;
-        }
-
-        let current_router_clone = current_router.clone();
-        let active_libraries_clone = active_libraries.clone();
-        let lib_path_clone = lib_path.clone();
-
-        std::thread::spawn(move || {
-            let mut last_build = std::time::Instant::now();
-            while let Ok(_event) = rx.recv() {
-                std::thread::sleep(std::time::Duration::from_millis(300));
-                while rx.try_recv().is_ok() {}
-
-                if last_build.elapsed() < std::time::Duration::from_secs(1) {
-                    continue;
-                }
-
-                let (tx, rx_build) = std::sync::mpsc::channel();
-                let current_dir =
-                    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-                std::thread::spawn(move || {
-                    let res = std::process::Command::new("cargo")
-                        .arg("build")
-                        .arg("--lib")
-                        .current_dir(current_dir)
-                        .status();
-                    let _ = tx.send(res);
-                });
-
-                let build_success = match rx_build.recv_timeout(std::time::Duration::from_secs(120))
-                {
-                    Ok(Ok(status)) => status.success(),
-                    Ok(Err(e)) => {
-                        eprintln!("⚠️ Rullst Hot-Reload: failed to execute cargo build: {}", e);
-                        false
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                        eprintln!("⚠️ Rullst Hot-Reload: cargo build timed out after 120 seconds!");
-                        false
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => false,
-                };
-
-                if build_success {
-                    println!(
-                        "\x1b[32m✨ Rullst Hot-Reload: Recompilado com sucesso! Carregando dylib...\x1b[0m"
-                    );
-                    match load_dylib_router(&lib_path_clone, is_dev) {
-                        Ok((new_router, new_lib)) => {
-                            match current_router_clone.write() {
-                                Ok(mut guard) => *guard = new_router,
-                                Err(poisoned) => *poisoned.into_inner() = new_router,
-                            };
-
-                            let mut active_libs = active_libraries_clone
-                                .lock()
-                                .unwrap_or_else(|p| p.into_inner());
-                            active_libs.push(new_lib);
-                            if active_libs.len() > 3 {
-                                active_libs.remove(0);
-                            }
-
-                            println!(
-                                "\x1b[32m🚀 Rullst Hot-Reload: Roteamento atualizado e hot-swapped instantaneamente!\x1b[0m"
-                            );
-                        }
-                        Err(e) => {
-                            println!(
-                                "\x1b[31m❌ Rullst Hot-Reload: Erro ao carregar dylib recém-compilada: {}\x1b[0m",
-                                e
-                            );
-                        }
-                    }
-                } else {
-                    println!(
-                        "\x1b[31m❌ Rullst Hot-Reload: Falha ao compilar o código fonte. Corrija os erros para aplicar o hot-swap.\x1b[0m"
-                    );
-                }
-
-                last_build = std::time::Instant::now();
-            }
-        });
-
         let hotswap_service = HotSwapService {
-            current_router,
+            current_router: current_router.clone(),
+            active_libraries: active_libraries.clone(),
+            lib_path: lib_path.clone(),
+            is_dev,
             shield: self.shield,
             limiter: self.limiter,
         };
 
         println!(
-            "Rullst framework serving on http://{} (Hot-Reload Ativo)",
+            "Rullst framework serving on http://{} (Hot-Reload Ativo via CLI WebSocket)",
             addr
         );
         println!(
@@ -440,6 +355,9 @@ impl Server {
 #[derive(Clone)]
 pub struct HotSwapService {
     current_router: Arc<RwLock<axum::Router>>,
+    active_libraries: Arc<Mutex<Vec<libloading::Library>>>,
+    lib_path: String,
+    is_dev: bool,
     shield: Option<crate::resilience::TrafficShield>,
     limiter: Option<crate::resilience::RateLimiter>,
 }
@@ -518,6 +436,45 @@ impl Service<axum::extract::Request> for HotSwapService {
     }
 
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
+        if req.uri().path() == "/_rullst/internal/reload_dylib" && req.method() == axum::http::Method::POST {
+            let lib_path = self.lib_path.clone();
+            let is_dev = self.is_dev;
+            let current_router = self.current_router.clone();
+            let active_libraries = self.active_libraries.clone();
+            
+            return Box::pin(async move {
+                match load_dylib_router(&lib_path, is_dev) {
+                    Ok((new_router, new_lib)) => {
+                        match current_router.write() {
+                            Ok(mut guard) => *guard = new_router,
+                            Err(poisoned) => *poisoned.into_inner() = new_router,
+                        };
+
+                        let mut active_libs = active_libraries.lock().unwrap_or_else(|p| p.into_inner());
+                        active_libs.push(new_lib);
+                        if active_libs.len() > 3 {
+                            active_libs.remove(0);
+                        }
+
+                        println!("\x1b[32m🚀 Rullst Hot-Reload: Dylib swaped instantly via webhook!\x1b[0m");
+                        
+                        let res = axum::response::Response::builder()
+                            .status(axum::http::StatusCode::OK)
+                            .body(axum::body::Body::from("Swapped"))
+                            .unwrap();
+                        Ok(res)
+                    }
+                    Err(e) => {
+                        eprintln!("\x1b[31m❌ Rullst Hot-Reload: Error loading new dylib: {}\x1b[0m", e);
+                        let res = axum::response::Response::builder()
+                            .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(axum::body::Body::from(e.to_string()))
+                            .unwrap();
+                        Ok(res)
+                    }
+                }
+            });
+        }
         // H-1: Recover from poisoned RwLock instead of panicking
         let mut router = match self.current_router.read() {
             Ok(guard) => guard.clone(),
@@ -681,10 +638,74 @@ fn load_dylib_router(
             )
             .layer(axum::middleware::from_fn(
                 crate::error_console::catch_panic_middleware,
-            ));
+            ))
+            .layer(axum::middleware::from_fn(inject_hmr_script));
     }
 
     Ok((axum_router, lib))
+}
+
+async fn inject_hmr_script(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let res = next.run(req).await;
+    
+    if let Some(content_type) = res.headers().get(axum::http::header::CONTENT_TYPE) {
+        if content_type.to_str().unwrap_or("").contains("text/html") {
+            let (mut parts, body) = res.into_parts();
+            if let Ok(bytes) = axum::body::to_bytes(body, usize::MAX).await {
+                let mut html = String::from_utf8_lossy(&bytes).to_string();
+                
+                let port = std::env::var("PORT")
+                    .ok()
+                    .and_then(|p| p.parse::<u16>().ok())
+                    .unwrap_or(3000);
+                let ws_port = port + 1;
+                
+                let script = format!(r#"
+<!-- Rullst Hybrid Hot-Reloading -->
+<script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.js"></script>
+<script>
+    (function() {{
+        const ws = new WebSocket("ws://localhost:{}/_rullst_hmr");
+        ws.onmessage = (e) => {{
+            const data = JSON.parse(e.data);
+            if (data.type === "UI_UPDATE") {{
+                fetch(window.location.href)
+                    .then(r => r.text())
+                    .then(newHtml => {{
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(newHtml, 'text/html');
+                        morphdom(document.body, doc.body, {{
+                            onBeforeElUpdated: function(fromEl, toEl) {{
+                                if (fromEl.isEqualNode(toEl)) return false;
+                                return true;
+                            }}
+                        }});
+                    }});
+            }}
+        }};
+    }})();
+</script>
+"#, ws_port);
+                if let Some(idx) = html.rfind("</body>") {
+                    html.insert_str(idx, &script);
+                } else {
+                    html.push_str(&script);
+                }
+                
+                parts.headers.remove(axum::http::header::CONTENT_LENGTH);
+                return axum::response::Response::from_parts(parts, axum::body::Body::from(html));
+            } else {
+                // If we failed to read bytes, just return empty body or we could somehow return the parts? 
+                // We'll just return it as empty for now, or preferably panic since it's dev mode.
+                return axum::response::Response::from_parts(parts, axum::body::Body::empty());
+            }
+        }
+    }
+    
+    res
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -810,6 +831,9 @@ mod tests {
         let current_router = Arc::new(RwLock::new(router));
         let mut service = HotSwapService {
             current_router,
+            active_libraries: Arc::new(Mutex::new(vec![])),
+            lib_path: "".to_string(),
+            is_dev: false,
             shield: None,
             limiter: None,
         };
@@ -836,6 +860,9 @@ mod tests {
         let current_router = Arc::new(RwLock::new(router));
         let mut service = HotSwapService {
             current_router,
+            active_libraries: Arc::new(Mutex::new(vec![])),
+            lib_path: "".to_string(),
+            is_dev: false,
             shield: None,
             limiter: None,
         };
@@ -867,6 +894,9 @@ mod tests {
 
         let mut service = HotSwapService {
             current_router,
+            active_libraries: Arc::new(Mutex::new(vec![])),
+            lib_path: "".to_string(),
+            is_dev: false,
             shield: None,
             limiter: None,
         };

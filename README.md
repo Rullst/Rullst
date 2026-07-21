@@ -17,6 +17,20 @@
 
 **Rullst** is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
 
+---
+
+### 📚 Documentation & Community
+
+We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
+
+👉 **[Explore the Official Website & Docs](https://rullst.github.io/#docs)**
+
+💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
+
+> **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
+
+---
+
 <h3 align="center">🛡️ Enterprise-Grade Security</h3>
 
 <p align="center">
@@ -98,10 +112,10 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 
 Rullst brings the ergonomics of Laravel and Ruby on Rails to the blazing-fast, memory-safe world of Rust:
 
-- **Rullst Nexus**: An auto-generated, dark-mode CMS & Admin Panel directly from your Structs.
-- **Hot-Reloading**: Sub-second native DLL hot-swapping. Change your Rust code and see it instantly.
-- **Zero-Panic Policy**: Hardened architecture built for production edge infrastructure.
-- **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Deployments.
+- 🚀 **Hybrid Hot-Reloading**: Sub-millisecond UI updates via WebSockets, paired with Zero-downtime Dynamic Library (`.dll`/`.so`) hot-swapping for backend business logic.
+- 🎨 **Rullst Nexus**: An auto-generated, dark-mode CMS & Admin Panel directly from your Structs.
+- 🛡️ **Zero-Panic Policy**: Hardened architecture built for production edge infrastructure.
+- ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Deployments.
 
 ---
 
@@ -142,8 +156,9 @@ These are the **titans of the Rust web ecosystem**. They provide pristine routin
 * **The Catch:** They are fundamentally focused on HTTP. You have to wire the rest of the application yourself. You must choose, configure, and integrate your own Database ORM, Auth logic, Webhooks, CLI, and Background Workers.
 * **Where Rullst Excels:** **Batteries Included.** Rullst actually uses *Axum* under the hood for its HTTP routing! But instead of leaving you in an empty room, Rullst gives you a fully furnished house. You get a CLI, ORM, Auth, Stripe integration, and Background Workers out-of-the-box in 1 minute.
 
-### 🚂 Full-Stack Frameworks (Loco)
-Loco is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.
+### 🚂 Full-Stack Frameworks (Loco, Topcoat)
+**Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.
+**Topcoat** is an experimental, batteries-included framework from the Tokio team that focuses on reactive server-side rendering (SSR) without writing JavaScript.
 * **Where Rullst Excels:** **Emotional Productivity & DX.** Rullst takes a radically opinionated stance on Developer Experience. We provide immersive CLI interactive dashboards (`cargo rullst studio`), built-in Wasm Islands, zero-panic architectural guarantees, Nix reproducibility, and native Omni (Desktop/Mobile via Tauri) scaffolding. If you want the absolute easiest, most visually pleasing DX in Rust, Rullst is your home.
 
 ### 🎨 Isomorphic Full-Stack Frameworks (Dioxus, Leptos)
@@ -151,14 +166,19 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 * **The Catch:** They are heavily **Frontend/Component-Driven**. Your server's primary job is to hydrate and serve UI components. If you need a traditional backend architecture (dedicated Workers, Stripe webhooks, robust ORM migrations, pure REST APIs for mobile apps), an isomorphic model can sometimes feel restrictive or overly coupled to the UI.
 * **Where Rullst Excels:** **Architectural Freedom & Synergy.** Rullst is an **API-First / Traditional Full-Stack** (like Rails or Laravel). It gives you an uncompromised, heavy-duty backend layer. But we don't compete with Dioxus/Leptos/Tauri—we *embrace* them! Rullst allows you to use Dioxus for your frontend natively via Wasm Islands (`cargo rullst build:client`), or package your entire application into Desktop & Mobile apps via **Tauri** (`cargo rullst make:omni`).
 
----
+### 📊 The Full-Stack Feature Matrix
 
-### 📚 Documentation & Community
+| Feature | **Rullst** | **Loco** | **Topcoat** | **Dioxus / Leptos** | **Axum / Actix** |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **HTTP & Routing** | ✅ | ✅ | ✅ | ✅ (SSR) | ✅ |
+| **Built-in ORM** | ✅ (Rullst-ORM) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
+| **Interactive CLI Dashboard** | ✅ (`studio`) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Generated Admin Panel**| ✅ (Nexus) | ❌ | ❌ | ❌ | ❌ |
+| **Wasm Islands (Frontend)** | ✅ (Native) | ❌ | ❌ | ✅ (Core focus) | ❌ |
+| **Reactive SSR (No-JS)** | ✅ (Native) | ❌ | ✅ (Signals)| ❌ | ❌ |
+| **Mobile/Desktop Apps** | ✅ (Tauri Omni)| ❌ | ❌ | ✅ (Dioxus) | ❌ |
+| **Hot-Reloading** | ✅ (DLL swap) | ❌ | ❌ | ✅ (Dioxus) | ❌ |
+| **Zero-Panics Policy** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **TypeScript SDK Generator** | ✅ (`generate:ts`) | ❌ | ❌ | ❌ | ❌ |
+| **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 
-We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
-
-👉 **[Explore the Official Website & Docs](https://rullst.github.io/#docs)**
-
-💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
-
-> **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)

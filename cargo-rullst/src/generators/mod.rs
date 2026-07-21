@@ -10,12 +10,14 @@ pub mod controller;
 pub mod cors_jwt;
 pub mod db;
 pub mod desktop;
+pub mod dev;
 pub mod foundry;
 pub mod middleware;
 pub mod migration;
 pub mod model;
 pub mod openapi;
 pub mod project;
+pub mod ts;
 pub mod worker;
 
 /// Verifies if the current execution directory is a valid Rullst project

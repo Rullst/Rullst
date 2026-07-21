@@ -76,6 +76,9 @@ pub mod storage;
 /// Developer's Studio dashboard for database, logs, and queue analytics.
 pub mod studio;
 #[cfg(not(target_arch = "wasm32"))]
+/// Rullst OpenTelemetry and Tracing.
+pub mod telemetry;
+#[cfg(not(target_arch = "wasm32"))]
 /// Scaffolding tools for robust integration testing.
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
@@ -97,8 +100,8 @@ macro_rules! artisan {
     };
 }
 
-// Re-export the html! and client_component procedural macros
-pub use rullst_macros::{client_component, html};
+// Re-export procedural macros
+pub use rullst_macros::{client_component, html, live_component, live_event};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]

@@ -127,6 +127,7 @@ graph TD
 ## ⚡ Milestone 4: HTMX & Interactivity
 **Goal:** Combine the simplicity of Server-Side Rendering (SSR) with the snappy feeling of modern Single-Page Applications (SPAs).
 
+- [x] **Native Reactive SSR (HTMX Live State):** A declarative macro engine (`#[htmx]`) that automatically manages WebSocket connections, evaluates server-side state, and pushes minimal DOM patches instantly to the client—achieving Phoenix LiveView-like interactivity without writing JavaScript or WebAssembly.
 - [x] **HTMX First-Class Support:**
   - [x] Built-in response helpers for checking HTMX headers (`rullst::htmx::is_htmx(req)`).
   - [x] Native support for partial template rendering (rendering only the requested component, not the full page layout).
@@ -176,7 +177,7 @@ graph TD
 - [x] **Wasm Islands (`#[client_component]`):** Write frontend interactive components directly in Rust. Rullst will automatically compile these specific components to lightweight WebAssembly and hydrate them on the client side, eliminating the need to write any JavaScript!
 - [x] **AI-Powered "Self-Healing" Error Console:** An interactive development error page with integrated local AI assistants. When a runtime or compilation error occurs, you will have an "Auto-Fix with Rullst AI" button that patches the correct code directly on your file system.
 - [x] **Native SaaS Multi-Tenancy (`rullst::multitenant`):** Out-of-the-box tenant isolation (multi-tenancy by subdomain, header, or DB schema) configured declaratively with a single decorator/macro.
-- [ ] **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing):** The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? Sub-millisecond layout updates (like Vite/Dioxus) with a stateful Rust backend.
+- [x] **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing):** The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? **Sub-millisecond layout updates** (like Vite/Dioxus) with a stateful Rust backend.
 
 ---
 
@@ -244,7 +245,15 @@ graph TD
 
 - [ ] **Rullst Radar (Kernel-Level Telemetry):** Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks, Mutex contention, memory leaks, and I/O query bottlenecks with zero overhead.
 - [ ] **Time-Travel Debugging in Error Console:** Add a state history of the last 50 events, HTMX clicks, and SQL queries to the "Self-Healing" console. Replay the exact scenario that caused a server panic.
-- [ ] **Native OpenTelemetry:** Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus.
+- [x] **Native OpenTelemetry:** Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus.
+
+---
+
+## 📚 Milestone 12: Developer Ecosystem & Interoperability
+**Goal:** Make Rullst the easiest framework to integrate with frontend ecosystems and provide world-class documentation.
+
+- [x] **Documentation Hub:** A premium, hyper-fast VitePress documentation portal with modern dark-mode aesthetics to lower the learning curve for new developers.
+- [x] **TypeScript SDK Generator (`generate:ts`):** AST-based CLI command that parses Rullst routes and generates a strictly-typed TypeScript client SDK for seamless React/Vue/Svelte integration.
 
 ---
 

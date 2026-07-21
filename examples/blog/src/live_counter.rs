@@ -1,33 +1,31 @@
-use async_trait::async_trait;
+use rullst::{live_component, live_event};
 use rullst::html;
-use rullst::live::LiveComponent;
-use serde_json::Value;
 
 /// Nosso componente Rullst Live. Todo o estado vive e é operado pelo servidor!
+#[live_component]
 #[derive(Default)]
 pub struct CounterComponent {
     pub count: i32,
 }
 
-#[async_trait]
-impl LiveComponent for CounterComponent {
-    async fn mount(&mut self) {
+#[live_component]
+impl CounterComponent {
+    pub fn mount(&mut self) {
         // Inicializa o estado. Você poderia até buscar coisas do DB aqui usando o rullst-orm!
         self.count = 0;
     }
 
-    async fn handle_event(&mut self, payload: Value) {
-        // O HTMX enviará todas as chaves de `hx-vals` dentro deste JSON!
-        if let Some(action) = payload.get("action").and_then(|v| v.as_str()) {
-            match action {
-                "increment" => self.count += 1,
-                "decrement" => self.count -= 1,
-                _ => {}
-            }
-        }
+    #[live_event]
+    pub fn increment(&mut self) {
+        self.count += 1;
     }
 
-    fn render(&self) -> String {
+    #[live_event]
+    pub fn decrement(&mut self) {
+        self.count -= 1;
+    }
+
+    pub fn render(&self) -> String {
         // Renderizamos a interface.
         // O hx-ext="ws" no root será fornecido pelo Live::mount wrapper,
         // mas devemos colocar um ID no container principal para que o HTMX saiba o que substituir via WebSocket DOM Swap.
@@ -42,14 +40,14 @@ impl LiveComponent for CounterComponent {
                 <div style="display: flex; gap: 1rem; justify-content: center;">
 
                     <button
-                        hx-vals=r#"{"action": "decrement"}"#
+                        hx-vals=r#"{"rullst_event": "decrement"}"#
                         aria-label="Decrease counter"
                         style="padding: 0.75rem 1.5rem; background: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
                         "- Diminuir"
                     </button>
                     <button
-                        hx-vals=r#"{"action": "increment"}"#
+                        hx-vals=r#"{"rullst_event": "increment"}"#
                         aria-label="Increase counter"
                         style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >

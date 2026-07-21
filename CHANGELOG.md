@@ -4,9 +4,14 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [5.0.0] - Unreleased 🚀
 
-## [5.0.0] - 2026-07-16 🚀
+### Added
+- **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing)**: The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? Sub-millisecond layout updates (like Vite/Dioxus) with a stateful Rust backend.
+- **Native Reactive SSR (Rullst Live)**: Introduced `#[live_component]` and `#[live_event]` declarative macros. Developers can now build highly interactive, real-time WebSocket UIs (LiveView style) without writing JavaScript or WebAssembly. The macro automatically handles DOM diffing events and state syncing via HTMX.
+- **Documentation Hub**: A premium VitePress documentation portal in `docs/` with dark mode aesthetics.
+- **TypeScript SDK Generator (`generate:ts`)**: AST-based CLI command to dynamically generate typed `rullst-client.ts`.
+- **Ultra-Lightweight OpenTelemetry Core**: Integrated OTLP exporter behind a `telemetry` feature flag, keeping the framework lightweight by default.
 
 ### Breaking Changes
 - **Rullst Connect v11.0.0 API**: Upgraded `rullst-connect` to `11.0.0`. Since `rullst-connect` is re-exported via `rullst::auth::connect`, developers using the `oauth` feature must adapt to any breaking changes.

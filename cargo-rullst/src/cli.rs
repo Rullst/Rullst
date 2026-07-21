@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use crate::generators::{
     auth::scaffold_auth_system,
     billing::scaffold_billing_system,
-    build::{run_build_client, run_dev_server, run_production_build, run_upgrade},
+    build::{run_build_client, run_production_build, run_upgrade},
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
@@ -116,6 +116,9 @@ pub enum Commands {
     /// Scans controllers and generates an openapi.json/swagger specification
     #[command(name = "generate:openapi")]
     GenerateOpenapi,
+    /// Scans routes and generates a typed TypeScript client SDK
+    #[command(name = "generate:ts")]
+    GenerateTs,
     /// Creates a new background worker in the src/workers/ folder
     #[command(name = "make:worker")]
     MakeWorker {
@@ -234,6 +237,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::GenerateOpenapi => {
             generate_openapi_spec()?;
         }
+        Commands::GenerateTs => {
+            crate::generators::ts::generate_ts_sdk()?;
+        }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
         }
@@ -241,7 +247,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             run_upgrade()?;
         }
         Commands::Dev => {
-            run_dev_server()?;
+            crate::generators::dev::run_dev_server()?;
         }
         Commands::Studio => {
             run_project_db_command("studio")?;

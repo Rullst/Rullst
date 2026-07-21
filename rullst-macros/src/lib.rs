@@ -4,6 +4,7 @@ use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
 mod html_parser;
+mod live_parser;
 
 /// A macro for writing HTML inline in Rust.
 /// It compiles down to highly optimized string concatenations at compile time,
@@ -119,4 +120,18 @@ pub fn client_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     expanded.into()
+}
+
+/// Proc macro attribute to define a Live Component.
+/// Automatically implements the `LiveComponent` trait and wires `#[live_event]` methods.
+#[proc_macro_attribute]
+pub fn live_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = item.into();
+    live_parser::parse_live_component(input).into()
+}
+
+/// Marker attribute for events handled by a Live Component.
+#[proc_macro_attribute]
+pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
 }
