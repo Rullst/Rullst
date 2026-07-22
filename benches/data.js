@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784752926348,
+  "lastUpdate": 1784755290660,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1133,6 +1133,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2296,
             "range": "± 38",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "5a3989b899dccc46e8a2d9578e62d3a0b4c9d2b6",
+          "message": "feat: implement authentication, session management, and configuration utilities",
+          "timestamp": "2026-07-22T18:17:22-03:00",
+          "tree_id": "7ffb7e14dbd80ec5dc748820c44fe5d5076a5b93",
+          "url": "https://github.com/Rullst/Rullst/commit/5a3989b899dccc46e8a2d9578e62d3a0b4c9d2b6"
+        },
+        "date": 1784755289836,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 532,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 781,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 537,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1630,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
