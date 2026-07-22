@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784695757787,
+  "lastUpdate": 1784750195104,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1025,6 +1025,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1776,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "edc4bb15297ae36a3925a2f5678a5634a38dc148",
+          "message": "feat: implement adaptive backpressure resilience and rate-limiting infrastructure",
+          "timestamp": "2026-07-22T16:52:58-03:00",
+          "tree_id": "b73bed800ab758dbe70e012ded5de953ada354c0",
+          "url": "https://github.com/Rullst/Rullst/commit/edc4bb15297ae36a3925a2f5678a5634a38dc148"
+        },
+        "date": 1784750193869,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 604,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 776,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 486,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1692,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
