@@ -165,6 +165,55 @@ impl CacheDriver for MemoryDriver {
     }
 }
 
+
+
+// ─── Global Memoize Cache ───────────────────────────────────────────────────
+
+/// Global memory cache functions used by the `#[memoize]` macro.
+pub mod memory {
+    use super::MemoryDriver;
+    use super::CacheDriver;
+    use std::sync::Arc;
+    use std::sync::OnceLock;
+
+    static GLOBAL_MEMO_CACHE: OnceLock<MemoryDriver> = OnceLock::new();
+
+    fn get_cache() -> &'static MemoryDriver {
+        GLOBAL_MEMO_CACHE.get_or_init(MemoryDriver::new)
+    }
+
+    /// Retrieve a value from the global memoize cache.
+    pub fn get(key: &str) -> Option<String> {
+        // Run in synchronous context since macros often wrap sync or async functions
+        let cache = get_cache();
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            if let Ok(Some(arc_val)) = rt.block_on(async { cache.get(key).await }) {
+                return Some(arc_val.to_string());
+            }
+        } else {
+            // Fallback for non-tokio contexts
+            if let Ok(rt) = tokio::runtime::Runtime::new() {
+                if let Ok(Some(arc_val)) = rt.block_on(async { cache.get(key).await }) {
+                    return Some(arc_val.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    /// Store a value in the global memoize cache.
+    pub fn set(key: &str, value: &str) {
+        let cache = get_cache();
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            let _ = rt.block_on(async { cache.put(key, value, Some(3600)).await });
+        } else {
+            if let Ok(rt) = tokio::runtime::Runtime::new() {
+                let _ = rt.block_on(async { cache.put(key, value, Some(3600)).await });
+            }
+        }
+    }
+}
+
 // ─── Redis Driver (behind feature flag) ─────────────────────────────────────
 
 #[cfg(feature = "cache-redis")]

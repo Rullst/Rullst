@@ -20,6 +20,7 @@ pub mod ai;
 /// Artisan command-line migrations and seed execution helpers.
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "auth"))]
 /// Complete authentication system supporting session, JWT, and Passkey.
 pub mod auth;
 #[cfg(not(target_arch = "wasm32"))]
@@ -46,12 +47,13 @@ pub mod htmx;
 /// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "mailer"))]
 /// Unified mail delivery and dispatch drivers.
 pub mod mail;
 #[cfg(not(target_arch = "wasm32"))]
 /// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "nexus"))]
 pub mod nexus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
@@ -73,6 +75,7 @@ pub mod server;
 /// File and cloud storage abstraction layer.
 pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "studio"))]
 /// Developer's Studio dashboard for database, logs, and queue analytics.
 pub mod studio;
 #[cfg(not(target_arch = "wasm32"))]
@@ -101,7 +104,7 @@ macro_rules! artisan {
 }
 
 // Re-export procedural macros
-pub use rullst_macros::{client_component, html, live_component, live_event};
+pub use rullst_macros::{html, island, live_component, live_event, memoize, route, server_function};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]
@@ -137,8 +140,12 @@ pub use queue::{Queue, QueuedJobDetail, Worker};
 pub use scheduler::Scheduler;
 
 // Re-export Milestone 6: Enterprise Features
-#[cfg(not(target_arch = "wasm32"))]
-pub use mail::{Mail, Message as MailMessage};
+#[cfg(all(not(target_arch = "wasm32"), feature = "mailer"))]
+pub mod mail_exports {
+    pub use crate::mail::{Mail, Message as MailMessage};
+}
+#[cfg(all(not(target_arch = "wasm32"), feature = "mailer"))]
+pub use mail_exports::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use storage::{Storage, StorageDriver, StorageError};
 #[cfg(not(target_arch = "wasm32"))]
@@ -171,8 +178,12 @@ pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, 
 pub use testing::{TestApp, TestRequestBuilder, TestResponse};
 
 // Re-export Milestone 9: Nexus Panel (Auto-Generated CMS & AI Admin)
-#[cfg(not(target_arch = "wasm32"))]
-pub use nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
+#[cfg(all(not(target_arch = "wasm32"), feature = "nexus"))]
+pub mod nexus_exports {
+    pub use crate::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
+}
+#[cfg(all(not(target_arch = "wasm32"), feature = "nexus"))]
+pub use nexus_exports::*;
 
 // Re-export Milestone 9: Rullst Capital (Billing Boilerplate)
 #[cfg(not(target_arch = "wasm32"))]

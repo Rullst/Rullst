@@ -42,6 +42,7 @@ pub async fn check_and_run_artisan(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
+    #[cfg(feature = "studio")]
     if args.len() >= 2 && args[1] == "studio" {
         let mut db_url = None;
         if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {

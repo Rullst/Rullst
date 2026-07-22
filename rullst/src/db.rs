@@ -77,7 +77,7 @@ impl ReplicationManager {
                         let mut ticks = 0;
                         while ticks < config.sync_interval_secs {
                             wasm_bindgen_futures::JsFuture::from(
-                                web_sys::window().unwrap().performance().unwrap().now(), // Stand-in delay mock
+                                js_sys::Promise::resolve(&wasm_bindgen::JsValue::NULL)
                             )
                             .await
                             .ok();

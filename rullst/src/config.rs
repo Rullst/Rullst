@@ -126,6 +126,7 @@ impl RullstConfig {
     }
 
     /// Loads and parses the configuration from a TOML file.
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let content = tokio::fs::read_to_string(path).await?;
         let config: RullstConfig = toml::from_str(&content)?;

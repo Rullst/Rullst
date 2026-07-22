@@ -18,6 +18,27 @@ Almost every modern web framework (Laravel, Ruby on Rails, Next.js) was built be
 
 ---
 
+## 🚀 The Next Generation Architecture (Integrated in v5.0.0)
+
+To completely obliterate the competition and overcome the heavy constraints of monolithic Wasm frameworks, Rullst is actively evolving into its next major architectural phase:
+
+1. **Islands Architecture (Goodbye Monolithic Wasm):** Rullst will serve HTML 100% statically by default. Only components explicitly marked with `#[island]` will be compiled to lightweight Wasm or JS for client-side hydration, solving the heavy initial load problem.
+2. **Server Functions (Transparent RPC):** Eliminate manual `fetch` calls. Write a Rust function on the frontend, and the framework will automatically generate the RPC bridge to the database.
+3. **Dual-Target Routes (Web + Mobile):** A single route definition generates both the HTML/Wasm render endpoint for the browser and a clean JSON API for mobile apps natively.
+4. **Intelligent Caching (`#[memoize]`):** A framework-level macro that caches in-memory component renders and database queries per request scope automatically.
+---
+
+## 🌍 The Ecosystem Hegemony (Community & Deployment)
+
+To truly dominate the global web development market, Rullst will expand beyond a framework into a full deployment ecosystem:
+
+1. **"Zero-Code" Extensible Admin:** Rullst Nexus will not just read the database. Product managers will be able to alter views and permissions visually from the panel, and the framework will autonomously open a GitHub Pull Request with the underlying Rust code changes.
+2. **Dynamic Plugin Marketplace:** Leveraging Rullst's hot-swapping (`.dll`/`.so`) capabilities, developers will be able to install community plugins (forums, chat modules) dynamically in production without recompiling or restarting the core server.
+3. **Rullst Cloud (The Vercel for Rust):** The ultimate multiplier. A globally distributed Edge infrastructure where a single `cargo rullst deploy` command builds, compresses, and distributes the application globally in seconds, abstracting all DevOps friction.
+4. **Automated Compliance & Data Governance (GDPR/LGPD) [Rullst-ORM]:** A `#[derive(PersonalData)]` macro that guarantees sensitive user data (CPF, emails) is automatically encrypted at rest in the database, masked in all telemetry logs, and able to generate automated privacy reports out-of-the-box.
+
+---
+
 ## 🚀 The Rullst Master Plan
 
 ```mermaid

@@ -3065,6 +3065,7 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+ "tracing-core",
  "tracing-opentelemetry",
  "tracing-subscriber",
  "urlencoding",

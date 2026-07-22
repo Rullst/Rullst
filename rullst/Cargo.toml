@@ -11,6 +11,10 @@ exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
 rust-version = "1.96.0"
 [features]
 default = []
+nexus = []
+studio = []
+auth = []
+mailer = ["mail-smtp"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 mail-smtp = ["dep:lettre"]
@@ -63,13 +67,15 @@ libloading = "0.9.0"
 notify = "8.2.0"
 ring = { version = "0.17.14", features = ["std"] }
 tracing = "0.1"
+tracing-core = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.123"
 wasm-bindgen-futures = "0.4.73"
-web-sys = { version = "0.3.100", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console"] }
+web-sys = { version = "0.3.100", features = ["Document", "Element", "Window", "EventTarget", "HtmlElement", "console", "Request", "RequestInit", "RequestMode", "Response"] }
+js-sys = "0.3.103"
 serde-wasm-bindgen = "0.6.5"
 console_error_panic_hook = "0.1.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
@@ -84,10 +90,3 @@ insta = { version = "1.41", features = ["yaml"] }
 [[bench]]
 name = "rullst_bench"
 harness = false
-
-
-
-
-
-
-
