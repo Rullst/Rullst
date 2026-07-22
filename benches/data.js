@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784692762053,
+  "lastUpdate": 1784693178328,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -755,6 +755,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1925,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9ed0cbf7b85b8a624e0d2db9315a0a1b9fac67b1",
+          "message": "style(cli): Fix clippy warnings and formatting",
+          "timestamp": "2026-07-22T01:04:37-03:00",
+          "tree_id": "dd603e1841ab05936376a6dd583a3fc49c1a58f5",
+          "url": "https://github.com/Rullst/Rullst/commit/9ed0cbf7b85b8a624e0d2db9315a0a1b9fac67b1"
+        },
+        "date": 1784693177689,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 558,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 828,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 586,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1751,
+            "range": "± 65",
             "unit": "ns/iter"
           }
         ]
