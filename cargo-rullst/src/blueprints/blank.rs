@@ -176,7 +176,8 @@ pub async fn increment_counter(current: i32) -> CounterResponse {
         message: format!("Successfully incremented on the server!"),
     }
 }
-"#.to_string();
+"#
+            .to_string();
             manifest.push(("src/rpc.rs", server_fn));
 
             let island_counter = r#"use rullst::{island, view};
@@ -205,7 +206,8 @@ pub fn counter(props: CounterProps, container: HtmlElement) {
     
     container.append_child(&btn).unwrap();
 }
-"#.to_string();
+"#
+            .to_string();
             manifest.push(("src/islands/mod.rs", "pub mod counter;\n".to_string()));
             manifest.push(("src/islands/counter.rs", island_counter));
         }
