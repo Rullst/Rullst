@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784755290660,
+  "lastUpdate": 1784758652033,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1187,6 +1187,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1630,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32fd666fa2ad3e5bfa95ea1a52a97f2ce75a5aa0",
+          "message": "feat: introduce Nexus administrative panel module with trait-based model registration and routing",
+          "timestamp": "2026-07-22T19:12:26-03:00",
+          "tree_id": "5c5bfa49f29297de18e163c76b0c16b30062f0bd",
+          "url": "https://github.com/Rullst/Rullst/commit/32fd666fa2ad3e5bfa95ea1a52a97f2ce75a5aa0"
+        },
+        "date": 1784758651238,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 719,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 956,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 653,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2256,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
