@@ -1,7 +1,6 @@
 [book]
 authors = ["Rullst Contributors"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Rullst Framework Documentation"
 
