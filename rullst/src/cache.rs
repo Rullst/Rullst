@@ -623,7 +623,6 @@ mod tests {
         // Just verify that the constructor exists and returns a Result
         // We use an invalid URL so it fails parsing the connection string
         let result = Cache::redis("invalid-url-format://host:9999");
-        let result = Cache::redis("invalid-url-format://host:9999");
         assert!(result.is_err());
     }
 

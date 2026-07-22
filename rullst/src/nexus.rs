@@ -2297,8 +2297,8 @@ mod tests {
         assert_eq!(DummyModel::nexus_pk(), "id");
     }
 
-    #[test]
-    fn test_render_record_form() {
+    #[tokio::test]
+    async fn test_render_record_form() {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
@@ -2308,11 +2308,15 @@ mod tests {
                 name: "email",
                 label: "Email",
                 kind: FieldKind::Text,
-                required: true,
-                default: None,
+                hidden: false,
+                readonly: false,
             }],
         };
-        let html = render_record_form(&entry, None);
+        let state = NexusState {
+            registry: std::sync::Arc::new(vec![entry.clone()]),
+            brand: std::sync::Arc::new("Rullst".to_string()),
+        };
+        let html = render_record_form(&state, &entry, None).await;
         assert!(html.contains("method=\"POST\""));
         assert!(html.contains("action=\"/nexus/models/users\""));
         assert!(html.contains("name=\"email\""));
@@ -2320,16 +2324,9 @@ mod tests {
 
     #[test]
     fn test_render_empty_state_html() {
-        let entry = RegistryEntry {
-            table: "users",
-            label: "Users",
-            icon: "👤",
-            pk: "id",
-            fields: vec![],
-        };
-        let html = render_empty_state_html(&entry);
-        assert!(html.contains("No Users found"));
-        assert!(html.contains("Create your first Users"));
+        let html = render_empty_state_html(5, "users", "");
+        assert!(html.contains("No users found"));
+        assert!(html.contains("Create your first users"));
     }
 
     #[test]

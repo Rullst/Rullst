@@ -444,9 +444,6 @@ mod tests {
         let log_dir = std::path::Path::new("storage/logs");
         let _ = tokio::fs::create_dir_all(log_dir).await;
 
-        let unique_id = uuid::Uuid::new_v4().as_simple();
-        let log_path = format!("storage/logs/mail_{}.log", unique_id);
-        // Temporarily patch the driver to write to our unique file just for this test
         // Wait, LogDriver hardcodes "storage/logs/mail.log"!
         // I cannot easily change LogDriver to write to a unique file without modifying the struct.
         // Let's just make sure we clear the log file.
@@ -460,7 +457,7 @@ mod tests {
             .html("<h1>Testing 1 2 3</h1>");
 
         let driver = LogDriver;
-        if let Err(e) = driver.send(&msg).await {
+        if driver.send(&msg).await.is_err() {
             panic!("driver.send failed");
         }
 
