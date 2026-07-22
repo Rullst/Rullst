@@ -1,4 +1,5 @@
 #![cfg(not(miri))]
+#![cfg(feature = "nexus")]
 
 use base64::Engine;
 use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};

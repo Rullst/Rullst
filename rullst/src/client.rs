@@ -20,9 +20,13 @@ pub async fn rpc_call(fn_name: &str) -> String {
     opts.set_method("POST");
     opts.set_mode(web_sys::RequestMode::Cors);
     let request = web_sys::Request::new_with_str_and_init(&url, &opts).unwrap();
-    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request))
+        .await
+        .unwrap();
     let resp: web_sys::Response = resp_value.dyn_into().unwrap();
-    let text_val = wasm_bindgen_futures::JsFuture::from(resp.text().unwrap()).await.unwrap();
+    let text_val = wasm_bindgen_futures::JsFuture::from(resp.text().unwrap())
+        .await
+        .unwrap();
     text_val.as_string().unwrap()
 }
 

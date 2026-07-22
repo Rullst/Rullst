@@ -104,7 +104,9 @@ macro_rules! artisan {
 }
 
 // Re-export procedural macros
-pub use rullst_macros::{html, island, live_component, live_event, memoize, route, server_function};
+pub use rullst_macros::{
+    html, island, live_component, live_event, memoize, route, server_function,
+};
 
 // Re-export core structs for public consumption
 #[cfg(not(target_arch = "wasm32"))]

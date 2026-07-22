@@ -167,10 +167,10 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis fn #name(#(#arg_names: #arg_types),*) -> #output_type {
             // Generate a cache key based on the function name and serialized arguments
             let cache_key = format!("{}:{}", stringify!(#name), serde_json::json!([#(#arg_names),*]).to_string());
-            
+
             // Check if it exists in the global Rullst memory cache
             if let Some(cached) = rullst::cache::memory::get(&cache_key) {
-                // If it's a String (HTML output), we can downcast or deserialize it. 
+                // If it's a String (HTML output), we can downcast or deserialize it.
                 // For simplicity, we assume String return types.
                 if let Ok(cached_str) = serde_json::from_str::<#output_type>(&cached) {
                     return cached_str;
@@ -179,12 +179,12 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             // Otherwise, execute the function
             let result: #output_type = { #body };
-            
+
             // Store it in the cache
             if let Ok(serialized) = serde_json::to_string(&result) {
                 rullst::cache::memory::set(&cache_key, &serialized);
             }
-            
+
             result
         }
     };
@@ -192,7 +192,7 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-/// Defines a Dual-Target route. 
+/// Defines a Dual-Target route.
 /// Generates an HTML responder for browsers and a JSON responder for mobile applications natively.
 #[proc_macro_attribute]
 pub fn route(_attr: TokenStream, item: TokenStream) -> TokenStream {

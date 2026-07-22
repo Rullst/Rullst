@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use rullst::{client_component, html};
+use rullst::{island, html};
 
-#[client_component]
+#[island]
 #[allow(non_snake_case)]
 pub fn InteractiveCounter(initial_count: i32) -> String {
     // Server-side HTML (used for SSR)

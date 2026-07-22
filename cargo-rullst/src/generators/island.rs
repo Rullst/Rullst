@@ -91,7 +91,11 @@ pub fn {snake_name}(props: {camel_name}Props, container: HtmlElement) {{
         fs::write(&island_path, template)?;
         println!(
             "{}",
-            format!("✅ Island '{}' created successfully at: {:?}", camel_name, island_path).green()
+            format!(
+                "✅ Island '{}' created successfully at: {:?}",
+                camel_name, island_path
+            )
+            .green()
         );
     }
 

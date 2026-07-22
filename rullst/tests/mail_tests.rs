@@ -1,3 +1,5 @@
+#![cfg(feature = "mailer")]
+
 use rullst::mail::{Mail, MailDriver, MailError, Message, ResendDriver, SendGridDriver};
 
 #[tokio::test]

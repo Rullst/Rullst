@@ -1,4 +1,5 @@
 #![cfg(not(miri))]
+#![cfg(feature = "studio")]
 
 use axum::{Router, routing::get};
 use rullst::studio::{handle_dashboard, handle_table};

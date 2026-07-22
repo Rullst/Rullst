@@ -76,9 +76,9 @@ impl ReplicationManager {
                         // Emulated sleep ticker on WASM architectures
                         let mut ticks = 0;
                         while ticks < config.sync_interval_secs {
-                            wasm_bindgen_futures::JsFuture::from(
-                                js_sys::Promise::resolve(&wasm_bindgen::JsValue::NULL)
-                            )
+                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::resolve(
+                                &wasm_bindgen::JsValue::NULL,
+                            ))
                             .await
                             .ok();
                             ticks += 1;

@@ -165,15 +165,12 @@ impl CacheDriver for MemoryDriver {
     }
 }
 
-
-
 // ─── Global Memoize Cache ───────────────────────────────────────────────────
 
 /// Global memory cache functions used by the `#[memoize]` macro.
 pub mod memory {
-    use super::MemoryDriver;
     use super::CacheDriver;
-    use std::sync::Arc;
+    use super::MemoryDriver;
     use std::sync::OnceLock;
 
     static GLOBAL_MEMO_CACHE: OnceLock<MemoryDriver> = OnceLock::new();

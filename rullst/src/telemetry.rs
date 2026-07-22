@@ -1,5 +1,5 @@
-use tracing_core::field::Visit;
 use tracing_core::Field;
+use tracing_core::field::Visit;
 use tracing_subscriber::Layer;
 
 /// A security layer that intercepts all telemetry events and audits them for sensitive data leakage.
@@ -22,11 +22,21 @@ impl Visit for PrivacyVisitor {
 }
 
 impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
-    fn on_event(&self, event: &tracing_core::Event<'_>, _ctx: tracing_subscriber::layer::Context<'_, S>) {
-        let mut visitor = PrivacyVisitor { has_leak: false, leaked_field: String::new() };
+    fn on_event(
+        &self,
+        event: &tracing_core::Event<'_>,
+        _ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        let mut visitor = PrivacyVisitor {
+            has_leak: false,
+            leaked_field: String::new(),
+        };
         event.record(&mut visitor);
         if visitor.has_leak {
-            eprintln!("\n🚨 [RULLST GDPR/LGPD AUDITOR] Security Warning: Sensitive field '{}' was exposed in telemetry logs! The data was masked. Use #[derive(PersonalData)] to suppress this automatically.\n", visitor.leaked_field);
+            eprintln!(
+                "\n🚨 [RULLST GDPR/LGPD AUDITOR] Security Warning: Sensitive field '{}' was exposed in telemetry logs! The data was masked. Use #[derive(PersonalData)] to suppress this automatically.\n",
+                visitor.leaked_field
+            );
         }
     }
 }
