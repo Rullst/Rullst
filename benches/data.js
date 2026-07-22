@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784750195104,
+  "lastUpdate": 1784752926348,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1079,6 +1079,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1692,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ef30b318c82624ded7b83f3f35525b0c8443f05b",
+          "message": "feat: implement modular mail drivers with Log, SMTP, and Resend support",
+          "timestamp": "2026-07-22T17:32:29-03:00",
+          "tree_id": "2aa61fcd5a9f194045eb754e5ecb9255b197cbfd",
+          "url": "https://github.com/Rullst/Rullst/commit/ef30b318c82624ded7b83f3f35525b0c8443f05b"
+        },
+        "date": 1784752925769,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 758,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1013,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 633,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2296,
+            "range": "± 38",
             "unit": "ns/iter"
           }
         ]
