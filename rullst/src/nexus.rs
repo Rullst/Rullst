@@ -2317,16 +2317,15 @@ mod tests {
             brand: std::sync::Arc::new("Rullst".to_string()),
         };
         let html = render_record_form(&state, &entry, None).await;
-        assert!(html.contains("method=\"POST\""));
-        assert!(html.contains("action=\"/nexus/models/users\""));
+        assert!(html.contains("hx-post"));
+        assert!(html.contains("hx-post=\"/nexus/table/users\""));
         assert!(html.contains("name=\"email\""));
     }
 
     #[test]
     fn test_render_empty_state_html() {
         let html = render_empty_state_html(5, "users", "");
-        assert!(html.contains("No users found"));
-        assert!(html.contains("Create your first users"));
+        assert!(html.contains("No records found in table `users`."));
     }
 
     #[test]
