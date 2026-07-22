@@ -53,9 +53,9 @@ jobs:
           # Grab templates and docs from main branch
           git checkout origin/main -- docs/
           
-          # Build mdBook using official pre-compiled binary for ubuntu-latest
-          wget -qO- https://github.com/rust-lang/mdBook/releases/download/v0.14.1/mdbook-v0.14.1-x86_64-unknown-linux-gnu.tar.gz | tar xvz
-          ./mdbook build docs
+          # Build mdBook
+          cargo install mdbook
+          mdbook build docs
           
           # Apply templates
           cp docs/home_template.html index.html
