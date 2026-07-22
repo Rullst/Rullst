@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784693832677,
+  "lastUpdate": 1784695244927,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -863,6 +863,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1188,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e25f1ec20ca049bd60e87afa3368db498ffc4323",
+          "message": "ci: Fix mdBook installation in benchmarks workflow",
+          "timestamp": "2026-07-22T01:39:13-03:00",
+          "tree_id": "83dde792a3dd643b6254e47cccc15a5634075a5c",
+          "url": "https://github.com/Rullst/Rullst/commit/e25f1ec20ca049bd60e87afa3368db498ffc4323"
+        },
+        "date": 1784695244632,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 799,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1040,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 638,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2316,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
