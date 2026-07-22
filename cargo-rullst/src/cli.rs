@@ -125,6 +125,12 @@ pub enum Commands {
         /// Name of the worker (e.g. Email or email_worker)
         name: String,
     },
+    /// Creates a new interactive frontend Wasm Island in src/islands/
+    #[command(name = "make:island")]
+    MakeIsland {
+        /// Name of the Island component (e.g. Counter or user_profile)
+        name: String,
+    },
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
     /// Starts the Rullst development server with neon spinners
@@ -242,6 +248,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
+        }
+        Commands::MakeIsland { name } => {
+            crate::generators::island::create_new_island(name)?;
         }
         Commands::Upgrade => {
             run_upgrade()?;

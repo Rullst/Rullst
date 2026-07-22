@@ -12,6 +12,7 @@ pub mod db;
 pub mod desktop;
 pub mod dev;
 pub mod foundry;
+pub mod island;
 pub mod middleware;
 pub mod migration;
 pub mod model;

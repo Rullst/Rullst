@@ -98,8 +98,9 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 * **Project Creation:**
   `cargo rullst new <name>`
   * *Convention:* Automatically extracts the package name from path expressions (e.g., `..\dummy_test` -> `dummy_test`).
-* **Controller Scaffolding:**
+* **Controller/Island Scaffolding:**
   `cargo rullst make:controller <Name>`
+  `cargo rullst make:island <Name>`
   * *Behavior:* Generates `src/controllers/<snake_name>_controller.rs` with `index` and `show` actions. Appends declaration to `src/controllers/mod.rs`. Adds `pub mod controllers;` to the top of `src/main.rs`.
 * **Documentation SSG (RullstPress):**
   `cargo rullst docs build` and `cargo rullst docs dev`

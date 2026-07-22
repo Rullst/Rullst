@@ -110,7 +110,9 @@ pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                             "Click here to increment"
                         </button>
                         <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
-                    </div>
+                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-200">"Wasm Island (Client Side)"</h2>
+                    <div data-island="counter" data-props='{{"initial": 0}}'></div>
                 </div>
             </div>
         </div>
@@ -156,6 +158,61 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         };
 
         manifest.push(("src/lib.rs", lib_rs));
+
+        if !api {
+            let server_fn = format!(
+                r#"use rullst::server_function;
+use serde::{{Serialize, Deserialize}};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CounterResponse {{
+    pub new_value: i32,
+    pub message: String,
+}}
+
+#[server_function]
+pub async fn increment_counter(current: i32) -> CounterResponse {{
+    CounterResponse {{
+        new_value: current + 1,
+        message: format!("Successfully incremented on the server!"),
+    }}
+}}
+"#
+            );
+            manifest.push(("src/rpc.rs", server_fn));
+
+            let island_counter = format!(
+                r#"use rullst::{{island, view}};
+use wasm_bindgen::prelude::*;
+use serde::{{Serialize, Deserialize}};
+use web_sys::HtmlElement;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CounterProps {{
+    pub initial: i32,
+}}
+
+#[island]
+pub fn counter(props: CounterProps, container: HtmlElement) {{
+    let doc = web_sys::window().unwrap().document().unwrap();
+    let btn = doc.create_element("button").unwrap();
+    btn.set_inner_html(&format!("Click to increment! Current: {{}}", props.initial));
+    
+    // In a real app, you would call your RPC server function here!
+    let closure = Closure::wrap(Box::new(move || {{
+        web_sys::console::log_1(&"Calling server via RPC...".into());
+    }}) as Box<dyn FnMut()>);
+    
+    btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref()).unwrap();
+    closure.forget();
+    
+    container.append_child(&btn).unwrap();
+}}
+"#
+            );
+            manifest.push(("src/islands/mod.rs", "pub mod counter;\n".to_string()));
+            manifest.push(("src/islands/counter.rs", island_counter));
+        }
 
         let main_rs = format!(
             r##"{migrations_mod_declaration}

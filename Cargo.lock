@@ -3036,6 +3036,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.4.3",
  "insta",
+ "js-sys",
  "lettre",
  "libloading",
  "notify",
