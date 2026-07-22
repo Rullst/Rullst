@@ -2280,9 +2280,15 @@ mod tests {
 
     struct DummyModel;
     impl NexusModel for DummyModel {
-        fn nexus_table() -> &'static str { "dummy" }
-        fn nexus_label() -> &'static str { "Dummies" }
-        fn nexus_fields() -> Vec<FieldMeta> { vec![] }
+        fn nexus_table() -> &'static str {
+            "dummy"
+        }
+        fn nexus_label() -> &'static str {
+            "Dummies"
+        }
+        fn nexus_fields() -> Vec<FieldMeta> {
+            vec![]
+        }
     }
 
     #[test]

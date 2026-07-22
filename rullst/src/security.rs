@@ -585,7 +585,10 @@ mod tests {
         // Valid emails
         assert_eq!(mask_pii("user@example.com"), "u***@example.com");
         assert_eq!(mask_pii("us@example.com"), "u*@example.com");
-        assert_eq!(mask_pii("a.b+c-d_e%f@example.com"), "a**********@example.com");
+        assert_eq!(
+            mask_pii("a.b+c-d_e%f@example.com"),
+            "a**********@example.com"
+        );
         assert_eq!(mask_pii("user@sub.example.com"), "u***@sub.example.com");
 
         // Edge cases that should NOT be masked

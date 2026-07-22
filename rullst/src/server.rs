@@ -944,7 +944,7 @@ mod tests {
         };
 
         use tower_service::Service;
-        
+
         // 1. Valid request to reload (we expect a 500 error because the lib path is empty/invalid)
         let req = axum::http::Request::builder()
             .method("POST")
@@ -975,12 +975,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_inject_hmr_script() {
-        use axum::response::IntoResponse;
-
         let router = axum::Router::new()
-            .route("/", axum::routing::get(|| async {
-                axum::response::Html("<html><body>Hello</body></html>")
-            }))
+            .route(
+                "/",
+                axum::routing::get(|| async {
+                    axum::response::Html("<html><body>Hello</body></html>")
+                }),
+            )
             .layer(axum::middleware::from_fn(inject_hmr_script));
 
         use tower_service::Service;

@@ -443,7 +443,7 @@ mod tests {
         let cwd = std::env::current_dir().unwrap_or_default();
         let log_dir = std::path::Path::new("storage/logs");
         let _ = tokio::fs::create_dir_all(log_dir).await;
-        
+
         let unique_id = uuid::Uuid::new_v4().as_simple();
         let log_path = format!("storage/logs/mail_{}.log", unique_id);
         // Temporarily patch the driver to write to our unique file just for this test
