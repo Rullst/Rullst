@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use rullst::{island, html};
+use rullst::{html, island};
 
 #[island]
 #[allow(non_snake_case)]

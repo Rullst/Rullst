@@ -155,11 +155,11 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in &sig.inputs {
-        if let syn::FnArg::Typed(pat_type) = arg {
-            if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
-                arg_names.push(&pat_ident.ident);
-                arg_types.push(&pat_type.ty);
-            }
+        if let syn::FnArg::Typed(pat_type) = arg
+            && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
+        {
+            arg_names.push(&pat_ident.ident);
+            arg_types.push(&pat_type.ty);
         }
     }
 
