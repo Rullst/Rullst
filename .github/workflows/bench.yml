@@ -50,20 +50,28 @@ jobs:
           git fetch origin gh-pages
           git checkout gh-pages
           
-          # Grab templates from main branch
-          git checkout origin/main -- docs/home_template.html docs/benches_template.html
+          # Grab templates and docs from main branch
+          git checkout origin/main -- docs/
           
-          # Apply them
+          # Build mdBook using official pre-compiled binary for ubuntu-latest
+          wget -qO- https://github.com/rust-lang/mdBook/releases/download/v0.14.1/mdbook-v0.14.1-x86_64-unknown-linux-gnu.tar.gz | tar xvz
+          ./mdbook build docs
+          
+          # Apply templates
           cp docs/home_template.html index.html
           mkdir -p benches
           cp docs/benches_template.html benches/index.html
           
+          # Apply mdBook
+          mkdir -p book
+          cp -r docs/book/* book/
+          
           # Clean up
-          rm -rf docs
+          rm -rf docs mdbook
           
           # Commit and push
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html benches/index.html
-          git commit -m "style: Apply custom beautiful templates to gh-pages" || echo "No changes to commit"
+          git add index.html benches/index.html book/
+          git commit -m "docs: Deploy website templates and mdBook to gh-pages" || echo "No changes to commit"
           git push origin gh-pages

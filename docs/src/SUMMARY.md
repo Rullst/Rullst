@@ -9,7 +9,6 @@
 - [📊 Rullst Studio: Real-Time Monitoring](3-rullst-studio.md)
 - [⚙️ Rullst Nexus: Your Instant CMS](4-rullst-nexus.md)
 - [💳 Rullst Capital: SaaS Billing Made Easy](5-rullst-capital.md)
-- [📝 Documenting with RullstPress Engine](6-rullstpress-engine.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)
