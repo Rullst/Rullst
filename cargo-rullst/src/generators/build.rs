@@ -241,8 +241,6 @@ fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
-
 pub fn run_build_client(debug: bool) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{} Building Wasm client artifacts...",

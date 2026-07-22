@@ -1,5 +1,5 @@
-use rullst::live_component;
 use rullst::html;
+use rullst::live_component;
 
 /// Nosso componente Rullst Live. Todo o estado vive e é operado pelo servidor!
 #[live_component]

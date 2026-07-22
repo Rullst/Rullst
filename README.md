@@ -19,7 +19,7 @@
 
 ---
 
-## 💡 A Filosofia Rullst (The Rullst Philosophy)
+## 💡 The Rullst Philosophy
 
 Unlike other frameworks, Rullst strives to be **simultaneously simple and complete**, with a relentless focus on **security** and **developer experience (DX)**.
 

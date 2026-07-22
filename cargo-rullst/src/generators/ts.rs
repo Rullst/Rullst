@@ -44,7 +44,9 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     ts_output.push_str("    constructor(baseUrl: string = '') {\n");
     ts_output.push_str("        this.baseUrl = baseUrl;\n");
     ts_output.push_str("    }\n\n");
-    ts_output.push_str("    private async request<T>(method: string, path: string, body?: any): Promise<T> {\n");
+    ts_output.push_str(
+        "    private async request<T>(method: string, path: string, body?: any): Promise<T> {\n",
+    );
     ts_output.push_str("        const url = `${this.baseUrl}${path}`;\n");
     ts_output.push_str("        const options: RequestInit = { method };\n");
     ts_output.push_str("        if (body) {\n");
@@ -52,7 +54,9 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     ts_output.push_str("            options.body = JSON.stringify(body);\n");
     ts_output.push_str("        }\n");
     ts_output.push_str("        const res = await fetch(url, options);\n");
-    ts_output.push_str("        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);\n");
+    ts_output.push_str(
+        "        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);\n",
+    );
     ts_output.push_str("        return res.json() as Promise<T>;\n");
     ts_output.push_str("    }\n\n");
 
@@ -82,11 +86,23 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
             path_args.push("body: any".to_string());
         }
 
-        ts_output.push_str(&format!("    public async {}({}) {{\n", method_name, path_args.join(", ")));
+        ts_output.push_str(&format!(
+            "    public async {}({}) {{\n",
+            method_name,
+            path_args.join(", ")
+        ));
         if has_body {
-            ts_output.push_str(&format!("        return this.request<any>('{}', `{}`, body);\n", method.to_uppercase(), js_path));
+            ts_output.push_str(&format!(
+                "        return this.request<any>('{}', `{}`, body);\n",
+                method.to_uppercase(),
+                js_path
+            ));
         } else {
-            ts_output.push_str(&format!("        return this.request<any>('{}', `{}`);\n", method.to_uppercase(), js_path));
+            ts_output.push_str(&format!(
+                "        return this.request<any>('{}', `{}`);\n",
+                method.to_uppercase(),
+                js_path
+            ));
         }
         ts_output.push_str("    }\n\n");
     }

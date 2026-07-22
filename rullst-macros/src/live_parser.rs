@@ -25,10 +25,8 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                         has_render = true;
                     }
 
-                    let has_live_event = method
-                        .attrs
-                        .iter()
-                        .any(|a| a.path().is_ident("live_event"));
+                    let has_live_event =
+                        method.attrs.iter().any(|a| a.path().is_ident("live_event"));
 
                     if has_live_event {
                         // Assume self is first argument, check if it takes payload

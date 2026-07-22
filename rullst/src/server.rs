@@ -192,7 +192,7 @@ impl Server {
                 "0.0.0.0".to_string()
             }
         });
-        
+
         let env_port = std::env::var("PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
@@ -436,12 +436,14 @@ impl Service<axum::extract::Request> for HotSwapService {
     }
 
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
-        if req.uri().path() == "/_rullst/internal/reload_dylib" && req.method() == axum::http::Method::POST {
+        if req.uri().path() == "/_rullst/internal/reload_dylib"
+            && req.method() == axum::http::Method::POST
+        {
             let lib_path = self.lib_path.clone();
             let is_dev = self.is_dev;
             let current_router = self.current_router.clone();
             let active_libraries = self.active_libraries.clone();
-            
+
             return Box::pin(async move {
                 match load_dylib_router(&lib_path, is_dev) {
                     Ok((new_router, new_lib)) => {
@@ -450,26 +452,36 @@ impl Service<axum::extract::Request> for HotSwapService {
                             Err(poisoned) => *poisoned.into_inner() = new_router,
                         };
 
-                        let mut active_libs = active_libraries.lock().unwrap_or_else(|p| p.into_inner());
+                        let mut active_libs =
+                            active_libraries.lock().unwrap_or_else(|p| p.into_inner());
                         active_libs.push(new_lib);
                         if active_libs.len() > 3 {
                             active_libs.remove(0);
                         }
 
-                        println!("\x1b[32m🚀 Rullst Hot-Reload: Dylib swapped instantly via webhook!\x1b[0m");
-                        
+                        println!(
+                            "\x1b[32m🚀 Rullst Hot-Reload: Dylib swapped instantly via webhook!\x1b[0m"
+                        );
+
                         let res = axum::response::Response::builder()
                             .status(axum::http::StatusCode::OK)
                             .body(axum::body::Body::from("Swapped"))
-                            .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
+                            .unwrap_or_else(|_| {
+                                axum::response::Response::new(axum::body::Body::empty())
+                            });
                         Ok(res)
                     }
                     Err(e) => {
-                        eprintln!("\x1b[31m❌ Rullst Hot-Reload: Error loading new dylib: {}\x1b[0m", e);
+                        eprintln!(
+                            "\x1b[31m❌ Rullst Hot-Reload: Error loading new dylib: {}\x1b[0m",
+                            e
+                        );
                         let res = axum::response::Response::builder()
                             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                             .body(axum::body::Body::from(e.to_string()))
-                            .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
+                            .unwrap_or_else(|_| {
+                                axum::response::Response::new(axum::body::Body::empty())
+                            });
                         Ok(res)
                     }
                 }
@@ -650,20 +662,21 @@ async fn inject_hmr_script(
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     let res = next.run(req).await;
-    
+
     if let Some(content_type) = res.headers().get(axum::http::header::CONTENT_TYPE) {
         if content_type.to_str().unwrap_or("").contains("text/html") {
             let (mut parts, body) = res.into_parts();
             if let Ok(bytes) = axum::body::to_bytes(body, usize::MAX).await {
                 let mut html = String::from_utf8_lossy(&bytes).to_string();
-                
+
                 let port = std::env::var("PORT")
                     .ok()
                     .and_then(|p| p.parse::<u16>().ok())
                     .unwrap_or(3000);
                 let ws_port = port + 1;
-                
-                let script = format!(r#"
+
+                let script = format!(
+                    r#"
 <!-- Rullst Hybrid Hot-Reloading -->
 <script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.js"></script>
 <script>
@@ -688,23 +701,25 @@ async fn inject_hmr_script(
         }};
     }})();
 </script>
-"#, ws_port);
+"#,
+                    ws_port
+                );
                 if let Some(idx) = html.rfind("</body>") {
                     html.insert_str(idx, &script);
                 } else {
                     html.push_str(&script);
                 }
-                
+
                 parts.headers.remove(axum::http::header::CONTENT_LENGTH);
                 return axum::response::Response::from_parts(parts, axum::body::Body::from(html));
             } else {
-                // If we failed to read bytes, just return empty body or we could somehow return the parts? 
+                // If we failed to read bytes, just return empty body or we could somehow return the parts?
                 // We'll just return it as empty for now, or preferably panic since it's dev mode.
                 return axum::response::Response::from_parts(parts, axum::body::Body::empty());
             }
         }
     }
-    
+
     res
 }
 

@@ -43,7 +43,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(feature = "telemetry"))]
 /// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
-/// 
+///
 /// This configuration connects to a local OTLP collector on port 4317.
 /// Returns a Result which can be gracefully ignored if the collector is unavailable.
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
@@ -53,7 +53,8 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
-        .try_init().ok();
-    
+        .try_init()
+        .ok();
+
     Ok(())
 }

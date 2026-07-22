@@ -1,21 +1,24 @@
 use crate::generators::is_rullst_project;
 use axum::{
-    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, State},
+    Router,
+    extract::{
+        State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use colored::*;
 use notify::{RecursiveMode, Watcher};
-use std::fs;
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use tokio::sync::broadcast;
-use tokio::time::{sleep, Duration};
 use quote::quote;
-use syn::{visit_mut::VisitMut, Macro};
+use syn::{Macro, visit_mut::VisitMut};
+use tokio::sync::broadcast;
+use tokio::time::{Duration, sleep};
 
 struct HtmlStripper;
 
@@ -89,36 +92,44 @@ pub async fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(app_state.clone());
 
     let ws_listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", ws_port)).await?;
-    println!("📡 Rullst HMR WebSocket listening on ws://127.0.0.1:{}/_rullst_hmr", ws_port);
-    
+    println!(
+        "📡 Rullst HMR WebSocket listening on ws://127.0.0.1:{}/_rullst_hmr",
+        ws_port
+    );
+
     tokio::spawn(async move {
         let _ = axum::serve(ws_listener, ws_app).await;
     });
 
     println!("{}", "📦 Booting Rullst application...".yellow());
-    let mut app_child = Command::new("cargo")
-        .arg("run")
-        .arg("-q")
-        .spawn()?;
+    let mut app_child = Command::new("cargo").arg("run").arg("-q").spawn()?;
 
     let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
-    let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-        if let Ok(event) = res {
-            let _ = notify_tx.blocking_send(event);
-        }
-    })?;
+    let mut watcher =
+        notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            if let Ok(event) = res {
+                let _ = notify_tx.blocking_send(event);
+            }
+        })?;
 
     watcher.watch(Path::new("src"), RecursiveMode::Recursive)?;
     watcher.watch(Path::new("Cargo.toml"), RecursiveMode::NonRecursive)?;
 
-    println!("{}", "✨ Watching for file changes... (Press Ctrl+C to stop)".green());
+    println!(
+        "{}",
+        "✨ Watching for file changes... (Press Ctrl+C to stop)".green()
+    );
 
     let mut last_build = std::time::Instant::now();
     let mut file_cache: HashMap<PathBuf, String> = HashMap::new();
 
     // Initialize cache
-    for entry in walkdir::WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
-        if entry.path().is_file() && entry.path().extension().and_then(|e| e.to_str()) == Some("rs") {
+    for entry in walkdir::WalkDir::new("src")
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.path().is_file() && entry.path().extension().and_then(|e| e.to_str()) == Some("rs")
+        {
             if let Ok(content) = fs::read_to_string(entry.path()) {
                 file_cache.insert(entry.path().to_path_buf(), content);
             }
@@ -160,34 +171,49 @@ pub async fn run_dev_server() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if html_changed && !logic_changed {
-            println!("{}", "🎨 UI change detected. Sending HTML fragment via WebSocket...".magenta());
-            // We just trigger a reload signal to the client for now to let Morphdom fetch the new page, 
-            // or we could extract the HTML and push it. 
+            println!(
+                "{}",
+                "🎨 UI change detected. Sending HTML fragment via WebSocket...".magenta()
+            );
+            // We just trigger a reload signal to the client for now to let Morphdom fetch the new page,
+            // or we could extract the HTML and push it.
             // Sending a generic UI_UPDATE signal is safer as a first step.
             let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
         }
 
         if logic_changed {
-            println!("{}", "🔄 File change detected. Recompiling library for Hot-Swap...".yellow());
+            println!(
+                "{}",
+                "🔄 File change detected. Recompiling library for Hot-Swap...".yellow()
+            );
             let status = Command::new("cargo")
                 .arg("build")
                 .arg("--lib")
                 .arg("-q")
                 .status()?;
-            
+
             if status.success() {
                 let client = reqwest::Client::new();
                 let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
                 let url = format!("http://127.0.0.1:{}/_rullst/internal/reload_dylib", port);
                 match client.post(&url).send().await {
-                    Ok(_) => println!("{}", "✅ Hot-Swap executed successfully. App updated!".green()),
-                    Err(_) => println!("{}", "⚠️ Failed to trigger hot-swap webhook. Is the app running?".red()),
+                    Ok(_) => println!(
+                        "{}",
+                        "✅ Hot-Swap executed successfully. App updated!".green()
+                    ),
+                    Err(_) => println!(
+                        "{}",
+                        "⚠️ Failed to trigger hot-swap webhook. Is the app running?".red()
+                    ),
                 }
             } else {
-                println!("{}", "❌ Build failed. Please fix errors to Hot-Swap.".red());
+                println!(
+                    "{}",
+                    "❌ Build failed. Please fix errors to Hot-Swap.".red()
+                );
             }
         }
-        
+
         last_build = std::time::Instant::now();
     }
 
@@ -221,7 +247,10 @@ fn build_and_migrate() {
                 if !stderr.trim().is_empty() {
                     println!("{}", stderr);
                 }
-                println!("{}", "❌ Compilation failed. Run `cargo build` to see errors.".red());
+                println!(
+                    "{}",
+                    "❌ Compilation failed. Run `cargo build` to see errors.".red()
+                );
                 std::process::exit(1);
             }
         }
