@@ -1084,4 +1084,16 @@ mod tests {
                 .contains("ECDSA P-256 signature verification failed")
         );
     }
+
+    #[test]
+    fn test_passkey_config_builder() {
+        let config = PasskeyConfig::new("rullst", "app.rullst.com", "https://app.rullst.com")
+            .with_rp_name("Custom Name")
+            .with_rp_id("custom.com")
+            .with_rp_origin("https://custom.com");
+
+        assert_eq!(config.rp_name, "Custom Name");
+        assert_eq!(config.rp_id, "custom.com");
+        assert_eq!(config.rp_origin, "https://custom.com");
+    }
 }

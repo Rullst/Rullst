@@ -2266,4 +2266,74 @@ mod tests {
         let response = router.oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
+
+    #[test]
+    fn test_sanitize_identifier() {
+        assert_eq!(sanitize_identifier("valid_id_123"), "valid_id_123");
+        assert_eq!(sanitize_identifier("invalid-id!"), "invalidid");
+        assert_eq!(sanitize_identifier("a_b-c!@#d"), "a_bcd");
+        let long_id = "a".repeat(70);
+        let sanitized = sanitize_identifier(&long_id);
+        assert_eq!(sanitized.len(), 64);
+        assert_eq!(sanitized, "a".repeat(64));
+    }
+
+    struct DummyModel;
+    impl NexusModel for DummyModel {
+        fn nexus_table() -> &'static str { "dummy" }
+        fn nexus_label() -> &'static str { "Dummies" }
+        fn nexus_fields() -> Vec<FieldMeta> { vec![] }
+    }
+
+    #[test]
+    fn test_nexus_model_defaults() {
+        assert_eq!(DummyModel::nexus_icon(), "📋");
+        assert_eq!(DummyModel::nexus_pk(), "id");
+    }
+
+    #[test]
+    fn test_render_record_form() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "👤",
+            pk: "id",
+            fields: vec![FieldMeta {
+                name: "email",
+                label: "Email",
+                kind: FieldKind::Text,
+                required: true,
+                default: None,
+            }],
+        };
+        let html = render_record_form(&entry, None);
+        assert!(html.contains("method=\"POST\""));
+        assert!(html.contains("action=\"/nexus/models/users\""));
+        assert!(html.contains("name=\"email\""));
+    }
+
+    #[test]
+    fn test_render_empty_state_html() {
+        let entry = RegistryEntry {
+            table: "users",
+            label: "Users",
+            icon: "👤",
+            pk: "id",
+            fields: vec![],
+        };
+        let html = render_empty_state_html(&entry);
+        assert!(html.contains("No Users found"));
+        assert!(html.contains("Create your first Users"));
+    }
+
+    #[test]
+    fn test_nexus_builder() {
+        let nexus = Nexus::new()
+            .with_brand("CustomBrand")
+            .register::<DummyModel>();
+
+        assert_eq!(nexus.brand, "CustomBrand");
+        assert_eq!(nexus.registry.len(), 1);
+        assert_eq!(nexus.registry[0].table, "dummy");
+    }
 }

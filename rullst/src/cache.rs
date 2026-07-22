@@ -623,6 +623,14 @@ mod tests {
         // Just verify that the constructor exists and returns a Result
         // We use an invalid URL so it fails parsing the connection string
         let result = Cache::redis("invalid-url-format://host:9999");
+        let result = Cache::redis("invalid-url-format://host:9999");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_memory_cache() {
+        memory::set("test_mem_key", "test_mem_val");
+        assert_eq!(memory::get("test_mem_key").unwrap(), "test_mem_val");
+        assert_eq!(memory::get("non_existent_mem_key"), None);
     }
 }

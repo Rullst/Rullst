@@ -579,4 +579,26 @@ mod tests {
         assert_eq!(token2.len(), 32);
         assert_ne!(token1, token2);
     }
+
+    #[test]
+    fn test_mask_pii() {
+        // Valid emails
+        assert_eq!(mask_pii("user@example.com"), "u***@example.com");
+        assert_eq!(mask_pii("us@example.com"), "u*@example.com");
+        assert_eq!(mask_pii("a.b+c-d_e%f@example.com"), "a**********@example.com");
+        assert_eq!(mask_pii("user@sub.example.com"), "u***@sub.example.com");
+
+        // Edge cases that should NOT be masked
+        assert_eq!(mask_pii("u@example.com"), "u@example.com"); // username too short
+        assert_eq!(mask_pii("user@ex.com"), "u***@ex.com");
+        assert_eq!(mask_pii("user@e.c"), "user@e.c"); // domain too short
+        assert_eq!(mask_pii("user@examplecom"), "user@examplecom"); // no dot in domain
+        assert_eq!(mask_pii("no_at_symbol.com"), "no_at_symbol.com");
+
+        // Mixed content
+        assert_eq!(
+            mask_pii("Contact me at user@example.com or other@test.com."),
+            "Contact me at u***@example.com or o****@test.com."
+        );
+    }
 }

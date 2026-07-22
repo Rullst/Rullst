@@ -485,6 +485,9 @@ mod tests {
         let res_put = Storage::put(&unique_file, b"hello global").await;
         assert!(res_put.is_ok());
 
+        let res_not_exists = Storage::exists("non_existent_file.txt").await.unwrap();
+        assert!(!res_not_exists);
+
         let res_exists = Storage::exists(&unique_file).await.unwrap();
         assert!(res_exists);
 

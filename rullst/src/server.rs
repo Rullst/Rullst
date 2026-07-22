@@ -927,4 +927,77 @@ mod tests {
         let body_bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
         assert_eq!(body_bytes, "recovered");
     }
+
+    #[tokio::test]
+    async fn test_hot_swap_service_reload_route() {
+        // This test only verifies that the route matching works correctly,
+        // we can't fully test dylib reloading here without complex setup.
+        let router = axum::Router::new().route("/", axum::routing::get(|| async { "root" }));
+        let current_router = Arc::new(RwLock::new(router));
+        let mut service = HotSwapService {
+            current_router: current_router.clone(),
+            active_libraries: Arc::new(Mutex::new(vec![])),
+            lib_path: "".to_string(),
+            is_dev: true,
+            shield: None,
+            limiter: None,
+        };
+
+        use tower_service::Service;
+        
+        // 1. Valid request to reload (we expect a 500 error because the lib path is empty/invalid)
+        let req = axum::http::Request::builder()
+            .method("POST")
+            .uri("/_rullst/internal/reload_dylib")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = service.call(req).await.unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+
+        // 2. Invalid method
+        let req = axum::http::Request::builder()
+            .method("GET")
+            .uri("/_rullst/internal/reload_dylib")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = service.call(req).await.unwrap();
+        assert_ne!(res.status(), axum::http::StatusCode::INTERNAL_SERVER_ERROR); // Will be 404 because not handled by HotSwapService reload block
+
+        // 3. Invalid URI
+        let req = axum::http::Request::builder()
+            .method("POST")
+            .uri("/_rullst/internal/other")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = service.call(req).await.unwrap();
+        assert_ne!(res.status(), axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn test_inject_hmr_script() {
+        use axum::response::IntoResponse;
+
+        let router = axum::Router::new()
+            .route("/", axum::routing::get(|| async {
+                axum::response::Html("<html><body>Hello</body></html>")
+            }))
+            .layer(axum::middleware::from_fn(inject_hmr_script));
+
+        use tower_service::Service;
+        let mut service = router;
+
+        unsafe {
+            std::env::set_var("PORT", "3000");
+        }
+        let req = axum::http::Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = service.call(req).await.unwrap();
+        let body_bytes = axum::body::to_bytes(res.into_body(), 10240).await.unwrap();
+        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        assert!(body_str.contains("Hello"));
+        assert!(body_str.contains("Rullst Hybrid Hot-Reloading"));
+        assert!(body_str.contains("ws://localhost:3001/_rullst_hmr"));
+    }
 }

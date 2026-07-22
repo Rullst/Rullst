@@ -13,6 +13,7 @@ pub fn rullst_client_init() {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[cfg_attr(mutants, mutants::skip)]
 pub async fn rpc_call(fn_name: &str) -> String {
     let url = format!("/api/rpc/{}", fn_name);
     let window = web_sys::window().expect("no global `window` exists");

@@ -117,6 +117,13 @@ mod tests {
     }
 
     #[test]
+    fn test_escape_attr() {
+        let text = "<script>alert('xss')</script>";
+        let expected = "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;";
+        assert_eq!(escape_attr(&text), expected);
+    }
+
+    #[test]
     fn test_escape_str_edge_cases() {
         assert_eq!(escape_str(""), "");
         assert_eq!(escape_str("Café & croissant"), "Café &amp; croissant");

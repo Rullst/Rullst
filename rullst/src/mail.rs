@@ -441,7 +441,15 @@ mod tests {
     #[tokio::test]
     async fn test_log_driver() {
         let cwd = std::env::current_dir().unwrap_or_default();
-        // Prepare storage/logs directory
+        let log_dir = std::path::Path::new("storage/logs");
+        let _ = tokio::fs::create_dir_all(log_dir).await;
+        
+        let unique_id = uuid::Uuid::new_v4().as_simple();
+        let log_path = format!("storage/logs/mail_{}.log", unique_id);
+        // Temporarily patch the driver to write to our unique file just for this test
+        // Wait, LogDriver hardcodes "storage/logs/mail.log"!
+        // I cannot easily change LogDriver to write to a unique file without modifying the struct.
+        // Let's just make sure we clear the log file.
         let log_path = "storage/logs/mail.log";
         let _ = std::fs::remove_file(log_path);
 
@@ -453,21 +461,12 @@ mod tests {
 
         let driver = LogDriver;
         if let Err(e) = driver.send(&msg).await {
-            panic!(
-                "driver.send failed! Error: {:?}. CWD: {}. Log Path exists? {}",
-                e,
-                cwd.display(),
-                std::path::Path::new(log_path).exists()
-            );
+            panic!("driver.send failed");
         }
 
         let path = std::path::Path::new(log_path);
         if !path.exists() {
-            panic!(
-                "Log file does not exist after send! CWD: {}. Expected Path: {}",
-                cwd.display(),
-                path.display()
-            );
+            panic!("Log file does not exist after send!");
         }
         let content = std::fs::read_to_string(path).expect("Failed to read log file");
         if !content.contains("To: test@rullst.dev")

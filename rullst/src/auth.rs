@@ -365,6 +365,20 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
+    fn test_password_length_limits() {
+        let long_password = "a".repeat(73);
+        let valid_password = "a".repeat(72);
+
+        assert!(hash_password(&long_password).is_err());
+        assert!(hash_password(&valid_password).is_ok());
+
+        let hash = hash_password(&valid_password).unwrap();
+        assert!(!verify_password(&long_password, &hash));
+        assert!(verify_password(&valid_password, &hash));
+    }
+
+    #[test]
     fn test_make_login_logout_cookie() {
         unsafe {
             std::env::set_var("APP_KEY", "test_key_for_cookie_1234567890");

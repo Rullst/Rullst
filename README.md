@@ -3,7 +3,8 @@
 </p>
 
 <h1 align="center">Rullst 📜🦀🌐🚀</h1>
-<h3 align="center"><i>Rust for those who want to build, not suffer.</i></h3>
+<h3 align="center"><i>Rust for those who want to build securely and easily, but not suffer.
+</i></h3>
 
 <p align="center">
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io"></a>
