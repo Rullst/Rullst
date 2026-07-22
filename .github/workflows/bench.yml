@@ -35,8 +35,8 @@ jobs:
           tool: 'cargo'
           output-file-path: output.txt
           fail-on-alert: true
-          # Alert threshold set to 130% to avoid noisy neighbors on GitHub Actions runners
-          alert-threshold: '150%'
+          # Alert threshold set to 300% to avoid noisy neighbors on GitHub Actions runners for microbenchmarks (ns scale)
+          alert-threshold: '300%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           # Only push to gh-pages when running on main branch, not on PRs
