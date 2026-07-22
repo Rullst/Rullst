@@ -46,8 +46,11 @@
       <div class="nav-links" id="nav-links">
         <a href="https://github.com/Rullst/Rullst" target="_blank" class="btn btn-outline">⭐ GitHub</a>
         
+        <a href="/Rullst/book/" class="btn btn-outline"
+          style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📖 mdBook</a>
+          
         <a href="https://github.com/Rullst/Rullst/tree/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
-          style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📚 Docs</a>
+          style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub Docs</a>
 
         <a href="/Rullst/benches/" class="btn btn-outline"
           style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05);">📊
@@ -907,10 +910,11 @@ pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoRespon
       </div>
     </div>
 
-    <div style="text-align: center; margin-top: 3rem;">
-      <a href="https://github.com/Rullst/Rullst/blob/main/docs/index.md" target="_blank" class="btn btn-primary"
-        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block;">📚 Read the Full
-        Documentation</a>
+    <div style="text-align: center; margin-top: 3rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="/Rullst/book/" class="btn btn-primary"
+        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block;">📖 Read on mdBook</a>
+      <a href="https://github.com/Rullst/Rullst/tree/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-secondary"
+        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block; background: rgba(255,255,255,0.05); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1);">📝 Read on GitHub</a>
     </div>
 
     <script>
