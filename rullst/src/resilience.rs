@@ -215,7 +215,7 @@ pub struct RateLimitConfig {
 
 impl RateLimitConfig {
     /// Creates a new `RateLimitConfig` with explicit burst capacity and refill rate.
-    /// For convenience, prefer the factory methods: [`per_second`], [`per_minute`], [`per_hour`].
+    /// For convenience, prefer the factory methods: `per_second`, `per_minute`, `per_hour`.
     pub fn new(max_tokens: f64, refill_rate: f64) -> Self {
         Self {
             max_tokens,

@@ -143,6 +143,7 @@ pub use scheduler::Scheduler;
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(all(not(target_arch = "wasm32"), feature = "mailer"))]
+/// Exports for the Mailer feature.
 pub mod mail_exports {
     pub use crate::mail::{Mail, Message as MailMessage};
 }
@@ -181,6 +182,7 @@ pub use testing::{TestApp, TestRequestBuilder, TestResponse};
 
 // Re-export Milestone 9: Nexus Panel (Auto-Generated CMS & AI Admin)
 #[cfg(all(not(target_arch = "wasm32"), feature = "nexus"))]
+/// Exports for the Nexus CMS feature.
 pub mod nexus_exports {
     pub use crate::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
 }
