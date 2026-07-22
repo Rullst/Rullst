@@ -15,7 +15,7 @@
 
 <br/>
 
-**Rullst** is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
+**Rullst** is an opinionated, developer-first full-stack web framework for Rust, obsessively designed for **Emotional Productivity and Security**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
 
 ---
 
@@ -184,13 +184,13 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **HTTP & Routing** | ✅ | ✅ | ✅ | ✅ (SSR) | ✅ |
 | **Built-in ORM** | ✅ (Rullst-ORM) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
-| **Interactive CLI Dashboard** | ✅ (`studio`) | ❌ | ❌ | ❌ | ❌ |
-| **Auto-Generated Admin Panel**| ✅ (Nexus) | ❌ | ❌ | ❌ | ❌ |
-| **Wasm Islands (Frontend)** | ✅ (Native) | ❌ | ❌ | ✅ (Core focus) | ❌ |
-| **Reactive SSR (No-JS)** | ✅ (Native) | ❌ | ✅ (Signals)| ❌ | ❌ |
-| **Mobile/Desktop Apps** | ✅ (Tauri Omni)| ❌ | ❌ | ✅ (Dioxus) | ❌ |
-| **Hot-Reloading** | ✅ (DLL swap) | ❌ | ❌ | ✅ (Dioxus) | ❌ |
-| **Zero-Panics Policy** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **TypeScript SDK Generator** | ✅ (`generate:ts`) | ❌ | ❌ | ❌ | ❌ |
+| **Interactive CLI Dashboard** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Generated Admin Panel**| ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
+| **Wasm Islands (Frontend)** | ✅ (Pure Rust) | ❌ | ❌ | ✅ (Core focus) | ❌ |
+| **Reactive SSR (No-JS)** | ✅ (Pure Rust) | ❌ | ✅ (Signals)| ❌ | ❌ |
+| **Mobile/Desktop Apps** | ✅ (Tauri Integration)| ❌ | ❌ | ✅ (Dioxus) | ❌ |
+| **Hot-Reloading** | ✅ (Built-in) | ❌ | ❌ | ✅ (Dioxus) | ❌ |
+| **Zero-Panics Policy** | ✅ (Enforced) | ❌ | ❌ | ❌ | ❌ |
+| **TypeScript SDK Generator** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 | **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 

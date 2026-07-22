@@ -456,7 +456,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                             active_libs.remove(0);
                         }
 
-                        println!("\x1b[32m🚀 Rullst Hot-Reload: Dylib swaped instantly via webhook!\x1b[0m");
+                        println!("\x1b[32m🚀 Rullst Hot-Reload: Dylib swapped instantly via webhook!\x1b[0m");
                         
                         let res = axum::response::Response::builder()
                             .status(axum::http::StatusCode::OK)

@@ -1,4 +1,4 @@
-use rullst::{live_component, live_event};
+use rullst::live_component;
 use rullst::html;
 
 /// Nosso componente Rullst Live. Todo o estado vive e é operado pelo servidor!
