@@ -461,7 +461,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                         let res = axum::response::Response::builder()
                             .status(axum::http::StatusCode::OK)
                             .body(axum::body::Body::from("Swapped"))
-                            .unwrap();
+                            .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
                         Ok(res)
                     }
                     Err(e) => {
@@ -469,7 +469,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                         let res = axum::response::Response::builder()
                             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                             .body(axum::body::Body::from(e.to_string()))
-                            .unwrap();
+                            .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
                         Ok(res)
                     }
                 }

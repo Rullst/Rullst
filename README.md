@@ -19,6 +19,18 @@
 
 ---
 
+## 💡 A Filosofia Rullst (The Rullst Philosophy)
+
+Unlike other frameworks, Rullst strives to be **simultaneously simple and complete**, with a relentless focus on **security** and **developer experience (DX)**.
+
+Rullst was forged for those who want to build with ease and safety, harnessing the raw speed and resource efficiency of Rust—much like how the creator of Rust itself was inspired to solve the problem of crashing elevator software.
+
+Our core tenets:
+1. **Simple yet Complete:** We solve the hardest web development problems out-of-the-box securely, without sacrificing simplicity or completeness.
+2. **Built for Humans and AIs:** Rullst is architected to be highly legible and free of runtime "magic". It empowers both human developers and AI agents to collaborate and build production-ready systems, even without deep prior framework knowledge.
+
+---
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:

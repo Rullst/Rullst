@@ -19,11 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - **Dependencies Upgrade**: Updated all dependencies in the workspace to their latest stable compatible versions.
+- **OpenTelemetry v0.32 API Upgrade**: Migrated `telemetry.rs` to use the new `SdkTracerProvider` and `Resource` builder patterns mandated by the `0.32.1` release.
+- **Dependency Cleanups**: Pruned unused packages across `cargo-rullst`, `test1`, and examples using `cargo machete` for a leaner workspace.
 
 ### Security
 - **SSH/SCP Option & Command Injection Defense**: Hardened `cargo-rullst` deployment generator (`foundry.rs`) by adding POSIX option delimiters (`--`) before destination arguments in `ssh` and `scp` invocations, enforcing strict character validation on upload binary names (`bin_name`), and validating environment variable keys and values to prevent newline or argument injection during remote server provisioning.
 - **Supply Chain Security**: Pinned `softprops/action-gh-release` and `rust-lang/crates-io-auth-action` to their absolute commit SHAs in the release workflow to resolve Scorecard Pinned-Dependencies alerts.
 - **Windows Shell Injection Mitigation**: Replaced unsafe `cmd /C npm` invocations with direct `npm.cmd` and `npx.cmd` binary executions in the `cargo-rullst` desktop generator to prevent potential command injection on Windows environments.
+- **Vite & Dependabot Vulnerability Patch**: Updated `vite`, `esbuild`, and `launch-editor` in the documentation hub (`docs/package.json`) to eliminate High and Moderate security alerts (path traversal and NTLMv2 hash disclosure bypasses).
+- **Zero-Panic Enforcement in Server Router**: Replaced `unwrap()` calls with graceful error handling `unwrap_or_else` in `rullst/src/server.rs` HotSwapService to satisfy `-D clippy::unwrap_used` constraints.
 
 ### Refactoring & Code Quality
 - **Server Router Readability**: Extracted `handle_oneshot_error` and `handle_panic_error` helper functions in `rullst/src/server.rs` to flatten deep nesting and improve maintainability of the `HotSwapService` response handler.

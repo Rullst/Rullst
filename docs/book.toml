@@ -1,0 +1,10 @@
+[book]
+authors = ["Rullst Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Rullst Framework Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/Rullst/Rullst"
+edit-url-template = "https://github.com/Rullst/Rullst/edit/main/docs/src/{path}"

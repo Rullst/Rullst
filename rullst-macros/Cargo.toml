@@ -16,7 +16,6 @@ proc-macro = true
 syn = { version = "3", features = ["full", "extra-traits"] }
 quote = "1.0.45"
 proc-macro2 = "1.0.106"
-notify = "8"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

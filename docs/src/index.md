@@ -22,3 +22,4 @@ Rullst is an extremely fast, modular, and friendly Full-Stack web framework for 
 - 🧩 **Wasm Islands:** Write client-side components in Rust.
 - 📦 **Batteries Included:** ORM (rullst-orm), Jobs, Mail, Scheduler, Cache.
 - 🛡️ **Strong Typing:** Compile-time checking.
+- 📡 **Lightweight Telemetry:** OpenTelemetry traces behind a lightweight feature flag.
