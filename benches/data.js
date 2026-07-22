@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784681371310,
+  "lastUpdate": 1784683594130,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -539,6 +539,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1745,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ae8e0a110f4031b62646514802b61d84f284e338",
+          "message": "chore: format files, update Cargo.lock and add codecov.yml",
+          "timestamp": "2026-07-21T22:24:56-03:00",
+          "tree_id": "fefec6aacd05d7dadc1a78377c5571f4eda6ce96",
+          "url": "https://github.com/Rullst/Rullst/commit/ae8e0a110f4031b62646514802b61d84f284e338"
+        },
+        "date": 1784683593594,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 620,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 890,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 663,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1803,
+            "range": "± 58",
             "unit": "ns/iter"
           }
         ]
