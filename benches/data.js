@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784693178328,
+  "lastUpdate": 1784693832677,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -809,6 +809,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1751,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a752a2e40575fe13fb6900b3809c52af752ec834",
+          "message": "docs: Fix broken intra-doc links",
+          "timestamp": "2026-07-22T01:15:43-03:00",
+          "tree_id": "c4b172f57059e79c0822bad936ef0d3f2e12718a",
+          "url": "https://github.com/Rullst/Rullst/commit/a752a2e40575fe13fb6900b3809c52af752ec834"
+        },
+        "date": 1784693832068,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 441,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 634,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 434,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1188,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
