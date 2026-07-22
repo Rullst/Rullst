@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784695244927,
+  "lastUpdate": 1784695568759,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -917,6 +917,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2316,
             "range": "± 66",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e28603c5c1c33ff5877f717699e773162b0b7a71",
+          "message": "docs: Remove invalid multilingual field from book.toml",
+          "timestamp": "2026-07-22T01:44:28-03:00",
+          "tree_id": "0798b13c25ad5c4a0e82e143c92f8b0f272b688d",
+          "url": "https://github.com/Rullst/Rullst/commit/e28603c5c1c33ff5877f717699e773162b0b7a71"
+        },
+        "date": 1784695568406,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 751,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 975,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 612,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2240,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
