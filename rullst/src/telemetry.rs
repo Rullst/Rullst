@@ -134,6 +134,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_privacy_visitor_via_event() {
         use tracing_subscriber::layer::SubscriberExt;
         let leaks = Arc::new(Mutex::new(Vec::new()));

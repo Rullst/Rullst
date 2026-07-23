@@ -38,7 +38,9 @@ jobs:
 
       - name: Build Rullst Server
         working-directory: zap_test
-        run: cargo build
+        run: |
+          cargo update -p rullst-orm-macros --precise 6.0.3
+          cargo build
 
       - name: Run Rullst Server in background
         working-directory: zap_test
