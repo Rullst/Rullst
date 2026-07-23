@@ -7,7 +7,7 @@ description = "JSX-like compilation macros for Rullst framework"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-rust-version = "1.96.0"
+rust-version = "1.97.1"
 
 [lib]
 proc-macro = true

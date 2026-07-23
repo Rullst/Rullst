@@ -109,11 +109,11 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tracing_core::subscriber::Subscriber;
-    use tracing_core::Event;
-    use tracing_subscriber::layer::Context;
-    use tracing_subscriber::Layer;
     use std::sync::{Arc, Mutex};
+    use tracing_core::Event;
+    use tracing_core::subscriber::Subscriber;
+    use tracing_subscriber::Layer;
+    use tracing_subscriber::layer::Context;
 
     #[derive(Clone)]
     struct TestLayer {
@@ -137,7 +137,9 @@ mod tests {
     fn test_privacy_visitor_via_event() {
         use tracing_subscriber::layer::SubscriberExt;
         let leaks = Arc::new(Mutex::new(Vec::new()));
-        let layer = TestLayer { leaks: leaks.clone() };
+        let layer = TestLayer {
+            leaks: leaks.clone(),
+        };
         let subscriber = tracing_subscriber::registry().with(layer);
         let _guard = tracing::subscriber::set_default(subscriber);
 

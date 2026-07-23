@@ -12,6 +12,7 @@ pub mod db;
 pub mod desktop;
 pub mod dev;
 pub mod foundry;
+pub mod introspect;
 pub mod island;
 pub mod middleware;
 pub mod migration;
@@ -20,7 +21,6 @@ pub mod openapi;
 pub mod project;
 pub mod ts;
 pub mod worker;
-pub mod introspect;
 
 /// Verifies if the current execution directory is a valid Rullst project
 pub fn is_rullst_project() -> bool {

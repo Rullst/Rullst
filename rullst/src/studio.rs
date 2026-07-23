@@ -760,8 +760,14 @@ mod tests {
 
     #[test]
     fn test_build_search_clause() {
-        assert_eq!(build_search_clause("postgres", "col"), "CAST(\"col\" AS TEXT) ILIKE ");
-        assert_eq!(build_search_clause("mysql", "col"), "CAST(`col` AS CHAR) LIKE ");
+        assert_eq!(
+            build_search_clause("postgres", "col"),
+            "CAST(\"col\" AS TEXT) ILIKE "
+        );
+        assert_eq!(
+            build_search_clause("mysql", "col"),
+            "CAST(`col` AS CHAR) LIKE "
+        );
         assert_eq!(build_search_clause("sqlite", "col"), "\"col\" LIKE ");
     }
 
@@ -783,7 +789,10 @@ mod tests {
     #[cfg(not(miri))]
     async fn test_build_rows_html() {
         let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
-        let db_path = format!("sqlite:file:build_rows_{}?mode=memory&cache=shared", unique_id);
+        let db_path = format!(
+            "sqlite:file:build_rows_{}?mode=memory&cache=shared",
+            unique_id
+        );
         let _ = rullst_orm::Orm::init(&db_path).await;
         let pool = crate::db::safe_pool().expect("pool should be initialized");
 
@@ -791,9 +800,9 @@ mod tests {
             .fetch_one(pool)
             .await
             .unwrap();
-            
+
         let html = build_rows_html(&[row], &["s".to_string(), "n".to_string()]);
-        
+
         assert!(html.contains("text-slate-600 font-mono italic")); // for the NULL column
         assert!(html.contains("text-slate-300")); // for the "hello" column
     }

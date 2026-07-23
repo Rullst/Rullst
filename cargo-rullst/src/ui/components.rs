@@ -286,6 +286,7 @@ fn handle_scaffold_code(
         "🚪  Middleware            (cargo rullst make:middleware)",
         "⚙️  Background Worker     (cargo rullst make:worker)",
         "📂  Blank Migration       (cargo rullst make:migration)",
+        "🤖  Introspect DB Models  (cargo rullst generate:models)",
     ];
     let selection = dialoguer::Select::with_theme(theme)
         .with_prompt("Choose component to scaffold:\n")
@@ -319,6 +320,12 @@ fn handle_scaffold_code(
             "make:migration",
             vec![],
         ),
+        5 => {
+            return execute_command(vec![
+                std::env::args().next().unwrap_or_default(),
+                "generate:models".to_string(),
+            ]);
+        }
         _ => return Ok(()),
     };
 
@@ -546,6 +553,10 @@ fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
                 ("cargo rullst make:middleware <Name>", "New middleware"),
                 ("cargo rullst make:worker <Name>", "New background worker"),
                 ("cargo rullst make:migration <name>", "Blank migration"),
+                (
+                    "cargo rullst generate:models",
+                    "Reverse-engineer live DB to Models",
+                ),
             ],
         ),
         (

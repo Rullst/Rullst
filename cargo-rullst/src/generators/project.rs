@@ -707,7 +707,7 @@ fn create_dockerfile(project_path: &Path, project_name: &str) -> Result<(), std:
 # ══════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ─────────────────────────────────────────
-FROM rust:1.96-slim-bookworm AS builder
+FROM rust:1.97-slim-bookworm AS builder
 WORKDIR /app
 
 # Install system dependencies for SQLite/Postgres/MySQL linking

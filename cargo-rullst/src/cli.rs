@@ -13,10 +13,10 @@ use crate::generators::{
     db::run_project_db_command,
     desktop::{run_omni_app, scaffold_omni_system},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
+    introspect::generate_models_from_db,
     middleware::create_new_middleware,
     migration::create_new_migration,
     model::create_new_model,
-    introspect::generate_models_from_db,
     openapi::generate_openapi_spec,
     project::create_new_project,
     worker::create_new_worker,
@@ -260,7 +260,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::GenerateTs => {
             crate::generators::ts::generate_ts_sdk()?;
         }
-        Commands::GenerateModels { driver, url, output } => {
+        Commands::GenerateModels {
+            driver,
+            url,
+            output,
+        } => {
             generate_models_from_db(driver, url, output)?;
         }
         Commands::MakeWorker { name } => {

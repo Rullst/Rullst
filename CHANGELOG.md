@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dependencies Upgrade**: Updated all dependencies in the workspace to their latest stable compatible versions.
 - **OpenTelemetry v0.32 API Upgrade**: Migrated `telemetry.rs` to use the new `SdkTracerProvider` and `Resource` builder patterns mandated by the `0.32.1` release.
 - **Dependency Cleanups**: Pruned unused packages across `cargo-rullst`, `test1`, and examples using `cargo machete` for a leaner workspace.
+- **Rust 1.97.1 Upgrade**: Upgraded Rullst to use Rust 1.97.1 as the minimum supported rust version (MSRV) and updated internal Dockerfile templates.
 
 ### Security
 - **SSH/SCP Option & Command Injection Defense**: Hardened `cargo-rullst` deployment generator (`foundry.rs`) by adding POSIX option delimiters (`--`) before destination arguments in `ssh` and `scp` invocations, enforcing strict character validation on upload binary names (`bin_name`), and validating environment variable keys and values to prevent newline or argument injection during remote server provisioning.
@@ -36,7 +37,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Testing
 - **Rate Limit Middleware Rejection Coverage**: Added integration test `test_rate_limit_middleware_rejection` in `rullst/src/resilience.rs` verifying that `rate_limit_middleware` properly intercepts requests exceeding the rate limit and returns HTTP `429 Too Many Requests` with the expected rejection text body.
 - **Edge Cases & Builders Coverage**: Added rigorous unit tests for `HtmxResponse::refresh` builders, `ReplicationConfig` sync/auth token builders, memory cache `remember` error closures, and a crucial edge case testing empty Stripe webhook secrets in `capital.rs`.
-
 
 ## [4.0.2] - 2026-06-29
 
