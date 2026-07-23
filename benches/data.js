@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784779156444,
+  "lastUpdate": 1784779971171,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1295,6 +1295,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1598,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2529b812d1ae3343424bbac49019d8b785b5a077",
+          "message": "feat: implement mail service with Log, SMTP, Resend, and SendGrid drivers and add supporting storage and studio modules",
+          "timestamp": "2026-07-23T01:08:35-03:00",
+          "tree_id": "06d931d41e60bc1202b827ffeeab48a61bd75fd6",
+          "url": "https://github.com/Rullst/Rullst/commit/2529b812d1ae3343424bbac49019d8b785b5a077"
+        },
+        "date": 1784779970825,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 717,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 993,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 621,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2225,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
