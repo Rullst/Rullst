@@ -107,6 +107,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
@@ -134,7 +135,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn test_privacy_visitor_via_event() {
         use tracing_subscriber::layer::SubscriberExt;
         let leaks = Arc::new(Mutex::new(Vec::new()));
