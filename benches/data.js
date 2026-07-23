@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784836817637,
+  "lastUpdate": 1784838304486,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1457,6 +1457,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2241,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a28b0e73b163709c61aab0199c881a5e0096da8a",
+          "message": "feat: add sensitive data redaction telemetry layer, temp_orm package, and OWASP ZAP security scan workflow",
+          "timestamp": "2026-07-23T17:20:38-03:00",
+          "tree_id": "cecef2ebf46e9e45c5fbb1620fe1218591a2128d",
+          "url": "https://github.com/Rullst/Rullst/commit/a28b0e73b163709c61aab0199c881a5e0096da8a"
+        },
+        "date": 1784838303444,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 743,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 609,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2234,
+            "range": "± 89",
             "unit": "ns/iter"
           }
         ]
