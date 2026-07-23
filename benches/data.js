@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784758652033,
+  "lastUpdate": 1784779156444,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1241,6 +1241,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2256,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "daac0836c9f89405a189080fb6720dbcd9091d9a",
+          "message": "feat: implement storage abstraction with local and S3 drivers and initialize project foundation modules",
+          "timestamp": "2026-07-23T00:55:33-03:00",
+          "tree_id": "af92a3c3fea1efff6fd20750d612bedd5bdd9aa9",
+          "url": "https://github.com/Rullst/Rullst/commit/daac0836c9f89405a189080fb6720dbcd9091d9a"
+        },
+        "date": 1784779155317,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 521,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 771,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 523,
+            "range": "± 51",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1598,
+            "range": "± 57",
             "unit": "ns/iter"
           }
         ]
