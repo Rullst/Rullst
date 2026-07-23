@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784779971171,
+  "lastUpdate": 1784834055338,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1349,6 +1349,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2225,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8c25491f2d9540d1967230900e4d3f4cdc314834",
+          "message": "feat: implement extensible mail service with Log, SMTP, and Resend drivers",
+          "timestamp": "2026-07-23T16:10:27-03:00",
+          "tree_id": "19cd53d06c78939ac026251aee4bdff397599fc2",
+          "url": "https://github.com/Rullst/Rullst/commit/8c25491f2d9540d1967230900e4d3f4cdc314834"
+        },
+        "date": 1784834054509,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 529,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 779,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 536,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1657,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
