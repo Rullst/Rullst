@@ -1,9 +1,0 @@
-[package]
-name = "temp_orm"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-rullst-orm = "6.0.3"
-tokio = { version = "1.43", features = ["full"] }
-sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio"] }

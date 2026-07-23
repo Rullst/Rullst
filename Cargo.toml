@@ -3,7 +3,7 @@ members = [
     "rullst",
     "rullst-macros",
     "cargo-rullst",
-    "examples/blog", "temp_orm",
+    "examples/blog",
 ]
 exclude = [
     "benchmark/rullst",
