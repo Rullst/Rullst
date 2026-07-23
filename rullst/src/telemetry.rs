@@ -105,3 +105,53 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tracing_core::subscriber::Subscriber;
+    use tracing_core::Event;
+    use tracing_subscriber::layer::Context;
+    use tracing_subscriber::Layer;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    struct TestLayer {
+        leaks: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl<S: Subscriber> Layer<S> for TestLayer {
+        fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+            let mut visitor = PrivacyVisitor {
+                has_leak: false,
+                leaked_field: String::new(),
+            };
+            event.record(&mut visitor);
+            if visitor.has_leak {
+                self.leaks.lock().unwrap().push(visitor.leaked_field);
+            }
+        }
+    }
+
+    #[test]
+    fn test_privacy_visitor_via_event() {
+        use tracing_subscriber::layer::SubscriberExt;
+        let leaks = Arc::new(Mutex::new(Vec::new()));
+        let layer = TestLayer { leaks: leaks.clone() };
+        let subscriber = tracing_subscriber::registry().with(layer);
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        tracing::info!(cpf = "123", "test cpf");
+        tracing::info!(password = "abc", "test pwd");
+        tracing::info!(email = "a@b.com", "test email");
+        tracing::info!(credit_card = "4444", "test cc");
+        tracing::info!(safe_field = "ok", "test safe");
+
+        let l = leaks.lock().unwrap();
+        assert_eq!(l.len(), 4);
+        assert!(l.contains(&"cpf".to_string()));
+        assert!(l.contains(&"password".to_string()));
+        assert!(l.contains(&"email".to_string()));
+        assert!(l.contains(&"credit_card".to_string()));
+    }
+}

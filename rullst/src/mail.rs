@@ -589,4 +589,13 @@ mod tests_additional {
         // If mutated to Ok(()), this will fail.
         assert!(res.is_err());
     }
+
+    #[cfg(not(feature = "mail-smtp"))]
+    #[tokio::test]
+    async fn test_smtp_driver_disabled() {
+        let driver = SmtpDriver;
+        let msg = Message::new().to("test@rullst.dev").subject("Test");
+        let res = driver.send(&msg).await;
+        assert!(res.is_err());
+    }
 }

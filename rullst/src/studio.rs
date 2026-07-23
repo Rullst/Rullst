@@ -53,13 +53,8 @@ fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
 }
 
 /// Dynamic SQLite schema tables finder
-async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = crate::db::safe_pool()
-        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
-    let driver = crate::db::safe_driver()
-        .ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
-
-    let query = match driver {
+fn build_fetch_tables_query(driver: &str) -> &'static str {
+    match driver {
         "postgres" => {
             "SELECT CAST(table_name AS VARCHAR) as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name ASC"
         }
@@ -69,7 +64,16 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
         _ => {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
         }
-    };
+    }
+}
+
+async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
+    let pool = crate::db::safe_pool()
+        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let driver = crate::db::safe_driver()
+        .ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
+
+    let query = build_fetch_tables_query(driver);
 
     let rows = sqlx::query(query).fetch_all(pool).await?;
 
@@ -82,6 +86,28 @@ async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
     Ok(tables)
 }
 
+fn quote_table_name(driver: &str, clean_table: &str) -> String {
+    if driver == "mysql" {
+        format!("`{}`", clean_table)
+    } else {
+        format!("\"{}\"", clean_table)
+    }
+}
+
+fn build_schema_query(driver: &str, clean_table: &str) -> String {
+    match driver {
+        "postgres" => format!(
+            "SELECT CAST(column_name AS VARCHAR) as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = 'public'",
+            clean_table
+        ),
+        "mysql" => format!(
+            "SELECT column_name as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = DATABASE()",
+            clean_table
+        ),
+        _ => format!("PRAGMA table_info(\"{}\")", clean_table),
+    }
+}
+
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
     let pool = crate::db::safe_pool()
@@ -89,28 +115,14 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     let driver = crate::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
-    let quoted_table = if driver == "mysql" {
-        format!("`{}`", clean_table)
-    } else {
-        format!("\"{}\"", clean_table)
-    };
+    let quoted_table = quote_table_name(driver, &clean_table);
 
     let mut qb: QueryBuilder<Any> =
         QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
 
     if let Some(search) = search_query {
         if !search.is_empty() {
-            let schema_query = match driver {
-                "postgres" => format!(
-                    "SELECT CAST(column_name AS VARCHAR) as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = 'public'",
-                    clean_table
-                ),
-                "mysql" => format!(
-                    "SELECT column_name as name FROM information_schema.columns WHERE table_name = '{}' AND table_schema = DATABASE()",
-                    clean_table
-                ),
-                _ => format!("PRAGMA table_info(\"{}\")", clean_table),
-            };
+            let schema_query = build_schema_query(driver, &clean_table);
             if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query)
                 .build()
                 .fetch_all(pool)
@@ -744,5 +756,45 @@ mod tests {
         assert_eq!(get_any_value_as_string(&row, 1), "42");
         assert_eq!(get_any_value_as_string(&row, 2), "3.14");
         assert_eq!(get_any_value_as_string(&row, 3), "NULL");
+    }
+
+    #[test]
+    fn test_build_search_clause() {
+        assert_eq!(build_search_clause("postgres", "col"), "CAST(\"col\" AS TEXT) ILIKE ");
+        assert_eq!(build_search_clause("mysql", "col"), "CAST(`col` AS CHAR) LIKE ");
+        assert_eq!(build_search_clause("sqlite", "col"), "\"col\" LIKE ");
+    }
+
+    #[test]
+    fn test_query_builders() {
+        assert!(build_fetch_tables_query("postgres").contains("information_schema"));
+        assert!(build_fetch_tables_query("mysql").contains("DATABASE()"));
+        assert!(build_fetch_tables_query("sqlite").contains("sqlite_master"));
+
+        assert_eq!(quote_table_name("mysql", "tbl"), "`tbl`");
+        assert_eq!(quote_table_name("postgres", "tbl"), "\"tbl\"");
+
+        assert!(build_schema_query("postgres", "tbl").contains("information_schema"));
+        assert!(build_schema_query("mysql", "tbl").contains("DATABASE()"));
+        assert!(build_schema_query("sqlite", "tbl").contains("PRAGMA"));
+    }
+
+    #[tokio::test]
+    #[cfg(not(miri))]
+    async fn test_build_rows_html() {
+        let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
+        let db_path = format!("sqlite:file:build_rows_{}?mode=memory&cache=shared", unique_id);
+        let _ = rullst_orm::Orm::init(&db_path).await;
+        let pool = crate::db::safe_pool().expect("pool should be initialized");
+
+        let row = sqlx::query("SELECT 'hello' as s, NULL as n")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+            
+        let html = build_rows_html(&[row], &["s".to_string(), "n".to_string()]);
+        
+        assert!(html.contains("text-slate-600 font-mono italic")); // for the NULL column
+        assert!(html.contains("text-slate-300")); // for the "hello" column
     }
 }

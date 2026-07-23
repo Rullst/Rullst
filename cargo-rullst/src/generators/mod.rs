@@ -20,6 +20,7 @@ pub mod openapi;
 pub mod project;
 pub mod ts;
 pub mod worker;
+pub mod introspect;
 
 /// Verifies if the current execution directory is a valid Rullst project
 pub fn is_rullst_project() -> bool {

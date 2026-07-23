@@ -16,6 +16,7 @@ use crate::generators::{
     middleware::create_new_middleware,
     migration::create_new_migration,
     model::create_new_model,
+    introspect::generate_models_from_db,
     openapi::generate_openapi_spec,
     project::create_new_project,
     worker::create_new_worker,
@@ -119,6 +120,19 @@ pub enum Commands {
     /// Scans routes and generates a typed TypeScript client SDK
     #[command(name = "generate:ts")]
     GenerateTs,
+    /// Connects to an existing database and generates Rullst ORM models
+    #[command(name = "generate:models")]
+    GenerateModels {
+        /// The database type (sqlite, postgres, mysql)
+        #[arg(short, long)]
+        driver: String,
+        /// The connection string
+        #[arg(short, long)]
+        url: String,
+        /// The output directory
+        #[arg(short, long, default_value = "src/models")]
+        output: String,
+    },
     /// Creates a new background worker in the src/workers/ folder
     #[command(name = "make:worker")]
     MakeWorker {
@@ -245,6 +259,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::GenerateTs => {
             crate::generators::ts::generate_ts_sdk()?;
+        }
+        Commands::GenerateModels { driver, url, output } => {
+            generate_models_from_db(driver, url, output)?;
         }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;

@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Native Reactive SSR (Rullst Live)**: Introduced `#[live_component]` and `#[live_event]` declarative macros. Developers can now build highly interactive, real-time WebSocket UIs (LiveView style) without writing JavaScript or WebAssembly. The macro automatically handles DOM diffing events and state syncing via HTMX.
 - **Documentation Hub**: A premium VitePress documentation portal in `docs/` with dark mode aesthetics.
 - **TypeScript SDK Generator (`generate:ts`)**: AST-based CLI command to dynamically generate typed `rullst-client.ts`.
+- **Database-First Introspection (`generate:models`)**: Integrated the ORM schema introspection engine into the `cargo-rullst` CLI. Developers can now reverse-engineer live PostgreSQL, MySQL, and SQLite databases to automatically generate idiomatic Rust `#[derive(Orm)]` structs via `cargo rullst generate:models`.
 - **Ultra-Lightweight OpenTelemetry Core**: Integrated OTLP exporter behind a `telemetry` feature flag, keeping the framework lightweight by default.
 
 ### Breaking Changes
