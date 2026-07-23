@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784834055338,
+  "lastUpdate": 1784836817637,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1403,6 +1403,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1657,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "5d3622ff6bfa646b1527310a73f985f9817ccefa",
+          "message": "feat: implement GDPR telemetry auditing, update MSRV to 1.97.1, and scaffold CLI project generation components.",
+          "timestamp": "2026-07-23T16:23:57-03:00",
+          "tree_id": "0cdbeca9493699fa57c07f72507b3b42a631ff27",
+          "url": "https://github.com/Rullst/Rullst/commit/5d3622ff6bfa646b1527310a73f985f9817ccefa"
+        },
+        "date": 1784836817254,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 741,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 974,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 650,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2241,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
