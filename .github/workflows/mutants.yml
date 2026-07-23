@@ -30,7 +30,7 @@ jobs:
 
       - name: Run cargo-mutants (Core Library)
         # We focus mutation testing on the core 'rullst' crate to avoid mutating examples or scaffolding generators which may not have exhaustive tests
-        run: cargo mutants -p rullst -j 1 --shard ${{ matrix.shard }}/${{ matrix.total }} -v
+        run: cargo mutants -p rullst -j 1 --all-features --shard ${{ matrix.shard }}/${{ matrix.total }} -v
         
       - name: Archive Mutants Report
         if: always()

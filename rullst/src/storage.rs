@@ -478,6 +478,28 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_storage_disk_production_env() {
+        unsafe {
+            std::env::set_var("APP_ENV", "production");
+            std::env::set_var("STORAGE_ROOT", "custom_test_root_should_be_ignored");
+        }
+        let driver = Storage::disk("local");
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let unique = format!("prod_{}.txt", uuid::Uuid::new_v4().as_simple());
+        let _ = runtime.block_on(driver.put(&unique, b"123"));
+        
+        // Because APP_ENV=production, it should ignore STORAGE_ROOT and use storage/app
+        let expected_path = std::path::PathBuf::from("storage/app").join(&unique);
+        assert!(expected_path.exists());
+        let _ = std::fs::remove_file(expected_path);
+        
+        unsafe {
+            std::env::remove_var("APP_ENV");
+            std::env::remove_var("STORAGE_ROOT");
+        }
+    }
+
     #[tokio::test]
     async fn test_storage_global_facade() {
         let unique_file = format!("facade_{}.txt", uuid::Uuid::new_v4().as_simple());
@@ -494,7 +516,11 @@ mod tests {
         let data = Storage::get(&unique_file).await.unwrap();
         assert_eq!(data, b"hello global");
 
+        let url = Storage::url(&unique_file).await.unwrap();
+        assert_eq!(url, format!("/storage/{}", unique_file));
+
         Storage::delete(&unique_file).await.unwrap();
+        assert!(!Storage::exists(&unique_file).await.unwrap());
     }
 
     #[tokio::test]

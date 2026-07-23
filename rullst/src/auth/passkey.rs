@@ -635,11 +635,12 @@ mod tests {
     fn test_passkey_config_builder() {
         let config = PasskeyConfig::new("RP", "rp.com", "https://rp.com")
             .with_rp_name("New RP")
-            .with_rp_id("new.rp.com");
+            .with_rp_id("new.rp.com")
+            .with_rp_origin("https://new.rp.com");
 
         assert_eq!(config.rp_name, "New RP");
         assert_eq!(config.rp_id, "new.rp.com");
-        assert_eq!(config.rp_origin, "https://rp.com");
+        assert_eq!(config.rp_origin, "https://new.rp.com");
     }
 
     #[test]

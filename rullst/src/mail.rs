@@ -489,6 +489,7 @@ mod tests {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests_additional {
     use super::*;
+
     #[tokio::test]
     async fn test_mail_custom() {
         let msg = Message::new()
@@ -500,34 +501,88 @@ mod tests_additional {
         assert_eq!(msg.to, "a");
         assert_eq!(msg.from.unwrap(), "b");
     }
+
     #[tokio::test]
     async fn test_mail_html() {
         let msg = Message::new().html("h");
         assert_eq!(msg.body_html.unwrap(), "h");
     }
+
     #[tokio::test]
     async fn test_mail_subject() {
         let msg = Message::new().subject("sub");
         assert_eq!(msg.subject, "sub");
     }
+
     #[tokio::test]
     async fn test_mail_to() {
         let msg = Message::new().to("to");
         assert_eq!(msg.to, "to");
     }
-    #[tokio::test]
-    async fn test_mail_send() {
-        let msg = Message::new().to("to");
-        assert_eq!(msg.to, "to");
-    }
+
     #[tokio::test]
     async fn test_mail_from() {
         let msg = Message::new().from("from");
         assert_eq!(msg.from.unwrap(), "from");
     }
+
     #[tokio::test]
     async fn test_mail_text() {
         let msg = Message::new().text("txt");
         assert_eq!(msg.body_text.unwrap(), "txt");
+    }
+
+    #[tokio::test]
+    async fn test_mail_send() {
+        // Test Mail::send facade
+        unsafe {
+            std::env::set_var("MAIL_DRIVER", "log");
+        }
+        let log_path = "storage/logs/mail.log";
+        let msg = Message::new().to("facade@rullst.dev").subject("Facade");
+        
+        let res = Mail::send(msg).await;
+        // If Mail::send was mutated to Ok(()), it won't actually call the driver,
+        // so it won't write to the log.
+        assert!(res.is_ok());
+        
+        let content = std::fs::read_to_string(log_path).unwrap_or_default();
+        assert!(content.contains("facade@rullst.dev"));
+    }
+
+    #[tokio::test]
+    async fn test_resend_driver() {
+        let driver = ResendDriver { api_key: "test".to_string() };
+        let msg = Message::new().to("test@rullst.dev");
+        let res = driver.send(&msg).await;
+        // With an invalid API key, the real Resend API should return an error.
+        // If mutated to Ok(()), this will fail.
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_sendgrid_driver() {
+        let driver = SendGridDriver { api_key: "test".to_string() };
+        let msg = Message::new().to("test@rullst.dev");
+        let res = driver.send(&msg).await;
+        // With an invalid API key, the real SendGrid API should return an error.
+        // If mutated to Ok(()), this will fail.
+        assert!(res.is_err());
+    }
+
+    #[cfg(feature = "mail-smtp")]
+    #[tokio::test]
+    async fn test_smtp_driver() {
+        let driver = SmtpDriver { 
+            host: "invalid.local".to_string(), 
+            port: 25, 
+            username: None, 
+            password: None 
+        };
+        let msg = Message::new().to("test@rullst.dev").subject("Test");
+        let res = driver.send(&msg).await;
+        // Connection to invalid.local should fail.
+        // If mutated to Ok(()), this will fail.
+        assert!(res.is_err());
     }
 }
