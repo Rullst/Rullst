@@ -540,19 +540,21 @@ mod tests_additional {
         }
         let log_path = "storage/logs/mail.log";
         let msg = Message::new().to("facade@rullst.dev").subject("Facade");
-        
+
         let res = Mail::send(msg).await;
         // If Mail::send was mutated to Ok(()), it won't actually call the driver,
         // so it won't write to the log.
         assert!(res.is_ok());
-        
+
         let content = std::fs::read_to_string(log_path).unwrap_or_default();
         assert!(content.contains("facade@rullst.dev"));
     }
 
     #[tokio::test]
     async fn test_resend_driver() {
-        let driver = ResendDriver { api_key: "test".to_string() };
+        let driver = ResendDriver {
+            api_key: "test".to_string(),
+        };
         let msg = Message::new().to("test@rullst.dev");
         let res = driver.send(&msg).await;
         // With an invalid API key, the real Resend API should return an error.
@@ -562,7 +564,9 @@ mod tests_additional {
 
     #[tokio::test]
     async fn test_sendgrid_driver() {
-        let driver = SendGridDriver { api_key: "test".to_string() };
+        let driver = SendGridDriver {
+            api_key: "test".to_string(),
+        };
         let msg = Message::new().to("test@rullst.dev");
         let res = driver.send(&msg).await;
         // With an invalid API key, the real SendGrid API should return an error.
@@ -573,11 +577,11 @@ mod tests_additional {
     #[cfg(feature = "mail-smtp")]
     #[tokio::test]
     async fn test_smtp_driver() {
-        let driver = SmtpDriver { 
-            host: "invalid.local".to_string(), 
-            port: 25, 
-            username: None, 
-            password: None 
+        let driver = SmtpDriver {
+            host: "invalid.local".to_string(),
+            port: 25,
+            username: None,
+            password: None,
         };
         let msg = Message::new().to("test@rullst.dev").subject("Test");
         let res = driver.send(&msg).await;

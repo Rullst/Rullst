@@ -734,12 +734,12 @@ mod tests {
         );
         let _ = rullst_orm::Orm::init(&db_path).await;
         let pool = crate::db::safe_pool().expect("pool should be initialized");
-        
+
         let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
             .fetch_one(pool)
             .await
             .unwrap();
-            
+
         assert_eq!(get_any_value_as_string(&row, 0), "hello");
         assert_eq!(get_any_value_as_string(&row, 1), "42");
         assert_eq!(get_any_value_as_string(&row, 2), "3.14");

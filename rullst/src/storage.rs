@@ -488,12 +488,12 @@ mod tests {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let unique = format!("prod_{}.txt", uuid::Uuid::new_v4().as_simple());
         let _ = runtime.block_on(driver.put(&unique, b"123"));
-        
+
         // Because APP_ENV=production, it should ignore STORAGE_ROOT and use storage/app
         let expected_path = std::path::PathBuf::from("storage/app").join(&unique);
         assert!(expected_path.exists());
         let _ = std::fs::remove_file(expected_path);
-        
+
         unsafe {
             std::env::remove_var("APP_ENV");
             std::env::remove_var("STORAGE_ROOT");
