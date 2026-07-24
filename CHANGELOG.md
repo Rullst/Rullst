@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Documentation Hub**: A premium VitePress documentation portal in `docs/` with dark mode aesthetics.
 - **TypeScript SDK Generator (`generate:ts`)**: AST-based CLI command to dynamically generate typed `rullst-client.ts`.
 - **Database-First Introspection (`generate:models`)**: Integrated the ORM schema introspection engine into the `cargo-rullst` CLI. Developers can now reverse-engineer live PostgreSQL, MySQL, and SQLite databases to automatically generate idiomatic Rust `#[derive(Orm)]` structs via `cargo rullst generate:models`.
+- **Schema Visualizer (`generate:diagram`)**: Added `cargo rullst generate:diagram` to the CLI. It uses regex-based AST introspection to scan `.rs` files and generate a beautiful Mermaid ER diagram (`diagram.md`) visually mapping all relationships (`HasMany`, `BelongsTo`, etc.).
 - **Ultra-Lightweight OpenTelemetry Core**: Integrated OTLP exporter behind a `telemetry` feature flag, keeping the framework lightweight by default.
 
 ### Breaking Changes

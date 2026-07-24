@@ -20,6 +20,7 @@ use crate::generators::{
     openapi::generate_openapi_spec,
     project::create_new_project,
     worker::create_new_worker,
+    diagram::generate_mermaid_diagram,
 };
 
 // ─── Clap Structs ─────────────────────────────────────────────────────────────
@@ -133,6 +134,9 @@ pub enum Commands {
         #[arg(short, long, default_value = "src/models")]
         output: String,
     },
+    /// Generate a Mermaid ER diagram from your ORM models
+    #[command(name = "generate:diagram")]
+    GenerateDiagram,
     /// Creates a new background worker in the src/workers/ folder
     #[command(name = "make:worker")]
     MakeWorker {
@@ -266,6 +270,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             output,
         } => {
             generate_models_from_db(driver, url, output)?;
+        }
+        Commands::GenerateDiagram => {
+            println!("Generating Schema Visualizer...");
+            generate_mermaid_diagram()?;
+            println!("Diagram generated successfully at diagram.md");
         }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
