@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784842022854,
+  "lastUpdate": 1784868176390,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1565,6 +1565,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2294,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1c6c6e0e672981a6c2d289a5ad5158a3b4853bb4",
+          "message": "feat: add generate:diagram command to create Mermaid ER diagrams from ORM models",
+          "timestamp": "2026-07-24T01:38:39-03:00",
+          "tree_id": "4ec8c7b31441f38bc6fee5d6deeb4bd480029dd7",
+          "url": "https://github.com/Rullst/Rullst/commit/1c6c6e0e672981a6c2d289a5ad5158a3b4853bb4"
+        },
+        "date": 1784868175126,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 782,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 646,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2367,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
