@@ -153,7 +153,7 @@ fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Err
             .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#).unwrap());
         cargo_content = re_eloquent
             .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"4.0.4""#, &caps[1])
+                format!(r#"{}"6.1.1""#, &caps[1])
             })
             .into_owned();
 

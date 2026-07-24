@@ -6,13 +6,19 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
 
     let src_path = Path::new("src");
     if !src_path.exists() {
-        return Err("No src/ directory found to scan for models. Are you in a Rullst project root?".into());
+        return Err(
+            "No src/ directory found to scan for models. Are you in a Rullst project root?".into(),
+        );
     }
 
     let mut structs = Vec::new();
     let mut relations = Vec::new();
 
-    fn scan_dir(dir: &Path, structs: &mut Vec<String>, relations: &mut Vec<(String, String, String)>) {
+    fn scan_dir(
+        dir: &Path,
+        structs: &mut Vec<String>,
+        relations: &mut Vec<(String, String, String)>,
+    ) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -23,14 +29,15 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
                         if !content.contains("#[derive(") || !content.contains("Orm") {
                             continue;
                         }
-                        
+
                         let mut current_struct = String::new();
                         for line in content.lines() {
                             let line = line.trim();
                             if line.starts_with("pub struct ") || line.starts_with("struct ") {
                                 let parts: Vec<&str> = line.split_whitespace().collect();
                                 if parts.len() >= 2 {
-                                    let name = parts[parts.len() - 1].trim_matches(|c| c == '{' || c == '(' || c == ';');
+                                    let name = parts[parts.len() - 1]
+                                        .trim_matches(|c| c == '{' || c == '(' || c == ';');
                                     current_struct = name.to_string();
                                     structs.push(current_struct.clone());
                                 }
@@ -39,7 +46,11 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
                                     let rest = &line[start + 8..];
                                     if let Some(end) = rest.find('>') {
                                         let target = &rest[..end];
-                                        relations.push((current_struct.clone(), target.to_string(), "||--o{".to_string()));
+                                        relations.push((
+                                            current_struct.clone(),
+                                            target.to_string(),
+                                            "||--o{".to_string(),
+                                        ));
                                     }
                                 }
                             } else if !current_struct.is_empty() && line.contains("BelongsTo<") {
@@ -47,7 +58,11 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
                                     let rest = &line[start + 10..];
                                     if let Some(end) = rest.find('>') {
                                         let target = &rest[..end];
-                                        relations.push((current_struct.clone(), target.to_string(), "}o--||".to_string()));
+                                        relations.push((
+                                            current_struct.clone(),
+                                            target.to_string(),
+                                            "}o--||".to_string(),
+                                        ));
                                     }
                                 }
                             } else if !current_struct.is_empty() && line.contains("HasOne<") {
@@ -55,15 +70,24 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
                                     let rest = &line[start + 7..];
                                     if let Some(end) = rest.find('>') {
                                         let target = &rest[..end];
-                                        relations.push((current_struct.clone(), target.to_string(), "||--o|".to_string()));
+                                        relations.push((
+                                            current_struct.clone(),
+                                            target.to_string(),
+                                            "||--o|".to_string(),
+                                        ));
                                     }
                                 }
-                            } else if !current_struct.is_empty() && line.contains("BelongsToMany<") {
+                            } else if !current_struct.is_empty() && line.contains("BelongsToMany<")
+                            {
                                 if let Some(start) = line.find("BelongsToMany<") {
                                     let rest = &line[start + 14..];
                                     if let Some(end) = rest.find('>') {
                                         let target = &rest[..end];
-                                        relations.push((current_struct.clone(), target.to_string(), "}o--o{".to_string()));
+                                        relations.push((
+                                            current_struct.clone(),
+                                            target.to_string(),
+                                            "}o--o{".to_string(),
+                                        ));
                                     }
                                 }
                             }
@@ -85,6 +109,6 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
     diagram.push_str("```\n");
 
     fs::write("diagram.md", diagram)?;
-    
+
     Ok(())
 }

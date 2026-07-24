@@ -12,6 +12,7 @@ use crate::generators::{
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
     desktop::{run_omni_app, scaffold_omni_system},
+    diagram::generate_mermaid_diagram,
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     introspect::generate_models_from_db,
     middleware::create_new_middleware,
@@ -20,7 +21,6 @@ use crate::generators::{
     openapi::generate_openapi_spec,
     project::create_new_project,
     worker::create_new_worker,
-    diagram::generate_mermaid_diagram,
 };
 
 // ─── Clap Structs ─────────────────────────────────────────────────────────────

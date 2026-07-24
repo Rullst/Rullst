@@ -11,6 +11,7 @@ pub mod cors_jwt;
 pub mod db;
 pub mod desktop;
 pub mod dev;
+pub mod diagram;
 pub mod foundry;
 pub mod introspect;
 pub mod island;
@@ -21,7 +22,6 @@ pub mod openapi;
 pub mod project;
 pub mod ts;
 pub mod worker;
-pub mod diagram;
 
 /// Verifies if the current execution directory is a valid Rullst project
 pub fn is_rullst_project() -> bool {
