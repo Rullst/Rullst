@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784929891292,
+  "lastUpdate": 1784934359623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1835,6 +1835,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2298,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c7ba672226f95a5008f7ea652cd7049900ab13b9",
+          "message": "feat: introduce WebSocket wrapper for Axum with simplified messaging and error handling",
+          "timestamp": "2026-07-24T20:01:51-03:00",
+          "tree_id": "88ec87f0933053d3c1d88aa83b2af167042b2112",
+          "url": "https://github.com/Rullst/Rullst/commit/c7ba672226f95a5008f7ea652cd7049900ab13b9"
+        },
+        "date": 1784934359128,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 756,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1001,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 651,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2275,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
