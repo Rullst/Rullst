@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784922934330,
+  "lastUpdate": 1784927272082,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1673,6 +1673,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2316,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e08d18e4f9ea7976152d70e5d2bcae49ff1e550a",
+          "message": "feat: migrate documentation to VitePress and add core Rullst runtime modules",
+          "timestamp": "2026-07-24T18:03:40-03:00",
+          "tree_id": "d74dae589b7ba972f321511a9711a96a052722e8",
+          "url": "https://github.com/Rullst/Rullst/commit/e08d18e4f9ea7976152d70e5d2bcae49ff1e550a"
+        },
+        "date": 1784927271235,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 811,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1015,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 656,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2353,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
