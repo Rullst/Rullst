@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784868176390,
+  "lastUpdate": 1784922934330,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1619,6 +1619,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2367,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2894fdd62de26f9262e85f664f4851874224483e",
+          "message": "chore: update Cargo.lock with new dependencies",
+          "timestamp": "2026-07-24T16:53:28-03:00",
+          "tree_id": "0f9cb0948489ce789740fca4e4e8b489670fefea",
+          "url": "https://github.com/Rullst/Rullst/commit/2894fdd62de26f9262e85f664f4851874224483e"
+        },
+        "date": 1784922933937,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 767,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1020,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 618,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2316,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
