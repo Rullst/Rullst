@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784927969671,
+  "lastUpdate": 1784929891292,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1781,6 +1781,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2272,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d46e09aec08d96412f754fee8029a6af0225e5d0",
+          "message": "docs: initialize project documentation structure and add landing page templates",
+          "timestamp": "2026-07-24T18:29:02-03:00",
+          "tree_id": "e8b26a73fca0cde474e5166b05db5a745b4dcb81",
+          "url": "https://github.com/Rullst/Rullst/commit/d46e09aec08d96412f754fee8029a6af0225e5d0"
+        },
+        "date": 1784929890849,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 739,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 977,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 645,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2298,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
