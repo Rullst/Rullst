@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784927272082,
+  "lastUpdate": 1784927969671,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1727,6 +1727,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2353,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "623f42f76ed36300aa9c4fbb8fc8c679f73987fa",
+          "message": "feat: initialize VitePress documentation and setup automated benchmarking workflows",
+          "timestamp": "2026-07-24T18:15:03-03:00",
+          "tree_id": "5946e54d19ee7755cd48457fff0504e4ad8a7eee",
+          "url": "https://github.com/Rullst/Rullst/commit/623f42f76ed36300aa9c4fbb8fc8c679f73987fa"
+        },
+        "date": 1784927968607,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 748,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 981,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 629,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2272,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
