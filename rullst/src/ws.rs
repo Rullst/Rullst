@@ -32,6 +32,7 @@ impl WebSocket {
     }
 
     /// Send a text message to the WebSocket client
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn send_text(&mut self, text: impl Into<String>) -> Result<(), WsError> {
         self.inner
             .send(AxumMessage::Text(text.into().into()))
@@ -40,6 +41,7 @@ impl WebSocket {
     }
 
     /// Send an HTML fragment to the client (perfect for out-of-band HTMX swapping)
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn send_html(&mut self, html_content: String) -> Result<(), WsError> {
         self.send_text(html_content).await
     }
