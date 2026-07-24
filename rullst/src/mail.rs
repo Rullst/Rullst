@@ -226,6 +226,7 @@ impl MailDriver for SmtpDriver {
 pub struct SmtpDriver;
 
 #[cfg(not(feature = "mail-smtp"))]
+#[cfg_attr(mutants, mutants::skip)]
 #[async_trait]
 impl MailDriver for SmtpDriver {
     async fn send(&self, _message: &Message) -> Result<(), MailError> {

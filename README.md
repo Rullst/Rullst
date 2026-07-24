@@ -160,7 +160,7 @@ These are the **titans of the Rust web ecosystem**. They provide pristine routin
 ### 🚂 Full-Stack Frameworks (Loco, Topcoat)
 **Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.
 **Topcoat** is an experimental, batteries-included framework from the Tokio team that focuses on reactive server-side rendering (SSR) without writing JavaScript.
-* **Where Rullst Excels:** **Emotional Productivity & DX.** Rullst takes a radically opinionated stance on Developer Experience. We provide immersive CLI interactive dashboards (`cargo rullst studio`), built-in Wasm Islands, zero-panic architectural guarantees, Nix reproducibility, and native Omni (Desktop/Mobile via Tauri) scaffolding. If you want the absolute easiest, most visually pleasing DX in Rust, Rullst is your home.
+* **Where Rullst Excels:** **Emotional Productivity & DX.** Rullst takes a radically opinionated stance on Developer Experience. We provide an immersive Web-based Database Studio (`cargo rullst studio`), built-in Wasm Islands, zero-panic architectural guarantees, Nix reproducibility, and native Omni (Desktop/Mobile via Tauri) scaffolding. If you want the absolute easiest, most visually pleasing DX in Rust, Rullst is your home.
 
 ### 🎨 Isomorphic Full-Stack Frameworks (Dioxus, Leptos)
 These are cutting-edge frameworks that let you write both frontend and backend in a single Rust file using Server Functions and SSR (similar to Next.js or Nuxt).
@@ -173,7 +173,7 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **HTTP & Routing** | ✅ | ✅ | ✅ | ✅ (SSR) | ✅ |
 | **Built-in ORM** | ✅ (Rullst-ORM) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
-| **Interactive CLI Dashboard** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
+| **Web-based Database Studio** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
 | **Auto-Generated Admin Panel**| ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
 | **Wasm Islands (Frontend)** | ✅ (Pure Rust) | ❌ | ❌ | ✅ (Core focus) | ❌ |
 | **Reactive SSR (No-JS)** | ✅ (Pure Rust) | ❌ | ✅ (Signals)| ❌ | ❌ |

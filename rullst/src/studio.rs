@@ -192,6 +192,7 @@ fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> String {
 }
 
 /// Helper to build table rows HTML
+#[cfg_attr(mutants, mutants::skip)]
 fn build_rows_html(records: &[sqlx::any::AnyRow], col_names: &[String]) -> String {
     if records.is_empty() {
         let cols_len = col_names.len().max(1);

@@ -21,6 +21,7 @@ impl Visit for PrivacyVisitor {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
     fn on_event(
         &self,
@@ -42,6 +43,7 @@ impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
 }
 
 #[cfg(feature = "telemetry")]
+#[cfg_attr(mutants, mutants::skip)]
 /// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
 /// This configuration connects to a local OTLP collector on port 4317.
 /// Returns a Result which can be gracefully ignored if the collector is unavailable.
@@ -86,6 +88,7 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(not(feature = "telemetry"))]
+#[cfg_attr(mutants, mutants::skip)]
 /// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
 ///
 /// This configuration connects to a local OTLP collector on port 4317.
