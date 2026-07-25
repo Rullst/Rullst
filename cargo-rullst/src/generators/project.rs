@@ -235,9 +235,9 @@ pub fn create_new_project(
     let rullst_dep = if let Some(ref dir) = rullst_dir {
         let path = dir.canonicalize()?.display().to_string();
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
-        format!("rullst = {{ path = \"{}\" }}", path)
+        format!("rullst = {{ path = \"{}\", features = [\"auth\", \"nexus\", \"studio\", \"mailer\"] }}", path)
     } else {
-        r#"rullst = "5.0.0""#.to_string()
+        r#"rullst = { version = "5.0.0", features = ["auth", "nexus", "studio", "mailer"] }"#.to_string()
     };
 
     let rullst_png_path = rullst_dir
@@ -634,7 +634,10 @@ APP_ENV=development
     );
     println!("{}", "How to run:".cyan());
     println!("{}", format!("  cd {}", name).cyan());
-    println!("{}", "  cargo rullst dev".cyan());
+    println!("{}", "  Then, choose your experience:".cyan());
+    println!("{}", "    cargo rullst dash  (interactive dashboard)".yellow().bold());
+    println!("{}", "    cargo rullst dev   (standard output)".white());
+    println!();
     if docker {
         println!(
             "{}",
@@ -650,6 +653,8 @@ APP_ENV=development
         println!("{}", "  direnv allow".cyan());
     }
 
+    crate::generators::ai_context::generate_ai_context(Some(path)).ok();
+    crate::generators::diagram::generate_mermaid_diagram(Some(path)).ok();
     Ok(())
 }
 

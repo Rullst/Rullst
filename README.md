@@ -175,6 +175,7 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Built-in ORM** | ✅ (Rullst-ORM) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
 | **Web-based Database Studio** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
 | **Auto-Generated Admin Panel**| ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Generated Mermaid Diagram** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 | **Wasm Islands (Frontend)** | ✅ (Pure Rust) | ❌ | ❌ | ✅ (Core focus) | ❌ |
 | **Reactive SSR (No-JS)** | ✅ (Pure Rust) | ❌ | ✅ (Signals)| ❌ | ❌ |
 | **Mobile/Desktop Apps** | ✅ (Tauri Integration)| ❌ | ❌ | ✅ (Dioxus) | ❌ |

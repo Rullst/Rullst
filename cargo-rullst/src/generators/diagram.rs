@@ -1,94 +1,89 @@
+use colored::*;
 use std::fs;
 use std::path::Path;
 
-pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
-    let mut diagram = String::from("```mermaid\nerDiagram\n");
+struct ModelDef {
+    name: String,
+    fields: Vec<(String, String)>,
+}
 
-    let src_path = Path::new("src");
+struct RelationDef {
+    from: String,
+    to: String,
+    rel_type: String,
+    label: String,
+}
+
+pub fn generate_mermaid_diagram(base_path: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("{}", "📊 Generating Mermaid Diagram...".cyan());
+    let base = base_path.unwrap_or_else(|| Path::new("."));
+    
+    let src_path = base.join("src");
     if !src_path.exists() {
-        return Err(
-            "No src/ directory found to scan for models. Are you in a Rullst project root?".into(),
-        );
+        return Err("No src/ directory found to scan for models. Are you in a Rullst project root?".into());
     }
 
-    let mut structs = Vec::new();
+    let mut models = Vec::new();
     let mut relations = Vec::new();
 
     fn scan_dir(
         dir: &Path,
-        structs: &mut Vec<String>,
-        relations: &mut Vec<(String, String, String)>,
+        models: &mut Vec<ModelDef>,
+        relations: &mut Vec<RelationDef>,
     ) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    scan_dir(&path, structs, relations);
+                    scan_dir(&path, models, relations);
                 } else if path.extension().unwrap_or_default() == "rs" {
                     if let Ok(content) = fs::read_to_string(&path) {
-                        if !content.contains("#[derive(") || !content.contains("Orm") {
+                        if !content.contains("Orm") {
                             continue;
                         }
-
-                        let mut current_struct = String::new();
-                        for line in content.lines() {
-                            let line = line.trim();
-                            if line.starts_with("pub struct ") || line.starts_with("struct ") {
-                                let parts: Vec<&str> = line.split_whitespace().collect();
-                                if parts.len() >= 2 {
-                                    let name = parts[parts.len() - 1]
-                                        .trim_matches(|c| c == '{' || c == '(' || c == ';');
-                                    current_struct = name.to_string();
-                                    structs.push(current_struct.clone());
-                                }
-                            } else if !current_struct.is_empty() && line.contains("HasMany<") {
-                                if let Some(start) = line.find("HasMany<") {
-                                    let rest = &line[start + 8..];
-                                    if let Some(end) = rest.find('>') {
-                                        let target = &rest[..end];
-                                        relations.push((
-                                            current_struct.clone(),
-                                            target.to_string(),
-                                            "||--o{".to_string(),
-                                        ));
+                        
+                        if let Ok(syntax_tree) = syn::parse_file(&content) {
+                            for item in syntax_tree.items {
+                                if let syn::Item::Struct(s) = item {
+                                    let mut has_orm = false;
+                                    for attr in &s.attrs {
+                                        let attr_str = quote::quote!(#attr).to_string();
+                                        if attr_str.contains("Orm") {
+                                            has_orm = true;
+                                            break;
+                                        }
                                     }
-                                }
-                            } else if !current_struct.is_empty() && line.contains("BelongsTo<") {
-                                if let Some(start) = line.find("BelongsTo<") {
-                                    let rest = &line[start + 10..];
-                                    if let Some(end) = rest.find('>') {
-                                        let target = &rest[..end];
-                                        relations.push((
-                                            current_struct.clone(),
-                                            target.to_string(),
-                                            "}o--||".to_string(),
-                                        ));
+                                    if !has_orm { continue; }
+                                    
+                                    let model_name = s.ident.to_string();
+                                    let mut model_fields = Vec::new();
+                                    
+                                    if let syn::Fields::Named(named_fields) = s.fields {
+                                        for f in named_fields.named {
+                                            if let Some(ident) = f.ident {
+                                                let field_name = ident.to_string();
+                                                let ty = &f.ty;
+                                                let ty_str = quote::quote!(#ty).to_string().replace(" ", "");
+                                                
+                                                if ty_str.starts_with("HasMany<") {
+                                                    let target = ty_str.trim_start_matches("HasMany<").trim_end_matches('>').to_string();
+                                                    relations.push(RelationDef { from: model_name.clone(), to: target, rel_type: "||--o{".to_string(), label: field_name });
+                                                } else if ty_str.starts_with("BelongsTo<") {
+                                                    let target = ty_str.trim_start_matches("BelongsTo<").trim_end_matches('>').to_string();
+                                                    relations.push(RelationDef { from: model_name.clone(), to: target, rel_type: "}o--||".to_string(), label: field_name });
+                                                } else if ty_str.starts_with("HasOne<") {
+                                                    let target = ty_str.trim_start_matches("HasOne<").trim_end_matches('>').to_string();
+                                                    relations.push(RelationDef { from: model_name.clone(), to: target, rel_type: "||--o|".to_string(), label: field_name });
+                                                } else if ty_str.starts_with("BelongsToMany<") {
+                                                    let target = ty_str.trim_start_matches("BelongsToMany<").trim_end_matches('>').to_string();
+                                                    relations.push(RelationDef { from: model_name.clone(), to: target, rel_type: "}o--o{".to_string(), label: field_name });
+                                                } else {
+                                                    model_fields.push((ty_str, field_name));
+                                                }
+                                            }
+                                        }
                                     }
-                                }
-                            } else if !current_struct.is_empty() && line.contains("HasOne<") {
-                                if let Some(start) = line.find("HasOne<") {
-                                    let rest = &line[start + 7..];
-                                    if let Some(end) = rest.find('>') {
-                                        let target = &rest[..end];
-                                        relations.push((
-                                            current_struct.clone(),
-                                            target.to_string(),
-                                            "||--o|".to_string(),
-                                        ));
-                                    }
-                                }
-                            } else if !current_struct.is_empty() && line.contains("BelongsToMany<")
-                            {
-                                if let Some(start) = line.find("BelongsToMany<") {
-                                    let rest = &line[start + 14..];
-                                    if let Some(end) = rest.find('>') {
-                                        let target = &rest[..end];
-                                        relations.push((
-                                            current_struct.clone(),
-                                            target.to_string(),
-                                            "}o--o{".to_string(),
-                                        ));
-                                    }
+                                    models.push(ModelDef { name: model_name, fields: model_fields });
                                 }
                             }
                         }
@@ -98,17 +93,28 @@ pub fn generate_mermaid_diagram() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    scan_dir(src_path, &mut structs, &mut relations);
+    scan_dir(&src_path, &mut models, &mut relations);
 
-    for s in structs {
-        diagram.push_str(&format!("    {} {{\n    }}\n", s));
+    let mut diagram = String::from("```mermaid\nerDiagram\n");
+
+    for m in models {
+        diagram.push_str(&format!("    {} {{\n", m.name));
+        for (ty, name) in m.fields {
+            let clean_ty = ty.replace("<", "~").replace(">", "~"); // mermaid requires ~ instead of <>
+            diagram.push_str(&format!("        {} {}\n", clean_ty, name));
+        }
+        diagram.push_str("    }\n");
     }
-    for (from, to, rel) in relations {
-        diagram.push_str(&format!("    {} {} {} : \"\"\n", from, rel, to));
+    
+    for rel in relations {
+        diagram.push_str(&format!("    {} {} {} : \"{}\"\n", rel.from, rel.rel_type, rel.to, rel.label));
     }
     diagram.push_str("```\n");
 
-    fs::write("diagram.md", diagram)?;
+    let output_path = base.join("diagram.md");
+    fs::write(&output_path, diagram)?;
+    
+    println!("{}", "  ✅ Mermaid ER Diagram generated successfully at diagram.md".green());
 
     Ok(())
 }

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [5.0.0] - Unreleased 🚀
 
 ### Added
+- **Rullst Dev Dashboard (`cargo rullst dash`)**: Transformed the development server experience with a real-time Ratatui-powered visual dashboard. Splits the terminal into immersive panels displaying application logs and hot-reload system events simultaneously, complete with interactive shortcuts (e.g., `m` to run migrations). The classic textual dev server remains available via `cargo rullst dev` for CI/CD compatibility.
 - **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing)**: The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? Sub-millisecond layout updates (like Vite/Dioxus) with a stateful Rust backend.
 - **Native Reactive SSR (Rullst Live)**: Introduced `#[live_component]` and `#[live_event]` declarative macros. Developers can now build highly interactive, real-time WebSocket UIs (LiveView style) without writing JavaScript or WebAssembly. The macro automatically handles DOM diffing events and state syncing via HTMX.
 - **Documentation Hub**: A premium VitePress documentation portal in `docs/` with dark mode aesthetics.

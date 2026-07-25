@@ -12,7 +12,6 @@ use crate::generators::{
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
     desktop::{run_omni_app, scaffold_omni_system},
-    diagram::generate_mermaid_diagram,
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     introspect::generate_models_from_db,
     middleware::create_new_middleware,
@@ -121,6 +120,9 @@ pub enum Commands {
     /// Scans routes and generates a typed TypeScript client SDK
     #[command(name = "generate:ts")]
     GenerateTs,
+    /// Auto-generates a Mermaid ER diagram from the Rust models
+    #[command(name = "generate:diagram")]
+    GenerateDiagram,
     /// Connects to an existing database and generates Rullst ORM models
     #[command(name = "generate:models")]
     GenerateModels {
@@ -134,9 +136,9 @@ pub enum Commands {
         #[arg(short, long, default_value = "src/models")]
         output: String,
     },
-    /// Generate a Mermaid ER diagram from your ORM models
-    #[command(name = "generate:diagram")]
-    GenerateDiagram,
+    /// Generate an AI context file (.llms.txt) for Cursor, Claude, Gemini, etc.
+    #[command(name = "generate:ai-context")]
+    GenerateAiContext,
     /// Creates a new background worker in the src/workers/ folder
     #[command(name = "make:worker")]
     MakeWorker {
@@ -153,6 +155,8 @@ pub enum Commands {
     Upgrade,
     /// Starts the Rullst development server with neon spinners
     Dev,
+    /// Starts the interactive Ratatui Development Dashboard
+    Dash,
     /// Opens the Rullst Studio dashboard to inspect the database
     #[command(name = "studio")]
     Studio,
@@ -264,6 +268,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::GenerateTs => {
             crate::generators::ts::generate_ts_sdk()?;
         }
+        Commands::GenerateDiagram => {
+            println!("Generating Schema Visualizer...");
+            crate::generators::diagram::generate_mermaid_diagram(None)?;
+            println!("Diagram generated successfully at diagram.md");
+        }
         Commands::GenerateModels {
             driver,
             url,
@@ -271,10 +280,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         } => {
             generate_models_from_db(driver, url, output)?;
         }
-        Commands::GenerateDiagram => {
-            println!("Generating Schema Visualizer...");
-            generate_mermaid_diagram()?;
-            println!("Diagram generated successfully at diagram.md");
+        Commands::GenerateAiContext => {
+            crate::generators::ai_context::generate_ai_context(None)?;
         }
         Commands::MakeWorker { name } => {
             create_new_worker(name)?;
@@ -286,7 +293,10 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             run_upgrade()?;
         }
         Commands::Dev => {
-            crate::generators::dev::run_dev_server()?;
+            crate::generators::dev::run_dev_server(false)?;
+        }
+        Commands::Dash => {
+            crate::generators::dev::run_dev_server(true)?;
         }
         Commands::Studio => {
             run_project_db_command("studio")?;
@@ -301,5 +311,23 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             run_omni_app(target.as_deref())?;
         }
     }
+
+    // Automatically generate AI Context for scaffolding commands so it stays up to date
+    match command {
+        Commands::MakeController { .. }
+        | Commands::MakeModel { .. }
+        | Commands::MakeMiddleware { .. }
+        | Commands::MakeWorker { .. }
+        | Commands::MakeIsland { .. }
+        | Commands::Auth
+        | Commands::MakeBilling
+        | Commands::MakeCors
+        | Commands::MakeJwt => {
+            crate::generators::ai_context::generate_ai_context(None).ok();
+            crate::generators::diagram::generate_mermaid_diagram(None).ok();
+        }
+        _ => {}
+    }
+
     Ok(())
 }

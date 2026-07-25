@@ -2,6 +2,7 @@
 // Everything terminal-related lives here: banners, spinners, dashboards, menus.
 
 pub mod components;
+pub mod dash_tui;
 
 pub use components::{
     check_update_available, print_update_banner, show_help_reference, show_interactive_dashboard,

@@ -272,7 +272,7 @@ fn print_neon_logo() {
     );
 }
 
-fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse_from(cmd_args);
     run_cli_command(&cli.command)
 }
@@ -425,8 +425,12 @@ fn handle_existing_project(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let choices = [
         format!(
-            "🚀  Start Dev Server         {}",
+            "🚀  Start Dev Server (Standard)  {}",
             "(Fast dev build + Hot Reload)".dimmed()
+        ),
+        format!(
+            "📺  Start Dev Server (Dashboard) {}",
+            "(Ratatui Interactive Visuals)".dimmed()
         ),
         format!(
             "🛠  Scaffold Code            {}",
@@ -472,15 +476,16 @@ fn handle_existing_project(
 
     match selection {
         0 => execute_command(vec![base_cmd, "dev".to_string()]),
-        1 => handle_scaffold_code(theme),
-        2 => handle_database_operations(theme),
-        3 => handle_auth_billing(theme),
-        4 => execute_command(vec![base_cmd, "make:omni".to_string()]),
-        5 => execute_command(vec![base_cmd, "dockerize".to_string()]),
-        6 => execute_command(vec![base_cmd, "nixify".to_string()]),
-        7 => handle_deploy(theme),
-        8 => execute_command(vec![base_cmd, "upgrade".to_string()]),
-        9 => show_interactive_dashboard(),
+        1 => execute_command(vec![base_cmd, "dash".to_string()]),
+        2 => handle_scaffold_code(theme),
+        3 => handle_database_operations(theme),
+        4 => handle_auth_billing(theme),
+        5 => execute_command(vec![base_cmd, "make:omni".to_string()]),
+        6 => execute_command(vec![base_cmd, "dockerize".to_string()]),
+        7 => execute_command(vec![base_cmd, "nixify".to_string()]),
+        8 => handle_deploy(theme),
+        9 => execute_command(vec![base_cmd, "upgrade".to_string()]),
+        10 => show_interactive_dashboard(),
         _ => Ok(()),
     }
 }
@@ -525,14 +530,15 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             show_help_reference();
             Ok(())
         }
-        _ => {
+        3 => {
             println!("{}", "Exiting. Happy coding with Rullst! 🦀🚀".dimmed());
             Ok(())
         }
+        _ => Ok(()),
     }
 }
 
-fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
+pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
     vec![
         (
             "🗂️  PROJECT",
@@ -553,6 +559,7 @@ fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
                 ("cargo rullst make:middleware <Name>", "New middleware"),
                 ("cargo rullst make:worker <Name>", "New background worker"),
                 ("cargo rullst make:migration <name>", "Blank migration"),
+                ("cargo rullst make:island <name>", "New interactive Wasm Island"),
                 (
                     "cargo rullst generate:models",
                     "Reverse-engineer live DB to Models",
@@ -609,6 +616,9 @@ fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
                 ),
                 ("cargo rullst build:client", "Compile Wasm Islands"),
                 ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
+                ("cargo rullst generate:ts", "Generate TypeScript SDK"),
+                ("cargo rullst generate:diagram", "Generate Mermaid ER diagram"),
+                ("cargo rullst generate:ai-context", "Generate AI context (.llms.txt)"),
                 ("cargo rullst docs dev", "Live docs preview server"),
                 ("cargo rullst docs build", "Build static docs site"),
             ],
