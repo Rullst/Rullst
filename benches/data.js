@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784939938309,
+  "lastUpdate": 1784953230692,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1943,6 +1943,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1717,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6d26aa737014a27f7b07a07ff5415a513fd7a730",
+          "message": "feat: implement Rullst CLI dev server with hot-reload, AST-based change detection, and terminal UI dashboard.",
+          "timestamp": "2026-07-25T01:16:20-03:00",
+          "tree_id": "cda85e57283fdf4b7086be32ce6135b544560705",
+          "url": "https://github.com/Rullst/Rullst/commit/6d26aa737014a27f7b07a07ff5415a513fd7a730"
+        },
+        "date": 1784953229711,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 550,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 793,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 561,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1688,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
