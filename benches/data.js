@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784934359623,
+  "lastUpdate": 1784939938309,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -1889,6 +1889,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2275,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3be76562b2105a005b8bc84e86b71a575e499edf",
+          "message": "feat: implement security and WAF middleware for CSRF protection, secure HTTP headers, and malicious request filtering",
+          "timestamp": "2026-07-24T21:34:32-03:00",
+          "tree_id": "2e920681f822ba45b659aa4c8d47fae9c7264d3e",
+          "url": "https://github.com/Rullst/Rullst/commit/3be76562b2105a005b8bc84e86b71a575e499edf"
+        },
+        "date": 1784939937189,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 602,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 792,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 484,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1717,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
