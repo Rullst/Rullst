@@ -104,6 +104,9 @@ jobs:
       - name: Generate Hashes for SLSA
         id: hash
         run: |
+          cargo package -p rullst-macros
+          cargo package -p rullst
+          cargo package -p cargo-rullst
           cd target/package
           sha256sum *.crate > checksums.txt
           echo "hashes=$(cat checksums.txt | base64 -w0)" >> "$GITHUB_OUTPUT"
