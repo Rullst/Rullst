@@ -137,14 +137,14 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         let tx1 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().filter_map(|l| l.ok()) {
+            for line in reader.lines().map_while(Result::ok) {
                 let _ = tx1.send(LogMsg::AppStdout(line));
             }
         });
         let tx2 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().filter_map(|l| l.ok()) {
+            for line in reader.lines().map_while(Result::ok) {
                 let _ = tx2.send(LogMsg::AppStderr(line));
             }
         });
