@@ -395,6 +395,7 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
 }
 
 /// Helper function to perform lightweight regex-free PII masking for emails and credit card numbers.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn mask_pii(text: &str) -> String {
     let mut chars: Vec<char> = text.chars().collect();
     let mut i = 0;

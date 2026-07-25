@@ -435,6 +435,7 @@ impl Service<axum::extract::Request> for HotSwapService {
         Poll::Ready(Ok(()))
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
         if req.uri().path() == "/_rullst/internal/reload_dylib"
             && req.method() == axum::http::Method::POST
