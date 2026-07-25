@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784989058479,
+  "lastUpdate": 1784998598321,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2105,6 +2105,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2313,
             "range": "± 53",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "48b8a4db18730af3267ee9c2559c2203cb0c2153",
+          "message": "chore: update MSRV to 1.96.0 and define 1.97.1 toolchain for development",
+          "timestamp": "2026-07-25T13:51:54-03:00",
+          "tree_id": "068da48b4d7964e8d3a54c6b4512c18e24c84875",
+          "url": "https://github.com/Rullst/Rullst/commit/48b8a4db18730af3267ee9c2559c2203cb0c2153"
+        },
+        "date": 1784998597143,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 738,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 999,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 674,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2295,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
