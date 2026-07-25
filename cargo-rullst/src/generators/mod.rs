@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+pub mod ai_context;
 pub mod auth;
 pub mod billing;
 pub mod build;
@@ -11,7 +12,6 @@ pub mod cors_jwt;
 pub mod db;
 pub mod desktop;
 pub mod dev;
-pub mod ai_context;
 pub mod diagram;
 pub mod foundry;
 pub mod introspect;
