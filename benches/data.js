@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784999607965,
+  "lastUpdate": 1785000869916,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2213,6 +2213,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2288,
             "range": "± 96",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2c90b18e4d20cde63bb686aee694128ac3087151",
+          "message": "ci: re-add cargo package to generate .crate files for SLSA",
+          "timestamp": "2026-07-25T14:27:02-03:00",
+          "tree_id": "da345705b9934b8a24624f5ba96c173a3793ec77",
+          "url": "https://github.com/Rullst/Rullst/commit/2c90b18e4d20cde63bb686aee694128ac3087151"
+        },
+        "date": 1785000868333,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 728,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 983,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 650,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2348,
+            "range": "± 42",
             "unit": "ns/iter"
           }
         ]
