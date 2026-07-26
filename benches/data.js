@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785099571216,
+  "lastUpdate": 1785100839144,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2591,6 +2591,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2309,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "634cc45ece9bc328e8ca21e002d91158c6a1b3ae",
+          "message": "ci: add Kani verifier workflow with custom cargo wrapper to ignore MSRV",
+          "timestamp": "2026-07-26T18:16:26-03:00",
+          "tree_id": "96c7a1b888046aad9357edd95af816dbf526ca23",
+          "url": "https://github.com/Rullst/Rullst/commit/634cc45ece9bc328e8ca21e002d91158c6a1b3ae"
+        },
+        "date": 1785100838795,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 717,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 973,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 626,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2327,
+            "range": "± 56",
             "unit": "ns/iter"
           }
         ]
