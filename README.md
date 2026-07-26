@@ -155,7 +155,7 @@ Here is an honest, objective breakdown of where Rullst stands compared to other 
 ### 🔬 HTTP & API Frameworks (Actix-Web, Axum, Salvo, Poem)
 These are the **titans of the Rust web ecosystem**. They provide pristine routing, middlewares, and blazing-fast HTTP primitives. Actix-Web and Rocket pioneered the space, while Axum, Salvo, and Poem brought new paradigms.
 * **The Catch:** They are fundamentally focused on HTTP. You have to wire the rest of the application yourself. You must choose, configure, and integrate your own Database ORM, Auth logic, Webhooks, CLI, and Background Workers.
-* **Where Rullst Excels:** **Batteries Included.** Rullst actually uses *Axum* under the hood for its HTTP routing! But instead of leaving you in an empty room, Rullst gives you a fully furnished house. You get a CLI, ORM, Auth, Stripe integration, and Background Workers out-of-the-box in 1 minute.
+* **Where Rullst Excels:** **Batteries Included.** Rullst actually uses *Axum* under the hood for its HTTP routing! But instead of leaving you in an empty room, Rullst gives you a fully furnished house. You get a CLI, ORM, Auth, Stripe integration, Background Workers, and **automatic OpenAPI & TypeScript SDK generation** out-of-the-box in 1 minute.
 
 ### 🚂 Full-Stack Frameworks (Loco, Topcoat)
 **Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.

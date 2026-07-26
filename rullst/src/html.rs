@@ -150,15 +150,15 @@ mod kani_proofs {
     fn proof_escape_str_safety_and_bounds() {
         // Generate a fully non-deterministic sequence of 4 bytes
         let bytes: [u8; 4] = kani::any();
-        
+
         // Restrict the state space to only valid UTF-8 strings
         if let Ok(s) = std::str::from_utf8(&bytes) {
             // 1. If this call panics, Kani will fail the proof
             let escaped = escape_str(s);
-            
+
             // 2. Mathematical post-condition
             assert!(escaped.len() >= s.len());
-            
+
             // 3. Proving specific characters are correctly replaced
             if s.contains('<') {
                 assert!(escaped.contains("&lt;"));

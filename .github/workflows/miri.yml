@@ -26,7 +26,7 @@ jobs:
 
       - name: Run Cargo Miri
         env:
-          MIRIFLAGS: -Zmiri-disable-isolation
+          MIRIFLAGS: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check
         # Skip tests that invoke C FFI via ring/aws-lc-rs (TLS, crypto, passkey).
         # Miri cannot emulate foreign C functions — these are network/crypto integration
         # tests already covered by the regular CI test suite.
