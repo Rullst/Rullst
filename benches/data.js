@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785102313147,
+  "lastUpdate": 1785108640635,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2699,6 +2699,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1723,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1eaf655175283ad30e2f3b059e20724c4e4c1180",
+          "message": "ci: add Kani formal verification workflow for Rust packages",
+          "timestamp": "2026-07-26T20:26:29-03:00",
+          "tree_id": "acf74380138e2e658f2de996083db5cd835ffc83",
+          "url": "https://github.com/Rullst/Rullst/commit/1eaf655175283ad30e2f3b059e20724c4e4c1180"
+        },
+        "date": 1785108639747,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 635,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 902,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 660,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1800,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
