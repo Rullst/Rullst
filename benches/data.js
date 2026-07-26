@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785097289222,
+  "lastUpdate": 1785098030875,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2482,6 +2482,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "waf_middleware_overhead",
             "value": 2309,
+            "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f7824462131e9e1e3be7d30f76bc3b65511e6786",
+          "message": "ci: add Kani verifier GitHub Action workflow to verify crates",
+          "timestamp": "2026-07-26T17:29:34-03:00",
+          "tree_id": "23d86da2db83c466529ce0e685ba8de91fbad92f",
+          "url": "https://github.com/Rullst/Rullst/commit/f7824462131e9e1e3be7d30f76bc3b65511e6786"
+        },
+        "date": 1785098030255,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 759,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1023,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 613,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2357,
             "range": "± 22",
             "unit": "ns/iter"
           }
