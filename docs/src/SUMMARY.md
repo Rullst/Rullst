@@ -13,3 +13,4 @@
 # Reference
 - [📜 Framework Spec](spec.md)
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
+- [💻 CLI Reference](cli_reference.md)

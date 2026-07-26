@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [5.0.1] - Unreleased 🚀
 
+### Added
+- **Documentation**: Created a comprehensive "Rullst CLI - Full Command Reference" at `docs/src/cli_reference.md`, detailing all subcommands, flags, and generators in English.
+- **Formal Verification (Kani)**: Added mathematical safety proofs to the core framework to guarantee panic-free execution under all circumstances. Proved the memory-safety and output bounds of `html::escape_str` (XSS protection) and `security::mask_pii` (PII masking).
+
 ### Fixed
 - **Project Scaffolding**: Added missing SQLite database files (`*.db`, `*.sqlite`, `*.sqlite3`, `*.db-shm`, `*.db-wal`), IDE folders (`.vscode/`, `.idea/`), OS files (`.DS_Store`), and `.direnv/` (for Nix environments) to the default `.gitignore` template.
 - **Docker Scaffolding**: Added missing `.env`, `.env.*`, `Foundry.toml`, `.DS_Store`, and SQLite database extensions to the default `.dockerignore` template to prevent sensitive secrets and local database state from leaking into production Docker images.

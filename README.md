@@ -182,6 +182,8 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Hot-Reloading** | ✅ (Built-in) | ❌ | ❌ | ✅ (Dioxus) | ❌ |
 | **Zero-Panics Policy** | ✅ (Enforced) | ❌ | ❌ | ❌ | ❌ |
 | **TypeScript SDK Generator** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
+| **OpenAPI / Swagger** | ✅ (Auto-Generated) | ❌ | ❌ | ❌ | ✅ (Via utoipa/poem-openapi) |
+| **Background Workers** | ✅ (Queue + Redis) | ✅ (Task worker) | ❌ | ❌ | ❌ |
 | **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 
 ---
