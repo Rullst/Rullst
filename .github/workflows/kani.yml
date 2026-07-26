@@ -22,9 +22,9 @@ jobs:
           echo '#!/bin/bash' > $HOME/.cargo-wrapper/cargo
           echo 'CMD="$1"' >> $HOME/.cargo-wrapper/cargo
           echo 'if [[ "$CMD" == "build" || "$CMD" == "check" || "$CMD" == "rustc" || "$CMD" == "test" ]]; then' >> $HOME/.cargo-wrapper/cargo
-          echo '    exec /usr/bin/cargo "$@" --ignore-rust-version' >> $HOME/.cargo-wrapper/cargo
+          echo '    exec $HOME/.cargo/bin/cargo "$@" --ignore-rust-version' >> $HOME/.cargo-wrapper/cargo
           echo 'else' >> $HOME/.cargo-wrapper/cargo
-          echo '    exec /usr/bin/cargo "$@"' >> $HOME/.cargo-wrapper/cargo
+          echo '    exec $HOME/.cargo/bin/cargo "$@"' >> $HOME/.cargo-wrapper/cargo
           echo 'fi' >> $HOME/.cargo-wrapper/cargo
           chmod +x $HOME/.cargo-wrapper/cargo
           echo "$HOME/.cargo-wrapper" >> $GITHUB_PATH
