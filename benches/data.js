@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785098030875,
+  "lastUpdate": 1785099571216,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2537,6 +2537,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2357,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "cf04b986376716e56bf73239190838f37a72964e",
+          "message": "ci: add Kani verifier workflow with custom cargo wrapper for MSRV compatibility",
+          "timestamp": "2026-07-26T17:55:12-03:00",
+          "tree_id": "03f24c6066ae1ecb36f99a1a716a1caf13c463ab",
+          "url": "https://github.com/Rullst/Rullst/commit/cf04b986376716e56bf73239190838f37a72964e"
+        },
+        "date": 1785099570873,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 721,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 967,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 666,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2309,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
