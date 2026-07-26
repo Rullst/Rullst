@@ -22,9 +22,9 @@ jobs:
           echo '#!/bin/bash' > $HOME/.cargo/bin/cargo
           echo 'CMD="$1"' >> $HOME/.cargo/bin/cargo
           echo 'if [[ "$CMD" == "build" || "$CMD" == "check" || "$CMD" == "rustc" || "$CMD" == "test" ]]; then' >> $HOME/.cargo/bin/cargo
-          echo '    exec $HOME/.cargo/bin/cargo-real "$@" --ignore-rust-version' >> $HOME/.cargo/bin/cargo
+          echo '    exec -a cargo $HOME/.cargo/bin/cargo-real "$@" --ignore-rust-version' >> $HOME/.cargo/bin/cargo
           echo 'else' >> $HOME/.cargo/bin/cargo
-          echo '    exec $HOME/.cargo/bin/cargo-real "$@"' >> $HOME/.cargo/bin/cargo
+          echo '    exec -a cargo $HOME/.cargo/bin/cargo-real "$@"' >> $HOME/.cargo/bin/cargo
           echo 'fi' >> $HOME/.cargo/bin/cargo
           chmod +x $HOME/.cargo/bin/cargo
 
