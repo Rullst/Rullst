@@ -16,15 +16,28 @@ jobs:
       - name: Install Kani
         run: cargo install kani-verifier && cargo kani setup
 
+      - name: Create Cargo Wrapper to Ignore MSRV
+        run: |
+          mkdir -p $HOME/.cargo-wrapper
+          echo '#!/bin/bash' > $HOME/.cargo-wrapper/cargo
+          echo 'CMD="$1"' >> $HOME/.cargo-wrapper/cargo
+          echo 'if [[ "$CMD" == "build" || "$CMD" == "check" || "$CMD" == "rustc" || "$CMD" == "test" ]]; then' >> $HOME/.cargo-wrapper/cargo
+          echo '    exec /usr/bin/cargo "$@" --ignore-rust-version' >> $HOME/.cargo-wrapper/cargo
+          echo 'else' >> $HOME/.cargo-wrapper/cargo
+          echo '    exec /usr/bin/cargo "$@"' >> $HOME/.cargo-wrapper/cargo
+          echo 'fi' >> $HOME/.cargo-wrapper/cargo
+          chmod +x $HOME/.cargo-wrapper/cargo
+          echo "$HOME/.cargo-wrapper" >> $GITHUB_PATH
+
       - name: Verify rullst-macros with Kani
         # Kani ships its own nightly (1.93 as of v0.67); run only on the proc-macro
         # crate which has no MSRV or crypto deps that would conflict.
         # NOTE: requires at least one #[kani::proof] harness to verify.
         working-directory: rullst-macros
         continue-on-error: true
-        run: cargo kani -- --ignore-rust-version
+        run: cargo kani
 
       - name: Verify rullst (main framework) with Kani
         working-directory: rullst
         continue-on-error: true
-        run: cargo kani -- --ignore-rust-version
+        run: cargo kani
