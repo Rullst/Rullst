@@ -1,6 +1,6 @@
 [package]
 name = "rullst"
-version = "5.0.0"
+version = "5.0.1"
 authors = ["Rullst Core Team"]
 edition = "2024"
 description = "The Full-Stack Web Framework for Rust Language"

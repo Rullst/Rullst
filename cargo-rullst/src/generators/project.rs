@@ -237,7 +237,7 @@ pub fn create_new_project(
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!("rullst = {{ path = \"{}\", features = [\"auth\", \"nexus\", \"studio\", \"mailer\"] }}", path)
     } else {
-        r#"rullst = { version = "5.0.0", features = ["auth", "nexus", "studio", "mailer"] }"#.to_string()
+        r#"rullst = { version = "5.0.1", features = ["auth", "nexus", "studio", "mailer"] }"#.to_string()
     };
 
     let rullst_png_path = rullst_dir
@@ -461,6 +461,13 @@ url = "{db_url}"
 /static/*.wasm
 /static/*.html
 
+# Rullst: Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
 # Rullst: Environment & Secrets
 .env
 .env.*
@@ -468,6 +475,14 @@ url = "{db_url}"
 
 # Rullst: Foundry Deployment Manifest (contains SSH keys and cloud credentials)
 Foundry.toml
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Tools
+.direnv/
 "#;
     fs::write(path.join(".gitignore"), gitignore_content)?;
 
@@ -632,7 +647,7 @@ APP_ENV=development
             .green()
             .bold()
     );
-    println!("{}", "How to run:".cyan());
+    println!("{}", "How to run:".magenta());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  Then, choose your experience:".cyan());
     println!("{}", "    cargo rullst dash  (interactive dashboard)".yellow().bold());
@@ -721,7 +736,7 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Cache dependency compilation
 COPY Cargo.toml Cargo.lock* ./
-RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "5.0.0"/g' Cargo.toml && \
+RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "5.0.1"/g' Cargo.toml && \
     sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "11.0.0"/g' Cargo.toml || true
 RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
 
@@ -897,8 +912,19 @@ fn create_dockerignore(project_path: &Path) -> Result<(), std::io::Error> {
 LICENSE
 .vscode/
 .idea/
+.DS_Store
+
+# Secrets and Environment
+.env
+.env.*
+Foundry.toml
+
+# Database files
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
+*.sqlite3
 "#;
     fs::write(project_path.join(".dockerignore"), dockerignore)?;
     Ok(())

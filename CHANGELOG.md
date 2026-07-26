@@ -4,7 +4,13 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.0.0] - Unreleased 🚀
+## [5.0.1] - Unreleased 🚀
+
+### Fixed
+- **Project Scaffolding**: Added missing SQLite database files (`*.db`, `*.sqlite`, `*.sqlite3`, `*.db-shm`, `*.db-wal`), IDE folders (`.vscode/`, `.idea/`), OS files (`.DS_Store`), and `.direnv/` (for Nix environments) to the default `.gitignore` template.
+- **Docker Scaffolding**: Added missing `.env`, `.env.*`, `Foundry.toml`, `.DS_Store`, and SQLite database extensions to the default `.dockerignore` template to prevent sensitive secrets and local database state from leaking into production Docker images.
+
+## [5.0.0] - 2026-07-25 🚀
 
 ### Added
 - **Rullst Dev Dashboard (`cargo rullst dash`)**: Transformed the development server experience with a real-time Ratatui-powered visual dashboard. Splits the terminal into immersive panels displaying application logs and hot-reload system events simultaneously, complete with interactive shortcuts (e.g., `m` to run migrations). The classic textual dev server remains available via `cargo rullst dev` for CI/CD compatibility.
