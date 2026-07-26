@@ -22,9 +22,9 @@ jobs:
         # NOTE: requires at least one #[kani::proof] harness to verify.
         working-directory: rullst-macros
         continue-on-error: true
-        run: cargo kani
+        run: cargo kani -- --ignore-rust-version
 
       - name: Verify rullst (main framework) with Kani
         working-directory: rullst
         continue-on-error: true
-        run: cargo kani
+        run: cargo kani -- --ignore-rust-version
