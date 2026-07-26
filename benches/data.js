@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785100839144,
+  "lastUpdate": 1785102313147,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2645,6 +2645,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2327,
             "range": "± 56",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "67d80efb45f1d8f989988bd78d497a48781eb313",
+          "message": "ci: add Kani formal verification workflow for rullst and rullst-macros",
+          "timestamp": "2026-07-26T18:41:43-03:00",
+          "tree_id": "6a13830f75e9808b9e58c5b9bb6424f298504904",
+          "url": "https://github.com/Rullst/Rullst/commit/67d80efb45f1d8f989988bd78d497a48781eb313"
+        },
+        "date": 1785102311604,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 576,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 766,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 510,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1723,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
