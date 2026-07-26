@@ -2,15 +2,15 @@ use crate::generators::dev::LogMsg;
 use crossterm::{
     event::{Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Alignment},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
-    Terminal,
 };
 use std::io::{self};
 use std::time::Instant;
@@ -45,7 +45,10 @@ fn strip_ansi(s: &str) -> String {
     re.replace_all(s, "").to_string()
 }
 
-pub async fn run(mut log_rx: UnboundedReceiver<LogMsg>, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(
+    mut log_rx: UnboundedReceiver<LogMsg>,
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -53,19 +56,23 @@ pub async fn run(mut log_rx: UnboundedReceiver<LogMsg>, port: u16) -> Result<(),
     let mut terminal = Terminal::new(backend)?;
 
     let (key_tx, mut key_rx) = tokio::sync::mpsc::unbounded_channel();
-    std::thread::spawn(move || loop {
-        if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150)) {
-            if let Ok(event) = crossterm::event::read() {
-                if key_tx.send(event).is_err() {
-                    break;
+    std::thread::spawn(move || {
+        loop {
+            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150)) {
+                if let Ok(event) = crossterm::event::read() {
+                    if key_tx.send(event).is_err() {
+                        break;
+                    }
                 }
             }
         }
     });
 
     let mut app = App::new(port);
-    app.sys_logs.push("🚀 Rullst Studio Dashboard Initialized.".to_string());
-    app.sys_logs.push(format!("🌐 Localhost Ready: http://127.0.0.1:{}", port));
+    app.sys_logs
+        .push("🚀 Rullst Studio Dashboard Initialized.".to_string());
+    app.sys_logs
+        .push(format!("🌐 Localhost Ready: http://127.0.0.1:{}", port));
 
     let mut ticker = tokio::time::interval(std::time::Duration::from_millis(200));
 
@@ -164,22 +171,54 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
     let spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
     let frame = spinner_frames[app.tick_count % spinner_frames.len()];
     let elapsed = app.start_time.elapsed();
-    let uptime_str = format!("{:02}:{:02}:{:02}", elapsed.as_secs() / 3600, (elapsed.as_secs() % 3600) / 60, elapsed.as_secs() % 60);
+    let uptime_str = format!(
+        "{:02}:{:02}:{:02}",
+        elapsed.as_secs() / 3600,
+        (elapsed.as_secs() % 3600) / 60,
+        elapsed.as_secs() % 60
+    );
 
     let header_text = vec![
-        Span::styled(format!(" {} ", frame), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        Span::styled("🦀 Rullst Studio Dashboard", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            format!(" {} ", frame),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            "🦀 Rullst Studio Dashboard",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   │   "),
         Span::styled("🌐 App URL: ", Style::default().fg(Color::White)),
-        Span::styled(format!("http://127.0.0.1:{}", app.port), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+        Span::styled(
+            format!("http://127.0.0.1:{}", app.port),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        ),
         Span::raw("   │   "),
-        Span::styled("⚡ HMR: ACTIVE", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "⚡ HMR: ACTIVE",
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   │   "),
-        Span::styled(format!("🕒 Uptime: {}", uptime_str), Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            format!("🕒 Uptime: {}", uptime_str),
+            Style::default().fg(Color::DarkGray),
+        ),
     ];
 
     let header = Paragraph::new(Line::from(header_text))
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Cyan)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
         .alignment(Alignment::Center);
     f.render_widget(header, chunks[0]);
 
@@ -196,15 +235,19 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         .split(main_columns[1]);
 
     // 1. Left Panel: App Server Logs
-    let app_text: Vec<Line> = app.app_logs.iter().map(|s| {
-        if s.contains("[ERR]") {
-            Line::from(Span::styled(s, Style::default().fg(Color::Red)))
-        } else if s.contains("[WARN]") {
-            Line::from(Span::styled(s, Style::default().fg(Color::Yellow)))
-        } else {
-            Line::from(Span::styled(s, Style::default().fg(Color::White)))
-        }
-    }).collect();
+    let app_text: Vec<Line> = app
+        .app_logs
+        .iter()
+        .map(|s| {
+            if s.contains("[ERR]") {
+                Line::from(Span::styled(s, Style::default().fg(Color::Red)))
+            } else if s.contains("[WARN]") {
+                Line::from(Span::styled(s, Style::default().fg(Color::Yellow)))
+            } else {
+                Line::from(Span::styled(s, Style::default().fg(Color::White)))
+            }
+        })
+        .collect();
 
     let app_visible_lines = (main_columns[0].height as usize).saturating_sub(2);
     let app_total_lines = app_text.len();
@@ -215,24 +258,33 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
     };
 
     let app_panel = Paragraph::new(app_text)
-        .block(Block::default().title(" 🖥️  Application & HTTP Logs ").borders(Borders::ALL).border_style(Style::default().fg(Color::Blue)))
+        .block(
+            Block::default()
+                .title(" 🖥️  Application & HTTP Logs ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Blue)),
+        )
         .wrap(Wrap { trim: false })
         .scroll((app_scroll, 0));
     f.render_widget(app_panel, main_columns[0]);
 
     // 2. Right Top Panel: System & Hot Reload
-    let sys_text: Vec<Line> = app.sys_logs.iter().map(|s| {
-        let style = if s.contains("✅") || s.contains("Ready") {
-            Style::default().fg(Color::Green)
-        } else if s.contains("❌") || s.contains("⚠️") {
-            Style::default().fg(Color::Red)
-        } else if s.contains("🔄") || s.contains("⏳") {
-            Style::default().fg(Color::Yellow)
-        } else {
-            Style::default().fg(Color::Magenta)
-        };
-        Line::from(Span::styled(s, style))
-    }).collect();
+    let sys_text: Vec<Line> = app
+        .sys_logs
+        .iter()
+        .map(|s| {
+            let style = if s.contains("✅") || s.contains("Ready") {
+                Style::default().fg(Color::Green)
+            } else if s.contains("❌") || s.contains("⚠️") {
+                Style::default().fg(Color::Red)
+            } else if s.contains("🔄") || s.contains("⏳") {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default().fg(Color::Magenta)
+            };
+            Line::from(Span::styled(s, style))
+        })
+        .collect();
 
     let sys_visible_lines = (right_panels[0].height as usize).saturating_sub(2);
     let sys_total_lines = sys_text.len();
@@ -243,42 +295,114 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
     };
 
     let sys_panel = Paragraph::new(sys_text)
-        .block(Block::default().title(" ⚙️  Hot-Reload Engine (Dylib + AST) ").borders(Borders::ALL).border_style(Style::default().fg(Color::Yellow)))
+        .block(
+            Block::default()
+                .title(" ⚙️  Hot-Reload Engine (Dylib + AST) ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Yellow)),
+        )
         .wrap(Wrap { trim: false })
         .scroll((sys_scroll, 0));
     f.render_widget(sys_panel, right_panels[0]);
 
     // 3. Right Bottom Panel: Environment & Inspector
     let inspector_lines = vec![
-        Line::from(vec![Span::styled("  🚀 Mode:", Style::default().fg(Color::DarkGray)), Span::styled(" Hybrid Hot-Reload (Native Rust + DOM)", Style::default().fg(Color::Cyan))]),
-        Line::from(vec![Span::styled("  🌐 Address:", Style::default().fg(Color::DarkGray)), Span::styled(format!(" http://127.0.0.1:{}", app.port), Style::default().fg(Color::Green))]),
-        Line::from(vec![Span::styled("  📡 WebSocket:", Style::default().fg(Color::DarkGray)), Span::styled(format!(" ws://127.0.0.1:{}/_rullst_hmr", app.port + 1), Style::default().fg(Color::Magenta))]),
-        Line::from(vec![Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)), Span::styled(" SQLite / MySQL / PG (Connected)", Style::default().fg(Color::Yellow))]),
+        Line::from(vec![
+            Span::styled("  🚀 Mode:", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                " Hybrid Hot-Reload (Native Rust + DOM)",
+                Style::default().fg(Color::Cyan),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("  🌐 Address:", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!(" http://127.0.0.1:{}", app.port),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("  📡 WebSocket:", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!(" ws://127.0.0.1:{}/_rullst_hmr", app.port + 1),
+                Style::default().fg(Color::Magenta),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                " SQLite / MySQL / PG (Connected)",
+                Style::default().fg(Color::Yellow),
+            ),
+        ]),
         Line::from(vec![Span::raw("")]),
-        Line::from(vec![Span::styled("  ✨ TIP:", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)), Span::styled(" Edit any .rs file to see sub-ms hot reload!", Style::default().fg(Color::White))]),
+        Line::from(vec![
+            Span::styled(
+                "  ✨ TIP:",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " Edit any .rs file to see sub-ms hot reload!",
+                Style::default().fg(Color::White),
+            ),
+        ]),
     ];
 
     let inspector_panel = Paragraph::new(inspector_lines)
-        .block(Block::default().title(" 📊  Project Inspector & Status ").borders(Borders::ALL).border_style(Style::default().fg(Color::Magenta)))
+        .block(
+            Block::default()
+                .title(" 📊  Project Inspector & Status ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Magenta)),
+        )
         .wrap(Wrap { trim: false });
     f.render_widget(inspector_panel, right_panels[1]);
 
     // ─── Footer Shortcuts ───────────────────────────────────────────────────────
     let footer_text = vec![
-        Span::styled("[o]", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[o]",
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Open in Browser  │  "),
-        Span::styled("[m]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[m]",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Run db:migrate  │  "),
-        Span::styled("[c]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[c]",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Clear Logs  │  "),
-        Span::styled("[↑/↓]", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[↑/↓]",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Scroll  │  "),
-        Span::styled("[q/Esc]", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[q/Esc]",
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Quit"),
     ];
 
     let footer = Paragraph::new(Line::from(footer_text))
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::DarkGray)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray)),
+        )
         .alignment(Alignment::Center);
     f.render_widget(footer, chunks[2]);
 }

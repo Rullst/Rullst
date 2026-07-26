@@ -30,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Dependencies Upgrade**: Updated all dependencies in the workspace to their latest stable compatible versions.
 - **OpenTelemetry v0.32 API Upgrade**: Migrated `telemetry.rs` to use the new `SdkTracerProvider` and `Resource` builder patterns mandated by the `0.32.1` release.
 - **Dependency Cleanups**: Pruned unused packages across `cargo-rullst`, `test1`, and examples using `cargo machete` for a leaner workspace.
-- **Rust 1.97.1 Upgrade**: Upgraded Rullst to use Rust 1.97.1 as the minimum supported rust version (MSRV) and updated internal Dockerfile templates.
+- **Rust 1.97.1 Upgrade**: Upgraded Rullst internal development to use Rust 1.97.1, while keeping Rust 1.96.0 as the minimum supported rust version (MSRV) para os usuários, and updated internal Dockerfile templates.
 
 ### Security
 - **SSH/SCP Option & Command Injection Defense**: Hardened `cargo-rullst` deployment generator (`foundry.rs`) by adding POSIX option delimiters (`--`) before destination arguments in `ssh` and `scp` invocations, enforcing strict character validation on upload binary names (`bin_name`), and validating environment variable keys and values to prevent newline or argument injection during remote server provisioning.

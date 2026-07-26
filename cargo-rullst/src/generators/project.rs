@@ -235,9 +235,13 @@ pub fn create_new_project(
     let rullst_dep = if let Some(ref dir) = rullst_dir {
         let path = dir.canonicalize()?.display().to_string();
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
-        format!("rullst = {{ path = \"{}\", features = [\"auth\", \"nexus\", \"studio\", \"mailer\"] }}", path)
+        format!(
+            "rullst = {{ path = \"{}\", features = [\"auth\", \"nexus\", \"studio\", \"mailer\"] }}",
+            path
+        )
     } else {
-        r#"rullst = { version = "5.0.1", features = ["auth", "nexus", "studio", "mailer"] }"#.to_string()
+        r#"rullst = { version = "5.0.1", features = ["auth", "nexus", "studio", "mailer"] }"#
+            .to_string()
     };
 
     let rullst_png_path = rullst_dir
@@ -650,7 +654,12 @@ APP_ENV=development
     println!("{}", "How to run:".magenta());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  Then, choose your experience:".cyan());
-    println!("{}", "    cargo rullst dash  (interactive dashboard)".yellow().bold());
+    println!(
+        "{}",
+        "    cargo rullst dash  (interactive dashboard)"
+            .yellow()
+            .bold()
+    );
     println!("{}", "    cargo rullst dev   (standard output)".white());
     println!();
     if docker {

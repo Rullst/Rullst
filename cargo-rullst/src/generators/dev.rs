@@ -12,10 +12,10 @@ use colored::*;
 use notify::{RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::process::Stdio;
-use std::io::{BufRead, BufReader};
 
 use quote::quote;
 use syn::{Macro, visit_mut::VisitMut};
@@ -102,22 +102,33 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         .with_state(app_state.clone());
 
     let ws_listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", ws_port)).await?;
-    let msg = format!("📡 Rullst HMR WebSocket listening on ws://127.0.0.1:{}/_rullst_hmr", ws_port);
-    if is_dash { let _ = log_tx.send(LogMsg::System(msg)); } else { println!("{}", msg); }
+    let msg = format!(
+        "📡 Rullst HMR WebSocket listening on ws://127.0.0.1:{}/_rullst_hmr",
+        ws_port
+    );
+    if is_dash {
+        let _ = log_tx.send(LogMsg::System(msg));
+    } else {
+        println!("{}", msg);
+    }
 
     tokio::spawn(async move {
         let _ = axum::serve(ws_listener, ws_app).await;
     });
 
     let msg2 = "📦 Booting Rullst application...".yellow().to_string();
-    if is_dash { let _ = log_tx.send(LogMsg::System(msg2)); } else { println!("{}", msg2); }
-    
+    if is_dash {
+        let _ = log_tx.send(LogMsg::System(msg2));
+    } else {
+        println!("{}", msg2);
+    }
+
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg("-q");
     if is_dash {
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     }
-    
+
     let mut app_child = cmd.spawn()?;
 
     if is_dash {
@@ -126,14 +137,14 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         let tx1 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().filter_map(|l| l.ok()) {
+            for line in reader.lines().map_while(Result::ok) {
                 let _ = tx1.send(LogMsg::AppStdout(line));
             }
         });
         let tx2 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().filter_map(|l| l.ok()) {
+            for line in reader.lines().map_while(Result::ok) {
                 let _ = tx2.send(LogMsg::AppStderr(line));
             }
         });
@@ -143,23 +154,40 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
 
     let watcher_task = tokio::spawn(async move {
         let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
-        let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-            if let Ok(event) = res {
-                let _ = notify_tx.blocking_send(event);
-            }
-        }).unwrap();
+        let mut watcher =
+            notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+                if let Ok(event) = res {
+                    let _ = notify_tx.blocking_send(event);
+                }
+            })
+            .unwrap();
 
-        watcher.watch(Path::new("src"), RecursiveMode::Recursive).unwrap();
-        watcher.watch(Path::new("Cargo.toml"), RecursiveMode::NonRecursive).unwrap();
+        watcher
+            .watch(Path::new("src"), RecursiveMode::Recursive)
+            .unwrap();
+        watcher
+            .watch(Path::new("Cargo.toml"), RecursiveMode::NonRecursive)
+            .unwrap();
 
-        let m = "✨ Watching for file changes... (Press Ctrl+C to stop)".green().to_string();
-        if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
+        let m = "✨ Watching for file changes... (Press Ctrl+C to stop)"
+            .green()
+            .to_string();
+        if is_dash {
+            let _ = log_tx_watcher.send(LogMsg::System(m));
+        } else {
+            println!("{}", m);
+        }
 
         let mut last_build = std::time::Instant::now();
         let mut file_cache: HashMap<PathBuf, String> = HashMap::new();
 
-        for entry in walkdir::WalkDir::new("src").into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() && entry.path().extension().and_then(|e| e.to_str()) == Some("rs") {
+        for entry in walkdir::WalkDir::new("src")
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().is_file()
+                && entry.path().extension().and_then(|e| e.to_str()) == Some("rs")
+            {
                 if let Ok(content) = fs::read_to_string(entry.path()) {
                     file_cache.insert(entry.path().to_path_buf(), content);
                 }
@@ -200,15 +228,27 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
             }
 
             if html_changed && !logic_changed {
-                let m = "🎨 UI change detected. Sending HTML fragment via WebSocket...".magenta().to_string();
-                if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
+                let m = "🎨 UI change detected. Sending HTML fragment via WebSocket..."
+                    .magenta()
+                    .to_string();
+                if is_dash {
+                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                } else {
+                    println!("{}", m);
+                }
                 let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
             }
 
             if logic_changed {
-                let m = "🔄 File change detected. Recompiling library for Hot-Swap...".yellow().to_string();
-                if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
-                
+                let m = "🔄 File change detected. Recompiling library for Hot-Swap..."
+                    .yellow()
+                    .to_string();
+                if is_dash {
+                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                } else {
+                    println!("{}", m);
+                }
+
                 let status = Command::new("cargo")
                     .arg("build")
                     .arg("--lib")
@@ -219,20 +259,40 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                     if status.success() {
                         let client = reqwest::Client::new();
                         let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
-                        let url = format!("http://127.0.0.1:{}/_rullst/internal/reload_dylib", port);
+                        let url =
+                            format!("http://127.0.0.1:{}/_rullst/internal/reload_dylib", port);
                         match client.post(&url).send().await {
                             Ok(_) => {
-                                let m = "✅ Hot-Swap executed successfully. App updated!".green().to_string();
-                                if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
-                            },
+                                let m = "✅ Hot-Swap executed successfully. App updated!"
+                                    .green()
+                                    .to_string();
+                                if is_dash {
+                                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                                } else {
+                                    println!("{}", m);
+                                }
+                            }
                             Err(_) => {
-                                let m = "⚠️ Failed to trigger hot-swap webhook. Is the app running?".red().to_string();
-                                if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
-                            },
+                                let m =
+                                    "⚠️ Failed to trigger hot-swap webhook. Is the app running?"
+                                        .red()
+                                        .to_string();
+                                if is_dash {
+                                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                                } else {
+                                    println!("{}", m);
+                                }
+                            }
                         }
                     } else {
-                        let m = "❌ Build failed. Please fix errors to Hot-Swap.".red().to_string();
-                        if is_dash { let _ = log_tx_watcher.send(LogMsg::System(m)); } else { println!("{}", m); }
+                        let m = "❌ Build failed. Please fix errors to Hot-Swap."
+                            .red()
+                            .to_string();
+                        if is_dash {
+                            let _ = log_tx_watcher.send(LogMsg::System(m));
+                        } else {
+                            println!("{}", m);
+                        }
                     }
                 }
             }

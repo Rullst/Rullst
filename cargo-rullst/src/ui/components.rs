@@ -559,7 +559,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ("cargo rullst make:middleware <Name>", "New middleware"),
                 ("cargo rullst make:worker <Name>", "New background worker"),
                 ("cargo rullst make:migration <name>", "Blank migration"),
-                ("cargo rullst make:island <name>", "New interactive Wasm Island"),
+                (
+                    "cargo rullst make:island <name>",
+                    "New interactive Wasm Island",
+                ),
                 (
                     "cargo rullst generate:models",
                     "Reverse-engineer live DB to Models",
@@ -617,8 +620,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ("cargo rullst build:client", "Compile Wasm Islands"),
                 ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
                 ("cargo rullst generate:ts", "Generate TypeScript SDK"),
-                ("cargo rullst generate:diagram", "Generate Mermaid ER diagram"),
-                ("cargo rullst generate:ai-context", "Generate AI context (.llms.txt)"),
+                (
+                    "cargo rullst generate:diagram",
+                    "Generate Mermaid ER diagram",
+                ),
+                (
+                    "cargo rullst generate:ai-context",
+                    "Generate AI context (.llms.txt)",
+                ),
                 ("cargo rullst docs dev", "Live docs preview server"),
                 ("cargo rullst docs build", "Build static docs site"),
             ],
