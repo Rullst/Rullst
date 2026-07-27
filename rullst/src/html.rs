@@ -79,7 +79,13 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
             escaped.reserve_exact(s.len() + 16);
         }
 
-        escaped.push_str(&s[last_pos..i]);
+        // SAFETY: `last_pos` is either 0 or the index immediately following an ASCII character.
+        // `i` is the index of the current ASCII character.
+        // Thus, both `last_pos` and `i` are valid character boundaries.
+        // Also, `last_pos <= i` because `last_pos` is updated to `i + 1` of the *previous* match.
+        unsafe {
+            escaped.push_str(s.get_unchecked(last_pos..i));
+        }
         escaped.push_str(replacement);
         last_pos = i + 1;
     }
@@ -87,7 +93,11 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
     if last_pos == 0 {
         Cow::Borrowed(s)
     } else {
-        escaped.push_str(&s[last_pos..]);
+        // SAFETY: `last_pos` is the index immediately following the last matched ASCII character.
+        // Thus, it is a valid character boundary and <= s.len().
+        unsafe {
+            escaped.push_str(s.get_unchecked(last_pos..));
+        }
         Cow::Owned(escaped)
     }
 }

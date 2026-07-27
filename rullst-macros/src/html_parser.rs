@@ -231,6 +231,7 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
+    #[kani::unwind(501)]
     fn verify_static_size_no_overflow() {
         // We model the logic of HtmlElement::static_size() to mathematically prove
         // it cannot overflow `usize` with reasonable constraints imposed by the macro system.
@@ -271,6 +272,7 @@ mod kani_proofs {
     }
 
     #[kani::proof]
+    #[kani::unwind(15)]
     fn verify_void_elements_check() {
         let void_elements = [
             "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
