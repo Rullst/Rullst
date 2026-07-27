@@ -1,0 +1,620 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>🗺️ Rullst Official Roadmap - Rullst Framework Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-1a0a94e2.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-3a119751.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Rullst Framework Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/Rullst/Rullst" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/Rullst/Rullst/edit/main/docs/src/src/roadmap.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="rullst-roadmap-"><a class="header" href="#rullst-roadmap-">Rullst Roadmap 🗺️</a></h1>
+<h3 id="the-path-to-the-ultimate-full-stack-rust-framework"><a class="header" href="#the-path-to-the-ultimate-full-stack-rust-framework"><em>“The Path to the Ultimate Full-Stack Rust Framework”</em></a></h3>
+<p>This roadmap outlines the milestones required to transition <strong>Rullst</strong> from its current MVP (v0.1.0) into a dominant, production-ready, full-stack framework focused on <strong>Emotional Productivity</strong> and <strong>AI-Native Engineering</strong>.</p>
+<p>Our development strategy follows the <strong>“Developer Experience like Laravel, Performance like Rust, Architected for Humans and AI”</strong> philosophy.</p>
+<hr>
+<h2 id="-the-ai-native-paradigm-designed-for-humans--ai"><a class="header" href="#-the-ai-native-paradigm-designed-for-humans--ai">🤖 The AI-Native Paradigm (Designed for Humans &amp; AI)</a></h2>
+<p>Almost every modern web framework (Laravel, Ruby on Rails, Next.js) was built before the era of LLMs and AI Agents. They rely heavily on runtime magic, dynamic reflection, and complex implicitness that confuses AI coders and leads to hallucinations.</p>
+<p><strong>Rullst is built from the ground up to be the first AI-Native web framework:</strong></p>
+<ol>
+<li><strong>Zero Runtime Magic, Pure Compilation:</strong> High-level declarative macros (<code>#[derive(Orm)]</code>, <code>routes!</code>) and strict Rust type safety give AI coding assistants extremely explicit structures, resulting in zero API hallucinations and instant compiler self-correction.</li>
+<li><strong>Context-Rich Scaffolding:</strong> <code>cargo rullst new</code> will automatically scaffold optimized <code>.ai-rules</code> / <code>.cursorrules</code> files. Any AI agent opening the project instantly learns Rullst’s exact conventions, code style, and API standards, achieving 100% productive pair-programming immediately.</li>
+<li><strong>Structured System Discovery:</strong> In dev mode, Rullst will generate a local structural schema (<code>rullst-schema.json</code>) detailing all active routes, controllers, and models. This lets AI agents map out the entire project structure in milliseconds.</li>
+</ol>
+<hr>
+<h2 id="-the-next-generation-architecture-integrated-in-v500"><a class="header" href="#-the-next-generation-architecture-integrated-in-v500">🚀 The Next Generation Architecture (Integrated in v5.0.0)</a></h2>
+<p>To completely obliterate the competition and overcome the heavy constraints of monolithic Wasm frameworks, Rullst is actively evolving into its next major architectural phase:</p>
+<ol>
+<li><strong>Islands Architecture (Goodbye Monolithic Wasm):</strong> Rullst will serve HTML 100% statically by default. Only components explicitly marked with <code>#[island]</code> will be compiled to lightweight Wasm or JS for client-side hydration, solving the heavy initial load problem.</li>
+<li><strong>Server Functions (Transparent RPC):</strong> Eliminate manual <code>fetch</code> calls. Write a Rust function on the frontend, and the framework will automatically generate the RPC bridge to the database.</li>
+<li><strong>Dual-Target Routes (Web + Mobile):</strong> A single route definition generates both the HTML/Wasm render endpoint for the browser and a clean JSON API for mobile apps natively.</li>
+<li><strong>Intelligent Caching (<code>#[memoize]</code>):</strong> A framework-level macro that caches in-memory component renders and database queries per request scope automatically.</li>
+</ol>
+<hr>
+<h2 id="-the-ecosystem-hegemony-community--deployment"><a class="header" href="#-the-ecosystem-hegemony-community--deployment">🌍 The Ecosystem Hegemony (Community &amp; Deployment)</a></h2>
+<p>To truly dominate the global web development market, Rullst will expand beyond a framework into a full deployment ecosystem:</p>
+<ol>
+<li><strong>“Zero-Code” Extensible Admin:</strong> Rullst Nexus will not just read the database. Product managers will be able to alter views and permissions visually from the panel, and the framework will autonomously open a GitHub Pull Request with the underlying Rust code changes.</li>
+<li><strong>Dynamic Plugin Marketplace:</strong> Leveraging Rullst’s hot-swapping (<code>.dll</code>/<code>.so</code>) capabilities, developers will be able to install community plugins (forums, chat modules) dynamically in production without recompiling or restarting the core server.</li>
+<li><strong>Rullst Cloud (The Vercel for Rust):</strong> The ultimate multiplier. A globally distributed Edge infrastructure where a single <code>cargo rullst deploy</code> command builds, compresses, and distributes the application globally in seconds, abstracting all DevOps friction.</li>
+<li><strong>Automated Compliance &amp; Data Governance (GDPR/LGPD) [Rullst-ORM]:</strong> A <code>#[derive(PersonalData)]</code> macro that guarantees sensitive user data (CPF, emails) is automatically encrypted at rest in the database, masked in all telemetry logs, and able to generate automated privacy reports out-of-the-box.</li>
+</ol>
+<hr>
+<h2 id="-the-rullst-master-plan"><a class="header" href="#-the-rullst-master-plan">🚀 The Rullst Master Plan</a></h2>
+<pre><code class="language-mermaid">graph TD
+    M0["🤖 Pillar: AI-Native Design"] --&gt; M1["🛠️ M1: CLI Generator Power"]
+    M1 --&gt; M2["🗄️ M2: Database Supremacy"]
+    M2 --&gt; M3["🔒 M3: Auth &amp; Security"]
+    M3 --&gt; M4["⚡ M4: HTMX &amp; Frontend"]
+    M4 --&gt; M5["📦 M5: Production Utilities"]
+    M5 --&gt; M6["🏢 M6: Enterprise Features"]
+    M6 --&gt; M7["🚀 M7: The Unfair Advantage"]
+    M7 --&gt; M8["🌍 M8: Edge Fusion &amp; Auto-Upgrade"]
+    M8 --&gt; M9["🆓 M9: The Free Enterprise Revolution"]
+    M9 --&gt; M10["🛠️ M10: Incremental Compilation"]
+    M10 --&gt; M11["📊 M11: Telemetry &amp; Radar"]
+    M11 --&gt; M12["💎 M12: Zero-Copy Streaming"]
+    M12 --&gt; M13["🔮 M13: Omni-Frontend &amp; AI"]
+    M13 --&gt; M14["🤖 M14: Agentic DevOps"]
+    M14 --&gt; M15["🌐 M15: Intent-Based DB"]
+    M15 --&gt; M16["🧬 M16: Self-Evolving Core"]
+    M16 --&gt; M17["🔬 M17: Quantum-Ready"]
+
+    style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
+    style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
+    style M2  fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
+    style M3  fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
+    style M4  fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
+    style M5  fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    style M6  fill:#b5ffd9,stroke:#fff,stroke-width:2px,color:#000
+    style M7  fill:#ffe57f,stroke:#fff,stroke-width:2px,color:#000
+    style M8  fill:#e1bee7,stroke:#fff,stroke-width:2px,color:#000
+    style M9  fill:#b3e5fc,stroke:#fff,stroke-width:2px,color:#000
+    style M10 fill:#ffccbc,stroke:#fff,stroke-width:2px,color:#000
+    style M11 fill:#c8e6c9,stroke:#fff,stroke-width:2px,color:#000
+    style M12 fill:#f8bbd0,stroke:#fff,stroke-width:2px,color:#000
+    style M13 fill:#dcedc8,stroke:#fff,stroke-width:2px,color:#000
+    style M14 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
+    style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
+    style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
+    style M17 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
+</code></pre>
+<hr>
+<h2 id="-milestone-1-cli-empowerment-cargo-rullst"><a class="header" href="#-milestone-1-cli-empowerment-cargo-rullst">🛠️ Milestone 1: CLI Empowerment (<code>cargo-rullst</code>)</a></h2>
+<p><strong>Goal:</strong> Enable lightning-fast scaffolding. Developers should never create boilerplate files manually.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Code Generators:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst make:controller &lt;Name&gt;</code> - Generates a controller with standard CRUD actions.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst make:model &lt;Name&gt; [-m]</code> - Generates an Active Record model and optionally an associated migration.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst make:middleware &lt;Name&gt;</code> - Generates Axum-compatible custom middleware.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst make:cors</code> &amp; <code>make:jwt</code> - Scaffold essential boilerplate middlewares directly into your project.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst generate:openapi</code> - AI-Driven OpenAPI/Swagger generator without heavy macros.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst make:worker</code> - Scaffold background task workers.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Workspace Ergonomics:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Improve compilation speeds for CLI runs.</li>
+<li><input disabled="" type="checkbox" checked=""> Support <code>--api</code> flag for scaffolding headless REST APIs instead of full HTML apps.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-2-database-supremacy-migrations--relationships"><a class="header" href="#-milestone-2-database-supremacy-migrations--relationships">🗄️ Milestone 2: Database Supremacy (Migrations &amp; Relationships)</a></h2>
+<p><strong>Goal:</strong> Empower <code>rullst-orm</code> and <code>Rullst</code> to handle enterprise-grade relational schemas seamlessly.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p><strong>Division of Responsibilities:</strong>
+The heavy lifting (database schema parsers, migration execution, and relationship macro builders) will be developed directly inside the <strong><code>rullst-orm</code></strong> repository to keep the ORM modular.
+<strong>Rullst</strong> will wrap these features with CLI commands and smooth dependency injection.</p>
+</blockquote>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Migration Engine (in <code>rullst-orm</code>):</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> SQL-based or DSL-based migration definitions.</li>
+<li><input disabled="" type="checkbox" checked=""> CLI runner inside Rullst:
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst db:migrate</code> - Runs pending migrations.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst db:rollback</code> - Reverts the last migration batch.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst db:status</code> - Shows the migration history.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Active Record Relationships (in <code>rullst-orm</code>):</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>HasMany</code> / <code>BelongsTo</code> declarative macros.</li>
+<li><input disabled="" type="checkbox" checked=""> <code>BelongsToMany</code> (Many-to-Many) association resolvers.</li>
+<li><input disabled="" type="checkbox" checked=""> Lazy and Eager loading mechanisms to prevent N+1 query problems.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Seeders and Factories:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst db:seed</code> - Populate databases using pre-configured mock data.</li>
+<li><input disabled="" type="checkbox" checked=""> Integrated factory pattern for mock entity generation.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-3-authentication--security-social-local--passkeys"><a class="header" href="#-milestone-3-authentication--security-social-local--passkeys">🔒 Milestone 3: Authentication &amp; Security (Social, Local &amp; Passkeys)</a></h2>
+<p><strong>Goal:</strong> Implement robust, secure, and instant authentication. Developers should be able to authenticate users securely in minutes.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Social Authentication via <code>rullst-connect</code>:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Leverage the custom <strong><a href="https://crates.io/crates/rullst-connect"><code>rullst-connect</code></a></strong> crate as the official OAuth engine.</li>
+<li><input disabled="" type="checkbox" checked=""> Out-of-the-box configurations for Google, GitHub, Facebook, Twitter, and custom providers.</li>
+<li><input disabled="" type="checkbox" checked=""> Seamless flow: redirect to provider, parse callbacks, and login/register users via Active Record.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Local Authentication:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Secure password hashing via Argon2/Bcrypt built-in helpers.</li>
+<li><input disabled="" type="checkbox" checked=""> Custom session-based cookie middleware and token-based (JWT) auth middleware.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Passkeys &amp; Biometrics First (<code>rullst::auth::passkey</code>):</strong> Native WebAuthn abstraction for biometric authentication (FaceID, TouchID, Windows Hello) bundled into <code>cargo rullst auth</code>. Passwordless signups and logins using public-key cryptography via HTMX/WebAuthn with smooth security key fallbacks.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>The “Auth Magic” Command:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst auth</code> - Instantly scaffold a full-fledged authentication system containing:
+<ul>
+<li>Login/Registration/Password Reset controllers.</li>
+<li>Beautiful UI screens (<code>html!</code> templates) pre-configured with CSS.</li>
+<li>SQL database migration for the <code>users</code> table.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Security Defaults:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Automatic CSRF protection for HTML form submissions.</li>
+<li><input disabled="" type="checkbox" checked=""> Default security headers middleware (CORS, HSTS, X-Content-Type-Options).</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-4-htmx--interactivity"><a class="header" href="#-milestone-4-htmx--interactivity">⚡ Milestone 4: HTMX &amp; Interactivity</a></h2>
+<p><strong>Goal:</strong> Combine the simplicity of Server-Side Rendering (SSR) with the snappy feeling of modern Single-Page Applications (SPAs).</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Native Reactive SSR (HTMX Live State):</strong> A declarative macro engine (<code>#[htmx]</code>) that automatically manages WebSocket connections, evaluates server-side state, and pushes minimal DOM patches instantly to the client—achieving Phoenix LiveView-like interactivity without writing JavaScript or WebAssembly.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>HTMX First-Class Support:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Built-in response helpers for checking HTMX headers (<code>rullst::htmx::is_htmx(req)</code>).</li>
+<li><input disabled="" type="checkbox" checked=""> Native support for partial template rendering (rendering only the requested component, not the full page layout).</li>
+<li><input disabled="" type="checkbox" checked=""> TailwindCSS auto-integration during project setup.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-5-production-utilities-queues-cache-scheduler--assets"><a class="header" href="#-milestone-5-production-utilities-queues-cache-scheduler--assets">📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler &amp; Assets)</a></h2>
+<p><strong>Goal:</strong> Provide the tools needed to scale applications in production environment.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Docker &amp; Containerization:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>cargo rullst new &lt;name&gt; --docker</code> flag to generate a production-ready <code>Dockerfile</code>.</li>
+<li><input disabled="" type="checkbox" checked=""> Auto-generated <code>docker-compose.yml</code> for local development (App + DB + Redis).</li>
+<li><input disabled="" type="checkbox" checked=""> Optimized multi-stage builds (<code>scratch</code> / <code>distroless</code>) for ultra-small, fast, and secure Rust deployments.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Queues &amp; Background Workers:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>rullst::queue</code> API supporting SQLite (for local dev) and Redis (for production).</li>
+<li><input disabled="" type="checkbox" checked=""> Asynchronous task workers executing jobs in the background.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Caching Layer:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <code>rullst::cache</code> unified driver API supporting In-Memory and Redis adapters.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Task Scheduler:</strong>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Declarative Cron-like job scheduler directly in <code>main.rs</code> (e.g. <code>.schedule("0 0 * * *", nightly_cleanup)</code>).</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Edge-Optimized Assets &amp; Compression Tuning:</strong> Automatically generate pre-compiled assets compressed via <strong>Brotli (level 11)</strong> and <strong>Zstandard</strong> during <code>cargo rullst build --release</code>. Zero-copy static file serving via Axum using <code>sendfile</code> system calls directly at the kernel level, outperforming standalone Nginx serving speeds.</li>
+</ul>
+<hr>
+<h2 id="-milestone-6-enterprise-features-validation-mail-storage--protection"><a class="header" href="#-milestone-6-enterprise-features-validation-mail-storage--protection">🏢 Milestone 6: Enterprise Features (Validation, Mail, Storage &amp; Protection)</a></h2>
+<p><strong>Goal:</strong> Deliver the classic robust features expected from enterprise-grade frameworks.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Declarative Validation:</strong> A <code>#[derive(Validate)]</code> macro for DTOs/structs that automatically returns 422 JSON for APIs or HTML error partials for HTMX when validation fails.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Mailer System (<code>rullst::mail</code>):</strong> Fluent API for sending emails with drivers for SMTP, Resend, and SendGrid, supporting native <code>html!</code> templates.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Storage Abstraction (<code>rullst::storage</code>):</strong> Unified API for file uploads and management with drivers for Local (Disk), AWS S3, and Cloudflare R2.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>WebSockets &amp; Real-Time:</strong> Built-in router support for WebSockets, perfectly integrated with HTMX (<code>hx-ext="ws"</code>).</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Rullst Zenith:</strong> A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Adaptive Backpressure &amp; Resilient Traffic Shielding:</strong> Router-level protection middleware that tracks async Tokio thread pools and database response timings. Smoothly degrades traffic or queues excessive loads when database exhaustion or CPU saturation is imminent, preventing out-of-memory (OOM) crashes.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Token-Bucket Rate Limiting:</strong> Native rate limiting attributes (e.g., <code>#[route(get, "/api", rate_limit = "100/m")]</code>) with Shared-Memory (<code>DashMap</code>) or Redis engines.</li>
+</ul>
+<hr>
+<h2 id="-milestone-7-the-unfair-advantage-industry-dominance"><a class="header" href="#-milestone-7-the-unfair-advantage-industry-dominance">🚀 Milestone 7: The “Unfair Advantage” (Industry Dominance)</a></h2>
+<p><strong>Goal:</strong> Push Rullst beyond what is possible in other languages, making it the undeniable king of modern web development.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Rullst Live (Server-Driven UI):</strong> Write stateful Rust components that automatically sync with the browser via WebSockets. SPA interactivity without writing a single line of JavaScript.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>AI-Native Core (<code>rullst::ai</code>):</strong> Built-in declarative abstractions for LLMs (OpenAI, Gemini, Anthropic, Ollama), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Rullst Studio:</strong> A built-in visual GUI to inspect, filter, and edit your database records locally. Triggered via <code>cargo rullst studio</code>.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Declarative E2E Testing:</strong> A fluent testing API: <code>app.get("/login").assert_status(200).assert_see("Welcome");</code>.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Built-in Feature Flags:</strong> Native support for toggling features and running A/B tests with zero external dependencies.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Wasm Islands (<code>#[client_component]</code>):</strong> Write frontend interactive components directly in Rust. Rullst will automatically compile these specific components to lightweight WebAssembly and hydrate them on the client side, eliminating the need to write any JavaScript!</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>AI-Powered “Self-Healing” Error Console:</strong> An interactive development error page with integrated local AI assistants. When a runtime or compilation error occurs, you will have an “Auto-Fix with Rullst AI” button that patches the correct code directly on your file system.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Native SaaS Multi-Tenancy (<code>rullst::multitenant</code>):</strong> Out-of-the-box tenant isolation (multi-tenancy by subdomain, header, or DB schema) configured declaratively with a single decorator/macro.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Hybrid Hot-Reloading (Dynamic Linking + AST Parsing):</strong> The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (<code>dylib</code> / <code>.so</code>) to update the backend instantly. For frontend views (<code>html!</code> macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? <strong>Sub-millisecond layout updates</strong> (like Vite/Dioxus) with a stateful Rust backend.</li>
+</ul>
+<hr>
+<h2 id="-milestone-8-distributed-data--edge-fusion"><a class="header" href="#-milestone-8-distributed-data--edge-fusion">🌍 Milestone 8: Distributed Data &amp; Edge Fusion</a></h2>
+<p><strong>Goal:</strong> Run Rullst on modern Edge infrastructure with zero rewrites and ultra-low latency globally.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Rullst Edge Runtime (<code>rullst::edge</code>):</strong> Native support for compiling and running Rullst apps in WebAssembly infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstracting Tokio/WASI differences.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Zero-Config SQLite Replication:</strong> Native drivers for edge-distributed databases (Turso/libsql, Cloudflare D1) integrated into <code>rullst-orm</code>. Read/write locally at 1ms latency while the framework syncs globally in the background.</li>
+</ul>
+<h3 id="-autonomous-upgrade-system-cargo-rullst-upgrade"><a class="header" href="#-autonomous-upgrade-system-cargo-rullst-upgrade">🔄 Autonomous Upgrade System (<code>cargo rullst upgrade</code>)</a></h3>
+<blockquote>
+<p>One of the biggest DX challenges in any full-stack framework is keeping dependencies updated without breaking user code. Rust makes this even more critical — minor/patch version bumps in low-level crates can cause hard compile-time errors. This system makes Rullst upgrades nearly invisible.</p>
+</blockquote>
+<ul>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Non-Intrusive Background Version Check:</strong> Every time the user runs frequent commands like <code>cargo rullst new</code> or <code>cargo rullst dev</code>, the CLI performs a lightweight async HTTP request (in a background thread, never blocking the terminal) to the Crates.io public API (<code>https://crates.io/api/v1/crates/rullst</code>) and compares the latest remote version with the version pinned in the user’s <code>Cargo.toml</code>. The result is cached in a local temp file and refreshed at most once per day, so there is zero network overhead on repeated commands.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Elegant Terminal Notification Box:</strong> If a new version is detected, the CLI renders a non-blocking info box directly in the terminal output — styled with <code>colored</code> — immediately after the command completes:</p>
+<pre><code>┌────────────────────────────────────────────────────────────┐
+│  🚀 New Rullst version available: 1.0.5 → 1.1.0            │
+│  Run 'cargo rullst upgrade' to update safely with           │
+│  automatic code fixes (codemods).                           │
+└────────────────────────────────────────────────────────────┘
+</code></pre>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Automated Codemods (Zero-Breaking Upgrades):</strong> Expand <code>cargo rullst upgrade</code> into a full autonomous refactoring pipeline:</p>
+<ol>
+<li><strong>Manifest update:</strong> The CLI rewrites the <code>rullst</code>, <code>rullst-macros</code>, and <code>rullst-orm</code> version strings in the user’s <code>Cargo.toml</code> to the latest release.</li>
+<li><strong>Codemod execution:</strong> A versioned registry of regex-based (or lightweight AST) search-and-replace rules is shipped with each CLI release. If a public API changed between versions (e.g., <code>.render()</code> renamed to <code>.render_page()</code>), the CLI automatically rewrites all matching occurrences inside <code>src/**/*.rs</code> before the user even sees a compile error.</li>
+<li><strong>Validation gate (<code>cargo check</code>):</strong> After applying codemods, the CLI runs <code>cargo check</code> in background. If the compiler exits cleanly, the user sees: <code>"✅ Rullst updated successfully. No breaking changes detected."</code> If errors remain, a diff of the codemod changes is shown so the developer can review.</li>
+</ol>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Dependency Shielding (Internal Abstraction Casca):</strong> Enforce the architectural rule that all heavy transitive dependencies (e.g. <code>sqlx</code>, <code>axum</code>, <code>tokio</code>, <code>lettre</code>) are always re-exported or wrapped inside Rullst’s own public API surface. User code must never <code>use sqlx::*</code> directly — only <code>use rullst::db::*</code>. This shields user apps from upstream breakage: when <code>sqlx</code> releases a breaking version, only Rullst’s internal adapter changes, and the user’s code compiles untouched.</p>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-9-the-free-enterprise-revolution"><a class="header" href="#-milestone-9-the-free-enterprise-revolution">🆓 Milestone 9: The “Free Enterprise” Revolution</a></h2>
+<p><strong>Goal:</strong> Disrupt the web framework ecosystem by providing premium SaaS and Enterprise tools 100% free and open-source, democratizing the tools to build million-dollar companies.</p>
+<ul>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Rullst Nexus Panel (Auto-Generated CMS):</strong> A beautiful, out-of-the-box admin panel that reads your <code>rullst-orm</code> models and auto-generates a complete CMS. Implemented via <code>rullst::nexus</code> with <code>NexusModel</code> reflection trait, dynamic HTMX CRUD, live search, and an AI chat interface at <code>/nexus/chat</code> for natural language database queries.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Dual-Engine Frontend Architecture:</strong> Two new CLI generators empower developers to choose the right rendering engine:</p>
+<ul>
+<li><strong>Rullst Omni (Desktop &amp; Mobile):</strong> <code>cargo rullst make:omni</code> scaffolds a full Tauri v2 <code>omni-app/</code> wrapper. A background process orchestrator manages the Rullst Axum server, polls port 3000, and gracefully terminates it on window close. Supports targeting desktop (Windows, macOS, Linux) and mobile (Android, iOS) platforms with custom network configurations. Includes smart binary icon generation (PNG/ICO/ICNS) to prevent compiler errors.</li>
+</ul>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Rullst Capital (SaaS Billing Boilerplate):</strong> <code>cargo rullst make:billing</code> generates complete Stripe/LemonSqueezy integration — database migrations for subscriptions, webhook processors for subscription lifecycle events, and styled checkout views.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Rullst Shield (Wasm WAF &amp; Bot Management):</strong> Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking in response payloads.</p>
+</li>
+<li>
+<p><input disabled="" type="checkbox" checked=""> <strong>Rullst Foundry CLI (DevOps Tooling):</strong> Built-in CLI commands to provision and deploy infrastructure automatically via a declarative <code>Foundry.toml</code> file, forming the open-source foundation for a future hosted 1-click cloud service. Supported providers:</p>
+<ul>
+<li><strong>AWS</strong> (EC2 + RDS + S3 + CloudFront)</li>
+<li><strong>Hetzner Cloud</strong> (VPS + Volumes + Floating IPs)</li>
+<li><strong>Google Cloud Platform</strong> (Compute Engine + Cloud SQL + Cloud Storage)</li>
+<li><strong>Microsoft Azure</strong> (Virtual Machines + Azure SQL + Blob Storage)</li>
+<li><strong>Oracle Cloud Infrastructure</strong> (OCI Compute + Autonomous DB + Object Storage)</li>
+<li><strong>DigitalOcean</strong> (Droplets + Managed Databases + Spaces)</li>
+</ul>
+<p>Each provider target provisions the server via SSH, installs Docker, deploys the Rullst binary inside a container, and automatically configures an HTTPS reverse proxy via Caddy with automatic SSL certificate management.</p>
+</li>
+</ul>
+<hr>
+<h2 id="-milestone-10-instant-incremental-compilation--linker-hacking"><a class="header" href="#-milestone-10-instant-incremental-compilation--linker-hacking">🛠️ Milestone 10: Instant Incremental Compilation &amp; Linker Hacking</a></h2>
+<p><strong>Goal:</strong> Eradicate compile-time friction in Rust and achieve interpreted-language feedback loop speeds.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Rullst Mold/Cranelift Deep Integration:</strong> Configure the framework’s scaffolding to force ultra-fast linkers (like <code>mold</code>) and use the <code>Cranelift</code> compilation backend during development.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Sub-100ms Feedback Loop:</strong> Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.</li>
+</ul>
+<hr>
+<h2 id="-milestone-11-hardware-telemetry--radar"><a class="header" href="#-milestone-11-hardware-telemetry--radar">📊 Milestone 11: Hardware Telemetry &amp; Radar</a></h2>
+<p><strong>Goal:</strong> Make asynchronous debugging and performance profiling effortless without relying on complex external setups.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Rullst Radar (Kernel-Level Telemetry):</strong> Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks, Mutex contention, memory leaks, and I/O query bottlenecks with zero overhead.</li>
+<li><input disabled="" type="checkbox"> <strong>Time-Travel Debugging in Error Console:</strong> Add a state history of the last 50 events, HTMX clicks, and SQL queries to the “Self-Healing” console. Replay the exact scenario that caused a server panic.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Native OpenTelemetry:</strong> Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus.</li>
+</ul>
+<hr>
+<h2 id="-milestone-12-developer-ecosystem--interoperability"><a class="header" href="#-milestone-12-developer-ecosystem--interoperability">📚 Milestone 12: Developer Ecosystem &amp; Interoperability</a></h2>
+<p><strong>Goal:</strong> Make Rullst the easiest framework to integrate with frontend ecosystems and provide world-class documentation.</p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> <strong>Documentation Hub:</strong> A premium, hyper-fast VitePress documentation portal with modern dark-mode aesthetics to lower the learning curve for new developers.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>TypeScript SDK Generator (<code>generate:ts</code>):</strong> AST-based CLI command that parses Rullst routes and generates a strictly-typed TypeScript client SDK for seamless React/Vue/Svelte integration.</li>
+</ul>
+<hr>
+<h2 id="-milestone-12-zero-copy-event-streaming--time-travel-architecture"><a class="header" href="#-milestone-12-zero-copy-event-streaming--time-travel-architecture">💎 Milestone 12: Zero-Copy Event Streaming &amp; Time-Travel Architecture</a></h2>
+<p><strong>Goal:</strong> Natively unify the data lifecycle and eliminate the need for heavy external message brokers.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Rullst Ledger (<code>rullst::ledger</code>):</strong> An Event Sourcing engine integrated directly into <code>rullst-orm</code>. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).</li>
+<li><input disabled="" type="checkbox"> <strong>Built-in Event Streaming:</strong> The Rullst binary itself acts as a distributed async message micro-broker across instances via WebSockets/QUIC, replacing the need for Kafka or RabbitMQ for internal data communication.</li>
+</ul>
+<hr>
+<h2 id="-milestone-13-omni-frontend-protocol--ai-expansion"><a class="header" href="#-milestone-13-omni-frontend-protocol--ai-expansion">🔮 Milestone 13: Omni-Frontend Protocol &amp; AI Expansion</a></h2>
+<p><strong>Goal:</strong> Solidify Rullst as the ultimate backend for AI agents, SPAs, and Native Mobile apps.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Automatic TypeScript SDK Generation:</strong> For routes exposed as REST/JSON or WebSockets, auto-generate a 100% typed TS client, eliminating tRPC or manual OpenAPI.</li>
+<li><input disabled="" type="checkbox"> <strong>Hyper-Media Mobile Bridge:</strong> A protocol allowing hybrid iOS/Android apps to consume partial HTMX/JSON responses and render native screens instantly (Server-Driven UI for mobile).</li>
+<li><input disabled="" type="checkbox"> <strong>AI Agent Tool-Calling:</strong> Automatically expose Rullst routes/controllers as executable “Tools” for external LLMs with auto-generated schemas (<code>rullst-schema.json</code>).</li>
+<li><input disabled="" type="checkbox"> <strong>Dynamic Context Injection:</strong> A secure <code>/_rullst/ai-context</code> endpoint providing real-time API documentation for client-integration AI agents.</li>
+<li><input disabled="" type="checkbox"> <strong>AI-Powered DB Seeding:</strong> <code>cargo rullst db:seed --ai</code> leverages local LLMs to generate ultra-realistic, context-aware mock data.</li>
+</ul>
+<hr>
+<h2 id="-milestone-14-agentic-devops--autonomous-infrastructure"><a class="header" href="#-milestone-14-agentic-devops--autonomous-infrastructure">🤖 Milestone 14: Agentic DevOps &amp; Autonomous Infrastructure</a></h2>
+<p><strong>Goal:</strong> Leverage the Rullst compiler’s deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Autonomous Provisioning (<code>cargo rullst deploy --autonomous</code>):</strong> The compiler analyzes your code (e.g., if you use <code>rullst::storage::S3</code>, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.</li>
+<li><input disabled="" type="checkbox"> <strong>AI-Driven CI/CD Bottleneck Analysis:</strong> Automated testing pipelines that use local LLMs to evaluate performance regressions. If a commit slows a route, the AI profiles the Tokio stack and suggests the exact line causing the bottleneck.</li>
+</ul>
+<hr>
+<h2 id="-milestone-15-ai-generated-autonomous-migrations--intent-based-db"><a class="header" href="#-milestone-15-ai-generated-autonomous-migrations--intent-based-db">🌐 Milestone 15: AI-Generated Autonomous Migrations &amp; Intent-Based DB</a></h2>
+<p><strong>Goal:</strong> Invert the database design flow by having AI generate optimized schemas and indices based on plain text intentions.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Intent-Based Modeling:</strong> Describe your entity using rich Rust comments. The Rullst AI CLI understands the business intent, calculates the best indexing strategy, and generates a perfectly optimized migration automatically.</li>
+<li><input disabled="" type="checkbox"> <strong>Self-Optimizing Indexes:</strong> In production, Rullst monitors slow queries in real-time (using Radar Telemetry) and autonomously suggests or safely applies secondary indices to eliminate slow table scans.</li>
+</ul>
+<hr>
+<h2 id="-milestone-16-the-self-evolving--polymorphic-core"><a class="header" href="#-milestone-16-the-self-evolving--polymorphic-core">🧬 Milestone 16: The Self-Evolving &amp; Polymorphic Core</a></h2>
+<p><strong>Goal:</strong> Transform the framework from a static tool into a living software organism that adapts, optimizes, and heals itself in production.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Polymorphic Code Generation:</strong> Deep telemetry and local AI analyze production traffic. If a route receives millions of requests with a specific data pattern, the framework rewrites and recompiles its own internal logic in the background (via Dynamic Linking) to create an ultra-optimized execution path.</li>
+<li><input disabled="" type="checkbox"> <strong>Autonomous Error Auto-Healing in Production:</strong> If the system detects a novel panic in production, the AI analyzes the log, writes a corrective patch, runs the test suite in the background, and hot-swaps the router in under 1 second—all without human intervention. The developer just wakes up to a report saying the bug was fixed.</li>
+</ul>
+<hr>
+<h2 id="-milestone-17-quantum-ready-web-architecture-the-post-quantum-era"><a class="header" href="#-milestone-17-quantum-ready-web-architecture-the-post-quantum-era">🔬 Milestone 17: Quantum-Ready Web Architecture (The Post-Quantum Era)</a></h2>
+<p><strong>Goal:</strong> Future-proof the framework’s security and compute layers against the rise of commercial quantum computing.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Native Post-Quantum Cryptography (PQC):</strong> Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.</li>
+<li><input disabled="" type="checkbox"> <strong>Hybrid Security Abstraction:</strong> Implement a hybrid transport layer (Classical TLS + Quantum TLS) by default, ensuring the app is shielded against “Harvest Now, Decrypt Later” attacks.</li>
+<li><input disabled="" type="checkbox"> <strong>Rullst QLink (<code>rullst::quantum</code>):</strong> A driver abstraction layer to communicate with cloud Quantum Processing Units (QPUs like IBM Quantum, AWS Braket). Easily dispatch complex logistics or molecular simulation tasks to quantum computers natively in Rust.</li>
+</ul>
+<hr>
+<h2 id="-future-architecture-refactorings-core-modernization"><a class="header" href="#-future-architecture-refactorings-core-modernization">🏗️ Future Architecture Refactorings (Core Modernization)</a></h2>
+<p><strong>Goal:</strong> Keep the internal architecture of Rullst clean, modular, and at the bleeding edge of the Rust ecosystem (Targeting v6.0).</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Native AFIT (Async-Trait Removal):</strong> Remove the <code>async-trait</code> macro completely when Rust stabilizes “Async Dynamic Dispatch”. This will eliminate heap allocations (<code>Box::pin</code>) per request while maintaining the <code>Box&lt;dyn Driver&gt;</code> architecture.</li>
+<li><input disabled="" type="checkbox" checked=""> <strong>Workspace Componentization:</strong> Split the monolithic <code>rullst</code> crate into smaller, focused crates (e.g., <code>rullst-core</code>, <code>rullst-auth</code>, <code>rullst-nexus</code>) within the same workspace. The main crate will re-export them to avoid breaking changes, while parallelizing compilation to drastically reduce build times.</li>
+<li><input disabled="" type="checkbox"> <strong>Native Turso (LibSQL) Edge Adapter:</strong> Introduce a Database Executor abstraction in <code>rullst-orm</code> (or wait for upstream <code>sqlx</code> support) to allow seamless HTTP/WebSocket connections to Turso for global Edge deployments.</li>
+</ul>
+<hr>
+<h2 id="-execution-strategy"><a class="header" href="#-execution-strategy">🗺️ Execution Strategy</a></h2>
+<p>We will proceed <strong>milestone by milestone</strong>, starting with <strong>Milestone 1</strong> to polish our CLI generators.</p>
+<p>If you are ready to begin, select a task or suggest which component to build next! 🚀</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="blueprints_roadmap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="cli_reference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="blueprints_roadmap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="cli_reference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
