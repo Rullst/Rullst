@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785108640635,
+  "lastUpdate": 1785119516826,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2753,6 +2753,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1800,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e96985de7ee0d7852e7adb884635cb50627a86d5",
+          "message": "feat: implement CI pipeline with OWASP ZAP and expand cargo-rullst CLI command registry",
+          "timestamp": "2026-07-26T23:30:20-03:00",
+          "tree_id": "3e17e81880085701c8dd85d2e641dd90c5f8bb9c",
+          "url": "https://github.com/Rullst/Rullst/commit/e96985de7ee0d7852e7adb884635cb50627a86d5"
+        },
+        "date": 1785119516175,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 717,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 942,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2328,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
