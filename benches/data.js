@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785119516826,
+  "lastUpdate": 1785121110284,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2807,6 +2807,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2328,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "44f9edd5cbcaff3a683e946b66c85dc6c0296c6b",
+          "message": "Revert \"updates to 5.1.0\"\n\nThis reverts commit c56546da389c0bcbd2410746981401f9f7d7542c.",
+          "timestamp": "2026-07-26T23:54:09-03:00",
+          "tree_id": "acf74380138e2e658f2de996083db5cd835ffc83",
+          "url": "https://github.com/Rullst/Rullst/commit/44f9edd5cbcaff3a683e946b66c85dc6c0296c6b"
+        },
+        "date": 1785121109186,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 760,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1024,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 616,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2500,
+            "range": "± 52",
             "unit": "ns/iter"
           }
         ]
