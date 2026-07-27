@@ -358,11 +358,13 @@ fn build_and_migrate() {
         }
     }
 
-    println!("{}", "📦 Executing pending database migrations...".yellow());
-    let _ = Command::new("cargo")
-        .arg("run")
-        .arg("-q")
-        .arg("--")
-        .arg("db:migrate")
-        .status();
+    if std::path::Path::new("src/migrations").exists() {
+        println!("{}", "📦 Executing pending database migrations...".yellow());
+        let _ = Command::new("cargo")
+            .arg("run")
+            .arg("-q")
+            .arg("--")
+            .arg("db:migrate")
+            .status();
+    }
 }

@@ -1,4 +1,4 @@
-name: Cargo Deny (SAST)
+﻿name: Cargo Deny (SAST)
 
 on:
   push:

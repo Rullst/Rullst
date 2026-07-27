@@ -1,4 +1,4 @@
-name: Cargo Audit
+﻿name: Cargo Audit
 
 on:
   push:

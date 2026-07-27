@@ -1,4 +1,4 @@
-name: Fuzzing (cargo-fuzz)
+﻿name: Fuzzing (cargo-fuzz)
 
 on:
   workflow_dispatch: # Manual trigger only

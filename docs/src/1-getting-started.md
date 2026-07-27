@@ -102,3 +102,19 @@ A complete back-office suite out of the box. It features:
 > [!TIP]
 > **Blueprint Evolution:** We are constantly refining our Blueprints. In version 2.0.1, all Blueprints were rigorously audited to ensure 100% macro syntax compliance (`routes!` and `html!`) and perfect database initialization order. You can build upon them with absolute confidence.
 
+## 4. Modular Workspace & Optional Features
+
+As of version **5.1.0**, Rullst features a highly-optimized **Modular Workspace Architecture**. To provide the fastest possible compilation times and the smallest binary sizes, Rullst's peripheral crates are now **100% optional**.
+
+The main `rullst` crate acts as a facade. By default, it includes only the core HTTP and routing engines. Additional capabilities are activated via Cargo features:
+- `auth`: Includes `rullst-auth` (Passkeys, OAuth, Argon2, Session Management).
+- `ai`: Includes `rullst-ai` (Gemini, OpenAI, Anthropic, Ollama drivers).
+- `capital`: Includes `rullst-capital` (Stripe and LemonSqueezy billing webhooks).
+- `mailer`: Includes `rullst-mail` (SMTP integration).
+- `nexus`: Includes `rullst-nexus` (Auto-generated CMS and Admin Panels).
+- `studio`: Includes `rullst-studio` (Local Web-based Database Studio).
+
+**How it works seamlessly:** 
+You don't need to manually configure these! When you run `cargo rullst new` (or simply `cargo rullst`), the interactive scaffolding wizard intelligently analyzes your chosen Blueprint and automatically injects exactly the features you need into your `Cargo.toml`. 
+
+For example, if you choose the **SaaS App Starter**, the CLI will automatically activate `auth`, `capital`, `mailer`, `nexus`, and `studio`. It will also ask if you want to include `ai` features! If you choose a simpler template like the **Blank Starter**, these heavy modules are completely skipped, drastically slashing your initial compile times.

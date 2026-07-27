@@ -1,6 +1,6 @@
 [package]
 name = "rullst"
-version = "5.0.1"
+version = "5.1.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 description = "The Full-Stack Web Framework for Rust Language"
@@ -11,15 +11,17 @@ exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
 rust-version = "1.96.0"
 [features]
 default = []
-nexus = []
-studio = []
-auth = []
-mailer = ["mail-smtp"]
-queue-redis = ["dep:redis"]
-cache-redis = ["dep:redis"]
+nexus = ["dep:rullst-nexus"]
+studio = ["dep:rullst-studio", "rullst-core/studio"]
+auth = ["dep:rullst-auth"]
+mailer = ["mail-smtp", "dep:rullst-mail"]
+queue-redis = ["dep:redis", "rullst-core/queue-redis"]
+cache-redis = ["dep:redis", "rullst-core/cache-redis"]
 mail-smtp = ["dep:lettre"]
 oauth = ["dep:rullst-connect"]
-telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
+ai = ["dep:rullst-ai"]
+capital = ["dep:rullst-capital"]
+telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
@@ -28,7 +30,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 toml = "1.1.2"
-rullst-macros = { version = "5.0.0", path = "../rullst-macros" }
+rullst-macros = { version = "5.1.0", path = "../rullst-macros" }
 # Optional features dependencies
 redis = { version = "1.2.2", features = ["tokio-comp", "aio"], optional = true }
 lettre = { version = "0.11.22", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
@@ -50,22 +52,17 @@ tower-http = { version = "0.7.0", features = ["fs", "trace", "cors"] }
 tower-layer = "0.3.3"
 tower-service = "0.3.3"
 async-trait = "0.1.89"
-argon2 = "0.5.3"
-rand = "0.10.1"
-aes-gcm = "0.10.3"
-sha2 = "0.11.0"
-base64 = "0.22.1"
-subtle = "2.6.1"
-serde_urlencoded = "0.7"
 uuid = { version = "1.23.3", features = ["v4"] }
-dashmap = "6.2.1"
-cron = "0.17.0"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 validator = { version = "0.20.0", features = ["derive"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
-libloading = "0.9.0"
-notify = "8.2.0"
-ring = { version = "0.17.14", features = ["std"] }
+rullst-core = { path = "../rullst-core" }
+rullst-auth = { path = "../rullst-auth", optional = true }
+rullst-mail = { path = "../rullst-mail", optional = true }
+rullst-ai = { path = "../rullst-ai", optional = true }
+rullst-nexus = { path = "../rullst-nexus", optional = true }
+rullst-capital = { path = "../rullst-capital", optional = true }
+rullst-studio = { path = "../rullst-studio", optional = true }
+
 tracing = "0.1"
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

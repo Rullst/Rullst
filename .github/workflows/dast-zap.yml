@@ -1,4 +1,4 @@
-name: OWASP ZAP (Dynamic Application Security Testing)
+﻿name: OWASP ZAP (Dynamic Application Security Testing)
 
 on:
   push:

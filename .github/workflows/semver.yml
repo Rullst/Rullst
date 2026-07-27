@@ -1,4 +1,4 @@
-name: SemVer Checks
+﻿name: SemVer Checks
 
 on:
   push:

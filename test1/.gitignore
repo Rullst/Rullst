@@ -1,0 +1,31 @@
+# Rust build artifacts
+/target
+/Cargo.lock
+
+# Rullst Wasm Islands
+/static/*.js
+/static/*.wasm
+/static/*.html
+
+# Rullst: Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Rullst: Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Rullst: Foundry Deployment Manifest (contains SSH keys and cloud credentials)
+Foundry.toml
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Tools
+.direnv/

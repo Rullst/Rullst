@@ -196,30 +196,7 @@ pub async fn handle_explain(
 
     let file_content = fs::read_to_string(&canonical).unwrap_or_default();
 
-    let client = match crate::ai::AiClient::auto() {
-        Ok(c) => c,
-        Err(_) => return "AI Engine offline. Please configure GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY to enable solutions.".to_string(),
-    };
-
-    let prompt = format!(
-        "You are an expert Rust coding assistant specialized in the Rullst full-stack framework.\n\
-        A panic occurred in the file '{}' at line {} with the following error:\n\
-        \"{}\"\n\n\
-        Here is the complete source file context:\n\
-        ```rust\n\
-        {}\n\
-        ```\n\n\
-        Please provide a highly polished, professional, and concise explanation detailing:\n\
-        1. **Why** this specific error occurred.\n\
-        2. **How** the developer can fix it step-by-step.\n\
-        Make the output clear, actionable, and formatted in clean markdown.",
-        query.file, query.line, query.err, file_content
-    );
-
-    match client.prompt(&prompt).await {
-        Ok(explanation) => explanation,
-        Err(e) => format!("Failed to generate solution: {}", e),
-    }
+    "AI Engine offline. AI features are now available via the `rullst-ai` crate.".to_string()
 }
 
 #[derive(Deserialize)]
@@ -313,56 +290,11 @@ pub async fn handle_autofix(
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn perform_autofix(
-    file_path: &str,
-    line: u32,
-    error_message: &str,
+    _file_path: &str,
+    _line: u32,
+    _error_message: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let file_content = fs::read_to_string(file_path)?;
-
-    let client = crate::ai::AiClient::auto()?;
-
-    let prompt = format!(
-        "You are the core AI auto-fix healing engine for the Rullst Rust framework.\n\
-        An application panic occurred at line {} in '{}' with the error:\n\
-        \"{}\"\n\n\
-        Here is the current content of the file:\n\
-        ```rust\n\
-        {}\n\
-        ```\n\n\
-        Return the EXACT, COMPLETE modified file content that fixes the compilation or runtime issue.\n\
-        CRITICAL RULES:\n\
-        1. Return ONLY the raw file contents. Do not explain anything.\n\
-        2. Do NOT wrap the file inside markdown code fences (do NOT include ```rust or ```).\n\
-        3. Do NOT add conversational text, notes, or explanations before or after the code.\n\
-        4. Preserve all unrelated imports, struct definitions, and business logic intact.",
-        line, file_path, error_message, file_content
-    );
-
-    let fixed_content = client.prompt(&prompt).await?;
-
-    // Clean up accidental markdown code fence wrapping if the LLM hallucinated them
-    let mut clean = fixed_content.trim().to_string();
-    if let Some(start) = clean.find("```rust") {
-        if let Some(end) = clean.rfind("```") {
-            if end > start + 7 {
-                clean = clean[start + 7..end].trim().to_string();
-            }
-        }
-    } else if let Some(start) = clean.find("```") {
-        if let Some(end) = clean.rfind("```") {
-            if end > start + 3 {
-                clean = clean[start + 3..end].trim().to_string();
-            }
-        }
-    }
-    let clean = clean.trim().to_string();
-
-    if clean.is_empty() {
-        return Err("AI generated an empty file patch.".into());
-    }
-
-    fs::write(file_path, clean)?;
-    Ok(())
+    Err("AI Engine offline. Auto-fix is now available via the `rullst-ai` crate.".into())
 }
 
 // ─── Sleek, Glowing Dark-Theme HTML Console Renderer ──────────────────────────

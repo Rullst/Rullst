@@ -1,4 +1,4 @@
-name: Miri UB Detection
+﻿name: Miri UB Detection
 
 on:
   workflow_dispatch: # Manual trigger only
@@ -28,7 +28,7 @@ jobs:
         env:
           MIRIFLAGS: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check
         # Skip tests that invoke C FFI via ring/aws-lc-rs (TLS, crypto, passkey).
-        # Miri cannot emulate foreign C functions — these are network/crypto integration
+        # Miri cannot emulate foreign C functions â€” these are network/crypto integration
         # tests already covered by the regular CI test suite.
         run: |
           cargo +nightly miri test -p ${{ matrix.package }} -- \

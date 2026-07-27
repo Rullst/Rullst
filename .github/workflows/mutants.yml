@@ -1,4 +1,4 @@
-name: Mutation Testing (cargo-mutants)
+﻿name: Mutation Testing (cargo-mutants)
 
 on:
   workflow_dispatch: # Manual trigger only

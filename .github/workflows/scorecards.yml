@@ -1,4 +1,4 @@
-name: OSSF Scorecard supply-chain security
+﻿name: OSSF Scorecard supply-chain security
 
 on:
   push:

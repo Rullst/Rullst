@@ -1,0 +1,17 @@
+# 🚀 Rullst Compiler & Linker Optimization Configuration
+# This file configures ultra-fast linkers for local development.
+# Rullst has detected your environment and configured the appropriate options.
+
+# To enable on Windows (Install LLVM with 'winget install LLVM.LLVM' and uncomment below):
+# [target.x86_64-pc-windows-msvc]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# To enable on Linux (Install mold with your package manager and uncomment below):
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# To enable on macOS (Install llvm/lld via brew and uncomment below):
+# [target.x86_64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# [target.aarch64-apple-darwin]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]

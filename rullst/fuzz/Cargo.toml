@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "rullst-fuzz"
 version = "0.0.0"
 publish = false

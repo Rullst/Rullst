@@ -1,6 +1,6 @@
-[package]
+﻿[package]
 name = "rullst-macros"
-version = "5.0.1"
+version = "5.1.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 description = "JSX-like compilation macros for Rullst framework"

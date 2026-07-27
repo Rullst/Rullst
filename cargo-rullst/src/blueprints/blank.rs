@@ -110,9 +110,12 @@ pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                             "Click here to increment"
                         </button>
                         <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
+                    </div>
+                </div>
+
                 <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"Wasm Island (Client Side)"</h2>
-                    <div data-island="counter" data-props='{{"initial": 0}}'></div>
+                    <div data-island="counter" data-props="{{\"initial\": 0}}"></div>
                 </div>
             </div>
         </div>

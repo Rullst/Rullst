@@ -4,6 +4,18 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-07-27
+
+### Added
+- **Interactive Scaffolding AI Prompt**: `cargo rullst new` now prompts the developer whether they need Artificial Intelligence features (`rullst-ai`). Skipping this keeps the generated project leaner and compiles faster.
+- **Modular Workspace Architecture**: The core monolithic `rullst` crate has been split into independent sub-crates (`rullst-core`, `rullst-auth`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-nexus`, `rullst-studio`).
+- **Fully Optional Modules**: All sub-crates are now 100% optional features (`auth`, `ai`, `capital`, `mail`, `nexus`, `studio`) in the main `rullst` facade crate, granting developers ultimate control over binary size and compilation times.
+
+### Fixed
+- **CLI Database Migrations**: Fixed a bug where `cargo rullst dash` would block indefinitely on projects that didn't have a database, as it waited for a `db:migrate` command that didn't exist in the project.
+- **Blueprint Scaffolding**: Fixed an HTML macro syntax error in the `Blank Starter` blueprint generator caused by unescaped quotes, which could break compilation.
+- **Feature Propagation**: Fixed a bug in `rullst` where enabling optional features (like `studio`, `telemetry`, `queue-redis`) failed to pass the flags down to `rullst-core`, causing `could not find module` compilation errors in generated projects.
+
 ## [5.0.1] - 2026-07-26 🚀
 
 ### Added
