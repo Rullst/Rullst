@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785121204033,
+  "lastUpdate": 1785130307349,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -2915,6 +2915,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2384,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "798a3eef3f31d712361ddef3657da24f530e986e",
+          "message": "feat: introduce HtmlEscape trait and utility functions for safe HTML escaping",
+          "timestamp": "2026-07-27T02:27:29-03:00",
+          "tree_id": "60b40630788b71467ea831b33b59e642d41d553c",
+          "url": "https://github.com/Rullst/Rullst/commit/798a3eef3f31d712361ddef3657da24f530e986e"
+        },
+        "date": 1785130305940,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 742,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1026,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 650,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2414,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
