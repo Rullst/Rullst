@@ -46,7 +46,21 @@ pub struct ProjectWizardOptions {
 fn run_project_wizard(
     name_arg: Option<&str>,
     mut api: bool,
+    use_defaults: bool,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    if use_defaults {
+        let name = name_arg.unwrap_or("app").to_string();
+        return Ok(ProjectWizardOptions {
+            name,
+            api,
+            db_provider: "sqlite".to_string(),
+            db_needed: true,
+            hot_reload: false,
+            blueprint_selection: 0,
+            wants_ai: false,
+        });
+    }
+    
     let theme = dialoguer::theme::ColorfulTheme::default();
 
     let name = match name_arg {
@@ -179,6 +193,7 @@ pub fn create_new_project(
     api_arg: bool,
     docker: bool,
     nix: bool,
+    use_defaults: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "  {}",
@@ -196,7 +211,7 @@ pub fn create_new_project(
     );
     println!();
 
-    let wizard_opts = run_project_wizard(name_arg, api_arg)?;
+    let wizard_opts = run_project_wizard(name_arg, api_arg, use_defaults)?;
     let name = wizard_opts.name;
     let api = wizard_opts.api;
     let db_provider = wizard_opts.db_provider;

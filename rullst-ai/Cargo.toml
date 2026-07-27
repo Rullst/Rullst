@@ -1,7 +1,8 @@
-﻿[package]
+[package]
 name = "rullst-ai"
 version = "5.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 rullst-core = { path = "../rullst-core" }
