@@ -1,4 +1,4 @@
-﻿use crate::html::RawHtml;
+use crate::html::RawHtml;
 use axum::{
     Router,
     extract::{Path, Query},

@@ -330,15 +330,6 @@ graph TD
 
 ---
 
-## 🏗️ Future Architecture Refactorings (Core Modernization)
-**Goal:** Keep the internal architecture of Rullst clean, modular, and at the bleeding edge of the Rust ecosystem (Targeting v6.0).
-
-- [ ] **Native AFIT (Async-Trait Removal):** Remove the `async-trait` macro completely when Rust stabilizes "Async Dynamic Dispatch". This will eliminate heap allocations (`Box::pin`) per request while maintaining the `Box<dyn Driver>` architecture.
-- [x] **Workspace Componentization:** Split the monolithic `rullst` crate into smaller, focused crates (e.g., `rullst-core`, `rullst-auth`, `rullst-nexus`) within the same workspace. The main crate will re-export them to avoid breaking changes, while parallelizing compilation to drastically reduce build times.
-- [ ] **Native Turso (LibSQL) Edge Adapter:** Introduce a Database Executor abstraction in `rullst-orm` (or wait for upstream `sqlx` support) to allow seamless HTTP/WebSocket connections to Turso for global Edge deployments.
-
----
-
 ## 🗺️ Execution Strategy
 
 We will proceed **milestone by milestone**, starting with **Milestone 1** to polish our CLI generators. 

@@ -1,4 +1,4 @@
-﻿name: Zero Panics Policy
+name: Zero Panics Policy
 
 on:
   push:

@@ -1,4 +1,4 @@
-﻿name: Unsafe Policy
+name: Unsafe Policy
 
 on:
   push:
@@ -34,10 +34,10 @@ jobs:
           # (adjust threshold if your codebase intentionally uses unsafe)
           if [ "$UNSAFE_COUNT" -gt 0 ]; then
             echo ""
-            echo "âš ï¸  Found $UNSAFE_COUNT unsafe usage(s) in first-party code."
+            echo "⚠️  Found $UNSAFE_COUNT unsafe usage(s) in first-party code."
             echo "Review the list above. If intentional, document each with a SAFETY comment."
             # Exit 0 to treat as audit/info-only (change to exit 1 to enforce zero-unsafe)
             exit 0
           else
-            echo "âœ… No unsafe blocks found in first-party code."
+            echo "✅ No unsafe blocks found in first-party code."
           fi

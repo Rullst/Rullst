@@ -1,4 +1,4 @@
-﻿name: Property Testing
+name: Property Testing
 
 on:
   workflow_dispatch: # Manual trigger only
@@ -21,4 +21,4 @@ jobs:
       - name: Run Proptests (10,000 cases)
         env:
           PROPTEST_CASES: 10000
-        run: cargo test --workspace --all-features --release
+        run: cargo test --release

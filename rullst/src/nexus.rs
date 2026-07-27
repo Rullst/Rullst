@@ -48,7 +48,7 @@ fn sanitize_identifier(id: &str) -> String {
         .collect()
 }
 
-// â”€â”€â”€ Field Metadata & Reflection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Field Metadata & Reflection ─────────────────────────────────────────────
 
 /// The semantic type of a model field, used to render the correct HTML input.
 #[derive(Debug, Clone, PartialEq)]
@@ -106,9 +106,9 @@ pub trait NexusModel: Send + Sync + 'static {
     fn nexus_table() -> &'static str;
     /// A human-readable plural label for the collection (e.g. "Users").
     fn nexus_label() -> &'static str;
-    /// A short icon/emoji representing the model in the sidebar (e.g. "ðŸ‘¤").
+    /// A short icon/emoji representing the model in the sidebar (e.g. "👤").
     fn nexus_icon() -> &'static str {
-        "ðŸ“‹"
+        "📋"
     }
     /// A list of FieldMeta describing each column in this model's schema.
     fn nexus_fields() -> Vec<FieldMeta>;
@@ -118,7 +118,7 @@ pub trait NexusModel: Send + Sync + 'static {
     }
 }
 
-// â”€â”€â”€ Registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Registry ─────────────────────────────────────────────────────────────────
 
 /// Internal representation of a registered model used by the Nexus Panel engine.
 #[derive(Clone)]
@@ -137,7 +137,7 @@ struct NexusState {
     pub brand: Arc<String>,
 }
 
-// â”€â”€â”€ Nexus Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Nexus Builder ────────────────────────────────────────────────────────────
 
 /// The main entry point for configuring and mounting the Rullst Nexus Panel.
 ///
@@ -220,9 +220,7 @@ impl Nexus {
             .route("/table/{table}/{id}", delete(nexus_delete_record))
             .route("/chat", get(nexus_chat_page))
             .route("/chat/query", post(nexus_chat_query))
-            .layer(axum::middleware::from_fn(
-                rullst_core::security::csrf_middleware,
-            ));
+            .layer(axum::middleware::from_fn(crate::security::csrf_middleware));
 
         let router = if let Some((username, password)) = self.auth {
             router.layer(axum::middleware::from_fn(
@@ -277,7 +275,7 @@ impl Nexus {
             ))
         } else {
             eprintln!(
-                "âš ï¸  Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production."
+                "⚠️  Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production."
             );
             router
         };
@@ -286,7 +284,7 @@ impl Nexus {
     }
 }
 
-// â”€â”€â”€ Query Params â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Query Params ─────────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct PaginationParams {
@@ -299,9 +297,9 @@ struct ChatRequest {
     message: String,
 }
 
-// â”€â”€â”€ Route Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Route Handlers ───────────────────────────────────────────────────────────
 
-/// GET /nexus â€” Dashboard overview.
+/// GET /nexus — Dashboard overview.
 async fn nexus_dashboard(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
@@ -349,7 +347,7 @@ async fn nexus_dashboard(
     }
 }
 
-/// GET /nexus/table/{table} â€” Model list view with pagination.
+/// GET /nexus/table/{table} — Model list view with pagination.
 async fn nexus_table_view(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
@@ -383,7 +381,7 @@ async fn nexus_table_view(
     }
 }
 
-/// GET /nexus/table/{table}/search â€” HTMX search fragment (no shell).
+/// GET /nexus/table/{table}/search — HTMX search fragment (no shell).
 async fn nexus_table_search(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
@@ -398,7 +396,7 @@ async fn nexus_table_search(
     Html(render_table_rows(entry, &q, page).await)
 }
 
-/// GET /nexus/table/{table}/new â€” New record form.
+/// GET /nexus/table/{table}/new — New record form.
 async fn nexus_new_form(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
@@ -410,7 +408,7 @@ async fn nexus_new_form(
     Html(render_record_form(&state, entry, None).await)
 }
 
-/// POST /nexus/table/{table} â€” Create a new record.
+/// POST /nexus/table/{table} — Create a new record.
 #[cfg_attr(mutants, mutants::skip)]
 async fn nexus_create_record(
     State(state): State<Arc<NexusState>>,
@@ -472,7 +470,7 @@ async fn nexus_create_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -503,13 +501,13 @@ async fn nexus_create_record(
                  &#10060; Failed to create {}: {}\
                  </div>",
                 entry.label,
-                rullst_core::html::escape_str(&err_msg)
+                crate::html::escape_str(&err_msg)
             ))
         ).into_response()
     }
 }
 
-/// GET /nexus/table/{table}/{id}/edit â€” Edit record form.
+/// GET /nexus/table/{table}/{id}/edit — Edit record form.
 async fn nexus_edit_form(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
@@ -521,7 +519,7 @@ async fn nexus_edit_form(
     Html(render_record_form(&state, entry, Some(&id)).await)
 }
 
-/// PUT /nexus/table/{table}/{id} â€” Update a record.
+/// PUT /nexus/table/{table}/{id} — Update a record.
 async fn nexus_update_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
@@ -568,7 +566,7 @@ async fn nexus_update_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match query.execute(pool).await {
             Ok(_) => {
                 success = true;
@@ -589,7 +587,7 @@ async fn nexus_update_record(
                  &#9989; {} #{} updated successfully!\
                  </div>",
                 entry.label,
-                rullst_core::html::escape_str(&id)
+                crate::html::escape_str(&id)
             ))
         ).into_response()
     } else {
@@ -600,13 +598,13 @@ async fn nexus_update_record(
                  &#10060; Failed to update {}: {}\
                  </div>",
                 entry.label,
-                rullst_core::html::escape_str(&err_msg)
+                crate::html::escape_str(&err_msg)
             ))
         ).into_response()
     }
 }
 
-/// DELETE /nexus/table/{table}/{id} â€” Delete a record.
+/// DELETE /nexus/table/{table}/{id} — Delete a record.
 async fn nexus_delete_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
@@ -628,7 +626,7 @@ async fn nexus_delete_record(
     let mut success = false;
     let mut err_msg = String::new();
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
+    if let Some(pool) = crate::db::safe_pool() {
         match rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
             .bind(&id)
             .execute(pool)
@@ -655,7 +653,7 @@ async fn nexus_delete_record(
                  &#128465;&#65039; {} #{} deleted.\
                  </div></td></tr>",
                 entry.label,
-                rullst_core::html::escape_str(&id)
+                crate::html::escape_str(&id)
             )),
         )
             .into_response()
@@ -667,14 +665,14 @@ async fn nexus_delete_record(
                  &#10060; Failed to delete {} #{}: {}\
                  </div>",
                 entry.label,
-                rullst_core::html::escape_str(&id),
-                rullst_core::html::escape_str(&err_msg)
+                crate::html::escape_str(&id),
+                crate::html::escape_str(&err_msg)
             ))
         ).into_response()
     }
 }
 
-/// GET /nexus/chat â€” AI Query Assistant page.
+/// GET /nexus/chat — AI Query Assistant page.
 async fn nexus_chat_page(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
@@ -702,7 +700,7 @@ async fn nexus_chat_page(
     content.push_str("<div class=\"nexus-chat-schema\">");
     content.push_str("<div class=\"nexus-schema-title\">&#128202; Database Schema</div>");
     content.push_str("<pre class=\"nexus-schema-pre\">");
-    content.push_str(&rullst_core::html::escape_str(&schema_summary));
+    content.push_str(&crate::html::escape_str(&schema_summary));
     content.push_str("</pre></div>");
     content.push_str("<div class=\"nexus-chat-panel\">");
     content.push_str("<div class=\"nexus-chat-messages\" id=\"nexus-chat-messages\">");
@@ -728,13 +726,13 @@ async fn nexus_chat_page(
     }
 }
 
-/// POST /nexus/chat/query â€” AI Query HTMX endpoint.
+/// POST /nexus/chat/query — AI Query HTMX endpoint.
 #[cfg_attr(mutants, mutants::skip)]
 async fn nexus_chat_query(
     State(state): State<Arc<NexusState>>,
     axum::extract::Form(req): axum::extract::Form<ChatRequest>,
 ) -> Html<String> {
-    let user_msg = rullst_core::html::escape_str(&req.message);
+    let user_msg = crate::html::escape_str(&req.message);
 
     let schema: String = state
         .registry
@@ -764,7 +762,7 @@ async fn nexus_chat_query(
     ))
 }
 
-// â”€â”€â”€ Rendering Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Rendering Helpers ────────────────────────────────────────────────────────
 
 fn find_entry<'a>(state: &'a NexusState, table: &str) -> Option<&'a RegistryEntry> {
     state.registry.iter().find(|e| e.table == table)
@@ -840,7 +838,7 @@ fn generate_mock_ai_response(message: &str, schema: &str) -> String {
             "<p>I understand you&#39;re asking: <em>{}</em></p>\
              <p>To enable real AI-powered SQL generation, configure an AI provider:</p>\
              <code class=\"nexus-code\">AiClient::new(AiProvider::Gemini {{ api_key: env!(\"GEMINI_KEY\") }})</code>",
-            rullst_core::html::escape_str(message)
+            crate::html::escape_str(message)
         )
     }
 }
@@ -879,7 +877,7 @@ fn build_table_query(
 ) -> (String, Vec<String>) {
     let clean_table = sanitize_identifier(entry.table);
     let clean_pk = sanitize_identifier(entry.pk);
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let driver = crate::db::safe_driver().unwrap_or("sqlite");
 
     let mut sql = format!("SELECT * FROM {}", clean_table);
     let mut binds = Vec::new();
@@ -931,7 +929,7 @@ fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
         format!(
             "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#128269; No results matching \"{}\"</td></tr>",
             cols,
-            rullst_core::html::escape_str(q)
+            crate::html::escape_str(q)
         )
     }
 }
@@ -941,7 +939,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
     let (sql, binds) = build_table_query(entry, &visible_fields, q, page);
 
-    let pool = match rullst_core::db::safe_pool() {
+    let pool = match crate::db::safe_pool() {
         Some(p) => p,
         None => {
             return format!(
@@ -966,7 +964,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
             return format!(
                 "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; Database Error: {}</td></tr>",
                 visible_fields.len() + 1,
-                rullst_core::html::escape_str(&e.to_string())
+                crate::html::escape_str(&e.to_string())
             );
         }
     };
@@ -1021,7 +1019,7 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
                 let clean_val = if val_str.starts_with("&#") {
                     val_str
                 } else {
-                    rullst_core::html::escape_str(&val_str).to_string()
+                    crate::html::escape_str(&val_str).to_string()
                 };
 
                 let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
@@ -1059,7 +1057,7 @@ async fn render_table_view(
     let lb = entry.label;
     let ic = entry.icon;
     let lb_singular = entry.label.trim_end_matches('s');
-    let q_esc = rullst_core::html::escape_str(q);
+    let q_esc = crate::html::escape_str(q);
 
     let headers = visible_fields
         .iter()
@@ -1171,7 +1169,7 @@ async fn fetch_record_data(
 ) -> std::collections::HashMap<String, String> {
     let mut record_data = std::collections::HashMap::new();
     if let Some(i) = id {
-        let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+        let driver = crate::db::safe_driver().unwrap_or("sqlite");
         let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
         let clean_table = sanitize_identifier(entry.table);
         let clean_pk = sanitize_identifier(entry.pk);
@@ -1180,7 +1178,7 @@ async fn fetch_record_data(
             clean_table, clean_pk, pk_placeholder
         );
 
-        if let Some(pool) = rullst_core::db::safe_pool() {
+        if let Some(pool) = crate::db::safe_pool() {
             use rullst_orm::_sqlx::Row;
             if let Ok(row) =
                 rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
@@ -1222,7 +1220,7 @@ async fn render_form_fields_html(
     record_data: &std::collections::HashMap<String, String>,
 ) -> String {
     let mut fk_set = tokio::task::JoinSet::new();
-    let pool_opt = rullst_core::db::safe_pool().cloned();
+    let pool_opt = crate::db::safe_pool().cloned();
 
     for f in &entry.fields {
         if let FieldKind::ForeignKey {
@@ -1275,7 +1273,7 @@ async fn render_form_fields_html(
             ""
         };
         let val = record_data.get(f.name).map(|s| s.as_str()).unwrap_or("");
-        let val_esc = rullst_core::html::escape_str(val);
+        let val_esc = crate::html::escape_str(val);
 
         if f.kind == FieldKind::Boolean {
             let checked = if val == "true" { "checked" } else { "" };
@@ -1327,7 +1325,7 @@ async fn render_form_fields_html(
                             "<option value=\"{}\" {}>{}</option>",
                             id_val,
                             selected,
-                            rullst_core::html::escape_str(&label_val)
+                            crate::html::escape_str(&label_val)
                         ),
                     );
                 }
@@ -1405,10 +1403,10 @@ async fn render_record_form(state: &NexusState, entry: &RegistryEntry, id: Optio
     )
 }
 
-// â”€â”€â”€ Shell Renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shell Renderer ───────────────────────────────────────────────────────────
 
 fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
-    let brand = rullst_core::html::escape_str(state.brand.as_str());
+    let brand = crate::html::escape_str(state.brand.as_str());
     let mut out = String::new();
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"dark\">\n<head>\n");
     out.push_str("<meta charset=\"UTF-8\" />\n");
@@ -1472,7 +1470,7 @@ fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     out
 }
 
-// â”€â”€â”€ Premium Dark-Mode CSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Premium Dark-Mode CSS ────────────────────────────────────────────────────
 
 const NEXUS_CSS: &str = "
 /* == Reset & Base ===================================================== */
@@ -1672,13 +1670,13 @@ mod tests {
 
     async fn init_test_db() {
         let _guard = INIT_MUTEX.lock().await;
-        let is_init = rullst_core::db::safe_pool().is_some();
+        let is_init = crate::db::safe_pool().is_some();
         if !is_init {
             rullst_orm::Orm::init("sqlite://test_nexus.db?mode=rwc")
                 .await
                 .expect("Failed to init SQLite DB file");
         }
-        if let Some(pool) = rullst_core::db::safe_pool() {
+        if let Some(pool) = crate::db::safe_pool() {
             rullst_orm::_sqlx::query(
                 "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)",
             )
@@ -1701,7 +1699,7 @@ mod tests {
             "Users"
         }
         fn nexus_icon() -> &'static str {
-            "ðŸ‘¤"
+            "👤"
         }
         fn nexus_fields() -> Vec<FieldMeta> {
             vec![
@@ -1739,7 +1737,7 @@ mod tests {
             "Posts"
         }
         fn nexus_icon() -> &'static str {
-            "ðŸ“"
+            "📝"
         }
         fn nexus_fields() -> Vec<FieldMeta> {
             vec![
@@ -1772,7 +1770,7 @@ mod tests {
     fn test_nexus_model_trait_user() {
         assert_eq!(TestUser::nexus_table(), "users");
         assert_eq!(TestUser::nexus_label(), "Users");
-        assert_eq!(TestUser::nexus_icon(), "ðŸ‘¤");
+        assert_eq!(TestUser::nexus_icon(), "👤");
         assert_eq!(TestUser::nexus_pk(), "id");
         let fields = TestUser::nexus_fields();
         assert_eq!(fields.len(), 3);
@@ -1806,8 +1804,8 @@ mod tests {
 
     #[test]
     fn test_nexus_icon_default() {
-        // Kills the mutant replacing "ðŸ“‹" with "" or "xyzzy"
-        assert_eq!(TestDefaultIcon::nexus_icon(), "ðŸ“‹");
+        // Kills the mutant replacing "📋" with "" or "xyzzy"
+        assert_eq!(TestDefaultIcon::nexus_icon(), "📋");
     }
 
     #[test]
@@ -1927,7 +1925,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
@@ -1945,7 +1943,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
@@ -1963,7 +1961,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
@@ -1995,7 +1993,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
@@ -2027,7 +2025,7 @@ mod tests {
             registry: Arc::new(vec![RegistryEntry {
                 table: "users",
                 label: "Users",
-                icon: "ðŸ‘¤",
+                icon: "👤",
                 pk: "id",
                 fields: TestUser::nexus_fields(),
             }]),
@@ -2049,7 +2047,7 @@ mod tests {
     fn test_mock_ai_response_count() {
         let resp = generate_mock_ai_response("how many posts are there?", "");
         assert!(resp.contains("COUNT"));
-        let resp2 = generate_mock_ai_response("quantos usuÃ¡rios temos?", "");
+        let resp2 = generate_mock_ai_response("quantos usuários temos?", "");
         assert!(resp2.contains("COUNT"));
     }
 
@@ -2058,7 +2056,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: vec![],
         };
@@ -2090,7 +2088,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: vec![
                 FieldMeta {
@@ -2146,7 +2144,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
@@ -2167,7 +2165,7 @@ mod tests {
             registry: Arc::new(vec![RegistryEntry {
                 table: "users",
                 label: "Users",
-                icon: "ðŸ‘¤",
+                icon: "👤",
                 pk: "id",
                 fields: vec![],
             }]),
@@ -2185,7 +2183,7 @@ mod tests {
             registry: Arc::new(vec![RegistryEntry {
                 table: "users",
                 label: "Users",
-                icon: "ðŸ‘¤",
+                icon: "👤",
                 pk: "id",
                 fields: vec![],
             }]),
@@ -2295,7 +2293,7 @@ mod tests {
 
     #[test]
     fn test_nexus_model_defaults() {
-        assert_eq!(DummyModel::nexus_icon(), "ðŸ“‹");
+        assert_eq!(DummyModel::nexus_icon(), "📋");
         assert_eq!(DummyModel::nexus_pk(), "id");
     }
 
@@ -2304,7 +2302,7 @@ mod tests {
         let entry = RegistryEntry {
             table: "users",
             label: "Users",
-            icon: "ðŸ‘¤",
+            icon: "👤",
             pk: "id",
             fields: vec![FieldMeta {
                 name: "email",

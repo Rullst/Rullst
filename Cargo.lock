@@ -522,7 +522,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "cargo-rullst"
-version = "5.1.0"
+version = "5.0.1"
 dependencies = [
  "axum",
  "brotli",
@@ -3692,36 +3692,41 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "5.1.0"
+version = "5.0.1"
 dependencies = [
+ "aes-gcm 0.10.3",
+ "argon2",
  "async-trait",
  "axum",
+ "base64 0.22.1",
  "chrono",
  "console_error_panic_hook",
  "criterion",
+ "cron",
+ "dashmap",
  "futures-util",
  "getrandom 0.4.3",
  "insta",
  "js-sys",
  "lettre",
+ "libloading",
+ "notify",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "proptest",
+ "rand 0.10.2",
  "redis",
- "rullst-ai",
- "rullst-auth",
- "rullst-capital",
+ "reqwest",
+ "ring",
  "rullst-connect",
- "rullst-core",
  "rullst-macros",
- "rullst-mail",
- "rullst-nexus",
  "rullst-orm",
- "rullst-studio",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "serde_urlencoded",
+ "sha2 0.11.0",
  "sqlx",
  "subtle",
  "tokio",
@@ -3744,36 +3749,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rullst-ai"
-version = "5.1.0"
-dependencies = [
- "async-trait",
- "reqwest",
- "rullst-core",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rullst-auth"
-version = "5.1.0"
-dependencies = [
- "aes-gcm 0.10.3",
- "argon2",
- "async-trait",
- "axum",
- "base64 0.22.1",
- "rand 0.10.2",
- "ring",
- "rullst-connect",
- "rullst-core",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "subtle",
-]
-
-[[package]]
 name = "rullst-blog-example"
 version = "0.1.0"
 dependencies = [
@@ -3789,20 +3764,6 @@ dependencies = [
  "tracing",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "rullst-capital"
-version = "5.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "reqwest",
- "ring",
- "rullst-core",
- "serde",
- "serde_json",
- "subtle",
 ]
 
 [[package]]
@@ -3829,81 +3790,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "rullst-core"
-version = "5.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "chrono",
- "cron",
- "dashmap",
- "libloading",
- "notify",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "rand 0.10.2",
- "redis",
- "ring",
- "rullst-macros",
- "rullst-orm",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sqlx",
- "subtle",
- "tokio",
- "toml",
- "tower",
- "tower-http 0.7.0",
- "tower-layer",
- "tower-service",
- "tracing",
- "tracing-core",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "urlencoding",
- "uuid",
- "validator",
-]
-
-[[package]]
 name = "rullst-macros"
-version = "5.1.0"
+version = "5.0.1"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.3",
-]
-
-[[package]]
-name = "rullst-mail"
-version = "5.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "lettre",
- "reqwest",
- "rullst-core",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "rullst-nexus"
-version = "5.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "rullst-auth",
- "rullst-core",
- "rullst-orm",
- "serde",
- "serde_json",
- "subtle",
- "tokio",
 ]
 
 [[package]]
@@ -3937,10 +3829,6 @@ dependencies = [
  "quote",
  "syn 3.0.3",
 ]
-
-[[package]]
-name = "rullst-studio"
-version = "0.1.0"
 
 [[package]]
 name = "rustc-hash"

@@ -1,4 +1,4 @@
-﻿name: Release to crates.io
+name: Release to crates.io
 
 # This workflow ONLY runs when a new version tag is pushed (e.g. v1.0.5)
 # It will NOT run on regular commits to main or dev.
@@ -50,7 +50,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run all workspace tests
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace
 
   publish:
     name: Publish to crates.io and GitHub

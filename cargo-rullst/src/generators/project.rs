@@ -40,7 +40,6 @@ pub struct ProjectWizardOptions {
     pub db_needed: bool,
     pub hot_reload: bool,
     pub blueprint_selection: usize,
-    pub wants_ai: bool,
 }
 
 fn run_project_wizard(
@@ -158,11 +157,6 @@ fn run_project_wizard(
             .interact()?;
     }
 
-    let wants_ai = dialoguer::Confirm::with_theme(&theme)
-        .with_prompt("🤖 Will your project need Artificial Intelligence features (rullst-ai)?")
-        .default(false)
-        .interact()?;
-
     Ok(ProjectWizardOptions {
         name,
         api,
@@ -170,7 +164,6 @@ fn run_project_wizard(
         db_needed,
         hot_reload,
         blueprint_selection,
-        wants_ai,
     })
 }
 
@@ -203,7 +196,6 @@ pub fn create_new_project(
     let db_needed = wizard_opts.db_needed;
     let hot_reload = wizard_opts.hot_reload;
     let blueprint_selection = wizard_opts.blueprint_selection;
-    let wants_ai = wizard_opts.wants_ai;
 
     println!(
         "{}",
@@ -240,65 +232,16 @@ pub fn create_new_project(
         }
     }
 
-    let mut features_list = vec![];
-
-    match blueprint_selection {
-        0 => {
-            // Blank Starter
-        }
-        1 => {
-            // Portfolio
-        }
-        2 => {
-            // LMS Platform
-            features_list.push("\"auth\"");
-            features_list.push("\"studio\"");
-            features_list.push("\"mailer\"");
-        }
-        3 => {
-            // SaaS App Starter
-            features_list.push("\"auth\"");
-            features_list.push("\"capital\"");
-            features_list.push("\"mailer\"");
-            features_list.push("\"nexus\"");
-            features_list.push("\"studio\"");
-        }
-        4 => {
-            // Blog / Press
-            features_list.push("\"nexus\"");
-            features_list.push("\"studio\"");
-        }
-        5 => {
-            // ERP Pocket
-            features_list.push("\"nexus\"");
-            features_list.push("\"studio\"");
-            features_list.push("\"auth\"");
-        }
-        6 => {
-            // Uptime Monitor
-            features_list.push("\"studio\"");
-            features_list.push("\"mailer\"");
-        }
-        _ => {}
-    }
-
-    if wants_ai {
-        features_list.push("\"ai\"");
-    }
-    let features_str = features_list.join(", ");
-
     let rullst_dep = if let Some(ref dir) = rullst_dir {
         let path = dir.canonicalize()?.display().to_string();
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!(
-            "rullst = {{ path = \"{}\", features = [{}] }}",
-            path, features_str
+            "rullst = {{ path = \"{}\", features = [\"auth\", \"nexus\", \"studio\", \"mailer\"] }}",
+            path
         )
     } else {
-        format!(
-            "rullst = {{ version = \"5.1.0\", features = [{}] }}",
-            features_str
-        )
+        r#"rullst = { version = "5.0.1", features = ["auth", "nexus", "studio", "mailer"] }"#
+            .to_string()
     };
 
     let rullst_png_path = rullst_dir
