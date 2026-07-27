@@ -47,9 +47,6 @@ pub enum Commands {
         /// Optional: generates Nix flake and direnv setup for reproducible environments
         #[arg(long)]
         nix: bool,
-        /// Optional: skips interactive prompts and uses default values (useful for CI)
-        #[arg(long)]
-        default: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -193,9 +190,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             api,
             docker,
             nix,
-            default,
         } => {
-            create_new_project(name.as_deref(), *api, *docker, *nix, *default)?;
+            create_new_project(name.as_deref(), *api, *docker, *nix)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;

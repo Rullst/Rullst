@@ -179,5 +179,4 @@ pub mod async_runtime {
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "studio"))]
-/// Rullst Studio endpoints and visual tools.
 pub mod studio;

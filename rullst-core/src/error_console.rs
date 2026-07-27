@@ -145,9 +145,7 @@ pub async fn catch_panic_middleware(req: Request<Body>, next: Next) -> Response 
 /// Query parameters for requests to fetch an AI-based explanation of an error.
 pub struct ExplainQuery {
     file: String,
-    #[allow(dead_code)]
     line: u32,
-    #[allow(dead_code)]
     err: String,
 }
 
@@ -196,7 +194,7 @@ pub async fn handle_explain(
         }
     }
 
-    let _file_content = fs::read_to_string(&canonical).unwrap_or_default();
+    let file_content = fs::read_to_string(&canonical).unwrap_or_default();
 
     "AI Engine offline. AI features are now available via the `rullst-ai` crate.".to_string()
 }
