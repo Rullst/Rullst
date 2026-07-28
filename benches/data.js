@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785247290047,
+  "lastUpdate": 1785251600617,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3185,6 +3185,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2322,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4f51694992a2f192e8148a56cdd3fba4359efbf2",
+          "message": "chore: v12.0.0 Rullst Monorepo Unification & Enterprise CI Architecture",
+          "timestamp": "2026-07-28T12:09:36-03:00",
+          "tree_id": "f3c6c7b0b70c1ba10ae9166b6fb3be0ef1050c1d",
+          "url": "https://github.com/Rullst/Rullst/commit/4f51694992a2f192e8148a56cdd3fba4359efbf2"
+        },
+        "date": 1785251599771,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 642,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2335,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
