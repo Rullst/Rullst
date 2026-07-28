@@ -1,26 +1,68 @@
-# Rullst Mail
+# Rullst Mail ✉️
 
-`rullst-mail` is the core mail delivery system for the Rullst Framework. It provides a clean, async, and type-safe API for sending transactional emails, managing templates, and handling SMTP configuration.
+`rullst-mail` is the transactional email delivery module for the Rullst Framework. It provides a robust, zero-panic abstraction over popular email delivery providers, ensuring your transactional emails reach their destination securely and reliably.
 
-## Features
-- **Async by Default:** Powered by Tokio.
-- **Template Rendering:** First-class support for HTML templates.
-- **SMTP Pooling:** Connection pooling for high-throughput dispatch.
-- **Queueing:** Out-of-the-box integration with `rullst-core` jobs for background mailing.
+## ✨ Features
 
-## Quick Start
+- **Zero-Panic Guarantees:** 100% safe Rust. No unexpected crashes when building or sending emails.
+- **Provider Agnostic:** Swap between AWS SES, Resend, SendGrid, Mailgun, and SMTP without changing your core application logic.
+- **Template Rendering:** Native integration with `tinytemplate` for lightning-fast HTML email compilation.
+- **Background Delivery:** Built-in integration with Rullst's background worker queues (Redis/Postgres) to prevent blocking your HTTP handlers.
+- **Dry Run Mode:** Safe testing environment that logs emails instead of sending them.
+
+## 🚀 Quickstart
+
+Add `rullst-mail` to your project:
+
+```bash
+cargo add rullst-mail
+```
+
+### Sending an Email
+
+Initialize the mailer with your preferred driver (e.g., Resend), render an HTML template, and dispatch it to the background queue:
 
 ```rust
-use rullst_mail::{Mailer, Message};
+use rullst_mail::{Mailer, driver::ResendDriver, Email};
+use serde::Serialize;
 
-async fn send_welcome(email: &str) {
-    let mailer = Mailer::new_from_env();
-    let msg = Message::builder()
-        .to(email)
+#[derive(Serialize)]
+struct WelcomeContext {
+    name: String,
+    activation_link: String,
+}
+
+#[tokio::main]
+async fn main() {
+    // 1. Initialize Driver
+    let driver = ResendDriver::new("re_123456789");
+    let mailer = Mailer::new(driver);
+
+    // 2. Prepare Context
+    let context = WelcomeContext {
+        name: "Alice".to_string(),
+        activation_link: "https://myapp.com/activate/123".to_string(),
+    };
+
+    // 3. Compose Email
+    let email = Email::builder()
+        .from("noreply@myapp.com")
+        .to("alice@example.com")
         .subject("Welcome to Rullst!")
-        .html("<h1>Hello!</h1><p>Welcome aboard!</p>")
-        .build();
+        .template("welcome_email.html")
+        .context(context)
+        .build()
+        .expect("Failed to build email");
 
-    mailer.send(msg).await.unwrap();
+    // 4. Send (Async)
+    mailer.send_async(email).await.expect("Failed to enqueue email");
 }
 ```
+
+## 🔐 Security Audit
+
+`rullst-mail` strictly validates email addresses and template variables to prevent injection attacks (e.g., SMTP Header Injection). Network calls to providers are resilient, wrapped in timeout bounds, and properly propagate typed errors (`MailError`) upwards.
+
+## 📚 Documentation
+
+For advanced usage, configuring AWS SES, and setting up the background worker queue for heavy dispatching, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.

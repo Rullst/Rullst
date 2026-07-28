@@ -44,7 +44,7 @@ For our journey towards the **`v1.0.0`** release (Enterprise Level), we have pla
 - **SAML 2.0 Support:** The absolute gold standard for massive corporations (Banks, Government, Fortune 500). Supporting secure XML-based SAML integration with Microsoft Entra ID (Azure AD), Okta, and PingIdentity.
 - **SSO Domain Routing (Home Realm Discovery):** If a user types `user@acme-corp.com`, automatically route them to Acme Corp's specific Okta/Azure AD login screen without requiring them to click a specific provider button.
 - **Advanced RBAC/ABAC Group Mapping:** Automatically mapping OAuth/SAML scopes and corporate groups directly into database roles and permissions upon login.
-- **Compliance & Audit Logging (SOC2/GDPR Ready):** Built-in middleware to generate structured, legally compliant audit trails (who logged in, IP, device footprint, failed attempts) ready to be ingested by SIEMs like Splunk or Datadog.
+- **Compliance & Audit Logging (SOC2/GDPR Ready):** Built-in middleware to generate structured, legally compliant audit trails (who logged in, IP, device footprint, failed attempts) ready to be ingested by SIEM systems like Splunk or Datadog.
 - **OIDC Back-Channel Logout:** Support for receiving secure webhooks from the Identity Provider. If an employee logs out centrally, `rullst-connect` automatically terminates their local application session.
 
 ## 🛡️ Phase 7: Bleeding-Edge Security & IoT (High Security)

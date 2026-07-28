@@ -61,10 +61,10 @@ pub fn dummy_verify(hash: Option<&str>) {
 /// Checks if an existing Argon2 password hash needs to be rehashed (e.g. because it was generated with older or weaker parameters).
 pub fn needs_rehash(hash: &str) -> bool {
     // Basic implementation: if it doesn't match the current library's default format exactly, rehash it.
-    if let Ok(parsed_hash) = PasswordHash::new(hash) {
-        if parsed_hash.algorithm.as_str() != "argon2id" {
-            return true;
-        }
+    if let Ok(parsed_hash) = PasswordHash::new(hash)
+        && parsed_hash.algorithm.as_str() != "argon2id"
+    {
+        return true;
     }
     false
 }
@@ -96,10 +96,10 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
         return Ok(env_key.into_bytes());
     }
 
-    if let Ok(toml_content) = fs::read_to_string("Rullst.toml") {
-        if let Some(key) = parse_app_key_from_toml(&toml_content) {
-            return Ok(key);
-        }
+    if let Ok(toml_content) = fs::read_to_string("Rullst.toml")
+        && let Some(key) = parse_app_key_from_toml(&toml_content)
+    {
+        return Ok(key);
     }
 
     // Enforce explicit APP_KEY when running in production.
@@ -112,12 +112,11 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
     }
 
     let dev_key_path = ".rullst_dev_key";
-    if let Ok(key_hex) = fs::read_to_string(dev_key_path) {
-        if let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim()) {
-            if key_bytes.len() == 32 {
-                return Ok(key_bytes);
-            }
-        }
+    if let Ok(key_hex) = fs::read_to_string(dev_key_path)
+        && let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim())
+        && key_bytes.len() == 32
+    {
+        return Ok(key_bytes);
     }
 
     eprintln!(

@@ -11,7 +11,7 @@
   </p>
 </div>
 
-🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/rullst-orm/)** 🚀
+🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/index.html)** 🚀
 
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
@@ -125,20 +125,9 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
 ## 📚 Documentation
 
-We recently launched a brand-new **Interactive Documentation Hub** powered by VitePress! 
+We recently launched a brand-new **Interactive Documentation Hub**! 
 
-👉 **[Explore the Full Documentation](https://rullst.github.io/rullst-orm/docs/1-basics.html)**
-
-Dive into the modules below to master Rullst ORM:
-
-- **[Basics & Query Builder](https://rullst.github.io/rullst-orm/docs/1-basics.html)**: Connecting to the DB, filtering, sorting, and raw bindings.
-- **[Relationships](https://rullst.github.io/rullst-orm/docs/2-relationships.html)**: Has Many, Belongs To, Polymorphic relations, and Eager Loading.
-- **[Advanced Features](https://rullst.github.io/rullst-orm/docs/3-advanced-features.html)**: Multi-Tenancy, Audit Trails, Redis Caching, and Observers.
-- **[Migrations & Schema](https://rullst.github.io/rullst-orm/docs/4-migrations-schema.html)**: Building tables programmatically and using the Artisan CLI.
-- **[Security & Testing](https://rullst.github.io/rullst-orm/docs/5-security-and-testing.html)**: UB detection, Fuzzing, Mutation testing, and CI pipelines.
-- **[New Features](https://rullst.github.io/rullst-orm/docs/6-new-features.html)**: Native Enum Mapping and Partial Updates.
-
-🎮 **[Try the Interactive Playground](https://rullst.github.io/rullst-orm/playground.html)**: Test our fluent query builder in a simulated environment!
+👉 **[Explore the Full Documentation in the Rullst Book](https://rullst.github.io/Rullst/book/index.html)**
 
 ---
 

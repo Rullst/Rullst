@@ -353,22 +353,22 @@ impl Mail {
         // Resolve the driver either from env or Rullst.toml
         let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
 
-        if driver_name_opt.is_none() {
-            if let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await {
-                let mut in_mail = false;
-                for line in toml_content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with('[') {
-                        in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
-                        continue;
-                    }
-                    if in_mail && trimmed.starts_with("driver") {
-                        if let Some(val) = trimmed.split('=').nth(1) {
-                            let clean_val = val.split('#').next().unwrap_or(val).trim();
-                            driver_name_opt =
-                                Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
-                        }
-                    }
+        if driver_name_opt.is_none()
+            && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
+        {
+            let mut in_mail = false;
+            for line in toml_content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with('[') {
+                    in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
+                    continue;
+                }
+                if in_mail && trimmed.starts_with("driver")
+                    && let Some(val) = trimmed.split('=').nth(1)
+                {
+                    let clean_val = val.split('#').next().unwrap_or(val).trim();
+                    driver_name_opt =
+                        Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
                 }
             }
         }

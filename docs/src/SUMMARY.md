@@ -23,3 +23,7 @@
 - [rullst-mail](crates/mail.md)
 - [rullst-auth](crates/auth.md)
 - [rullst-core](crates/core.md)
+- [rullst-capital](crates/capital.md)
+- [rullst-studio](crates/studio.md)
+- [rullst-nexus](crates/nexus.md)
+- [rullst-ai](crates/ai.md)
