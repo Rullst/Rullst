@@ -232,30 +232,24 @@ impl Nexus {
                     async move {
                         if let Some(auth_header) =
                             req.headers().get(axum::http::header::AUTHORIZATION)
+                            && let Ok(auth_str) = auth_header.to_str()
+                            && let Some(encoded) = auth_str.strip_prefix("Basic ")
                         {
-                            if let Ok(auth_str) = auth_header.to_str() {
-                                if let Some(encoded) = auth_str.strip_prefix("Basic ") {
-                                    use base64::Engine;
-                                    if let Ok(decoded) =
-                                        base64::engine::general_purpose::STANDARD.decode(encoded)
-                                    {
-                                        if let Ok(decoded_str) = String::from_utf8(decoded) {
-                                            if let Some((parts_user, parts_pass)) =
-                                                decoded_str.split_once(':')
-                                            {
-                                                use subtle::ConstantTimeEq;
-                                                if parts_user == expected_username
-                                                    && parts_pass.len() == expected_password.len()
-                                                    && parts_pass
-                                                        .as_bytes()
-                                                        .ct_eq(expected_password.as_bytes())
-                                                        .into()
-                                                {
-                                                    return next.run(req).await;
-                                                }
-                                            }
-                                        }
-                                    }
+                            use base64::Engine;
+                            if let Ok(decoded) =
+                                base64::engine::general_purpose::STANDARD.decode(encoded)
+                                && let Ok(decoded_str) = String::from_utf8(decoded)
+                                && let Some((parts_user, parts_pass)) = decoded_str.split_once(':')
+                            {
+                                use subtle::ConstantTimeEq;
+                                if parts_user == expected_username
+                                    && parts_pass.len() == expected_password.len()
+                                    && parts_pass
+                                        .as_bytes()
+                                        .ct_eq(expected_password.as_bytes())
+                                        .into()
+                                {
+                                    return next.run(req).await;
                                 }
                             }
                         }
@@ -543,12 +537,12 @@ async fn nexus_update_record(
     let mut updates = Vec::new();
     let mut values = Vec::new();
     for f in &entry.fields {
-        if f.name != entry.pk {
-            if let Some(val) = data.get(f.name) {
-                let clean_field = sanitize_identifier(f.name);
-                updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
-                values.push(val);
-            }
+        if f.name != entry.pk
+            && let Some(val) = data.get(f.name)
+        {
+            let clean_field = sanitize_identifier(f.name);
+            updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
+            values.push(val);
         }
     }
 
@@ -1229,32 +1223,30 @@ async fn render_form_fields_html(
             table: target_table,
             label_col,
         } = &f.kind
+            && let Some(pool) = pool_opt.clone()
         {
-            if let Some(pool) = pool_opt.clone() {
-                let target_pk = state
-                    .registry
-                    .iter()
-                    .find(|e| e.table == *target_table)
-                    .map(|e| e.pk)
-                    .unwrap_or("id");
+            let target_pk = state
+                .registry
+                .iter()
+                .find(|e| e.table == *target_table)
+                .map(|e| e.pk)
+                .unwrap_or("id");
 
-                let clean_target_pk = sanitize_identifier(target_pk);
-                let clean_label_col = sanitize_identifier(label_col);
-                let clean_target_table = sanitize_identifier(target_table);
-                let sql = format!(
-                    "SELECT {} as key_id, {} as val_label FROM {}",
-                    clean_target_pk, clean_label_col, clean_target_table
-                );
+            let clean_target_pk = sanitize_identifier(target_pk);
+            let clean_label_col = sanitize_identifier(label_col);
+            let clean_target_table = sanitize_identifier(target_table);
+            let sql = format!(
+                "SELECT {} as key_id, {} as val_label FROM {}",
+                clean_target_pk, clean_label_col, clean_target_table
+            );
 
-                let fname = f.name.to_string();
-                fk_set.spawn(async move {
-                    let res =
-                        rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
-                            .fetch_all(&pool)
-                            .await;
-                    (fname, res)
-                });
-            }
+            let fname = f.name.to_string();
+            fk_set.spawn(async move {
+                let res = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
+                    .fetch_all(&pool)
+                    .await;
+                (fname, res)
+            });
         }
     }
 

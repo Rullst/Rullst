@@ -158,13 +158,14 @@ invalid-split = "variant:not-a-number,variant2:50"
 #[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database
-    Orm::init_with_options("sqlite:file:feature_db_test_1?mode=memory&cache=shared", 5, 30)
+    Orm::init_with_options("sqlite://feature_db_test_1.db?mode=rwc", 5, 30)
         .await
         .expect("Failed to init ORM in test");
     let pool = Orm::pool();
 
-    // Acquire and hold a connection to keep the in-memory database alive
-    let _conn = pool.acquire().await.unwrap();
+    let _ = sqlx::query("DROP TABLE IF EXISTS rullst_feature_flags")
+        .execute(pool)
+        .await;
 
     // 2. Create the table schema
     sqlx::query(
@@ -219,6 +220,12 @@ async fn test_database_feature_driver() {
 
     // Cache has expired; should query the DB and fetch the new state (`false`)
     assert_eq!(db_driver.enabled("db-dashboard").await, Some(false));
+
+    // 6. Cleanup
+    pool.close().await;
+    let _ = std::fs::remove_file("feature_db_test_1.db");
+    let _ = std::fs::remove_file("feature_db_test_1.db-shm");
+    let _ = std::fs::remove_file("feature_db_test_1.db-wal");
 }
 
 #[tokio::test]
