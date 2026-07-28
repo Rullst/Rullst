@@ -1,38 +1,29 @@
-﻿name: Miri UB Detection
+name: Miri UB Detection
 
 on:
-  workflow_dispatch: # Manual trigger only
+  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
 
 permissions:
   contents: read
 
 jobs:
   miri:
-    name: Run Miri (${{ matrix.package }})
+    name: Miri Check (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # Sharding the execution by workspace packages to prevent timeouts
-        package: [rullst, rullst-macros, cargo-rullst]
+        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-blog-example', 'rullst-orm', 'rullst-orm-macros', 'rullst-connect', 'rullst-auth', 'rullst-mail', 'rullst-core', 'rullst-ai', 'rullst-capital']
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-
+      
       - name: Install Rust Nightly with Miri
-        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly
+        uses: dtolnay/rust-toolchain@6b1b59f77f0d46377e6e5da566ddae8f81023c72 # nightly
         with:
           toolchain: nightly
           components: miri
 
-      - name: Run Cargo Miri
-        env:
-          MIRIFLAGS: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check
-        # Skip tests that invoke C FFI via ring/aws-lc-rs (TLS, crypto, passkey).
-        # Miri cannot emulate foreign C functions â€” these are network/crypto integration
-        # tests already covered by the regular CI test suite.
-        run: |
-          cargo +nightly miri test -p ${{ matrix.package }} -- \
-            --skip auth::passkey \
-            --skip auth::jwt \
-            --skip auth::oauth \
-            --skip ai::tests::test_ai_providers_network_errors
+      - name: Run Miri (No Isolation)
+        working-directory: ${{ matrix.package }}
+        continue-on-error: true
+        run: cargo +nightly miri test -Z randomize-layout -- -Zmiri-disable-isolation

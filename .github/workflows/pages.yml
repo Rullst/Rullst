@@ -1,0 +1,85 @@
+name: Deploy Sites to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        
+      - name: Install mdBook
+        run: cargo install mdbook
+        
+      - name: Build mdBook (Main Docs)
+        run: mdbook build docs
+
+      - name: Build Rullst-ORM VitePress Site
+        run: |
+          cd docs/orm
+          npm install
+          npm run docs:build
+
+      - name: Assemble Final Site
+        run: |
+          mkdir -p public_site
+          
+          # Root landing page
+          cp docs/home_template.html public_site/index.html
+          
+          # mdBook
+          mkdir -p public_site/book
+          cp -r docs/book/* public_site/book/
+          
+          # Connect Site
+          mkdir -p public_site/connect
+          cp -r docs/connect/* public_site/connect/
+          
+          # ORM Site
+          mkdir -p public_site/orm
+          cp -r docs/orm/.vitepress/dist/* public_site/orm/
+
+      - name: Fetch Benchmarks from gh-pages branch
+        run: |
+          mkdir -p public_site/benches
+          git fetch origin gh-pages
+          git checkout origin/gh-pages -- benches/data.js || echo "No benchmark data found"
+          mv benches/data.js public_site/benches/data.js || true
+          cp docs/benches_template.html public_site/benches/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public_site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

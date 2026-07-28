@@ -44,6 +44,9 @@ pub enum Commands {
         /// Optional: generates Dockerfile, docker-compose.yml, and .dockerignore for production
         #[arg(long)]
         docker: bool,
+        /// Optional: generates rootless OCI build.sh script via Buildah
+        #[arg(long)]
+        buildah: bool,
         /// Optional: generates Nix flake and direnv setup for reproducible environments
         #[arg(long)]
         nix: bool,
@@ -192,10 +195,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             name,
             api,
             docker,
+            buildah,
             nix,
             default,
         } => {
-            create_new_project(name.as_deref(), *api, *docker, *nix, *default)?;
+            create_new_project(name.as_deref(), *api, *docker, *buildah, *nix, *default)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;

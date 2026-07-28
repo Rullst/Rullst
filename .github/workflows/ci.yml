@@ -1,4 +1,4 @@
-﻿name: Rust CI
+name: Rust CI
 
 on:
   push:
@@ -17,61 +17,39 @@ env:
 
 defaults:
   run:
-    working-directory: Rullst
+    working-directory: .
 
 jobs:
   check:
     name: Code Quality & Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Rullst
+      - name: Checkout Monorepo
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          path: Rullst
 
-      - name: Checkout rullst-orm
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          repository: venelouis/rullst-orm
-          path: rullst-orm
-
-      - name: Set up Rust toolchain
+      - name: Set up Rust toolchain (with native cache)
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
         with:
           components: rustfmt, clippy
 
-      - name: Check formatting
-        run: cargo fmt --package rullst --package rullst-macros --package cargo-rullst --package rullst-blog-example -- --check
+      - name: Check formatting (Workspace)
+        run: cargo fmt --all -- --check
 
-      # Run clippy with default features (no feature-exclusive conflicts)
-      - name: Run Clippy (default features)
+      - name: Run Clippy (Workspace)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # Separately lint optional redis features
-      - name: Run Clippy (redis features)
-        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis -- -D warnings
-
-      # Separately lint optional mail-smtp feature
-      - name: Run Clippy (mail-smtp feature)
-        run: cargo clippy -p rullst --all-targets --features mail-smtp -- -D warnings
+      - name: Run Clippy (Rullst optional features)
+        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis,mail-smtp -- -D warnings
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Rullst
+      - name: Checkout Monorepo
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          path: Rullst
 
-      - name: Checkout rullst-orm
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          repository: venelouis/rullst-orm
-          path: rullst-orm
-
-      - name: Set up Rust toolchain
+      - name: Set up Rust toolchain (with native cache)
         uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
 
-      - name: Run all workspace tests
+      - name: Run all workspace tests (Testcontainers DBs, Unit, Integration)
         run: cargo test --workspace --all-features

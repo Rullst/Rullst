@@ -6,9 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [12.0.0] - Unreleased 🚀
 
+### Added
+- **Buildah Support (SecOps)**: Added the `--buildah` flag to `cargo rullst new` which generates a `build_buildah.sh` script for daemonless and rootless OCI image building, catering to extreme enterprise security requirements.
+- **Global Secret Scanning**: Integrated Trufflehog across the entire monorepo to prevent credential leaks in any crate.
+- **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.
+
 ### Changed
 - **Lockstep Versioning (Monorepo)**: Brought the entire Rullst ecosystem (`rullst-orm`, `rullst-connect`, `rullst-core`, `rullst-ai`, `rullst-auth`, etc.) into a unified Cargo Workspace Monorepo. All ecosystem crates will now share the same version number (`12.x.x`) to guarantee API compatibility and remove the dependency resolution nightmare for users.
+- **Enterprise CI Architecture**: Completely overhauled the GitHub Actions pipeline for the Monorepo structure. Heavy security tasks (Miri, Kani, Fuzzing, Mutants) are parallelized via dynamic matrices but restricted to manual triggers to respect GitHub limits. Standard CI checks use aggressive caching to test all crates in under 10 minutes.
+- **Dependabot**: Reduced update frequency to weekly to minimize PR spam.
 - **Docker BuildKit & Nix Crane Caching**: Brought back Docker BuildKit caching (`DOCKER_BUILDKIT=1` and `sccache`) and Nix `crane` dependencies caching for the generated projects, significantly reducing Docker and Nix build times.
+- **Unified Native Github Pages Deploy**: Consolidated all ecosystem websites (`Rullst`, `Rullst-Connect`, `Rullst-ORM` VitePress) under a single GitHub Actions workflow (`pages.yml`), dropping the legacy `gh-pages` branch for a cleaner repository history.
 
 ## [5.1.0] - 2026-07-27
 

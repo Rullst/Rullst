@@ -192,6 +192,7 @@ pub fn create_new_project(
     name_arg: Option<&str>,
     api_arg: bool,
     docker: bool,
+    buildah: bool,
     nix: bool,
     use_defaults: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -741,6 +742,34 @@ APP_ENV=development
         );
         println!("{}", format!("  cd {}", name).cyan());
         println!("{}", "  docker compose up --build".cyan());
+    }
+
+    if buildah {
+        println!(
+            "{}",
+            "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
+        );
+        let buildah_script = format!(
+            r#"#!/usr/bin/env bash
+# Rootless OCI Image Build Script via Buildah
+echo "🦀 Building rootless OCI image for {}..."
+buildah bud -f Dockerfile -t {}:latest .
+echo "✅ Build complete!"
+"#,
+            name, name
+        );
+        let script_path = path.join("build_buildah.sh");
+        fs::write(&script_path, buildah_script).ok();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(mut perms) = fs::metadata(&script_path).map(|m| m.permissions()) {
+                perms.set_mode(0o755);
+                fs::set_permissions(&script_path, perms).ok();
+            }
+        }
+        println!("{}", format!("  cd {}", name).cyan());
+        println!("{}", "  ./build_buildah.sh".cyan());
     }
 
     if nix {
