@@ -363,7 +363,8 @@ impl Mail {
                     in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
                     continue;
                 }
-                if in_mail && trimmed.starts_with("driver")
+                if in_mail
+                    && trimmed.starts_with("driver")
                     && let Some(val) = trimmed.split('=').nth(1)
                 {
                     let clean_val = val.split('#').next().unwrap_or(val).trim();
