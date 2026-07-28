@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785208812593,
+  "lastUpdate": 1785242553199,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3077,6 +3077,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2277,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "48a5ce94a580edd5b85df556e876f96850018038",
+          "message": "feat: implement HTML string escaping utilities and CSRF protection middleware for Axum",
+          "timestamp": "2026-07-28T09:38:08-03:00",
+          "tree_id": "24c326e7877ad0832bb11dd077bd181fa7eb2eda",
+          "url": "https://github.com/Rullst/Rullst/commit/48a5ce94a580edd5b85df556e876f96850018038"
+        },
+        "date": 1785242551745,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 719,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 948,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 625,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2239,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
