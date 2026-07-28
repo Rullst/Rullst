@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785263275001,
+  "lastUpdate": 1785268457388,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3509,6 +3509,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2259,
             "range": "± 39",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "adf2beffd467bfc2b9aff66d3e7bee8f90812a09",
+          "message": "feat: add feature flag driver tests and initialize Nexus admin panel scaffolding",
+          "timestamp": "2026-07-28T16:52:47-03:00",
+          "tree_id": "f3b81a0ff3849cec5fc5fdaa346031b56dd8ea2a",
+          "url": "https://github.com/Rullst/Rullst/commit/adf2beffd467bfc2b9aff66d3e7bee8f90812a09"
+        },
+        "date": 1785268455760,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 733,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 977,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2284,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
