@@ -1,0 +1,54 @@
+[package]
+name = "rullst-orm"
+version = "12.0.0"
+edition = "2024"
+rust-version = "1.96.0"
+authors = ["Venelouis"]
+description = "Fast, un-opinionated, database-agnostic ORM for Rust"
+license = "MIT"
+repository = "https://github.com/Rullst/rullst-orm"
+keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
+categories = ["database"]
+readme = "../README.md"
+
+[dependencies]
+mutants = "0.0.4"
+rullst-orm-macros = { path = "../rullst-orm-macros", version = "12.0.0" }
+sqlx = { version = "0.9", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json"] }
+tokio = { version = "1.23.1", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+redis = { version = "1", features = ["tokio-comp", "connection-manager"], optional = true }
+aes-gcm = "0.11.0"
+base64 = "0.23.0"
+rand = "0.10"
+async-stream = "0.3.5"
+tracing = "0.1.44"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+walkdir = "2.5.0"
+
+[features]
+default = []
+redis = ["dep:redis"]
+strict-postgres = []
+strict-mysql = []
+strict-sqlite = []
+
+[dev-dependencies]
+rand = "0.10"
+axum = "0.8"
+criterion = { version = "0.8.2", features = ["async_tokio"] }
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql"] }
+proptest = "1.11.0"
+
+[[bench]]
+name = "orm_bench"
+harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

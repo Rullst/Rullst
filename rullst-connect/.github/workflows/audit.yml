@@ -1,0 +1,24 @@
+name: Cargo Audit
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * 0' # Run weekly on Sundays
+
+permissions: read-all
+
+jobs:
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@ac128eb0d2c0a0f24f30544a879c377213bf8d6d # cargo-audit
+        
+      - name: Run cargo-audit
+        # Ignore RUSTSEC-2023-0071 (Marvin Attack in rsa crate used by jsonwebtoken, no patch available yet)
+        run: cargo audit --ignore RUSTSEC-2023-0071

@@ -1,0 +1,16 @@
+name: Semver Checks
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions: read-all
+
+jobs:
+  semver:
+    name: Check Semver
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2

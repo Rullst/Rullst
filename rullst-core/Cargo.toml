@@ -1,6 +1,6 @@
 [package]
 name = "rullst-core"
-version = "6.0.0"
+version = "12.0.0"
 edition = "2024"
 license = "MIT"
 
@@ -17,7 +17,7 @@ telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetr
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 toml = "1.1.2"
-rullst-macros = { version = "6.0.0", path = "../rullst-macros" }
+rullst-macros = { version = "12.0.0", path = "../rullst-macros" }
 redis = { version = "1.2.2", features = ["tokio-comp", "aio"], optional = true }
 tracing-opentelemetry = { version = "0.33.0", optional = true }
 opentelemetry = { version = "0.32.0", optional = true }
@@ -25,7 +25,7 @@ opentelemetry-otlp = { version = "0.32.0", optional = true, features = ["reqwest
 opentelemetry_sdk = { version = "0.32.1", optional = true, features = ["rt-tokio"] }
 axum = { version = "0.8.9", features = ["macros", "ws"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
-rullst-orm = "=6.1.1"
+rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio", "macros"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.7.0", features = ["fs", "trace", "cors"] }

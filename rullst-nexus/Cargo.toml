@@ -1,6 +1,6 @@
 [package]
 name = "rullst-nexus"
-version = "6.0.0"
+version = "12.0.0"
 edition = "2024"
 license = "MIT"
 
@@ -10,7 +10,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
 
 [dependencies]
 rullst-core = { path = "../rullst-core" }
-rullst-orm = "=6.1.1"
+rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
 rullst-auth = { path = "../rullst-auth" }
 axum = { version = "0.8.9" }
 base64 = "0.22.1"

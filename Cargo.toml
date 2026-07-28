@@ -3,6 +3,9 @@ members = [
     "rullst",
     "rullst-macros",
     "cargo-rullst",
+    "rullst-orm",
+    "rullst-orm-macros",
+    "rullst-connect",
     "examples/blog", "rullst-core", "rullst-auth", "rullst-mail", "rullst-ai", "rullst-nexus", "rullst-capital", "rullst-studio",
 ]
 exclude = [

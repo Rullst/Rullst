@@ -1,0 +1,25 @@
+name: Mutation Testing
+
+on:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@682e7d9e49c5e653d371fc6adbda67653461378a # v2
+        with:
+          tool: cargo-mutants
+      - name: Run cargo-mutants
+        run: cargo mutants --shard ${{ matrix.shard }}/4 --in-place

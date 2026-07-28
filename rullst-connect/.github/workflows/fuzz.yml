@@ -1,0 +1,45 @@
+name: Fuzz Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Duration per fuzz target (seconds)'
+        required: false
+        default: '18000' # 5 horas padrão por target
+        type: string
+  schedule:
+    # Roda todo domingo às 2 da manhã (opcional)
+    - cron: '0 2 * * 0'
+
+permissions: read-all
+
+jobs:
+  fuzz:
+    name: Run cargo-fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [default_target, fuzz_user_json, fuzz_token_response]
+    
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      
+      - name: Setup Rust Nightly
+        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly
+        with:
+          toolchain: nightly-2026-07-20
+      - name: Install cargo-fuzz
+        uses: taiki-e/install-action@682e7d9e49c5e653d371fc6adbda67653461378a # v2
+        with:
+          tool: cargo-fuzz
+        
+      - name: Run Fuzzing
+        run: |
+          if [ -d "fuzz" ]; then
+            cargo fuzz run ${{ matrix.target }} --target x86_64-unknown-linux-gnu -- -max_total_time=${{ github.event.inputs.duration || '18000' }}
+          else
+            echo "Fuzz directory not found. Please run 'cargo fuzz init' locally first."
+          fi

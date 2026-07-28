@@ -1,0 +1,31 @@
+[advisories]
+# Não falhar o CI por crates descontinuados (apenas avisa)
+unmaintained = "none"
+# Ignorar vulnerabilidade "Marvin Attack" da crate rsa que jsonwebtoken puxa (sem patch até o momento)
+ignore = ["RUSTSEC-2023-0071"]
+
+[bans]
+# Ignorar avisos de múltiplas versões da mesma dependência (ex: thiserror v1 e v2)
+multiple-versions = "allow"
+
+[licenses]
+# Licenças permitidas globalmente
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+    "BSL-1.0",
+]
+
+# Exceções para crates específicos que usam strings de licença fora do padrão SPDX
+[[licenses.clarify]]
+name = "zstd-sys"
+version = "*"
+expression = "MIT OR Apache-2.0"
+license-files = [
+    { path = "LICENSE", hash = 0 }
+]

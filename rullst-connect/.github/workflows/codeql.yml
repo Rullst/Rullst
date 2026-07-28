@@ -1,0 +1,45 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '30 1 * * 0'
+
+permissions: read-all
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+      with:
+        languages: ${{ matrix.language }}
+        
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        
+    - name: Build Code
+      run: cargo build --all-features
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+      with:
+        category: "/language:${{matrix.language}}"

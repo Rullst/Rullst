@@ -804,6 +804,7 @@ fn create_dockerfile(project_path: &Path, project_name: &str) -> Result<(), std:
     let dockerfile = format!(
         r#"# ══════════════════════════════════════════════════════════════
 # Rullst Production Dockerfile (auto-generated)
+# syntax=docker/dockerfile:1.4
 # Multi-stage build: Rust builder → Distroless runtime
 # Final image: ~20MB | Zero CVEs | Ultra-fast cold start
 # ══════════════════════════════════════════════════════════════
@@ -812,18 +813,27 @@ fn create_dockerfile(project_path: &Path, project_name: &str) -> Result<(), std:
 FROM rust:1.97-slim-bookworm AS builder
 WORKDIR /app
 
-# Install system dependencies for SQLite/Postgres/MySQL linking
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+# Install system dependencies for SQLite/Postgres/MySQL linking and sccache
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && \
+    cargo install sccache && rm -rf /var/lib/apt/lists/*
+ENV RUSTC_WRAPPER=sccache
+ENV SCCACHE_DIR=/root/.cache/sccache
 
-# Cache dependency compilation
+# Cache dependency compilation using BuildKit mount
 COPY Cargo.toml Cargo.lock* ./
-RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "5.0.1"/g' Cargo.toml && \
-    sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "11.0.0"/g' Cargo.toml || true
-RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs && cargo build --release && rm -rf src
+RUN sed -i 's/rullst = {{ path = [^}}]* }}/rullst = "12.0.0"/g' Cargo.toml && \
+    sed -i 's/rullst-connect = {{ path = [^}}]* }}/rullst-connect = "12.0.0"/g' Cargo.toml || true
+RUN mkdir src && echo "fn main() {{}}" > src/main.rs && touch src/lib.rs
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/root/.cache/sccache \
+    cargo build --release && rm -rf src
 
 # Build the actual application
 COPY . .
-RUN find src -type f -name "*.rs" -exec touch {{}} + && cargo build --release
+RUN find src -type f -name "*.rs" -exec touch {{}} +
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/root/.cache/sccache \
+    cargo build --release
 
 # ── Stage 2: Runtime ─────────────────────────────────────────
 FROM docker.io/library/debian:bookworm-slim
@@ -1072,9 +1082,10 @@ pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error:
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
+  outputs = { self, nixpkgs, rust-overlay, flake-utils, crane, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
@@ -1084,6 +1095,7 @@ pub fn generate_nix_files(project_path: &Path) -> Result<(), Box<dyn std::error:
         rustVersion = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" "rust-analyzer" ];
         };
+        craneLib = crane.mkLib pkgs;
       in
       {
         devShell = pkgs.mkShell {

@@ -4,6 +4,12 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [12.0.0] - Unreleased 🚀
+
+### Changed
+- **Lockstep Versioning (Monorepo)**: Brought the entire Rullst ecosystem (`rullst-orm`, `rullst-connect`, `rullst-core`, `rullst-ai`, `rullst-auth`, etc.) into a unified Cargo Workspace Monorepo. All ecosystem crates will now share the same version number (`12.x.x`) to guarantee API compatibility and remove the dependency resolution nightmare for users.
+- **Docker BuildKit & Nix Crane Caching**: Brought back Docker BuildKit caching (`DOCKER_BUILDKIT=1` and `sccache`) and Nix `crane` dependencies caching for the generated projects, significantly reducing Docker and Nix build times.
+
 ## [5.1.0] - 2026-07-27
 
 ### Added

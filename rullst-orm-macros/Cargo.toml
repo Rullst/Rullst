@@ -1,0 +1,26 @@
+[package]
+name = "rullst-orm-macros"
+version = "12.0.0"
+edition = "2024"
+rust-version = "1.96.0"
+description = "Procedural macros for the rullst-orm ORM."
+license = "MIT"
+repository = "https://github.com/Rullst/rullst-orm"
+readme = "../README.md"
+
+[lib]
+proc-macro = true
+
+[features]
+strict-postgres = []
+strict-mysql = []
+strict-sqlite = []
+
+[dependencies]
+syn = { version = "3", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+
+[dev-dependencies]
+mutants = "0.0.4"
+rullst-orm = { path = "../rullst-orm" }

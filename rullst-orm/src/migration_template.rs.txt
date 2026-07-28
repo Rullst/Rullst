@@ -1,0 +1,22 @@
+use rullst_orm::schema::{Schema, Blueprint, Migration};
+use rullst_orm::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "m{timestamp}_{name}"
+    }
+
+    async fn up(&self) -> Result<(), crate::Error> {
+        Schema::create("{name}", |table| {
+            table.id();
+            table.timestamps();
+        }).await
+    }
+
+    async fn down(&self) -> Result<(), crate::Error> {
+        Schema::drop_if_exists("{name}").await
+    }
+}

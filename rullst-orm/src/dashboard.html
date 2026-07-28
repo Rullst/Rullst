@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'sha256-haU7T+IztY1xJaWdZM+DihRf2mIbbG5hxLYWxjBMudg='; font-src 'self' https://fonts.gstatic.com; script-src 'none'; object-src 'none'; base-uri 'self';">
+    <title>Rullst ORM - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --surface-color: rgba(30, 35, 45, 0.6);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: #f9322c;
+            --primary-hover: #ff4c46;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(249, 50, 44, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(50, 100, 255, 0.05), transparent 25%);
+        }
+
+        .sidebar {
+            width: 260px;
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 1rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), #ff7e5f);
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(249, 50, 44, 0.3);
+        }
+
+        .brand-text {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #fff, #bbb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.8rem 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            transform: translateX(4px);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 16px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border-color: rgba(249, 50, 44, 0.3);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary), #ff7e5f);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before { opacity: 1; }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .table-container {
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: rgba(0,0,0,0.2);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        tr { transition: background 0.2s ease; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(46, 160, 67, 0.15);
+            color: #3fb950;
+            border: 1px solid rgba(46, 160, 67, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">R</div>
+            <div class="brand-text">Rullst Admin</div>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active">Dashboard</a>
+            <a href="#" class="nav-link">Models / Tables</a>
+            <a href="#" class="nav-link">Audit Logs</a>
+            <a href="#" class="nav-link">Settings</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Database Overview</h1>
+            <p style="color: var(--text-muted)">Welcome back, Admin.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Total Records</div>
+                <div class="stat-value">14,293</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Active Models</div>
+                <div class="stat-value">12</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Recent Audits</div>
+                <div class="stat-value">342</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model Name</th>
+                        <th>Table</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>User</strong></td>
+                        <td style="color: var(--text-muted)">users</td>
+                        <td><span class="badge">Healthy</span></td>
+                        <td><a href="#" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Data</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Document</strong></td>
+                        <td style="color: var(--text-muted)">documents</td>
+                        <td><span class="badge">Healthy</span></td>
+                        <td><a href="#" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Data</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tenant</strong></td>
+                        <td style="color: var(--text-muted)">tenants</td>
+                        <td><span class="badge">Healthy</span></td>
+                        <td><a href="#" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Data</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>
