@@ -1,10 +1,7 @@
 name: OWASP ZAP (Dynamic Application Security Testing)
 
 on:
-  push:
-    branches: [ "main" ]
-  schedule:
-    - cron: '0 2 * * 0' # Run weekly
+  workflow_dispatch:
 
 permissions: read-all
 

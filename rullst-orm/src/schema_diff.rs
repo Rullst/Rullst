@@ -20,7 +20,7 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
     let walker = WalkDir::new("src").into_iter().filter_map(|e| e.ok());
 
     for entry in walker {
-        if entry.path().extension().map_or(false, |ext| ext == "rs") {
+        if entry.path().extension().is_some_and(|ext| ext == "rs") {
             let content = match fs::read_to_string(entry.path()) {
                 Ok(c) => c,
                 Err(_) => continue,
@@ -42,12 +42,11 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                             }
                             if attr.path().is_ident("orm") {
                                 let _ = attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("table") {
-                                        if let Ok(value) = meta.value() {
-                                            if let Ok(lit) = value.parse::<syn::LitStr>() {
-                                                table_name = Some(lit.value());
-                                            }
-                                        }
+                                    if meta.path.is_ident("table")
+                                        && let Ok(value) = meta.value()
+                                        && let Ok(lit) = value.parse::<syn::LitStr>()
+                                    {
+                                        table_name = Some(lit.value());
                                     }
                                     Ok(())
                                 });
@@ -111,19 +110,18 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
 }
 
 fn extract_type_name(ty: &syn::Type) -> (String, bool) {
-    if let syn::Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
-            let type_name = segment.ident.to_string();
-            if type_name == "Option" {
-                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
-                    if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
-                        let (inner_name, _) = extract_type_name(inner_ty);
-                        return (inner_name, true);
-                    }
-                }
-            }
-            return (type_name, false);
+    if let syn::Type::Path(type_path) = ty
+        && let Some(segment) = type_path.path.segments.last()
+    {
+        let type_name = segment.ident.to_string();
+        if type_name == "Option"
+            && let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+            && let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first()
+        {
+            let (inner_name, _) = extract_type_name(inner_ty);
+            return (inner_name, true);
         }
+        return (type_name, false);
     }
     ("Unknown".to_string(), false)
 }

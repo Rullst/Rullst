@@ -27,8 +27,7 @@ rand = "0.10"
 async-stream = "0.3.5"
 tracing = "0.1.44"
 syn = { version = "2.0", features = ["full", "extra-traits"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+
 walkdir = "2.5.0"
 
 [features]

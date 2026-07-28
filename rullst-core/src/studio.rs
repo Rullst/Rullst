@@ -8,7 +8,7 @@ use axum::{
 use rullst_macros::html;
 
 use serde::Deserialize;
-use sqlx::{Any, QueryBuilder, Row};
+use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
@@ -28,7 +28,7 @@ fn escape_html_attr(s: &str) -> String {
 }
 
 /// Helper to decode any SQL Column value to String
-fn get_any_value_as_string(row: &sqlx::any::AnyRow, index: usize) -> String {
+fn get_any_value_as_string(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, index: usize) -> String {
     if let Ok(val) = row.try_get::<String, _>(index) {
         val
     } else if let Ok(val) = row.try_get::<i64, _>(index) {
@@ -193,7 +193,7 @@ fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> String {
 
 /// Helper to build table rows HTML
 #[cfg_attr(mutants, mutants::skip)]
-fn build_rows_html(records: &[sqlx::any::AnyRow], col_names: &[String]) -> String {
+fn build_rows_html(records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row], col_names: &[String]) -> String {
     if records.is_empty() {
         let cols_len = col_names.len().max(1);
         return format!(
@@ -416,7 +416,7 @@ async fn fetch_table_records(
     search: &str,
     page_size: usize,
     offset: usize,
-) -> Result<Vec<sqlx::any::AnyRow>, String> {
+) -> Result<Vec<<rullst_orm::RullstDatabase as sqlx::Database>::Row>, String> {
     let quoted_table = if driver == "mysql" {
         format!("`{}`", clean_table)
     } else {
