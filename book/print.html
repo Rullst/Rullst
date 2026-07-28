@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a70962f2.js";
+            window.path_to_searchindex_js = "searchindex-1a0a94e2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3a119751.js"></script>
@@ -310,6 +310,20 @@ A complete back-office suite out of the box. It features:</p>
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
 <p><strong>Blueprint Evolution:</strong> We are constantly refining our Blueprints. In version 2.0.1, all Blueprints were rigorously audited to ensure 100% macro syntax compliance (<code>routes!</code> and <code>html!</code>) and perfect database initialization order. You can build upon them with absolute confidence.</p>
 </blockquote>
+<h2 id="4-modular-workspace--optional-features"><a class="header" href="#4-modular-workspace--optional-features">4. Modular Workspace &amp; Optional Features</a></h2>
+<p>As of version <strong>5.1.0</strong>, Rullst features a highly-optimized <strong>Modular Workspace Architecture</strong>. To provide the fastest possible compilation times and the smallest binary sizes, Rullst’s peripheral crates are now <strong>100% optional</strong>.</p>
+<p>The main <code>rullst</code> crate acts as a facade. By default, it includes only the core HTTP and routing engines. Additional capabilities are activated via Cargo features:</p>
+<ul>
+<li><code>auth</code>: Includes <code>rullst-auth</code> (Passkeys, OAuth, Argon2, Session Management).</li>
+<li><code>ai</code>: Includes <code>rullst-ai</code> (Gemini, OpenAI, Anthropic, Ollama drivers).</li>
+<li><code>capital</code>: Includes <code>rullst-capital</code> (Stripe and LemonSqueezy billing webhooks).</li>
+<li><code>mailer</code>: Includes <code>rullst-mail</code> (SMTP integration).</li>
+<li><code>nexus</code>: Includes <code>rullst-nexus</code> (Auto-generated CMS and Admin Panels).</li>
+<li><code>studio</code>: Includes <code>rullst-studio</code> (Local Web-based Database Studio).</li>
+</ul>
+<p><strong>How it works seamlessly:</strong>
+You don’t need to manually configure these! When you run <code>cargo rullst new</code> (or simply <code>cargo rullst</code>), the interactive scaffolding wizard intelligently analyzes your chosen Blueprint and automatically injects exactly the features you need into your <code>Cargo.toml</code>.</p>
+<p>For example, if you choose the <strong>SaaS App Starter</strong>, the CLI will automatically activate <code>auth</code>, <code>capital</code>, <code>mailer</code>, <code>nexus</code>, and <code>studio</code>. It will also ask if you want to include <code>ai</code> features! If you choose a simpler template like the <strong>Blank Starter</strong>, these heavy modules are completely skipped, drastically slashing your initial compile times.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="rullst-ai-developing-with-autonomous-agents"><a class="header" href="#rullst-ai-developing-with-autonomous-agents">Rullst AI: Developing with Autonomous Agents</a></h1>
 <p>Rullst was designed from the ground up to be the first <strong>“AI-native”</strong> Rust framework. What does this mean in practice?</p>
@@ -1056,13 +1070,12 @@ Foundry.toml
     M8 --&gt; M9["🆓 M9: The Free Enterprise Revolution"]
     M9 --&gt; M10["🛠️ M10: Incremental Compilation"]
     M10 --&gt; M11["📊 M11: Telemetry &amp; Radar"]
-    M11 --&gt; M12["📚 M12: Developer Ecosystem"]
-    M12 --&gt; M13["💎 M13: Zero-Copy Streaming"]
-    M13 --&gt; M14["🔮 M14: Omni-Frontend &amp; AI"]
-    M14 --&gt; M15["🤖 M15: Agentic DevOps"]
-    M15 --&gt; M16["🌐 M16: Intent-Based DB"]
-    M16 --&gt; M17["🧬 M17: Self-Evolving Core"]
-    M17 --&gt; M18["🔬 M18: Quantum-Ready"]
+    M11 --&gt; M12["💎 M12: Zero-Copy Streaming"]
+    M12 --&gt; M13["🔮 M13: Omni-Frontend &amp; AI"]
+    M13 --&gt; M14["🤖 M14: Agentic DevOps"]
+    M14 --&gt; M15["🌐 M15: Intent-Based DB"]
+    M15 --&gt; M16["🧬 M16: Self-Evolving Core"]
+    M16 --&gt; M17["🔬 M17: Quantum-Ready"]
 
     style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
@@ -1082,7 +1095,6 @@ Foundry.toml
     style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
     style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
     style M17 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
-    style M18 fill:#f3e5f5,stroke:#fff,stroke-width:3px,color:#000
 </code></pre>
 <hr>
 <h2 id="-milestone-1-cli-empowerment-cargo-rullst"><a class="header" href="#-milestone-1-cli-empowerment-cargo-rullst">🛠️ Milestone 1: CLI Empowerment (<code>cargo-rullst</code>)</a></h2>
@@ -1336,14 +1348,14 @@ The heavy lifting (database schema parsers, migration execution, and relationshi
 <li><input disabled="" type="checkbox" checked=""> <strong>TypeScript SDK Generator (<code>generate:ts</code>):</strong> AST-based CLI command that parses Rullst routes and generates a strictly-typed TypeScript client SDK for seamless React/Vue/Svelte integration.</li>
 </ul>
 <hr>
-<h2 id="-milestone-13-zero-copy-event-streaming--time-travel-architecture"><a class="header" href="#-milestone-13-zero-copy-event-streaming--time-travel-architecture">💎 Milestone 13: Zero-Copy Event Streaming &amp; Time-Travel Architecture</a></h2>
+<h2 id="-milestone-12-zero-copy-event-streaming--time-travel-architecture"><a class="header" href="#-milestone-12-zero-copy-event-streaming--time-travel-architecture">💎 Milestone 12: Zero-Copy Event Streaming &amp; Time-Travel Architecture</a></h2>
 <p><strong>Goal:</strong> Natively unify the data lifecycle and eliminate the need for heavy external message brokers.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Rullst Ledger (<code>rullst::ledger</code>):</strong> An Event Sourcing engine integrated directly into <code>rullst-orm</code>. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).</li>
 <li><input disabled="" type="checkbox"> <strong>Built-in Event Streaming:</strong> The Rullst binary itself acts as a distributed async message micro-broker across instances via WebSockets/QUIC, replacing the need for Kafka or RabbitMQ for internal data communication.</li>
 </ul>
 <hr>
-<h2 id="-milestone-14-omni-frontend-protocol--ai-expansion"><a class="header" href="#-milestone-14-omni-frontend-protocol--ai-expansion">🔮 Milestone 14: Omni-Frontend Protocol &amp; AI Expansion</a></h2>
+<h2 id="-milestone-13-omni-frontend-protocol--ai-expansion"><a class="header" href="#-milestone-13-omni-frontend-protocol--ai-expansion">🔮 Milestone 13: Omni-Frontend Protocol &amp; AI Expansion</a></h2>
 <p><strong>Goal:</strong> Solidify Rullst as the ultimate backend for AI agents, SPAs, and Native Mobile apps.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Automatic TypeScript SDK Generation:</strong> For routes exposed as REST/JSON or WebSockets, auto-generate a 100% typed TS client, eliminating tRPC or manual OpenAPI.</li>
@@ -1353,28 +1365,28 @@ The heavy lifting (database schema parsers, migration execution, and relationshi
 <li><input disabled="" type="checkbox"> <strong>AI-Powered DB Seeding:</strong> <code>cargo rullst db:seed --ai</code> leverages local LLMs to generate ultra-realistic, context-aware mock data.</li>
 </ul>
 <hr>
-<h2 id="-milestone-15-agentic-devops--autonomous-infrastructure"><a class="header" href="#-milestone-15-agentic-devops--autonomous-infrastructure">🤖 Milestone 15: Agentic DevOps &amp; Autonomous Infrastructure</a></h2>
+<h2 id="-milestone-14-agentic-devops--autonomous-infrastructure"><a class="header" href="#-milestone-14-agentic-devops--autonomous-infrastructure">🤖 Milestone 14: Agentic DevOps &amp; Autonomous Infrastructure</a></h2>
 <p><strong>Goal:</strong> Leverage the Rullst compiler’s deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Autonomous Provisioning (<code>cargo rullst deploy --autonomous</code>):</strong> The compiler analyzes your code (e.g., if you use <code>rullst::storage::S3</code>, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.</li>
 <li><input disabled="" type="checkbox"> <strong>AI-Driven CI/CD Bottleneck Analysis:</strong> Automated testing pipelines that use local LLMs to evaluate performance regressions. If a commit slows a route, the AI profiles the Tokio stack and suggests the exact line causing the bottleneck.</li>
 </ul>
 <hr>
-<h2 id="-milestone-16-ai-generated-autonomous-migrations--intent-based-db"><a class="header" href="#-milestone-16-ai-generated-autonomous-migrations--intent-based-db">🌐 Milestone 16: AI-Generated Autonomous Migrations &amp; Intent-Based DB</a></h2>
+<h2 id="-milestone-15-ai-generated-autonomous-migrations--intent-based-db"><a class="header" href="#-milestone-15-ai-generated-autonomous-migrations--intent-based-db">🌐 Milestone 15: AI-Generated Autonomous Migrations &amp; Intent-Based DB</a></h2>
 <p><strong>Goal:</strong> Invert the database design flow by having AI generate optimized schemas and indices based on plain text intentions.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Intent-Based Modeling:</strong> Describe your entity using rich Rust comments. The Rullst AI CLI understands the business intent, calculates the best indexing strategy, and generates a perfectly optimized migration automatically.</li>
 <li><input disabled="" type="checkbox"> <strong>Self-Optimizing Indexes:</strong> In production, Rullst monitors slow queries in real-time (using Radar Telemetry) and autonomously suggests or safely applies secondary indices to eliminate slow table scans.</li>
 </ul>
 <hr>
-<h2 id="-milestone-17-the-self-evolving--polymorphic-core"><a class="header" href="#-milestone-17-the-self-evolving--polymorphic-core">🧬 Milestone 17: The Self-Evolving &amp; Polymorphic Core</a></h2>
+<h2 id="-milestone-16-the-self-evolving--polymorphic-core"><a class="header" href="#-milestone-16-the-self-evolving--polymorphic-core">🧬 Milestone 16: The Self-Evolving &amp; Polymorphic Core</a></h2>
 <p><strong>Goal:</strong> Transform the framework from a static tool into a living software organism that adapts, optimizes, and heals itself in production.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Polymorphic Code Generation:</strong> Deep telemetry and local AI analyze production traffic. If a route receives millions of requests with a specific data pattern, the framework rewrites and recompiles its own internal logic in the background (via Dynamic Linking) to create an ultra-optimized execution path.</li>
 <li><input disabled="" type="checkbox"> <strong>Autonomous Error Auto-Healing in Production:</strong> If the system detects a novel panic in production, the AI analyzes the log, writes a corrective patch, runs the test suite in the background, and hot-swaps the router in under 1 second—all without human intervention. The developer just wakes up to a report saying the bug was fixed.</li>
 </ul>
 <hr>
-<h2 id="-milestone-18-quantum-ready-web-architecture-the-post-quantum-era"><a class="header" href="#-milestone-18-quantum-ready-web-architecture-the-post-quantum-era">🔬 Milestone 18: Quantum-Ready Web Architecture (The Post-Quantum Era)</a></h2>
+<h2 id="-milestone-17-quantum-ready-web-architecture-the-post-quantum-era"><a class="header" href="#-milestone-17-quantum-ready-web-architecture-the-post-quantum-era">🔬 Milestone 17: Quantum-Ready Web Architecture (The Post-Quantum Era)</a></h2>
 <p><strong>Goal:</strong> Future-proof the framework’s security and compute layers against the rise of commercial quantum computing.</p>
 <ul>
 <li><input disabled="" type="checkbox"> <strong>Native Post-Quantum Cryptography (PQC):</strong> Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.</li>

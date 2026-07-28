@@ -54,13 +54,12 @@ graph TD
     M8 --> M9["🆓 M9: The Free Enterprise Revolution"]
     M9 --> M10["🛠️ M10: Incremental Compilation"]
     M10 --> M11["📊 M11: Telemetry & Radar"]
-    M11 --> M12["📚 M12: Developer Ecosystem"]
-    M12 --> M13["💎 M13: Zero-Copy Streaming"]
-    M13 --> M14["🔮 M14: Omni-Frontend & AI"]
-    M14 --> M15["🤖 M15: Agentic DevOps"]
-    M15 --> M16["🌐 M16: Intent-Based DB"]
-    M16 --> M17["🧬 M17: Self-Evolving Core"]
-    M17 --> M18["🔬 M18: Quantum-Ready"]
+    M11 --> M12["💎 M12: Zero-Copy Streaming"]
+    M12 --> M13["🔮 M13: Omni-Frontend & AI"]
+    M13 --> M14["🤖 M14: Agentic DevOps"]
+    M14 --> M15["🌐 M15: Intent-Based DB"]
+    M15 --> M16["🧬 M16: Self-Evolving Core"]
+    M16 --> M17["🔬 M17: Quantum-Ready"]
 
     style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
@@ -80,7 +79,6 @@ graph TD
     style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
     style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
     style M17 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
-    style M18 fill:#f3e5f5,stroke:#fff,stroke-width:3px,color:#000
 ```
 
 ---
@@ -280,7 +278,7 @@ graph TD
 
 ---
 
-## 💎 Milestone 13: Zero-Copy Event Streaming & Time-Travel Architecture
+## 💎 Milestone 12: Zero-Copy Event Streaming & Time-Travel Architecture
 **Goal:** Natively unify the data lifecycle and eliminate the need for heavy external message brokers.
 
 - [ ] **Rullst Ledger (`rullst::ledger`):** An Event Sourcing engine integrated directly into `rullst-orm`. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).
@@ -288,7 +286,7 @@ graph TD
 
 ---
 
-## 🔮 Milestone 14: Omni-Frontend Protocol & AI Expansion
+## 🔮 Milestone 13: Omni-Frontend Protocol & AI Expansion
 **Goal:** Solidify Rullst as the ultimate backend for AI agents, SPAs, and Native Mobile apps.
 
 - [ ] **Automatic TypeScript SDK Generation:** For routes exposed as REST/JSON or WebSockets, auto-generate a 100% typed TS client, eliminating tRPC or manual OpenAPI.
@@ -299,7 +297,7 @@ graph TD
 
 ---
 
-## 🤖 Milestone 15: Agentic DevOps & Autonomous Infrastructure
+## 🤖 Milestone 14: Agentic DevOps & Autonomous Infrastructure
 **Goal:** Leverage the Rullst compiler's deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.
 
 - [ ] **Autonomous Provisioning (`cargo rullst deploy --autonomous`):** The compiler analyzes your code (e.g., if you use `rullst::storage::S3`, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.
@@ -307,7 +305,7 @@ graph TD
 
 ---
 
-## 🌐 Milestone 16: AI-Generated Autonomous Migrations & Intent-Based DB
+## 🌐 Milestone 15: AI-Generated Autonomous Migrations & Intent-Based DB
 **Goal:** Invert the database design flow by having AI generate optimized schemas and indices based on plain text intentions.
 
 - [ ] **Intent-Based Modeling:** Describe your entity using rich Rust comments. The Rullst AI CLI understands the business intent, calculates the best indexing strategy, and generates a perfectly optimized migration automatically.
@@ -315,7 +313,7 @@ graph TD
 
 ---
 
-## 🧬 Milestone 17: The Self-Evolving & Polymorphic Core
+## 🧬 Milestone 16: The Self-Evolving & Polymorphic Core
 **Goal:** Transform the framework from a static tool into a living software organism that adapts, optimizes, and heals itself in production.
 
 - [ ] **Polymorphic Code Generation:** Deep telemetry and local AI analyze production traffic. If a route receives millions of requests with a specific data pattern, the framework rewrites and recompiles its own internal logic in the background (via Dynamic Linking) to create an ultra-optimized execution path.
@@ -323,7 +321,7 @@ graph TD
 
 ---
 
-## 🔬 Milestone 18: Quantum-Ready Web Architecture (The Post-Quantum Era)
+## 🔬 Milestone 17: Quantum-Ready Web Architecture (The Post-Quantum Era)
 **Goal:** Future-proof the framework's security and compute layers against the rise of commercial quantum computing.
 
 - [ ] **Native Post-Quantum Cryptography (PQC):** Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.
