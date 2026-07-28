@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785242553199,
+  "lastUpdate": 1785247290047,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3131,6 +3131,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2239,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e42fd730f20bada6002647ffe00ee0e1db5fb2b3",
+          "message": "chore: merge remote-tracking branch 'origin/main' and keep local monorepo structure",
+          "timestamp": "2026-07-28T10:57:30-03:00",
+          "tree_id": "96a09b86200155b8bdb94a70b610c15e203897fa",
+          "url": "https://github.com/Rullst/Rullst/commit/e42fd730f20bada6002647ffe00ee0e1db5fb2b3"
+        },
+        "date": 1785247288879,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 774,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1013,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 657,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2322,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
