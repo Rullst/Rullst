@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785257385167,
+  "lastUpdate": 1785260786211,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3401,6 +3401,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2347,
             "range": "± 46",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "65fc56f7e47710315b969750104936fcdc76a64f",
+          "message": "feat: implement OIDC provider and add crate documentation, project structure, and boilerplate READMEs",
+          "timestamp": "2026-07-28T14:44:57-03:00",
+          "tree_id": "1b9e31923ccc73bcc3aa0882baa1fc6ece19ff85",
+          "url": "https://github.com/Rullst/Rullst/commit/65fc56f7e47710315b969750104936fcdc76a64f"
+        },
+        "date": 1785260785322,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 735,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 992,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2334,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
