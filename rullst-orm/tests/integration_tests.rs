@@ -185,10 +185,21 @@ async fn scenario_cascade_soft_delete() {
         t.integer("parent_id").not_null();
         t.soft_deletes();
     })
-    let mut p = Parent { id: 0, children: None, deleted_at: None };
+    .await
+    .unwrap();
+
+    let mut p = Parent {
+        id: 0,
+        children: None,
+        deleted_at: None,
+    };
     p.save().await.unwrap();
 
-    let mut c = Child { id: 0, parent_id: p.id, deleted_at: None };
+    let mut c = Child {
+        id: 0,
+        parent_id: p.id,
+        deleted_at: None,
+    };
     c.save().await.unwrap();
 
     // delete parent, should cascade to child
@@ -197,13 +208,22 @@ async fn scenario_cascade_soft_delete() {
     let pool = Orm::pool();
     let parent_row: Option<(i32, Option<String>)> =
         sqlx::query_as("SELECT id, deleted_at FROM it_parent WHERE id = ?")
-            .bind(p.id).fetch_optional(pool).await.unwrap();
+            .bind(p.id)
+            .fetch_optional(pool)
+            .await
+            .unwrap();
     let child_row: Option<(i32, Option<String>)> =
         sqlx::query_as("SELECT id, deleted_at FROM it_child WHERE id = ?")
-            .bind(c.id).fetch_optional(pool).await.unwrap();
+            .bind(c.id)
+            .fetch_optional(pool)
+            .await
+            .unwrap();
 
     assert!(parent_row.unwrap().1.is_some());
-    assert!(child_row.unwrap().1.is_some(), "Child must be cascade soft deleted");
+    assert!(
+        child_row.unwrap().1.is_some(),
+        "Child must be cascade soft deleted"
+    );
 
     Schema::drop_if_exists("it_child").await.unwrap();
     Schema::drop_if_exists("it_parent").await.unwrap();

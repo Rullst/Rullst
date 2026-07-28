@@ -1,4 +1,4 @@
-﻿use crate::html::RawHtml;
+use crate::html::RawHtml;
 use axum::{
     Router,
     extract::{Path, Query},
@@ -117,13 +117,13 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
 
     let quoted_table = quote_table_name(driver, &clean_table);
 
-    let mut qb: QueryBuilder<Any> =
+    let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
         QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
 
     if let Some(search) = search_query {
         if !search.is_empty() {
             let schema_query = build_schema_query(driver, &clean_table);
-            if let Ok(columns_rows) = QueryBuilder::<Any>::new(schema_query)
+            if let Ok(columns_rows) = QueryBuilder::<rullst_orm::RullstDatabase>::new(schema_query)
                 .build()
                 .fetch_all(pool)
                 .await
@@ -353,7 +353,7 @@ pub async fn handle_dashboard() -> impl IntoResponse {
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn fetch_table_schema(
-    pool: &sqlx::Pool<Any>,
+    pool: &rullst_orm::RullstPool,
     driver: &str,
     clean_table: &str,
 ) -> Result<(Vec<String>, Vec<usize>), String> {
@@ -377,7 +377,7 @@ async fn fetch_table_schema(
         _ => format!("PRAGMA table_info(\"{}\")", clean_table),
     };
 
-    let columns_rows = match QueryBuilder::<Any>::new(columns_query)
+    let columns_rows = match QueryBuilder::<rullst_orm::RullstDatabase>::new(columns_query)
         .build()
         .fetch_all(pool)
         .await
@@ -409,7 +409,7 @@ async fn fetch_table_schema(
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn fetch_table_records(
-    pool: &sqlx::Pool<Any>,
+    pool: &rullst_orm::RullstPool,
     driver: &str,
     clean_table: &str,
     col_names: &[String],
@@ -423,7 +423,8 @@ async fn fetch_table_records(
         format!("\"{}\"", clean_table)
     };
 
-    let mut qb: QueryBuilder<Any> = QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
+    let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
+        QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
 
     if !search.is_empty() && !col_names.is_empty() {
         qb.push(" WHERE ");

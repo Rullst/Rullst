@@ -60,7 +60,7 @@ fn run_project_wizard(
             wants_ai: false,
         });
     }
-    
+
     let theme = dialoguer::theme::ColorfulTheme::default();
 
     let name = match name_arg {
@@ -312,7 +312,7 @@ pub fn create_new_project(
         )
     } else {
         format!(
-            "rullst = {{ version = \"5.1.0\", features = [{}] }}",
+            "rullst = {{ version = \"12.0.0\", features = [{}] }}",
             features_str
         )
     };
@@ -379,11 +379,22 @@ axum = "0.8"
     ));
 
     if db_needed {
+        let sibling_path = current_dir.join("rullst-orm");
+        let orm_dep = if sibling_path.exists() {
+            let absolute_path = sibling_path
+                .canonicalize()?
+                .display()
+                .to_string()
+                .replace("\\", "/");
+            format!("rullst-orm = {{ path = \"{}\" }}\n", absolute_path)
+        } else {
+            "rullst-orm = \"12.0.0\"\n".to_string()
+        };
         cargo_toml.push_str(&format!(
-            r#"rullst-orm = "6.1.1"
-tracing = "0.1"
+            r#"{orm_dep}tracing = "0.1"
 sqlx = {{ version = "0.9.0", {sqlx_features} }}
 "#,
+            orm_dep = orm_dep,
             sqlx_features = sqlx_features
         ));
     }
@@ -403,7 +414,7 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
                 .replace("\\", "/");
             format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
         } else {
-            "rullst-connect = \"11.0.0\"\n".to_string()
+            "rullst-connect = \"12.0.0\"\n".to_string()
         };
         cargo_toml.push_str(&connect_dep);
     }

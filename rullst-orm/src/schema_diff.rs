@@ -68,11 +68,13 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                                     if let Some(ident) = field.ident {
                                         let field_name = ident.to_string();
                                         let (rust_type, is_option) = extract_type_name(&field.ty);
-                                        
+
                                         // Skip fields with #[sqlx(skip)] or #[orm(skip)]
                                         let mut skip = false;
                                         for f_attr in &field.attrs {
-                                            if f_attr.path().is_ident("sqlx") || f_attr.path().is_ident("orm") {
+                                            if f_attr.path().is_ident("sqlx")
+                                                || f_attr.path().is_ident("orm")
+                                            {
                                                 let _ = f_attr.parse_nested_meta(|meta| {
                                                     if meta.path.is_ident("skip") {
                                                         skip = true;
@@ -81,7 +83,9 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
                                                 });
                                             }
                                         }
-                                        if skip { continue; }
+                                        if skip {
+                                            continue;
+                                        }
 
                                         fields.push(ParsedField {
                                             name: field_name,

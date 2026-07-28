@@ -1,0 +1,12 @@
+[default.extend-words]
+wheres = "wheres"
+momento = "momento"
+resolvendo = "resolvendo"
+consumirem = "consumirem"
+vai = "vai"
+caractere = "caractere"
+
+[default.extend-identifiers]
+OIS = "OIS"
+SIE = "SIE"
+Splitted = "Splitted"

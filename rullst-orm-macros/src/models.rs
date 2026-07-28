@@ -723,7 +723,8 @@ fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let mut cascade_deletes_with_tx = quote! {};
     if has_soft_deletes {
         for rel in &parsed.relations {
-            if rel.cascade_soft_delete && (rel.rel_type == "has_many" || rel.rel_type == "has_one") {
+            if rel.cascade_soft_delete && (rel.rel_type == "has_many" || rel.rel_type == "has_one")
+            {
                 let rel_model = syn::Ident::new(&rel.rel_model, name.span());
                 let default_fk = format!("{}_id", name.to_string().to_lowercase());
                 let fk = if rel.foreign_key.is_empty() {
