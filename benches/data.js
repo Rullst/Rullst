@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785253770404,
+  "lastUpdate": 1785255947126,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3293,6 +3293,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2301,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "27f2dcdf39eec183fc42b5f514121134f88a5bbb",
+          "message": "feat: add schema parser, studio table viewer, and OWASP ZAP security workflow with configuration cleanup",
+          "timestamp": "2026-07-28T13:23:26-03:00",
+          "tree_id": "94b6dd253ba7674db23f983c5ac7d26dbc2022ec",
+          "url": "https://github.com/Rullst/Rullst/commit/27f2dcdf39eec183fc42b5f514121134f88a5bbb"
+        },
+        "date": 1785255944595,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 763,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1029,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 659,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2360,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
