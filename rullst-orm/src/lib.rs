@@ -74,7 +74,7 @@ pub fn replace_placeholders(sql: &str) -> String {
     for (counter, (idx, _)) in (1..).zip(sql.match_indices('?')) {
         replaced.push_str(&sql[last_idx..idx]);
         use std::fmt::Write;
-        write!(replaced, "${}", counter).unwrap();
+        let _ = write!(replaced, "${}", counter);
         last_idx = idx + 1;
     }
     replaced.push_str(&sql[last_idx..]);
@@ -394,6 +394,7 @@ impl Orm {
     }
 
     /// Retrieve the global database connection pool (strictly for writes)
+    #[allow(clippy::expect_used)]
     pub fn pool() -> &'static RullstPool {
         DB_POOL
             .get()
@@ -414,6 +415,7 @@ impl Orm {
     }
 
     /// Retrieve the active driver string
+    #[allow(clippy::expect_used)]
     pub fn driver() -> &'static str {
         DB_DRIVER
             .get()

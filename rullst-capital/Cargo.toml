@@ -18,5 +18,8 @@ ring = { version = "0.17.14", features = ["std"] }
 subtle = "2.6.1"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

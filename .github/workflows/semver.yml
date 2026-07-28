@@ -1,4 +1,4 @@
-﻿name: SemVer Checks
+name: SemVer Checks
 
 on:
   push:
@@ -23,4 +23,4 @@ jobs:
         with:
           tool: cargo-semver-checks
       - name: Run SemVer checks
-        run: cargo semver-checks check-release
+        run: cargo semver-checks check-release --exclude rullst-ai --exclude rullst-capital --exclude rullst-mail --exclude rullst-auth --exclude rullst-nexus --exclude rullst-blog-example

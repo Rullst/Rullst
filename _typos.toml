@@ -22,8 +22,11 @@ resolvendo = "resolvendo"
 consumirem = "consumirem"
 vai = "vai"
 caractere = "caractere"
+SIEMs = "SIEMs"
+OIS6kKfBAl = "OIS6kKfBAl"
 
 [default.extend-identifiers]
 OIS = "OIS"
 SIE = "SIE"
 Splitted = "Splitted"
+
