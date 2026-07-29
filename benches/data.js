@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785292577274,
+  "lastUpdate": 1785293182224,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3671,6 +3671,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1612,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "901d8168a340681dbb86b5dcef56df65a78fe0a1",
+          "message": "feat: implement project wizard generator with blueprint selection and scaffolding orchestration",
+          "timestamp": "2026-07-28T23:44:58-03:00",
+          "tree_id": "90a6314fb9859347d65e53e6cd23d712dfbe2a98",
+          "url": "https://github.com/Rullst/Rullst/commit/901d8168a340681dbb86b5dcef56df65a78fe0a1"
+        },
+        "date": 1785293181527,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 606,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 881,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 606,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1859,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
