@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785293182224,
+  "lastUpdate": 1785294442409,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3725,6 +3725,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1859,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a721e2814b00c8c6ee65a8946601e71ad3f135e3",
+          "message": "test: add comprehensive feature flag driver unit tests for memory, environment, TOML, and database providers",
+          "timestamp": "2026-07-29T00:05:49-03:00",
+          "tree_id": "0ceaa831d196951b773aec528051c5fc90d66065",
+          "url": "https://github.com/Rullst/Rullst/commit/a721e2814b00c8c6ee65a8946601e71ad3f135e3"
+        },
+        "date": 1785294441642,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 725,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 979,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 643,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2307,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
