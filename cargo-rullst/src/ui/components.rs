@@ -572,8 +572,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
         (
             "🤖  AI & AGENTS",
             vec![
-                ("cargo rullst make:chat-session", "Scaffold stateful AI chat & memory"),
-                ("cargo rullst generate:ai-context", "Generate .llms.txt context file"),
+                (
+                    "cargo rullst make:chat-session",
+                    "Scaffold stateful AI chat & memory",
+                ),
+                (
+                    "cargo rullst generate:ai-context",
+                    "Generate .llms.txt context file",
+                ),
             ],
         ),
         (
@@ -583,7 +589,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ("cargo rullst db:rollback", "Rollback last batch"),
                 ("cargo rullst db:status", "Show migration status"),
                 ("cargo rullst db:seed", "Run seeders"),
-                ("cargo rullst make:migration:auto", "Auto-diff ORM models & DB schema"),
+                (
+                    "cargo rullst make:migration:auto",
+                    "Auto-diff ORM models & DB schema",
+                ),
                 ("cargo rullst studio", "Open DB studio browser"),
             ],
         ),
@@ -613,7 +622,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
             "🚀  DEPLOY",
             vec![
                 ("cargo rullst dockerize", "Generate Docker files"),
-                ("cargo rullst generate:buildah", "Generate rootless OCI build script"),
+                (
+                    "cargo rullst generate:buildah",
+                    "Generate rootless OCI build script",
+                ),
                 ("cargo rullst nixify", "Generate Nix environment files"),
                 ("cargo rullst foundry:init", "Create Foundry.toml manifest"),
                 ("cargo rullst foundry:deploy", "Deploy via SSH pipeline"),

@@ -792,7 +792,7 @@ APP_ENV=development
     }
 
     if buildah {
-        generate_buildah_script(path, name).ok();
+        generate_buildah_script(path, &name).ok();
     }
     if nix {
         println!("{}", "\n❄️  Nix files generated! To run with Nix:".cyan());
