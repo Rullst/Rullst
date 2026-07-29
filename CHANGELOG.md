@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Global Secret Scanning**: Integrated Trufflehog across the entire monorepo to prevent credential leaks in any crate.
 - **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.
 
+### Fixed
+- **CI Test Reliability**: Fixed a persistent SQLite connection timeout (`PoolTimedOut`) during `llvm-cov` and parallel CI test runs in `feature_tests.rs`. Switched the test database from a shared-cache in-memory instance to a single-connection private memory database (`sqlite::memory:`) to completely eliminate file locking and connection pooling deadlocks on single-threaded Tokio test runtimes.
+
 ### Changed
 - **Lockstep Versioning (Monorepo)**: Brought the entire Rullst ecosystem (`rullst-orm`, `rullst-connect`, `rullst-core`, `rullst-ai`, `rullst-auth`, etc.) into a unified Cargo Workspace Monorepo. All ecosystem crates will now share the same version number (`12.x.x`) to guarantee API compatibility and remove the dependency resolution nightmare for users.
 - **Enterprise CI Architecture**: Completely overhauled the GitHub Actions pipeline for the Monorepo structure. Heavy security tasks (Miri, Kani, Fuzzing, Mutants) are parallelized via dynamic matrices but restricted to manual triggers to respect GitHub limits. Standard CI checks use aggressive caching to test all crates in under 10 minutes.

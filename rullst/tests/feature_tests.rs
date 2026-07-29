@@ -157,8 +157,10 @@ invalid-split = "variant:not-a-number,variant2:50"
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
-    // 1. Initialize SQLite in-memory database (pool size 5, timeout 120s to survive llvm-cov overhead)
-    Orm::init_with_options("sqlite:file:feature_test_memdb?mode=memory&cache=shared", 5, 120)
+    // 1. Initialize SQLite in-memory database (pool size 1 to avoid sqlx connection pool timeouts)
+    // We use a private memory database (`sqlite::memory:`) with a single connection.
+    // This avoids any file locking or shared memory lock contention under llvm-cov.
+    Orm::init_with_options("sqlite::memory:", 1, 10)
         .await
         .expect("Failed to init ORM in test");
     let pool = Orm::pool();
