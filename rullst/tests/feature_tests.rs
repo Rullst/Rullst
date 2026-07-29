@@ -157,8 +157,8 @@ invalid-split = "variant:not-a-number,variant2:50"
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
-    // 1. Initialize SQLite in-memory database (pool size 1 to ensure it's shared across the test)
-    Orm::init_with_options("sqlite::memory:", 1, 30)
+    // 1. Initialize SQLite in-memory database (pool size 5, timeout 120s to survive llvm-cov overhead)
+    Orm::init_with_options("sqlite:file:feature_test_memdb?mode=memory&cache=shared", 5, 120)
         .await
         .expect("Failed to init ORM in test");
     let pool = Orm::pool();
