@@ -39,7 +39,7 @@ async fn render_feature_flags() -> Html<String> {
     let mut rows_html = String::new();
 
     if let Some(pool) = rullst_core::db::safe_pool() {
-        let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+        let _driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
         if let Ok(rows) = rullst_orm::_sqlx::query("SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC").fetch_all(pool).await {
             use sqlx::Row;
             for row in rows {

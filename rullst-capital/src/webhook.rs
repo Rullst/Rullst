@@ -1,10 +1,9 @@
-use crate::capital::{WebhookEvent, provider};
+use crate::capital::provider;
 use axum::{
-    body::Bytes,
     extract::Request,
     http::{HeaderMap, StatusCode},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use std::collections::HashMap;
 
@@ -12,7 +11,7 @@ use std::collections::HashMap;
 /// If valid, the `WebhookEvent` is inserted into the request extensions for the handler to consume.
 pub async fn verify_webhook(
     headers: HeaderMap,
-    mut req: Request,
+    req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // We must read the raw body for HMAC signature verification.

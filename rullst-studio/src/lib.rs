@@ -17,6 +17,12 @@ pub struct Studio {
     queue: Option<Queue>,
 }
 
+impl Default for Studio {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Studio {
     pub fn new() -> Self {
         Self {

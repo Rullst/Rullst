@@ -2,7 +2,7 @@ use axum::Router;
 use axum::extract::Request;
 use axum::middleware::Next;
 use axum::response::{
-    Html, IntoResponse,
+    Html,
     sse::{Event, Sse},
 };
 use axum::routing::get;
@@ -27,6 +27,12 @@ pub struct RequestLog {
 #[derive(Clone)]
 pub struct LoggerState {
     pub tx: broadcast::Sender<RequestLog>,
+}
+
+impl Default for LoggerState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LoggerState {

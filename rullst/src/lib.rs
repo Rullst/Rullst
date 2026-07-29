@@ -14,3 +14,6 @@ pub use rullst_nexus as nexus;
 
 #[cfg(feature = "capital")]
 pub use rullst_capital as capital;
+
+#[cfg(feature = "studio")]
+pub use rullst_studio as studio;

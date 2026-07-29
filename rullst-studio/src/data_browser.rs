@@ -123,27 +123,27 @@ async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usi
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
         QueryBuilder::new(format!("SELECT COUNT(*) FROM {}", quoted_table));
 
-    if let Some(search) = search_query {
-        if !search.is_empty() {
-            let schema_query = build_schema_query(driver, &clean_table);
-            if let Ok(columns_rows) = QueryBuilder::<rullst_orm::RullstDatabase>::new(schema_query)
-                .build()
-                .fetch_all(pool)
-                .await
-            {
-                let mut col_names = Vec::new();
-                for r in columns_rows {
-                    if let Ok(name) = r.try_get::<String, _>("name") {
-                        col_names.push(name);
-                    }
+    if let Some(search) = search_query
+        && !search.is_empty()
+    {
+        let schema_query = build_schema_query(driver, &clean_table);
+        if let Ok(columns_rows) = QueryBuilder::<rullst_orm::RullstDatabase>::new(schema_query)
+            .build()
+            .fetch_all(pool)
+            .await
+        {
+            let mut col_names = Vec::new();
+            for r in columns_rows {
+                if let Ok(name) = r.try_get::<String, _>("name") {
+                    col_names.push(name);
                 }
-                if !col_names.is_empty() {
-                    qb.push(" WHERE ");
-                    let mut separated = qb.separated(" OR ");
-                    for col in &col_names {
-                        separated.push(build_search_clause(driver, col));
-                        separated.push_bind_unseparated(format!("%{}%", search));
-                    }
+            }
+            if !col_names.is_empty() {
+                qb.push(" WHERE ");
+                let mut separated = qb.separated(" OR ");
+                for col in &col_names {
+                    separated.push(build_search_clause(driver, col));
+                    separated.push_bind_unseparated(format!("%{}%", search));
                 }
             }
         }
