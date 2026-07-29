@@ -1,6 +1,5 @@
 #![cfg(not(miri))]
 #![cfg(feature = "nexus")]
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use base64::Engine;
 use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
@@ -124,8 +123,12 @@ static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 
 async fn init_test_db() {
     INIT_DB.get_or_init(|| async {
-        let db_path = "sqlite:file:nexus_integration_test_db?mode=memory&cache=shared";
-        let _ = rullst_orm::Orm::init(db_path).await;
+        let db_path = "sqlite:file:nexus_test_db?mode=memory&cache=shared";
+        if let Err(e) = rullst_orm::Orm::init(db_path).await {
+            if !e.to_string().contains("already been initialized") {
+                panic!("Orm::init failed: {:?}", e);
+            }
+        }
         let pool = rullst::db::safe_pool().expect("pool should be initialized");
 
         // Clean up tables just in case
