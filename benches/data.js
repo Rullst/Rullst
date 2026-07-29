@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785358869339,
+  "lastUpdate": 1785359816407,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4211,6 +4211,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2216,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "592a84695a8cf7526794949ea125d98461cba6dc",
+          "message": "feat: initialize core and framework crates with new Nexus test suites",
+          "timestamp": "2026-07-29T18:15:25-03:00",
+          "tree_id": "c873065377550d855af542991149223d20a8a97f",
+          "url": "https://github.com/Rullst/Rullst/commit/592a84695a8cf7526794949ea125d98461cba6dc"
+        },
+        "date": 1785359815079,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 727,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 987,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 639,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2249,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
