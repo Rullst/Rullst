@@ -38,10 +38,8 @@ pub async fn verify_webhook(
     let p = match provider() {
         Some(p) => p,
         None => {
-            return Err((
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "BillingProvider not initialized".to_string(),
-            ))
+            eprintln!("rullst-capital: BillingProvider not initialized — webhook rejected");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
     match p.handle_webhook(&body_bytes, &header_map) {

@@ -19,9 +19,7 @@ pub fn init_provider(provider: Box<dyn BillingProvider>) {
 
 /// Retrieves the active billing provider, or `None` if not initialized.
 pub fn provider() -> Option<&'static dyn BillingProvider> {
-    BILLING_PROVIDER
-        .get()
-        .map(|p| p.as_ref())
+    BILLING_PROVIDER.get().map(|p| p.as_ref())
 }
 
 /// The semantic status of a SaaS Subscription.

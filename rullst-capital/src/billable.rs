@@ -108,4 +108,3 @@ pub trait Billable {
             .await
     }
 }
-

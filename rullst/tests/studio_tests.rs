@@ -110,4 +110,3 @@ async fn test_studio_table_empty() {
     response.assert_status(200);
     response.assert_see("No records found inside this table.");
 }
-
