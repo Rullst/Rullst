@@ -11,6 +11,7 @@ ignore = [
     "RUSTSEC-2023-0071",
     "RUSTSEC-2026-0173",
     "RUSTSEC-2024-0436",
+    "RUSTSEC-2024-0370",
 ]
 
 [licenses]

@@ -8,7 +8,7 @@ use axum::{
 pub fn router() -> Router {
     Router::new()
         .route("/", get(render_feature_flags))
-        .route("/toggle/:name", post(toggle_feature_flag))
+        .route("/toggle/{name}", post(toggle_feature_flag))
 }
 
 async fn ensure_table_exists() {

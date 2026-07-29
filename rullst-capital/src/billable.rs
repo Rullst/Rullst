@@ -10,6 +10,7 @@ pub trait Billable {
     /// Generates a checkout session URL for the user to subscribe to a specific plan.
     async fn subscribe(&self, plan_id: &str, redirect_url: &str) -> Result<String, String> {
         provider()
+            .ok_or("BillingProvider not initialized")?
             .create_checkout_session(&self.email(), plan_id, redirect_url)
             .await
     }
@@ -27,6 +28,7 @@ pub trait Billable {
     /// Generate a customer billing portal URL.
     async fn billing_portal_url(&self, return_url: &str) -> Result<String, String> {
         provider()
+            .ok_or("BillingProvider not initialized")?
             .create_customer_portal(&self.email(), return_url)
             .await
     }
@@ -36,7 +38,10 @@ pub trait Billable {
         let sub_id = self
             .subscription_id()
             .ok_or("No subscription ID available")?;
-        provider().cancel_subscription(&sub_id).await
+        provider()
+            .ok_or("BillingProvider not initialized")?
+            .cancel_subscription(&sub_id)
+            .await
     }
 
     /// Pauses the active subscription.
@@ -44,7 +49,10 @@ pub trait Billable {
         let sub_id = self
             .subscription_id()
             .ok_or("No subscription ID available")?;
-        provider().pause_subscription(&sub_id).await
+        provider()
+            .ok_or("BillingProvider not initialized")?
+            .pause_subscription(&sub_id)
+            .await
     }
 
     /// Reports usage for metered billing.
@@ -52,7 +60,10 @@ pub trait Billable {
         let sub_id = self
             .subscription_id()
             .ok_or("No subscription ID available")?;
-        provider().report_usage(&sub_id, metric, quantity).await
+        provider()
+            .ok_or("BillingProvider not initialized")?
+            .report_usage(&sub_id, metric, quantity)
+            .await
     }
 
     /// Checks if the user is subscribed to the required tier.
@@ -80,7 +91,10 @@ pub trait Billable {
         let sub_id = self
             .subscription_id()
             .ok_or("No subscription ID available")?;
-        provider().apply_coupon(&sub_id, coupon_code).await
+        provider()
+            .ok_or("BillingProvider not initialized")?
+            .apply_coupon(&sub_id, coupon_code)
+            .await
     }
 
     /// Extends a trial by setting a new expiration timestamp.
@@ -88,6 +102,10 @@ pub trait Billable {
         let sub_id = self
             .subscription_id()
             .ok_or("No subscription ID available")?;
-        provider().extend_trial(&sub_id, trial_ends_at).await
+        provider()
+            .ok_or("BillingProvider not initialized")?
+            .extend_trial(&sub_id, trial_ends_at)
+            .await
     }
 }
+

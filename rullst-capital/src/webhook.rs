@@ -35,7 +35,16 @@ pub async fn verify_webhook(
     }
 
     // Call the active provider to verify and parse the event
-    match provider().handle_webhook(&body_bytes, &header_map) {
+    let p = match provider() {
+        Some(p) => p,
+        None => {
+            return Err((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "BillingProvider not initialized".to_string(),
+            ))
+        }
+    };
+    match p.handle_webhook(&body_bytes, &header_map) {
         Ok(event) => {
             // Create a new request with an empty body (or original body) and the extension
             let (mut parts, _) = Request::new(axum::body::Body::from(body_bytes)).into_parts();

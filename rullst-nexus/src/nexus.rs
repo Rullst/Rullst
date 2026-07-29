@@ -1888,7 +1888,7 @@ async fn nexus_batch_action(
                         format!("attachment; filename=\"{}_export.csv\"", table),
                     )
                     .body(axum::body::Body::from(csv))
-                    .unwrap();
+                    .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
             }
         }
         "export_json" => {
@@ -1941,7 +1941,7 @@ async fn nexus_batch_action(
                         format!("attachment; filename=\"{}_export.json\"", table),
                     )
                     .body(axum::body::Body::from(json_str))
-                    .unwrap();
+                    .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
             }
         }
         "duplicate" => {
@@ -2290,7 +2290,7 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let rows = render_table_rows(&entry, "example.com", 1).await;
+        let rows = render_table_rows(&entry, "example.com", 1, None, None).await;
         assert!(
             rows.contains("example.com"),
             "Expected rows to contain 'example.com', but got: {}",
@@ -2308,7 +2308,7 @@ mod tests {
             pk: "id",
             fields: TestUser::nexus_fields(),
         };
-        let rows = render_table_rows(&entry, "zzznomatch99999xyz", 1).await;
+        let rows = render_table_rows(&entry, "zzznomatch99999xyz", 1, None, None).await;
         assert!(
             rows.contains("No results"),
             "Expected rows to contain 'No results', but got: {}",
@@ -2422,7 +2422,7 @@ mod tests {
             fields: vec![],
         };
         let visible_fields = vec![];
-        let (sql, binds) = build_table_query(&entry, &visible_fields, "", 1);
+        let (sql, binds) = build_table_query(&entry, &visible_fields, "", 1, None, None);
         assert_eq!(
             sql,
             "SELECT * FROM users ORDER BY id DESC LIMIT 20 OFFSET 0"
@@ -2437,7 +2437,7 @@ mod tests {
             readonly: false,
         };
         let visible_fields = vec![&f];
-        let (sql2, binds2) = build_table_query(&entry, &visible_fields, "test", 2);
+        let (sql2, binds2) = build_table_query(&entry, &visible_fields, "test", 2, None, None);
         assert!(sql2.contains("email LIKE ?")); // Assuming SQLite by default
         assert!(sql2.contains("LIMIT 20 OFFSET 20"));
         assert_eq!(binds2.len(), 1);
@@ -2513,10 +2513,10 @@ mod tests {
             registry: std::sync::Arc::new(vec![entry.clone()]),
             brand: std::sync::Arc::new("Test App".to_string()),
         };
-        let html = render_table_view(&state, &entry, 2, "").await;
+        let html = render_table_view(&state, &entry, 2, "", None, None).await;
         assert!(html.contains("&larr; Prev"));
 
-        let html2 = render_table_view(&state, &entry, 1, "").await;
+        let html2 = render_table_view(&state, &entry, 1, "", None, None).await;
         assert!(html2.contains("<span></span>"));
     }
 

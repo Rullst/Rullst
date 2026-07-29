@@ -17,12 +17,11 @@ pub fn init_provider(provider: Box<dyn BillingProvider>) {
     let _ = BILLING_PROVIDER.set(provider);
 }
 
-/// Retrieves the active billing provider. Panics if not initialized.
-pub fn provider() -> &'static dyn BillingProvider {
+/// Retrieves the active billing provider, or `None` if not initialized.
+pub fn provider() -> Option<&'static dyn BillingProvider> {
     BILLING_PROVIDER
         .get()
         .map(|p| p.as_ref())
-        .expect("BillingProvider has not been initialized with rullst_capital::init_provider()")
 }
 
 /// The semantic status of a SaaS Subscription.

@@ -599,8 +599,6 @@ dependencies = [
  "http 1.4.2",
  "http-body",
  "http-body-util",
- "hyper",
- "hyper-util",
  "itoa",
  "matchit 0.7.3",
  "memchr",
@@ -611,13 +609,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sync_wrapper",
- "tokio",
- "tower 0.5.3",
+ "tower",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -651,7 +646,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-tungstenite",
- "tower 0.5.3",
+ "tower",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -675,7 +670,6 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -5099,7 +5093,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tower 0.5.3",
+ "tower",
  "tower-http 0.6.11",
  "tower-service",
  "url",
@@ -5143,7 +5137,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tower 0.5.3",
+ "tower",
  "tower-http 0.6.11",
  "tower-service",
  "url",
@@ -5294,7 +5288,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "toml",
- "tower 0.5.3",
+ "tower",
  "tower-http 0.7.0",
  "tower-layer",
  "tower-service",
@@ -5342,7 +5336,7 @@ dependencies = [
  "sha2 0.11.0",
  "subtle",
  "tokio",
- "tower 0.5.3",
+ "tower",
 ]
 
 [[package]]
@@ -5404,7 +5398,7 @@ dependencies = [
  "subtle",
  "thiserror 2.0.19",
  "tokio",
- "tower 0.5.3",
+ "tower",
  "tower-sessions",
  "tracing",
  "url",
@@ -5438,7 +5432,7 @@ dependencies = [
  "subtle",
  "tokio",
  "toml",
- "tower 0.5.3",
+ "tower",
  "tower-http 0.7.0",
  "tower-layer",
  "tower-service",
@@ -5487,7 +5481,7 @@ dependencies = [
  "serde_json",
  "subtle",
  "tokio",
- "tower 0.5.3",
+ "tower",
 ]
 
 [[package]]
@@ -5532,7 +5526,7 @@ dependencies = [
 name = "rullst-studio"
 version = "12.0.0"
 dependencies = [
- "axum 0.7.9",
+ "axum 0.8.9",
  "chrono",
  "futures-util",
  "rullst-core",
@@ -5543,10 +5537,11 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-stream",
- "tower 0.4.13",
+ "tower",
  "urlencoding",
  "utoipa",
  "utoipa-swagger-ui",
+ "uuid",
 ]
 
 [[package]]
@@ -7022,7 +7017,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-stream",
- "tower 0.5.3",
+ "tower",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -7037,17 +7032,6 @@ dependencies = [
  "bytes",
  "prost",
  "tonic",
-]
-
-[[package]]
-name = "tower"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
-dependencies = [
- "tower-layer",
- "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -7097,7 +7081,7 @@ dependencies = [
  "http 1.4.2",
  "http-body",
  "pin-project-lite",
- "tower 0.5.3",
+ "tower",
  "tower-layer",
  "tower-service",
  "url",

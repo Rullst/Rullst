@@ -819,5 +819,5 @@ mod tests {
 pub fn router() -> axum::Router {
     axum::Router::new()
         .route("/", axum::routing::get(handle_dashboard))
-        .route("/tables/:table", axum::routing::get(handle_table))
+        .route("/tables/{table}", axum::routing::get(handle_table))
 }

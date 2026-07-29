@@ -1,7 +1,6 @@
 #![cfg(not(miri))]
 #![cfg(feature = "studio")]
 
-use axum::Router;
 use rullst::studio::Studio;
 use rullst::testing::TestApp;
 
@@ -36,7 +35,7 @@ async fn init_test_db() {
     }).await;
 }
 
-fn build_studio_router() -> Router {
+fn build_studio_router() -> axum::Router {
     Studio::new().into_router()
 }
 
@@ -55,7 +54,7 @@ async fn test_studio_table_details_full_page() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/studio_users").await;
+    let response = app.get("/data/tables/studio_users").await;
     response.assert_status(200);
     response.assert_see("studio_users");
     response.assert_see("Alice");
@@ -71,7 +70,7 @@ async fn test_studio_table_details_htmx() {
 
     // With HTMX header, it should return a partial HTML (no layout/header)
     let response = app
-        .get("/data/studio_users")
+        .get("/data/tables/studio_users")
         .header("hx-request", "true")
         .await;
 
@@ -86,7 +85,7 @@ async fn test_studio_table_not_found() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/nonexistent_table").await;
+    let response = app.get("/data/tables/nonexistent_table").await;
     response.assert_status(200); // Handled error returns 200 with error message
     response.assert_see("Table 'nonexistent_table' not found.");
 }
@@ -96,7 +95,7 @@ async fn test_studio_table_search() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/studio_users?search=Alice").await;
+    let response = app.get("/data/tables/studio_users?search=Alice").await;
     response.assert_status(200);
     response.assert_see("Alice");
     response.assert_dont_see("Bob");
@@ -107,7 +106,8 @@ async fn test_studio_table_empty() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/studio_posts").await;
+    let response = app.get("/data/tables/studio_posts").await;
     response.assert_status(200);
     response.assert_see("No records found inside this table.");
 }
+
