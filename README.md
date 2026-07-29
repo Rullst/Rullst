@@ -126,7 +126,7 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 Rullst brings the ergonomics of Laravel and Ruby on Rails to the blazing-fast, memory-safe world of Rust:
 
 - 🚀 **Hybrid Hot-Reloading**: Sub-millisecond UI updates via WebSockets, paired with Zero-downtime Dynamic Library (`.dll`/`.so`) hot-swapping for backend business logic.
-- 🎨 **Rullst Nexus**: An auto-generated, dark-mode CMS & Admin Panel directly from your Structs.
+- 🎨 **Rullst Studio & Nexus**: An all-in-one Web Suite (`cargo rullst studio`) with Data Browser, Visual ER Diagram, Dynamic Feature Flags, Real-time Logger, and auto-generated Admin Panels from your Structs.
 - 🛡️ **Zero-Panic Policy**: Hardened architecture built for production edge infrastructure.
 - ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Deployments.
 
@@ -188,6 +188,8 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Web-based Database Studio** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
 | **Auto-Generated Admin Panel**| ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
 | **Auto-Generated Mermaid Diagram** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
+| **Dynamic Feature Flags** | ✅ (DB-backed) | ❌ | ❌ | ❌ | ❌ |
+| **Real-time Request Logger** | ✅ (SSE Stream) | ❌ | ❌ | ❌ | ❌ |
 | **Wasm Islands (Frontend)** | ✅ (Pure Rust) | ❌ | ❌ | ✅ (Core focus) | ❌ |
 | **Reactive SSR (No-JS)** | ✅ (Pure Rust) | ❌ | ✅ (Signals)| ❌ | ❌ |
 | **Mobile/Desktop Apps** | ✅ (Tauri Integration)| ❌ | ❌ | ✅ (Dioxus) | ❌ |

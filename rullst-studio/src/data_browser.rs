@@ -640,6 +640,12 @@ pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
+pub fn router() -> axum::Router {
+    axum::Router::new()
+        .route("/", axum::routing::get(handle_dashboard))
+        .route("/tables/{table}", axum::routing::get(handle_table))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -814,10 +820,4 @@ mod tests {
         assert!(html.contains("text-slate-600 font-mono italic")); // for the NULL column
         assert!(html.contains("text-slate-300")); // for the "hello" column
     }
-}
-
-pub fn router() -> axum::Router {
-    axum::Router::new()
-        .route("/", axum::routing::get(handle_dashboard))
-        .route("/tables/{table}", axum::routing::get(handle_table))
 }

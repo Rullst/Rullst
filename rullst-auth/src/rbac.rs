@@ -98,7 +98,7 @@ where
 mod tests {
     use super::*;
     use axum::http::Request;
-    use tower::{ServiceBuilder, ServiceExt};
+    use tower::ServiceExt;
 
     #[derive(Clone)]
     struct DummyUser {
