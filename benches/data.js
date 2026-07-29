@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785296371240,
+  "lastUpdate": 1785333414355,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3833,6 +3833,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2352,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "239415e5649ccb4e0210c78f6fc90e1ffb70a8d9",
+          "message": "test: add integration tests for memory, environment, TOML, and database feature drivers",
+          "timestamp": "2026-07-29T10:55:31-03:00",
+          "tree_id": "88a8853344a10d5a17a8b760997617846071812d",
+          "url": "https://github.com/Rullst/Rullst/commit/239415e5649ccb4e0210c78f6fc90e1ffb70a8d9"
+        },
+        "date": 1785333413863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 738,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 958,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 658,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2244,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
