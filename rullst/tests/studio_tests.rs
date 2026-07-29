@@ -8,7 +8,7 @@ static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 
 async fn init_test_db() {
     INIT_DB.get_or_init(|| async {
-        let db_path = "sqlite:file:studio_test_db?mode=memory&cache=shared";
+        let db_path = "sqlite:file:studio_test.db?mode=rwc";
         if let Err(e) = rullst_orm::Orm::init(db_path).await {
             if !e.to_string().contains("already been initialized") {
                 panic!("Orm::init failed: {:?}", e);
