@@ -152,6 +152,7 @@ fn run_project_wizard(
                     "Sqlite (Zero setup)",
                     "Postgres (Requires localhost:5432 running)",
                     "MySQL/MariaDB (Requires localhost:3306 running)",
+                    "Turso / libSQL (Edge Database)",
                 ];
                 let db_selection = dialoguer::Select::with_theme(&theme)
                     .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
@@ -161,6 +162,7 @@ fn run_project_wizard(
                 db_provider = match db_selection {
                     1 => "Postgres".to_string(),
                     2 => "MySQL".to_string(),
+                    3 => "Turso".to_string(),
                     _ => "Sqlite".to_string(),
                 };
             }
@@ -558,9 +560,12 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
     // Write Rullst.toml configuration
     if db_needed {
         let db_url = match db_provider.as_str() {
-            "Postgres" => "postgres://postgres:password@localhost/rullst",
-            "MySQL" => "mysql://root:password@localhost/rullst",
-            _ => "sqlite://rullst.db",
+            "Postgres" => "DATABASE_URL=\"postgres://user:password@localhost:5432/db\"",
+            "MySQL" => "DATABASE_URL=\"mysql://user:password@localhost:3306/db\"",
+            "Turso" => {
+                "DATABASE_URL=\"libsql://[your-database-id].turso.io?authToken=[your-token]\""
+            }
+            _ => "DATABASE_URL=\"sqlite://db.sqlite\"",
         };
         let rullst_toml = format!(
             r#"[database]
@@ -608,9 +613,10 @@ Foundry.toml
     // Write .env and .env.example
     let app_key = generate_secure_app_key();
     let db_url = match db_provider.as_str() {
-        "Postgres" => "postgres://postgres:password@localhost/rullst",
-        "MySQL" => "mysql://root:password@localhost/rullst",
-        _ => "sqlite://rullst.db?mode=rwc",
+        "Postgres" => "postgres://user:password@localhost:5432/db",
+        "MySQL" => "mysql://user:password@localhost:3306/db",
+        "Turso" => "libsql://[your-database-id].turso.io?authToken=[your-token]",
+        _ => "sqlite://db.sqlite",
     };
 
     let mut env_content = format!(
@@ -853,7 +859,12 @@ pub fn generate_docker_files(
     let db_provider = match db_provider_arg {
         Some(db) => db.to_string(),
         None => {
-            let db_options = &["Sqlite (Zero setup)", "Postgres", "MySQL/MariaDB"];
+            let db_options = &[
+                "Sqlite (Zero setup)",
+                "Postgres",
+                "MySQL/MariaDB",
+                "Turso / libSQL",
+            ];
             let selection = dialoguer::Select::with_theme(&theme)
                 .with_prompt("Which Database are you using?")
                 .default(0)
@@ -862,6 +873,7 @@ pub fn generate_docker_files(
             match selection {
                 1 => "Postgres".to_string(),
                 2 => "MySQL".to_string(),
+                3 => "Turso".to_string(),
                 _ => "Sqlite".to_string(),
             }
         }
