@@ -9,9 +9,9 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
 
 
 [dependencies]
-rullst-core = { path = "../rullst-core" }
+rullst-core = { version = "12.0.0", path = "../rullst-core" }
 rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
-rullst-auth = { path = "../rullst-auth" }
+rullst-auth = { version = "12.0.0", path = "../rullst-auth" }
 axum = { version = "0.8.9" }
 base64 = "0.22.1"
 subtle = "2.6.1"

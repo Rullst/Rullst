@@ -55,13 +55,13 @@ async-trait = "0.1.89"
 uuid = { version = "1.23.3", features = ["v4"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 validator = { version = "0.20.0", features = ["derive"] }
-rullst-core = { path = "../rullst-core" }
-rullst-auth = { path = "../rullst-auth", optional = true }
-rullst-mail = { path = "../rullst-mail", optional = true }
-rullst-ai = { path = "../rullst-ai", optional = true }
-rullst-nexus = { path = "../rullst-nexus", optional = true }
-rullst-capital = { path = "../rullst-capital", optional = true }
-rullst-studio = { path = "../rullst-studio", optional = true }
+rullst-core = { version = "12.0.0", path = "../rullst-core" }
+rullst-auth = { version = "12.0.0", path = "../rullst-auth", optional = true }
+rullst-mail = { version = "12.0.0", path = "../rullst-mail", optional = true }
+rullst-ai = { version = "12.0.0", path = "../rullst-ai", optional = true }
+rullst-nexus = { version = "12.0.0", path = "../rullst-nexus", optional = true }
+rullst-capital = { version = "12.0.0", path = "../rullst-capital", optional = true }
+rullst-studio = { version = "12.0.0", path = "../rullst-studio", optional = true }
 
 tracing = "0.1"
 tracing-core = "0.1"
