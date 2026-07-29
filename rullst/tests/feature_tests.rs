@@ -155,7 +155,10 @@ invalid-split = "variant:not-a-number,variant2:50"
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[cfg_attr(any(miri, test), ignore = "Disabled in workspace tests due to sqlx AnyPool resolving to PgPool under --all-features")]
+#[cfg_attr(
+    any(miri, test),
+    ignore = "Disabled in workspace tests due to sqlx AnyPool resolving to PgPool under --all-features"
+)]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database (pool size 1 to avoid sqlx connection pool timeouts)
     // We use a private memory database (`sqlite::memory:`) with a single connection.

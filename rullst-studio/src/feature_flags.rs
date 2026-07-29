@@ -1,4 +1,9 @@
-use axum::{routing::{get, post}, response::{Html, IntoResponse}, Router, extract::Path};
+use axum::{
+    Router,
+    extract::Path,
+    response::{Html, IntoResponse},
+    routing::{get, post},
+};
 
 pub fn router() -> Router {
     Router::new()
@@ -30,9 +35,9 @@ async fn ensure_table_exists() {
 
 async fn render_feature_flags() -> Html<String> {
     ensure_table_exists().await;
-    
+
     let mut rows_html = String::new();
-    
+
     if let Some(pool) = rullst_core::db::safe_pool() {
         let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
         if let Ok(rows) = rullst_orm::_sqlx::query("SELECT name, enabled, rollout_percentage, variants FROM rullst_feature_flags ORDER BY name ASC").fetch_all(pool).await {
@@ -42,7 +47,7 @@ async fn render_feature_flags() -> Html<String> {
                 let enabled = row.try_get::<i32, _>("enabled").map(|v| v != 0).or_else(|_| row.try_get::<bool, _>("enabled")).unwrap_or(false);
                 let rollout = row.try_get::<i32, _>("rollout_percentage").map(|v| v.to_string()).unwrap_or_else(|_| "-".to_string());
                 let variants = row.try_get::<String, _>("variants").unwrap_or_else(|_| "-".to_string());
-                
+
                 let toggle_btn = if enabled {
                     format!("<button hx-post=\"/studio/features/toggle/{}\" hx-target=\"body\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button>", name)
                 } else {
@@ -113,24 +118,29 @@ async fn render_feature_flags() -> Html<String> {
 async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Response {
     if let Some(pool) = rullst_core::db::safe_pool() {
         let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        
-        let row = rullst_orm::_sqlx::query("SELECT enabled FROM rullst_feature_flags WHERE name = ?")
-            .bind(&name)
-            .fetch_optional(pool)
-            .await
-            .ok()
-            .flatten();
-            
+
+        let row =
+            rullst_orm::_sqlx::query("SELECT enabled FROM rullst_feature_flags WHERE name = ?")
+                .bind(&name)
+                .fetch_optional(pool)
+                .await
+                .ok()
+                .flatten();
+
         if let Some(r) = row {
             use sqlx::Row;
-            let current_enabled = r.try_get::<i32, _>("enabled").map(|v| v != 0).or_else(|_| r.try_get::<bool, _>("enabled")).unwrap_or(false);
-            
+            let current_enabled = r
+                .try_get::<i32, _>("enabled")
+                .map(|v| v != 0)
+                .or_else(|_| r.try_get::<bool, _>("enabled"))
+                .unwrap_or(false);
+
             let sql = if driver == "postgres" {
                 "UPDATE rullst_feature_flags SET enabled = $1 WHERE name = $2"
             } else {
                 "UPDATE rullst_feature_flags SET enabled = ? WHERE name = ?"
             };
-            
+
             let _ = if driver == "sqlite" {
                 rullst_orm::_sqlx::query(sql)
                     .bind(if current_enabled { 0 } else { 1 })
@@ -146,7 +156,7 @@ async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Respon
             };
         }
     }
-    
+
     // Redirect back to re-render page
     axum::response::Redirect::to("/studio/features").into_response()
 }

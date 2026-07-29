@@ -1,4 +1,4 @@
-use crate::capital::{provider, WebhookEvent};
+use crate::capital::{WebhookEvent, provider};
 use axum::{
     body::Bytes,
     extract::Request,
@@ -20,7 +20,7 @@ pub async fn verify_webhook(
     // cannot read it as `Json<T>` or `Bytes`.
     // We will read the body, verify the signature, inject the event, and then we could
     // reconstruct the body if needed, but since we parsed the event, the handler just needs the event.
-    
+
     // Extract body bytes
     let body_bytes = match axum::body::to_bytes(req.into_body(), usize::MAX).await {
         Ok(bytes) => bytes,
@@ -42,7 +42,7 @@ pub async fn verify_webhook(
             let (mut parts, _) = Request::new(axum::body::Body::from(body_bytes)).into_parts();
             parts.extensions.insert(event);
             parts.headers = headers;
-            
+
             let req = Request::from_parts(parts, axum::body::Body::empty());
             Ok(next.run(req).await)
         }

@@ -1,4 +1,4 @@
-use axum::{routing::get, response::Html, Router};
+use axum::{Router, response::Html, routing::get};
 
 pub fn router() -> Router {
     Router::new().route("/", get(render_er_diagram))
@@ -15,7 +15,7 @@ async fn get_sqlite_schema() -> String {
             for t_row in tables {
                 let table_name = t_row.try_get::<String, _>("name").unwrap_or_default();
                 diagram.push_str(&format!("    {} {{\n", table_name));
-                
+
                 let q_col = format!("PRAGMA table_info(\"{}\")", table_name);
                 if let Ok(columns) = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(q_col.as_str()))
                     .fetch_all(pool)
@@ -25,14 +25,14 @@ async fn get_sqlite_schema() -> String {
                         let col_name = c_row.try_get::<String, _>("name").unwrap_or_default();
                         let col_type = c_row.try_get::<String, _>("type").unwrap_or_else(|_| "text".to_string()).to_lowercase();
                         let pk = c_row.try_get::<i32, _>("pk").unwrap_or(0);
-                        
+
                         let pk_str = if pk > 0 { " PK" } else { "" };
-                        
+
                         diagram.push_str(&format!("        {} {}{}\n", col_type, col_name, pk_str));
                     }
                 }
                 diagram.push_str("    }\n");
-                
+
                 let q_fk = format!("PRAGMA foreign_key_list(\"{}\")", table_name);
                 if let Ok(fks) = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(q_fk.as_str()))
                     .fetch_all(pool)
@@ -55,35 +55,51 @@ async fn get_postgres_schema() -> String {
     let mut diagram = String::from("erDiagram\n");
     if let Some(pool) = rullst_core::db::safe_pool() {
         use sqlx::Row;
-        
+
         let table_query = "
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_schema = 'public' AND table_name != '_sqlx_migrations'
         ";
-        
+
         if let Ok(tables) = rullst_orm::_sqlx::query(table_query).fetch_all(pool).await {
             for t_row in tables {
                 let table_name = t_row.try_get::<String, _>("table_name").unwrap_or_default();
                 diagram.push_str(&format!("    {} {{\n", table_name));
-                
-                let col_query = format!("
+
+                let col_query = format!(
+                    "
                     SELECT column_name, data_type 
                     FROM information_schema.columns 
                     WHERE table_schema = 'public' AND table_name = '{}'
-                ", table_name);
-                
-                if let Ok(columns) = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(col_query.as_str())).fetch_all(pool).await {
+                ",
+                    table_name
+                );
+
+                if let Ok(columns) =
+                    rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(col_query.as_str()))
+                        .fetch_all(pool)
+                        .await
+                {
                     for c_row in columns {
-                        let col_name = c_row.try_get::<String, _>("column_name").unwrap_or_default();
-                        let col_type = c_row.try_get::<String, _>("data_type").unwrap_or_else(|_| "text".to_string());
-                        
-                        diagram.push_str(&format!("        {} {}\n", col_type.replace(" ", "_"), col_name));
+                        let col_name = c_row
+                            .try_get::<String, _>("column_name")
+                            .unwrap_or_default();
+                        let col_type = c_row
+                            .try_get::<String, _>("data_type")
+                            .unwrap_or_else(|_| "text".to_string());
+
+                        diagram.push_str(&format!(
+                            "        {} {}\n",
+                            col_type.replace(" ", "_"),
+                            col_name
+                        ));
                     }
                 }
                 diagram.push_str("    }\n");
-                
-                let fk_query = format!("
+
+                let fk_query = format!(
+                    "
                     SELECT
                         kcu.column_name,
                         ccu.table_name AS foreign_table_name,
@@ -97,15 +113,30 @@ async fn get_postgres_schema() -> String {
                           ON ccu.constraint_name = tc.constraint_name
                           AND ccu.table_schema = tc.table_schema
                     WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='{}'
-                ", table_name);
-                
-                if let Ok(fks) = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(fk_query.as_str())).fetch_all(pool).await {
+                ",
+                    table_name
+                );
+
+                if let Ok(fks) =
+                    rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(fk_query.as_str()))
+                        .fetch_all(pool)
+                        .await
+                {
                     for fk_row in fks {
-                        let from_col = fk_row.try_get::<String, _>("column_name").unwrap_or_default();
-                        let to_table = fk_row.try_get::<String, _>("foreign_table_name").unwrap_or_default();
-                        let to_col = fk_row.try_get::<String, _>("foreign_column_name").unwrap_or_default();
-                        
-                        diagram.push_str(&format!("    {} }}|--|| {} : \"{}.{} -> {}.{}\"\n", table_name, to_table, table_name, from_col, to_table, to_col));
+                        let from_col = fk_row
+                            .try_get::<String, _>("column_name")
+                            .unwrap_or_default();
+                        let to_table = fk_row
+                            .try_get::<String, _>("foreign_table_name")
+                            .unwrap_or_default();
+                        let to_col = fk_row
+                            .try_get::<String, _>("foreign_column_name")
+                            .unwrap_or_default();
+
+                        diagram.push_str(&format!(
+                            "    {} }}|--|| {} : \"{}.{} -> {}.{}\"\n",
+                            table_name, to_table, table_name, from_col, to_table, to_col
+                        ));
                     }
                 }
             }
@@ -116,7 +147,7 @@ async fn get_postgres_schema() -> String {
 
 async fn render_er_diagram() -> Html<String> {
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    
+
     let diagram = if driver == "postgres" {
         get_postgres_schema().await
     } else {

@@ -1,10 +1,10 @@
-use rullst_core::Queue;
 use axum::{
     Router,
     extract::{Path, State},
     response::{Html, IntoResponse},
     routing::{get, post},
 };
+use rullst_core::Queue;
 use std::sync::Arc;
 
 /// Horizon Dashboard App State

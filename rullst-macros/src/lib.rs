@@ -270,7 +270,7 @@ pub fn require_role(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "Forbidden: Insufficient privileges",
                 ));
             }
-            
+
             let result = async move { #body }.await;
             axum::response::IntoResponse::into_response(result)
         }
@@ -287,16 +287,16 @@ pub fn derive_billable(input: TokenStream) -> TokenStream {
     let mut has_sub_id = false;
     let mut has_tier = false;
 
-    if let syn::Data::Struct(data_struct) = &input.data {
-        if let syn::Fields::Named(fields) = &data_struct.fields {
-            for field in &fields.named {
-                if let Some(ident) = &field.ident {
-                    if ident == "subscription_id" {
-                        has_sub_id = true;
-                    }
-                    if ident == "tier" {
-                        has_tier = true;
-                    }
+    if let syn::Data::Struct(data_struct) = &input.data
+        && let syn::Fields::Named(fields) = &data_struct.fields
+    {
+        for field in &fields.named {
+            if let Some(ident) = &field.ident {
+                if ident == "subscription_id" {
+                    has_sub_id = true;
+                }
+                if ident == "tier" {
+                    has_tier = true;
                 }
             }
         }

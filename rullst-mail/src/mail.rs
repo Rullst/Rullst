@@ -359,9 +359,10 @@ impl Mail {
             let payload = serde_json::to_value(&message).map_err(|e| {
                 MailError::SendError(format!("Failed to serialize message for queue: {}", e))
             })?;
-            queue.dispatch("rullst_mail_send", payload).await.map_err(|e| {
-                MailError::SendError(format!("Failed to enqueue mail job: {}", e))
-            })?;
+            queue
+                .dispatch("rullst_mail_send", payload)
+                .await
+                .map_err(|e| MailError::SendError(format!("Failed to enqueue mail job: {}", e)))?;
             Ok(())
         } else {
             Self::send_now(message).await

@@ -123,7 +123,12 @@ pub trait BillingProvider: Send + Sync {
     async fn pause_subscription(&self, subscription_id: &str) -> Result<(), String>;
 
     /// Report metered usage for a subscription.
-    async fn report_usage(&self, subscription_id: &str, metric: &str, quantity: u64) -> Result<(), String>;
+    async fn report_usage(
+        &self,
+        subscription_id: &str,
+        metric: &str,
+        quantity: u64,
+    ) -> Result<(), String>;
 
     /// Apply a coupon to an active subscription.
     async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), String>;
@@ -342,7 +347,10 @@ impl BillingProvider for StripeProvider {
 
         // Simplification for Stripe: normally requires a customer ID.
         // This is a stubbed implementation to reflect the framework's capability.
-        Ok(format!("https://billing.stripe.com/p/session/portal?email={}", url_encode(customer_email)))
+        Ok(format!(
+            "https://billing.stripe.com/p/session/portal?email={}",
+            url_encode(customer_email)
+        ))
     }
 
     async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
@@ -360,7 +368,12 @@ impl BillingProvider for StripeProvider {
         Ok(())
     }
 
-    async fn report_usage(&self, _subscription_id: &str, _metric: &str, _quantity: u64) -> Result<(), String> {
+    async fn report_usage(
+        &self,
+        _subscription_id: &str,
+        _metric: &str,
+        _quantity: u64,
+    ) -> Result<(), String> {
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(());
         }
@@ -374,7 +387,11 @@ impl BillingProvider for StripeProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(());
         }
@@ -576,7 +593,10 @@ impl BillingProvider for LemonSqueezyProvider {
         }
 
         // LemonSqueezy uses a "customer portal" URL usually retrieved via their API
-        Ok(format!("https://app.lemonsqueezy.com/my-orders?email={}", url_encode(customer_email)))
+        Ok(format!(
+            "https://app.lemonsqueezy.com/my-orders?email={}",
+            url_encode(customer_email)
+        ))
     }
 
     async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
@@ -594,7 +614,12 @@ impl BillingProvider for LemonSqueezyProvider {
         Ok(())
     }
 
-    async fn report_usage(&self, _subscription_id: &str, _metric: &str, _quantity: u64) -> Result<(), String> {
+    async fn report_usage(
+        &self,
+        _subscription_id: &str,
+        _metric: &str,
+        _quantity: u64,
+    ) -> Result<(), String> {
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(());
         }
@@ -608,7 +633,11 @@ impl BillingProvider for LemonSqueezyProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(());
         }

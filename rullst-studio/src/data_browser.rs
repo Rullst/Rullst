@@ -1,10 +1,10 @@
-use rullst_core::html::RawHtml;
 use axum::{
     Router,
     extract::{Path, Query},
     response::{Html, IntoResponse},
     routing::get,
 };
+use rullst_core::html::RawHtml;
 use rullst_macros::html;
 
 use serde::Deserialize;
@@ -815,7 +815,6 @@ mod tests {
         assert!(html.contains("text-slate-300")); // for the "hello" column
     }
 }
-
 
 pub fn router() -> axum::Router {
     axum::Router::new()

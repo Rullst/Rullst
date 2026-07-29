@@ -1,16 +1,16 @@
 extern crate rullst_core as rullst;
-use axum::{Router, routing::get, response::Html};
+use axum::{Router, response::Html, routing::get};
+use rullst_core::Queue;
 use std::sync::Arc;
 use utoipa::openapi::OpenApi;
-use rullst_core::Queue;
 
+pub mod api_playground;
 pub mod data_browser;
+pub mod env_viewer;
+pub mod er_diagram;
+pub mod feature_flags;
 pub mod jobs_monitor;
 pub mod logger;
-pub mod api_playground;
-pub mod env_viewer;
-pub mod feature_flags;
-pub mod er_diagram;
 
 pub struct Studio {
     openapi: Option<OpenApi>,
@@ -41,7 +41,10 @@ impl Studio {
             .route("/", get(studio_dashboard))
             .nest("/data", data_browser::router())
             .nest("/requests", logger::router(logger_state.clone()))
-            .layer(axum::middleware::from_fn_with_state(logger_state, logger::logger_middleware))
+            .layer(axum::middleware::from_fn_with_state(
+                logger_state,
+                logger::logger_middleware,
+            ))
             .nest("/env", env_viewer::router())
             .nest("/features", feature_flags::router())
             .nest("/er", er_diagram::router());

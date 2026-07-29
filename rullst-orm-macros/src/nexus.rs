@@ -11,9 +11,20 @@ pub fn derive_nexus_impl(input: TokenStream) -> TokenStream {
     let fields = match &input.data {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => &fields_named.named,
-            _ => return syn::Error::new_spanned(input, "Nexus macro only supports structs with named fields").to_compile_error().into(),
+            _ => {
+                return syn::Error::new_spanned(
+                    input,
+                    "Nexus macro only supports structs with named fields",
+                )
+                .to_compile_error()
+                .into();
+            }
         },
-        _ => return syn::Error::new_spanned(input, "Nexus macro can only be used on structs").to_compile_error().into(),
+        _ => {
+            return syn::Error::new_spanned(input, "Nexus macro can only be used on structs")
+                .to_compile_error()
+                .into();
+        }
     };
 
     let mut field_metas = Vec::new();
@@ -25,7 +36,7 @@ pub fn derive_nexus_impl(input: TokenStream) -> TokenStream {
             None => continue,
         };
         let field_name_str = field_ident.to_string();
-        
+
         let label_str = field_name_str.replace("_", " ");
         let mut label_chars = label_str.chars();
         let formatted_label = match label_chars.next() {
@@ -44,13 +55,17 @@ pub fn derive_nexus_impl(input: TokenStream) -> TokenStream {
 
         // Handle Option<T>
         if type_str.starts_with("Option<") && type_str.ends_with(">") {
-            type_str = type_str.trim_start_matches("Option<").trim_end_matches(">").to_string();
+            type_str = type_str
+                .trim_start_matches("Option<")
+                .trim_end_matches(">")
+                .to_string();
         }
 
         let field_kind = match type_str.as_str() {
             "String" => quote!(::rullst::nexus::FieldKind::Text),
             "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
-            "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize" | "f32" | "f64" => {
+            "i8" | "i16" | "i32" | "i64" | "isize" | "u8" | "u16" | "u32" | "u64" | "usize"
+            | "f32" | "f64" => {
                 quote!(::rullst::nexus::FieldKind::Number)
             }
             "chrono::DateTime<chrono::Utc>" | "DateTime<Utc>" => {

@@ -1,16 +1,19 @@
-use axum::extract::Request;
-use axum::response::{Html, IntoResponse, sse::{Event, Sse}};
-use axum::middleware::Next;
-use axum::routing::get;
 use axum::Router;
+use axum::extract::Request;
+use axum::middleware::Next;
+use axum::response::{
+    Html, IntoResponse,
+    sse::{Event, Sse},
+};
+use axum::routing::get;
 use futures_util::stream::Stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::BroadcastStream;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestLog {
@@ -44,7 +47,7 @@ pub async fn logger_middleware(
     let timestamp = chrono::Utc::now().to_rfc3339();
 
     let res = next.run(req).await;
-    
+
     let latency_ms = start.elapsed().as_millis();
     let status = res.status().as_u16();
 

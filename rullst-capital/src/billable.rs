@@ -33,27 +33,31 @@ pub trait Billable {
 
     /// Cancels the active subscription.
     async fn cancel_subscription(&self) -> Result<(), String> {
-        let sub_id = self.subscription_id().ok_or("No subscription ID available")?;
+        let sub_id = self
+            .subscription_id()
+            .ok_or("No subscription ID available")?;
         provider().cancel_subscription(&sub_id).await
     }
 
     /// Pauses the active subscription.
     async fn pause_subscription(&self) -> Result<(), String> {
-        let sub_id = self.subscription_id().ok_or("No subscription ID available")?;
+        let sub_id = self
+            .subscription_id()
+            .ok_or("No subscription ID available")?;
         provider().pause_subscription(&sub_id).await
     }
 
     /// Reports usage for metered billing.
     async fn report_usage(&self, metric: &str, quantity: u64) -> Result<(), String> {
-        let sub_id = self.subscription_id().ok_or("No subscription ID available")?;
+        let sub_id = self
+            .subscription_id()
+            .ok_or("No subscription ID available")?;
         provider().report_usage(&sub_id, metric, quantity).await
     }
 
     /// Checks if the user is subscribed to the required tier.
     fn can_access(&self, required_tier: &str) -> bool {
-        self.tier()
-            .map(|t| t == required_tier)
-            .unwrap_or(false)
+        self.tier().map(|t| t == required_tier).unwrap_or(false)
     }
 
     /// Defines limits for a specific feature based on the current tier.
@@ -73,13 +77,17 @@ pub trait Billable {
 
     /// Applies a coupon code to the active subscription.
     async fn apply_coupon(&self, coupon_code: &str) -> Result<(), String> {
-        let sub_id = self.subscription_id().ok_or("No subscription ID available")?;
+        let sub_id = self
+            .subscription_id()
+            .ok_or("No subscription ID available")?;
         provider().apply_coupon(&sub_id, coupon_code).await
     }
 
     /// Extends a trial by setting a new expiration timestamp.
     async fn extend_trial(&self, trial_ends_at: i64) -> Result<(), String> {
-        let sub_id = self.subscription_id().ok_or("No subscription ID available")?;
+        let sub_id = self
+            .subscription_id()
+            .ok_or("No subscription ID available")?;
         provider().extend_trial(&sub_id, trial_ends_at).await
     }
 }
