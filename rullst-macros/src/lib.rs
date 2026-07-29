@@ -249,3 +249,90 @@ pub fn server_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     expanded.into()
 }
+
+#[proc_macro_attribute]
+pub fn require_role(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as syn::ItemFn);
+    let vis = &input_fn.vis;
+    let sig = &input_fn.sig;
+    let name = &sig.ident;
+    let inputs = &sig.inputs;
+    let body = &input_fn.block;
+
+    let role_lit = parse_macro_input!(attr as syn::LitStr);
+    let role_str = role_lit.value();
+
+    let expanded = quote::quote! {
+        #vis async fn #name(#inputs) -> axum::response::Response {
+            if !rullst::auth::HasRole::has_role(&user, #role_str) {
+                return axum::response::IntoResponse::into_response((
+                    axum::http::StatusCode::FORBIDDEN,
+                    "Forbidden: Insufficient privileges",
+                ));
+            }
+            
+            let result = async move { #body }.await;
+            axum::response::IntoResponse::into_response(result)
+        }
+    };
+
+    expanded.into()
+}
+
+#[proc_macro_derive(Billable)]
+pub fn derive_billable(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    let name = &input.ident;
+
+    let mut has_sub_id = false;
+    let mut has_tier = false;
+
+    if let syn::Data::Struct(data_struct) = &input.data {
+        if let syn::Fields::Named(fields) = &data_struct.fields {
+            for field in &fields.named {
+                if let Some(ident) = &field.ident {
+                    if ident == "subscription_id" {
+                        has_sub_id = true;
+                    }
+                    if ident == "tier" {
+                        has_tier = true;
+                    }
+                }
+            }
+        }
+    }
+
+    let sub_id_fn = if has_sub_id {
+        quote::quote! {
+            fn subscription_id(&self) -> Option<String> {
+                self.subscription_id.clone()
+            }
+        }
+    } else {
+        quote::quote! {}
+    };
+
+    let tier_fn = if has_tier {
+        quote::quote! {
+            fn tier(&self) -> Option<String> {
+                self.tier.clone()
+            }
+        }
+    } else {
+        quote::quote! {}
+    };
+
+    let expanded = quote::quote! {
+        #[async_trait::async_trait]
+        impl rullst::capital::Billable for #name {
+            fn email(&self) -> String {
+                self.email.clone()
+            }
+
+            #sub_id_fn
+            #tier_fn
+        }
+    };
+
+    expanded.into()
+}

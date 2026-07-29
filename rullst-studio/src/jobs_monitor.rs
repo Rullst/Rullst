@@ -1,4 +1,4 @@
-use crate::queue::Queue;
+use rullst_core::Queue;
 use axum::{
     Router,
     extract::{Path, State},
@@ -254,7 +254,7 @@ fn render_dashboard_layout(
 }
 
 #[cfg_attr(mutants, mutants::skip)]
-fn render_table_rows(jobs: &[crate::queue::QueuedJobDetail]) -> String {
+fn render_table_rows(jobs: &[rullst_core::QueuedJobDetail]) -> String {
     if jobs.is_empty() {
         return r#"<tr>
             <td colspan="6" class="px-6 py-12 text-center text-slate-500 italic">

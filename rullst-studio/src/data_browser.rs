@@ -1,4 +1,4 @@
-use crate::html::RawHtml;
+use rullst_core::html::RawHtml;
 use axum::{
     Router,
     extract::{Path, Query},
@@ -71,9 +71,9 @@ fn build_fetch_tables_query(driver: &str) -> &'static str {
 }
 
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = crate::db::safe_pool()
+    let pool = rullst_core::db::safe_pool()
         .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
-    let driver = crate::db::safe_driver()
+    let driver = rullst_core::db::safe_driver()
         .ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
 
     let query = build_fetch_tables_query(driver);
@@ -113,9 +113,9 @@ fn build_schema_query(driver: &str, clean_table: &str) -> String {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = crate::db::safe_pool()
+    let pool = rullst_core::db::safe_pool()
         .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
-    let driver = crate::db::safe_driver().unwrap_or("sqlite");
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
     let quoted_table = quote_table_name(driver, &clean_table);
@@ -344,7 +344,7 @@ pub async fn handle_dashboard() -> impl IntoResponse {
             <div class="w-full grid grid-cols-2 gap-4 mt-8 text-left">
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-sky-400 font-bold uppercase tracking-wider">"Database Type"</span>
-                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{crate::db::safe_driver().unwrap_or("sqlite")}</h3>
+                    <h3 class="text-xl font-bold mt-1 text-slate-200 uppercase">{rullst_core::db::safe_driver().unwrap_or("sqlite")}</h3>
                 </div>
                 <div class="p-4 rounded-xl bg-slate-900 border border-slate-800/80 shadow-md">
                     <span class="text-xs text-indigo-400 font-bold uppercase tracking-wider">"Total Tables"</span>
@@ -479,7 +479,7 @@ pub async fn handle_table(
     };
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-    let pool = match crate::db::safe_pool() {
+    let pool = match rullst_core::db::safe_pool() {
         Some(p) => p,
         None => {
             return Html(
@@ -488,7 +488,7 @@ pub async fn handle_table(
             .into_response();
         }
     };
-    let driver = crate::db::safe_driver().unwrap_or("sqlite");
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table_name);
     let (col_names, primary_keys) = match fetch_table_schema(pool, driver, &clean_table).await {
         Ok(schema) => schema,
@@ -707,7 +707,7 @@ mod tests {
         );
 
         let _ = rullst_orm::Orm::init(&db_path).await;
-        let pool = crate::db::safe_pool().expect("pool should be initialized");
+        let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
 
         let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
             .execute(pool)
@@ -753,7 +753,7 @@ mod tests {
             unique_id
         );
         let _ = rullst_orm::Orm::init(&db_path).await;
-        let pool = crate::db::safe_pool().expect("pool should be initialized");
+        let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
 
         let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
             .fetch_one(pool)
@@ -802,7 +802,7 @@ mod tests {
             unique_id
         );
         let _ = rullst_orm::Orm::init(&db_path).await;
-        let pool = crate::db::safe_pool().expect("pool should be initialized");
+        let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
 
         let row = sqlx::query("SELECT 'hello' as s, NULL as n")
             .fetch_one(pool)
@@ -814,4 +814,11 @@ mod tests {
         assert!(html.contains("text-slate-600 font-mono italic")); // for the NULL column
         assert!(html.contains("text-slate-300")); // for the "hello" column
     }
+}
+
+
+pub fn router() -> axum::Router {
+    axum::Router::new()
+        .route("/", axum::routing::get(handle_dashboard))
+        .route("/tables/:table", axum::routing::get(handle_table))
 }

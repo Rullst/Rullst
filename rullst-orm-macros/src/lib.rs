@@ -10,6 +10,7 @@ mod builder;
 mod enums;
 mod factory_observer;
 mod models;
+mod nexus;
 mod parser;
 mod privacy;
 mod relationships;
@@ -62,6 +63,12 @@ pub fn derive_personal_data(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Enum)]
 pub fn derive_enum(input: TokenStream) -> TokenStream {
     enums::derive_enum_impl(input.into()).into()
+}
+
+#[cfg_attr(test, mutants::skip)]
+#[proc_macro_derive(Nexus, attributes(nexus))]
+pub fn derive_nexus(input: TokenStream) -> TokenStream {
+    nexus::derive_nexus_impl(input)
 }
 
 #[cfg_attr(test, mutants::skip)]

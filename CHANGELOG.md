@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Rullst-Studio Advanced Tooling**: Added three new interactive tools to the Studio dashboard:
+  - **Environment Viewer**: Safely inspect all active environment variables (with auto-masking for sensitive keys like passwords and secrets).
+  - **Feature Flags Manager**: A zero-config UI to list and toggle database-backed feature flags (`rullst_feature_flags`) in real-time.
+  - **Visual ER Diagram Generator**: Automatically parses your active SQLite or Postgres database and renders a live Mermaid.js interactive Entity-Relationship diagram in the browser.
+- **Rullst-Nexus Batch Actions**: The admin panel now supports performing bulk operations across multiple selected rows. Includes out-of-the-box support for `Delete Selected`, `Deactivate/Activate` (auto-detects active boolean columns), `Export to CSV/JSON`, and `Duplicate`. Fully compatible with SQLite and Postgres.
 - **Redis Hash Mapping (Key-Value):** Added support for native Redis Hashes mapping to ORM models. Using the `redis` feature, models now automatically generate `.save_to_redis()`, `.get_from_redis(id)`, and `.increment_redis_field()` methods that serialize model structures into Redis Hashes.
 - **Distributed Graph Traversal (CTEs):** Added support for native SQL Common Table Expressions (`WITH` and `WITH RECURSIVE`) directly in the `QueryBuilder`.
 - **Auto-Embeddings Sync (`rullst-ai` + `rullst-orm`):** Introduce `#[orm(embedding_for="content")]` macro attribute. Whenever a model is saved via `.save_with_embedding(&client)`, it automatically calls the Embedding API and saves the resulting vector (`pgvector`) to the database.
@@ -19,6 +24,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Turso Integration: Added `--turso` flag to `cargo rullst new` wizard. Generates a Docker Compose configuration with an embedded LibSQL `sqld` replica sidecar that syncs with your Turso remote database, allowing standard `sqlite` macros and drivers to continue working normally via local loopback. 🚀
 
 - **Buildah Support (SecOps)**: Added the `--buildah` flag to `cargo rullst new` which generates a `build_buildah.sh` script for daemonless and rootless OCI image building, catering to extreme enterprise security requirements.
+- **Role-Based Access Control (RBAC)**: Added `HasRole` trait and `RequireRoleLayer` Axum middleware to `rullst-auth` for declarative role enforcement, as well as a new procedural macro `#[require_role("Admin")]` in `rullst-macros` to secure route handlers intuitively.
+- **Declarative Policies (Gates)**: Introduced the `Gate<Resource>` trait in `rullst-auth` to cleanly centralize application authorization logic inside domain structs.
+- **Background Mail Queues**: Integrated `rullst-mail` seamlessly with `rullst-core::queue`. Invoking `rullst::mail::init_queue()` now automatically configures `Mail::send()` to dispatch emails asynchronously via the background worker, preventing main-thread blocking. Added `Mail::send_now()` to bypass the queue when synchronous delivery is explicitly required.
+- **Capital `Billable` Trait**: Added `#[derive(Billable)]` to `rullst-macros` enabling models to seamlessly integrate with `rullst-capital`'s payment engine via a global `BillingProvider` registry.
+- **Capital Webhooks Middleware**: Introduced `verify_webhook` Axum middleware to intercept, cryptographically verify, and parse Stripe/LemonSqueezy webhooks automatically before they hit your handlers.
+- **Capital Invoicing**: Added HTML invoice generation module to easily format and send beautiful invoices upon successful payment.
+- **Nexus Auto-Generation**: Introduced `#[derive(Nexus)]` macro to automatically introspect models and generate full CRUD administrative panels with zero configuration.
+- **Nexus Data Tables**: Upgraded the admin panel tables to support server-side column sorting and searching (`sort_by`, `order`, `q`).
+- **Nexus Data Formatting**: Improved the HTML form generation to automatically render booleans as toggle switches and enums as `<select>` dropdowns based on struct field types.
+- **Capital Advanced Subscriptions**: Added native methods to `Billable` trait to cancel, pause, and report metered usage seamlessly.
+- **Capital Team Billing**: Added support for organization-level billing. You can now scaffold subscriptions for `Team` or `Workspace` models via `cargo rullst make:billing --model Team`.
+- **Capital Resource Quotas**: Added `tier_limit` and `check_quota` to the `Billable` trait to natively enforce tier-based resource constraints.
+- **Capital Coupons & Trials**: Added `apply_coupon` and `extend_trial` methods for programmatic discount and trial management.
+- **Capital Entitlements**: Added `can_access` to effortlessly check if a user has access to a tier-based feature.
+- **Capital Scaffold**: Added `cargo rullst make:billing` to generate a beautiful Pricing Page, Webhooks, Checkout, and Customer Portal logic instantly.
 - **Global Secret Scanning**: Integrated Trufflehog across the entire monorepo to prevent credential leaks in any crate.
 - **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.
 

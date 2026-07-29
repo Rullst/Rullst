@@ -80,6 +80,10 @@ pub enum FieldKind {
         /// Column of target table to use as option label (e.g. "name").
         label_col: &'static str,
     },
+    /// A dropdown menu for Enum values.
+    Enum {
+        options: Vec<&'static str>,
+    },
 }
 
 /// Describes a single field/column in a model's schema for the Nexus Panel.
@@ -218,6 +222,7 @@ impl Nexus {
             .route("/table/{table}/{id}/edit", get(nexus_edit_form))
             .route("/table/{table}/{id}", put(nexus_update_record))
             .route("/table/{table}/{id}", delete(nexus_delete_record))
+            .route("/table/{table}/batch", post(nexus_batch_action))
             .route("/chat", get(nexus_chat_page))
             .route("/chat/query", post(nexus_chat_query))
             .layer(axum::middleware::from_fn(
@@ -286,6 +291,8 @@ impl Nexus {
 struct PaginationParams {
     page: Option<u32>,
     q: Option<String>,
+    sort_by: Option<String>,
+    order: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -363,8 +370,10 @@ async fn nexus_table_view(
 
     let page = params.page.unwrap_or(1).max(1);
     let q = params.q.clone().unwrap_or_default();
+    let sort_by = params.sort_by.as_deref();
+    let order = params.order.as_deref();
 
-    let content = render_table_view(&state, entry, page, &q).await;
+    let content = render_table_view(&state, entry, page, &q, sort_by, order).await;
     if headers.contains_key("hx-request") {
         Html(content).into_response()
     } else {
@@ -389,7 +398,9 @@ async fn nexus_table_search(
     };
     let q = params.q.clone().unwrap_or_default();
     let page = params.page.unwrap_or(1).max(1);
-    Html(render_table_rows(entry, &q, page).await)
+    let sort_by = params.sort_by.as_deref();
+    let order = params.order.as_deref();
+    Html(render_table_rows(entry, &q, page, sort_by, order).await)
 }
 
 /// GET /nexus/table/{table}/new â€” New record form.
@@ -777,6 +788,7 @@ fn field_kind_label(kind: &FieldKind) -> &'static str {
         FieldKind::Password => "password",
         FieldKind::Json => "json",
         FieldKind::ForeignKey { .. } => "relation",
+        FieldKind::Enum { .. } => "enum",
     }
 }
 
@@ -788,6 +800,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
         FieldKind::ForeignKey { .. } => "INTEGER",
         FieldKind::Date | FieldKind::DateTime => "TEXT",
         FieldKind::Json => "TEXT",
+        FieldKind::Enum { .. } => "TEXT",
         _ => "TEXT",
     }
 }
@@ -802,6 +815,7 @@ fn field_kind_input_type(kind: &FieldKind) -> &'static str {
         FieldKind::Date => "date",
         FieldKind::DateTime => "datetime-local",
         FieldKind::ForeignKey { .. } => "select",
+        FieldKind::Enum { .. } => "select",
         _ => "text",
     }
 }
@@ -870,9 +884,11 @@ fn build_table_query(
     visible_fields: &[&FieldMeta],
     q: &str,
     page: u32,
+    sort_by: Option<&str>,
+    order: Option<&str>,
 ) -> (String, Vec<String>) {
     let clean_table = sanitize_identifier(entry.table);
-    let clean_pk = sanitize_identifier(entry.pk);
+    let _clean_pk = sanitize_identifier(entry.pk);
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
 
     let mut sql = format!("SELECT * FROM {}", clean_table);
@@ -904,11 +920,20 @@ fn build_table_query(
 
     let limit = 20;
     let offset = (page.max(1) - 1) * limit;
+
+    let sort_col = sort_by
+        .filter(|&c| visible_fields.iter().any(|f| f.name == c))
+        .unwrap_or(entry.pk);
+    let sort_dir = order
+        .filter(|&o| o.eq_ignore_ascii_case("asc") || o.eq_ignore_ascii_case("desc"))
+        .unwrap_or("DESC");
+    let clean_sort_col = sanitize_identifier(sort_col);
+
     let _ = std::fmt::Write::write_fmt(
         &mut sql,
         format_args!(
-            " ORDER BY {} DESC LIMIT {} OFFSET {}",
-            clean_pk, limit, offset
+            " ORDER BY {} {} LIMIT {} OFFSET {}",
+            clean_sort_col, sort_dir, limit, offset
         ),
     );
 
@@ -931,9 +956,15 @@ fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
 }
 
 #[cfg_attr(mutants, mutants::skip)]
-async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String {
+async fn render_table_rows(
+    entry: &RegistryEntry,
+    q: &str,
+    page: u32,
+    sort_by: Option<&str>,
+    order: Option<&str>,
+) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
-    let (sql, binds) = build_table_query(entry, &visible_fields, q, page);
+    let (sql, binds) = build_table_query(entry, &visible_fields, q, page, sort_by, order);
 
     let pool = match rullst_core::db::safe_pool() {
         Some(p) => p,
@@ -1022,15 +1053,18 @@ async fn render_table_rows(entry: &RegistryEntry, q: &str, page: u32) -> String 
                 cells
             });
 
+            let checkbox_cell = format!("<td class=\"nexus-td text-center\"><input type=\"checkbox\" name=\"selected_ids\" value=\"{row_id}\" class=\"nexus-batch-check\" /></td>");
+
             let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
                 "<tr id=\"row-{row_id}\" class=\"nexus-tr\">\
+                 {checkbox_cell}\
                  {cells}\
                  <td class=\"nexus-td nexus-td-actions\">\
-                 <button class=\"nexus-action-btn nexus-action-edit\" \
+                 <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
                  hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
                  hx-target=\"#nexus-modal-body\" \
                  hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">&#9999;&#65039;</button>\
-                 <button class=\"nexus-action-btn nexus-action-delete\" \
+                 <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" \
                  hx-delete=\"/nexus/table/{t}/{row_id}\" \
                  hx-target=\"#row-{row_id}\" \
                  hx-confirm=\"Delete this record?\">&#128465;&#65039;</button>\
@@ -1047,6 +1081,8 @@ async fn render_table_view(
     entry: &RegistryEntry,
     page: u32,
     q: &str,
+    sort_by: Option<&str>,
+    order: Option<&str>,
 ) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
     let t = entry.table;
@@ -1055,16 +1091,30 @@ async fn render_table_view(
     let lb_singular = entry.label.trim_end_matches('s');
     let q_esc = rullst_core::html::escape_str(q);
 
-    let headers = visible_fields
+    let q_qs = if !q.is_empty() { format!("&q={}", q) } else { String::new() };
+
+    let mut headers = String::with_capacity(512);
+    headers.push_str("<th class=\"nexus-th text-center\" style=\"width: 40px;\"><input type=\"checkbox\" onchange=\"document.querySelectorAll('.nexus-batch-check').forEach(c => c.checked = this.checked)\" /></th>");
+    let headers_cols = visible_fields
         .iter()
         .fold(String::with_capacity(256), |mut acc, f| {
+            let next_order = if sort_by == Some(f.name) && order == Some("asc") { "desc" } else { "asc" };
+            let sort_icon = if sort_by == Some(f.name) {
+                if order == Some("asc") { " &#9650;" } else { " &#9660;" }
+            } else {
+                ""
+            };
             let _ = std::fmt::Write::write_fmt(
                 &mut acc,
-                format_args!("<th class=\"nexus-th\">{}</th>", f.label),
+                format_args!(
+                    "<th class=\"nexus-th\"><a href=\"#\" hx-get=\"/nexus/table/{t}?page={page}{q_qs}&sort_by={}&order={next_order}\" hx-target=\"#nexus-content\" hx-push-url=\"true\" style=\"color:inherit;text-decoration:none;\">{}{}</a></th>",
+                    f.name, f.label, sort_icon
+                ),
             );
             acc
         });
-    let rows = render_table_rows(entry, q, page).await;
+    headers.push_str(&headers_cols);
+    let rows = render_table_rows(entry, q, page, sort_by, order).await;
 
     let prev_btn = if page > 1 {
         let prev = page - 1;
@@ -1107,7 +1157,11 @@ async fn render_table_view(
     );
     out.push_str("</div>");
 
-    out.push_str("<div class=\"nexus-toolbar\">");
+    out.push_str("<form method=\"POST\" action=\"/nexus/table/");
+    out.push_str(t);
+    out.push_str("/batch\" class=\"nexus-batch-form\">");
+    
+    out.push_str("<div class=\"nexus-toolbar\" style=\"display: flex; justify-content: space-between; align-items: center;\">");
     out.push_str("<div class=\"nexus-search-wrap\">");
     out.push_str("<span class=\"nexus-search-icon\">&#128269;</span>");
     let _ = std::fmt::Write::write_fmt(
@@ -1122,10 +1176,24 @@ async fn render_table_view(
         ),
     );
     out.push_str("</div>");
+
+    out.push_str("<div style=\"display: flex; gap: 8px; align-items: center;\">");
+    out.push_str("<select name=\"action\" class=\"nexus-input\" style=\"width: auto; padding: 4px 8px;\">
+        <option value=\"\">-- Batch Actions --</option>
+        <option value=\"delete\">Delete Selected</option>
+        <option value=\"deactivate\">Deactivate Selected</option>
+        <option value=\"activate\">Activate Selected</option>
+        <option value=\"export_csv\">Export to CSV</option>
+        <option value=\"export_json\">Export to JSON</option>
+        <option value=\"duplicate\">Duplicate Selected</option>
+    </select>");
+    out.push_str("<button type=\"submit\" class=\"nexus-btn nexus-btn-secondary\" style=\"padding: 4px 12px;\">Apply</button>");
     let _ = std::fmt::Write::write_fmt(
         &mut out,
-        format_args!("<span class=\"nexus-page-badge\">Page {page}</span>"),
+        format_args!("<span class=\"nexus-page-badge\" style=\"margin-left: 16px;\">Page {page}</span>"),
     );
+    out.push_str("</div>");
+
     out.push_str("</div>");
 
     out.push_str("<div class=\"nexus-table-wrap\">");
@@ -1137,6 +1205,7 @@ async fn render_table_view(
     out.push_str("<tbody id=\"nexus-table-body\">");
     out.push_str(&rows);
     out.push_str("</tbody></table></div>");
+    out.push_str("</form>");
 
     out.push_str("<div class=\"nexus-pagination\">");
     out.push_str(&prev_btn);
@@ -1276,9 +1345,36 @@ async fn render_form_fields_html(
                 format_args!(
                     "<div class=\"nexus-form-group\">\
                  <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <label class=\"nexus-toggle\">\
                  <input type=\"checkbox\" name=\"{}\" value=\"true\" {checked} {readonly}>\
+                 <span class=\"nexus-toggle-slider\"></span>\
+                 </label>\
                  </div>",
                     f.label, f.name
+                ),
+            );
+        } else if let FieldKind::Enum { options } = &f.kind {
+            let mut options_html = String::new();
+            for opt in options {
+                let selected = if opt == &val { "selected" } else { "" };
+                let _ = std::fmt::Write::write_fmt(
+                    &mut options_html,
+                    format_args!(
+                        "<option value=\"{}\" {}>{}</option>",
+                        opt, selected, opt
+                    ),
+                );
+            }
+            let _ = std::fmt::Write::write_fmt(
+                &mut fields_html,
+                format_args!(
+                    "<div class=\"nexus-form-group\">\
+                 <label class=\"nexus-label\">{} {ro_badge}</label>\
+                 <select name=\"{}\" class=\"nexus-input\" {readonly}>\
+                 {}\
+                 </select>\
+                 </div>",
+                    f.label, f.name, options_html
                 ),
             );
         } else if f.kind == FieldKind::Textarea {
@@ -1653,6 +1749,197 @@ html, body { height: 100%; }
     .nexus-fields-grid { grid-template-columns: 1fr; }
 }
 ";
+#[derive(serde::Deserialize)]
+struct BatchActionForm {
+    action: String,
+    #[serde(default)]
+    selected_ids: Vec<String>,
+}
+
+#[cfg_attr(mutants, mutants::skip)]
+async fn nexus_batch_action(
+    State(state): State<Arc<NexusState>>,
+    Path(table): Path<String>,
+    axum::extract::Form(form): axum::extract::Form<BatchActionForm>,
+) -> Response {
+    if form.selected_ids.is_empty() {
+        return axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response();
+    }
+
+    let entry = match find_entry(&state, &table) {
+        Some(e) => e,
+        None => return (StatusCode::NOT_FOUND, "Table not found").into_response(),
+    };
+
+    let Some(pool) = rullst_core::db::safe_pool() else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Database not configured").into_response();
+    };
+
+    let clean_table = sanitize_identifier(entry.table);
+    let clean_pk = sanitize_identifier(entry.pk);
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    
+    let mut placeholders = Vec::new();
+    for i in 1..=form.selected_ids.len() {
+        if driver == "postgres" {
+            placeholders.push(format!("${}", i));
+        } else {
+            placeholders.push("?".to_string());
+        }
+    }
+    let placeholders_str = placeholders.join(",");
+
+    match form.action.as_str() {
+        "delete" => {
+            let sql = format!("DELETE FROM {} WHERE {} IN ({})", clean_table, clean_pk, placeholders_str);
+            let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+            for id in &form.selected_ids {
+                query = query.bind(id);
+            }
+            let _ = query.execute(pool).await;
+        }
+        "deactivate" | "activate" => {
+            let has_active = entry.fields.iter().any(|f| f.name == "is_active" || f.name == "active");
+            if has_active {
+                let field_name = if entry.fields.iter().any(|f| f.name == "is_active") { "is_active" } else { "active" };
+                let val_sqlite = if form.action == "activate" { "1" } else { "0" };
+                let val_pg = if form.action == "activate" { "true" } else { "false" };
+                let set_val = if driver == "sqlite" { val_sqlite } else { val_pg };
+                let sql = format!("UPDATE {} SET {} = {} WHERE {} IN ({})", clean_table, field_name, set_val, clean_pk, placeholders_str);
+                let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+                for id in &form.selected_ids {
+                    query = query.bind(id);
+                }
+                let _ = query.execute(pool).await;
+            }
+        }
+        "export_csv" => {
+            let sql = format!("SELECT * FROM {} WHERE {} IN ({})", clean_table, clean_pk, placeholders_str);
+            let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+            for id in &form.selected_ids {
+                query = query.bind(id);
+            }
+            if let Ok(rows) = query.fetch_all(pool).await {
+                let mut csv = String::new();
+                use rullst_orm::_sqlx::Row;
+                let headers: Vec<&str> = entry.fields.iter().map(|f| f.name).collect();
+                csv.push_str(&headers.join(","));
+                csv.push('\n');
+                for row in rows {
+                    let mut row_vals = Vec::new();
+                    for f in &entry.fields {
+                        let val_str = match f.kind {
+                            FieldKind::Boolean => row.try_get::<bool, _>(f.name).map(|v| v.to_string()).unwrap_or_default(),
+                            FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                                if let Ok(v) = row.try_get::<i64, _>(f.name) { v.to_string() }
+                                else if let Ok(v) = row.try_get::<f64, _>(f.name) { v.to_string() }
+                                else if let Ok(v) = row.try_get::<i32, _>(f.name) { v.to_string() }
+                                else { "".to_string() }
+                            }
+                            _ => row.try_get::<String, _>(f.name).unwrap_or_default(),
+                        };
+                        row_vals.push(format!("\"{}\"", val_str.replace("\"", "\"\"")));
+                    }
+                    csv.push_str(&row_vals.join(","));
+                    csv.push('\n');
+                }
+                return axum::response::Response::builder()
+                    .header("Content-Type", "text/csv")
+                    .header("Content-Disposition", format!("attachment; filename=\"{}_export.csv\"", table))
+                    .body(axum::body::Body::from(csv))
+                    .unwrap();
+            }
+        }
+        "export_json" => {
+            let sql = format!("SELECT * FROM {} WHERE {} IN ({})", clean_table, clean_pk, placeholders_str);
+            let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+            for id in &form.selected_ids {
+                query = query.bind(id);
+            }
+            if let Ok(rows) = query.fetch_all(pool).await {
+                let mut out_arr = Vec::new();
+                use rullst_orm::_sqlx::Row;
+                for row in rows {
+                    let mut obj = serde_json::Map::new();
+                    for f in &entry.fields {
+                        let val = match f.kind {
+                            FieldKind::Boolean => serde_json::Value::Bool(row.try_get::<bool, _>(f.name).unwrap_or(false)),
+                            FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                                if let Ok(v) = row.try_get::<i64, _>(f.name) { serde_json::Value::Number(v.into()) }
+                                else if let Ok(v) = row.try_get::<f64, _>(f.name) { serde_json::Number::from_f64(v).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null) }
+                                else if let Ok(v) = row.try_get::<i32, _>(f.name) { serde_json::Value::Number(v.into()) }
+                                else { serde_json::Value::Null }
+                            }
+                            _ => serde_json::Value::String(row.try_get::<String, _>(f.name).unwrap_or_default()),
+                        };
+                        obj.insert(f.name.to_string(), val);
+                    }
+                    out_arr.push(serde_json::Value::Object(obj));
+                }
+                let json_str = serde_json::to_string_pretty(&out_arr).unwrap_or_else(|_| "[]".to_string());
+                return axum::response::Response::builder()
+                    .header("Content-Type", "application/json")
+                    .header("Content-Disposition", format!("attachment; filename=\"{}_export.json\"", table))
+                    .body(axum::body::Body::from(json_str))
+                    .unwrap();
+            }
+        }
+        "duplicate" => {
+            let sql = format!("SELECT * FROM {} WHERE {} IN ({})", clean_table, clean_pk, placeholders_str);
+            let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+            for id in &form.selected_ids {
+                query = query.bind(id);
+            }
+            if let Ok(rows) = query.fetch_all(pool).await {
+                use rullst_orm::_sqlx::Row;
+                for row in rows {
+                    let mut cols = Vec::new();
+                    let mut vals = Vec::new();
+                    let mut i = 1;
+                    
+                    for f in &entry.fields {
+                        if f.name == entry.pk { continue; }
+                        cols.push(sanitize_identifier(f.name));
+                        if driver == "postgres" {
+                            vals.push(format!("${}", i));
+                            i += 1;
+                        } else {
+                            vals.push("?".to_string());
+                        }
+                    }
+                    
+                    let ins_sql = format!("INSERT INTO {} ({}) VALUES ({})", clean_table, cols.join(","), vals.join(","));
+                    let mut ins_query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(ins_sql.as_str()));
+                    
+                    for f in &entry.fields {
+                        if f.name == entry.pk { continue; }
+                        
+                        match f.kind {
+                            FieldKind::Boolean => {
+                                let b = row.try_get::<bool, _>(f.name).unwrap_or(false);
+                                ins_query = ins_query.bind(b);
+                            }
+                            FieldKind::Number | FieldKind::ForeignKey { .. } => {
+                                if let Ok(v) = row.try_get::<i64, _>(f.name) { ins_query = ins_query.bind(v); }
+                                else if let Ok(v) = row.try_get::<f64, _>(f.name) { ins_query = ins_query.bind(v); }
+                                else if let Ok(v) = row.try_get::<i32, _>(f.name) { ins_query = ins_query.bind(v); }
+                                else { ins_query = ins_query.bind(0); }
+                            }
+                            _ => {
+                                let s = row.try_get::<String, _>(f.name).unwrap_or_default();
+                                ins_query = ins_query.bind(s);
+                            }
+                        }
+                    }
+                    let _ = ins_query.execute(pool).await;
+                }
+            }
+        }
+        _ => {}
+    }
+
+    axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response()
+}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

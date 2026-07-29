@@ -8,6 +8,10 @@ license = "MIT"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
 
 
+[features]
+default = ["axum"]
+axum = ["dep:axum"]
+
 [dependencies]
 rullst-core = { path = "../rullst-core" }
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
@@ -16,7 +20,9 @@ serde_json = "1.0.150"
 async-trait = "0.1.89"
 ring = { version = "0.17.14", features = ["std"] }
 subtle = "2.6.1"
-chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
+axum = { version = "0.8.9", optional = true }
+tokio = { version = "1.53.1", features = ["sync"] }
 
 [dev-dependencies]
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }

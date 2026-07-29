@@ -106,7 +106,11 @@ pub enum Commands {
     Auth,
     /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
     #[command(name = "make:billing")]
-    MakeBilling,
+    MakeBilling {
+        /// The primary Billable model (e.g. User, Team, Workspace)
+        #[arg(long, default_value = "User")]
+        model: String,
+    },
     /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
     MakeOmni,
@@ -253,8 +257,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Auth => {
             scaffold_auth_system()?;
         }
-        Commands::MakeBilling => {
-            scaffold_billing_system()?;
+        Commands::MakeBilling { model } => {
+            scaffold_billing_system(model)?;
         }
         Commands::MakeChatSession => {
             crate::generators::chat::scaffold_chat_session()?;
@@ -375,7 +379,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeWorker { .. }
         | Commands::MakeIsland { .. }
         | Commands::Auth
-        | Commands::MakeBilling
+        | Commands::MakeBilling { .. }
         | Commands::MakeCors
         | Commands::MakeJwt => {
             crate::generators::ai_context::generate_ai_context(None).ok();

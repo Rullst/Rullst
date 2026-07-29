@@ -27,8 +27,6 @@ pub mod error_console;
 /// Feature flagging management and drivers.
 pub mod feature;
 #[cfg(not(target_arch = "wasm32"))]
-/// Background job queues monitoring panel (Horizon).
-pub mod horizon;
 /// Fast compile-time HTML rendering utilities.
 pub mod html;
 #[cfg(not(target_arch = "wasm32"))]
@@ -178,6 +176,3 @@ pub mod async_runtime {
     pub use tokio;
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "studio"))]
-/// Rullst Studio endpoints and visual tools.
-pub mod studio;

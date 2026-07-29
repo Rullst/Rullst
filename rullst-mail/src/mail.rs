@@ -1,6 +1,10 @@
 use async_trait::async_trait;
+use rullst_core::queue::Queue;
+use tokio::sync::OnceCell;
 
-#[derive(Debug, Clone)]
+static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 /// An email message structure to be sent via a mail driver.
 pub struct Message {
     /// The recipient email address.
@@ -342,8 +346,30 @@ impl MailDriver for SendGridDriver {
 pub struct Mail;
 
 impl Mail {
-    /// Send a message using the default configured mail driver
+    /// Initializes the global mail queue.
+    /// If configured, `Mail::send` will automatically push emails to this queue.
+    pub fn init_queue(queue: Queue) {
+        let _ = MAIL_QUEUE.set(queue);
+    }
+
+    /// Send a message. If a background queue is initialized, it pushes to the queue automatically.
+    /// Otherwise, it sends synchronously.
     pub async fn send(message: Message) -> Result<(), MailError> {
+        if let Some(queue) = MAIL_QUEUE.get() {
+            let payload = serde_json::to_value(&message).map_err(|e| {
+                MailError::SendError(format!("Failed to serialize message for queue: {}", e))
+            })?;
+            queue.dispatch("rullst_mail_send", payload).await.map_err(|e| {
+                MailError::SendError(format!("Failed to enqueue mail job: {}", e))
+            })?;
+            Ok(())
+        } else {
+            Self::send_now(message).await
+        }
+    }
+
+    /// Forces sending the message synchronously, bypassing the background queue.
+    pub async fn send_now(message: Message) -> Result<(), MailError> {
         let driver = Self::resolve_driver().await?;
         driver.send(&message).await
     }

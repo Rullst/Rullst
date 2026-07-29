@@ -6,7 +6,7 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-pub fn scaffold_billing_system() -> Result<(), Box<dyn std::error::Error>> {
+pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
             "{}{}",
@@ -21,10 +21,12 @@ pub fn scaffold_billing_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "💳 Starting scaffolding of Rullst billing system (Stripe & LemonSqueezy)..."
+        format!("💳 Starting scaffolding of Rullst billing system (Stripe & LemonSqueezy) for model '{}'...", model)
             .cyan()
             .bold()
     );
+
+    let foreign_key = format!("{}_id", model.to_lowercase());
 
     // 1. Create Subscriptions Migration
     let migrations_dir = Path::new("src/migrations");
@@ -49,7 +51,7 @@ impl Migration for MigrationImpl {{
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
         Schema::create("subscriptions", |table| {{
             table.id();
-            table.integer("user_id").not_null();
+            table.integer("{foreign_key}").not_null();
             table.string("customer_id").not_null();
             table.string("subscription_id").unique().not_null();
             table.string("plan_id").not_null();
@@ -64,7 +66,8 @@ impl Migration for MigrationImpl {{
     }}
 }}
 "##,
-        file_stem = file_stem
+        file_stem = file_stem,
+        foreign_key = foreign_key
     );
     fs::write(&migration_path, migration_template)?;
     println!(
@@ -78,13 +81,14 @@ impl Migration for MigrationImpl {{
     let models_dir = Path::new("src/models");
     fs::create_dir_all(models_dir)?;
     let model_path = models_dir.join("subscription.rs");
-    let model_template = r##"use rullst::db::{Orm, FromRow};
+    let model_template = format!(
+        r##"use rullst::db::{{Orm, FromRow}};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "subscriptions")]
-pub struct Subscription {
+pub struct Subscription {{
     pub id: i32,
-    pub user_id: i32,
+    pub {foreign_key}: i32,
     pub customer_id: String,
     pub subscription_id: String,
     pub plan_id: String,
@@ -92,8 +96,10 @@ pub struct Subscription {
     pub ends_at: Option<i64>,
     pub created_at: String,
     pub updated_at: String,
-}
-"##;
+}}
+"##,
+        foreign_key = foreign_key
+    );
     fs::write(&model_path, model_template)?;
     println!("{}", "  ✨ Created 'Subscription' model.".green());
 
@@ -177,6 +183,30 @@ pub async fn checkout_redirect(Query(query): Query<CheckoutQuery>) -> impl IntoR
     match url_result {
         Ok(url) => Redirect::temporary(&url).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create checkout session: {}", e)).into_response(),
+    }
+}
+
+/// Redirects to the Customer Portal.
+pub async fn portal_redirect() -> impl IntoResponse {
+    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
+    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
+    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
+    let redirect_url = std::env::var("BILLING_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
+
+    let url_result = match provider_name.to_lowercase().as_str() {
+        "lemonsqueezy" => {
+            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
+            provider.create_customer_portal("user@example.com", &redirect_url).await
+        }
+        _ => {
+            let provider = StripeProvider::new(api_key, webhook_secret);
+            provider.create_customer_portal("user@example.com", &redirect_url).await
+        }
+    };
+
+    match url_result {
+        Ok(url) => Redirect::temporary(&url).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create portal session: {}", e)).into_response(),
     }
 }
 
@@ -303,6 +333,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
     );
     println!("{}", "  👉 .route(\"/pricing\", rullst::server::get(controllers::billing_controller::pricing_view))".cyan());
     println!("{}", "  👉 .route(\"/billing/checkout\", rullst::server::get(controllers::billing_controller::checkout_redirect))".cyan());
+    println!("{}", "  👉 .route(\"/billing/portal\", rullst::server::get(controllers::billing_controller::portal_redirect))".cyan());
     println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler))".cyan());
     println!(
         "\n{}",
