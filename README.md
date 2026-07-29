@@ -195,6 +195,7 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Zero-Panics Policy** | ✅ (Enforced) | ❌ | ❌ | ❌ | ❌ |
 | **TypeScript SDK Generator** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 | **OpenAPI / Swagger** | ✅ (Auto-Generated) | ❌ | ❌ | ❌ | ✅ (Via utoipa/poem-openapi) |
+| **AI Agents & RAG Integration** | ✅ (Built-in via `rullst-ai`) | ❌ | ❌ | ❌ | ❌ |
 | **Background Workers** | ✅ (Queue + Redis) | ✅ (Task worker) | ❌ | ❌ | ❌ |
 | **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 

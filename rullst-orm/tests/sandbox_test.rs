@@ -62,7 +62,7 @@ async fn test_sandbox_isolation_part_2() {
     // Wait slightly to ensure part 1 might have inserted Alice if they run parallel
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    let users = SandboxUser::query().get().await.unwrap();
+    let _users = SandboxUser::query().get().await.unwrap();
 
     let mut user = SandboxUser {
         id: 0,

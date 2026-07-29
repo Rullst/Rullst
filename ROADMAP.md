@@ -328,6 +328,10 @@ graph TD
 - [ ] **Hybrid Security Abstraction:** Implement a hybrid transport layer (Classical TLS + Quantum TLS) by default, ensuring the app is shielded against "Harvest Now, Decrypt Later" attacks.
 - [ ] **Rullst QLink (`rullst::quantum`):** A driver abstraction layer to communicate with cloud Quantum Processing Units (QPUs like IBM Quantum, AWS Braket). Easily dispatch complex logistics or molecular simulation tasks to quantum computers natively in Rust.
 
+## Done
+- [x] **Declarative Migrations (Destructive Operations):** Implement full resource synchronization (dropping columns and tables) protected by "Safe by Default" patterns (e.g., `--allow-destructive` flag or commented-out SQL generation) to prevent accidental data loss.
+- [x] **Turso Integration:** Support Turso/libSQL for Rullst.
+
 ---
 
 ## 🏗️ Future Architecture Refactorings (Core Modernization)

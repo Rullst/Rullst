@@ -175,6 +175,11 @@ pub use async_trait::async_trait;
 // Re-export sqlx and FromRow for database mapping
 pub use schema::{JoinClause, SubqueryBuilder};
 
+/// Trait implementada automaticamente pelas macros para os modelos que usam `#[orm(rag_context)]`
+pub trait RagContext {
+    fn get_context(&self) -> String;
+}
+
 /// The global connection pool
 static DB_POOL: OnceLock<RullstPool> = OnceLock::new();
 

@@ -7,6 +7,7 @@ pub mod ai_context;
 pub mod auth;
 pub mod billing;
 pub mod build;
+pub mod chat;
 pub mod controller;
 pub mod cors_jwt;
 pub mod db;
@@ -21,6 +22,7 @@ pub mod migration;
 pub mod model;
 pub mod openapi;
 pub mod project;
+pub mod schema_diff;
 pub mod ts;
 pub mod worker;
 

@@ -41,12 +41,15 @@ pub struct ProjectWizardOptions {
     pub hot_reload: bool,
     pub blueprint_selection: usize,
     pub wants_ai: bool,
+    pub wants_redis: bool,
+    pub turso: bool,
 }
 
 fn run_project_wizard(
     name_arg: Option<&str>,
     mut api: bool,
     use_defaults: bool,
+    turso: bool,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
     if use_defaults {
         let name = name_arg.unwrap_or("app").to_string();
@@ -58,6 +61,8 @@ fn run_project_wizard(
             hot_reload: false,
             blueprint_selection: 0,
             wants_ai: false,
+            wants_redis: false,
+            turso,
         });
     }
 
@@ -177,6 +182,11 @@ fn run_project_wizard(
         .default(false)
         .interact()?;
 
+    let wants_redis = dialoguer::Confirm::with_theme(&theme)
+        .with_prompt("🚀 Do you want to use Redis for Key-Value caching and ultra-fast hashes?")
+        .default(false)
+        .interact()?;
+
     Ok(ProjectWizardOptions {
         name,
         api,
@@ -185,6 +195,8 @@ fn run_project_wizard(
         hot_reload,
         blueprint_selection,
         wants_ai,
+        wants_redis,
+        turso,
     })
 }
 
@@ -195,6 +207,7 @@ pub fn create_new_project(
     buildah: bool,
     nix: bool,
     use_defaults: bool,
+    turso: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "  {}",
@@ -212,7 +225,7 @@ pub fn create_new_project(
     );
     println!();
 
-    let wizard_opts = run_project_wizard(name_arg, api_arg, use_defaults)?;
+    let wizard_opts = run_project_wizard(name_arg, api_arg, use_defaults, turso)?;
     let name = wizard_opts.name;
     let api = wizard_opts.api;
     let db_provider = wizard_opts.db_provider;
@@ -220,6 +233,7 @@ pub fn create_new_project(
     let hot_reload = wizard_opts.hot_reload;
     let blueprint_selection = wizard_opts.blueprint_selection;
     let wants_ai = wizard_opts.wants_ai;
+    let wants_redis = wizard_opts.wants_redis;
 
     println!(
         "{}",
@@ -386,9 +400,26 @@ axum = "0.8"
                 .display()
                 .to_string()
                 .replace("\\", "/");
-            format!("rullst-orm = {{ path = \"{}\" }}\n", absolute_path)
+            let redis_feat = if wants_redis {
+                ", features = [\"redis\"]"
+            } else {
+                ""
+            };
+            format!(
+                "rullst-orm = {{ path = \"{}\"{} }}\n",
+                absolute_path, redis_feat
+            )
         } else {
-            "rullst-orm = \"12.0.0\"\n".to_string()
+            let redis_feat = if wants_redis {
+                " features = [\"redis\"] "
+            } else {
+                ""
+            };
+            if wants_redis {
+                format!("rullst-orm = {{ version = \"12.0.0\",{} }}\n", redis_feat)
+            } else {
+                "rullst-orm = \"12.0.0\"\n".to_string()
+            }
         };
         cargo_toml.push_str(&format!(
             r#"{orm_dep}tracing = "0.1"
@@ -627,6 +658,12 @@ APP_ENV=development
                 .unwrap_or(env_example_content.len()),
             &db_env_str,
         );
+
+        if turso {
+            let turso_env = "\n# ── Turso / libSQL ───────────────────────────────────────────────\nTURSO_DATABASE_URL=libsql://your-db-name.turso.io\nTURSO_AUTH_TOKEN=your-auth-token\n";
+            env_content.push_str(turso_env);
+            env_example_content.push_str(turso_env);
+        }
     }
 
     if blueprint_selection == 2 || blueprint_selection == 3 {
@@ -661,7 +698,6 @@ APP_ENV=development
 
     // Generate Docker files if --docker flag was passed
     if docker {
-        let wants_redis = blueprint_selection == 2 || blueprint_selection == 3;
         generate_docker_files(path, &project_name, Some(&db_provider), Some(wants_redis))?;
     }
 
@@ -756,33 +792,8 @@ APP_ENV=development
     }
 
     if buildah {
-        println!(
-            "{}",
-            "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
-        );
-        let buildah_script = format!(
-            r#"#!/usr/bin/env bash
-# Rootless OCI Image Build Script via Buildah
-echo "🦀 Building rootless OCI image for {}..."
-buildah bud -f Dockerfile -t {}:latest .
-echo "✅ Build complete!"
-"#,
-            name, name
-        );
-        let script_path = path.join("build_buildah.sh");
-        fs::write(&script_path, buildah_script).ok();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(mut perms) = fs::metadata(&script_path).map(|m| m.permissions()) {
-                perms.set_mode(0o755);
-                fs::set_permissions(&script_path, perms).ok();
-            }
-        }
-        println!("{}", format!("  cd {}", name).cyan());
-        println!("{}", "  ./build_buildah.sh".cyan());
+        generate_buildah_script(path, name).ok();
     }
-
     if nix {
         println!("{}", "\n❄️  Nix files generated! To run with Nix:".cyan());
         println!("{}", format!("  cd {}", name).cyan());
@@ -791,6 +802,42 @@ echo "✅ Build complete!"
 
     crate::generators::ai_context::generate_ai_context(Some(path)).ok();
     crate::generators::diagram::generate_mermaid_diagram(Some(path)).ok();
+    Ok(())
+}
+
+pub fn generate_buildah_script(
+    project_path: &Path,
+    project_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "{}",
+        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
+    );
+    let buildah_script = format!(
+        r#"#!/usr/bin/env bash
+# Rootless OCI Image Build Script via Buildah
+echo "🦀 Building rootless OCI image for {}..."
+buildah bud -f Dockerfile -t {}:latest .
+echo "✅ Build complete!"
+"#,
+        project_name, project_name
+    );
+    let script_path = project_path.join("build_buildah.sh");
+    fs::write(&script_path, buildah_script).ok();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(mut perms) = fs::metadata(&script_path).map(|m| m.permissions()) {
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms).ok();
+        }
+    }
+    if project_path == Path::new(".") {
+        println!("{}", "  ./build_buildah.sh".cyan());
+    } else {
+        println!("{}", format!("  cd {}", project_name).cyan());
+        println!("{}", "  ./build_buildah.sh".cyan());
+    }
     Ok(())
 }
 
@@ -829,7 +876,7 @@ pub fn generate_docker_files(
     };
 
     create_dockerfile(project_path, project_name)?;
-    create_docker_compose(project_path, project_name, &db_provider, wants_redis)?;
+    create_docker_compose(project_path, project_name, &db_provider, wants_redis, false)?;
     create_dockerignore(project_path)?;
     create_env_files(project_path, project_name, &db_provider, wants_redis)?;
 
@@ -905,6 +952,7 @@ fn create_docker_compose(
     project_name: &str,
     db_provider: &str,
     wants_redis: bool,
+    turso: bool,
 ) -> Result<(), std::io::Error> {
     let mut compose = format!(
         r#"# ══════════════════════════════════════════════════════════════
@@ -1000,6 +1048,27 @@ services:
         ));
     }
 
+    if turso {
+        depends_on.push("sqld");
+        compose.push_str(&format!(
+            r#"
+  sqld:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    container_name: {project_name}-sqld
+    ports:
+      - "8080:8080"
+    environment:
+      - SQLD_NODE=primary
+      - SQLD_PRIMARY_URL=$${{TURSO_DATABASE_URL}}
+      - SQLD_AUTH_JWT_TOKEN=$${{TURSO_AUTH_TOKEN}}
+    volumes:
+      - sqldata:/var/lib/sqld
+    restart: unless-stopped
+"#,
+            project_name = project_name
+        ));
+    }
+
     if !depends_on.is_empty() {
         let mut deps_str = String::from("    depends_on:\n");
         for dep in depends_on {
@@ -1024,6 +1093,9 @@ services:
     }
     if wants_redis {
         volumes_str.push_str("  redisdata:\n");
+    }
+    if turso {
+        volumes_str.push_str("  sqldata:\n");
     }
 
     if !volumes_str.is_empty() {

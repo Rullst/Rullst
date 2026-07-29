@@ -199,6 +199,11 @@ impl Blueprint {
         self.add_column(name, "INTEGER")
     }
 
+    pub fn vector(&mut self, name: &str, dimensions: usize) -> &mut Column {
+        let col_type = format!("VECTOR({})", dimensions);
+        self.add_column(name, &col_type)
+    }
+
     pub fn enum_col(&mut self, name: &str, variants: Vec<&str>) -> &mut Column {
         // Enforce enum values using a CHECK constraint for safe cross-DB compatibility
         let check_clause = variants

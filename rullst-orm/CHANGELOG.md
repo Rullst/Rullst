@@ -1,15 +1,21 @@
 # Changelog
 
+> [!NOTE]
+> Starting from Rullst version 12.0.0, all changelogs will be written exclusively in the main `CHANGELOG.md` at the root of the Rullst repository. This file is kept for historical purposes only.
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.2.0] - unreleased
+## [12.0.0] - unreleased
 
 ### Added
+- **Redis Hash Mapping (Key-Value):** Added support for native Redis Hashes mapping to ORM models. Using the `redis` feature, models now automatically generate `.save_to_redis()`, `.get_from_redis(id)`, and `.increment_redis_field()` methods that serialize model structures into Redis Hashes (`HSET`/`HGETALL`), allowing 1ms low-latency read models and atomic counters bypassing SQL overhead entirely.
+- **Distributed Graph Traversal (CTEs):** Added support for native SQL Common Table Expressions (`WITH` and `WITH RECURSIVE`) directly in the `QueryBuilder`. You can now easily transform relational tables into Graph-like queries for deep recursive relationships (e.g., `friends.of.friends`) using `.with_cte()` and `.with_recursive()`.
 - **Cascading Soft Deletes (Phase 6):** Added `cascade_soft_delete` option to `has_many` and `has_one` relations. When a parent model is soft-deleted, all dependent children are now automatically soft-deleted in a recursive, transactional manner, ensuring referential logic integrity without breaking changes.
-- **Declarative Struct-Based Migrations (Safe Additive):** Introduced the foundational AST-parsing engine (`schema_diff.rs`) to power the new `artisan make:migration:auto` command. This engine leverages `syn` to read local `.rs` files and dynamically compare Rust structs against the live database, scaffolding missing tables and columns automatically. Currently, this engine prioritizes data safety by solely generating additive SQL (CREATE TABLE / ADD COLUMN) and intentionally bypassing destructive operations. (Note: Full destructive capabilities will be implemented in future versions protected by 'Safe by Default' mechanisms like `--allow-destructive` flags).
+- **Declarative Struct-Based Migrations (Safe Additive):** Introduced the foundational AST-parsing engine (`schema_diff.rs`) to power the new `artisan make:migration:auto` command. This engine leverages `syn` to read local `.rs` files and dynamically compare Rust structs against the live database, scaffolding missing tables and columns automatically. 
+- **Declarative Migrations (Destructive Operations):** The `make:migration:auto` command now supports full resource synchronization (dropping columns and tables). To prevent accidental data loss, these destructive operations are safely generated as commented-out SQL code by default, requiring manual uncommenting to execute.
+- **Turso Integration (Edge Databases):** Added full native support for Turso/libSQL edge databases via local sidecar replicas. The `cargo rullst new` project wizard now includes a `--turso` flag that automatically scaffolds an embedded LibSQL `sqld` sidecar in Docker, allowing standard `sqlx-sqlite` drivers to sync seamlessly with global edge databases.
 
 ## [6.1.1] - 2026-07-26
 

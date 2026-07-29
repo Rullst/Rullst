@@ -1,5 +1,7 @@
 # Changelog
 
+> [!NOTE]
+> Starting from Rullst version 12.0.0, all changelogs will be written exclusively in the main `CHANGELOG.md` at the root of the Rullst repository. This file is kept for historical purposes only.
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

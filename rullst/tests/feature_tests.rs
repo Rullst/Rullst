@@ -158,7 +158,7 @@ invalid-split = "variant:not-a-number,variant2:50"
 #[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database
-    Orm::init_with_options("sqlite://feature_db_test_1.db?mode=rwc", 5, 30)
+    Orm::init_with_options("sqlite:feature_db_test_1.db?mode=rwc", 5, 30)
         .await
         .expect("Failed to init ORM in test");
     let pool = Orm::pool();

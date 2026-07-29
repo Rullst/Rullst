@@ -53,6 +53,9 @@ pub enum Commands {
         /// Optional: skips interactive prompts and uses default values (useful for CI)
         #[arg(long)]
         default: bool,
+        /// Optional: Scaffolds Turso/libSQL sidecar (sqld) for edge replication
+        #[arg(long)]
+        turso: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -96,6 +99,9 @@ pub enum Commands {
         /// Name of the migration (e.g. create_users_table)
         name: String,
     },
+    /// Automatically generates a migration by diffing Rust structs against the current database schema
+    #[command(name = "make:migration:auto")]
+    MakeMigrationAuto,
     /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
     /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
@@ -112,6 +118,9 @@ pub enum Commands {
     FoundryDeploy,
     /// Generates Dockerfile and docker-compose.yml for the project
     Dockerize,
+    /// Generates a rootless OCI image build script via Buildah
+    #[command(name = "generate:buildah")]
+    GenerateBuildah,
     /// Generates Nix environment files (flake.nix, .envrc)
     Nixify,
     /// Scaffolds and configures CORS middleware
@@ -157,6 +166,9 @@ pub enum Commands {
         /// Name of the Island component (e.g. Counter or user_profile)
         name: String,
     },
+    /// Scaffolds ChatSession and ChatMessage models for Conversational AI memory
+    #[command(name = "make:chat-session")]
+    MakeChatSession,
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
     /// Starts the Rullst development server with neon spinners
@@ -198,8 +210,17 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             buildah,
             nix,
             default,
+            turso,
         } => {
-            create_new_project(name.as_deref(), *api, *docker, *buildah, *nix, *default)?;
+            create_new_project(
+                name.as_deref(),
+                *api,
+                *docker,
+                *buildah,
+                *nix,
+                *default,
+                *turso,
+            )?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
@@ -225,11 +246,18 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeMigration { name } => {
             create_new_migration(name)?;
         }
+        Commands::MakeMigrationAuto => {
+            tokio::runtime::Runtime::new()?
+                .block_on(crate::generators::migration::create_auto_migration())?;
+        }
         Commands::Auth => {
             scaffold_auth_system()?;
         }
         Commands::MakeBilling => {
             scaffold_billing_system()?;
+        }
+        Commands::MakeChatSession => {
+            crate::generators::chat::scaffold_chat_session()?;
         }
         Commands::MakeOmni => {
             scaffold_omni_system()?;
@@ -259,6 +287,25 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 &proj_name,
                 None,
                 None,
+            )?;
+        }
+        Commands::GenerateBuildah => {
+            let mut proj_name = "app".to_string();
+            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
+                for line in toml_content.lines() {
+                    if line.starts_with("name = ") {
+                        proj_name = line
+                            .replace("name = ", "")
+                            .replace("\"", "")
+                            .trim()
+                            .to_string();
+                        break;
+                    }
+                }
+            }
+            crate::generators::project::generate_buildah_script(
+                std::path::Path::new("."),
+                &proj_name,
             )?;
         }
         Commands::Nixify => {

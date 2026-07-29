@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Redis Hash Mapping (Key-Value):** Added support for native Redis Hashes mapping to ORM models. Using the `redis` feature, models now automatically generate `.save_to_redis()`, `.get_from_redis(id)`, and `.increment_redis_field()` methods that serialize model structures into Redis Hashes.
+- **Distributed Graph Traversal (CTEs):** Added support for native SQL Common Table Expressions (`WITH` and `WITH RECURSIVE`) directly in the `QueryBuilder`.
+- **Auto-Embeddings Sync (`rullst-ai` + `rullst-orm`):** Introduce `#[orm(embedding_for="content")]` macro attribute. Whenever a model is saved via `.save_with_embedding(&client)`, it automatically calls the Embedding API and saves the resulting vector (`pgvector`) to the database.
+- **RAG Context Trait:** Introduce `#[orm(rag_context)]` macro attribute to auto-generate the `RagContext` trait, gluing text fields together safely at compile time.
+- **RAG Prompts:** Added `rullst_ai::ai::rag::build_rag_prompt` to prevent LLM hallucinations by injecting contexts explicitly.
+- **Resilient AI Routing (`FallbackProvider`):** Introduced a high-availability AI router. The framework automatically scans for multiple keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.) and seamlessly fails over to fallback models if the primary provider goes down or times out.
+- **Zero-Boilerplate Vision API:** Added `prompt_with_image` to the `AiClient` with automatic *Magic Byte Inference*. Developers can pass any raw buffer (`&[u8]`) and the framework instantly detects if it's a PNG, JPEG, WEBP or GIF, encoding it without manual MIME type specification.
+- **Chat Memory CLI:** Added `cargo rullst make:chat-session` to scaffold AI memory in seconds. It generates `ChatSession` and `ChatMessage` models, along with a `StatefulChat` service that automatically feeds database conversation history into the `ChatBuilder`.
+- Auto Migration (`make:migration:auto`): Automatically generate SQL migration scripts by diffing `#[derive(Orm)]` structs against the database schema. Destructive operations (DROP COLUMN/TABLE) are generated as commented-out code by default for safety.
+- Turso Integration: Added `--turso` flag to `cargo rullst new` wizard. Generates a Docker Compose configuration with an embedded LibSQL `sqld` replica sidecar that syncs with your Turso remote database, allowing standard `sqlite` macros and drivers to continue working normally via local loopback. 🚀
+
 - **Buildah Support (SecOps)**: Added the `--buildah` flag to `cargo rullst new` which generates a `build_buildah.sh` script for daemonless and rootless OCI image building, catering to extreme enterprise security requirements.
 - **Global Secret Scanning**: Integrated Trufflehog across the entire monorepo to prevent credential leaks in any crate.
 - **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.

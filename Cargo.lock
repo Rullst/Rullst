@@ -5138,6 +5138,7 @@ name = "rullst-ai"
 version = "12.0.0"
 dependencies = [
  "async-trait",
+ "base64 0.23.0",
  "reqwest",
  "rullst-core",
  "serde",

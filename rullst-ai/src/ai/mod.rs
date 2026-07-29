@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 /// Individual AI model API provider clients.
 pub mod providers;
+/// RAG prompt building utilities.
+pub mod rag;
 
 #[derive(Debug)]
 /// Errors that can occur when calling AI APIs or processing models.
@@ -89,6 +91,69 @@ pub trait AiProvider: Send + Sync {
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError>;
     /// Generates a high-dimensional vector embedding for the input text.
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError>;
+    /// Generates a response for a single text prompt along with an image.
+    async fn prompt_with_image(&self, _text: &str, _image_bytes: &[u8]) -> Result<String, AiError> {
+        Err(AiError::Other(
+            "Vision not supported by this provider".into(),
+        ))
+    }
+}
+
+pub struct FallbackProvider {
+    providers: Vec<Arc<dyn AiProvider>>,
+}
+
+impl FallbackProvider {
+    pub fn new(providers: Vec<Arc<dyn AiProvider>>) -> Self {
+        Self { providers }
+    }
+}
+
+#[async_trait]
+impl AiProvider for FallbackProvider {
+    async fn prompt(&self, text: &str) -> Result<String, AiError> {
+        let mut last_err = None;
+        for provider in &self.providers {
+            match provider.prompt(text).await {
+                Ok(res) => return Ok(res),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+    }
+
+    async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {
+        let mut last_err = None;
+        for provider in &self.providers {
+            match provider.prompt_with_image(text, image_bytes).await {
+                Ok(res) => return Ok(res),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+    }
+
+    async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        let mut last_err = None;
+        for provider in &self.providers {
+            match provider.chat(messages).await {
+                Ok(res) => return Ok(res),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+    }
+
+    async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
+        let mut last_err = None;
+        for provider in &self.providers {
+            match provider.embed(text).await {
+                Ok(res) => return Ok(res),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+    }
 }
 
 /// A fluent builder utility for building multi-turn chats.
@@ -146,29 +211,47 @@ impl AiClient {
 
     /// Automatically constructs an `AiClient` by scanning configuration environment variables.
     pub fn auto() -> Result<Self, AiError> {
+        let mut providers: Vec<Arc<dyn AiProvider>> = Vec::new();
+
         if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-            Ok(Self::new(providers::openai::OpenAiProvider::new(key)))
-        } else if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-            Ok(Self::new(providers::gemini::GeminiProvider::new(key)))
-        } else if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-            Ok(Self::new(providers::anthropic::AnthropicProvider::new(key)))
-        } else if let Ok(host) = std::env::var("OLLAMA_HOST") {
+            providers.push(Arc::new(providers::openai::OpenAiProvider::new(key)));
+        }
+        if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+            providers.push(Arc::new(providers::anthropic::AnthropicProvider::new(key)));
+        }
+        if let Ok(key) = std::env::var("GEMINI_API_KEY") {
+            providers.push(Arc::new(providers::gemini::GeminiProvider::new(key)));
+        }
+        if let Ok(host) = std::env::var("OLLAMA_HOST") {
             let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3".to_string());
-            Ok(Self::new(providers::ollama::OllamaProvider::new(
+            providers.push(Arc::new(providers::ollama::OllamaProvider::new(
                 host, model,
-            )))
-        } else {
+            )));
+        }
+
+        if providers.is_empty() {
             // Default check fallback if nothing is present, but try Ollama at localhost
-            Ok(Self::new(providers::ollama::OllamaProvider::new(
+            providers.push(Arc::new(providers::ollama::OllamaProvider::new(
                 "http://localhost:11434".to_string(),
                 "llama3".to_string(),
-            )))
+            )));
         }
+
+        Ok(Self::new(FallbackProvider::new(providers)))
     }
 
     /// Prompts the underlying AI model with a simple text prompt.
     pub async fn prompt(&self, text: &str) -> Result<String, AiError> {
         self.provider.prompt(text).await
+    }
+
+    /// Prompts the model with text and an image array, automatically inferring the mimetype.
+    pub async fn prompt_with_image(
+        &self,
+        text: &str,
+        image_bytes: &[u8],
+    ) -> Result<String, AiError> {
+        self.provider.prompt_with_image(text, image_bytes).await
     }
 
     /// Initiates a multi-turn chat interaction.

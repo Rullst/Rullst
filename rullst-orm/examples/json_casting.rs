@@ -1,7 +1,7 @@
 use rullst_orm::schema::Schema;
 use rullst_orm::{FromRow, Orm};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct UserPreferences {
     pub theme: String,
     pub notifications_enabled: bool,

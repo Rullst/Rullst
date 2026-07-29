@@ -135,3 +135,192 @@ pub fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(migrations_dir.join("mod.rs"), mod_content)?;
     Ok(())
 }
+
+pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
+    use colored::*;
+    use std::fs;
+    use std::path::Path;
+
+    if !crate::generators::is_rullst_project() {
+        println!(
+            "{}",
+            "? Error: This command must be executed in the root of a valid Rullst project."
+                .red()
+                .bold()
+        );
+        std::process::exit(1);
+    }
+
+    let dotenv_path = Path::new(".env");
+    if dotenv_path.exists() {
+        let env_content = fs::read_to_string(dotenv_path)?;
+        let mut db_url = String::new();
+        for line in env_content.lines() {
+            if line.starts_with("DATABASE_URL=") {
+                db_url = line
+                    .replace("DATABASE_URL=", "")
+                    .replace("\"", "")
+                    .trim()
+                    .to_string();
+                break;
+            }
+        }
+
+        if db_url.is_empty() || !db_url.starts_with("sqlite:") {
+            println!(
+                "{}",
+                "?? Auto migrations currently only support SQLite. Skipping auto-sync.".yellow()
+            );
+            return Ok(());
+        }
+
+        println!(
+            "{}",
+            "?? Analysing AST and Database Schema...".cyan().bold()
+        );
+
+        use sqlx::{Row, SqlitePool};
+        let pool = SqlitePool::connect(&db_url).await?;
+
+        let mut db_tables = vec![];
+        let rows = sqlx::query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .fetch_all(&pool)
+        .await?;
+        for row in rows {
+            let table_name: String = row.get("name");
+            db_tables.push(table_name);
+        }
+
+        let mut db_schema = std::collections::HashMap::new();
+        for table in db_tables {
+            let mut cols = vec![];
+            let q = format!("PRAGMA table_info('{}')", table);
+            let q_static: &'static str = Box::leak(q.into_boxed_str());
+            let pragma_rows = sqlx::query(q_static).fetch_all(&pool).await?;
+            for prow in pragma_rows {
+                let cname: String = prow.get("name");
+                cols.push(cname);
+            }
+            db_schema.insert(table, cols);
+        }
+
+        let ast_tables = super::schema_diff::extract_tables_from_ast();
+
+        let mut up_queries = Vec::new();
+        let mut down_queries = Vec::new();
+
+        for ast_table in &ast_tables {
+            let tname = &ast_table.table_name;
+            if !db_schema.contains_key(tname) {
+                let mut up_sql = format!(
+                    "        Schema::create(\"{}\", |table| {{\n            table.id();\n",
+                    tname
+                );
+                for field in &ast_table.fields {
+                    if field.name == "id"
+                        || field.name == "created_at"
+                        || field.name == "updated_at"
+                    {
+                        continue;
+                    }
+                    up_sql.push_str(&format!("            table.string(\"{}\");\n", field.name));
+                }
+                up_sql.push_str("            table.timestamps();\n        }}).await?;\n");
+                up_queries.push(up_sql);
+
+                down_queries.push(format!(
+                    "        Schema::drop_if_exists(\"{}\").await?;\n",
+                    tname
+                ));
+            } else {
+                let db_cols = db_schema.get(tname).unwrap();
+                for field in &ast_table.fields {
+                    if !db_cols.contains(&field.name) {
+                        up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()).await?;\n", tname, field.name));
+                        down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()).await?;\n", tname, field.name));
+                    }
+                }
+            }
+        }
+
+        for (db_tname, db_cols) in &db_schema {
+            if let Some(ast_table) = ast_tables.iter().find(|t| &t.table_name == db_tname) {
+                for db_col in db_cols {
+                    if db_col == "id" || db_col == "created_at" || db_col == "updated_at" {
+                        continue;
+                    }
+                    if !ast_table.fields.iter().any(|f| &f.name == db_col) {
+                        up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()).await?;\n", db_tname, db_col));
+                    }
+                }
+            } else {
+                up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // Schema::drop_if_exists(\"{}\").await?;\n", db_tname));
+            }
+        }
+
+        if up_queries.is_empty() {
+            println!("{}", "? Database is already in sync with AST!".green());
+            return Ok(());
+        }
+
+        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+        let file_stem = format!("m{}_{}", timestamp, "auto_sync");
+
+        let migrations_dir = Path::new("src/migrations");
+        if !migrations_dir.exists() {
+            fs::create_dir_all(migrations_dir)?;
+        }
+        let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
+
+        let up_body = up_queries.join("\n");
+        let down_body = down_queries.join("\n");
+
+        let template = format!(
+            r#"use rullst_orm::schema::{{Schema, Migration}};
+use rullst_orm::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {{
+    fn name(&self) -> &'static str {{
+        "{}"
+    }}
+
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+{}
+        Ok(())
+    }}
+
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
+{}
+        Ok(())
+    }}
+}}
+"#,
+            file_stem, up_body, down_body
+        );
+
+        fs::write(&migration_path, template)?;
+        println!(
+            "{}",
+            format!(
+                "? Auto-migration created safely at '{}'!",
+                migration_path.display()
+            )
+            .green()
+            .bold()
+        );
+
+        crate::generators::migration::regenerate_migrations_mod()?;
+    } else {
+        println!(
+            "{}",
+            "? No .env file found. Auto migrations require a DATABASE_URL.".red()
+        );
+    }
+
+    Ok(())
+}

@@ -76,6 +76,75 @@ impl AiProvider for OpenAiProvider {
         Ok(content.to_string())
     }
 
+    async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {
+        let url = "https://api.openai.com/v1/chat/completions";
+
+        let mime_type = if image_bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+            "image/jpeg"
+        } else if image_bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+            "image/png"
+        } else if image_bytes.starts_with(&[0x52, 0x49, 0x46, 0x46]) {
+            "image/webp"
+        } else if image_bytes.starts_with(&[0x47, 0x49, 0x46, 0x38]) {
+            "image/gif"
+        } else {
+            "image/jpeg" // Fallback
+        };
+
+        use base64::Engine;
+        let base64_img = base64::engine::general_purpose::STANDARD.encode(image_bytes);
+        let data_uri = format!("data:{};base64,{}", mime_type, base64_img);
+
+        let body = serde_json::json!({
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": text
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": data_uri
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 1024
+        });
+
+        let res = self
+            .client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&body)
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let err_text = res.text().await.unwrap_or_default();
+            return Err(AiError::ApiError(format!(
+                "OpenAI error status {}: {}",
+                status, err_text
+            )));
+        }
+
+        let json: serde_json::Value = res.json().await?;
+        let content = json["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or_else(|| {
+                AiError::ApiError("No content returned from OpenAI vision response".to_string())
+            })?;
+
+        Ok(content.to_string())
+    }
+
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         let url = "https://api.openai.com/v1/embeddings";
 

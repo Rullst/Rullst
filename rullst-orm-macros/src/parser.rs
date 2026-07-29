@@ -121,6 +121,8 @@ pub struct ParsedModel {
     pub skipped_fields: Vec<syn::Ident>,
     pub relations: Vec<ParsedRelation>,
     pub has_soft_deletes: bool,
+    pub rag_context_fields: Vec<syn::Ident>,
+    pub embedding_for: Option<(syn::Ident, String)>,
 }
 
 #[derive(Clone, Debug)]
@@ -267,6 +269,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut hidden_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
+    let mut rag_context_fields = vec![];
+    let mut embedding_for = None;
     // If the user explicitly opted in via `#[orm(soft_delete(...))]` the
     // `has_soft_deletes` flag is derived from that. Otherwise we keep the
     // legacy behaviour of detecting a `deleted_at` field by name so
@@ -329,6 +333,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                         is_masked = true;
                     } else if trimmed == "cascade_soft_delete" {
                         cascade_soft_delete = true;
+                    } else if trimmed == "rag_context" {
+                        rag_context_fields.push(field_name.clone());
                     } else {
                         let parts: Vec<&str> = trimmed.split('=').collect();
                         if parts.len() == 2 {
@@ -372,6 +378,9 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                                 "pivot_table" => pivot_table = val.to_string(),
                                 "local_key" => local_key = val.to_string(),
                                 "name" => morph_name = val.to_string(),
+                                "embedding_for" => {
+                                    embedding_for = Some((field_name.clone(), val.to_string()));
+                                }
                                 _ => {}
                             }
                         }
@@ -460,6 +469,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         skipped_fields,
         relations,
         has_soft_deletes,
+        rag_context_fields,
+        embedding_for,
     })
 }
 

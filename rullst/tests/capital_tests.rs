@@ -1,3 +1,5 @@
+#![cfg(feature = "capital")]
+
 use rullst::capital::{BillingProvider, StripeProvider, SubscriptionStatus};
 
 #[tokio::test]

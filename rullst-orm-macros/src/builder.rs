@@ -193,6 +193,8 @@ pub fn generate(
             pub havings: Vec<(String, String)>,
             pub bindings: Vec<rullst_orm::RullstValue>,
             pub errors: Vec<rullst_orm::Error>,
+            pub ctes: Vec<String>,
+            pub has_recursive_cte: bool,
             pub with_trashed: bool,
             pub only_trashed: bool,
             #[cfg(feature = "redis")]
@@ -254,6 +256,8 @@ pub fn generate(
                     havings: vec![],
                     bindings: vec![],
                     errors: vec![],
+                    ctes: vec![],
+                    has_recursive_cte: false,
                     with_trashed: false,
                     only_trashed: false,
                     #[cfg(feature = "redis")]
@@ -305,6 +309,48 @@ pub fn generate(
             pub fn or_where_exists<B: rullst_orm::schema::SubqueryBuilder>(mut self, subquery: B) -> Self {
                 let sql = subquery.to_sql();
                 self.wheres.push(("OR".to_string(), format!("EXISTS ({})", sql)));
+                for binding in subquery.bindings() {
+                    self.bindings.push(binding.clone());
+                }
+                self
+            }
+
+            pub fn with_raw(mut self, cte_name: &str, query: &str) -> Self {
+                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("with_raw() — invalid CTE identifier: {}", e)));
+                }
+                self.ctes.push(format!("{} AS ({})", cte_name, query));
+                self
+            }
+
+            pub fn with_recursive_raw(mut self, cte_name: &str, query: &str) -> Self {
+                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("with_recursive_raw() — invalid CTE identifier: {}", e)));
+                }
+                self.ctes.push(format!("{} AS ({})", cte_name, query));
+                self.has_recursive_cte = true;
+                self
+            }
+
+            pub fn with_cte<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {
+                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("with_cte() — invalid CTE identifier: {}", e)));
+                }
+                let sql = subquery.to_sql();
+                self.ctes.push(format!("{} AS ({})", cte_name, sql));
+                for binding in subquery.bindings() {
+                    self.bindings.push(binding.clone());
+                }
+                self
+            }
+
+            pub fn with_recursive<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {
+                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("with_recursive() — invalid CTE identifier: {}", e)));
+                }
+                let sql = subquery.to_sql();
+                self.ctes.push(format!("{} AS ({})", cte_name, sql));
+                self.has_recursive_cte = true;
                 for binding in subquery.bindings() {
                     self.bindings.push(binding.clone());
                 }
@@ -690,12 +736,39 @@ pub fn generate(
             /// Orders results by L2 distance similarity using pgvector (`<->` operator).
             /// Safely formats the `vector` values directly into the query.
             pub fn order_by_similarity(mut self, column: &str, vector: Vec<f64>) -> Self {
+                self.order_by_l2_distance(column, vector)
+            }
+
+            /// Orders results by L2 distance similarity using pgvector (`<->` operator).
+            pub fn order_by_l2_distance(mut self, column: &str, vector: Vec<f64>) -> Self {
                 self.reject_skipped_column(column);
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
-                    self.errors.push(rullst_orm::Error::Validation(format!("order_by_similarity() — invalid column identifier: {}", e)));
+                    self.errors.push(rullst_orm::Error::Validation(format!("order_by_l2_distance() — invalid column identifier: {}", e)));
                 }
                 let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
                 self.order_by = Some(format!("{} <-> '{}'", column, vec_str));
+                self
+            }
+
+            /// Orders results by Cosine distance using pgvector (`<=>` operator).
+            pub fn order_by_cosine_distance(mut self, column: &str, vector: Vec<f64>) -> Self {
+                self.reject_skipped_column(column);
+                if let Err(e) = rullst_orm::schema::validate_identifier(column) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("order_by_cosine_distance() — invalid column identifier: {}", e)));
+                }
+                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
+                self.order_by = Some(format!("{} <=> '{}'", column, vec_str));
+                self
+            }
+
+            /// Orders results by Inner Product using pgvector (`<#>` operator).
+            pub fn order_by_inner_product(mut self, column: &str, vector: Vec<f64>) -> Self {
+                self.reject_skipped_column(column);
+                if let Err(e) = rullst_orm::schema::validate_identifier(column) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("order_by_inner_product() — invalid column identifier: {}", e)));
+                }
+                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
+                self.order_by = Some(format!("{} <#> '{}'", column, vec_str));
                 self
             }
 
@@ -729,6 +802,18 @@ pub fn generate(
             pub fn offset(mut self, value: usize) -> Self {
                 self.offset = Some(value);
                 self
+            }
+
+            fn push_ctes(&self, sql: &mut String) {
+                if !self.ctes.is_empty() {
+                    if self.has_recursive_cte {
+                        sql.push_str("WITH RECURSIVE ");
+                    } else {
+                        sql.push_str("WITH ");
+                    }
+                    sql.push_str(&self.ctes.join(", "));
+                    sql.push(' ');
+                }
             }
 
             fn push_select(&self, sql: &mut String) {
@@ -865,9 +950,11 @@ pub fn generate(
             /// WARNING: This generates the raw SQL query. Ensure all dynamic table names and column names are validated.
             pub fn to_sql(&self) -> String {
                 let estimated_capacity = 50 + #table_name.len() + self.joins.iter().map(|j| j.len() + 1).sum::<usize>()
-                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>();
+                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>()
+                    + self.ctes.iter().map(|c| c.len() + 2).sum::<usize>();
                 let mut sql = String::with_capacity(estimated_capacity);
 
+                self.push_ctes(&mut sql);
                 self.push_select(&mut sql);
                 self.push_from(&mut sql);
                 self.push_joins(&mut sql);
@@ -883,9 +970,11 @@ pub fn generate(
 
             pub fn to_count_sql(&self) -> String {
                 let estimated_capacity = 50 + #table_name.len() + self.joins.iter().map(|j| j.len() + 1).sum::<usize>()
-                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>();
+                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>()
+                    + self.ctes.iter().map(|c| c.len() + 2).sum::<usize>();
                 let mut sql = String::with_capacity(estimated_capacity);
 
+                self.push_ctes(&mut sql);
                 sql.push_str("SELECT COUNT(*)");
                 self.push_from(&mut sql);
                 self.push_joins(&mut sql);
@@ -900,9 +989,11 @@ pub fn generate(
 
             pub fn to_pluck_sql(&self, column: &str) -> String {
                 let estimated_capacity = 50 + #table_name.len() + self.joins.iter().map(|j| j.len() + 1).sum::<usize>()
-                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>();
+                    + self.wheres.iter().map(|(o, c)| o.len() + c.len() + 4).sum::<usize>()
+                    + self.ctes.iter().map(|c| c.len() + 2).sum::<usize>();
                 let mut sql = String::with_capacity(estimated_capacity);
 
+                self.push_ctes(&mut sql);
                 sql.push_str("SELECT ");
                 if self.is_distinct { sql.push_str("DISTINCT "); }
                 sql.push_str(column);
