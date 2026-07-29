@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785351720994,
+  "lastUpdate": 1785353798224,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -3941,6 +3941,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2312,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6236e6ab34b6b27ca558eb271f217a634f36e6cc",
+          "message": "feat: implement Rullst Capital billing and subscription management engine with provider-agnostic traits",
+          "timestamp": "2026-07-29T16:35:19-03:00",
+          "tree_id": "e1925f6e4618914a0af77905139cbd8a028e1ea4",
+          "url": "https://github.com/Rullst/Rullst/commit/6236e6ab34b6b27ca558eb271f217a634f36e6cc"
+        },
+        "date": 1785353796803,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 584,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 752,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 537,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1658,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
