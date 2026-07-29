@@ -22,6 +22,9 @@ oauth = ["dep:rullst-connect"]
 ai = ["dep:rullst-ai"]
 capital = ["dep:rullst-capital"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
+strict-postgres = ["rullst-core/strict-postgres"]
+strict-mysql = ["rullst-core/strict-mysql"]
+strict-sqlite = ["rullst-core/strict-sqlite"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }

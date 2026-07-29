@@ -12,6 +12,9 @@ studio = []
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
+strict-postgres = ["rullst-orm/strict-postgres"]
+strict-mysql = ["rullst-orm/strict-mysql"]
+strict-sqlite = ["rullst-orm/strict-sqlite"]
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }

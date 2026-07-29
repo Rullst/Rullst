@@ -1,5 +1,6 @@
 #![cfg(not(miri))]
 #![cfg(feature = "studio")]
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use rullst::studio::Studio;
 use rullst::testing::TestApp;
