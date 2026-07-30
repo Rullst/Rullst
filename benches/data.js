@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785396568841,
+  "lastUpdate": 1785433081054,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4643,6 +4643,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2305,
             "range": "± 39",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0c62d73561c3032e7b2c4a94ace686bbec0ebe26",
+          "message": "feat: add CI workflows for security auditing, DAST, Kani verification, Miri, and mutation testing with updated OSV and mutant configurations",
+          "timestamp": "2026-07-30T14:36:27-03:00",
+          "tree_id": "2bdc1cbf568898d9a59cf814a5371a1511eba9ab",
+          "url": "https://github.com/Rullst/Rullst/commit/0c62d73561c3032e7b2c4a94ace686bbec0ebe26"
+        },
+        "date": 1785433079732,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 962,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 634,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2240,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
