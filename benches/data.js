@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785361596260,
+  "lastUpdate": 1785392680638,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4319,6 +4319,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2308,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "67691e70b27aa16243dcc3990432b26f5ab0f18f",
+          "message": "fix(ci): fix RSA PKCS#8 key format, sqlite test guards and doctests",
+          "timestamp": "2026-07-30T03:23:08-03:00",
+          "tree_id": "f2db552740203a4bc3801b899b6e807935cdd5bd",
+          "url": "https://github.com/Rullst/Rullst/commit/67691e70b27aa16243dcc3990432b26f5ab0f18f"
+        },
+        "date": 1785392679454,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1002,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 669,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2288,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
