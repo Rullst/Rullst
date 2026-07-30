@@ -1,8 +1,11 @@
 [files]
-# Exclude provider files — they contain RSA/JWK test key data (base64 strings)
-# that trigger false positives for the typos spell checker.
 extend-exclude = [
     "rullst-connect/src/providers/apple.rs",
     "rullst-connect/src/providers/google.rs",
     "rullst-connect/src/providers/oidc.rs",
 ]
+
+[default.extend-words]
+Ba = "Ba"
+Jus = "Jus"
+Ue = "Ue"

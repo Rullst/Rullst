@@ -1,32 +1,11 @@
+[files]
+extend-exclude = [
+    "rullst-connect/src/providers/apple.rs",
+    "rullst-connect/src/providers/google.rs",
+    "rullst-connect/src/providers/oidc.rs",
+]
+
 [default.extend-words]
-componente = "componente"
-componentes = "componentes"
-Braket = "Braket"
-inicial = "inicial"
-atual = "atual"
-Cliente = "Cliente"
-Comando = "Comando"
-cose = "cose"
-COSE = "COSE"
-Erro = "Erro"
-erros = "erros"
-caracteres = "caracteres"
-CAF = "CAF"
-Operacional = "Operacional"
-Monitores = "Monitores"
-oficial = "oficial"
-Ratatui = "Ratatui"
-wheres = "wheres"
-momento = "momento"
-resolvendo = "resolvendo"
-consumirem = "consumirem"
-vai = "vai"
-caractere = "caractere"
-SIEMs = "SIEMs"
-OIS6kKfBAl = "OIS6kKfBAl"
-
-[default.extend-identifiers]
-OIS = "OIS"
-SIE = "SIE"
-Splitted = "Splitted"
-
+Ba = "Ba"
+Jus = "Jus"
+Ue = "Ue"
