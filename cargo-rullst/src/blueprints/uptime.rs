@@ -448,7 +448,7 @@ pub fn render_header() -> String {
                     <p class="text-sm text-slate-400 mt-1">"Monitoramento contínuo de APIs e sites em tempo real."</p>
                 </div>
             </div>
-            <span class="px-3.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-950/40 rounded-full border border-emerald-800/40">"Sistema Operacional"</span>
+            <span class="px-3.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-950/40 rounded-full border border-emerald-800/40">"System Online"</span>
         </header>
     }
 }
@@ -467,7 +467,7 @@ pub fn render_kpi_cards(global_uptime: f64, avg_resp_time: u64, active_monitors_
                 <span class="text-xs text-sky-400/80 mt-1">"Latência de resposta HTTP"</span>
             </div>
             <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Monitores Ativos"</span>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Active Monitors"</span>
                 <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{} / {}", active_monitors_count, total_monitors)}</span>
                 <span class="text-xs text-orange-400/80 mt-1">"Alvos ativos de varredura"</span>
             </div>
@@ -478,7 +478,7 @@ pub fn render_kpi_cards(global_uptime: f64, avg_resp_time: u64, active_monitors_
 pub fn render_monitors_list(monitors: &[(Monitor, Vec<Heartbeat>)]) -> String {
     html! {
         <div class="lg:col-span-2 space-y-6">
-            <h2 class="text-xl font-bold text-slate-200">"Monitores Registrados"</h2>
+            <h2 class="text-xl font-bold text-slate-200">"Registered Monitors"</h2>
             
             { rullst::html::RawHtml::new(monitors.iter().map(|(monitor, history)| {
                 let is_active = monitor.is_active == 1;

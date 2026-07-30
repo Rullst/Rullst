@@ -331,7 +331,7 @@ fn install_wasm32_target() {
 fn compile_wasm_target(debug: bool) -> Result<(), std::io::Error> {
     println!(
         "{}",
-        "📦 Compilando componentes frontend para wasm32-unknown-unknown...".yellow()
+        "📦 Compiling frontend components for wasm32-unknown-unknown...".yellow()
     );
     let mut cargo_cmd = Command::new("cargo");
     cargo_cmd

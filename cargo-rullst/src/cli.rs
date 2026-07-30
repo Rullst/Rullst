@@ -26,7 +26,7 @@ use crate::generators::{
 
 #[derive(Parser)]
 #[command(name = "cargo-rullst")]
-#[command(about = "CLI oficial do Rullst Framework", long_about = None)]
+#[command(about = "Official CLI for the Rullst Framework", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

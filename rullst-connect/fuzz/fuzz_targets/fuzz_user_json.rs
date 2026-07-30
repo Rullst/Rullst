@@ -4,10 +4,11 @@ use libfuzzer_sys::fuzz_target;
 use rullst_connect::user::ConnectUser;
 
 fuzz_target!(|data: &[u8]| {
-    // Alvo: Testar a robustez do parser JSON para perfis de usuário OAuth.
-    // Provedores diferentes podem retornar tipos de dados imprevistos ou campos
-    // ausentes. Isso garante que a biblioteca retorne um erro amigável (Err)
-    // ao invés de derrubar o servidor em pânico.
+    // Target: Test the robustness of the JSON parser for OAuth user profiles.
+    // Different providers may return unexpected data types or missing fields.
+    // This ensures the library returns a friendly error (Err)
+    // instead of crashing the server with a panic.
+
     
     // LibFuzzer/ASan runs out of memory (RSS limit) when fuzzing highly nested JSON 
     // into serde_json::Value due to the overhead of tracking thousands of small allocations.

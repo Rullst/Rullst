@@ -1,4 +1,6 @@
 [files]
+# Exclude provider files — they contain RSA/JWK test key data (base64 strings)
+# that trigger false positives for the typos spell checker.
 extend-exclude = [
     "rullst-connect/src/providers/apple.rs",
     "rullst-connect/src/providers/google.rs",
@@ -6,30 +8,15 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+# RSA/JWK base64 key tokens in test data
 Ba = "Ba"
 Jus = "Jus"
 Ue = "Ue"
-momento = "momento"
-wheres = "wheres"
-erro = "erro"
-caracteres = "caracteres"
-Ratatui = "Ratatui"
-oficial = "oficial"
-Braket = "Braket"
-componentes = "componentes"
-Erro = "Erro"
-COSE = "COSE"
-cose = "cose"
-Operacional = "Operacional"
-Monitores = "Monitores"
-Comando = "Comando"
-consumirem = "consumirem"
-caractere = "caractere"
-resolvendo = "resolvendo"
-erros = "erros"
-Splitted = "Splitted"
-inicial = "inicial"
-atual = "atual"
-componente = "componente"
-Cliente = "Cliente"
-vai = "vai"
+
+# Technical identifiers — NOT typos
+wheres = "wheres"   # SQL WHERE clause collection field in rullst-orm-macros
+COSE = "COSE"       # CBOR Object Signing and Encryption (WebAuthn standard)
+cose = "cose"       # variable names for COSE keys in passkey.rs
+Ratatui = "Ratatui" # real Rust TUI library name
+Braket = "Braket"   # AWS Braket (quantum computing product)
+CAF = "CAF"         # product SKU code in ERP seed data

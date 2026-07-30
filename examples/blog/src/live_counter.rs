@@ -1,7 +1,7 @@
 use rullst::html;
 use rullst::live_component;
 
-/// Nosso componente Rullst Live. Todo o estado vive e é operado pelo servidor!
+/// Our Rullst Live component. All state lives on and is managed by the server!
 #[live_component]
 #[derive(Default)]
 pub struct CounterComponent {
@@ -11,7 +11,7 @@ pub struct CounterComponent {
 #[live_component]
 impl CounterComponent {
     pub fn mount(&mut self) {
-        // Inicializa o estado. Você poderia até buscar coisas do DB aqui usando o rullst-orm!
+        // Initialize state. You could even fetch things from the DB here using rullst-orm!
         self.count = 0;
     }
 

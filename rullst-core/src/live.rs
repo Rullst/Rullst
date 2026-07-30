@@ -5,59 +5,59 @@ use axum::response::IntoResponse;
 use serde_json::Value;
 
 /// Rullst Live Component (Server-Driven UI)
-/// Inspirado no Phoenix LiveView e Laravel Livewire, permitindo que você escreva
-/// componentes interativos totalmente em Rust, atualizados em tempo real via WebSockets.
+/// Inspired by Phoenix LiveView and Laravel Livewire, allowing you to write
+/// interactive components entirely in Rust, updated in real-time via WebSockets.
 #[async_trait]
 pub trait LiveComponent: Send + Sync + Default + 'static {
-    /// Chamado na primeira renderização (tanto no carregamento HTTP inicial quanto ao abrir a conexão WebSocket).
+    /// Called on the first render (both on the initial HTTP load and when the WebSocket connection opens).
     async fn mount(&mut self) {}
 
-    /// Processa eventos JSON originados do frontend via WebSocket.
-    /// O HTMX enviará por padrão um payload JSON contendo cabeçalhos e valores submetidos (hx-vals, formulários).
+    /// Processes JSON events originating from the frontend via WebSocket.
+    /// HTMX will by default send a JSON payload containing headers and submitted values (hx-vals, forms).
     async fn handle_event(&mut self, _payload: Value) {}
 
-    /// Renderiza o estado atual do componente em uma String HTML.
-    /// OBRIGATÓRIO: O root da string renderizada DEVE possuir um atributo `id` exclusivo
-    /// para que o HTMX saiba exatamente qual nó do DOM deve ser atualizado.
+    /// Renders the current state of the component as an HTML String.
+    /// REQUIRED: The root of the rendered string MUST have a unique `id` attribute
+    /// so that HTMX knows exactly which DOM node to update.
     fn render(&self) -> String;
 }
 
-/// Handler genérico do Axum para lidar com a rota WebSocket de um componente Rullst Live.
-/// Ele instanciará o componente, chamará o `mount` e entrará no loop de escuta de eventos.
+/// Generic Axum handler for the WebSocket route of a Rullst Live component.
+/// It will instantiate the component, call `mount`, and enter the event-listening loop.
 pub async fn live_ws_handler<C: LiveComponent>(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(|socket| async move {
         let mut rullst_ws = WebSocket::new(socket);
         let mut component = C::default();
 
-        // Monta o estado inicial na sessão do WebSocket
+        // Mount the initial state in the WebSocket session
         component.mount().await;
 
-        // Loop contínuo recebendo eventos do frontend (HTMX ws-ext)
+        // Continuous loop receiving events from the frontend (HTMX ws-ext)
         while let Some(Ok(msg)) = rullst_ws.recv().await {
-            // O HTMX envia mensagens em formato JSON com headers e valores de input
+            // HTMX sends messages in JSON format with headers and input values
             if let Ok(payload) = serde_json::from_str::<Value>(&msg) {
-                // Repassa o evento para o ciclo de vida do componente
+                // Forward the event to the component lifecycle
                 component.handle_event(payload).await;
 
-                // Re-renderiza o HTML após a possível mutação de estado
+                // Re-render the HTML after the possible state mutation
                 let html = component.render();
 
-                // Dispara o novo HTML via WebSocket. O HTMX fará o hot-swap automaticamente usando o ID do root.
+                // Push the new HTML via WebSocket. HTMX will hot-swap it automatically using the root ID.
                 if let Err(e) = rullst_ws.send_html(html).await {
                     eprintln!("Rullst Live WS Error: {}", e);
-                    break; // Cliente desconectado ou falha na rede
+                    break; // Client disconnected or network failure
                 }
             }
         }
     })
 }
 
-/// Utilitário para facilitar a montagem de um componente Live em uma página HTTP normal.
+/// Utility to facilitate mounting a Live component in a normal HTTP page.
 pub struct Live;
 
 impl Live {
-    /// Gera a tag wrapper `<div>` que ativa a extensão `hx-ext="ws"` do HTMX.
-    /// Ele faz o pré-render (`mount` + `render`) para garantir SSR otimizado para SEO na primeira carga.
+    /// Generates the wrapper `<div>` tag that activates the `hx-ext="ws"` HTMX extension.
+    /// It pre-renders (`mount` + `render`) to guarantee SEO-optimised SSR on the first load.
     pub async fn mount<C: LiveComponent>(ws_path: &str) -> String {
         let mut comp = C::default();
         comp.mount().await;
@@ -71,10 +71,11 @@ impl Live {
             .replace('<', "&lt;")
             .replace('>', "&gt;");
 
-        // Encapsula o componente em uma div invisível que instrui o HTMX a abrir o WebSocket
+        // Wrap the component in an invisible div that instructs HTMX to open the WebSocket
         format!(
             "<div hx-ext=\"ws\" ws-connect=\"{}\">\n{}\n</div>",
             safe_path, html
         )
     }
 }
+

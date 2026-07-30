@@ -2,15 +2,16 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    // Tenta converter os bytes aleatórios para string
+    // Attempt to convert the random bytes into a UTF-8 string
     if let Ok(s) = std::str::from_utf8(data) {
-        // Divide a string na metade de forma segura (respeitando bordas de caracteres UTF-8)
+        // Split the string in half safely (respecting UTF-8 character boundaries)
         let mid = s.floor_char_boundary(s.len() / 2);
         let (old_json, new_json) = s.split_at(mid);
         
-        // Fuzzing a função de diff de auditoria
-        // O objetivo é garantir que essa função nunca cause um 'panic!'
-        // mesmo com JSONs inválidos, cortados pela metade ou com caracteres obscuros.
+        // Fuzzing the audit diff function
+        // The goal is to ensure this function never causes a 'panic!'
+        // even with invalid JSONs, halved or containing obscure characters.
         let _ = rullst_orm::audit::compute_diff(old_json, new_json);
     }
 });
+

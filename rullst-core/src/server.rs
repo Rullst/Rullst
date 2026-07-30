@@ -225,12 +225,13 @@ impl Server {
         }
 
         println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
+        println!("\x1b[36m⚡ Initializing Rullst in Hot-Reloading mode via dylib...\x1b[0m");
 
         let (initial_router, library) = match load_dylib_router(&lib_path, is_dev) {
             Ok(r) => r,
             Err(e) => {
                 println!(
-                    "\x1b[31m❌ Falha ao carregar dylib inicial: {}. Certifique-se de que a biblioteca dinâmica foi compilada rodando 'cargo build --lib'.\x1b[0m",
+                    "\x1b[31m❌ Failed to load initial dylib: {}. Make sure the dynamic library was compiled by running 'cargo build --lib'.\x1b[0m",
                     e
                 );
                 return Err(e);
@@ -555,7 +556,7 @@ fn load_dylib_router(
         .ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                "Caminho da dylib inválido ou caracteres não UTF-8 detectados",
+                "Invalid dylib path or non-UTF-8 characters detected",
             )
         })?;
 

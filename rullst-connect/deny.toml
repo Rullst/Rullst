@@ -1,12 +1,13 @@
 [advisories]
-# Não falhar o CI por crates descontinuados (apenas avisa)
+# Do not fail CI for unmaintained crates (warn only)
 unmaintained = "none"
-# Ignorar vulnerabilidade "Marvin Attack" da crate rsa que jsonwebtoken puxa (sem patch até o momento)
+# Ignore "Marvin Attack" vulnerability in the rsa crate pulled by jsonwebtoken (no patch available yet)
 ignore = ["RUSTSEC-2023-0071"]
 
 [bans]
-# Ignorar avisos de múltiplas versões da mesma dependência (ex: thiserror v1 e v2)
+# Allow multiple versions of the same dependency (e.g. thiserror v1 and v2)
 multiple-versions = "allow"
+
 
 [licenses]
 # Licenças permitidas globalmente

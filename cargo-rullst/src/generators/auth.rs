@@ -237,10 +237,10 @@ const PASSKEY_SCRIPT: &str = r#"<script>
             if (finishRes.ok) {
                 window.location.href = "/dashboard";
             } else {
-                alert("Falha ao registrar Passkey: " + await finishRes.text());
+                alert("Failed to register Passkey: " + await finishRes.text());
             }
         } catch (err) {
-            alert("Erro: " + err.message);
+            alert("Error: " + err.message);
         }
     }
 
@@ -248,7 +248,7 @@ const PASSKEY_SCRIPT: &str = r#"<script>
         try {
             const email = document.getElementById("email").value;
             if (!email) {
-                alert("Por favor, digite seu email para fazer login com Passkey.");
+                alert("Please enter your email to log in with Passkey.");
                 return;
             }
 
@@ -292,10 +292,10 @@ const PASSKEY_SCRIPT: &str = r#"<script>
             if (finishRes.ok) {
                 window.location.href = "/dashboard";
             } else {
-                alert("Falha na autenticação da Passkey: " + await finishRes.text());
+                alert("Passkey authentication failed: " + await finishRes.text());
             }
         } catch (err) {
-            alert("Erro: " + err.message);
+            alert("Error: " + err.message);
         }
     }
 </script>"#;

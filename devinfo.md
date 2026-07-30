@@ -1,14 +1,14 @@
-Info for portuguese developers
+Info for developers
 
-- Trabalhando localmente no framework: 
-cargo install --path cargo-rullst (na pasta do repo)
+- Working locally on the framework:
+cargo install --path cargo-rullst (from the repo root)
 
 
-- Testando a versão como um usuário final: 
+- Testing as an end user:
 cargo install cargo-rullst --force
 
 
-Comando para verificar atualizações no projeto:
+Command to check for updates in the project:
 cargo outdated --root-deps-only
 
 
@@ -18,7 +18,7 @@ cargo fmt ; cargo publish --dry-run
 
 
 
-Lançamento da nova versão:
+Releasing a new version:
 
 git tag -a v12.0.0 -m "Release v12.0.0"
 

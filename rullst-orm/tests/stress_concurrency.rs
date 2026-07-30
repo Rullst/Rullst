@@ -36,8 +36,8 @@ async fn test_pool_exhaustion_and_concurrency() {
     let counter = Arc::new(AtomicU32::new(0));
     let mut handles: Vec<JoinHandle<()>> = Vec::new();
 
-    // Spawna 200 tarefas concorrentes. O pool padrão do sqlx tem 10 conexões max.
-    // Se a lib prender conexões (ex: deadlock), isso vai travar.
+    // Spawns 200 concurrent tasks. The default sqlx pool has a max of 10 connections.
+    // If the lib holds onto connections (e.g. deadlock), this will hang.
     let concurrency_level = 200;
 
     for i in 0..concurrency_level {

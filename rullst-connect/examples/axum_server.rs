@@ -79,10 +79,10 @@ async fn callback_google(Query(query): Query<AuthRequest>) -> impl IntoResponse 
     };
     match provider.get_user(params).await {
         Ok(user) => Html(format!(
-            "<h2>Bem-vindo, {}!</h2><p>Email: {:?}</p><p>ID: {}</p><img src='{:?}'>",
+            "<h2>Welcome, {}!</h2><p>Email: {:?}</p><p>ID: {}</p><img src='{:?}'>",
             user.name, user.email, user.id, user.avatar_url
         )),
-        Err(e) => Html(format!("Erro no login: {:?}", e)),
+        Err(e) => Html(format!("Login error: {:?}", e)),
     }
 }
 

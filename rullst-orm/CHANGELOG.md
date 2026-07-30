@@ -96,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zero-Clone Count & Pluck SQL:** Os métodos `.count()`, `.pluck_string()` e `.pluck_i32()` agora constroem sua query final nativamente num _buffer_ de string através dos métodos internos `to_count_sql()` e `to_pluck_sql()`, eliminando a necessidade custosa de chamar `.clone()` na `struct` inteira (o que copiava dúzias de _Vecs_ no `QueryBuilder`).
 - **O(N) Array Chunking:** O método `.chunk()` do `RullstCollection` foi reescrito de um _loop_ iterador custoso para a utilização da primitiva nativa `.split_off()`, ganhando extrema velocidade sem _memory shifting_. Adicionalmente foi corrigido um bug na separação de restos matemáticos da divisão.
 - **Implode String Capacity:** O método `.implode()` do `RullstCollection` agora pré-aloca rigidamente a capacidade do _buffer_ de _string_ em tempo de execução, erradicando todas as realocações fragmentadas de memória.
-- **Zero-Clone Loops:** Refatoração de *loops* nos motores de `Audit` e `Schema` (especificamente em `compute_diff` e `rollback_migrations`) para consumirem dados estritamente de memória (*owned*), abolindo cópias desnecessárias de _strings_.
+- **Zero-Clone Loops:** Refactored *loops* in the `Audit` and `Schema` engines (specifically in `compute_diff` and `rollback_migrations`) to consume data strictly from memory (*owned*), eliminating unnecessary string copies.
 
 ### Fixed
 - **Redis Graceful Fallback:** Made Redis event publishing inside `.save()` and `.delete()` optional, preventing database operations from failing when the `redis` feature is enabled but no Redis server/client is initialized.
@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SQL Injection Prevention:** Adicionado método `.bind()` nativo no `QueryBuilder` permitindo que usuários efetuem binds de variáveis de forma 100% segura e parametrizada ao utilizar queries cruas via `.where_raw()`.
 
 ### Fixed
-- **PostgreSQL Macros Compatibility:** O ORM agora detecta automaticamente o driver `postgres` em runtime e substitui parâmetros `?` por marcadores numéricos `$1, $2, etc`, resolvendo os erros de sintaxe (como `ERR_EMPTY_RESPONSE` e crashes de servidor) durante queries complexas no PostgreSQL mantendo a retrocompatibilidade com SQLite e MySQL.
+- **PostgreSQL Macros Compatibility:** The ORM now automatically detects the `postgres` driver at runtime and replaces `?` parameters with numeric placeholders `$1, $2, etc`, resolving syntax errors (such as `ERR_EMPTY_RESPONSE` and server crashes) during complex queries on PostgreSQL while maintaining backwards compatibility with SQLite and MySQL.
 
 ## [4.0.1] - 2026-06-01
 
@@ -456,7 +456,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Dependencies Updated:** All `cargo` dependencies bumped to their latest versions.
 - **Removed Unused Imports:** Cleaned up the codebase with `cargo clippy --fix`.
-- **Macro Modularization:** Splitted the massive `rullst-orm-macros` monolith into smaller files (`parser.rs`, `builder.rs`, `models.rs`, etc.) to improve maintainability and AI processing capabilities.
+- **Macro Modularization:** Split the massive `rullst-orm-macros` monolith into smaller files (`parser.rs`, `builder.rs`, `models.rs`, etc.) to improve maintainability and AI processing capabilities.
 
 ## [1.1.0] - 2026-05-25
 
