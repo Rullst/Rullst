@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785395920625,
+  "lastUpdate": 1785396568841,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4589,6 +4589,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2341,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d631ecfd26d911f62862a97119c58f48225a120d",
+          "message": "fix(ci): remove extra blank line in live.rs, translate remaining Erro in axum_server, remove _typos.toml conflict, clean typos config",
+          "timestamp": "2026-07-30T04:28:03-03:00",
+          "tree_id": "0fa5699914bae571d28f872f13a2608dd1a509c9",
+          "url": "https://github.com/Rullst/Rullst/commit/d631ecfd26d911f62862a97119c58f48225a120d"
+        },
+        "date": 1785396568416,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 991,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 634,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2305,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
