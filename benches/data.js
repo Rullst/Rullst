@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785394959620,
+  "lastUpdate": 1785395920625,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4535,6 +4535,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2334,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8c45289dcefaa6e9d0d751a43adbc4b526fd1ef7",
+          "message": "chore(i18n): translate user-facing strings and comments from Portuguese to English",
+          "timestamp": "2026-07-30T04:17:13-03:00",
+          "tree_id": "66a1b28d25a25eca0b7ef08b80efdcdf7eea9124",
+          "url": "https://github.com/Rullst/Rullst/commit/8c45289dcefaa6e9d0d751a43adbc4b526fd1ef7"
+        },
+        "date": 1785395920150,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 741,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 980,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 645,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2341,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
