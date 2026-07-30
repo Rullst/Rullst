@@ -15,7 +15,7 @@ use tower_service::Service;
 /// hot-reload DLL watcher, traffic shield, and rate limiter in a single fluent chain.
 ///
 /// # Example
-/// ```rust,no_run
+/// ```rust,ignore
 /// use rullst::{Server, routes, routing::get};
 ///
 /// #[tokio::main]

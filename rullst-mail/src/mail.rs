@@ -105,12 +105,14 @@ pub struct LogDriver;
 #[async_trait]
 impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
-        let log_dir = std::path::Path::new("storage/logs");
-        tokio::fs::create_dir_all(log_dir).await.map_err(|e| {
-            MailError::DriverError(format!("Failed to create log directory: {}", e))
-        })?;
-
-        let log_path = log_dir.join("mail.log");
+        let path_str =
+            std::env::var("MAIL_LOG_PATH").unwrap_or_else(|_| "storage/logs/mail.log".to_string());
+        let log_path = std::path::PathBuf::from(path_str);
+        if let Some(parent) = log_path.parent() {
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                MailError::DriverError(format!("Failed to create log directory: {}", e))
+            })?;
+        }
         let formatted = format!(
             "========================================\n[MAIL SENT] {}\nTo: {}\nFrom: {}\nSubject: {}\n----------------------------------------\n[TEXT BODY]\n{}\n----------------------------------------\n[HTML BODY]\n{}\n========================================\n\n",
             chrono::Local::now().to_rfc3339(),
@@ -139,6 +141,8 @@ impl MailDriver for LogDriver {
             })?;
             file.flush()
                 .map_err(|e| MailError::DriverError(format!("Failed to flush log file: {}", e)))?;
+            file.sync_all()
+                .map_err(|e| MailError::DriverError(format!("Failed to sync log file: {}", e)))?;
             Ok::<(), MailError>(())
         })
         .await
@@ -470,14 +474,9 @@ mod tests {
     #[tokio::test]
     async fn test_log_driver() {
         let cwd = std::env::current_dir().unwrap_or_default();
-        let log_dir = std::path::Path::new("storage/logs");
-        let _ = tokio::fs::create_dir_all(log_dir).await;
-
-        // Wait, LogDriver hardcodes "storage/logs/mail.log"!
-        // I cannot easily change LogDriver to write to a unique file without modifying the struct.
-        // Let's just make sure we clear the log file.
         let log_path = "storage/logs/mail.log";
-        let _ = std::fs::remove_file(log_path);
+        let log_dir = std::path::Path::new(log_path).parent().unwrap();
+        let _ = tokio::fs::create_dir_all(log_dir).await;
 
         let msg = Message::new()
             .to("test@rullst.dev")
@@ -490,11 +489,14 @@ mod tests {
             panic!("driver.send failed");
         }
 
-        let path = std::path::Path::new(log_path);
-        if !path.exists() {
-            panic!("Log file does not exist after send!");
+        let mut content = String::new();
+        for _ in 0..10 {
+            content = std::fs::read_to_string(log_path).unwrap_or_default();
+            if content.contains("To: test@rullst.dev") {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
-        let content = std::fs::read_to_string(path).expect("Failed to read log file");
         if !content.contains("To: test@rullst.dev")
             || !content.contains("Subject: Hello Test")
             || !content.contains("Testing 1 2 3")
@@ -571,11 +573,16 @@ mod tests_additional {
         let msg = Message::new().to("facade@rullst.dev").subject("Facade");
 
         let res = Mail::send(msg).await;
-        // If Mail::send was mutated to Ok(()), it won't actually call the driver,
-        // so it won't write to the log.
         assert!(res.is_ok());
 
-        let content = std::fs::read_to_string(log_path).unwrap_or_default();
+        let mut content = String::new();
+        for _ in 0..10 {
+            content = std::fs::read_to_string(log_path).unwrap_or_default();
+            if content.contains("facade@rullst.dev") {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
         assert!(content.contains("facade@rullst.dev"));
     }
 

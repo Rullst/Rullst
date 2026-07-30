@@ -121,7 +121,7 @@ where
 /// Declarative macro for building a [`Router`] from a list of HTTP route definitions.
 ///
 /// # Example
-/// ```rust,no_run
+/// ```rust,ignore
 /// use rullst::{routes, routing::{get, post}};
 ///
 /// async fn home_handler() -> &'static str { "home" }

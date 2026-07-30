@@ -1,3 +1,5 @@
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+
 use rullst_orm::Orm;
 use rullst_orm::schema::Blueprint;
 use serde::{Deserialize, Serialize};

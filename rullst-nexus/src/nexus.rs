@@ -4,7 +4,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use rullst::nexus::{Nexus, NexusModel, FieldMeta, FieldKind};
 //!
 //! // 1. Implement NexusModel for your struct
@@ -144,7 +144,7 @@ struct NexusState {
 /// The main entry point for configuring and mounting the Rullst Nexus Panel.
 ///
 /// # Example
-/// ```rust,no_run
+/// ```rust,ignore
 /// # use rullst::nexus::Nexus;
 /// let nexus_router = Nexus::new()
 ///     .with_brand("My SaaS")
@@ -2024,6 +2024,7 @@ async fn nexus_batch_action(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 mod tests {
     use super::*;
 

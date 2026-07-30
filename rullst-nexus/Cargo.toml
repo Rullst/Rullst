@@ -8,6 +8,12 @@ license = "MIT"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
 
 
+[features]
+default = []
+strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
+strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
+strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
+
 [dependencies]
 rullst-core = { version = "12.0.0", path = "../rullst-core" }
 rullst-orm = { version = "12.0.0", path = "../rullst-orm" }

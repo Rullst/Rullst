@@ -1,3 +1,5 @@
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+
 use rullst_orm::Orm;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;

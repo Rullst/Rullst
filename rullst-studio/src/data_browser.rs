@@ -705,6 +705,7 @@ mod tests {
 
     #[tokio::test]
     #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
     async fn test_db_operations() {
         let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
         let db_path = format!(
@@ -752,6 +753,7 @@ mod tests {
 
     #[tokio::test]
     #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
     async fn test_get_any_value_as_string() {
         let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
         let db_path = format!(
@@ -801,6 +803,7 @@ mod tests {
 
     #[tokio::test]
     #[cfg(not(miri))]
+    #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
     async fn test_build_rows_html() {
         let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
         let db_path = format!(
