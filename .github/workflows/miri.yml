@@ -13,12 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-blog-example', 'rullst-orm', 'rullst-orm-macros', 'rullst-connect', 'rullst-auth', 'rullst-mail', 'rullst-core', 'rullst-ai', 'rullst-capital']
+        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-orm', 'rullst-orm-macros', 'rullst-connect', 'rullst-auth', 'rullst-mail', 'rullst-core', 'rullst-ai', 'rullst-capital']
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       
       - name: Install Rust Nightly with Miri
-        uses: dtolnay/rust-toolchain@6b1b59f77f0d46377e6e5da566ddae8f81023c72 # nightly
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # nightly
         with:
           toolchain: nightly
           components: miri

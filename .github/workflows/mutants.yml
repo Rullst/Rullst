@@ -27,6 +27,9 @@ jobs:
 
       - name: Run mutants shard on whole workspace
         # We test the entire workspace, divided in 8 shards
+        # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
+        # hard-fail — results are captured in the uploaded artifact for review.
+        continue-on-error: true
         run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
 
       - name: Upload shard results

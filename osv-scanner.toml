@@ -1,4 +1,8 @@
 [[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "The paste crate has been archived by its author (informational advisory only). It is a build-time transitive dependency with no runtime security risk, and there is no drop-in replacement available from upstream yet."
+
+[[IgnoredVulns]]
 id = "RUSTSEC-2026-0173"
 reason = "proc-macro-error2 is an unmaintained build-time dependency used by validator. It poses no runtime risk, and there is currently no update available from the upstream crate."
 
