@@ -804,6 +804,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
 }
 
 #[cfg(all(test, not(miri)))]
+#[allow(dead_code)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
         FieldKind::Email => "email",
