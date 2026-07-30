@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785394131764,
+  "lastUpdate": 1785394959620,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4481,6 +4481,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2270,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c7d852bd4605be051fb97cbc9d650e264bd3502e",
+          "message": "chore: add additional dictionary exceptions to .typos.toml",
+          "timestamp": "2026-07-30T04:01:09-03:00",
+          "tree_id": "fa278d31f4a0c6b236167349706bfb4ca56cea2e",
+          "url": "https://github.com/Rullst/Rullst/commit/c7d852bd4605be051fb97cbc9d650e264bd3502e"
+        },
+        "date": 1785394958810,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 748,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 996,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 625,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2334,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
