@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785518006088,
+  "lastUpdate": 1785524640772,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -479,6 +479,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1089,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9fc37e2b3ccdf4d63c2609b6441d6199dbf7fa3d",
+          "message": "feat: integrate TangleGuard architecture linting via GitHub Actions workflow",
+          "timestamp": "2026-07-31T15:56:19-03:00",
+          "tree_id": "6db0f69d3a44c5f24b336aee6989161931e00aa9",
+          "url": "https://github.com/Rullst/Rullst/commit/9fc37e2b3ccdf4d63c2609b6441d6199dbf7fa3d"
+        },
+        "date": 1785524639915,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 534,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 497,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1094,
+            "range": "± 76",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1100,
+            "range": "± 56",
             "unit": "ns/iter"
           }
         ]
