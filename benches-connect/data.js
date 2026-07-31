@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785458915847,
+  "lastUpdate": 1785459738673,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -58,6 +58,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "edbb6a2ea6970d419d0c187c9644800e5cd4755b",
+          "message": "feat: add landing page template, benchmark scaffold, GitHub Pages workflow, and footer dedication",
+          "timestamp": "2026-07-30T21:54:41-03:00",
+          "tree_id": "9d403da5db172f7c61af25a683450b2e6a7e4273",
+          "url": "https://github.com/Rullst/Rullst/commit/edbb6a2ea6970d419d0c187c9644800e5cd4755b"
+        },
+        "date": 1785459738136,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
             "range": "± 0",
             "unit": "ns/iter"
           }
