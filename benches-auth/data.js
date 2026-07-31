@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785534375918,
+  "lastUpdate": 1785535549274,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -815,6 +815,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1400,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ff9d926a13cefa8b713e2f8b039255cf82d951a4",
+          "message": "ci: implement comprehensive GitHub Actions CI and release automation workflows",
+          "timestamp": "2026-07-31T18:58:26-03:00",
+          "tree_id": "cd790abaabea8ae42961dc906e1c0df714dc8a27",
+          "url": "https://github.com/Rullst/Rullst/commit/ff9d926a13cefa8b713e2f8b039255cf82d951a4"
+        },
+        "date": 1785535549033,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 732,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 636,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1389,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1433,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
