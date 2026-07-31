@@ -7,6 +7,8 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions: read-all
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -16,15 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8060a52cd9195536 # stable
 
-      - name: Install cargo-tangleguard
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-tangleguard
+      - name: Install TangleGuard
+        run: cargo install tangleguard
 
       - name: Run TangleGuard
         run: cargo tangleguard
