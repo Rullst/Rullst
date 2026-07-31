@@ -14,7 +14,7 @@ readme = "../README.md"
 [dependencies]
 mutants = "0.0.4"
 rullst-orm-macros = { path = "../rullst-orm-macros", version = "12.0.0" }
-sqlx = { version = "0.9", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json"] }
+sqlx = { version = "0.9", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json", "tls-rustls"] }
 tokio = { version = "1.23.1", features = ["full"] }
 async-trait = "0.1"
 futures = "0.3"

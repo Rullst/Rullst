@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@1a4442cacd436585916779262731d1f68f0f8588 # v4.1.0
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -96,7 +96,7 @@ jobs:
           cp docs/benches_connect_template.html public_site/benches/connect/index.html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@56afc609e74202658d3b67049a47e77c0eda4d6a # v3.0.1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./public_site
 

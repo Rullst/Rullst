@@ -38,7 +38,9 @@ fn bench_login_cookie(c: &mut Criterion) {
     c.bench_function("make_login_cookie", |b| {
         // Temporarily set APP_KEY env var for the bench
         // SAFETY: This is a single-threaded benchmark setup, no race conditions can occur.
-        unsafe { std::env::set_var("APP_KEY", "cmxzdC1iZW5jaC1rZXktMzItYnl0ZXMt"); }
+        unsafe {
+            std::env::set_var("APP_KEY", "cmxzdC1iZW5jaC1rZXktMzItYnl0ZXMt");
+        }
         b.iter(|| make_login_cookie(black_box(42_i32)))
     });
 }

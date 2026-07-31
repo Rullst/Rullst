@@ -38,8 +38,8 @@ jobs:
         run: |
           cargo llvm-cov -p rullst-orm \
             --test matrix_postgres --test matrix_mysql \
-            -- --test-threads=1 \
-            --lcov --output-path lcov_db.info
+            --lcov --output-path lcov_db.info \
+            -- --test-threads=1
 
       - name: Merge coverage reports
         run: |

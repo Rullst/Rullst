@@ -910,11 +910,39 @@ pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoRespon
       </div>
     </div>
 
-    <div style="text-align: center; margin-top: 3rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-      <a href="/Rullst/book/" class="btn btn-primary"
-        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block;">📖 Read on mdBook</a>
-      <a href="https://github.com/Rullst/Rullst/tree/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-secondary"
-        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block; background: rgba(255,255,255,0.05); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1);">📝 Read on GitHub</a>
+    <div style="max-width: 1000px; margin: 4rem auto 2rem; padding: 0 1rem;">
+      <h2 style="text-align: center; font-size: 2rem; margin-bottom: 2rem; color: #f8fafc;">🌍 Explore the Rullst Ecosystem</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+        <a href="/Rullst/book/" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s, border-color 0.2s; display: block;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='rgba(56, 189, 248, 0.4)';" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.1)';">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📖</div>
+          <h3 style="color: #38bdf8; margin: 0 0 0.5rem; font-size: 1.2rem;">Rullst Framework</h3>
+          <p style="color: #94a3b8; margin: 0; font-size: 0.95rem; line-height: 1.5;">The official mdBook documentation for the core framework, router, HTML macros, and Rullst Studio.</p>
+        </a>
+
+        <a href="/Rullst/orm/" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s, border-color 0.2s; display: block;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='rgba(168, 85, 247, 0.4)';" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.1)';">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">💾</div>
+          <h3 style="color: #a855f7; margin: 0 0 0.5rem; font-size: 1.2rem;">Rullst-ORM</h3>
+          <p style="color: #94a3b8; margin: 0; font-size: 0.95rem; line-height: 1.5;">Type-safe, zero-cost ORM documentation. Learn about query building, migrations, and PII masking.</p>
+        </a>
+
+        <a href="/Rullst/connect/" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s, border-color 0.2s; display: block;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='rgba(16, 185, 129, 0.4)';" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.1)';">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔌</div>
+          <h3 style="color: #10b981; margin: 0 0 0.5rem; font-size: 1.2rem;">Rullst-Connect</h3>
+          <p style="color: #94a3b8; margin: 0; font-size: 0.95rem; line-height: 1.5;">Statically dispatched OAuth2 providers (Google, GitHub, etc.) and Stripe integrations documentation.</p>
+        </a>
+      </div>
+
+      <h2 style="text-align: center; font-size: 1.8rem; margin-bottom: 2rem; color: #f8fafc;">📈 Performance CI Dashboards</h2>
+      <p style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Track our automated nanosecond-level regression tests updated on every commit.</p>
+      
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
+        <a href="/Rullst/benches/" class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05); flex: 1 1 200px; text-align: center;">⚡ Core Framework</a>
+        <a href="/Rullst/benches/orm/" class="btn btn-outline" style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05); flex: 1 1 200px; text-align: center;">🗄️ ORM Queries</a>
+        <a href="/Rullst/benches/core/" class="btn btn-outline" style="border-color: rgba(245, 158, 11, 0.3); color: #f59e0b; background: rgba(245, 158, 11, 0.05); flex: 1 1 200px; text-align: center;">🛡️ Core Primitives</a>
+        <a href="/Rullst/benches/auth/" class="btn btn-outline" style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05); flex: 1 1 200px; text-align: center;">🔐 Auth Crypto</a>
+        <a href="/Rullst/benches/connect/" class="btn btn-outline" style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05); flex: 1 1 200px; text-align: center;">🔗 OAuth PKCE</a>
+      </div>
     </div>
 
     <script>
