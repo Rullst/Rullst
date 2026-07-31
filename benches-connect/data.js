@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785534396592,
+  "lastUpdate": 1785535568980,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -503,6 +503,36 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/88777cbda50bd4cf79e8847235f91d8038729008"
         },
         "date": 1785534395702,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ff9d926a13cefa8b713e2f8b039255cf82d951a4",
+          "message": "ci: implement comprehensive GitHub Actions CI and release automation workflows",
+          "timestamp": "2026-07-31T18:58:26-03:00",
+          "tree_id": "cd790abaabea8ae42961dc906e1c0df714dc8a27",
+          "url": "https://github.com/Rullst/Rullst/commit/ff9d926a13cefa8b713e2f8b039255cf82d951a4"
+        },
+        "date": 1785535568734,
         "tool": "cargo",
         "benches": [
           {
