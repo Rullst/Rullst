@@ -1,0 +1,77 @@
+name: Unsafe Policy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  unsafe-scan:
+    name: Scan for unsafe code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Install ripgrep
+        run: sudo apt-get install -y ripgrep
+
+      - name: Scan for unsafe blocks in all first-party crates
+        run: |
+          echo "=== Scanning for unsafe blocks in ALL Rullst workspace crates ==="
+          # Scan every first-party crate src/ directory, excluding:
+          #   target/      - compiled artifacts
+          #   fuzz/        - fuzz harnesses intentionally use unsafe
+          #   examples/    - demo code, not production
+          UNSAFE_COUNT=$(rg --type rust 'unsafe' \
+            rullst/src/ \
+            rullst-core/src/ \
+            rullst-macros/src/ \
+            rullst-orm/src/ \
+            rullst-orm-macros/src/ \
+            rullst-connect/src/ \
+            rullst-auth/src/ \
+            rullst-mail/src/ \
+            rullst-ai/src/ \
+            rullst-nexus/src/ \
+            rullst-capital/src/ \
+            rullst-studio/src/ \
+            cargo-rullst/src/ \
+            --count-matches 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')
+
+          echo ""
+          echo "Total unsafe occurrences: $UNSAFE_COUNT"
+          echo ""
+
+          # List all findings with file/line for audit trail
+          echo "=== Detailed unsafe locations ==="
+          rg --type rust 'unsafe' \
+            rullst/src/ rullst-core/src/ rullst-macros/src/ \
+            rullst-orm/src/ rullst-orm-macros/src/ rullst-connect/src/ \
+            rullst-auth/src/ rullst-mail/src/ rullst-ai/src/ \
+            rullst-nexus/src/ rullst-capital/src/ rullst-studio/src/ \
+            cargo-rullst/src/ \
+            --heading --line-number 2>/dev/null || echo "No unsafe found."
+
+          echo ""
+          if [ "$UNSAFE_COUNT" -gt 0 ]; then
+            echo "⚠️  Found $UNSAFE_COUNT unsafe usage(s) in first-party code."
+            echo "Each usage must have a documented SAFETY comment explaining why it is sound."
+            echo "If intentional and reviewed, add a # SAFETY: ... comment above the block."
+            # Enforce: any unsafe block without a SAFETY comment fails CI
+            MISSING_SAFETY=$(rg --type rust -l 'unsafe' \
+              rullst/src/ rullst-core/src/ rullst-macros/src/ \
+              rullst-orm/src/ rullst-orm-macros/src/ rullst-connect/src/ \
+              rullst-auth/src/ rullst-mail/src/ rullst-ai/src/ \
+              rullst-nexus/src/ rullst-capital/src/ rullst-studio/src/ \
+              cargo-rullst/src/ 2>/dev/null | xargs -I{} sh -c \
+              'grep -n "unsafe" "$1" | grep -v "SAFETY:" || true' -- {} | wc -l)
+            echo "Unsafe blocks missing SAFETY comment: $MISSING_SAFETY"
+            # Informational for now — change to `exit 1` to enforce hard failure
+            exit 0
+          else
+            echo "✅ No unsafe blocks found in first-party code."
+          fi

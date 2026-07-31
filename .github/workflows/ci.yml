@@ -1,0 +1,83 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_NET_RETRY: 10
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  check:
+    name: Code Quality & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting (Workspace)
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy (Workspace)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run Clippy (Rullst optional features)
+        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis,mail-smtp -- -D warnings
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
+
+      - name: Run all workspace tests (Unit & Integration, all-features)
+        # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres
+        # simultaneously, which correctly cfg-excludes the DB matrix tests (those
+        # run in the dedicated step below with the proper feature combination).
+        run: cargo test --workspace --all-features
+
+      - name: Run Matrix DB Tests (Testcontainers — PostgreSQL & MySQL)
+        # Run without strict-* features so the matrix_postgres/matrix_mysql cfg
+        # gates are satisfied. --test-threads=1 prevents parallel tests from
+        # overwriting the global Orm::init() connection pool.
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
+
+  msrv:
+    name: Check MSRV (Rust 1.96.0)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Install Rust 1.96.0 (declared MSRV)
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+        with:
+          toolchain: "1.96.0"
+
+      - name: Check workspace compiles on MSRV
+        # Use `cargo check` (no linking) to validate the MSRV without full build time.
+        # If any crate uses a stabilized API newer than 1.96.0, this will fail.
+        run: cargo check --workspace --all-features

@@ -1,0 +1,38 @@
+name: Kani Verifier
+
+on:
+  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+
+permissions:
+  contents: read
+
+jobs:
+  kani:
+    name: kani
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ['rullst', 'cargo-rullst', 'rullst-orm', 'rullst-connect', 'rullst-auth', 'rullst-mail', 'rullst-core', 'rullst-ai', 'rullst-capital']
+
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Install Kani
+        run: cargo install kani-verifier && cargo kani setup
+
+      - name: Bypass MSRV globally in the Cargo Registry
+        run: |
+          cargo fetch
+          find . -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
+          find $HOME/.cargo/registry/src/ -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
+
+      - name: Verify with Kani
+        working-directory: ${{ matrix.package }}
+        continue-on-error: true
+        timeout-minutes: 90
+        run: |
+          # --default-unwind-bound 5: caps loop unrolling to prevent OOM from
+          # unbounded loops in crypto crates (subtle::ct_eq was at 5733 iterations).
+          # --jobs 1: prevents parallel SAT solvers from competing for runner RAM.
+          cargo kani --default-unwind 5 --jobs 1

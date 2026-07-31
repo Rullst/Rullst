@@ -1,0 +1,40 @@
+name: Mutation Testing (cargo-mutants)
+
+on:
+  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+
+permissions: read-all
+
+jobs:
+  mutants:
+    permissions:
+      contents: read
+    name: cargo-mutants shard ${{ matrix.shard }}/8
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants
+
+      - name: Run mutants shard on whole workspace
+        # We test the entire workspace, divided in 8 shards
+        # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
+        # hard-fail — results are captured in the uploaded artifact for review.
+        continue-on-error: true
+        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
+
+      - name: Upload shard results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: mutants-out-${{ matrix.shard }}
+          path: mutants.out/
