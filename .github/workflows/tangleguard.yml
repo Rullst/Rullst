@@ -24,7 +24,7 @@ jobs:
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
 
       - name: Install TangleGuard
-        run: cargo install tangleguard
+        run: cargo install cargo-tangleguard
 
       - name: Run TangleGuard
         run: cargo tangleguard
