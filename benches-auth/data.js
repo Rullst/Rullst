@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785464097986,
+  "lastUpdate": 1785465309251,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -335,6 +335,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1100,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "283a69f32489084940c9f8e251c88556f4c8445c",
+          "message": "feat: add abstract HttpClient client interface and implement GitHub CI workflows for security and verification tools",
+          "timestamp": "2026-07-30T23:27:34-03:00",
+          "tree_id": "6308cbb27bb74aca27269bdca8dde3c3da063023",
+          "url": "https://github.com/Rullst/Rullst/commit/283a69f32489084940c9f8e251c88556f4c8445c"
+        },
+        "date": 1785465308904,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 579,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 502,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1154,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1198,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
