@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785525709850,
+  "lastUpdate": 1785527211897,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -359,6 +359,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 80,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "209b11bf867a17f8cf1b4723ae4a19babc836ad8",
+          "message": "feat: implement hybrid hot-reload server with AST-based logic diffing and TUI dashboard support",
+          "timestamp": "2026-07-31T16:39:02-03:00",
+          "tree_id": "33725ba0603d757972a766407350eee9021ed1d7",
+          "url": "https://github.com/Rullst/Rullst/commit/209b11bf867a17f8cf1b4723ae4a19babc836ad8"
+        },
+        "date": 1785527210571,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 75,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
