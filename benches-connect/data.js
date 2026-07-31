@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785461325016,
+  "lastUpdate": 1785462343700,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -119,6 +119,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 57,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "635d3f9d45e3e4d1b0cb56c2abbd5b591223cc37",
+          "message": "feat: implement Nexus admin panel framework, authentication module, and GitHub Pages CI/CD workflow",
+          "timestamp": "2026-07-30T22:38:04-03:00",
+          "tree_id": "85427af62e589bbd3956c095b92201c53f3cddc5",
+          "url": "https://github.com/Rullst/Rullst/commit/635d3f9d45e3e4d1b0cb56c2abbd5b591223cc37"
+        },
+        "date": 1785462343467,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
