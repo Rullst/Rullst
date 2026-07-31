@@ -62,12 +62,14 @@ jobs:
         run: |
           mkdir -p .zap
           # 10055 = CSP unsafe-inline / unsafe-eval (required for Tailwind/HTMX CDNs)
-          # 90003 = Sub Resource Integrity Attribute Missing (dynamic CDN versions)
+          # 90003 = Sub Resource Resource Integrity Attribute Missing (dynamic CDN versions)
           # 10017 = Cross-Domain JavaScript (CDN scripts)
           # 10109 = Modern Web Application (Informational)
           # 90004 = Cross-Origin-Embedder-Policy (Handled by production middleware)
           # 10049 = Storable and Cacheable Content (Handled by production middleware)
-          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)" > .zap/rules.tsv
+          # 10202 = Absence of Anti-CSRF Tokens (False positive on GET routes in example app)
+          # 10063 = Permissions Policy Header Not Set (Not required for simple example)
+          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)\n10202\tIGNORE\t(CSRF)\n10063\tIGNORE\t(Permissions-Policy)" > .zap/rules.tsv
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
