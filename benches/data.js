@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785433081054,
+  "lastUpdate": 1785456908734,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4697,6 +4697,62 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2240,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      }
+    ],
+    "Rullst Core Benchmark": [
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "940d213fcdbfb254abe46f095ddc9cc3015ef354",
+          "message": "ci: add GitHub Actions workflows for DAST, Kani formal verification, and Miri UB detection",
+          "timestamp": "2026-07-30T21:13:48-03:00",
+          "tree_id": "28bcab87dc439d0fd8df6bf6f6b428795f102f3b",
+          "url": "https://github.com/Rullst/Rullst/commit/940d213fcdbfb254abe46f095ddc9cc3015ef354"
+        },
+        "date": 1785456908088,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 744,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1002,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2274,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
