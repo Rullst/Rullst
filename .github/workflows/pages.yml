@@ -38,7 +38,7 @@ jobs:
       - name: Build Rullst-ORM VitePress Site
         run: |
           cd docs/orm
-          npm install
+          npm ci
           npm run docs:build
 
       - name: Assemble Final Site

@@ -241,6 +241,7 @@ impl HttpClient for ReqwestClient {
     async fn execute(&self, req: HttpRequest) -> Result<HttpResponse, crate::error::ConnectError> {
         #[cfg(miri)]
         {
+            let _ = &req;
             return Err(crate::error::ConnectError::Provider(
                 "Network requests are not supported under Miri".to_string(),
             ));

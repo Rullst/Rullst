@@ -28,6 +28,6 @@ jobs:
         working-directory: ${{ matrix.package }}
         continue-on-error: true
         env:
-          # -Zrandomize-layout is a rustc flag; pass via RUSTFLAGS, not as a cargo -Z arg
           RUSTFLAGS: "-Zrandomize-layout"
-        run: cargo +nightly miri test -- -Zmiri-disable-isolation
+          MIRIFLAGS: "-Zmiri-disable-isolation"
+        run: cargo +nightly miri test

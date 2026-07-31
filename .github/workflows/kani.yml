@@ -35,4 +35,4 @@ jobs:
           # --default-unwind-bound 5: caps loop unrolling to prevent OOM from
           # unbounded loops in crypto crates (subtle::ct_eq was at 5733 iterations).
           # --jobs 1: prevents parallel SAT solvers from competing for runner RAM.
-          cargo kani --default-unwind-bound 5 --jobs 1
+          cargo kani --default-unwind 5 --jobs 1
