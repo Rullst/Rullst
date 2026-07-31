@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785524660266,
+  "lastUpdate": 1785525709850,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -329,6 +329,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 64,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b87bb872b01466e5f5be401e32e8d4dc281570a1",
+          "message": "feat: add UI components including update checker, interactive spinner, and CLI dashboard",
+          "timestamp": "2026-07-31T16:14:11-03:00",
+          "tree_id": "699b80b2b65295ab36a8af6847c00202c5910cfd",
+          "url": "https://github.com/Rullst/Rullst/commit/b87bb872b01466e5f5be401e32e8d4dc281570a1"
+        },
+        "date": 1785525709133,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 80,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
