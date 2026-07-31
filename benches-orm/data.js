@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785529203221,
+  "lastUpdate": 1785530101427,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst ORM Benchmark": [
@@ -1595,6 +1595,120 @@ window.BENCHMARK_DATA = {
             "name": "db_roundtrip/query/limit_n/100",
             "value": 247284,
             "range": "± 4285",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f850e5f7b3e317c0bf72ebe34ef6d127032c1b24",
+          "message": "chore: add OSV-scanner configuration to ignore known non-critical or upstream-blocked vulnerabilities",
+          "timestamp": "2026-07-31T17:30:22-03:00",
+          "tree_id": "60991324e5aca59d885b1eef513ffbece9f87766",
+          "url": "https://github.com/Rullst/Rullst/commit/f850e5f7b3e317c0bf72ebe34ef6d127032c1b24"
+        },
+        "date": 1785530101001,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "cpu/validate_identifier/short",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/qualified",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/invalid",
+            "value": 49,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/to_json/user",
+            "value": 518,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/from_json/user",
+            "value": 399,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/query_builder/build",
+            "value": 199,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/save/insert",
+            "value": 1433751,
+            "range": "± 25887",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/find_by_id",
+            "value": 76538,
+            "range": "± 1070",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/where_eq_first",
+            "value": 81371,
+            "range": "± 703",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/count",
+            "value": 76946,
+            "range": "± 1203",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/all_limit_10",
+            "value": 85146,
+            "range": "± 865",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/1",
+            "value": 76870,
+            "range": "± 829",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/10",
+            "value": 85602,
+            "range": "± 2255",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/50",
+            "value": 153550,
+            "range": "± 2238",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/100",
+            "value": 258824,
+            "range": "± 4578",
             "unit": "ns/iter"
           }
         ]
