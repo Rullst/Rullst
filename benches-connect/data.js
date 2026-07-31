@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785457578982,
+  "lastUpdate": 1785458915847,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -29,6 +29,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "aa0db2996e91a959a689e5eebc920f20afc5e4c3",
+          "message": "feat: add project documentation, CI workflows, and initial ORM/auth benchmarking infrastructure",
+          "timestamp": "2026-07-30T21:38:47-03:00",
+          "tree_id": "e3bc94fa6f951e72090b5386cddb937f6d84e51c",
+          "url": "https://github.com/Rullst/Rullst/commit/aa0db2996e91a959a689e5eebc920f20afc5e4c3"
+        },
+        "date": 1785458915299,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
