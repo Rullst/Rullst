@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785462343700,
+  "lastUpdate": 1785463422322,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -143,6 +143,36 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/635d3f9d45e3e4d1b0cb56c2abbd5b591223cc37"
         },
         "date": 1785462343467,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b199e916ab5738bc74e262aef77833a48357642d",
+          "message": "feat: implement authentication utilities and encrypted session management services",
+          "timestamp": "2026-07-30T22:56:03-03:00",
+          "tree_id": "6558f418ada77fe896f65b85ab6e0e2f1531af6f",
+          "url": "https://github.com/Rullst/Rullst/commit/b199e916ab5738bc74e262aef77833a48357642d"
+        },
+        "date": 1785463421700,
         "tool": "cargo",
         "benches": [
           {
