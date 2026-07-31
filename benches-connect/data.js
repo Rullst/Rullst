@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785535568980,
+  "lastUpdate": 1785536251903,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -538,6 +538,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b5462397a354ee20ca184f9ba7e5d8d345b2ae65",
+          "message": "feat: add OWASP ZAP baseline scan workflow for dynamic security testing",
+          "timestamp": "2026-07-31T19:10:20-03:00",
+          "tree_id": "cf83606c1474d05e2472d93b968e0f29899ea1b2",
+          "url": "https://github.com/Rullst/Rullst/commit/b5462397a354ee20ca184f9ba7e5d8d345b2ae65"
+        },
+        "date": 1785536251511,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 51,
             "range": "± 0",
             "unit": "ns/iter"
           }
