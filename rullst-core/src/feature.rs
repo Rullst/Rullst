@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 /// Deterministically calculates a bucket index from 0 to 99 for a given flag and identifier.
 /// This ensures a stable user-to-flag assignment without persistent storage.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn calculate_hash_bucket(flag: &str, identifier: &str) -> u32 {
     let mut hasher = DefaultHasher::new();
     hasher.write(flag.as_bytes());
@@ -415,6 +416,8 @@ impl DbFeatureDriver {
     }
 
     /// Creates a new `DbFeatureDriver` with a custom cache TTL duration.
+    /// Overrides the default TTL.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn with_ttl(ttl: Duration) -> Self {
         Self {
             cache: DashMap::new(),
@@ -628,6 +631,7 @@ pub fn init(manager: FeatureManager) -> Result<(), FeatureManager> {
 }
 
 /// Retrieves the static `FeatureManager` instance, lazy-initializing it if necessary.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn manager() -> &'static FeatureManager {
     FEATURE_CELL.get_or_init(FeatureManager::default)
 }

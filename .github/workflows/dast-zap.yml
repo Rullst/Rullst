@@ -35,27 +35,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-zap-
 
-      - name: Install cargo-rullst
-        run: cargo install --path cargo-rullst
-
-      - name: Scaffold Rullst SaaS Blueprint
+      - name: Configure environment for Blog Example
+        working-directory: examples/blog
         run: |
-          cargo rullst new zap_test --default
-          # Configure dummy keys to allow server start
-          echo "APP_KEY=12345678901234567890123456789012" >> zap_test/.env
-          echo "APP_ENV=production" >> zap_test/.env
-          echo "DATABASE_URL=sqlite://db.sqlite3" >> zap_test/.env
+          echo "APP_KEY=12345678901234567890123456789012" >> .env
+          echo "APP_ENV=production" >> .env
+          echo "DATABASE_URL=sqlite://db.sqlite3" >> .env
 
-      - name: Build Rullst Server
-        working-directory: zap_test
+      - name: Build Rullst Server (Blog Example)
         timeout-minutes: 60
-        run: cargo build --release
+        run: cargo build --release -p rullst-blog-example
 
       - name: Run Rullst Server in background
-        working-directory: zap_test
+        working-directory: examples/blog
         run: |
           # Run the pre-compiled release binary directly (no recompilation)
-          ./target/release/zap_test &
+          ../../target/release/rullst-blog-example &
           # Wait for the server to be ready on port 3000
           sleep 3
           curl -s --retry 15 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null

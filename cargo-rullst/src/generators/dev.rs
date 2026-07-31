@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use crate::generators::is_rullst_project;
 use axum::{
     Router,

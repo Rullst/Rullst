@@ -46,6 +46,10 @@ These workflows act as our primary gatekeepers. They run in parallel on every Pu
 ### 8. Dependency Health (`cargo-deny.yml` & `machete.yml`)
 - **What it does:** Validates the licenses of all third-party crates, bans unmaintained dependencies, checks the RustSec vulnerability database, and prunes unused crates from `Cargo.toml`.
 
+### 9. Architecture Linter (`tangleguard.yml`)
+- **What it does:** Runs `cargo-tangleguard` against `tangleguard.toml` rules.
+- **Goal:** Analyzes our crates to ensure there are no inverse or circular dependencies between our internal modules (e.g. `rullst-core` must never depend on `rullst-orm`), preventing "spaghetti code" from accumulating.
+
 ---
 
 ## 📆 Scheduled & Release Operations (Asynchronous)

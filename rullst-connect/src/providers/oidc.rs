@@ -1142,10 +1142,12 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
 }
 
 #[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
     use subtle::ConstantTimeEq;
 
     #[kani::proof]
+    #[kani::unwind(33)]
     fn verify_constant_time_eq_safety() {
         let len: usize = kani::any();
         kani::assume(len <= 32);

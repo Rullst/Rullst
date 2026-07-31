@@ -73,6 +73,7 @@ impl Auth0Provider {
     }
 
     #[cfg(feature = "retry")]
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn with_retry(mut self, max_retries: u32) -> Self {
         self.http_client =
             ::std::sync::Arc::new(crate::client::ReqwestClient::new_with_retry(max_retries));

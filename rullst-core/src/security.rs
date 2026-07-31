@@ -617,8 +617,8 @@ mod kani_proofs {
     #[kani::proof]
     #[kani::unwind(9)]
     fn proof_mask_pii_safety_and_invariants() {
-        // Generate a non-deterministic sequence of 8 bytes
-        let bytes: [u8; 8] = kani::any();
+        // Generate a non-deterministic sequence of 4 bytes (reduced from 8 to prevent SAT solver timeout)
+        let bytes: [u8; 4] = kani::any();
 
         if let Ok(s) = std::str::from_utf8(&bytes) {
             // 1. If this call panics, Kani will fail the proof

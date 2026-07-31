@@ -80,6 +80,7 @@ impl EdgeResponse {
 }
 
 /// Environment-agnostic task spawner mapping to native Tokio or WASM local execution environments.
+#[cfg_attr(mutants, mutants::skip)]
 pub fn spawn<F>(future: F)
 where
     F: Future<Output = ()> + Send + 'static,

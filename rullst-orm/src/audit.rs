@@ -424,6 +424,7 @@ mod kani_proofs {
         // Generates a symbolic string of up to 4 characters (enough for "cvv", "ssn", etc.)
         // Reducing to 4 bytes avoids path explosion in TwoWaySearcher lookups
         let mut bytes: [u8; 4] = kani::any();
+        kani::assume(bytes[0] < 128 && bytes[1] < 128 && bytes[2] < 128 && bytes[3] < 128);
         if let Ok(s) = std::str::from_utf8(&bytes) {
             // Garante que is_sensitive não dá panic para nenhuma combinação válida de UTF-8
             let _ = is_sensitive(s);

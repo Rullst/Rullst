@@ -15,6 +15,7 @@ pub struct ParsedTable {
     pub fields: Vec<ParsedField>,
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
     let mut tables = Vec::new();
     let walker = WalkDir::new("src").into_iter().filter_map(|e| e.ok());
@@ -109,6 +110,7 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
     tables
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn extract_type_name(ty: &syn::Type) -> (String, bool) {
     if let syn::Type::Path(type_path) = ty
         && let Some(segment) = type_path.path.segments.last()

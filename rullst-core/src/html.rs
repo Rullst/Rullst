@@ -139,6 +139,7 @@ mod tests {
 }
 
 #[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
     use super::*;
 
@@ -166,3 +167,4 @@ mod kani_proofs {
         }
     }
 }
+

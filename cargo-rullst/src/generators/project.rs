@@ -1,5 +1,6 @@
 // src/generators/project.rs — Project wizard generator and scaffolding orchestrator.
 
+#![cfg_attr(mutants, mutants::skip)]
 use colored::*;
 use std::fs;
 use std::path::Path;

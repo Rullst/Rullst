@@ -11,7 +11,7 @@ cargo-fuzz = true
 ignored = ["sqlx", "tracing", "libsqlite3-sys"]
 
 [dependencies]
-rullst-orm = { path = "../rullst-orm" }
+rullst-orm = { path = ".." }
 syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 libfuzzer-sys = "0.4"

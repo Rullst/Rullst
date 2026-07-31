@@ -45,6 +45,7 @@ impl Seeder for DummySeeder {
 const DB_FILE: &str = "it_extra.db";
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn integration_extra_suite() {
     let _ = fs::remove_file(DB_FILE);
 

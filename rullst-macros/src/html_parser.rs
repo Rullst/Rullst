@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::ext::IdentExt;

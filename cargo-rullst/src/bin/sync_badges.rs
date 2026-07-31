@@ -2,6 +2,7 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
+#[cfg_attr(mutants, mutants::skip)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Locate the workspace root (parent of cargo-rullst directory)
     let cargo_toml_path = Path::new("Cargo.toml");

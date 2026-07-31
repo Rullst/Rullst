@@ -22,3 +22,24 @@ pub trait Gate<Resource> {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct DummyUser;
+    struct DummyResource;
+
+    impl Gate<DummyResource> for DummyUser {}
+
+    #[test]
+    fn test_default_gate_methods() {
+        let user = DummyUser;
+        let resource = DummyResource;
+
+        assert!(!DummyUser::can_view(&user, &resource));
+        assert!(!DummyUser::can_create(&user));
+        assert!(!DummyUser::can_update(&user, &resource));
+        assert!(!DummyUser::can_delete(&user, &resource));
+    }
+}

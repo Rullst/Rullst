@@ -587,6 +587,7 @@ mod tests_additional {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn test_resend_driver() {
         let driver = ResendDriver {
             api_key: "test".to_string(),

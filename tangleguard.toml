@@ -1,0 +1,30 @@
+[architecture]
+# Rullst Core Layer
+[[architecture.layer]]
+name = "core"
+crates = ["rullst-core", "rullst-macros"]
+# Core cannot depend on anything else in the workspace
+
+# Rullst ORM Layer
+[[architecture.layer]]
+name = "orm"
+crates = ["rullst-orm", "rullst-orm-macros"]
+depends_on = ["core"]
+
+# Rullst Connect / AI / Mail
+[[architecture.layer]]
+name = "extensions"
+crates = ["rullst-connect", "rullst-ai", "rullst-mail"]
+depends_on = ["core", "orm"]
+
+# The Main Framework
+[[architecture.layer]]
+name = "framework"
+crates = ["rullst"]
+depends_on = ["core", "orm", "extensions"]
+
+# Top level packages
+[[architecture.layer]]
+name = "top_level"
+crates = ["cargo-rullst", "rullst-studio", "rullst-capital", "rullst-nexus"]
+depends_on = ["framework", "core", "orm", "extensions"]

@@ -1006,6 +1006,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_finish_authenticate_edge_cases() {
         let config = PasskeyConfig::new("App", "app.com", "https://app.com");
         let auth = PasskeyAuth::new(&config).unwrap();

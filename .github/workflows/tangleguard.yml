@@ -1,0 +1,30 @@
+name: TangleGuard Architecture Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tangleguard:
+    name: Architecture Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-tangleguard
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tangleguard
+
+      - name: Run TangleGuard
+        run: cargo tangleguard

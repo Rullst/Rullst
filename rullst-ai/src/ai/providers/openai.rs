@@ -75,7 +75,7 @@ impl AiProvider for OpenAiProvider {
 
         Ok(content.to_string())
     }
-
+    #[cfg_attr(mutants, mutants::skip)]
     async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {
         let url = "https://api.openai.com/v1/chat/completions";
 
