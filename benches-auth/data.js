@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785462321669,
+  "lastUpdate": 1785463402207,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -239,6 +239,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1375,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b199e916ab5738bc74e262aef77833a48357642d",
+          "message": "feat: implement authentication utilities and encrypted session management services",
+          "timestamp": "2026-07-30T22:56:03-03:00",
+          "tree_id": "6558f418ada77fe896f65b85ab6e0e2f1531af6f",
+          "url": "https://github.com/Rullst/Rullst/commit/b199e916ab5738bc74e262aef77833a48357642d"
+        },
+        "date": 1785463401575,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 729,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 619,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1377,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1402,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
