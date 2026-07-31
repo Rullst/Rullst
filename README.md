@@ -25,9 +25,9 @@
 Rullst is now a unified Monorepo! The framework's core (`rullst`), the database layer (`rullst-orm`), and the frontend connectivity (`rullst-connect`) are now engineered in lockstep under a single repository. This unified architecture ensures 100% compatibility across the stack, centralized security audits, and a seamless developer experience from backend to edge.
 
 **Explore the Ecosystem:**
-- 🦀 **[Rullst Core (Web Framework)](./rullst/README.md)**
-- 💾 **[Rullst-ORM (Database Layer)](./rullst-orm/README.md)**
-- 🔌 **[Rullst-Connect (Frontend Integration)](./rullst-connect/README.md)**
+- 🦀 **[Rullst Core (Web Framework)](https://github.com/Rullst/Rullst)**
+- 💾 **[Rullst-ORM (Database Layer)](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**
+- 🔌 **[Rullst-Connect (Frontend Integration)](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**
 
 ---
 
@@ -35,7 +35,7 @@ Rullst is now a unified Monorepo! The framework's core (`rullst`), the database 
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
 
-👉 **[Explore the Official Website & Docs](https://rullst.github.io/Rullst/book/index.html)**
+👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
 
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
@@ -83,7 +83,7 @@ We've rewritten our entire documentation from scratch into a beautiful, high-per
 
 </div>
 
-> 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](./WORKFLOWS.md)**
+> 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**
 
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
