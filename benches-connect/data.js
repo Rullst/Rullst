@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785529510681,
+  "lastUpdate": 1785530294929,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -418,6 +418,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f850e5f7b3e317c0bf72ebe34ef6d127032c1b24",
+          "message": "chore: add OSV-scanner configuration to ignore known non-critical or upstream-blocked vulnerabilities",
+          "timestamp": "2026-07-31T17:30:22-03:00",
+          "tree_id": "60991324e5aca59d885b1eef513ffbece9f87766",
+          "url": "https://github.com/Rullst/Rullst/commit/f850e5f7b3e317c0bf72ebe34ef6d127032c1b24"
+        },
+        "date": 1785530294498,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 75,
             "range": "± 0",
             "unit": "ns/iter"
           }
