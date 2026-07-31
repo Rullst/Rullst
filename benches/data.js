@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785459374219,
+  "lastUpdate": 1785460984536,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -4861,6 +4861,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2331,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b19612b56bc0d6123246aad6068b2602fe5f75e9",
+          "message": "fix: update Matrix DB Tests CI badge URL in README",
+          "timestamp": "2026-07-30T22:21:40-03:00",
+          "tree_id": "3ba8d910cccbef9e3c65a2f9fde6c58d51441445",
+          "url": "https://github.com/Rullst/Rullst/commit/b19612b56bc0d6123246aad6068b2602fe5f75e9"
+        },
+        "date": 1785460983614,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 433,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 629,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 440,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1185,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
