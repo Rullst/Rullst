@@ -1,8 +1,7 @@
 // src/ui/components.rs — Neon spinners, interactive dashboard, update banner,
 // and the full Rullst CLI help reference. Zero file I/O here.
 
-use crate::cli::{Cli, run_cli_command};
-use clap::Parser;
+
 use colored::*;
 
 // ─── Update Check ────────────────────────────────────────────────────────────
@@ -273,8 +272,10 @@ fn print_neon_logo() {
 }
 
 pub fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let cli = Cli::parse_from(cmd_args);
-    run_cli_command(&cli.command)
+    std::process::Command::new(&cmd_args[0])
+        .args(&cmd_args[1..])
+        .status()?;
+    Ok(())
 }
 
 fn handle_scaffold_code(
