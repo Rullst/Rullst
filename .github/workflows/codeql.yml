@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
+      uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
       with:
         languages: rust
         # CodeQL Rust support is GA since 2024. Analyzes memory safety,
@@ -33,6 +33,6 @@ jobs:
       run: cargo build --workspace
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
+      uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
       with:
         category: "/language:rust"
