@@ -348,8 +348,8 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_password_hash_format() {
-        let p = "super_secret";
-        let hash = hash_password(p).expect("Failed to hash password");
+        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let hash = hash_password(&p).expect("Failed to hash password");
         assert!(hash.starts_with("$argon2id$"));
     }
 
@@ -358,8 +358,8 @@ mod tests {
     fn test_password_verification_error_paths() {
         assert!(!verify_password("pass", "invalid_hash_format"));
 
-        let p = "pass";
-        let hash = hash_password(p).expect("Failed to hash password");
+        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let hash = hash_password(&p).expect("Failed to hash password");
         assert!(!verify_password("wrong", &hash));
     }
 
@@ -382,8 +382,8 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_needs_rehash() {
-        let p = "super_secret";
-        let hash = hash_password(p).expect("Failed to hash password");
+        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let hash = hash_password(&p).expect("Failed to hash password");
         assert!(!needs_rehash(&hash));
 
         let old_hash =
