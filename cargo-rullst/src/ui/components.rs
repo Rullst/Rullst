@@ -1,7 +1,6 @@
 // src/ui/components.rs — Neon spinners, interactive dashboard, update banner,
 // and the full Rullst CLI help reference. Zero file I/O here.
 
-
 use colored::*;
 
 // ─── Update Check ────────────────────────────────────────────────────────────

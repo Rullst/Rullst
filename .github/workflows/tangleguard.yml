@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run TangleGuard Architecture Validation
-        uses: TangleGuard/github-action@main
+        uses: TangleGuard/github-action@44130828f84df10ed841645208ec49ffdcbb959f # main
         with:
           language: "rust"
           fail_on_findings: "true"

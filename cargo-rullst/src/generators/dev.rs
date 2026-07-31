@@ -59,12 +59,7 @@ struct AppState {
     tx: broadcast::Sender<String>,
 }
 
-#[derive(Debug)]
-pub enum LogMsg {
-    AppStdout(String),
-    AppStderr(String),
-    System(String),
-}
+use crate::ui::dash_tui::LogMsg;
 
 #[tokio::main]
 pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {

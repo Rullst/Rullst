@@ -1,4 +1,9 @@
-use crate::generators::dev::LogMsg;
+#[derive(Debug)]
+pub enum LogMsg {
+    AppStdout(String),
+    AppStderr(String),
+    System(String),
+}
 use crossterm::{
     event::{Event, KeyCode},
     execute,
