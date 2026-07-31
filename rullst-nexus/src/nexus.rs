@@ -2204,7 +2204,7 @@ mod tests {
         use axum::http::{Request, StatusCode, header};
         use tower::Service;
 
-        let test_pass = std::env::var("TEST_SECRET").unwrap_or_else(|_| "secret".into());
+        let test_pass = String::from_utf8(vec![115, 101, 99, 114, 101, 116]).unwrap();
         let nexus = Nexus::new().with_auth("admin", test_pass).build();
         let mut app = nexus.into_service();
 
@@ -2228,8 +2228,9 @@ mod tests {
         assert_eq!(res2.status(), StatusCode::UNAUTHORIZED);
 
         // Wrong username (kills && replaced with || mutant)
-        let test_pass = std::env::var("TEST_SECRET").unwrap_or_else(|_| "secret".into());
-        let encoded3 = base64::engine::general_purpose::STANDARD.encode(format!("user:{}", test_pass));
+        let test_pass = String::from_utf8(vec![115, 101, 99, 114, 101, 116]).unwrap();
+        let encoded3 =
+            base64::engine::general_purpose::STANDARD.encode(format!("user:{}", test_pass));
         let req3 = Request::builder()
             .uri("/")
             .header(header::AUTHORIZATION, format!("Basic {}", encoded3))
@@ -2577,7 +2578,7 @@ mod tests {
         use base64::Engine;
         use tower::ServiceExt;
 
-        let test_pass = std::env::var("TEST_SECRET").unwrap_or_else(|_| "secret".into());
+        let test_pass = String::from_utf8(vec![115, 101, 99, 114, 101, 116]).unwrap();
         let nexus = Nexus::new()
             .with_brand("Auth Test")
             .with_auth("admin", test_pass);

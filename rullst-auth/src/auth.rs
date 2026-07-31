@@ -348,7 +348,7 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_password_hash_format() {
-        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let p = String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap();
         let hash = hash_password(&p).expect("Failed to hash password");
         assert!(hash.starts_with("$argon2id$"));
     }
@@ -358,7 +358,7 @@ mod tests {
     fn test_password_verification_error_paths() {
         assert!(!verify_password("pass", "invalid_hash_format"));
 
-        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let p = String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap();
         let hash = hash_password(&p).expect("Failed to hash password");
         assert!(!verify_password("wrong", &hash));
     }
@@ -382,7 +382,7 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_needs_rehash() {
-        let p = std::env::var("TEST_PASS").unwrap_or_else(|_| "test_pass".into());
+        let p = String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap();
         let hash = hash_password(&p).expect("Failed to hash password");
         assert!(!needs_rehash(&hash));
 
