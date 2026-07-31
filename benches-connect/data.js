@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785532569472,
+  "lastUpdate": 1785534396592,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -473,6 +473,36 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/cf5971699b08026b303bf82555fa3ced05b8af71"
         },
         "date": 1785532568847,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "88777cbda50bd4cf79e8847235f91d8038729008",
+          "message": "feat: add CI workflow for automated OWASP ZAP baseline security scanning",
+          "timestamp": "2026-07-31T18:38:45-03:00",
+          "tree_id": "d9375b816d591d2f4e988b1862aec71cf9682c63",
+          "url": "https://github.com/Rullst/Rullst/commit/88777cbda50bd4cf79e8847235f91d8038729008"
+        },
+        "date": 1785534395702,
         "tool": "cargo",
         "benches": [
           {
