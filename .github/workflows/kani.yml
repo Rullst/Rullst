@@ -30,5 +30,9 @@ jobs:
       - name: Verify with Kani
         working-directory: ${{ matrix.package }}
         continue-on-error: true
-        timeout-minutes: 300
-        run: cargo kani
+        timeout-minutes: 90
+        run: |
+          # --default-unwind-bound 5: caps loop unrolling to prevent OOM from
+          # unbounded loops in crypto crates (subtle::ct_eq was at 5733 iterations).
+          # --jobs 1: prevents parallel SAT solvers from competing for runner RAM.
+          cargo kani --default-unwind-bound 5 --jobs 1

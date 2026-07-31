@@ -10,6 +10,11 @@ cargo-fuzz = true
 [package.metadata.cargo-machete]
 ignored = ["libfuzzer-sys", "rullst-connect"]
 
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+
 [dependencies.rullst-connect]
 path = ".."
 features = ["axum"]

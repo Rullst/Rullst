@@ -9,6 +9,7 @@ jobs:
   zap_scan:
     name: ZAP Baseline Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 120  # Hard cap: build(60) + server start(5) + ZAP scan(60) = ~125min max
     permissions:
       issues: write
       pull-requests: write
@@ -21,6 +22,18 @@ jobs:
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
         with:
           toolchain: stable
+
+      - name: Cache Cargo registry and build artifacts
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-zap-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-zap-
 
       - name: Install cargo-rullst
         run: cargo install --path cargo-rullst
@@ -35,17 +48,18 @@ jobs:
 
       - name: Build Rullst Server
         working-directory: zap_test
-        timeout-minutes: 300
-        run: cargo build
+        timeout-minutes: 60
+        run: cargo build --release
 
       - name: Run Rullst Server in background
         working-directory: zap_test
         run: |
-          # We use cargo run to start the backend (compilation is already done)
-          cargo run &
+          # Run the pre-compiled release binary directly (no recompilation)
+          ./target/release/zap_test &
           # Wait for the server to be ready on port 3000
-          sleep 5
-          curl -s --retry 10 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
+          sleep 3
+          curl -s --retry 15 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
+          echo "Server is up at http://localhost:3000"
 
       - name: Generate ZAP Rules to Ignore CDN False Positives
         run: |
@@ -65,3 +79,4 @@ jobs:
           target: 'http://localhost:3000'
           rules_file_name: '.zap/rules.tsv'
           fail_action: false # Only warn for now, avoid breaking CI on first run
+

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rullst Core Primitives — Benchmarks</title>
+  <meta name="description" content="Performance benchmarks for rullst-core hot-path primitives: HTML escaping, PII masking, and CSRF token generation." />
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
+  <style>
+    :root { --bg:#020617;--main:#f8fafc;--muted:#94a3b8;--p:#f59e0b;--s:#38bdf8;--gb:rgba(15,23,42,.6);--gb2:rgba(255,255,255,.05); }
+    *{box-sizing:border-box}body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--main);min-height:100vh}
+    .blob{position:fixed;filter:blur(100px);z-index:-1;opacity:.35;border-radius:50%}
+    .blob-1{top:-10%;left:-10%;width:500px;height:500px;background:var(--p)}
+    .blob-2{bottom:-10%;right:-10%;width:600px;height:600px;background:var(--s)}
+    .wrap{max-width:1200px;margin:0 auto;padding:4rem 2rem}
+    header{text-align:center;margin-bottom:4rem}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--p);padding:.4rem 1rem;border-radius:999px;font-size:.85rem;font-weight:600;margin-bottom:1.5rem}
+    h1{font-size:3.5rem;font-weight:800;margin-bottom:1rem;background:linear-gradient(135deg,var(--p),var(--s));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.05em}
+    p.sub{color:var(--muted);font-size:1.1rem;max-width:700px;margin:0 auto 2rem;line-height:1.7}
+    .links{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border-radius:8px;font-weight:600;text-decoration:none;transition:all .2s;font-size:.9rem;font-family:'Inter',sans-serif}
+    .btn-o{border:1px solid rgba(255,255,255,.1);color:var(--main);background:rgba(255,255,255,.05)}.btn-o:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:3rem}
+    .card{background:rgba(0,0,0,.3);border:1px solid var(--gb2);border-radius:12px;padding:1.5rem;transition:transform .2s,border-color .2s}
+    .card:hover{transform:translateY(-5px);border-color:rgba(245,158,11,.3)}
+    .card .ic{font-size:1.8rem;margin-bottom:.75rem}
+    .card h3{font-size:1rem;margin:0 0 .5rem;color:var(--p)}.card p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.6}
+    code{background:rgba(245,158,11,.1);padding:.1rem .4rem;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.85em;color:var(--p)}
+    .glass{background:var(--gb);backdrop-filter:blur(16px);border:1px solid var(--gb2);border-radius:16px;padding:2rem;margin-bottom:2rem;box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}
+    h2{font-size:1.5rem;margin:0 0 1.5rem;display:flex;align-items:center;gap:.5rem}
+    .chart-c{position:relative;height:400px;width:100%}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}
+    th,td{padding:1rem;text-align:left;border-bottom:1px solid var(--gb2)}
+    th{color:var(--s);font-weight:600;white-space:nowrap}
+    td.mono{font-family:'JetBrains Mono',monospace;color:var(--p)}
+    .ok{display:inline-block;padding:.25rem .6rem;border-radius:4px;font-size:.75rem;font-weight:700;background:rgba(245,158,11,.2);color:var(--p)}
+    .reg{background:rgba(244,63,94,.2);color:#f43f5e}
+    #loading{text-align:center;padding:4rem;color:var(--muted);font-size:1.2rem}
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div><div class="blob blob-2"></div>
+  <div class="wrap">
+    <header>
+      <div class="badge">🛡️ rullst-core</div>
+      <h1>Core Primitives Benchmarks</h1>
+      <p class="sub">Three hot-path functions that run on <em>every single request</em> — HTML escaping, PII masking, and CSRF token generation. Measured in <strong>nanoseconds</strong>.</p>
+      <div class="links">
+        <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
+        <a href="/Rullst/benches/" class="btn btn-o">⚡ Core Bench</a>
+        <a href="/Rullst/benches/orm/" class="btn btn-o">🗄️ ORM Bench</a>
+        <a href="/Rullst/benches/auth/" class="btn btn-o">🔐 Auth Bench</a>
+      </div>
+    </header>
+    <div class="grid">
+      <div class="card"><div class="ic">🔤</div><h3>HTML Escape</h3><p><code>escape_str()</code> is called on every dynamic value inside an <code>html!</code> macro block. Clean inputs return <code>Cow::Borrowed</code> (zero allocation). Malicious inputs allocate once.</p></div>
+      <div class="card"><div class="ic">🕵️</div><h3>PII Masking</h3><p><code>mask_pii()</code> classifies every field on ORM writes — emails, credit cards, SSNs, phones. Must be sub-microsecond to avoid slowing down database operations.</p></div>
+      <div class="card"><div class="ic">🔑</div><h3>CSRF Token</h3><p><code>generate_csrf_token()</code> uses <code>rand::Alphanumeric</code> to generate a 32-character cryptographically secure token on every form render.</p></div>
+    </div>
+    <div id="loading">⏳ Loading primitives benchmark data...</div>
+    <div id="dashboard" style="display:none">
+      <div class="glass"><h2>📈 Performance History</h2><div class="chart-c"><canvas id="chart"></canvas></div></div>
+      <div class="glass" style="overflow-x:auto"><h2>📝 Recent Runs</h2>
+        <table><thead><tr><th>Date</th><th>Commit</th><th>Benchmark</th><th>Value</th><th>Δ</th></tr></thead><tbody id="tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <script src="./data.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded',()=>{
+      const L=document.getElementById('loading'),D=document.getElementById('dashboard');
+      if(!window.BENCHMARK_DATA){L.innerHTML='⚠️ No data yet. Run bench.yml on push to main.';return;}
+      L.style.display='none';D.style.display='block';
+      const data=window.BENCHMARK_DATA,entries=data.entries||data,suite=Object.keys(entries)[0],commits=entries[suite];
+      if(!commits?.length){D.innerHTML='<p>No entries yet.</p>';return;}
+      const recent=commits.slice(-30),labels=recent.map(e=>new Date(e.commit.timestamp).toLocaleDateString()+' '+e.commit.id.slice(0,7));
+      const names=[...new Set(recent.flatMap(e=>e.benches.map(b=>b.name)))];
+      const colors=['#f59e0b','#38bdf8','#a78bfa','#34d399','#f43f5e'];
+      const datasets=names.map((n,i)=>({label:n,data:recent.map(e=>{const b=e.benches.find(b=>b.name===n);return b?b.value:null;}),borderColor:colors[i%colors.length],backgroundColor:colors[i%colors.length]+'22',borderWidth:2,tension:.3,fill:true,spanGaps:true}));
+      Chart.defaults.color='#94a3b8';Chart.defaults.font.family='Inter';
+      new Chart(document.getElementById('chart').getContext('2d'),{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{color:'#f8fafc',usePointStyle:true,padding:20}},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,23,42,.95)',titleColor:'#f59e0b',bodyColor:'#f8fafc',borderColor:'rgba(245,158,11,.2)',borderWidth:1,padding:14,callbacks:{label:c=>` ${c.dataset.label}: ${c.raw?.toLocaleString()??'N/A'} ns/iter`}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{maxTicksLimit:10,color:'#64748b'}},y:{grid:{color:'rgba(255,255,255,.05)'},title:{display:true,text:'ns/iter',color:'#94a3b8'},ticks:{color:'#64748b',callback:v=>v.toLocaleString()}}}}});
+      const tbody=document.getElementById('tbody');[...commits].reverse().slice(0,12).forEach((e,i,arr)=>{
+        const d=new Date(e.commit.timestamp).toLocaleString(),m=e.commit.message.split('\n')[0].slice(0,50),l=`https://github.com/Rullst/Rullst/commit/${e.commit.id}`,b=e.benches[0],v=b?`${b.value.toLocaleString()} ${b.unit}`:'-';
+        let ch='<span class="ok">Baseline</span>';
+        const p=arr[i+1];if(b&&p){const pb=p.benches.find(x=>x.name===b.name);if(pb){const pct=((b.value-pb.value)/pb.value)*100;ch=pct>2?`<span class="ok reg">📈 +${pct.toFixed(2)}%</span>`:pct<-2?`<span class="ok">📉 ${pct.toFixed(2)}%</span>`:`<span style="color:#64748b">~ stable</span>`;}}
+        const tr=document.createElement('tr');tr.innerHTML=`<td style="color:#64748b;white-space:nowrap">${d}</td><td><a href="${l}" target="_blank" style="color:#38bdf8;text-decoration:none">${e.commit.id.slice(0,7)}</a>: ${m}</td><td style="color:#94a3b8;font-family:'JetBrains Mono',monospace;font-size:.85rem">${b?b.name:'-'}</td><td class="mono">${v}</td><td>${ch}</td>`;
+        tbody.appendChild(tr);
+      });
+    });
+  </script>
+</body>
+</html>

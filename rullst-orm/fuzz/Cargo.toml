@@ -23,6 +23,10 @@ tracing = "0.1"
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))', 'cfg(kani)'] }
 
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
 [[bin]]
 name = "fuzz_audit"
 path = "fuzz_targets/fuzz_audit.rs"
@@ -53,3 +57,8 @@ path = "fuzz_targets/fuzz_parser.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "repro_oom"
+path = "fuzz_targets/repro_oom.rs"
+test = false
+doc = false

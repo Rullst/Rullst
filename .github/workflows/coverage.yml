@@ -1,4 +1,4 @@
-﻿name: Test Coverage (LLVM)
+name: Test Coverage (LLVM)
 
 on:
   push:
@@ -25,10 +25,28 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@50570a4fd0cb7e583e6a512c02bffb9ade28d868 # cargo-llvm-cov
 
-      - name: Run cargo-llvm-cov
+      - name: Run cargo-llvm-cov (all features — unit + integration)
         run: |
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/" --lcov --output-path lcov.info
-      
+          cargo llvm-cov --all-features --workspace \
+            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/" \
+            --lcov --output-path lcov_main.info
+
+      - name: Run cargo-llvm-cov (DB matrix tests — postgres & mysql via testcontainers)
+        # Must run without strict-* features so the cfg gates are satisfied
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          cargo llvm-cov -p rullst-orm \
+            --test matrix_postgres --test matrix_mysql \
+            -- --test-threads=1 \
+            --lcov --output-path lcov_db.info
+
+      - name: Merge coverage reports
+        run: |
+          cargo llvm-cov report --lcov --output-path lcov.info \
+            --input-files lcov_main.info --input-files lcov_db.info 2>/dev/null \
+            || cat lcov_main.info lcov_db.info > lcov.info
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@04b047e8bb82a0c002c8312c1c880fbc6a999d45 # v5
         with:

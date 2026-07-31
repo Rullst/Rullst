@@ -1,7 +1,9 @@
-﻿name: Property Testing
+name: Property Testing
 
 on:
-  workflow_dispatch: # Manual trigger only
+  schedule:
+    - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (avoids GitHub Actions weekend congestion)
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,7 +20,22 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run Proptests (10,000 cases)
+      - name: Run Proptests — all features (unit + integration)
+        # --all-features activates strict-* flags simultaneously, which correctly
+        # excludes the rullst-orm proptest_builder (it uses sqlite and needs no
+        # strict features). That test is covered in the dedicated step below.
         env:
           PROPTEST_CASES: 10000
         run: cargo test --workspace --all-features --release
+
+      - name: Run Proptests — ORM query builder (sqlite, no strict features)
+        # proptest_builder.rs has #![cfg(not(any(feature = "strict-postgres",
+        # feature = "strict-mysql")))] so it must run without those features.
+        env:
+          PROPTEST_CASES: 10000
+        run: cargo test -p rullst-orm --test proptest_builder --release
+
+      - name: Run Proptests — rullst-connect PKCE (embedded unit test)
+        env:
+          PROPTEST_CASES: 10000
+        run: cargo test -p rullst-connect --lib --release

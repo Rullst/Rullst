@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0 # Required for TruffleHog to scan git history
           
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@d4d6275bc2738abc8091d4f25408f10dcc4b6cd0 # main @ 2026-07-30
         with:
           path: ./
           extra_args: --debug --only-verified

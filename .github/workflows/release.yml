@@ -40,6 +40,11 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace --all-features
 
+      - name: Run Matrix DB Tests (Testcontainers — PostgreSQL & MySQL)
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
+
   publish:
     name: Publish to crates.io and GitHub
     needs: verify

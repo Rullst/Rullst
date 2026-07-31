@@ -82,6 +82,7 @@ We've rewritten our entire documentation from scratch into a beautiful, high-per
 
 </div>
 
+> 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](./WORKFLOWS.md)**
 
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
