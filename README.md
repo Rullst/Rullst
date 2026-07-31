@@ -219,3 +219,9 @@ Rullst was forged with this exact mindset. We believe that web development shoul
 2. **Built for Humans and AIs:** Rullst is architected to be highly legible and free of runtime "magic". By heavily utilizing static dispatch and compile-time guarantees, the codebase is transparent. This empowers both human developers and AI coding agents to collaborate and build production-ready systems rapidly, even without deep prior framework knowledge.
 
 Rullst is not just a tool; it is a commitment to **Emotional Productivity**. We take care of the boilerplate and the security pitfalls so you can focus entirely on creating value.
+
+<br>
+
+<div align="center">
+  <p><i>"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</i></p>
+</div>

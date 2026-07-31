@@ -58,7 +58,7 @@ fn bench_mask_pii(c: &mut Criterion) {
 /// Uses `rand::distr::Alphanumeric` — must be fast enough for high-traffic endpoints.
 fn bench_csrf_token(c: &mut Criterion) {
     c.bench_function("generate_csrf_token_32_chars", |b| {
-        b.iter(|| generate_csrf_token())
+        b.iter(generate_csrf_token)
     });
 }
 
