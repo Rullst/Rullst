@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785463422322,
+  "lastUpdate": 1785464117987,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -178,6 +178,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 70,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "5bc2b02a839bfc81fc11ef756efbbf35d31b6682",
+          "message": "feat: add CodeQL static analysis workflow for Rust project",
+          "timestamp": "2026-07-30T23:07:25-03:00",
+          "tree_id": "c36fb3bdbfc9c190e2ec29f0ca9b015c87a6228f",
+          "url": "https://github.com/Rullst/Rullst/commit/5bc2b02a839bfc81fc11ef756efbbf35d31b6682"
+        },
+        "date": 1785464117383,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 69,
             "range": "± 1",
             "unit": "ns/iter"
           }
