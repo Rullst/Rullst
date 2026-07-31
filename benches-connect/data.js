@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785465329431,
+  "lastUpdate": 1785517274393,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -239,6 +239,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 73,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f940d3e86f6924c1b827ea69307c7df72a833b4b",
+          "message": "chore: initialize comprehensive CI/CD pipeline with GitHub Actions workflows",
+          "timestamp": "2026-07-31T13:53:20-03:00",
+          "tree_id": "8a58fdf8891b79cd5ddb99a10e01986bfe4c0fda",
+          "url": "https://github.com/Rullst/Rullst/commit/f940d3e86f6924c1b827ea69307c7df72a833b4b"
+        },
+        "date": 1785517274109,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 75,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
