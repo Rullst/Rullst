@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785525688648,
+  "lastUpdate": 1785527189208,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -575,6 +575,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1371,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "209b11bf867a17f8cf1b4723ae4a19babc836ad8",
+          "message": "feat: implement hybrid hot-reload server with AST-based logic diffing and TUI dashboard support",
+          "timestamp": "2026-07-31T16:39:02-03:00",
+          "tree_id": "33725ba0603d757972a766407350eee9021ed1d7",
+          "url": "https://github.com/Rullst/Rullst/commit/209b11bf867a17f8cf1b4723ae4a19babc836ad8"
+        },
+        "date": 1785527188858,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 763,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 657,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1464,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1417,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
