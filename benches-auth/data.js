@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785459718509,
+  "lastUpdate": 1785461307750,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -143,6 +143,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1396,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b19612b56bc0d6123246aad6068b2602fe5f75e9",
+          "message": "fix: update Matrix DB Tests CI badge URL in README",
+          "timestamp": "2026-07-30T22:21:40-03:00",
+          "tree_id": "3ba8d910cccbef9e3c65a2f9fde6c58d51441445",
+          "url": "https://github.com/Rullst/Rullst/commit/b19612b56bc0d6123246aad6068b2602fe5f75e9"
+        },
+        "date": 1785461307363,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 431,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 386,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 859,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 835,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
