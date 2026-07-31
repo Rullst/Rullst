@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785465309251,
+  "lastUpdate": 1785517254229,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -383,6 +383,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1198,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f940d3e86f6924c1b827ea69307c7df72a833b4b",
+          "message": "chore: initialize comprehensive CI/CD pipeline with GitHub Actions workflows",
+          "timestamp": "2026-07-31T13:53:20-03:00",
+          "tree_id": "8a58fdf8891b79cd5ddb99a10e01986bfe4c0fda",
+          "url": "https://github.com/Rullst/Rullst/commit/f940d3e86f6924c1b827ea69307c7df72a833b4b"
+        },
+        "date": 1785517253948,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 751,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 658,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1473,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1412,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
