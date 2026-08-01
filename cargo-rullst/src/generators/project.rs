@@ -147,10 +147,8 @@ fn run_project_wizard(
                 .with_prompt("🗄️ Will your project need a Database?")
                 .default(true)
                 .interact()?;
-        } else if blueprint_selection == 1 {
-            db_needed = false;
         } else {
-            db_needed = true;
+            db_needed = blueprint_selection != 1;
         }
 
         if db_needed {
@@ -320,7 +318,11 @@ pub fn create_new_project(
     let features_str = features_list.join(", ");
 
     let rullst_dep = if let Some(ref dir) = rullst_dir {
-        let path = dir.canonicalize()?.display().to_string().replace(r"\\?\", "");
+        let path = dir
+            .canonicalize()?
+            .display()
+            .to_string()
+            .replace(r"\\?\", "");
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!(
             "rullst = {{ path = \"{}\", features = [{}] }}",
@@ -564,9 +566,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
         let db_url = match db_provider.as_str() {
             "Postgres" => "postgres://user:password@localhost:5432/db",
             "MySQL" => "mysql://user:password@localhost:3306/db",
-            "Turso" => {
-                "libsql://[your-database-id].turso.io?authToken=[your-token]"
-            }
+            "Turso" => "libsql://[your-database-id].turso.io?authToken=[your-token]",
             _ => "sqlite://db.sqlite",
         };
         let rullst_toml = format!(
