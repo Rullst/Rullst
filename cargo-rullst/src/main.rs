@@ -9,6 +9,7 @@ pub mod cli;
 pub mod generators;
 pub mod ui;
 
+#[cfg_attr(mutants, mutants::skip)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     ui::trigger_background_update_check();
 

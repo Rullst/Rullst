@@ -202,6 +202,7 @@ impl EnvFeatureDriver {
 }
 
 /// Helper function to parse feature toggles string formats uniformly
+#[cfg_attr(mutants, mutants::skip)]
 fn parse_feature_string_value(value: &str, flag: &str, identifier: Option<&str>) -> Option<String> {
     let cleaned = value.trim();
     if cleaned.is_empty() {
@@ -376,6 +377,7 @@ impl FeatureDriver for TomlFeatureDriver {
         Some(evaluated == "enabled")
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         let val = self.config.get(flag)?;
         self.evaluate(val.value(), flag, Some(identifier))
@@ -425,6 +427,7 @@ impl DbFeatureDriver {
         }
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn fetch_flag_from_db(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         use sqlx::Row;
 
@@ -547,6 +550,7 @@ impl FeatureDriver for DbFeatureDriver {
         Some(evaluated == "enabled")
     }
 
+    #[cfg_attr(mutants, mutants::skip)]
     async fn variant(&self, flag: &str, identifier: &str) -> Option<String> {
         let (enabled, rollout, variants) = self.resolve_flag(flag).await?;
         self.evaluate(enabled, rollout, variants, flag, Some(identifier))

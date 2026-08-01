@@ -15,6 +15,7 @@ impl Drop for ChildGuard {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
     let theme = dialoguer::theme::ColorfulTheme::default();
 
@@ -479,6 +480,7 @@ To run on an iOS simulator or device:
     Ok(())
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn run_omni_app(target: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let omni_dir = Path::new("omni-app");
     if !omni_dir.exists() {

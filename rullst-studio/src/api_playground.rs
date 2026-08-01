@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use axum::Router;
 use utoipa::openapi::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;

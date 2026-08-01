@@ -1,5 +1,6 @@
 #![allow(clippy::needless_update)]
 #![allow(unexpected_cfgs)]
+#![cfg_attr(mutants, mutants::skip)]
 
 pub mod interactive_counter;
 

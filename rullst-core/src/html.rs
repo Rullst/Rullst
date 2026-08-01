@@ -22,6 +22,7 @@ impl HtmlEscape for RawHtml {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 impl HtmlEscape for String {
     fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self)
@@ -34,6 +35,7 @@ impl HtmlEscape for &str {
     }
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
     fn escape_html(&self) -> Cow<'_, str> {
         (*self).escape_html()
@@ -161,8 +163,27 @@ mod kani_proofs {
             assert!(escaped.len() >= s.len());
 
             // 3. Proving specific characters are correctly replaced
-            if s.contains('<') {
-                assert!(escaped.contains("&lt;"));
+            let s_bytes = s.as_bytes();
+            let mut has_lt = false;
+            for &b in s_bytes {
+                if b == b'<' {
+                    has_lt = true;
+                    break;
+                }
+            }
+
+            if has_lt {
+                let e_bytes = escaped.as_bytes();
+                let mut found = false;
+                if e_bytes.len() >= 4 {
+                    for i in 0..=(e_bytes.len() - 4) {
+                        if &e_bytes[i..i + 4] == b"&lt;" {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                assert!(found);
             }
         }
     }

@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

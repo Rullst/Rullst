@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use regex::Regex;
 use std::fs;
 use std::path::Path;

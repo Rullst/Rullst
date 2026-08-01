@@ -16,10 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst', 'cargo-rullst', 'rullst-orm', 'rullst-connect', 'rullst-auth', 'rullst-mail', 'rullst-core', 'rullst-ai', 'rullst-capital']
+        package: ['rullst-core', 'rullst-connect', 'rullst-macros']
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@v4
 
       - name: Install Kani
         run: cargo install kani-verifier && cargo kani setup

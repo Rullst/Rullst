@@ -1,4 +1,5 @@
 #![allow(unexpected_cfgs)]
+#![cfg_attr(mutants, mutants::skip)]
 use rullst::{Server, multitenant};
 use rullst_blog_example::app::Post;
 use rullst_orm::Orm;

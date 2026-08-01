@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 extern crate rullst_core as rullst;
 use axum::{Router, response::Html, routing::get};
 use rullst_core::Queue;

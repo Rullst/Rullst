@@ -1,4 +1,4 @@
-﻿name: OSSF Scorecard supply-chain security
+name: OSSF Scorecard supply-chain security
 
 on:
   push:
@@ -8,13 +8,12 @@ on:
 
 permissions: read-all
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       security-events: write
       id-token: write
@@ -22,7 +21,7 @@ jobs:
 
     steps:
       - name: "Checkout code"
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 

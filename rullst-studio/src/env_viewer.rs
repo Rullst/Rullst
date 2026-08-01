@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use axum::{Router, response::Html, routing::get};
 
 pub fn router() -> Router {

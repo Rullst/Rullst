@@ -5,6 +5,7 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(

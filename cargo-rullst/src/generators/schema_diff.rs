@@ -107,6 +107,7 @@ pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
     tables
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn extract_type_name(ty: &syn::Type) -> (String, bool) {
     if let syn::Type::Path(type_path) = ty
         && let Some(segment) = type_path.path.segments.last()

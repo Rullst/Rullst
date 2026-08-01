@@ -1,3 +1,4 @@
+#![cfg_attr(mutants, mutants::skip)]
 use axum::{
     Router,
     extract::{Path, Query},

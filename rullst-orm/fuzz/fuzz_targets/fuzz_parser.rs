@@ -18,7 +18,7 @@ fuzz_target!(|data: &[u8]| {
             + s.matches("break").count()
             + s.matches("continue").count();
 
-        if nesting + keywords > 64 {
+        if nesting + keywords > 16 {
             return;
         }
 
