@@ -147,31 +147,30 @@ fn run_project_wizard(
                 .with_prompt("🗄️ Will your project need a Database?")
                 .default(true)
                 .interact()?;
-
-            if db_needed {
-                let db_options = &[
-                    "Sqlite (Zero setup)",
-                    "Postgres (Requires localhost:5432 running)",
-                    "MySQL/MariaDB (Requires localhost:3306 running)",
-                    "Turso / libSQL (Edge Database)",
-                ];
-                let db_selection = dialoguer::Select::with_theme(&theme)
-                    .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
-                    .default(0)
-                    .items(&db_options[..])
-                    .interact()?;
-                db_provider = match db_selection {
-                    1 => "Postgres".to_string(),
-                    2 => "MySQL".to_string(),
-                    3 => "Turso".to_string(),
-                    _ => "Sqlite".to_string(),
-                };
-            }
         } else if blueprint_selection == 1 {
             db_needed = false;
         } else {
             db_needed = true;
-            db_provider = "Sqlite".to_string();
+        }
+
+        if db_needed {
+            let db_options = &[
+                "Sqlite (Zero setup)",
+                "Postgres (Requires localhost:5432 running)",
+                "MySQL/MariaDB (Requires localhost:3306 running)",
+                "Turso / libSQL (Edge Database)",
+            ];
+            let db_selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
+                .default(0)
+                .items(&db_options[..])
+                .interact()?;
+            db_provider = match db_selection {
+                1 => "Postgres".to_string(),
+                2 => "MySQL".to_string(),
+                3 => "Turso".to_string(),
+                _ => "Sqlite".to_string(),
+            };
         }
 
         hot_reload = dialoguer::Confirm::with_theme(&theme)
@@ -186,7 +185,7 @@ fn run_project_wizard(
         .interact()?;
 
     let wants_redis = dialoguer::Confirm::with_theme(&theme)
-        .with_prompt("🚀 Do you want to use Redis for Key-Value caching and ultra-fast hashes?")
+        .with_prompt("🚀 Do you want to use Redis? (Adds advanced caching/jobs, but requires a separate server/cloud costs)")
         .default(false)
         .interact()?;
 
@@ -321,7 +320,7 @@ pub fn create_new_project(
     let features_str = features_list.join(", ");
 
     let rullst_dep = if let Some(ref dir) = rullst_dir {
-        let path = dir.canonicalize()?.display().to_string();
+        let path = dir.canonicalize()?.display().to_string().replace(r"\\?\", "");
         let path = path.trim_start_matches(r"\\?\").replace("\\", "/");
         format!(
             "rullst = {{ path = \"{}\", features = [{}] }}",
@@ -402,6 +401,7 @@ axum = "0.8"
                 .canonicalize()?
                 .display()
                 .to_string()
+                .replace(r"\\?\", "")
                 .replace("\\", "/");
             let redis_feat = if wants_redis {
                 ", features = [\"redis\"]"
@@ -445,6 +445,7 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
                 .canonicalize()?
                 .display()
                 .to_string()
+                .replace(r"\\?\", "")
                 .replace("\\", "/");
             format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
         } else {
@@ -561,12 +562,12 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
     // Write Rullst.toml configuration
     if db_needed {
         let db_url = match db_provider.as_str() {
-            "Postgres" => "DATABASE_URL=\"postgres://user:password@localhost:5432/db\"",
-            "MySQL" => "DATABASE_URL=\"mysql://user:password@localhost:3306/db\"",
+            "Postgres" => "postgres://user:password@localhost:5432/db",
+            "MySQL" => "mysql://user:password@localhost:3306/db",
             "Turso" => {
-                "DATABASE_URL=\"libsql://[your-database-id].turso.io?authToken=[your-token]\""
+                "libsql://[your-database-id].turso.io?authToken=[your-token]"
             }
-            _ => "DATABASE_URL=\"sqlite://db.sqlite\"",
+            _ => "sqlite://db.sqlite",
         };
         let rullst_toml = format!(
             r#"[database]

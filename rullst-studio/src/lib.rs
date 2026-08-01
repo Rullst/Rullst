@@ -6,6 +6,7 @@ use utoipa::openapi::OpenApi;
 
 pub mod api_playground;
 pub mod data_browser;
+pub use data_browser::run_studio;
 pub mod env_viewer;
 pub mod er_diagram;
 pub mod feature_flags;
