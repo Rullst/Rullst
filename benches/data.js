@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785712299673,
+  "lastUpdate": 1785713752358,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -6049,6 +6049,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2336,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "223b6357c38e0ac737e51aee4879eec9af6dcfd9",
+          "message": "feat: implement dynamic database table browser with schema-agnostic querying and automated GitHub scorecard analysis.",
+          "timestamp": "2026-08-02T20:33:39-03:00",
+          "tree_id": "a5e848641b5019cc32623bc23b564cba8a891ef5",
+          "url": "https://github.com/Rullst/Rullst/commit/223b6357c38e0ac737e51aee4879eec9af6dcfd9"
+        },
+        "date": 1785713751514,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 727,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 966,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 668,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2298,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
