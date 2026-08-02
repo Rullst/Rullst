@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - **CLI Inspection Tooling (`cargo rullst inspect`)**: Introduced `cargo rullst inspect [target]` to statically inspect active route tables (`route`), ORM struct models (`model`), and JSON structural schemas (`schema`) directly in the terminal, eliminating proc-macro opacity.
-- **Zero Lock-In & Axum/SQLx Interoperability Guide**: Published [`docs/migration/axum-sqlx.md`](docs/migration/axum-sqlx.md) detailing 1:1 extractor equivalences and step-by-step escape-hatch refactoring instructions for developers using raw Axum or SQLx.
-- **Community Extension Package Specification**: Published [`docs/spec/packages.md`](docs/spec/packages.md) establishing the `RullstPackage` trait and manifest standard for third-party community extensions.
+- **Zero Lock-In & Axum/SQLx Interoperability Guide**: Published [`docs/src/axum-sqlx-migration.md`](docs/src/axum-sqlx-migration.md) detailing 1:1 extractor equivalences and step-by-step escape-hatch refactoring instructions for developers using raw Axum or SQLx.
+- **Community Extension Package Specification**: Published [`docs/src/packages-spec.md`](docs/src/packages-spec.md) establishing the `RullstPackage` trait and manifest standard for third-party community extensions.
 - **Rullst-Studio Advanced Tooling**: Added three new interactive tools to the Studio dashboard:
   - **Environment Viewer**: Safely inspect all active environment variables (with auto-masking for sensitive keys like passwords and secrets).
   - **Feature Flags Manager**: A zero-config UI to list and toggle database-backed feature flags (`rullst_feature_flags`) in real-time.

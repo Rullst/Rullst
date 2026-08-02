@@ -38,7 +38,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 - **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
-- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](docs/migration/axum-sqlx.md).
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/migration/axum-sqlx.md).
 
 ---
 

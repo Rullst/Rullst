@@ -45,7 +45,9 @@ pub fn inspect_project(target: Option<&str>) -> Result<(), Box<dyn std::error::E
 fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
-        "📌 Active Route Table & Macro Inspection:".bold().underline()
+        "📌 Active Route Table & Macro Inspection:"
+            .bold()
+            .underline()
     );
 
     let src_dir = Path::new("src");
@@ -58,7 +60,10 @@ fn inspect_routes() -> Result<(), Box<dyn std::error::Error>> {
     scan_dir_for_routes(src_dir, &mut found_routes)?;
 
     if found_routes.is_empty() {
-        println!("{}", "  (No explicit routes! macro calls found in src/)".dimmed());
+        println!(
+            "{}",
+            "  (No explicit routes! macro calls found in src/)".dimmed()
+        );
     } else {
         println!("\n  {:<10} {:<30} {:<30}", "METHOD", "PATH", "HANDLER");
         println!("  {}", "-".repeat(70).dimmed());
@@ -114,14 +119,14 @@ fn scan_dir_for_routes(
 
                         let path = left
                             .find('"')
-                            .and_then(|start| left[start + 1..].find('"').map(|end| &left[start + 1..start + 1 + end]))
+                            .and_then(|start| {
+                                left[start + 1..]
+                                    .find('"')
+                                    .map(|end| &left[start + 1..start + 1 + end])
+                            })
                             .unwrap_or(left);
 
-                        routes.push((
-                            method.to_string(),
-                            path.to_string(),
-                            handler.to_string(),
-                        ));
+                        routes.push((method.to_string(), path.to_string(), handler.to_string()));
                     }
                 }
             }
@@ -149,7 +154,10 @@ fn inspect_models() -> Result<(), Box<dyn std::error::Error>> {
             && path.file_name().unwrap() != "mod.rs"
         {
             let content = fs::read_to_string(&path)?;
-            println!("\n  📦 Model File: {}", path.file_name().unwrap().to_string_lossy().cyan());
+            println!(
+                "\n  📦 Model File: {}",
+                path.file_name().unwrap().to_string_lossy().cyan()
+            );
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("pub struct") || trimmed.starts_with("pub enum") {
@@ -174,7 +182,8 @@ fn inspect_schema() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!(
             "{}",
-            "⚠️ 'rullst-schema.json' not found. Run 'cargo rullst dev' to generate schema.".yellow()
+            "⚠️ 'rullst-schema.json' not found. Run 'cargo rullst dev' to generate schema."
+                .yellow()
         );
     }
     Ok(())

@@ -13,6 +13,8 @@
 
 # Reference
 - [📜 Framework Spec](spec.md)
+- [🔓 Zero Lock-In & Axum/SQLx Interoperability](axum-sqlx-migration.md)
+- [🔌 Rullst Extension Packages Spec](packages-spec.md)
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)
