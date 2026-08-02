@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785683951796,
+  "lastUpdate": 1785685023362,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -659,6 +659,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "100ce2d6e618b42aba40d27c118d4f88b17fd6c5",
+          "message": "feat: add CLI inspection tools, define package extension interface, and expand project documentation",
+          "timestamp": "2026-08-02T12:29:20-03:00",
+          "tree_id": "e75adec43bcb7c0f0e2ca1aca23e940886acb012",
+          "url": "https://github.com/Rullst/Rullst/commit/100ce2d6e618b42aba40d27c118d4f88b17fd6c5"
+        },
+        "date": 1785685022827,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 77,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
