@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785649690422,
+  "lastUpdate": 1785683931654,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1007,6 +1007,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1427,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e4ffeb159587a5259d45f868c116c37e268b0879",
+          "message": "feat: implement Rullst Live component system and project inspection tooling",
+          "timestamp": "2026-08-02T12:11:29-03:00",
+          "tree_id": "b15d22b28c1ffcfb3fc4809ee2d2ad43b31c7077",
+          "url": "https://github.com/Rullst/Rullst/commit/e4ffeb159587a5259d45f868c116c37e268b0879"
+        },
+        "date": 1785683931121,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 724,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 614,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1362,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1400,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
