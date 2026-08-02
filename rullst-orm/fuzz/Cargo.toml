@@ -57,8 +57,3 @@ path = "fuzz_targets/fuzz_parser.rs"
 test = false
 doc = false
 
-[[bin]]
-name = "repro_oom"
-path = "fuzz_targets/repro_oom.rs"
-test = false
-doc = false

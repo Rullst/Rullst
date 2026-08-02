@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Removed FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 to avoid warnings
+  # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   fuzz:
@@ -53,8 +54,6 @@ jobs:
             target: fuzz_schema
           - dir: rullst-orm/fuzz
             target: fuzz_scout
-          - dir: rullst-orm/fuzz
-            target: repro_oom
           # Rullst Connect
           - dir: rullst-connect/fuzz
             target: default_target

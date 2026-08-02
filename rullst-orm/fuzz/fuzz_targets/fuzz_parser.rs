@@ -4,7 +4,7 @@ use libfuzzer_sys::fuzz_target;
 // Include the parser logic directly to test it without needing to restructure
 // the `rullst-orm-macros` proc-macro crate.
 mod internal_parser {
-    include!("../../rullst-orm-macros/src/parser.rs");
+    include!("../../../rullst-orm-macros/src/parser.rs");
 }
 
 fuzz_target!(|data: &[u8]| {

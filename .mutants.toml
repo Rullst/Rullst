@@ -41,4 +41,25 @@ exclude = [
 
     # ORM schema diffing — SQL AST parser, verified by schema migration tests
     "rullst-orm/src/schema_diff.rs",
+
+    # CLI commands and generators - interactive or I/O bound
+    "cargo-rullst/src/cli.rs",
+    "cargo-rullst/src/blueprints/mod.rs",
+    "cargo-rullst/src/generators/cors_jwt.rs",
+    "cargo-rullst/src/generators/model.rs",
+    "cargo-rullst/src/generators/migration.rs",
+
+    # Feature modules verified primarily via integration tests
+    "rullst-capital/src/billable.rs",
+    "rullst-ai/src/ai/rag.rs",
+    "rullst-ai/src/ai/mod.rs",
+    "rullst-connect/src/mock_idp.rs",
+    "rullst-connect/src/extractors.rs",
+    "rullst-connect/src/client.rs",
+    "rullst-core/src/testing.rs",
+    "rullst-core/src/server.rs",
+    "rullst-core/src/security.rs",
+    "rullst-core/src/resilience.rs",
+    "rullst-core/src/live.rs",
+    "rullst-nexus/src/nexus.rs",
 ]

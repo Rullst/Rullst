@@ -11,9 +11,7 @@ permissions: read-all
 
 env:
   CARGO_TERM_COLOR: always
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Removed FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 to avoid warnings
 
 jobs:
   tangleguard:

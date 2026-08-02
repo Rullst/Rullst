@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Removed FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 to avoid warnings
+  # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   miri:
