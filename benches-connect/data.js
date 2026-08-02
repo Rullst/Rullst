@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785536251903,
+  "lastUpdate": 1785649007469,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -568,6 +568,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 51,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e5b5f48042389ef5fcccc14360bc8939d07a7ae4",
+          "message": "feat: implement HTML sanitization utilities and add automated workflows for fuzzing, mutation, and architecture testing.",
+          "timestamp": "2026-08-02T02:28:51-03:00",
+          "tree_id": "57ba3d4c508561e23192d9dd5b8284d9be1771f0",
+          "url": "https://github.com/Rullst/Rullst/commit/e5b5f48042389ef5fcccc14360bc8939d07a7ae4"
+        },
+        "date": 1785649006848,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
             "range": "± 0",
             "unit": "ns/iter"
           }
