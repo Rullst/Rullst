@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785687866874,
+  "lastUpdate": 1785712668564,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -719,6 +719,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2e43d594b28bb4b06153e80b1a2adff4f9fabe41",
+          "message": "feat: add inspection tool for project routes, models, and schema definitions",
+          "timestamp": "2026-08-02T20:04:39-03:00",
+          "tree_id": "b15a2f235fc193dd71f0efa4dc680a6bd08a8fa7",
+          "url": "https://github.com/Rullst/Rullst/commit/2e43d594b28bb4b06153e80b1a2adff4f9fabe41"
+        },
+        "date": 1785712667929,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
