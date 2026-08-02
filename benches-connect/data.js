@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785649709820,
+  "lastUpdate": 1785683951796,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -623,6 +623,36 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/f3597045da8503c8ad71cecc7c765d9391d034a0"
         },
         "date": 1785649709593,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e4ffeb159587a5259d45f868c116c37e268b0879",
+          "message": "feat: implement Rullst Live component system and project inspection tooling",
+          "timestamp": "2026-08-02T12:11:29-03:00",
+          "tree_id": "b15d22b28c1ffcfb3fc4809ee2d2ad43b31c7077",
+          "url": "https://github.com/Rullst/Rullst/commit/e4ffeb159587a5259d45f868c116c37e268b0879"
+        },
+        "date": 1785683951302,
         "tool": "cargo",
         "benches": [
           {
