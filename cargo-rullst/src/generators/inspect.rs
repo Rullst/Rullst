@@ -90,7 +90,7 @@ fn scan_dir_for_routes(
         let path = entry.path();
         if path.is_dir() {
             scan_dir_for_routes(&path, routes)?;
-        } else if path.extension().map_or(false, |ext| ext == "rs") {
+        } else if path.extension().is_some_and(|ext| ext == "rs") {
             let content = fs::read_to_string(&path)?;
             for line in content.lines() {
                 let line_trim = line.trim();
@@ -150,8 +150,7 @@ fn inspect_models() -> Result<(), Box<dyn std::error::Error>> {
     for entry in fs::read_dir(models_dir)? {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().map_or(false, |ext| ext == "rs")
-            && path.file_name().unwrap() != "mod.rs"
+        if path.extension().is_some_and(|ext| ext == "rs") && path.file_name().unwrap() != "mod.rs"
         {
             let content = fs::read_to_string(&path)?;
             println!(
