@@ -39,6 +39,41 @@ pub fn is_rullst_project() -> bool {
     }
 }
 
+/// AST-based module registration for registering new submodules in mod.rs or main.rs
+pub fn register_mod_ast(
+    mod_path: &Path,
+    module_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if !mod_path.exists() {
+        fs::write(mod_path, "")?;
+    }
+
+    let content = fs::read_to_string(mod_path)?;
+    if let Ok(file_ast) = syn::parse_file(&content) {
+        let already_registered = file_ast.items.iter().any(|item| {
+            if let syn::Item::Mod(item_mod) = item {
+                item_mod.ident == module_name
+            } else {
+                false
+            }
+        });
+
+        if already_registered {
+            return Ok(());
+        }
+    }
+
+    let decl = format!("pub mod {};\n", module_name);
+    let mut new_content = content;
+    if !new_content.is_empty() && !new_content.ends_with('\n') {
+        new_content.push('\n');
+    }
+    new_content.push_str(&decl);
+    fs::write(mod_path, new_content)?;
+
+    Ok(())
+}
+
 /// Normalizes the controller name to snake_case with the "_controller" suffix
 pub fn to_snake_case(s: &str) -> String {
     let mut base = s.to_string();

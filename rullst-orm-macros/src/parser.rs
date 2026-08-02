@@ -57,7 +57,10 @@ fn validate_relation_attribute(
             if value.is_empty() {
                 return Err(syn::Error::new(
                     span,
-                    format!("{} requires a model name", key),
+                    format!(
+                        "Relation attribute '{}' requires a target model name (e.g. #[orm({} = \"User\")])",
+                        key, key
+                    ),
                 ));
             }
             // Check if value looks like a valid Rust identifier
@@ -70,8 +73,8 @@ fn validate_relation_attribute(
                 return Err(syn::Error::new(
                     span,
                     format!(
-                        "{} model name should start with uppercase (PascalCase)",
-                        key
+                        "Relation attribute '{}' model name must start with uppercase (PascalCase, e.g. #[orm({} = \"User\")])",
+                        key, key
                     ),
                 ));
             }
@@ -79,7 +82,13 @@ fn validate_relation_attribute(
         "foreign_key" | "related_key" | "pivot_table" | "local_key" | "name"
             if value.is_empty() =>
         {
-            return Err(syn::Error::new(span, format!("{} requires a value", key)));
+            return Err(syn::Error::new(
+                span,
+                format!(
+                    "Attribute '{}' requires a non-empty string value (e.g. #[orm({} = \"user_id\")])",
+                    key, key
+                ),
+            ));
         }
         _ => {}
     }

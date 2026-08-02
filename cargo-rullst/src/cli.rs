@@ -145,7 +145,7 @@ pub enum Commands {
     #[command(name = "generate:diagram")]
     GenerateDiagram,
     /// Connects to an existing database and generates Rullst ORM models
-    #[command(name = "generate:models")]
+    #[command(name = "generate:models", alias = "make:models-from-db")]
     GenerateModels {
         /// The database type (sqlite, postgres, mysql)
         #[arg(short, long)]

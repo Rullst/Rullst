@@ -440,6 +440,39 @@ impl Orm {
         pool.begin().await.map_err(Into::into)
     }
 
+    /// Executes a closure inside an isolated database transaction, automatically committing on Ok and rolling back on Err.
+    pub async fn transaction<F, R, E>(f: F) -> Result<R, crate::Error>
+    where
+        F: FnOnce(
+                std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>,
+            )
+                -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<R, E>> + Send>>
+            + Send,
+        E: std::fmt::Display,
+    {
+        let tx = Self::begin_transaction().await?;
+        let tx_arc = std::sync::Arc::new(tokio::sync::Mutex::new(Some(tx)));
+        let result = CURRENT_TX.scope(tx_arc.clone(), f(tx_arc.clone())).await;
+
+        match result {
+            Ok(val) => {
+                if let Some(tx) = tx_arc.lock().await.take() {
+                    tx.commit().await?;
+                }
+                Ok(val)
+            }
+            Err(err) => {
+                if let Some(tx) = tx_arc.lock().await.take() {
+                    let _ = tx.rollback().await;
+                }
+                Err(crate::Error::DatabaseError(format!(
+                    "Transaction failed: {}",
+                    err
+                )))
+            }
+        }
+    }
+
     /// Run an array of seeders sequentially
     #[cfg_attr(test, mutants::skip)]
     pub async fn seed(seeders: Vec<Box<dyn Seeder>>) -> Result<(), crate::Error> {

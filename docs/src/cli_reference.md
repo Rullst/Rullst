@@ -102,7 +102,7 @@ Scans your models, DTOs (Data Transfer Objects), and mapped routes. Transcribes 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
 
-### `cargo rullst generate:models`
+### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
 Connects to a legacy database (that already exists and has tables), maps the entire "Information Schema", and automatically outputs Rust Struct files based on the columns and types found in the database.
 * **Required Flags:**
   * `--driver`: `postgres`, `mysql`, or `sqlite`.
@@ -152,3 +152,25 @@ Reads your `Foundry.toml` and, using the configured credentials, packages and or
 ### `cargo rullst omni`
 Initializes your native application client (after using `make:omni`), launching the operating system window.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
+
+---
+
+## 🛠️ Quick CLI Cheat Sheet
+
+```bash
+# Create a new project with fast-linker scaffolding
+cargo rullst new my_app
+
+# Reverse-engineer ORM models from an existing database
+cargo rullst make:models-from-db --driver postgres --url "postgres://user:pass@localhost:5432/mydb"
+
+# Statically inspect routes, models, or schemas in the terminal
+cargo rullst inspect route
+cargo rullst inspect model
+
+# Launch the visual Studio Dashboard (Data Browser, ER Diagram, Feature Flags)
+cargo rullst studio
+
+# Deploy to Cloud / VPS with automatic SSL Caddy setup
+cargo rullst foundry:deploy
+```

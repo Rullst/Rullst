@@ -20,6 +20,18 @@
 
 ---
 
+### 📚 Documentation & Community
+
+We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
+
+👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
+
+💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
+
+> **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
+
+---
+
 ### 🏛️ The Rullst Monorepo (v12.0.0+)
 
 Rullst is now a unified Monorepo! The framework's core (`rullst`), the database layer (`rullst-orm`), and the frontend connectivity (`rullst-connect`) are now engineered in lockstep under a single repository. This unified architecture ensures 100% compatibility across the stack, centralized security audits, and a seamless developer experience from backend to edge.
@@ -39,18 +51,6 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
 - 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/migration/axum-sqlx.md).
-
----
-
-### 📚 Documentation & Community
-
-We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
-
-👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
-
-💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
-
-> **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
 
 ---
 
@@ -134,14 +134,13 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 - **SSR Rendering**: `~1.07 µs` (4.2x faster than Dioxus, 8.5x faster than Leptos).
 - **Routing**: `~974 ns` (Identical latency to raw Axum).
 
-### ✨ The "Wow" Factor
-
-Rullst brings the ergonomics of Laravel and Ruby on Rails to the blazing-fast, memory-safe world of Rust:
-
-- 🚀 **Hybrid Hot-Reloading**: Sub-millisecond UI updates via WebSockets, paired with Zero-downtime Dynamic Library (`.dll`/`.so`) hot-swapping for backend business logic.
+- 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
 - 🎨 **Rullst Studio & Nexus**: An all-in-one Web Suite (`cargo rullst studio`) with Data Browser, Visual ER Diagram, Dynamic Feature Flags, Real-time Logger, and auto-generated Admin Panels from your Structs.
+- 🔄 **Expressive Active Record Transactions**: Borrow-checker safe `User::transaction(|tx| async move { ... })` with automatic task-local scoping (`CURRENT_TX`), commit-on-success, and rollback-on-error behavior.
+- 🔄 **Reverse ORM Scaffolding**: Automatically reverse-engineer Rust `struct` models from existing database tables using `cargo rullst make:models-from-db`.
+- 🔍 **Static CLI Inspection**: Inspect active route tables, ORM models, and JSON schemas directly in the terminal via `cargo rullst inspect`.
 - 🛡️ **Zero-Panic Policy**: Hardened architecture built for production edge infrastructure.
-- ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Deployments.
+- ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Cloud Deployments (`cargo rullst foundry:deploy`).
 
 ---
 

@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Expressive & Borrow-Checker Safe Transactions**: Added `Orm::transaction(|tx| async move { ... })` closure helper in `rullst-orm` with automatic task-local scoping (`CURRENT_TX`), commit-on-success, and rollback-on-error behavior.
+- **Fast-Linker Scaffolding**: Integrated pre-configured `.cargo/config.toml` in `cargo rullst new` for sub-second incremental recompilations via `mold` (Linux) and `lld` (macOS/Windows).
+- **AST-Based Deterministic Codemods**: Upgraded module generation in `cargo-rullst` to use AST parsing (`syn::parse_file`) for `register_mod_ast`, eliminating regex code injection errors.
+- **Actionable Proc-Macro Diagnostics**: Enhanced relation and model validation error messages in `rullst-orm-macros` with actionable resolution hints.
+- **Reverse ORM Scaffolding (`cargo rullst make:models-from-db`)**: Added `make:models-from-db` alias in `cargo-rullst` for reverse-engineering Rust `struct` models from existing database schema tables.
 - **CLI Inspection Tooling (`cargo rullst inspect`)**: Introduced `cargo rullst inspect [target]` to statically inspect active route tables (`route`), ORM struct models (`model`), and JSON structural schemas (`schema`) directly in the terminal, eliminating proc-macro opacity.
 - **Zero Lock-In & Axum/SQLx Interoperability Guide**: Published [`docs/src/axum-sqlx-migration.md`](docs/src/axum-sqlx-migration.md) detailing 1:1 extractor equivalences and step-by-step escape-hatch refactoring instructions for developers using raw Axum or SQLx.
 - **Community Extension Package Specification**: Published [`docs/src/packages-spec.md`](docs/src/packages-spec.md) establishing the `RullstPackage` trait and manifest standard for third-party community extensions.
