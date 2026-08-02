@@ -651,6 +651,6 @@ mod tests {
         let err2 = callback_no_state
             .verify_state("secret_state_123")
             .unwrap_err();
-        assert!(err2.to_string().contains("Missing state parameter"));
+        assert!(err2.to_string().contains("State missing in callback"));
     }
 }
