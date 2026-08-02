@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785687503430,
+  "lastUpdate": 1785712299673,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -5995,6 +5995,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2380,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2e43d594b28bb4b06153e80b1a2adff4f9fabe41",
+          "message": "feat: add inspection tool for project routes, models, and schema definitions",
+          "timestamp": "2026-08-02T20:04:39-03:00",
+          "tree_id": "b15a2f235fc193dd71f0efa4dc680a6bd08a8fa7",
+          "url": "https://github.com/Rullst/Rullst/commit/2e43d594b28bb4b06153e80b1a2adff4f9fabe41"
+        },
+        "date": 1785712298279,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 722,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 980,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 648,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2336,
+            "range": "± 55",
             "unit": "ns/iter"
           }
         ]
