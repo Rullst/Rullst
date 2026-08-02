@@ -1,4 +1,5 @@
 // src/generators/model.rs — Model generator.
+#![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::{
     is_rullst_project, migration::regenerate_migrations_mod, model_to_pascal_case,

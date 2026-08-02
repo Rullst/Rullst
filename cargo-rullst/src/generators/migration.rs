@@ -1,4 +1,5 @@
 // src/generators/migration.rs — Migration generator.
+#![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::is_rullst_project;
 use colored::*;

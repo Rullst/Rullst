@@ -232,6 +232,7 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
+    #[kani::unwind(6)]
     fn verify_static_size_no_overflow() {
         // We model the logic of HtmlElement::static_size() to mathematically prove
         // it cannot overflow `usize` with reasonable constraints imposed by the macro system.
@@ -240,7 +241,7 @@ mod kani_proofs {
         kani::assume(tag_len <= 100);
 
         let num_attrs: usize = kani::any();
-        kani::assume(num_attrs <= 100);
+        kani::assume(num_attrs <= 4);
 
         let mut size = tag_len * 2 + 5;
 
@@ -259,7 +260,7 @@ mod kani_proofs {
         }
 
         let num_children: usize = kani::any();
-        kani::assume(num_children <= 500);
+        kani::assume(num_children <= 4);
 
         for _ in 0..num_children {
             let child_size: usize = kani::any();

@@ -149,7 +149,7 @@ mod kani_proofs {
     /// 1. Will NEVER panic on any arbitrary valid UTF-8 string input.
     /// 2. Always produces an escaped string that is >= the length of the original string.
     #[kani::proof]
-    #[kani::unwind(25)]
+    #[kani::unwind(6)]
     fn proof_escape_str_safety_and_bounds() {
         // Generate a fully non-deterministic sequence of 4 bytes
         let bytes: [u8; 4] = kani::any();

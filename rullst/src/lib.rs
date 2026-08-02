@@ -1,5 +1,10 @@
 pub use rullst_core::*;
 
+#[cfg(feature = "orm")]
+pub use rullst_orm as db;
+#[cfg(feature = "orm")]
+pub use rullst_orm as orm;
+
 #[cfg(feature = "auth")]
 pub use rullst_auth as auth;
 

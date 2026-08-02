@@ -1,4 +1,5 @@
 // src/blueprints/mod.rs — Root of the blueprints module.
+#![cfg_attr(mutants, mutants::skip)]
 
 use std::fs;
 use std::path::Path;

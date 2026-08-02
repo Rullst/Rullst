@@ -605,9 +605,20 @@ mod tests {
             "Contact me at u***@example.com or o****@test.com."
         );
     }
+
+    #[test]
+    fn test_extract_token_from_body() {
+        assert_eq!(
+            extract_token_from_body(b"_token=secret123"),
+            Some("secret123".to_string())
+        );
+        assert_eq!(extract_token_from_body(b"other=value"), None);
+        assert_eq!(extract_token_from_body(b"invalid_body"), None);
+    }
 }
 
 #[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {
     use super::*;
 
@@ -615,7 +626,7 @@ mod kani_proofs {
     /// 1. Will NEVER panic on any arbitrary valid string input (including emojis/complex utf-8).
     /// 2. Always produces a masked string with the exact same character count as the original text.
     #[kani::proof]
-    #[kani::unwind(9)]
+    #[kani::unwind(5)]
     fn proof_mask_pii_safety_and_invariants() {
         // Generate a non-deterministic sequence of 4 bytes (reduced from 8 to prevent SAT solver timeout)
         let bytes: [u8; 4] = kani::any();

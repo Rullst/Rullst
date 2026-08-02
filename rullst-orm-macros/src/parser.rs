@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 use syn::{Data, DeriveInput, Fields, spanned::Spanned};
 
 /// Split a token string at top-level commas, ignoring commas that

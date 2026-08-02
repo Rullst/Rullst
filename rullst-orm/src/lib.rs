@@ -1,3 +1,5 @@
+pub use sqlx;
+
 #[cfg(not(any(
     feature = "strict-postgres",
     feature = "strict-mysql",

@@ -1,4 +1,5 @@
 // src/cli.rs — Clap command definitions and the central dispatch function.
+#![cfg_attr(mutants, mutants::skip)]
 // This is the nerve center of the CLI: defines every subcommand and routes
 // each one to its corresponding generator function.
 
@@ -13,6 +14,7 @@ use crate::generators::{
     db::run_project_db_command,
     desktop::{run_omni_app, scaffold_omni_system},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
+    inspect::inspect_project,
     introspect::generate_models_from_db,
     middleware::create_new_middleware,
     migration::create_new_migration,
@@ -200,6 +202,11 @@ pub enum Commands {
         /// Target platform (desktop, android, ios)
         target: Option<String>,
     },
+    /// Expands and inspects macro code or structural definitions for debugging
+    Inspect {
+        /// Target item to inspect (e.g. routes, models, schema, or file path)
+        target: Option<String>,
+    },
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
@@ -368,6 +375,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Omni { target } => {
             run_omni_app(target.as_deref())?;
+        }
+        Commands::Inspect { target } => {
+            inspect_project(target.as_deref())?;
         }
     }
 

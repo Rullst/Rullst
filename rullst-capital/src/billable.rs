@@ -108,3 +108,31 @@ pub trait Billable {
             .await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestUser;
+
+    #[async_trait]
+    impl Billable for TestUser {
+        fn email(&self) -> String {
+            "test@example.com".to_string()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_billable_defaults() {
+        let u = TestUser;
+        assert_eq!(u.email(), "test@example.com");
+        assert_eq!(u.subscription_id(), None);
+        assert_eq!(u.tier(), None);
+        assert_eq!(u.tier_limit("cpu"), None);
+        assert!(!u.check_quota("cpu", 10));
+
+        let res = u.subscribe("pro", "http://return").await;
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "BillingProvider not initialized");
+    }
+}

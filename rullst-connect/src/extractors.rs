@@ -628,4 +628,27 @@ mod tests {
             axum::http::StatusCode::BAD_REQUEST
         );
     }
+
+    #[test]
+    fn test_auth_callback_verify_state() {
+        let callback_valid = AuthCallback {
+            code: Some("abc".into()),
+            state: Some("secret_state_123".into()),
+            error: None,
+            error_description: None,
+        };
+
+        assert!(callback_valid.verify_state("secret_state_123").is_ok());
+        let err = callback_valid.verify_state("wrong_state_456").unwrap_err();
+        assert!(err.to_string().contains("CSRF state mismatch"));
+
+        let callback_no_state = AuthCallback {
+            code: Some("abc".into()),
+            state: None,
+            error: None,
+            error_description: None,
+        };
+        let err2 = callback_no_state.verify_state("secret_state_123").unwrap_err();
+        assert!(err2.to_string().contains("Missing state parameter"));
+    }
 }

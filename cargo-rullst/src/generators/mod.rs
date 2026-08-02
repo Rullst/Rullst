@@ -16,6 +16,7 @@ pub mod dev;
 pub mod diagram;
 pub mod foundry;
 pub mod introspect;
+pub mod inspect;
 pub mod island;
 pub mod middleware;
 pub mod migration;

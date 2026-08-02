@@ -10,7 +10,8 @@ repository = "https://github.com/Rullst/Rullst"
 exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
 rust-version = "1.96.0"
 [features]
-default = []
+default = ["orm"]
+orm = ["dep:rullst-orm"]
 nexus = ["dep:rullst-nexus"]
 studio = ["dep:rullst-studio", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
@@ -48,7 +49,7 @@ opentelemetry_sdk = { version = "0.32.1", optional = true, features = ["rt-tokio
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
-rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
+rullst-orm = { version = "12.0.0", path = "../rullst-orm", optional = true }
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio", "macros"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.7.0", features = ["fs", "trace", "cors"] }

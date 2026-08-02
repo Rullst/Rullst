@@ -470,6 +470,7 @@ mod tests {
         // AiClient wrapper tests
         let client = AiClient::new(openai);
         check_err(client.prompt("test").await.unwrap_err());
+        check_err(client.prompt_with_image("test", b"fake").await.unwrap_err());
         check_err(client.chat().user("test").send().await.unwrap_err());
         check_err(client.embed("test").await.unwrap_err());
     }

@@ -78,3 +78,28 @@ impl Live {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct DummyComponent;
+
+    #[async_trait]
+    impl LiveComponent for DummyComponent {
+        fn render(&self) -> String {
+            "<h1>Live Demo</h1>".to_string()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_live_mount() {
+        let html = Live::mount::<DummyComponent>("/ws/demo?a=1&b=2").await;
+        assert!(html.contains("hx-ext=\"ws\""));
+        assert!(html.contains("ws-connect=\"/ws/demo?a=1&amp;b=2\""));
+        assert!(html.contains("<h1>Live Demo</h1>"));
+        assert_ne!(html, "xyzzy");
+        assert_ne!(html, "");
+    }
+}

@@ -31,6 +31,17 @@ Rullst is now a unified Monorepo! The framework's core (`rullst`), the database 
 
 ---
 
+### 🔓 Zero Lock-In Guarantee (100% Axum & SQLx)
+
+Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does not invent proprietary HTTP abstractions or locked-in router types. Every Rullst controller, extractor, and middleware maps 1:1 to standard Axum and Tower equivalents:
+
+- **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
+- **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
+- **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](docs/migration/axum-sqlx.md).
+
+---
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:

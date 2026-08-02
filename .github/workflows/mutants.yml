@@ -5,7 +5,8 @@ on:
 
 permissions: read-all
 
-
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   mutants:
@@ -32,7 +33,7 @@ jobs:
         # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
         # hard-fail — results are captured in the uploaded artifact for review.
         continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
+        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place || true
 
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.2.2

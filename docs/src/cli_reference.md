@@ -15,6 +15,7 @@ Creates a Rullst project from scratch. This command doesn't just clone a templat
 * **Optional Flags:**
   * `--api`: Changes the default scaffolding behavior. Instead of preparing a Full-Stack project with HTML rendering, it generates a headless project (JSON API only), focusing strictly on JSON and removing template dependencies.
   * `--docker`: Automatically adds a highly optimized multi-stage `Dockerfile` for Rust, a `docker-compose.yml` (with the database), and the `.dockerignore`.
+  * `--turso`: Scaffolds a Turso/libSQL sidecar (`sqld`) configuration for edge database replication.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) files to create a 100% reproducible development environment isolated from the host OS.
 
 ### `cargo rullst upgrade`
@@ -111,6 +112,15 @@ Connects to a legacy database (that already exists and has tables), maps the ent
 
 ### `cargo rullst generate:ai-context`
 Creates the brain map of your project (`.llms.txt`). It summarizes the folder structure, conventions, and dependencies so that AI Assistants (like Cursor and Github Copilot) perfectly understand the framework when you ask them for help.
+
+### `cargo rullst inspect [target]`
+Statically expands and inspects macro code or structural definitions directly in the terminal without starting a server. Useful for debugging proc-macro output, reviewing route tables, and validating database schemas.
+* **Arguments:**
+  * `[target]`: The item or file to inspect:
+    * `route` or `routes`: Renders the active route table (methods, paths, and handlers).
+    * `model` or `models`: Renders ORM struct models and field attributes.
+    * `schema`: Outputs the project's structural JSON schema (`rullst-schema.json`).
+    * `<path/to/file.rs>`: Displays the first 40 lines of any target Rust file with line numbers.
 
 ---
 

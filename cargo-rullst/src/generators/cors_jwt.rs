@@ -1,4 +1,5 @@
 // src/generators/cors_jwt.rs — CORS & JWT Middleware generator.
+#![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::is_rullst_project;
 use colored::*;

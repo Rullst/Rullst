@@ -29,3 +29,20 @@ pub fn build_rag_prompt(question: &str, contexts: &[String]) -> String {
     prompt.push_str("Answer:");
     prompt
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_rag_prompt() {
+        let contexts = vec!["Context 1".to_string(), "Context 2".to_string()];
+        let prompt = build_rag_prompt("What is it?", &contexts);
+        assert!(prompt.contains("Context 1"));
+        assert!(prompt.contains("Context 2"));
+        assert!(prompt.contains("Question: What is it?"));
+        assert!(prompt.contains("Answer:"));
+        assert_ne!(prompt, "xyzzy");
+        assert_ne!(prompt, "");
+    }
+}

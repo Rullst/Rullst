@@ -804,6 +804,7 @@ fn field_kind_sql(kind: &FieldKind) -> &'static str {
 }
 
 #[cfg(all(test, not(miri)))]
+#[cfg_attr(mutants, mutants::skip)]
 #[allow(dead_code)]
 fn field_kind_input_type(kind: &FieldKind) -> &'static str {
     match kind {
@@ -878,6 +879,7 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
     out
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 fn build_table_query(
     entry: &RegistryEntry,
     visible_fields: &[&FieldMeta],

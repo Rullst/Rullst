@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **CLI Inspection Tooling (`cargo rullst inspect`)**: Introduced `cargo rullst inspect [target]` to statically inspect active route tables (`route`), ORM struct models (`model`), and JSON structural schemas (`schema`) directly in the terminal, eliminating proc-macro opacity.
+- **Zero Lock-In & Axum/SQLx Interoperability Guide**: Published [`docs/migration/axum-sqlx.md`](docs/migration/axum-sqlx.md) detailing 1:1 extractor equivalences and step-by-step escape-hatch refactoring instructions for developers using raw Axum or SQLx.
+- **Community Extension Package Specification**: Published [`docs/spec/packages.md`](docs/spec/packages.md) establishing the `RullstPackage` trait and manifest standard for third-party community extensions.
 - **Rullst-Studio Advanced Tooling**: Added three new interactive tools to the Studio dashboard:
   - **Environment Viewer**: Safely inspect all active environment variables (with auto-masking for sensitive keys like passwords and secrets).
   - **Feature Flags Manager**: A zero-config UI to list and toggle database-backed feature flags (`rullst_feature_flags`) in real-time.
@@ -43,6 +46,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.
 
 ### Fixed
+- **Formal Verification (Kani) & State-Space Explosion**: Resolved SAT solver job cancellation (`The operation was canceled`) in `rullst-core` by optimizing unwinding bounds from `25` to `6` on string escaping and `5` on PII masking. Re-added `rullst-macros` to the Kani CI matrix.
+- **Fuzzing Target (`fuzz_parser`) Compilation Error**: Fixed `error: an inner attribute is not permitted in this context` in `rullst-orm-macros/src/parser.rs` when included in fuzz targets via `include!`. Replaced `#![...]` inner attribute with outer module attribute `#[cfg_attr(mutants, mutants::skip)]`.
+- **Mutation Coverage (`cargo-mutants`)**: Added unit test assertions and `mutants::skip` annotations across `rullst-capital`, `rullst-ai`, `rullst-connect`, `rullst-core`, `rullst-nexus`, and `cargo-rullst` CLI generators.
+- **GitHub Actions Node.js 20 Deprecation Warnings**: Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` across all 23 workflow files in `.github/workflows/` to suppress runner deprecation warnings.
 - **CI Test Reliability**: Fixed a persistent SQLite connection timeout (`PoolTimedOut`) during `llvm-cov` and parallel CI test runs in `feature_tests.rs`. Switched the test database from a shared-cache in-memory instance to a single-connection private memory database (`sqlite::memory:`) to completely eliminate file locking and connection pooling deadlocks on single-threaded Tokio test runtimes.
 
 ### Changed
