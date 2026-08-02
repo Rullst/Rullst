@@ -13,6 +13,7 @@ fn translate_artisan_args(args: &[String]) -> Option<Vec<String>> {
         || command == "db:rollback"
         || command == "db:status"
         || command == "db:seed"
+        || command == "studio"
     {
         let mut translated_args = vec![args[0].clone()];
         match command.as_str() {
@@ -33,7 +34,7 @@ fn translate_artisan_args(args: &[String]) -> Option<Vec<String>> {
     }
 }
 
-/// Intercepts command line database calls (like `db:migrate`) before AXUM web server starts.
+/// Intercepts command line database calls (like `db:migrate` or `studio`) before AXUM web server starts.
 /// Parses Rullst.toml, connects to the database, executes the requested command, and exits.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn check_and_run_artisan(
@@ -58,12 +59,28 @@ pub async fn check_and_run_artisan(
 
         let url = if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
             env_db_url
+        } else if let Some(parsed) = db_url {
+            parsed
+        } else if std::path::Path::new("db.sqlite").exists() {
+            "sqlite://db.sqlite".to_string()
         } else {
-            db_url.unwrap_or_else(|| "sqlite://rullst.db".to_string())
+            "sqlite://rullst.db".to_string()
         };
 
         // 2. Initialize Orm database connection pool
-        rullst_orm::Orm::init(&url).await?;
+        let _ = rullst_orm::Orm::init(&url).await;
+
+        if args.len() >= 2 && args[1] == "studio" {
+            println!("📊 Starting Rullst Studio on http://127.0.0.1:5555...");
+            #[cfg(feature = "studio")]
+            {
+                if let Err(e) = rullst_studio::run_studio(&url).await {
+                    eprintln!("❌ Error running Rullst Studio: {}", e);
+                    std::process::exit(1);
+                }
+            }
+            std::process::exit(0);
+        }
 
         // 3. Delegate to rullst-orm Artisan CLI runner
         if let Err(e) = run_artisan_with_args(&translated_args, migrations, seeders).await {

@@ -71,11 +71,52 @@ fn build_fetch_tables_query(driver: &str) -> &'static str {
     }
 }
 
+pub fn resolve_db_url(provided: &str) -> String {
+    if !provided.trim().is_empty() {
+        return provided.trim().to_string();
+    }
+    if let Ok(env_url) = std::env::var("DATABASE_URL") {
+        if !env_url.trim().is_empty() {
+            return env_url.trim().to_string();
+        }
+    }
+    if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
+        for line in toml_content.lines() {
+            let trimmed = line.trim();
+            if (trimmed.starts_with("url =") || trimmed.starts_with("url="))
+                && let Some(val) = trimmed.split('=').nth(1)
+            {
+                let clean = val.trim().trim_matches('"').trim_matches('\'');
+                if !clean.is_empty() {
+                    return clean.to_string();
+                }
+            }
+        }
+    }
+    if std::path::Path::new("db.sqlite").exists() {
+        return "sqlite://db.sqlite".to_string();
+    }
+    if std::path::Path::new("rullst.db").exists() {
+        return "sqlite://rullst.db".to_string();
+    }
+    "sqlite://db.sqlite".to_string()
+}
+
+pub async fn ensure_pool_initialized() -> Result<&'static rullst_core::db::RullstPool, sqlx::Error>
+{
+    if let Some(pool) = rullst_core::db::safe_pool() {
+        Ok(pool)
+    } else {
+        let db_url = resolve_db_url("");
+        let _ = rullst_orm::Orm::init(&db_url).await;
+        rullst_core::db::safe_pool()
+            .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))
+    }
+}
+
 async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
-    let pool = rullst_core::db::safe_pool()
-        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
-    let driver = rullst_core::db::safe_driver()
-        .ok_or_else(|| sqlx::Error::Configuration("Database driver not initialized".into()))?;
+    let pool = ensure_pool_initialized().await?;
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
 
     let query = build_fetch_tables_query(driver);
 
@@ -114,8 +155,7 @@ fn build_schema_query(driver: &str, clean_table: &str) -> String {
 
 /// Dynamic SQLite table row counter
 async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
-    let pool = rullst_core::db::safe_pool()
-        .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))?;
+    let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
 
@@ -480,12 +520,13 @@ pub async fn handle_table(
     };
 
     let total_pages = (total_rows as f64 / page_size as f64).ceil() as usize;
-    let pool = match rullst_core::db::safe_pool() {
-        Some(p) => p,
-        None => {
-            return Html(
-                "Database pool not initialized. Please configure database_url.".to_string(),
-            )
+    let pool = match ensure_pool_initialized().await {
+        Ok(p) => p,
+        Err(e) => {
+            return Html(format!(
+                "Database pool not initialized. Please configure database_url ({})",
+                e
+            ))
             .into_response();
         }
     };
