@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785683931654,
+  "lastUpdate": 1785685002737,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1055,6 +1055,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1400,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "100ce2d6e618b42aba40d27c118d4f88b17fd6c5",
+          "message": "feat: add CLI inspection tools, define package extension interface, and expand project documentation",
+          "timestamp": "2026-08-02T12:29:20-03:00",
+          "tree_id": "e75adec43bcb7c0f0e2ca1aca23e940886acb012",
+          "url": "https://github.com/Rullst/Rullst/commit/100ce2d6e618b42aba40d27c118d4f88b17fd6c5"
+        },
+        "date": 1785685002224,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 721,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 620,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1363,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1385,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
