@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785712648150,
+  "lastUpdate": 1785714101032,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1199,6 +1199,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1383,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "223b6357c38e0ac737e51aee4879eec9af6dcfd9",
+          "message": "feat: implement dynamic database table browser with schema-agnostic querying and automated GitHub scorecard analysis.",
+          "timestamp": "2026-08-02T20:33:39-03:00",
+          "tree_id": "a5e848641b5019cc32623bc23b564cba8a891ef5",
+          "url": "https://github.com/Rullst/Rullst/commit/223b6357c38e0ac737e51aee4879eec9af6dcfd9"
+        },
+        "date": 1785714100602,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 723,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 622,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1362,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1416,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
