@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785685002737,
+  "lastUpdate": 1785687846288,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1103,6 +1103,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1385,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "84a46d8ab7311ba7104fca60f82a24775914a444",
+          "message": "feat: add AuthCallback extractor with CSRF verification and integrate matrix test suites for MySQL and Postgres",
+          "timestamp": "2026-08-02T13:16:22-03:00",
+          "tree_id": "9c2882769c27317e23c35414b55ea5d6afe873b2",
+          "url": "https://github.com/Rullst/Rullst/commit/84a46d8ab7311ba7104fca60f82a24775914a444"
+        },
+        "date": 1785687845681,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 726,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 625,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1395,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1424,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
