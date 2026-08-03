@@ -100,7 +100,7 @@ impl ReplicationManager {
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 #[cfg(not(target_arch = "wasm32"))]
-pub use rullst_orm::{Orm, RullstModel, async_trait, schema};
+pub use rullst_orm::{Orm, RullstModel, RullstPool, async_trait, schema};
 #[cfg(not(target_arch = "wasm32"))]
 pub use sqlx;
 #[cfg(not(target_arch = "wasm32"))]
