@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785714101032,
+  "lastUpdate": 1785769173785,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1247,6 +1247,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1416,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4fb11e9b7a3cbf13a13efcb299e92dbb99471c0d",
+          "message": "chore: update GitHub Actions dependencies and refactor artisan studio export and db imports",
+          "timestamp": "2026-08-03T11:51:28-03:00",
+          "tree_id": "b047f6f984e4822bb1c3b5c13c20cd626639473b",
+          "url": "https://github.com/Rullst/Rullst/commit/4fb11e9b7a3cbf13a13efcb299e92dbb99471c0d"
+        },
+        "date": 1785769173267,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 724,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 623,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1370,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1410,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
