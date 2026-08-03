@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785769194049,
+  "lastUpdate": 1785771813522,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -809,6 +809,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a474a7c20d6792cd0efd0ba6be6ab1ed9374d532",
+          "message": "refactor: cleanup code formatting and simplify environment variable retrieval logic",
+          "timestamp": "2026-08-03T12:20:37-03:00",
+          "tree_id": "2ef7cde966adb15e90023b53c1ccbcf9f6eae223",
+          "url": "https://github.com/Rullst/Rullst/commit/a474a7c20d6792cd0efd0ba6be6ab1ed9374d532"
+        },
+        "date": 1785771813126,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 75,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
