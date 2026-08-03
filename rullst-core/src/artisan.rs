@@ -72,7 +72,9 @@ pub async fn check_and_run_artisan(
 
         if args.len() >= 2 && args[1] == "studio" {
             println!("📊 Starting Rullst Studio on http://127.0.0.1:5555...");
-            println!("Notice: Rullst Studio is available via 'cargo-rullst studio' or the `rullst-studio` crate.");
+            println!(
+                "Notice: Rullst Studio is available via 'cargo-rullst studio' or the `rullst-studio` crate."
+            );
             std::process::exit(0);
         }
 

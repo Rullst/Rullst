@@ -75,10 +75,10 @@ pub fn resolve_db_url(provided: &str) -> String {
     if !provided.trim().is_empty() {
         return provided.trim().to_string();
     }
-    if let Ok(env_url) = std::env::var("DATABASE_URL") {
-        if !env_url.trim().is_empty() {
-            return env_url.trim().to_string();
-        }
+    if let Ok(env_url) = std::env::var("DATABASE_URL")
+        && !env_url.trim().is_empty()
+    {
+        return env_url.trim().to_string();
     }
     if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
         for line in toml_content.lines() {
