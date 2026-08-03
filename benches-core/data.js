@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785714035820,
+  "lastUpdate": 1785769107956,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -1865,6 +1865,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/safe_field_no_pii",
             "value": 169,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 136,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4fb11e9b7a3cbf13a13efcb299e92dbb99471c0d",
+          "message": "chore: update GitHub Actions dependencies and refactor artisan studio export and db imports",
+          "timestamp": "2026-08-03T11:51:28-03:00",
+          "tree_id": "b047f6f984e4822bb1c3b5c13c20cd626639473b",
+          "url": "https://github.com/Rullst/Rullst/commit/4fb11e9b7a3cbf13a13efcb299e92dbb99471c0d"
+        },
+        "date": 1785769107390,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 194,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 71,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 158,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 275,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 960,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 171,
+            "range": "± 7",
             "unit": "ns/iter"
           },
           {
