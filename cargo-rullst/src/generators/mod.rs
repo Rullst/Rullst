@@ -23,6 +23,7 @@ pub mod migration;
 pub mod model;
 pub mod openapi;
 pub mod project;
+pub mod resource;
 pub mod schema_diff;
 pub mod ts;
 pub mod worker;

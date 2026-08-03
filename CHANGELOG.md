@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Automated TypeScript SDK Sync (`cargo rullst dev --ts-sync`)**: Added `--ts-sync` flag to `cargo rullst dev` to automatically regenerate `sdk.ts` on file changes during development.
+- **Unified Object Storage & Media Pipeline (`rullst::storage`)**: Added multi-driver storage module in `rullst-core` with `LocalDriver` (path traversal protected), `S3`, and `Cloudflare R2` adapters, plus media resizing pipeline.
+- **Dynamic Package Manager CLI (`cargo rullst pkg`)**: Added `cargo rullst pkg add <name>` and `cargo rullst pkg list` to inspect and inject `RullstPackage` community dependencies.
+- **Visual Migration & Seeder Manager in Rullst Studio**: Added in-browser execution panel for `db:migrate`, `db:rollback`, and `db:seed` directly from `http://localhost:5555`.
+- **AI & RAG Playground in Rullst Studio**: Integrated interactive prompt test bench and RAG context builder UI inside Rullst Studio (`http://localhost:5555`).
+- **Full CRUD Resource Scaffolding (`cargo rullst make:resource <Name>`)**: Added `make:resource` command in `cargo-rullst` to scaffold Model, Migration, Controller, and HTMX Views in a single command.
+- **Interactive Dev Error Console**: Enhanced `rullst-core/src/error_console.rs` with a Whoops/Ignition-style interactive in-browser error stack trace, source line preview, and HTTP request inspector under `cfg(debug_assertions)`.
+- **Multiplatform Dev Build Tuning**: Enhanced `.cargo/config.toml` scaffolding in `cargo rullst new` with target-specific debug symbol splitting (`split-debuginfo = "unpacked"` for Linux/macOS) and FastLink support (`link-arg=/DEBUG:FASTLINK` for Windows MSVC).
 - **Expressive & Borrow-Checker Safe Transactions**: Added `Orm::transaction(|tx| async move { ... })` closure helper in `rullst-orm` with automatic task-local scoping (`CURRENT_TX`), commit-on-success, and rollback-on-error behavior.
 - **Fast-Linker Scaffolding**: Integrated pre-configured `.cargo/config.toml` in `cargo rullst new` for sub-second incremental recompilations via `mold` (Linux) and `lld` (macOS/Windows).
 - **AST-Based Deterministic Codemods**: Upgraded module generation in `cargo-rullst` to use AST parsing (`syn::parse_file`) for `register_mod_ast`, eliminating regex code injection errors.

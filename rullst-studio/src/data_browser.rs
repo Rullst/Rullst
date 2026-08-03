@@ -1,9 +1,7 @@
 #![cfg_attr(mutants, mutants::skip)]
 use axum::{
-    Router,
     extract::{Path, Query},
     response::{Html, IntoResponse},
-    routing::get,
 };
 use rullst_core::html::RawHtml;
 use rullst_macros::html;
@@ -299,6 +297,27 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
         };
         sidebar_links.push_str(&link_html);
     }
+
+    let tools_links = html! {
+        <div>
+            <div class="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest border-t border-slate-800/50 mt-4 pt-4">"Studio Tools"</div>
+            <a href="#"
+               hx-get="/studio/tools/migrations"
+               hx-target="#studio-content"
+               hx-push-url="true"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800/40 border-l-4 border-transparent transition">
+                <span>"🛠️ Database Tools"</span>
+            </a>
+            <a href="#"
+               hx-get="/studio/tools/ai"
+               hx-target="#studio-content"
+               hx-push-url="true"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800/40 border-l-4 border-transparent transition">
+                <span>"🤖 AI Playground"</span>
+            </a>
+        </div>
+    };
+    sidebar_links.push_str(&tools_links);
 
     let inner_html = html! {
         <html lang="en" class="h-full bg-slate-950">
@@ -667,12 +686,28 @@ pub async fn handle_table(
     }
 }
 
+pub async fn handle_studio_tools_migrations() -> impl IntoResponse {
+    let tables = fetch_tables().await.unwrap_or_default();
+    Html(studio_layout(
+        crate::migration_manager::render_migration_manager_html(),
+        None,
+        &tables,
+    ))
+}
+
+pub async fn handle_studio_tools_ai() -> impl IntoResponse {
+    let tables = fetch_tables().await.unwrap_or_default();
+    Html(studio_layout(
+        crate::ai_playground::render_ai_playground_html(),
+        None,
+        &tables,
+    ))
+}
+
 /// Actual clean routes wrapper
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn run_studio(_db_url: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let app = Router::new()
-        .route("/", get(handle_dashboard))
-        .route("/tables/{table_name}", get(handle_table));
+    let app = router();
 
     let host_str = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let addr_str = format!("{}:5555", host_str);
@@ -686,6 +721,30 @@ pub fn router() -> axum::Router {
     axum::Router::new()
         .route("/", axum::routing::get(handle_dashboard))
         .route("/tables/{table}", axum::routing::get(handle_table))
+        .route(
+            "/studio/tools/migrations",
+            axum::routing::get(handle_studio_tools_migrations),
+        )
+        .route(
+            "/studio/tools/ai",
+            axum::routing::get(handle_studio_tools_ai),
+        )
+        .route(
+            "/_studio/api/migrations/run",
+            axum::routing::post(crate::migration_manager::handle_run_migrations),
+        )
+        .route(
+            "/_studio/api/migrations/rollback",
+            axum::routing::post(crate::migration_manager::handle_rollback_migrations),
+        )
+        .route(
+            "/_studio/api/seeders/run",
+            axum::routing::post(crate::migration_manager::handle_run_seeders),
+        )
+        .route(
+            "/_studio/api/ai/prompt",
+            axum::routing::post(crate::ai_playground::handle_ai_prompt),
+        )
 }
 
 #[cfg(test)]

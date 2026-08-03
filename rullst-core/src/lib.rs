@@ -122,7 +122,7 @@ pub use scheduler::Scheduler;
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use storage::{Storage, StorageDriver, StorageError};
+pub use storage::{LocalDriver, Storage, StorageDriver, StorageError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
 #[cfg(not(target_arch = "wasm32"))]

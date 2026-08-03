@@ -495,66 +495,64 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
 "#,
     );
 
-    // Configuração para Windows (MSVC usa lld-link ou lld)
+    // Configuração para Windows MSVC (FastLink por padrão + lld se disponível)
     if has_lld && cfg!(windows) {
         config_toml.push_str(
             r#"[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "link-arg=/DEBUG:FASTLINK"]
 
 "#,
         );
     } else {
         config_toml.push_str(
-            r#"# To enable on Windows (Install LLVM with 'winget install LLVM.LLVM' and uncomment below):
-# [target.x86_64-pc-windows-msvc]
-# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+            r#"[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEBUG:FASTLINK"]
 
-"#
+"#,
         );
     }
 
-    // Configuração para Linux (GNU usa mold ou lld)
+    // Configuração para Linux (split-debuginfo=unpacked + mold/lld se disponível)
     if has_mold && cfg!(target_os = "linux") {
         config_toml.push_str(
             r#"[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "split-debuginfo=unpacked"]
 
 "#,
         );
     } else if has_lld && cfg!(target_os = "linux") {
         config_toml.push_str(
             r#"[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "split-debuginfo=unpacked"]
 
 "#,
         );
     } else {
         config_toml.push_str(
-            r#"# To enable on Linux (Install mold with your package manager and uncomment below):
-# [target.x86_64-unknown-linux-gnu]
-# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+            r#"[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "split-debuginfo=unpacked"]
 
 "#,
         );
     }
 
-    // Configuração para macOS (Darwin usa lld)
+    // Configuração para macOS (split-debuginfo=unpacked + lld se disponível)
     if has_lld && cfg!(target_os = "macos") {
         config_toml.push_str(
             r#"[target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "split-debuginfo=unpacked"]
 
 [target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "split-debuginfo=unpacked"]
 "#,
         );
     } else {
         config_toml.push_str(
-            r#"# To enable on macOS (Install llvm/lld via brew and uncomment below):
-# [target.x86_64-apple-darwin]
-# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-# [target.aarch64-apple-darwin]
-# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+            r#"[target.x86_64-apple-darwin]
+rustflags = ["-C", "split-debuginfo=unpacked"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "split-debuginfo=unpacked"]
 "#,
         );
     }

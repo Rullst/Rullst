@@ -21,11 +21,23 @@ Creates a Rullst project from scratch. This command doesn't just clone a templat
 ### `cargo rullst upgrade`
 Globally updates the CLI on your machine (`cargo install cargo-rullst`) and simultaneously scans your current project's `Cargo.toml` to ensure Rullst and its internal macros (like `rullst-macros` and `rullst-connect`) are updated to the corresponding stable version, running automatic codemods if breaking changes are detected.
 
+### `cargo rullst pkg <action> [name]`
+Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
+* **Subcommands:**
+  * `add <package_name>`: Injects a community extension dependency (e.g., `cargo rullst pkg add rullst-auth`) into `Cargo.toml`.
+  * `list`: Scans and lists all active `rullst-*` community extensions installed in your project.
+
 ---
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
 
 Rullst is heavily opinionated. All `make:*` commands automatically update references (e.g., registering a controller in the main router) and regenerate the **AI Context** (`.llms.txt`).
+
+### `cargo rullst make:resource <name>`
+Scaffolds a complete Full CRUD resource stack in a single command. It simultaneously generates the Model (`src/models/<name>.rs`), Migration (`migrations/<timestamp>_create_<name>s_table.rs`), Controller (`src/controllers/<name>.rs`), and HTML Views (`views/<name>/index.html` & `views/<name>/form.html`).
+* **Arguments:** `<name>` (e.g., `Product` or `product`).
+* **Optional Flags:**
+  * `--api`: Scaffolds a headless JSON API resource controller instead of HTML views.
 
 ### `cargo rullst make:controller <name>`
 Generates a new Controller in the `src/controllers/` directory. It creates the standard CRUD methods (`index`, `show`, `create`, `update`, `delete`) and automatically registers the route in `main.rs`.
@@ -131,6 +143,8 @@ Opens the Interactive Dashboard (TUI - Terminal User Interface) powered by Ratat
 
 ### `cargo rullst dev`
 Runs the classic Rullst development server in the terminal with Hot-Reload. Any modification to `.rs` or HTML files will instantly restart the server at lightning speed.
+* **Optional Flags:**
+  * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.
 
 ### `cargo rullst build:client`
 Extracts all "Islands" (client-side interactivity) from your code and compiles them via `wasm-pack` into tiny WebAssembly binaries, ready to run at the speed of light in the browser.

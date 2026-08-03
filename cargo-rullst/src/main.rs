@@ -7,6 +7,7 @@
 pub mod blueprints;
 pub mod cli;
 pub mod generators;
+pub mod pkg;
 pub mod ui;
 
 #[cfg_attr(mutants, mutants::skip)]

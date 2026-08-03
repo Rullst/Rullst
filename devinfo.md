@@ -1,7 +1,7 @@
 Info for developers
 
 - Working locally on the framework:
-cargo install --path cargo-rullst (from the repo root)
+cargo install --path cargo-rullst #from the repo root
 
 
 - Testing as an end user:

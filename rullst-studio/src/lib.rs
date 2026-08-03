@@ -5,6 +5,7 @@ use rullst_core::Queue;
 use std::sync::Arc;
 use utoipa::openapi::OpenApi;
 
+pub mod ai_playground;
 pub mod api_playground;
 pub mod data_browser;
 pub use data_browser::run_studio;
@@ -13,6 +14,7 @@ pub mod er_diagram;
 pub mod feature_flags;
 pub mod jobs_monitor;
 pub mod logger;
+pub mod migration_manager;
 
 pub struct Studio {
     openapi: Option<OpenApi>,

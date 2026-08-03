@@ -541,16 +541,27 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
 pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
     vec![
         (
-            "🗂️  PROJECT",
+            "🗂️  PROJECT & COMMUNITY",
             vec![
                 ("cargo rullst new [name]", "Create a new Rullst application"),
-                ("cargo rullst dev", "Start the dev server with hot reload"),
+                (
+                    "cargo rullst dev [--ts-sync]",
+                    "Start dev server (optional auto TS SDK sync)",
+                ),
+                (
+                    "cargo rullst pkg add <name>",
+                    "Install RullstPackage community extension",
+                ),
                 ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
             ],
         ),
         (
             "🛠️  SCAFFOLDING",
             vec![
+                (
+                    "cargo rullst make:resource <Name>",
+                    "Full CRUD stack (Model, Migration, Controller, Views)",
+                ),
                 ("cargo rullst make:controller <Name>", "New controller"),
                 (
                     "cargo rullst make:model <Name> -m",
@@ -640,7 +651,6 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 ("cargo rullst build:client", "Compile Wasm Islands"),
                 ("cargo rullst generate:openapi", "Generate OpenAPI spec"),
-                ("cargo rullst generate:ts", "Generate TypeScript SDK"),
                 (
                     "cargo rullst generate:diagram",
                     "Generate Mermaid ER diagram",
@@ -648,6 +658,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 (
                     "cargo rullst generate:ai-context",
                     "Generate AI context (.llms.txt)",
+                ),
+                (
+                    "cargo rullst inspect [target]",
+                    "Inspect expanded macro code & route schemas",
+                ),
+                (
+                    "cargo rullst dash",
+                    "Start interactive Ratatui Dev Dashboard",
                 ),
                 ("cargo rullst docs dev", "Live docs preview server"),
                 ("cargo rullst docs build", "Build static docs site"),

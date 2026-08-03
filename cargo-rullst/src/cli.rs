@@ -4,6 +4,7 @@
 // each one to its corresponding generator function.
 
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 
 use crate::generators::{
     auth::scaffold_auth_system,
@@ -21,6 +22,7 @@ use crate::generators::{
     model::create_new_model,
     openapi::generate_openapi_spec,
     project::create_new_project,
+    resource::create_new_resource,
     worker::create_new_worker,
 };
 
@@ -76,6 +78,15 @@ pub enum Commands {
         /// Optional: creates a corresponding database migration for the table
         #[arg(short, long)]
         migration: bool,
+    },
+    /// Creates a new Resource (Model, Migration, Controller, Views) in one command
+    #[command(name = "make:resource")]
+    MakeResource {
+        /// Name of the Resource (e.g. Product or product)
+        name: String,
+        /// Optional: generates JSON API controller instead of HTML views
+        #[arg(long)]
+        api: bool,
     },
     /// Creates a new Middleware in the src/middlewares/ folder
     #[command(name = "make:middleware")]
@@ -178,7 +189,19 @@ pub enum Commands {
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
     /// Starts the Rullst development server with neon spinners
-    Dev,
+    Dev {
+        /// Optional: Automatically sync TypeScript SDK (sdk.ts) on file changes
+        #[arg(long = "ts-sync")]
+        ts_sync: bool,
+    },
+    /// Manages community extensions and RullstPackage dependencies
+    #[command(name = "pkg")]
+    Pkg {
+        /// Action to perform (add, list)
+        action: String,
+        /// Package name to add
+        name: Option<String>,
+    },
     /// Starts the interactive Ratatui Development Dashboard
     Dash,
     /// Opens the Rullst Studio dashboard to inspect the database
@@ -238,6 +261,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeModel { name, migration } => {
             create_new_model(name, *migration)?;
+        }
+        Commands::MakeResource { name, api } => {
+            create_new_resource(name, *api)?;
         }
         Commands::MakeMiddleware { name } => {
             create_new_middleware(name)?;
@@ -358,9 +384,30 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Upgrade => {
             run_upgrade()?;
         }
-        Commands::Dev => {
+        Commands::Dev { ts_sync } => {
+            if *ts_sync {
+                let _ = crate::generators::ts::generate_ts_sdk();
+            }
             crate::generators::dev::run_dev_server(false)?;
         }
+        Commands::Pkg { action, name } => match action.as_str() {
+            "add" => {
+                if let Some(pkg_name) = name {
+                    crate::pkg::pkg_add(pkg_name)?;
+                } else {
+                    println!("{}", "❌ Please specify a package name (e.g. 'cargo rullst pkg add rullst-auth')".red());
+                }
+            }
+            "list" => {
+                crate::pkg::pkg_list()?;
+            }
+            _ => {
+                println!(
+                    "{}",
+                    format!("❌ Unknown pkg action '{}'. Use 'add' or 'list'.", action).red()
+                );
+            }
+        },
         Commands::Dash => {
             crate::generators::dev::run_dev_server(true)?;
         }
