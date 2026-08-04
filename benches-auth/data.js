@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785771792458,
+  "lastUpdate": 1785807590251,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1343,6 +1343,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1412,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "36833cbb8c4e0218de8b9d9ad11dff828e7e4a61",
+          "message": "feat: add comprehensive documentation suite and implement hot-reload UI triggers for logic and template changes.",
+          "timestamp": "2026-08-03T22:31:55-03:00",
+          "tree_id": "e4ef6a2ecac07c7deba1ef49e6f66fe08d23243b",
+          "url": "https://github.com/Rullst/Rullst/commit/36833cbb8c4e0218de8b9d9ad11dff828e7e4a61"
+        },
+        "date": 1785807589649,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 731,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 614,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1399,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1437,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
