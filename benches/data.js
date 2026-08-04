@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785813141422,
+  "lastUpdate": 1785866800242,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -6373,6 +6373,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2294,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e2a4d1373fff4f4d3268a02d8899c0ca7868c49b",
+          "message": "feat: implement rullst-iot and rullst-security crates with hardware-focused modules and CI/CD pipelines",
+          "timestamp": "2026-08-04T15:04:05-03:00",
+          "tree_id": "22c09cd1efb8fc18ec14f7248365a2135032ac79",
+          "url": "https://github.com/Rullst/Rullst/commit/e2a4d1373fff4f4d3268a02d8899c0ca7868c49b"
+        },
+        "date": 1785866797889,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 741,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1020,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 632,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2387,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
