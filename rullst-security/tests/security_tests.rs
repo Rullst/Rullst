@@ -59,7 +59,7 @@ fn editor_or_admin(ctx: &UserContext) -> UserContext {
 
 #[tokio::test]
 async fn test_audit_chain_hmac_integrity() {
-    let logger = Arc::new(StdoutAuditLogger::default());
+    let logger = Arc::new(StdoutAuditLogger);
     let secret = b"super-secret-hmac-key";
     let chain = AuditChain::new(secret, logger);
 

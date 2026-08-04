@@ -1,4 +1,4 @@
-use rullst::storage::{LocalDriver, StorageDriver};
+use rullst::storage::LocalDriver;
 use std::env;
 
 #[tokio::test]

@@ -26,5 +26,5 @@ jobs:
         with:
           tool: cargo-semver-checks
       - name: Run SemVer checks
-        run: cargo semver-checks check-release --exclude rullst-core --exclude rullst-ai --exclude rullst-capital --exclude rullst-mail --exclude rullst-auth --exclude rullst-nexus --exclude rullst-studio --exclude rullst-macros --exclude rullst-orm-macros --exclude cargo-rullst --exclude rullst-blog-example --exclude rullst-iot
+        run: cargo semver-checks check-release --exclude rullst-core --exclude rullst-ai --exclude rullst-capital --exclude rullst-mail --exclude rullst-auth --exclude rullst-nexus --exclude rullst-studio --exclude rullst-macros --exclude rullst-orm-macros --exclude cargo-rullst --exclude rullst-blog-example --exclude rullst-iot --exclude rullst-security
 

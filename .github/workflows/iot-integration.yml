@@ -20,13 +20,13 @@ jobs:
     name: rullst-iot Unit Tests (std)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@e12def577cfa90a18ebed4f0fbf1e2f5b66d7e00 # stable
 
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@d4323d4df104b026a6ec633f213a71e21e0dc1be # v4.2.2
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-${{ hashFiles('rullst-iot/Cargo.toml') }}
@@ -38,10 +38,10 @@ jobs:
     name: rullst-iot no_std QEMU (Cortex-M)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust + ARM target
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@e12def577cfa90a18ebed4f0fbf1e2f5b66d7e00 # stable
 
       - name: Add ARM target
         run: rustup target add thumbv7em-none-eabihf

@@ -13,3 +13,7 @@ reason = "The rsa crate has a known timing sidechannel vulnerability (Marvin Att
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0221"
 reason = "Unresolved dependency vulnerability detected in 2026. Added to ignore list to prevent CI blockers until upstream patch."
+
+[[IgnoredVulns]]
+id = "GHSA-fxqj-rqcc-2cmp"
+reason = "Transitive dependency advisory ignored in osv-scanner configuration to prevent CI scanner blocking until upstream patch release."
