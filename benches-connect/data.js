@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785813507660,
+  "lastUpdate": 1785867256201,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -929,6 +929,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e2a4d1373fff4f4d3268a02d8899c0ca7868c49b",
+          "message": "feat: implement rullst-iot and rullst-security crates with hardware-focused modules and CI/CD pipelines",
+          "timestamp": "2026-08-04T15:04:05-03:00",
+          "tree_id": "22c09cd1efb8fc18ec14f7248365a2135032ac79",
+          "url": "https://github.com/Rullst/Rullst/commit/e2a4d1373fff4f4d3268a02d8899c0ca7868c49b"
+        },
+        "date": 1785867255283,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
