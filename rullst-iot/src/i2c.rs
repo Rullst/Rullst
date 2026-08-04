@@ -13,9 +13,7 @@ impl I2cHelper {
         frame.push(device_addr << 1); // Write mode
         frame.push(reg_addr);
         frame.push((device_addr << 1) | 1); // Read mode
-        for _ in 0..len {
-            frame.push(0x00);
-        }
+        frame.resize(3 + len, 0x00);
         frame
     }
 }
