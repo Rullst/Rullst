@@ -1,9 +1,9 @@
 //! Embedded Micro-Dashboard HTMX UI Generator (< 50KB).
 
 extern crate alloc;
+use crate::SensorTelemetry;
 use alloc::format;
 use alloc::string::String;
-use crate::SensorTelemetry;
 
 /// Generator for lightweight HTMX micro-dashboards.
 pub struct IotDashboard;

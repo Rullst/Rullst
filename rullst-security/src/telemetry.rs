@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Default, Debug)]
 pub struct SecurityTelemetry {

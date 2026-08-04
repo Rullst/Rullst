@@ -1,5 +1,5 @@
 use rullst_core::{
-    frontend::{HtmlAdapter, LeptosAdapter, DioxusAdapter},
+    frontend::{DioxusAdapter, HtmlAdapter, LeptosAdapter},
     realtime::{BroadcastManager, PresenceTracker},
 };
 
@@ -21,7 +21,8 @@ async fn test_realtime_broadcast_and_presence() {
     let ch = bm.get_or_create("chat-room-1");
     let mut rx = ch.subscribe();
 
-    bm.publish("chat-room-1", "user_joined", "{\"user\":\"alice\"}").unwrap();
+    bm.publish("chat-room-1", "user_joined", "{\"user\":\"alice\"}")
+        .unwrap();
 
     let msg = rx.recv().await.unwrap();
     assert_eq!(msg.channel, "chat-room-1");

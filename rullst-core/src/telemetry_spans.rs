@@ -43,7 +43,10 @@ impl SpanCollector {
 
     /// Returns a snapshot copy of all recorded trace spans.
     pub fn snapshot(&self) -> Vec<TraceSpan> {
-        self.spans.read().map(|lock| lock.clone()).unwrap_or_default()
+        self.spans
+            .read()
+            .map(|lock| lock.clone())
+            .unwrap_or_default()
     }
 }
 

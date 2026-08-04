@@ -1,11 +1,11 @@
 //! Lightweight Post-Quantum Edge Encryption (`rullst_iot::pqc`).
-//! 
+//!
 //! Provides a compact ML-KEM (Kyber) style key encapsulation stub suitable
 //! for low-power edge nodes protecting telemetry links against quantum threats.
 
 extern crate alloc;
 use alloc::vec::Vec;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Simulated Post-Quantum Key Encapsulation Mechanism (ML-KEM / Kyber stub).
 pub struct PqcKeyPair {

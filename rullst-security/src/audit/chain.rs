@@ -1,9 +1,9 @@
-use hmac::{Hmac, Mac, KeyInit};
-use sha2::Sha256;
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use subtle::ConstantTimeEq;
+use tokio::sync::Mutex;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -73,7 +73,10 @@ impl AuditChain {
 
         let prev_hash = last_hash_guard.clone();
 
-        let data_to_sign = format!("{}:{}:{}:{}:{}:{}:{}", seq, now, actor, action, resource, payload, prev_hash);
+        let data_to_sign = format!(
+            "{}:{}:{}:{}:{}:{}:{}",
+            seq, now, actor, action, resource, payload, prev_hash
+        );
 
         let mut mac = HmacSha256::new_from_slice(&self.secret_key)
             .map_err(|e| format!("HMAC Key Initialization Error: {}", e))?;
@@ -117,6 +120,9 @@ impl AuditChain {
         mac.update(data_to_sign.as_bytes());
         let expected_hash = hex::encode(mac.finalize().into_bytes());
 
-        expected_hash.as_bytes().ct_eq(record.hash.as_bytes()).into()
+        expected_hash
+            .as_bytes()
+            .ct_eq(record.hash.as_bytes())
+            .into()
     }
 }

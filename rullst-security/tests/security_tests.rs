@@ -1,8 +1,8 @@
 use rullst_security::{
-    honey::HoneypotState,
-    sanitizer::{HtmlSanitizer, csp::generate_nonce},
-    rbac::{RbacGuard, UserContext},
     audit::{AuditChain, StdoutAuditLogger},
+    honey::HoneypotState,
+    rbac::{RbacGuard, UserContext},
+    sanitizer::{HtmlSanitizer, csp::generate_nonce},
 };
 use std::sync::Arc;
 

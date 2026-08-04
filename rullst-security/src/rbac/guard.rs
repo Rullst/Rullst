@@ -26,7 +26,9 @@ impl UserContext {
     }
 
     pub fn has_permission(&self, perm: &str) -> bool {
-        self.permissions.iter().any(|p| p.eq_ignore_ascii_case(perm))
+        self.permissions
+            .iter()
+            .any(|p| p.eq_ignore_ascii_case(perm))
     }
 
     pub fn is_owner_of(&self, resource_owner_id: &str) -> bool {
@@ -50,10 +52,16 @@ impl RbacGuard {
         resource_owner_id: &str,
         required_role: &str,
     ) -> Result<(), String> {
-        if ctx.is_owner_of(resource_owner_id) || ctx.has_role(required_role) || ctx.has_role("admin") {
+        if ctx.is_owner_of(resource_owner_id)
+            || ctx.has_role(required_role)
+            || ctx.has_role("admin")
+        {
             Ok(())
         } else {
-            Err("Access Denied: Insufficient ownership or role permissions (BOLA Guard)".to_string())
+            Err(
+                "Access Denied: Insufficient ownership or role permissions (BOLA Guard)"
+                    .to_string(),
+            )
         }
     }
 }

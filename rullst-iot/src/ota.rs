@@ -1,8 +1,8 @@
 //! Zero-Trust Over-The-Air (OTA) Firmware Update Manager (`rullst_iot::ota`).
 
 extern crate alloc;
-use alloc::string::String;
 use alloc::format;
+use alloc::string::String;
 
 /// Active firmware boot partition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

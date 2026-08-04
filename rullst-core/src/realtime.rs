@@ -1,9 +1,9 @@
 //! Native Real-Time Engine (Channels, Broadcast, Presence).
 
 use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use serde::{Deserialize, Serialize};
 
 /// Payload model for realtime broadcast events.
 #[derive(Clone, Debug, Serialize, Deserialize)]

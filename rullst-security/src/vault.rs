@@ -1,7 +1,7 @@
 //! Zero-Trust Secret Management & In-Memory Zeroization (Rullst Vault).
 
-use zeroize::Zeroize;
 use std::fmt;
+use zeroize::Zeroize;
 
 /// Zero-Trust wrapper for sensitive in-memory secrets (API keys, DB passwords, private tokens).
 /// Automatically zeroes memory upon drop to prevent heap dump leaks.
@@ -45,7 +45,7 @@ pub struct FieldEncryptor;
 impl FieldEncryptor {
     /// Encrypts a plain text string field using AES-256-GCM / ChaCha20-Poly1305 scheme.
     pub fn encrypt(plain_text: &str, secret_key: &str) -> String {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(plain_text.as_bytes());
         hasher.update(secret_key.as_bytes());

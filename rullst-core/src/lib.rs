@@ -27,6 +27,9 @@ pub mod error_console;
 /// Feature flagging management and drivers.
 pub mod feature;
 #[cfg(not(target_arch = "wasm32"))]
+/// Hybrid Frontend SSR Adapters (Leptos, Dioxus, HTMX).
+pub mod frontend;
+#[cfg(not(target_arch = "wasm32"))]
 /// Fast compile-time HTML rendering utilities.
 pub mod html;
 #[cfg(not(target_arch = "wasm32"))]
@@ -41,17 +44,11 @@ pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
-/// Network and service resilience (rate limits, traffic shield, load shedding).
-pub mod resilience;
-#[cfg(not(target_arch = "wasm32"))]
-/// Hybrid Frontend SSR Adapters (Leptos, Dioxus, HTMX).
-pub mod frontend;
-#[cfg(not(target_arch = "wasm32"))]
 /// Native Real-Time Engine (Channels, Broadcast, Presence).
 pub mod realtime;
 #[cfg(not(target_arch = "wasm32"))]
-/// Distributed Tracing Spans Collector.
-pub mod telemetry_spans;
+/// Network and service resilience (rate limits, traffic shield, load shedding).
+pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
@@ -69,6 +66,9 @@ pub mod storage;
 #[cfg(not(target_arch = "wasm32"))]
 /// Rullst OpenTelemetry and Tracing.
 pub mod telemetry;
+#[cfg(not(target_arch = "wasm32"))]
+/// Distributed Tracing Spans Collector.
+pub mod telemetry_spans;
 #[cfg(not(target_arch = "wasm32"))]
 /// Scaffolding tools for robust integration testing.
 pub mod testing;

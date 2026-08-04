@@ -18,10 +18,10 @@ use serde::{Deserialize, Serialize};
 pub mod mqtt;
 
 // Phase 2: Hardware HAL & Protocols
+pub mod ble;
 pub mod gpio;
 pub mod i2c;
 pub mod modbus;
-pub mod ble;
 
 // Phase 3: Edge AI & Micro-UI
 pub mod anomaly;
@@ -40,18 +40,18 @@ pub mod power;
 pub mod twin;
 
 // Re-exports
-pub use gpio::{GpioPin, PinMode, PinState};
-pub use i2c::I2cHelper;
-pub use modbus::{ModbusFrame, ModbusFunction};
-pub use ble::{GattService, GattCharacteristic};
 pub use anomaly::{AnomalyDetector, AnomalyState};
-pub use ui::IotDashboard;
-pub use mesh::{MeshTopology, MeshNode, NodeStatus};
-pub use ota::{OtaManager, BootPartition, OtaStatus};
-pub use hsm::{HsmDevice, HsmChipType};
+pub use ble::{GattCharacteristic, GattService};
+pub use gpio::{GpioPin, PinMode, PinState};
+pub use hsm::{HsmChipType, HsmDevice};
+pub use i2c::I2cHelper;
+pub use mesh::{MeshNode, MeshTopology, NodeStatus};
+pub use modbus::{ModbusFrame, ModbusFunction};
+pub use ota::{BootPartition, OtaManager, OtaStatus};
+pub use power::{HarvesterState, PowerGovernor, PowerMode};
 pub use pqc::PqcKeyPair;
-pub use power::{PowerGovernor, PowerMode, HarvesterState};
 pub use twin::DigitalTwin;
+pub use ui::IotDashboard;
 
 /// Sensor payload telemetry model for IoT nodes.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -68,7 +68,12 @@ pub struct SensorTelemetry {
 
 impl SensorTelemetry {
     /// Creates a new SensorTelemetry instance.
-    pub fn new(device_id: impl Into<String>, metric: impl Into<String>, value: f64, timestamp: u64) -> Self {
+    pub fn new(
+        device_id: impl Into<String>,
+        metric: impl Into<String>,
+        value: f64,
+        timestamp: u64,
+    ) -> Self {
         Self {
             device_id: device_id.into(),
             metric: metric.into(),

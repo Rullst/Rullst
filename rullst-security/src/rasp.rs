@@ -18,9 +18,12 @@ impl RaspInspector {
     /// Inspects an incoming request target URI and query string for attack patterns.
     pub fn inspect_uri(uri: &str) -> bool {
         let lower = uri.to_lowercase();
-        
+
         // SQL Injection patterns
-        if lower.contains("union select") || lower.contains("' or '1'='1") || lower.contains("; drop table") {
+        if lower.contains("union select")
+            || lower.contains("' or '1'='1")
+            || lower.contains("; drop table")
+        {
             return true;
         }
 
@@ -97,14 +100,18 @@ mod tests {
 
     #[test]
     fn test_rasp_sqli_detection() {
-        assert!(RaspInspector::inspect_uri("/api/users?q=UNION SELECT * FROM passwords"));
+        assert!(RaspInspector::inspect_uri(
+            "/api/users?q=UNION SELECT * FROM passwords"
+        ));
         assert!(RaspInspector::inspect_uri("/login?user=admin' OR '1'='1"));
         assert!(!RaspInspector::inspect_uri("/api/users?id=123"));
     }
 
     #[test]
     fn test_rasp_path_traversal_detection() {
-        assert!(RaspInspector::inspect_uri("/download?file=../../etc/passwd"));
+        assert!(RaspInspector::inspect_uri(
+            "/download?file=../../etc/passwd"
+        ));
         assert!(!RaspInspector::inspect_uri("/download?file=document.pdf"));
     }
 }

@@ -2,12 +2,12 @@ use axum::{
     body::Body,
     http::{HeaderValue, Request, Response},
 };
-use tower::{Layer, Service};
-use std::task::{Context, Poll};
-use std::future::Future;
-use std::pin::Pin;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rand::Rng;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use tower::{Layer, Service};
 
 pub fn generate_nonce() -> String {
     let mut bytes = [0u8; 16];
@@ -52,13 +52,22 @@ where
             let mut res = fut.await?;
             let headers = res.headers_mut();
 
-            let csp_value = format!("default-src 'self'; script-src 'self' 'nonce-{}'; style-src 'self' 'unsafe-inline';", nonce);
+            let csp_value = format!(
+                "default-src 'self'; script-src 'self' 'nonce-{}'; style-src 'self' 'unsafe-inline';",
+                nonce
+            );
             if let Ok(v) = HeaderValue::from_str(&csp_value) {
                 headers.insert("content-security-policy", v);
             }
             headers.insert("x-frame-options", HeaderValue::from_static("DENY"));
-            headers.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
-            headers.insert("referrer-policy", HeaderValue::from_static("strict-origin-when-cross-origin"));
+            headers.insert(
+                "x-content-type-options",
+                HeaderValue::from_static("nosniff"),
+            );
+            headers.insert(
+                "referrer-policy",
+                HeaderValue::from_static("strict-origin-when-cross-origin"),
+            );
 
             Ok(res)
         })

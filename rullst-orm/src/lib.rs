@@ -109,7 +109,7 @@ pub mod repository;
 
 pub use intent::IntentAnalyzer;
 pub use replica::ReplicaPool;
-pub use repository::{Repository, GenericRepository};
+pub use repository::{GenericRepository, Repository};
 
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;

@@ -5,9 +5,12 @@ use std::path::Path;
 pub fn run_make_iot(device_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
-        format!("🔌 Scaffolding IoT Edge Device Module for '{}'...", device_name)
-            .bright_cyan()
-            .bold()
+        format!(
+            "🔌 Scaffolding IoT Edge Device Module for '{}'...",
+            device_name
+        )
+        .bright_cyan()
+        .bold()
     );
 
     let src_dir = Path::new("src/iot");

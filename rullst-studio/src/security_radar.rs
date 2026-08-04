@@ -1,7 +1,7 @@
 use axum::{
+    Router,
     response::{Html, Json},
     routing::get,
-    Router,
 };
 use serde::{Deserialize, Serialize};
 

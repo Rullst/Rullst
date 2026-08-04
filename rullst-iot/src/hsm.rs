@@ -1,12 +1,12 @@
 //! Hardware Security Element (HSM) Bindings (`rullst_iot::hsm`).
-//! 
+//!
 //! Production targets: ATECC608A, TPM 2.0, STSAFE.
 
 extern crate alloc;
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use alloc::format;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Supported hardware security chip types.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,7 +45,7 @@ impl HsmDevice {
     /// Signs a payload using derived hardware key (stub: returns SHA-256 digest).
     pub fn sign(&self, payload: &[u8]) -> Vec<u8> {
         let mut hasher = Sha256::new();
-        hasher.update(&self.derive_key());
+        hasher.update(self.derive_key());
         hasher.update(payload);
         hasher.finalize().to_vec()
     }

@@ -14,7 +14,10 @@ impl IntentAnalyzer {
                 let rest = &trimmed[start + "@index(".len()..];
                 if let Some(end) = rest.find(')') {
                     let col = &rest[..end].trim();
-                    let sql = format!("CREATE INDEX IF NOT EXISTS idx_{}_{} ON {}({});", table_name, col, table_name, col);
+                    let sql = format!(
+                        "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {}({});",
+                        table_name, col, table_name, col
+                    );
                     migrations.push(sql);
                 }
             }
@@ -41,7 +44,13 @@ mod tests {
 
         let sqls = IntentAnalyzer::analyze_doc_comments(code, "users");
         assert_eq!(sqls.len(), 2);
-        assert_eq!(sqls[0], "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);");
-        assert_eq!(sqls[1], "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);");
+        assert_eq!(
+            sqls[0],
+            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);"
+        );
+        assert_eq!(
+            sqls[1],
+            "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);"
+        );
     }
 }

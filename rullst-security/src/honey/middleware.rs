@@ -1,14 +1,14 @@
-use std::sync::Arc;
-use dashmap::DashMap;
 use axum::{
     body::Body,
     http::{Request, Response, StatusCode},
     response::IntoResponse,
 };
-use tower::{Layer, Service};
-use std::task::{Context, Poll};
+use dashmap::DashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+use tower::{Layer, Service};
 
 #[derive(Clone, Debug)]
 pub struct HoneypotState {
@@ -113,7 +113,11 @@ where
             .to_string();
 
         if self.state.is_banned(&client_ip) {
-            let res = (StatusCode::FORBIDDEN, "Access Denied: IP Banned by Rullst Honey").into_response();
+            let res = (
+                StatusCode::FORBIDDEN,
+                "Access Denied: IP Banned by Rullst Honey",
+            )
+                .into_response();
             return Box::pin(async move { Ok(res) });
         }
 
@@ -121,7 +125,11 @@ where
         if self.state.is_trap(&path) {
             tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, "Honeypot trap triggered. Banning IP.");
             self.state.ban_ip(client_ip);
-            let res = (StatusCode::FORBIDDEN, "Access Denied: Honeypot Trap Triggered").into_response();
+            let res = (
+                StatusCode::FORBIDDEN,
+                "Access Denied: Honeypot Trap Triggered",
+            )
+                .into_response();
             return Box::pin(async move { Ok(res) });
         }
 
