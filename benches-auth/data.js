@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785807590251,
+  "lastUpdate": 1785812595182,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1391,6 +1391,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1437,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b7140b7e339b68c1857a177b9e9771cbe129f21f",
+          "message": "refactor: apply consistent code formatting and style improvements across nexus, orm, and studio modules",
+          "timestamp": "2026-08-03T23:55:23-03:00",
+          "tree_id": "8ab4d7700f816fa28072773137a99bac0c019e92",
+          "url": "https://github.com/Rullst/Rullst/commit/b7140b7e339b68c1857a177b9e9771cbe129f21f"
+        },
+        "date": 1785812594908,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 761,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 660,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1454,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1404,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
