@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785807244677,
+  "lastUpdate": 1785812236313,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -6265,6 +6265,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2255,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b7140b7e339b68c1857a177b9e9771cbe129f21f",
+          "message": "refactor: apply consistent code formatting and style improvements across nexus, orm, and studio modules",
+          "timestamp": "2026-08-03T23:55:23-03:00",
+          "tree_id": "8ab4d7700f816fa28072773137a99bac0c019e92",
+          "url": "https://github.com/Rullst/Rullst/commit/b7140b7e339b68c1857a177b9e9771cbe129f21f"
+        },
+        "date": 1785812235794,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 755,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 622,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2233,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
