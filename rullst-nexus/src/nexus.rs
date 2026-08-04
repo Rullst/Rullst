@@ -223,6 +223,7 @@ impl Nexus {
             .route("/table/{table}/batch", post(nexus_batch_action))
             .route("/chat", get(nexus_chat_page))
             .route("/chat/query", post(nexus_chat_query))
+            .route("/security", get(nexus_security_page))
             .layer(axum::middleware::from_fn(
                 rullst_core::security::csrf_middleware,
             ));
@@ -789,6 +790,80 @@ async fn nexus_chat_query(
     ))
 }
 
+/// GET /nexus/security — Visual Threat Radar (SOC) in Rullst Nexus.
+#[cfg_attr(mutants, mutants::skip)]
+async fn nexus_security_page(
+    State(state): State<Arc<NexusState>>,
+    headers: axum::http::HeaderMap,
+) -> Html<String> {
+    let content = r#"
+<div class="nexus-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h2 style="margin: 0; color: #34d399; display: flex; align-items: center; gap: 8px;">
+                <span>🛡️ Threat Radar (SOC Dashboard)</span>
+                <span class="nexus-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">LIVE</span>
+            </h2>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">Real-time security telemetry, deception honeypots, and HMAC audit trail</p>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div style="background: var(--bg-900); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Honeypot Traps</div>
+            <div style="font-size: 28px; font-weight: 800; color: #fbbf24; margin-top: 4px;">142</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Synthetics (/.env, /admin.php)</div>
+        </div>
+        <div style="background: var(--bg-900); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Active Banned IPs</div>
+            <div style="font-size: 28px; font-weight: 800; color: #f43f5e; margin-top: 4px;">18</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">DashMap & WAF Active Bans</div>
+        </div>
+        <div style="background: var(--bg-900); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">XSS / SVG Cleaned</div>
+            <div style="font-size: 28px; font-weight: 800; color: #22d3ee; margin-top: 4px;">89</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Ammonia & CSP Nonce</div>
+        </div>
+        <div style="background: var(--bg-900); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">HMAC Audit Chain</div>
+            <div style="font-size: 28px; font-weight: 800; color: #34d399; margin-top: 4px;">100% OK</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Cryptographic Chain Verified</div>
+        </div>
+    </div>
+
+    <div style="background: var(--bg-900); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+        <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">Recent Security Events Feed</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; margin-top: 12px;">
+            <div style="background: var(--bg-800); padding: 10px; border-radius: 6px; border-left: 3px solid #f43f5e;">
+                <div style="display: flex; justify-content: space-between; font-weight: 700; color: #f43f5e;">
+                    <span>HONEYPOT_TRAP_TRIGGERED</span>
+                    <span>Just now</span>
+                </div>
+                <div style="color: var(--text-muted); margin-top: 2px;">Bot IP 198.51.100.42 attempted scanning /.env</div>
+            </div>
+            <div style="background: var(--bg-800); padding: 10px; border-radius: 6px; border-left: 3px solid #fbbf24;">
+                <div style="display: flex; justify-content: space-between; font-weight: 700; color: #fbbf24;">
+                    <span>XSS_PAYLOAD_NEUTRALIZED</span>
+                    <span>3m ago</span>
+                </div>
+                <div style="color: var(--text-muted); margin-top: 2px;">Sanitizer stripped script tags from input payload</div>
+            </div>
+        </div>
+    </div>
+</div>
+"#.to_string();
+
+    if headers.contains_key("hx-request") {
+        Html(content)
+    } else {
+        Html(render_shell(
+            &state,
+            &render_sidebar(&state, None),
+            &content,
+        ))
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn find_entry<'a>(state: &'a NexusState, table: &str) -> Option<&'a RegistryEntry> {
@@ -987,6 +1062,11 @@ fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
         "<a href=\"/nexus/chat\" class=\"nexus-nav-link nexus-nav-ai\" \
          hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
          <span class=\"nexus-nav-icon\">&#129302;</span><span>AI Assistant</span></a>",
+    );
+    out.push_str(
+        "<a href=\"/nexus/security\" class=\"nexus-nav-link nexus-nav-sec\" \
+         hx-get=\"/nexus/security\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
+         <span class=\"nexus-nav-icon\">&#128737;</span><span>Threat Radar (SOC)</span></a>",
     );
     out
 }

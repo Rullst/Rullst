@@ -29,3 +29,5 @@
 - [rullst-studio](crates/studio.md)
 - [rullst-nexus](crates/nexus.md)
 - [rullst-ai](crates/ai.md)
+- [rullst-security](crates/security.md)
+- [rullst-iot](crates/iot.md)

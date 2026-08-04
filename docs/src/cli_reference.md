@@ -75,6 +75,9 @@ Generates and configures full CORS (Cross-Origin Resource Sharing) options in yo
 ### `cargo rullst make:omni`
 Prepares your project to become a Desktop or Mobile App. It generates Tauri/Omni manifests, creating the native bridge so you can package your website as an `.exe` or `.apk`.
 
+### `cargo rullst make:iot <DeviceName>`
+Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway) in `src/iot/` pre-configured with `rullst-iot` telemetry models and MQTT/CoAP protocol formatters.
+
 ### `cargo rullst auth`
 The Supreme Command. With just one command, it creates an entire Authentication system in your codebase, including:
 - User Model and Migration (with `bcrypt`/`argon2` password hashing).
@@ -124,6 +127,15 @@ Connects to a legacy database (that already exists and has tables), maps the ent
 
 ### `cargo rullst generate:ai-context`
 Creates the brain map of your project (`.llms.txt`). It summarizes the folder structure, conventions, and dependencies so that AI Assistants (like Cursor and Github Copilot) perfectly understand the framework when you ask them for help.
+
+### `cargo rullst audit [--ai]`
+Runs an AI-assisted security audit scanning `.env` for secret leaks, verifying dependency CVEs via `cargo audit`, and evaluating RBAC permission boundaries with AI Sentinel suggestions.
+
+### `cargo rullst eject [--force] [--output <path>]`
+Expands all Rullst framework abstractions into 100% pure Axum and Tokio Rust code (`src/ejected_main.rs`), eliminating framework lock-in and allowing low-level Tower/Hyper customization.
+* **Flags:**
+  * `--force`: Overwrites `src/main.rs` directly instead of creating `src/ejected_main.rs`.
+  * `--output <path>`: Specifies a custom output path for the ejected file.
 
 ### `cargo rullst inspect [target]`
 Statically expands and inspects macro code or structural definitions directly in the terminal without starting a server. Useful for debugging proc-macro output, reviewing route tables, and validating database schemas.

@@ -457,6 +457,23 @@ sqlx = {{ version = "0.9.0", {sqlx_features} }}
         cargo_toml.push_str(&connect_dep);
     }
 
+    let sibling_security = current_dir.join("rullst-security");
+    let security_dep = if sibling_security.exists() {
+        if let Ok(canon) = sibling_security.canonicalize() {
+            let absolute_path = canon
+                .display()
+                .to_string()
+                .replace(r"\\?\", "")
+                .replace("\\", "/");
+            format!("rullst-security = {{ path = \"{}\" }}\n", absolute_path)
+        } else {
+            "rullst-security = \"12.0.0\"\n".to_string()
+        }
+    } else {
+        "rullst-security = \"12.0.0\"\n".to_string()
+    };
+    cargo_toml.push_str(&security_dep);
+
     cargo_toml.push_str(
         r#"
 [lints.rust]

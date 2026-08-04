@@ -15,6 +15,8 @@ pub mod feature_flags;
 pub mod jobs_monitor;
 pub mod logger;
 pub mod migration_manager;
+pub mod security_radar;
+pub mod traces_visualizer;
 
 pub struct Studio {
     openapi: Option<OpenApi>,
@@ -57,7 +59,9 @@ impl Studio {
             ))
             .nest("/env", env_viewer::router())
             .nest("/features", feature_flags::router())
-            .nest("/er", er_diagram::router());
+            .nest("/er", er_diagram::router())
+            .nest("/security", security_radar::router())
+            .route("/tools/traces", get(traces_visualizer::render_traces_page));
 
         if let Some(openapi) = self.openapi {
             router = router.nest("/api", api_playground::router(openapi));
@@ -110,6 +114,14 @@ async fn studio_dashboard() -> Html<String> {
         <a href="/studio/er" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-emerald-500 transition-colors">
             <h2 class="text-xl font-bold text-slate-200">ER Diagram</h2>
             <p class="text-slate-400 mt-2 text-sm">Interactive visualization of your database schema.</p>
+        </a>
+        <a href="/studio/security" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-emerald-500 transition-colors">
+            <h2 class="text-xl font-bold text-amber-400">Visual Threat Radar 🛡️</h2>
+            <p class="text-slate-400 mt-2 text-sm">Real-time SOC security dashboard, Honeypots & HMAC Audit chain.</p>
+        </a>
+        <a href="/studio/tools/traces" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-emerald-500 transition-colors">
+            <h2 class="text-xl font-bold text-cyan-400">Distributed Tracing 🔍</h2>
+            <p class="text-slate-400 mt-2 text-sm">Live microsecond telemetry flamegraph for HTTP, SQLx ORM & AI spans.</p>
         </a>
     </div>
 </body>

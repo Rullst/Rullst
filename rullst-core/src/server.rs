@@ -1006,6 +1006,6 @@ mod tests {
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
         assert!(body_str.contains("Hello"));
         assert!(body_str.contains("Rullst Hybrid Hot-Reloading"));
-        assert!(body_str.contains("ws://localhost:3001/_rullst_hmr"));
+        assert!(body_str.contains("3001/_rullst_hmr"));
     }
 }

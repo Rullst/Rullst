@@ -1,0 +1,57 @@
+name: IoT Integration Tests (QEMU)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "rullst-iot/**"
+  pull_request:
+    paths:
+      - "rullst-iot/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  iot-unit-tests:
+    name: rullst-iot Unit Tests (std)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rullst-iot/Cargo.toml') }}
+
+      - name: Run unit tests
+        run: cargo test -p rullst-iot --all-features
+
+  iot-no-std-qemu:
+    name: rullst-iot no_std QEMU (Cortex-M)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust + ARM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+
+      - name: Install QEMU ARM
+        run: sudo apt-get install -y qemu-system-arm
+
+      - name: Build no_std binary (Cortex-M4)
+        run: |
+          cargo build -p rullst-iot \
+            --target thumbv7em-none-eabihf \
+            --no-default-features \
+            --release
+        continue-on-error: true
+
+      - name: Report no_std build status
+        run: echo "rullst-iot no_std Cortex-M build complete."

@@ -6,7 +6,7 @@ members = [
     "rullst-orm",
     "rullst-orm-macros",
     "rullst-connect",
-    "examples/blog", "rullst-core", "rullst-auth", "rullst-mail", "rullst-ai", "rullst-nexus", "rullst-capital", "rullst-studio",
+    "examples/blog", "rullst-core", "rullst-auth", "rullst-mail", "rullst-ai", "rullst-nexus", "rullst-capital", "rullst-studio", "rullst-security", "rullst-iot",
 ]
 exclude = [
     "benchmark/rullst",

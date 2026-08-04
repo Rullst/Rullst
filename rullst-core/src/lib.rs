@@ -44,6 +44,15 @@ pub mod queue;
 /// Network and service resilience (rate limits, traffic shield, load shedding).
 pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
+/// Hybrid Frontend SSR Adapters (Leptos, Dioxus, HTMX).
+pub mod frontend;
+#[cfg(not(target_arch = "wasm32"))]
+/// Native Real-Time Engine (Channels, Broadcast, Presence).
+pub mod realtime;
+#[cfg(not(target_arch = "wasm32"))]
+/// Distributed Tracing Spans Collector.
+pub mod telemetry_spans;
+#[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
 #[cfg(not(target_arch = "wasm32"))]

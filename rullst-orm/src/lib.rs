@@ -102,7 +102,14 @@ pub mod audit;
 pub mod collection;
 pub mod database;
 pub mod db;
+pub mod intent;
 pub mod policy;
+pub mod replica;
+pub mod repository;
+
+pub use intent::IntentAnalyzer;
+pub use replica::ReplicaPool;
+pub use repository::{Repository, GenericRepository};
 
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;

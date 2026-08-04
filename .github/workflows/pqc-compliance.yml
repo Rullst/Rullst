@@ -1,0 +1,54 @@
+name: Post-Quantum & HSM Compliance Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rullst-iot/src/pqc.rs"
+      - "rullst-iot/src/hsm.rs"
+      - "rullst-security/src/vault.rs"
+  pull_request:
+    paths:
+      - "rullst-iot/src/pqc.rs"
+      - "rullst-iot/src/hsm.rs"
+      - "rullst-security/src/vault.rs"
+  schedule:
+    # Weekly audit every Monday at 03:00 UTC
+    - cron: "0 3 * * 1"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  pqc-compliance:
+    name: PQC & Cryptographic Compliance Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run PQC unit tests
+        run: cargo test -p rullst-iot pqc -- --nocapture
+
+      - name: Run HSM unit tests
+        run: cargo test -p rullst-iot hsm -- --nocapture
+
+      - name: Run Vault encryption tests
+        run: cargo test -p rullst-security vault -- --nocapture
+
+      - name: Run cargo-audit (CVE scan on crypto deps)
+        run: |
+          cargo install cargo-audit --quiet
+          cargo audit --deny warnings -p rullst-iot -p rullst-security
+
+      - name: Verify no unsafe blocks in crypto modules
+        run: |
+          echo "Scanning for unsafe blocks in crypto-sensitive files..."
+          if grep -rn "unsafe" rullst-iot/src/pqc.rs rullst-iot/src/hsm.rs rullst-security/src/vault.rs; then
+            echo "⚠️  Unsafe blocks detected in cryptographic modules. Manual review required."
+            exit 1
+          else
+            echo "✅ No unsafe blocks in cryptographic modules."
+          fi

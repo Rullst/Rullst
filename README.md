@@ -90,6 +90,9 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 | **SLSA Level 3** | [![SLSA 3](https://img.shields.io/badge/SLSA-Level_3-brightgreen?style=flat-square&label=)](https://slsa.dev/) | Supply-chain Levels for Software Artifacts |
 | **Panic Policy** | [![Zero Panics Policy](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml) | Graceful error handling across the framework |
 | **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?style=flat-square&label=Trufflehog)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
+| **no_std Build Check** | [![no_std Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml) | Validates `rullst-iot` compiles on STM32, ESP32-C3, Cortex-M bare-metal targets |
+| **OTA Signature Verification** | [![OTA Integrity](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml) | Ed25519 cryptographic integrity check on all OTA firmware updates |
+| **PQC Compliance Audit** | [![PQC Compliance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml) | Weekly NIST ML-KEM / Kyber & HSM compliance audit (unsafe-free cryptographic modules) |
 | **MSRV** | [![MSRV](https://img.shields.io/badge/MSRV-1.96.0-orange?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Minimum Supported Rust Version |
 
 </div>
@@ -133,6 +136,8 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 
 - **SSR Rendering**: `~1.07 µs` (4.2x faster than Dioxus, 8.5x faster than Leptos).
 - **Routing**: `~974 ns` (Identical latency to raw Axum).
+
+> 📊 **Deep-dive into the numbers →** [**github.com/Rullst/Benchmarks**](https://github.com/Rullst/Benchmarks) — our dedicated benchmark repository with reproducible TechEmpower-style results, Criterion reports, memory profiling, and continuous performance regression CI against Axum, Actix-Web, NestJS, Go Fiber, and Hono.
 
 - 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
 - 🎨 **Rullst Studio & Nexus**: An all-in-one Web Suite (`cargo rullst studio`) with Data Browser, Visual ER Diagram, Dynamic Feature Flags, Real-time Logger, and auto-generated Admin Panels from your Structs.
@@ -210,6 +215,8 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **TypeScript SDK Generator** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 | **OpenAPI / Swagger** | ✅ (Auto-Generated) | ❌ | ❌ | ❌ | ✅ (Via utoipa/poem-openapi) |
 | **AI Agents & RAG Integration** | ✅ (Built-in via `rullst-ai`) | ❌ | ❌ | ❌ | ❌ |
+| **Visual Threat Radar & Honeypots** | ✅ (Built-in via `rullst-security`) | ❌ | ❌ | ❌ | ❌ |
+| **Embedded IoT & Edge Hardware** | ✅ (`no_std` via `rullst-iot`) | ❌ | ❌ | ❌ | ❌ |
 | **Background Workers** | ✅ (Queue + Redis) | ✅ (Task worker) | ❌ | ❌ | ❌ |
 | **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
 

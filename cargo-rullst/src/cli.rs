@@ -127,6 +127,12 @@ pub enum Commands {
     /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
     MakeOmni,
+    /// Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway)
+    #[command(name = "make:iot")]
+    MakeIot {
+        /// Name of the IoT edge device (e.g. TemperatureSensor, MqttGateway)
+        name: String,
+    },
     /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
     #[command(name = "foundry:init")]
     FoundryInit,
@@ -230,6 +236,21 @@ pub enum Commands {
         /// Target item to inspect (e.g. routes, models, schema, or file path)
         target: Option<String>,
     },
+    /// Runs AI-assisted security audit for secret leaks, CVEs, and permissions
+    Audit {
+        /// Optional: Enable AI Sentinel analysis suggestions
+        #[arg(long)]
+        ai: bool,
+    },
+    /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
+    Eject {
+        /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs
+        #[arg(long)]
+        force: bool,
+        /// Optional: Custom output path for ejected file
+        #[arg(long)]
+        output: Option<String>,
+    },
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
@@ -298,6 +319,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeOmni => {
             scaffold_omni_system()?;
+        }
+        Commands::MakeIot { name } => {
+            crate::generators::iot::run_make_iot(name)?;
         }
         Commands::FoundryInit => {
             scaffold_foundry_config()?;
@@ -425,6 +449,12 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Inspect { target } => {
             inspect_project(target.as_deref())?;
+        }
+        Commands::Audit { ai } => {
+            crate::generators::audit::run_security_audit(*ai)?;
+        }
+        Commands::Eject { force, output } => {
+            crate::generators::eject::run_eject_project(*force, output.as_deref())?;
         }
     }
 

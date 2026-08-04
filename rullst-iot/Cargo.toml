@@ -1,0 +1,17 @@
+[package]
+name = "rullst-iot"
+version = "12.0.0"
+edition = "2024"
+authors = ["Rullst Team <team@rullst.dev>"]
+license = "MIT OR Apache-2.0"
+description = "Embedded IoT & Edge Hardware Supremacy crate for the Rullst Framework (#![no_std] compatible)."
+
+[features]
+default = ["std"]
+std = ["serde/std", "serde_json/std"]
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+sha2 = { version = "0.10", default-features = false }
+hex = { version = "0.4", default-features = false, features = ["alloc"] }

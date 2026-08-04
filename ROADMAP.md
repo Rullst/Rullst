@@ -32,8 +32,15 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M19** | 🤖 AI & Mobile | Omni-Frontend Protocol, Mobile Hyper-Media Bridge & AI Tool-Calling | `[ ] Planned` |
 | **M20** | 🤖 AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning | `[ ] Planned` |
 | **M21** | 🤖 AI & Self-Evolving | Polymorphic Core Engine, Self-Recompilation & Auto-Healing | `[ ] Planned` |
-| **M22** | 🔌 IoT & Hardware | Embedded Runtime, MQTT/CoAP & Edge AI (`rullst-iot`) | `[ ] Planned` |
+| **M22** | 🔌 IoT & Hardware | Embedded Runtime, MQTT/CoAP & Edge AI (`rullst-iot`) | `[x] Completed` |
 | **M23** | 🛰️ Aerospace & Mobility | Aerospace, Autonomous Vehicles, Robotics & Defense (`rullst-orbit` & `rullst-auto`) | `[ ] Planned` |
+| **M24** | 🏆 DX Supremacy | Zero-Cost Compile-Time DI Container (`rullst::di`) | `[ ] Planned` |
+| **M25** | 🚀 Deployment | One-Click PaaS Deploy (`cargo rullst deploy`) & Rullst Cloud Alpha | `[ ] Planned` |
+| **M26** | ⚡ Real-Time UI | `rullst::live` — LiveView-Style Server-Driven UI (WebSocket + HTMX OOB) | `[ ] Planned` |
+| **M27** | 🔌 Embedded Async | Async `rullst-iot` (Embassy Executor integration, `no_std` async/await) | `[ ] Planned` |
+| **M28** | ☸️ Cloud-Native | Kubernetes Native (`cargo rullst make:k8s`, health probes, `rullst-operator`) | `[ ] Planned` |
+| **M29** | 📖 Interactive Docs | Embedded Scalar API Playground at `/docs` + ORM SQL Error Console in Ignition | `[ ] Planned` |
+| **M30** | 🌐 gRPC & Plugin Marketplace | `rullst-grpc` (Tonic) & searchable Packages web UI at `rullst.github.io/packages` | `[ ] Planned` |
 
 ---
 
@@ -125,7 +132,7 @@ graph TD
   - [x] `cargo rullst inspect <route|model>` CLI tool to inspect expanded Rust code.
 - [x] **Granular Cargo Features:** Opt-in crate features across `rullst-core`, `rullst-orm`, `rullst-auth`, etc.
 - [x] **Native Axum/Tower Zero Lock-In Interoperability:** 100% 1:1 mapping between Rullst extractors and native Axum/Tower.
-- [ ] **Framework Escape Hatches (`cargo rullst eject` & `rullst::raw_axum!`):** Expand declarative macros into 100% pure Axum/Tokio code, allowing enterprise teams to bypass abstractions and configure low-level Hyper/Tower layers directly without framework lock-in.
+- [x] **Framework Escape Hatches (`cargo rullst eject` & `rullst::raw_axum!`):** Expand declarative macros into 100% pure Axum/Tokio code, allowing enterprise teams to bypass abstractions and configure low-level Hyper/Tower layers directly without framework lock-in.
 - [x] **Enhanced Proc-Macro Error Diagnostics:** Line-specific error messages with actionable resolution hints.
 - [x] **Community Extension Package Standard (`Rullst Packages`):** Standardized `RullstPackage` trait and manifest specification.
 
@@ -147,7 +154,7 @@ graph TD
 ### 🗄️ Milestone 6: Active Record, Migrations, Seeders & Turso/libSQL (`rullst-orm`)
 - [x] **Migration Engine:** SQL & DSL definitions with `db:migrate`, `db:rollback`, `db:status`.
 - [x] **Active Record Relationships:** `HasMany`, `BelongsTo`, `BelongsToMany` associations with Eager/Lazy loading.
-- [ ] **Hybrid ORM Engine (Active Record + Data Mapper Repository Pattern):**
+- [x] **Hybrid ORM Engine (Active Record + Data Mapper Repository Pattern):**
   - **Active Record Mode** (`User::find(id).await`, `user.save().await`) for rapid prototyping, simple CRUDs, and 90% of business logic.
   - **Data Mapper / Repository Layer** (`rullst::repository!` / `UserRepository::find_with_orders(...)`) for enterprise queries, complex joins, and typed SQL mapping without coupling domain structs to database schemas.
 - [x] **Seeders & Factories:** `cargo rullst db:seed` with mock entity factory generators.
@@ -161,9 +168,9 @@ graph TD
 - [x] **Dependency Shielding:** Transitive dependency isolation so user code compiles untouched across updates.
 
 ### 🌐 Milestone 8: Intent-Based Modeling & Self-Optimizing Indexes
-- [ ] **Intent-Based Modeling:** Generate database migrations automatically from plain text Rust doc comments.
-- [ ] **Self-Optimizing Indexes:** Autonomous query analyzer proposing secondary indexes for slow queries.
-- [ ] **Multi-Database Read Replica Load Balancer (`rullst::db::replica`):** Automatic transparent read/write splitting between primary and secondary database replicas.
+- [x] **Intent-Based Modeling:** Generate database migrations automatically from plain text Rust doc comments.
+- [x] **Self-Optimizing Indexes:** Autonomous query analyzer proposing secondary indexes for slow queries.
+- [x] **Multi-Database Read Replica Load Balancer (`rullst::db::replica`):** Automatic transparent read/write splitting between primary and secondary database replicas.
 
 ---
 
@@ -175,8 +182,9 @@ graph TD
 - [x] **Passkeys & Biometrics First (`rullst::auth::passkey`):** WebAuthn FaceID/TouchID integration.
 - [x] **The "Auth Magic" Command:** `cargo rullst auth` full scaffolding.
 - [x] **Security Defaults:** CSRF protection and security headers (CORS, HSTS).
+- [x] **Declarative Authorization Engine:** Role-based (`#[authorize(role = "admin")]`) and owner-based middleware.
 
-### 🏢 Milestone 10: Enterprise Utilities (Mailer, DTO Validation & Shield)
+### 🛡️ Milestone 10: Network Protection, Rate Limiting & Resilience
 - [x] **Declarative Validation:** `#[derive(Validate)]` for DTOs returning 422 JSON or HTMX error partials.
 - [x] **Mailer System (`rullst::mail`):** SMTP, Resend, SendGrid drivers with HTML template rendering.
 - [x] **Adaptive Backpressure & Traffic Shielding:** Tokio thread pool monitoring to prevent OOM server crashes under heavy load.
@@ -188,16 +196,16 @@ graph TD
 - [x] **Rullst Capital (SaaS Billing Boilerplate):** Stripe & LemonSqueezy subscription integration via `cargo rullst make:billing`.
 - [ ] **Rullst Capital Revenue Dashboard:** Native MRR/ARR analytics, plan distribution breakdown, churn metrics, and live Stripe/LemonSqueezy webhook event inspector in Studio/Nexus.
 - [x] **Rullst Shield (Wasm WAF & Bot Management):** WAF middleware with bot blocking and PII masking.
-- [ ] **Autonomous AI Security Engine (`rullst-security` / `rullst::shield::ai`):**
-  - **RASP (Runtime Application Self-Protection):** Zero-latency kernel-level request inspector blocking SQL Injection, XSS, Path Traversal, SSRF, and RCE before reaching controllers.
-  - **AI Threat Sentinel (`rullst-security-ai`):** Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and applying dynamic IP bans or Proof-of-Work challenge tokens.
-  - **AI Vulnerability Auditor (`cargo rullst audit --ai`):** CLI security scanner analyzing dependency CVEs, `.env` secret leaks, and permission boundaries with automated AI patch suggestions.
-  - **Rullst Vault (`rullst-vault`):** Zero-trust secret management with in-memory secret zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
-  - **Rullst Honey (`rullst-honey`):** Deception security engine deploying synthetic honeypot routes (`/.env`, `/admin.php`) and invisible form inputs to fingerprint and cluster-ban malicious bots.
-  - **Rullst RBAC Guard (`rullst-rbac`):** Declarative authorization (`#[authorize(role = "admin", owner_of = "id")]`) natively preventing BOLA / IDOR attacks.
-  - **Rullst Audit Log (`rullst-audit-log`):** HMAC-chained cryptographic tamper-proof audit trail preserving historic event integrity during database breaches.
-  - **Rullst Sanitizer (`rullst-sanitizer`):** Deep XSS/SVG HTML sanitization, clickjacking protection, and per-request dynamic CSP nonce generation.
-  - **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`):** Live dashboard showing blocked attack vectors, IP reputation scores, and AI incident reports.
+- [x] **Autonomous AI Security Engine (`rullst-security` / `rullst::shield::ai`):**
+  - [x] **RASP (Runtime Application Self-Protection):** Zero-latency kernel-level request inspector blocking SQL Injection, XSS, Path Traversal, SSRF, and RCE before reaching controllers.
+  - [x] **AI Threat Sentinel (`rullst-security-ai`):** Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and applying dynamic IP bans or Proof-of-Work challenge tokens.
+  - [x] **AI Vulnerability Auditor (`cargo rullst audit --ai`):** CLI security scanner analyzing dependency CVEs, `.env` secret leaks, and permission boundaries with automated AI patch suggestions.
+  - [x] **Rullst Vault (`rullst-vault`):** Zero-trust secret management with in-memory secret zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
+  - [x] **Rullst Honey (`rullst-honey`):** Deception security engine deploying synthetic honeypot routes (`/.env`, `/admin.php`) and invisible form inputs to fingerprint and cluster-ban malicious bots.
+  - [x] **Rullst RBAC Guard (`rullst-rbac`):** Declarative authorization (`#[authorize(role = "admin", owner_of = "id")]`) natively preventing BOLA / IDOR attacks.
+  - [x] **Rullst Audit Log (`rullst-audit-log`):** HMAC-chained cryptographic tamper-proof audit trail preserving historic event integrity during database breaches.
+  - [x] **Rullst Sanitizer (`rullst-sanitizer`):** Deep XSS/SVG HTML sanitization, clickjacking protection, and per-request dynamic CSP nonce generation.
+  - [x] **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`):** Live dashboard showing blocked attack vectors, IP reputation scores, and AI incident reports.
 - [x] **Rullst Foundry CLI:** Provisioning & deployment scripts for AWS, Hetzner, GCP, Azure, OCI, and DigitalOcean.
 
 ### 🔬 Milestone 12: Post-Quantum Cryptography & Quantum Computing (`rullst-quantum`)
@@ -215,7 +223,7 @@ graph TD
 ### ⚡ Milestone 13: HTMX First-Class, Hybrid Frontend & Partial Views
 - [x] **Native Reactive SSR (HTMX Live State):** `#[htmx]` macro for server-side state evaluation and minimal DOM patches.
 - [x] **HTMX First-Class Support:** Request header helpers (`is_htmx`), partial template rendering, and TailwindCSS auto-integration.
-- [ ] **Hybrid Frontend Architecture (Zero-Bundle HTMX Default + Leptos/Dioxus SSR Adapters):**
+- [x] **Hybrid Frontend Architecture (Zero-Bundle HTMX Default + Leptos/Dioxus SSR Adapters):**
   - **Zero-Bundle Mode (Default):** HTML5 + HTMX + TailwindCSS + `rullst::html!` macro delivering 0KB JavaScript bundle and instant initial page loads.
   - **Full Reactive SSR Mode (Optional Adapters):** First-class integration with Leptos & Dioxus for complex rich-client dashboards and stateful SPAs.
 
@@ -236,10 +244,10 @@ graph TD
 - [x] **AI-Powered "Self-Healing" Error Console:** Interactive local AI assistant patching compilation and runtime errors.
 - [x] **Native SaaS Multi-Tenancy (`rullst::multitenant`):** Subdomain, header, or DB schema multi-tenancy isolation.
 - [x] **Hybrid Hot-Reloading:** Dynamic library (`dylib`) hot-swapping & AST HTML fragment live updates.
-- [ ] **Dylib Hot Reloading ABI Integrity Guard:** Automated ABI hash validation per build to prevent memory leaks and Tokio runtime state mismatches during dynamic library hot-swapping.
+- [x] **Dylib Hot Reloading ABI Integrity Guard:** Automated ABI hash validation per build to prevent memory leaks and Tokio runtime state mismatches during dynamic library hot-swapping.
 
 ### 🚀 Milestone 16: Real-Time Engine, Storage & Dynamic Package Ecosystem
-- [ ] **Native Real-Time Engine (`rullst::realtime`):** Declarative WebSockets & Server-Sent Events (SSE) channel manager (`Channel`, `Broadcast`, `Presence`) integrated with HTMX and frontend Islands.
+- [x] **Native Real-Time Engine (`rullst::realtime`):** Declarative WebSockets & Server-Sent Events (SSE) channel manager (`Channel`, `Broadcast`, `Presence`) integrated with HTMX and frontend Islands.
 - [x] **Unified Object Storage & Media Pipeline (`rullst::storage`):** Multi-driver storage engine (Local, S3, Cloudflare R2) with automatic image resizing (`.store()`, `.resize_webp()`) and path traversal protection.
 - [x] **Dynamic Package Ecosystem & Registry (`cargo rullst pkg`):** CLI package management to search, inspect, and install community extensions (`cargo rullst pkg add <name>`) conforming to the `RullstPackage` trait standard.
 
@@ -250,7 +258,7 @@ graph TD
 ### 📊 Milestone 17: Hardware Telemetry & Radar Monitoring
 - [x] **Native OpenTelemetry:** Zero-config telemetry export to Datadog, Grafana Loki, or Prometheus.
 - [ ] **Rullst Radar (Kernel-Level Telemetry):** Visual dashboard for CPU, Mutex contention, memory leaks, and I/O bottlenecks.
-- [ ] **Distributed Tracing Visualizer (`rullst::studio::traces`):** Built-in Jaeger/Zipkin-style flamegraph inspector in Rullst Studio (`http://localhost:5555/studio/tools/traces`) visualizing microsecond-level HTTP, SQL, and AI prompt spans.
+- [x] **Distributed Tracing Visualizer (`rullst::studio::traces`):** Built-in Jaeger/Zipkin-style flamegraph inspector in Rullst Studio (`http://localhost:5555/studio/tools/traces`) visualizing microsecond-level HTTP, SQL, and AI prompt spans.
 - [ ] **Time-Travel Debugging in Error Console:** Last 50 event replay visualizer for server panics.
 
 ### 💎 Milestone 18: Zero-Copy Event Streaming & Immutable Ledger Engine
@@ -275,11 +283,11 @@ graph TD
 ## 🔌 Pilar VI: Embedded IoT, Edge Hardware & Industry 4.0 (`rullst-iot`)
 
 ### 🔌 Milestone 22: Embedded IoT & Edge Hardware Supremacy (`rullst-iot`)
-- [ ] **Rullst IoT Core (`rullst-iot` / `rullst-embedded`):** Ultra-lightweight `#![no_std]` optional runtime with sub-2MB RAM footprint for Raspberry Pi, ESP32, STM32, and industrial edge hardware.
-- [ ] **IoT Protocol Suite (`rullst-connect-iot`):** Native embedded drivers for MQTT, CoAP, Modbus, WebSockets, and BLE (Bluetooth Low Energy) telemetry.
-- [ ] **On-Device Edge AI (`rullst-edge-ai`):** Micro-LLM & sensor anomaly inference running locally on NPU/embedded chips without cloud internet dependencies.
-- [ ] **Embedded Micro-Dashboard (`rullst::iot::ui`):** Instant HTMX-powered local management UI for IoT gateways, smart home hubs, and robotics controllers.
-- [ ] **CLI IoT Scaffolding (`cargo rullst make:iot <DeviceName>`):** Single command to scaffold IoT Sensor Nodes, MQTT Brokers, and Edge Gateways.
+- [x] **Rullst IoT Core (`rullst-iot` / `rullst-embedded`):** Ultra-lightweight `#![no_std]` optional runtime with sub-2MB RAM footprint for Raspberry Pi, ESP32, STM32, and industrial edge hardware.
+- [x] **IoT Protocol Suite (`rullst-connect-iot`):** Native embedded drivers for MQTT, CoAP, Modbus, WebSockets, and BLE (Bluetooth Low Energy) telemetry.
+- [x] **On-Device Edge AI (`rullst-edge-ai`):** Micro-LLM & sensor anomaly inference running locally on NPU/embedded chips without cloud internet dependencies.
+- [x] **Embedded Micro-Dashboard (`rullst::iot::ui`):** Instant HTMX-powered local management UI for IoT gateways, smart home hubs, and robotics controllers.
+- [x] **CLI IoT Scaffolding (`cargo rullst make:iot <DeviceName>`):** Single command to scaffold IoT Sensor Nodes, MQTT Brokers, and Edge Gateways.
 
 ---
 
@@ -293,6 +301,71 @@ graph TD
 
 ---
 
+## 🏆 Pilar VIII: World Supremacy — Competitive Gap Closures
+
+> These milestones are derived from a deep competitive analysis against Laravel, Rails, NestJS, Phoenix, Spring Boot, Hono, Embassy, and Actix. Each item closes a known gap where a rival framework has an advantage over Rullst.
+
+### 💉 Milestone 24: Zero-Cost Compile-Time DI Container (`rullst::di`)
+- [ ] **`#[injectable]` / `#[provide]` macros:** Proc-macro DI graph resolved entirely at compile-time — no runtime reflection, no allocations. First zero-cost DI container in any systems language.
+- [ ] **Module system:** Scoped providers (`Singleton`, `Transient`, `Request`-scoped) with static dispatch binding.
+- [ ] **NestJS parity:** Match NestJS DI ergonomics (auto-wiring constructor dependencies) without any of the runtime overhead.
+
+---
+
+### 🚀 Milestone 25: One-Click PaaS Deployment & Rullst Cloud (`cargo rullst deploy`)
+- [ ] **`cargo rullst deploy --platform=fly`:** Auto-generate `Dockerfile` + `fly.toml` and deploy to Fly.io in a single command.
+- [ ] **`cargo rullst deploy --platform=railway`:** Same for Railway, with `railway.toml` auto-config.
+- [ ] **`cargo rullst deploy --platform=render`:** Same for Render, with `render.yaml` generation.
+- [ ] **Rullst Cloud (Alpha):** Zero-config PaaS that auto-detects a `rullst` project and deploys globally — Vercel for Rullst apps.
+
+---
+
+### ⚡ Milestone 26: `rullst::live` — LiveView-Style Reactive Server-Driven UI
+- [ ] **`LiveComponent<State>` trait:** Phoenix LiveView-equivalent using WebSocket + HTMX OOB swaps under the hood — no client-side JS required for interactive UIs.
+- [ ] **State diffing:** Server-side state diff engine sending only changed HTML fragments over WS.
+- [ ] **`cargo rullst make:live <ComponentName>`:** Scaffold a new LiveComponent with boilerplate.
+
+---
+
+### 🔌 Milestone 27: Async `rullst-iot` — Embassy Executor Integration
+- [ ] **`async` feature gate:** Optional async/await support in `rullst-iot` using `embassy-executor` as the bare-metal async runtime.
+- [ ] **Async GPIO / I2C / SPI drivers:** Non-blocking sensor reads on ESP32-S3, STM32 via async traits.
+- [ ] **`no_std` async MQTT:** Async MQTT publish/subscribe on embedded targets without heap allocation.
+
+---
+
+### ☸️ Milestone 28: Kubernetes-Native Infrastructure (`cargo rullst make:k8s` & `rullst-operator`)
+- [ ] **`cargo rullst make:k8s`:** Generates `Deployment.yaml`, `Service.yaml`, `ConfigMap.yaml`, `HPA.yaml`, and `Ingress.yaml` for the current project.
+- [ ] **Auto health probes:** Auto-expose `GET /health` (liveness) and `GET /ready` (readiness) endpoints when K8s feature is active.
+- [ ] **`rullst-operator` (Long-Term):** A Kubernetes operator watching `RullstApp` custom resources and managing deployments declaratively.
+
+---
+
+### 📖 Milestone 29: Interactive Scalar API Docs & ORM Error Console
+- [ ] **Scalar UI at `/docs`:** Auto-mount Scalar (fastest OpenAPI UI) in dev mode — no config required. `cargo rullst make:scalar` to customize.
+- [ ] **ORM SQL Error Console:** `rullst-orm` dev interceptor rendering SQLx failures inside the Ignition error console with: failing migration name, actual DB schema, and a one-click "Run Migration" button.
+
+---
+
+### 🌐 Milestone 30: `rullst-grpc` (Tonic) & Plugin Marketplace Web UI
+- [ ] **`cargo rullst make:grpc <ServiceName>`:** Scaffold a `tonic`-based gRPC service registered alongside the HTTP server, with gRPC-Gateway HTTP/JSON transcoding.
+- [ ] **Plugin Marketplace (`rullst.github.io/packages`):** Searchable web UI for `RullstPackage` crates — enabling ecosystem discovery without `crates.io` search.
+
+---
+
 ## 🗺️ Execution Strategy
 
 We proceed **milestone by milestone**, trying to maintain **100% test coverage**, **Zero-Panics Policy**, and **SST (Single Source of Truth) architecture**.
+
+| Priority | Milestones | Rationale |
+| :--- | :--- | :--- |
+| **P0** | M29 (Scalar Docs) | Zero-effort DX win, closes FastAPI/Laravel gap |
+| **P1** | M25 (Deploy), M27 (Async IoT), M28 (K8s) | Adoption blockers for production teams |
+| **P2** | M24 (DI), M26 (LiveView) | Premium DX features that dominate NestJS/Phoenix |
+| **P3** | M30 (gRPC + Marketplace) | Ecosystem & enterprise scale |
+
+---
+
+<div align="center">
+  <p><i>"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</i></p>
+</div>

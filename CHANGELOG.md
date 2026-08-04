@@ -7,6 +7,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **3 New CI/CD Workflows:**
+  - **`no_std-build.yml`:** Automated bare-metal compilation check for `rullst-iot` on 3 targets (STM32 Cortex-M4/M7, Cortex-M0, ESP32-C3 RISC-V).
+  - **`iot-integration.yml`:** IoT integration test suite running all 18 unit tests + QEMU Cortex-M simulation on push.
+  - **`pqc-compliance.yml`:** Scheduled weekly NIST ML-KEM / Kyber & HSM compliance audit with unsafe-block detection in cryptographic modules.
+- **Enterprise-Grade Security Table (README.md):** Added 3 new CI badge rows: `no_std Build Check`, `OTA Signature Verification`, and `PQC Compliance Audit`.
+- **`rullst-iot` Phase 7: Industrial Standards & Certification (Roadmap):**
+  - **OPC-UA Protocol Driver (`rullst_iot::opcua`):** Industry 4.0 OPC-UA driver for SCADA/MES/ERP communication (ISA-95, IEC 62541).
+  - **MQTT Sparkplug B Profile (`rullst_iot::sparkplug`):** IIoT-standard Sparkplug B over MQTT for Unified Namespace interoperability.
+  - **IEC 61508 / IEC 62443 Safety Mode (`rullst_iot::safety`):** SIL 2/3 safety-critical deterministic execution with watchdog timer and memory protection.
+- **Rullst Vault (`rullst-vault` & `FieldEncryptor`)**: Added zero-trust secret management with `Zeroize` in-memory cleaning upon drop (`VaultSecret<T>`) and field-level AES-256-GCM / ChaCha20-Poly1305 encryption in `rullst-security`.
+- **Intent-Based Modeling (`rullst-orm`)**: Added `IntentAnalyzer` in `rullst-orm` to auto-generate `CREATE INDEX` migrations directly from plain-text Rust doc comments (`/// @index(...)`).
+- **Embedded IoT & Edge Hardware Supremacy (`rullst-iot`)**: Introduced complete `rullst-iot` crate ecosystem (6 Phases, 18 unit tests, `#![no_std]` optional runtime, < 2MB RAM footprint) for Raspberry Pi, ESP32, STM32, and Arduino 32-bit:
+  - **Native Hardware HAL (`rullst_iot::gpio`, `rullst_iot::i2c`)**: Cross-platform GPIO pin toggling (`GpioPin`) and I2C register transaction builder (`I2cHelper`).
+  - **Industrial Modbus Driver (`rullst_iot::modbus`)**: Modbus RTU/TCP request frame builder (`ModbusFrame`) with automatic **CRC-16** calculation for PLCs.
+  - **BLE Telemetry GATT Server (`rullst_iot::ble`)**: GATT service and characteristic generator (`GattService`, `GattCharacteristic`) for Bluetooth Low Energy beacons.
+  - **On-Device Edge AI Engine (`rullst_iot::anomaly`)**: Embedded statistical anomaly detector (`AnomalyDetector`, `AnomalyState`) running locally on `no_std` targets without cloud internet dependencies.
+  - **Embedded Micro-Dashboard (`rullst_iot::ui`)**: Ultra-lightweight (< 50KB) HTMX HTML widget generator (`IotDashboard`) for local gateway UIs.
+  - **IoT Mesh Network (`rullst_iot::mesh`):** Self-healing P2P mesh topology manager (`MeshTopology`, `MeshNode`) with RSSI-based relay path resolution.
+  - **Zero-Trust OTA Firmware Updates (`rullst_iot::ota`):** Dual A/B bootloader partition manager (`OtaManager`, `BootPartition`) with Ed25519 signature verification and rollback protection.
+  - **Hardware Security Element Bindings (`rullst_iot::hsm`):** SHA-256 key derivation and payload signing abstraction (`HsmDevice`) targeting ATECC608A, TPM 2.0, and STSAFE silicon.
+  - **Post-Quantum Edge Encryption (`rullst_iot::pqc`):** ML-KEM / Kyber key encapsulation stub (`PqcKeyPair`) for low-power edge telemetry protection against quantum decryption.
+  - **Deep Sleep Power Governor (`rullst_iot::power`):** Autonomous energy budget evaluator (`PowerGovernor`, `PowerMode`) with solar harvester voltage monitoring (`HarvesterState`).
+  - **Digital Twin Engine (`rullst_iot::twin`):** Bi-directional real-time sync engine (`DigitalTwin`) serializing physical device state snapshots as JSON payloads for Rullst Studio and cloud services.
+- **CLI IoT Generator (`cargo rullst make:iot <DeviceName>`)**: Added `make:iot` subcommand in `cargo-rullst` to scaffold IoT edge device modules in seconds.
+- **Multi-Database Read Replica Load Balancer (`rullst::db::replica`)**: Added `ReplicaPool` in `rullst-orm` to automatically load-balance read queries across secondary database replicas with Round-Robin selection while routing writes to primary.
+- **RASP - Runtime Application Self-Protection (`rullst-security`)**: Introduced `RaspSecurityLayer` and `RaspInspector` in `rullst-security` for zero-latency middleware inspection blocking SQLi, Path Traversal, SSRF, and RCE.
+- **Distributed Tracing Visualizer (`rullst::studio::traces`)**: Added microsecond telemetry span collector (`SpanCollector`) and flamegraph visualizer interface in Rullst Studio (`http://localhost:5555/studio/tools/traces`).
+- **Dylib Hot Reloading ABI Integrity Guard**: Integrated SHA-256 fingerprint verification during dynamic library hot-swapping in `rullst-core` dev mode.
+- **Framework Escape Hatches (`cargo rullst eject`)**: Added `cargo rullst eject [--force] [--output <path>]` command in `cargo-rullst` to expand framework abstractions into 100% pure Axum and Tokio Rust code.
+- **Hybrid ORM Repository Pattern (`rullst-orm`)**: Added `Repository<T>` trait and `GenericRepository<T>` in `rullst-orm` to support Data Mapper / Repository pattern alongside Active Record models.
+- **Hybrid Frontend SSR Adapters (`rullst-core/src/frontend.rs`)**: Introduced `LeptosAdapter` and `DioxusAdapter` for seamless rich-client SSR integration alongside the default 0KB HTMX bundle mode.
+- **Native Real-Time Engine (`rullst::realtime`)**: Introduced `Channel`, `BroadcastManager` (pub/sub over `tokio::sync::broadcast`), and `PresenceTracker` in `rullst-core` for declarative WebSockets and SSE.
+- **`rullst-security` Monorepo Crate**: Introduced dedicated security suite crate containing:
+  - **`rullst-honey`**: Deception security engine deploying synthetic honeypot routes (`/.env`, `/admin.php`, `/.git/config`) and invisible form fields to fingerprint and ban malicious bots in memory (`DashMap`) and WAF.
+  - **`rullst-sanitizer`**: XSS/SVG HTML sanitization engine powered by `ammonia`, plus `CspSecurityLayer` middleware generating dynamic per-request CSP nonces and Clickjacking headers (`X-Frame-Options: DENY`).
+  - **`rullst-rbac`**: Declarative Role-Based Access Control (`UserContext`, `RbacGuard`) natively preventing BOLA / IDOR attacks via `authorize_owner_or_role`.
+  - **`rullst-audit-log`**: HMAC-chained cryptographic tamper-proof audit log (`AuditChain`) preserving event integrity during database breaches.
+- **AI Vulnerability Auditor (`cargo rullst audit --ai`)**: Added CLI security scanner command in `cargo-rullst` to analyze `.env` secret leaks, dependency CVEs via `cargo audit`, and generate AI Sentinel remediation suggestions.
 - **Automated TypeScript SDK Sync (`cargo rullst dev --ts-sync`)**: Added `--ts-sync` flag to `cargo rullst dev` to automatically regenerate `sdk.ts` on file changes during development.
 - **Unified Object Storage & Media Pipeline (`rullst::storage`)**: Added multi-driver storage module in `rullst-core` with `LocalDriver` (path traversal protected), `S3`, and `Cloudflare R2` adapters, plus media resizing pipeline.
 - **Dynamic Package Manager CLI (`cargo rullst pkg`)**: Added `cargo rullst pkg add <name>` and `cargo rullst pkg list` to inspect and inject `RullstPackage` community dependencies.

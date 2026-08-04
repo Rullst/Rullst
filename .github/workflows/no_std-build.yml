@@ -1,0 +1,45 @@
+name: no_std Build Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "rullst-iot/**"
+  pull_request:
+    paths:
+      - "rullst-iot/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-no-std:
+    name: Build rullst-iot (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - thumbv7em-none-eabihf     # STM32 Cortex-M4/M7
+          - thumbv6m-none-eabi        # Cortex-M0 / M0+
+          - riscv32imac-unknown-none-elf  # ESP32-C3 (RISC-V)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build rullst-iot (no_std, ${{ matrix.target }})
+        run: |
+          cargo build -p rullst-iot \
+            --target ${{ matrix.target }} \
+            --no-default-features \
+            --release
+
+      - name: Check no_std binary size
+        run: |
+          SIZE=$(wc -c < target/${{ matrix.target }}/release/librullst_iot.rlib 2>/dev/null || echo "0")
+          echo "Binary size: ${SIZE} bytes"
