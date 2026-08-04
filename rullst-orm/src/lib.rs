@@ -278,6 +278,17 @@ pub struct Orm;
 impl Orm {
     /// Initialize the global database connection pool using an agnostic URI
     pub async fn init(database_url: &str) -> Result<(), crate::Error> {
+        // Reject unconfigured placeholder URLs before they reach the driver
+        // (e.g. Turso template `libsql://[your-database-id].turso.io` whose
+        //  brackets are misinterpreted as an IPv6 literal by URL parsers).
+        if database_url.contains('[') && database_url.contains(']') {
+            return Err(crate::Error::Internal(
+                "DATABASE_URL contains placeholder brackets like [your-database-id]. \
+                Update your .env file with a real connection string."
+                    .to_string(),
+            ));
+        }
+
         Self::validate_dsn(database_url);
 
         #[cfg(not(any(
@@ -352,6 +363,44 @@ impl Orm {
 
     #[cfg_attr(test, mutants::skip)]
     fn validate_dsn(database_url: &str) {
+        // Detect unconfigured placeholder URLs (e.g. the Turso template uses
+        // [your-database-id] which the URL parser misreads as an IPv6 address).
+        if database_url.contains('[') && database_url.contains(']') {
+            eprintln!(
+                "⚠️ [CONFIG] Rullst ORM: DATABASE_URL still contains placeholder brackets (e.g. [your-database-id]). \
+                Update your .env file with a real connection string before using database features."
+            );
+            return;
+        }
+
+        if database_url.starts_with("sqlite") {
+            let mut path_part = database_url
+                .trim_start_matches("sqlite:")
+                .trim_start_matches("//")
+                .trim_start_matches("file:");
+            if let Some(idx) = path_part.find('?') {
+                path_part = &path_part[..idx];
+            }
+            if !path_part.is_empty()
+                && path_part != ":memory:"
+                && !path_part.contains("mode=memory")
+            {
+                let path = std::path::Path::new(path_part);
+                // Ensure the parent directory exists
+                if let Some(parent) = path.parent() {
+                    if !parent.as_os_str().is_empty() {
+                        let _ = std::fs::create_dir_all(parent);
+                    }
+                }
+                // Touch-create the SQLite file if it doesn't exist so that
+                // drivers without implicit `mode=rwc` support (or without the
+                // query-parameter) never hit SQLITE_CANTOPEN (error code 14).
+                if !path.exists() {
+                    let _ = std::fs::File::create(path);
+                }
+            }
+        }
+
         if database_url.contains("sslmode=disable")
             && !database_url.contains("localhost")
             && !database_url.contains("127.0.0.1")
@@ -367,6 +416,7 @@ impl Orm {
         primary_url: &str,
         replica_urls: Vec<&str>,
     ) -> Result<(), crate::Error> {
+        Self::validate_dsn(primary_url);
         #[cfg(not(any(
             feature = "strict-postgres",
             feature = "strict-mysql",
@@ -408,6 +458,16 @@ impl Orm {
             .expect("Orm must be initialized before querying")
     }
 
+    /// Fallible variant of [`Orm::pool`]: returns `Err` instead of panicking
+    /// when the ORM has not been initialized yet.
+    pub fn try_pool() -> Result<&'static RullstPool, crate::Error> {
+        DB_POOL.get().ok_or_else(|| {
+            crate::Error::Internal(
+                "Orm is not initialized. Call Orm::init() before querying.".to_string(),
+            )
+        })
+    }
+
     /// Retrieve the connection pool for read operations.
     /// Performs a round-robin load balancing over replicas if configured.
     #[cfg_attr(test, mutants::skip)]
@@ -421,13 +481,33 @@ impl Orm {
         Self::pool()
     }
 
-    /// Retrieve the active driver string
-    #[allow(clippy::expect_used)]
+    /// Fallible variant of [`Orm::read_pool`].
+    #[cfg_attr(test, mutants::skip)]
+    pub fn try_read_pool() -> Result<&'static RullstPool, crate::Error> {
+        if let Some(replicas) = REPLICA_POOLS.get()
+            && !replicas.is_empty()
+        {
+            let idx = REPLICA_INDEX.fetch_add(1, Ordering::Relaxed) % replicas.len();
+            return Ok(&replicas[idx]);
+        }
+        Self::try_pool()
+    }
+
+    /// Retrieve the active driver string (defaults to "sqlite" if DB is not initialized yet)
     pub fn driver() -> &'static str {
         DB_DRIVER
             .get()
-            .expect("Orm must be initialized before querying")
-            .as_str()
+            .map(|s| s.as_str())
+            .unwrap_or("sqlite")
+    }
+
+    /// Fallible variant of [`Orm::driver`].
+    pub fn try_driver() -> Result<&'static str, crate::Error> {
+        DB_DRIVER.get().map(|s| s.as_str()).ok_or_else(|| {
+            crate::Error::Internal(
+                "Orm is not initialized. Call Orm::init() before querying.".to_string(),
+            )
+        })
     }
 
     /// Create a raw SQL query builder.

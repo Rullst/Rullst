@@ -675,7 +675,7 @@ fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         };
         let set_clause_lit = set_clause;
         quote! {
-            let pool = rullst_orm::Orm::pool();
+            let pool = rullst_orm::Orm::try_pool()?;
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("UPDATE ");
             query_builder.push(#table_name);
@@ -822,7 +822,7 @@ fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
         pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
             #policy_check_force_delete
-            let pool = rullst_orm::Orm::pool();
+            let pool = rullst_orm::Orm::try_pool()?;
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("DELETE FROM ");
             query_builder.push(#table_name);
@@ -923,7 +923,7 @@ fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStream) {
                     println!("[SQL Debug Partial Update] {:?} | ID: {}", sql, self.model.id);
                 }
 
-                let pool = rullst_orm::Orm::pool();
+                let pool = rullst_orm::Orm::try_pool()?;
                 let query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
                 let mut exec = query;
 

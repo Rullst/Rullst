@@ -29,6 +29,31 @@ struct App {
     start_time: Instant,
     tick_count: usize,
     port: u16,
+    db_provider: String,
+}
+
+fn detect_db_provider() -> String {
+    if let Ok(env_str) = std::fs::read_to_string(".env") {
+        for line in env_str.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("DATABASE_URL=") {
+                let url = trimmed
+                    .trim_start_matches("DATABASE_URL=")
+                    .trim_matches('"')
+                    .trim_matches('\'');
+                if url.contains("turso") || url.starts_with("libsql") {
+                    return " Turso / libSQL (Connected)".to_string();
+                } else if url.starts_with("postgres") || url.starts_with("postgresql") {
+                    return " PostgreSQL (Connected)".to_string();
+                } else if url.starts_with("mysql") || url.starts_with("mariadb") {
+                    return " MySQL / MariaDB (Connected)".to_string();
+                } else if url.starts_with("sqlite") {
+                    return " SQLite (Connected)".to_string();
+                }
+            }
+        }
+    }
+    " SQLite / Turso / MySQL / MariaDB / PG (Connected)".to_string()
 }
 
 impl App {
@@ -41,6 +66,7 @@ impl App {
             start_time: Instant::now(),
             tick_count: 0,
             port,
+            db_provider: detect_db_provider(),
         }
     }
 }
@@ -335,10 +361,7 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         ]),
         Line::from(vec![
             Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                " SQLite / MySQL / PG (Connected)",
-                Style::default().fg(Color::Yellow),
-            ),
+            Span::styled(&app.db_provider, Style::default().fg(Color::Yellow)),
         ]),
         Line::from(vec![Span::raw("")]),
         Line::from(vec![

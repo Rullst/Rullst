@@ -1288,7 +1288,7 @@ fn generate_execution_methods(
                             println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
                         }
 
-                        let pool = rullst_orm::Orm::read_pool();
+                        let pool = rullst_orm::Orm::try_read_pool()?;
                         let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                         for binding in &self.bindings {
                             match binding {
@@ -1402,7 +1402,7 @@ fn generate_execution_methods(
                     if !self.errors.is_empty() {
                         return Err(self.errors[0].clone());
                     }
-                    let pool = rullst_orm::Orm::read_pool();
+                    let pool = rullst_orm::Orm::try_read_pool()?;
                     let query_str = self.to_pluck_sql(column);
                     let rows: Vec<(String,)> = {
                         let mut query = rullst_orm::_sqlx::query_as::<_, (String,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
@@ -1430,7 +1430,7 @@ fn generate_execution_methods(
                     if !self.errors.is_empty() {
                         return Err(self.errors[0].clone());
                     }
-                    let pool = rullst_orm::Orm::read_pool();
+                    let pool = rullst_orm::Orm::try_read_pool()?;
                     let query_str = self.to_pluck_sql(column);
                     let rows: Vec<(i32,)> = {
                         let mut query = rullst_orm::_sqlx::query_as::<_, (i32,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));

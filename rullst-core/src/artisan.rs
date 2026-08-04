@@ -57,6 +57,9 @@ pub async fn check_and_run_artisan(
             }
         }
 
+        let _ = dotenvy::from_filename_override(".env");
+        let _ = dotenvy::dotenv();
+
         let url = if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
             env_db_url
         } else if let Some(parsed) = db_url {

@@ -464,9 +464,9 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                 <div class="main-content">
                     <div class="video-wrapper" id="video-panel">
                         { if let Some(first_lesson) = lessons.first() {
-                            video_player_snippet(&first_lesson.title, &first_lesson.video_url)
+                            rullst::html::RawHtml(video_player_snippet(&first_lesson.title, &first_lesson.video_url))
                         } else {
-                            html! { <div style="color: #64748b;">"No lessons available"</div> }
+                            rullst::html::RawHtml("<div style=\"color: #64748b;\">No lessons available</div>".to_string())
                         } }
                     </div>
                 </div>

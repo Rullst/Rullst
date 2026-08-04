@@ -284,6 +284,7 @@ pub fn create_new_project(
             features_list.push("\"auth\"");
             features_list.push("\"studio\"");
             features_list.push("\"mailer\"");
+            features_list.push("\"nexus\"");
         }
         3 => {
             // SaaS App Starter
@@ -613,10 +614,10 @@ Foundry.toml
     // Write .env and .env.example
     let app_key = generate_secure_app_key();
     let db_url = match db_provider.as_str() {
-        "Postgres" => "postgres://user:password@localhost:5432/db",
-        "MySQL" => "mysql://user:password@localhost:3306/db",
-        "Turso" => "libsql://[your-database-id].turso.io?authToken=[your-token]",
-        _ => "sqlite://db.sqlite",
+        "Postgres" => "postgres://user:password@localhost:5432/db".to_string(),
+        "MySQL" => "mysql://user:password@localhost:3306/db".to_string(),
+        "Turso" => "sqlite://turso_local.db?mode=rwc".to_string(),
+        _ => "sqlite://db.sqlite?mode=rwc".to_string(),
     };
 
     let mut env_content = format!(
@@ -648,9 +649,14 @@ APP_ENV=development
         .to_string();
 
     if db_needed {
+        let db_comment = if turso {
+            "# Turso / libSQL: Configured to run locally by default (turso_local.db).\n# To use Turso Cloud or `turso dev`, uncomment and update DATABASE_URL below:\n# DATABASE_URL=libsql://your-db-name.turso.io?authToken=your-token\n"
+        } else {
+            ""
+        };
         let db_env_str = format!(
-            "\n# ── Database ──────────────────────────────────────────────────\nDATABASE_URL={}\n",
-            db_url
+            "\n# ── Database ──────────────────────────────────────────────────\n{}\nDATABASE_URL={}\n",
+            db_comment, db_url
         );
         env_content.insert_str(
             env_content
@@ -666,7 +672,7 @@ APP_ENV=development
         );
 
         if turso {
-            let turso_env = "\n# ── Turso / libSQL ───────────────────────────────────────────────\nTURSO_DATABASE_URL=libsql://your-db-name.turso.io\nTURSO_AUTH_TOKEN=your-auth-token\n";
+            let turso_env = "\n# ── Turso Cloud Credentials (Optional) ─────────────────────────\n# TURSO_DATABASE_URL=libsql://your-db-name.turso.io\n# TURSO_AUTH_TOKEN=your-auth-token\n";
             env_content.push_str(turso_env);
             env_example_content.push_str(turso_env);
         }

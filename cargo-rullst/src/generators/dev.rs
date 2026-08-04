@@ -223,19 +223,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                 }
             }
 
-            if html_changed && !logic_changed {
-                let m = "🎨 UI change detected. Sending HTML fragment via WebSocket..."
-                    .magenta()
-                    .to_string();
-                if is_dash {
-                    let _ = log_tx_watcher.send(LogMsg::System(m));
-                } else {
-                    println!("{}", m);
-                }
-                let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
-            }
-
-            if logic_changed {
+            if html_changed || logic_changed {
                 let m = "🔄 File change detected. Recompiling library for Hot-Swap..."
                     .yellow()
                     .to_string();
@@ -267,6 +255,8 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                                 } else {
                                     println!("{}", m);
                                 }
+                                // Notify browser via WebSocket to morph DOM with updated server response
+                                let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
                             }
                             Err(_) => {
                                 let m =
@@ -281,7 +271,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                             }
                         }
                     } else {
-                        let m = "❌ Build failed. Please fix errors to Hot-Swap."
+                        let m = "❌ Build failed. Please fix compilation errors to Hot-Swap."
                             .red()
                             .to_string();
                         if is_dash {

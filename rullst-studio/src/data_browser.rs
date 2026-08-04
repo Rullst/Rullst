@@ -385,7 +385,35 @@ fn studio_layout(content: String, active_table: Option<&str>, tables: &[String])
 pub async fn handle_dashboard() -> impl IntoResponse {
     let tables = match fetch_tables().await {
         Ok(t) => t,
-        Err(e) => return Html(format!("Error loading schema: {}", e)).into_response(),
+        Err(e) => {
+            let error_html = html! {
+                <div class="flex-grow flex flex-col items-center justify-center p-8 max-w-2xl mx-auto text-left">
+                    <div class="w-full bg-slate-900 border border-amber-500/30 p-6 rounded-2xl space-y-4 shadow-xl">
+                        <div class="flex items-center gap-3 text-amber-400 font-bold text-base">
+                            <svg aria-hidden="true" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>"Database Connection Offline"</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            "Rullst Studio could not initialize the database connection pool:"
+                        </p>
+                        <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs text-rose-400 overflow-x-auto">
+                            { e.to_string() }
+                        </div>
+                        <div class="space-y-2 pt-2">
+                            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">"Troubleshooting Steps:"</h4>
+                            <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                                <li>"Ensure your database server (e.g. PostgreSQL on port 5432 or MySQL on port 3306) is running locally."</li>
+                                <li>"Verify credentials in your project's .env file (DATABASE_URL)."</li>
+                                <li>"Or switch to zero-config local SQLite: DATABASE_URL=sqlite://db.sqlite?mode=rwc in .env."</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            };
+            return Html(studio_layout(error_html, None, &[])).into_response();
+        }
     };
 
     let dash_content = html! {
@@ -686,22 +714,26 @@ pub async fn handle_table(
     }
 }
 
-pub async fn handle_studio_tools_migrations() -> impl IntoResponse {
-    let tables = fetch_tables().await.unwrap_or_default();
-    Html(studio_layout(
-        crate::migration_manager::render_migration_manager_html(),
-        None,
-        &tables,
-    ))
+pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> impl IntoResponse {
+    let is_htmx = headers.contains_key("hx-request");
+    let content = crate::migration_manager::render_migration_manager_html();
+    if is_htmx {
+        Html(content).into_response()
+    } else {
+        let tables = fetch_tables().await.unwrap_or_default();
+        Html(studio_layout(content, None, &tables)).into_response()
+    }
 }
 
-pub async fn handle_studio_tools_ai() -> impl IntoResponse {
-    let tables = fetch_tables().await.unwrap_or_default();
-    Html(studio_layout(
-        crate::ai_playground::render_ai_playground_html(),
-        None,
-        &tables,
-    ))
+pub async fn handle_studio_tools_ai(headers: axum::http::HeaderMap) -> impl IntoResponse {
+    let is_htmx = headers.contains_key("hx-request");
+    let content = crate::ai_playground::render_ai_playground_html();
+    if is_htmx {
+        Html(content).into_response()
+    } else {
+        let tables = fetch_tables().await.unwrap_or_default();
+        Html(studio_layout(content, None, &tables)).into_response()
+    }
 }
 
 /// Actual clean routes wrapper

@@ -342,7 +342,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                     if self.#load_flag {
                         let parent_ids: Vec<i32> = results.iter().map(|m| m.#lk_ident).collect();
                         if !parent_ids.is_empty() {
-                            let pool = rullst_orm::Orm::read_pool();
+                            let pool = rullst_orm::Orm::try_read_pool()?;
                             let driver = rullst_orm::Orm::driver();
                             // Q1: pivot table pairs
                             rullst_orm::schema::validate_identifier(#foreign_key).expect("Invalid foreign_key in pivot table relation");

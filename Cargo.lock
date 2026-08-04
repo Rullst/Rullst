@@ -5273,6 +5273,7 @@ dependencies = [
  "criterion",
  "cron",
  "dashmap",
+ "dotenvy",
  "libloading",
  "notify",
  "opentelemetry",

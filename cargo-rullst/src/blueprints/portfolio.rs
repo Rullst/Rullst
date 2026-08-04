@@ -157,11 +157,11 @@ pub async fn index() -> impl IntoResponse {
         skill_groups: vec![
             SkillGroup {
                 category: "Languages",
-                skills: vec!["Rust", "TypeScript", "Python", "Go"],
+                skills: vec!["Rust", "Python"],
             },
             SkillGroup {
                 category: "Frameworks & Tools",
-                skills: vec!["Rullst", "Axum", "Tokio", "Docker", "PostgreSQL"],
+                skills: vec!["Rullst", "Docker"],
             },
         ],
         projects: vec![

@@ -150,6 +150,9 @@ impl Server {
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn init_database(&mut self, app_config: &crate::config::RullstConfig) {
+        let _ = dotenvy::from_filename_override(".env");
+        let _ = dotenvy::dotenv();
+
         if self.db_url.is_none() {
             if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
                 self.db_url = Some(env_db_url);
@@ -180,9 +183,9 @@ impl Server {
     #[cfg_attr(mutants, mutants::skip)]
     fn setup_networking(port: u16, is_dev: bool) -> SocketAddr {
         if is_dev && std::env::var("RUST_BACKTRACE").is_err() {
-            eprintln!(
-                "⚠️  Rullst Dev: Set RUST_BACKTRACE=1 in your environment for richer error traces."
-            );
+            unsafe {
+                std::env::set_var("RUST_BACKTRACE", "1");
+            }
         }
 
         let host_str = std::env::var("HOST").unwrap_or_else(|_| {
@@ -682,8 +685,9 @@ async fn inject_hmr_script(
 <!-- Rullst Hybrid Hot-Reloading -->
 <script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.js"></script>
 <script>
-    (function() {{
-        const ws = new WebSocket("ws://localhost:{}/_rullst_hmr");
+    (function connectHmr() {{
+        const host = window.location.hostname || '127.0.0.1';
+        const ws = new WebSocket(`ws://${{host}}:{}/_rullst_hmr`);
         ws.onmessage = (e) => {{
             const data = JSON.parse(e.data);
             if (data.type === "UI_UPDATE") {{
@@ -701,6 +705,7 @@ async fn inject_hmr_script(
                     }});
             }}
         }};
+        ws.onclose = () => setTimeout(connectHmr, 1000);
     }})();
 </script>
 "#,
