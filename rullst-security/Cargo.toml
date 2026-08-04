@@ -12,8 +12,6 @@ rullst-core = { version = "12.0.0", path = "../rullst-core" }
 axum = { version = "0.8.9" }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "sync"] }
 tower = { version = "0.5.3", features = ["util"] }
-tower-layer = "0.3.3"
-tower-service = "0.3.3"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 dashmap = "6.2.1"

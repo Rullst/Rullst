@@ -16,6 +16,9 @@ on:
     # Weekly audit every Monday at 03:00 UTC
     - cron: "0 3 * * 1"
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -41,7 +44,7 @@ jobs:
       - name: Run cargo-audit (CVE scan on crypto deps)
         run: |
           cargo install cargo-audit --quiet
-          cargo audit --deny warnings -p rullst-iot -p rullst-security
+          cargo audit --deny warnings
 
       - name: Verify no unsafe blocks in crypto modules
         run: |

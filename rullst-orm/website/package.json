@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
+    "postcss": "^8.5.3",
     "vite": "^8.1.1",
     "vitepress": "^1.6.4",
     "vue": "^3.5.40"
@@ -20,6 +21,7 @@
   },
   "overrides": {
     "vite": "$vite",
-    "esbuild": "$esbuild"
+    "esbuild": "$esbuild",
+    "postcss": "^8.5.3"
   }
 }

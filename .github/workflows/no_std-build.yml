@@ -9,6 +9,9 @@ on:
     paths:
       - "rullst-iot/**"
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -29,8 +32,9 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+
+      - name: Add target ${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build rullst-iot (no_std, ${{ matrix.target }})
         run: |

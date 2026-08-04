@@ -10,14 +10,12 @@ impl IntentAnalyzer {
 
         for line in code.lines() {
             let trimmed = line.trim();
-            if trimmed.contains("@index(") {
-                if let Some(start) = trimmed.find("@index(") {
-                    let rest = &trimmed[start + "@index(".len()..];
-                    if let Some(end) = rest.find(')') {
-                        let col = &rest[..end].trim();
-                        let sql = format!("CREATE INDEX IF NOT EXISTS idx_{}_{} ON {}({});", table_name, col, table_name, col);
-                        migrations.push(sql);
-                    }
+            if let Some(start) = trimmed.find("@index(") {
+                let rest = &trimmed[start + "@index(".len()..];
+                if let Some(end) = rest.find(')') {
+                    let col = &rest[..end].trim();
+                    let sql = format!("CREATE INDEX IF NOT EXISTS idx_{}_{} ON {}({});", table_name, col, table_name, col);
+                    migrations.push(sql);
                 }
             }
         }

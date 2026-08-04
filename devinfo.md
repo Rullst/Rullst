@@ -12,9 +12,14 @@ Command to check for updates in the project:
 cargo outdated --root-deps-only
 
 
-cargo clean ; cargo test --all-features ; cargo clippy --all-features --fix
+cargo clean && \
+cargo test --workspace --all-features && \
+cargo clippy --workspace --all-features --fix --allow-staged && \
+cargo fmt --all && \
+cargo publish -p rullst-core --dry-run && \
+cargo publish -p rullst-orm --dry-run && \
+cargo publish -p rullst-iot --dry-run
 
-cargo fmt ; cargo publish --dry-run
 
 
 

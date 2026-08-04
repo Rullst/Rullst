@@ -148,6 +148,11 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 - ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, Uptime Monitors, and Cloud Deployments (`cargo rullst foundry:deploy`).
 
 ---
+<br>
+
+![Rullst CLI Initiating LMS Blueprint](<Interative Terminal Dashboard.png>)
+
+---
 
 ### 💻 The Beauty of Rullst
 

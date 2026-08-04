@@ -9,6 +9,9 @@ on:
     paths:
       - "rullst-iot/**"
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -39,11 +42,14 @@ jobs:
 
       - name: Install Rust + ARM target
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: thumbv7em-none-eabihf
+
+      - name: Add ARM target
+        run: rustup target add thumbv7em-none-eabihf
 
       - name: Install QEMU ARM
-        run: sudo apt-get install -y qemu-system-arm
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y qemu-system-arm
 
       - name: Build no_std binary (Cortex-M4)
         run: |

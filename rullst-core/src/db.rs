@@ -110,14 +110,14 @@ pub use sqlx::FromRow;
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(mutants, mutants::skip)]
 pub fn safe_pool() -> Option<&'static rullst_orm::RullstPool> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(rullst_orm::Orm::pool)).ok()
+    rullst_orm::Orm::try_pool().ok()
 }
 
 /// Safely retrieves the database driver name, returning `None` if uninitialized.
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(mutants, mutants::skip)]
 pub fn safe_driver() -> Option<&'static str> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(rullst_orm::Orm::driver)).ok()
+    rullst_orm::Orm::try_driver().ok()
 }
 
 #[cfg(test)]

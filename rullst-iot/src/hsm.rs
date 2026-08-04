@@ -5,6 +5,7 @@
 extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
+use alloc::format;
 use sha2::{Sha256, Digest};
 
 /// Supported hardware security chip types.

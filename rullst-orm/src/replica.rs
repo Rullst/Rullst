@@ -48,8 +48,6 @@ impl ReplicaPool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_replica_pool_count() {
         // Mock pool test structure

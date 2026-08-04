@@ -25,28 +25,49 @@ These workflows act as our primary gatekeepers. They run in parallel on every Pu
   - **Connect:** OAuth provider construction and PKCE hashing.
 - **Goal:** Ensures zero nanosecond-level regressions ever reach the main branch. Any performance drop alerts the team automatically.
 
-### 3. Code Coverage (`coverage.yml`)
+### 3. Bare-Metal `no_std` Build Check (`no_std-build.yml`)
+- **What it does:** Compiles `rullst-iot` for 3 embedded hardware targets:
+  - `thumbv7em-none-eabihf` (STM32 Cortex-M4/M7)
+  - `thumbv6m-none-eabi` (ARM Cortex-M0/M0+)
+  - `riscv32imac-unknown-none-elf` (ESP32-C3 RISC-V)
+- **Goal:** Guarantees that `rullst-iot` compiles cleanly without `std` on bare-metal microcontrollers and outputs binary footprint metrics.
+
+### 4. IoT Integration & QEMU Simulation (`iot-integration.yml`)
+- **What it does:** Executes unit tests for all 6 IoT modules (GPIO, I2C, Modbus, BLE, Anomaly, OTA, HSM, PQC, Power, Digital Twin) and runs Cortex-M QEMU emulation.
+- **Goal:** Validates physical hardware HAL abstractions and embedded logic before hardware deployment.
+
+### 5. Post-Quantum & HSM Compliance Audit (`pqc-compliance.yml`)
+- **What it does:** Audits cryptographic modules (`pqc.rs`, `hsm.rs`, `vault.rs`), runs `cargo audit` for CVEs on crypto dependencies, and verifies zero `unsafe` blocks in cryptographic primitives.
+- **When it runs:** On crypto code changes and on a weekly Monday schedule (Cron).
+
+### 6. Code Coverage (`coverage.yml`)
 - **What it does:** Uses `cargo-llvm-cov` to generate a comprehensive execution trace of our test suite.
 - **Goal:** Ensures that new features have adequate test coverage before being merged. Results are uploaded to Codecov.
 
-### 4. Zero-Panics Policy (`zero-panics.yml`)
+### 7. Zero-Panics Policy (`zero-panics.yml`)
 - **What it does:** Uses custom Clippy configurations to forbid `.unwrap()`, `.expect()`, and `panic!()` in production crates (`rullst`, `rullst-orm`, `rullst-core`, etc.).
 - **Goal:** Guarantees that the framework handles all errors gracefully via the typed `AppError` system, preventing the server from ever crashing at runtime.
 
-### 5. Memory Safety & Unsafe Policy (`unsafe-policy.yml`)
+### 8. Memory Safety & Unsafe Policy (`unsafe-policy.yml`)
 - **What it does:** Scans the codebase for `unsafe` blocks. If an `unsafe` block is found without a corresponding `// SAFETY:` justification comment, the CI fails immediately.
 - **Goal:** Rullst is 100% memory-safe. This workflow ensures any interaction with FFI or raw pointers is heavily audited and documented.
 
-### 6. Semantic Security Analysis (`codeql.yml`)
+### 9. Semantic Security Analysis (`codeql.yml`)
 - **What it does:** Uses GitHub's Advanced Security (CodeQL) engine to semantically analyze the Rust AST for logical bugs, memory leaks, and injection vectors.
 
-### 7. Secret Scanning (`trufflehog.yml`)
+### 10. Secret Scanning (`trufflehog.yml`)
 - **What it does:** Scans the entire git history for accidentally committed API keys, secrets, or passwords. Runs in seconds.
 
-### 8. Dependency Health (`cargo-deny.yml` & `machete.yml`)
-- **What it does:** Validates the licenses of all third-party crates, bans unmaintained dependencies, checks the RustSec vulnerability database, and prunes unused crates from `Cargo.toml`.
+### 11. Dependency Health (`cargo-deny.yml`, `machete.yml` & `audit.yml`)
+- **What it does:** Validates licenses of third-party crates, bans unmaintained dependencies, checks the RustSec vulnerability database (`security-audit.yml`), and prunes unused dependencies via `cargo-machete`.
 
-### 9. Architecture Linter (`tangleguard.yml`)
+### 12. SemVer Breaking Change Audit (`semver.yml`)
+- **What it does:** Runs `cargo-semver-checks` against published crate versions to prevent accidental breaking API changes without major version bumps.
+
+### 13. Automated Spellcheck & Typo Detection (`spellcheck.yml`)
+- **What it does:** Uses `crate-ci/typos` with project-specific overrides (`.typos.toml`) to keep documentation, code comments, and CLI text typo-free.
+
+### 14. Architecture Linter (`tangleguard.yml`)
 - **What it does:** Runs `cargo-tangleguard` against `tangleguard.toml` rules.
 - **Goal:** Analyzes our crates to ensure there are no inverse or circular dependencies between our internal modules (e.g. `rullst-core` must never depend on `rullst-orm`), preventing "spaghetti code" from accumulating.
 
@@ -61,11 +82,11 @@ These workflows handle continuous validation and artifact generation without blo
 - **When it runs:** Every Sunday morning (Cron).
 
 ### 2. Documentation & Benchmark Dashboards (`pages.yml`)
-- **What it does:** Compiles the mdBook documentation and the visual Chart.js dashboards for our 5 benchmark suites, deploying them to GitHub Pages.
+- **What it does:** Compiles VitePress documentation and visual Chart.js dashboards for our benchmark suites, deploying them to GitHub Pages.
 - **When it runs:** Automatically on every merge to `main`.
 
 ### 3. Release Publication (`release.yml`)
-- **What it does:** Orchestrates the secure publication of all 7 workspace crates to `crates.io`.
+- **What it does:** Orchestrates the secure publication of all workspace crates to `crates.io`.
 - **When it runs:** Manually triggered when a version tag (`v*.*.*`) is pushed.
 
 ---

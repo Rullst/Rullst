@@ -500,9 +500,13 @@ impl Orm {
         Self::try_pool()
     }
 
-    /// Retrieve the active driver string (defaults to "sqlite" if DB is not initialized yet)
+    /// Retrieve the active driver string (panics if DB is not initialized yet).
+    #[allow(clippy::expect_used)]
     pub fn driver() -> &'static str {
-        DB_DRIVER.get().map(|s| s.as_str()).unwrap_or("sqlite")
+        DB_DRIVER
+            .get()
+            .map(|s| s.as_str())
+            .expect("Orm must be initialized before querying")
     }
 
     /// Fallible variant of [`Orm::driver`].
