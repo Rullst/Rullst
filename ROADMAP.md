@@ -32,6 +32,8 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M19** | 🤖 AI & Mobile | Omni-Frontend Protocol, Mobile Hyper-Media Bridge & AI Tool-Calling | `[ ] Planned` |
 | **M20** | 🤖 AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning | `[ ] Planned` |
 | **M21** | 🤖 AI & Self-Evolving | Polymorphic Core Engine, Self-Recompilation & Auto-Healing | `[ ] Planned` |
+| **M22** | 🔌 IoT & Hardware | Embedded Runtime, MQTT/CoAP & Edge AI (`rullst-iot`) | `[ ] Planned` |
+| **M23** | 🛰️ Aerospace & Mobility | Aerospace, Autonomous Vehicles, Robotics & Defense (`rullst-orbit` & `rullst-auto`) | `[ ] Planned` |
 
 ---
 
@@ -69,6 +71,8 @@ graph TD
     M18 --> M19["🔮 M19: Omni Protocol & AI Tools"]
     M19 --> M20["🤖 M20: Agentic DevOps"]
     M20 --> M21["🧬 M21: Self-Evolving Core"]
+    M21 --> M22["🔌 M22: Embedded IoT & Hardware"]
+    M22 --> M23["🛰️ M23: Aerospace, Mobility & Defense"]
 
     style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
     style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
@@ -92,6 +96,8 @@ graph TD
     style M19 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
     style M20 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
     style M21 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
+    style M22 fill:#ffe0b2,stroke:#fff,stroke-width:3px,color:#000
+    style M23 fill:#f8bbd0,stroke:#fff,stroke-width:3px,color:#000
 ```
 
 ---
@@ -186,13 +192,21 @@ graph TD
   - **RASP (Runtime Application Self-Protection):** Zero-latency kernel-level request inspector blocking SQL Injection, XSS, Path Traversal, SSRF, and RCE before reaching controllers.
   - **AI Threat Sentinel (`rullst-security-ai`):** Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and applying dynamic IP bans or Proof-of-Work challenge tokens.
   - **AI Vulnerability Auditor (`cargo rullst audit --ai`):** CLI security scanner analyzing dependency CVEs, `.env` secret leaks, and permission boundaries with automated AI patch suggestions.
+  - **Rullst Vault (`rullst-vault`):** Zero-trust secret management with in-memory secret zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
+  - **Rullst Honey (`rullst-honey`):** Deception security engine deploying synthetic honeypot routes (`/.env`, `/admin.php`) and invisible form inputs to fingerprint and cluster-ban malicious bots.
+  - **Rullst RBAC Guard (`rullst-rbac`):** Declarative authorization (`#[authorize(role = "admin", owner_of = "id")]`) natively preventing BOLA / IDOR attacks.
+  - **Rullst Audit Log (`rullst-audit-log`):** HMAC-chained cryptographic tamper-proof audit trail preserving historic event integrity during database breaches.
+  - **Rullst Sanitizer (`rullst-sanitizer`):** Deep XSS/SVG HTML sanitization, clickjacking protection, and per-request dynamic CSP nonce generation.
   - **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`):** Live dashboard showing blocked attack vectors, IP reputation scores, and AI incident reports.
 - [x] **Rullst Foundry CLI:** Provisioning & deployment scripts for AWS, Hetzner, GCP, Azure, OCI, and DigitalOcean.
 
-### 🔬 Milestone 12: Post-Quantum Web Architecture
-- [ ] **Native Post-Quantum Cryptography (PQC):** NIST-standard quantum-resistant encryption (Kyber/Dilithium) for sessions and tokens.
-- [ ] **Hybrid Security Abstraction:** Classical TLS + Quantum TLS hybrid transport layer.
-- [ ] **Rullst QLink (`rullst::quantum`):** Drivers to interface natively with Cloud QPUs (IBM Quantum, AWS Braket).
+### 🔬 Milestone 12: Post-Quantum Cryptography & Quantum Computing (`rullst-quantum`)
+- [ ] **Rullst Quantum Crate (`rullst-quantum`):** Dedicated suite for Post-Quantum Cryptography (PQC) and Cloud Quantum Processing Unit (QPU) integration.
+- [ ] **NIST Post-Quantum Cryptography (PQC):** Native implementations of NIST-standardized quantum-resistant algorithms (ML-KEM / Kyber encryption & ML-DSA / Dilithium signatures) protecting sessions, JWT tokens, and TLS connections against quantum decryption attacks.
+- [ ] **Hybrid Classical + Quantum TLS:** Automatic hybrid transport layer falling back safely between classical RSA/ECC and post-quantum keys.
+- [ ] **Cloud QPU Drivers (`rullst::quantum::qpu`):** Native Rust abstractions to execute quantum circuits on IBM Quantum (Qiskit), AWS Braket, and Rigetti QPUs.
+- [ ] **Quantum Key Distribution (QKD) Hardware Interface:** Hardware API layer for Quantum-Secured optical key distribution networks.
+- [ ] **Local Quantum Circuit Simulator (`#[quantum_circuit]`):** High-performance CPU/GPU quantum circuit simulator for local development and testing.
 
 ---
 
@@ -255,6 +269,27 @@ graph TD
 ### 🧬 Milestone 21: The Self-Evolving & Polymorphic Core
 - [ ] **Polymorphic Code Generation:** Self-recompiling dynamic router paths optimized based on live production traffic patterns.
 - [ ] **Autonomous Error Auto-Healing in Production:** Production panic analysis, background test suite execution, and sub-second dynamic hot-swapping without server downtime.
+
+---
+
+## 🔌 Pilar VI: Embedded IoT, Edge Hardware & Industry 4.0 (`rullst-iot`)
+
+### 🔌 Milestone 22: Embedded IoT & Edge Hardware Supremacy (`rullst-iot`)
+- [ ] **Rullst IoT Core (`rullst-iot` / `rullst-embedded`):** Ultra-lightweight `#![no_std]` optional runtime with sub-2MB RAM footprint for Raspberry Pi, ESP32, STM32, and industrial edge hardware.
+- [ ] **IoT Protocol Suite (`rullst-connect-iot`):** Native embedded drivers for MQTT, CoAP, Modbus, WebSockets, and BLE (Bluetooth Low Energy) telemetry.
+- [ ] **On-Device Edge AI (`rullst-edge-ai`):** Micro-LLM & sensor anomaly inference running locally on NPU/embedded chips without cloud internet dependencies.
+- [ ] **Embedded Micro-Dashboard (`rullst::iot::ui`):** Instant HTMX-powered local management UI for IoT gateways, smart home hubs, and robotics controllers.
+- [ ] **CLI IoT Scaffolding (`cargo rullst make:iot <DeviceName>`):** Single command to scaffold IoT Sensor Nodes, MQTT Brokers, and Edge Gateways.
+
+---
+
+## 🛰️ Pilar VII: Aerospace, Autonomous Mobility & Critical Systems (`rullst-orbit`)
+
+### 🛰️ Milestone 23: Aerospace, Autonomous Mobility & Defense Supremacy (`rullst-orbit` / `rullst-auto`)
+- [ ] **Rullst Orbit (`rullst-orbit`):** Aerospace & Satellite Telemetry Runtime featuring radiation-hardened deterministic `#![no_std]` execution, CCSDS space packet protocol drivers, and deep-space high-latency mesh networking.
+- [ ] **Rullst Auto (`rullst-auto` / `rullst-drive`):** Automotive & Autonomous Electric Vehicle Controller featuring ISO 26262 ASIL-D functional safety abstractions, CAN-bus / FlexRay vehicle bus integration, and real-time lidar/radar sensor fusion.
+- [ ] **Rullst Robotics & Avionics (`rullst-bot` / `rullst-aero`):** ROS2 (Robot Operating System) native bridge, drone/avionics flight controller middleware, and sub-millisecond deterministic actuator telemetry.
+- [ ] **Rullst Aegis (`rullst-aegis`):** High-Assurance Defense & Critical Infrastructure Protocol featuring Formal Verification specs, cryptographic anti-tamper hardware enclave interfaces, and zero-trust mesh isolation.
 
 ---
 
