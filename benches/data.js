@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785812236313,
+  "lastUpdate": 1785813141422,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -6319,6 +6319,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2233,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "404fcb9b3fa804dbdcef3d7da0f71190335bb128",
+          "message": "feat: expand roadmap with IoT, Aerospace, and enhanced Security/Quantum milestones",
+          "timestamp": "2026-08-04T00:10:22-03:00",
+          "tree_id": "27b3df669941733ffe7aaf58af2d251a54c132f1",
+          "url": "https://github.com/Rullst/Rullst/commit/404fcb9b3fa804dbdcef3d7da0f71190335bb128"
+        },
+        "date": 1785813140177,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 736,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1001,
+            "range": "± 105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 654,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2294,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
