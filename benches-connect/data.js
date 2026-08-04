@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785867256201,
+  "lastUpdate": 1785869984367,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -959,6 +959,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 71,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "aaf7f370fc953cfcba41f04dde1e2decdf5b1728",
+          "message": "style: apply consistent rustfmt code formatting across the codebase and reorder crate modules",
+          "timestamp": "2026-08-04T15:51:27-03:00",
+          "tree_id": "dfe1617f4c9d4a595e74b03af024a01952519742",
+          "url": "https://github.com/Rullst/Rullst/commit/aaf7f370fc953cfcba41f04dde1e2decdf5b1728"
+        },
+        "date": 1785869983750,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
