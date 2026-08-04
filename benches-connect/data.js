@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785771813522,
+  "lastUpdate": 1785807610370,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -838,6 +838,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 75,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "36833cbb8c4e0218de8b9d9ad11dff828e7e4a61",
+          "message": "feat: add comprehensive documentation suite and implement hot-reload UI triggers for logic and template changes.",
+          "timestamp": "2026-08-03T22:31:55-03:00",
+          "tree_id": "e4ef6a2ecac07c7deba1ef49e6f66fe08d23243b",
+          "url": "https://github.com/Rullst/Rullst/commit/36833cbb8c4e0218de8b9d9ad11dff828e7e4a61"
+        },
+        "date": 1785807609759,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
             "range": "± 0",
             "unit": "ns/iter"
           }
