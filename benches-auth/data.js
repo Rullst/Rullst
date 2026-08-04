@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785869963772,
+  "lastUpdate": 1785870108747,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1583,6 +1583,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1392,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c439130254f3a4dc78d81e6c144fe32c3f3548d1",
+          "message": "refactor: optimize I2C frame buffer allocation using resize instead of manual loop",
+          "timestamp": "2026-08-04T15:53:21-03:00",
+          "tree_id": "f87423ea5bf17c187e48eff7a45aaa1d5425964d",
+          "url": "https://github.com/Rullst/Rullst/commit/c439130254f3a4dc78d81e6c144fe32c3f3548d1"
+        },
+        "date": 1785870108074,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 612,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 508,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1178,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1176,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
