@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785869984367,
+  "lastUpdate": 1785870129465,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -989,6 +989,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 71,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c439130254f3a4dc78d81e6c144fe32c3f3548d1",
+          "message": "refactor: optimize I2C frame buffer allocation using resize instead of manual loop",
+          "timestamp": "2026-08-04T15:53:21-03:00",
+          "tree_id": "f87423ea5bf17c187e48eff7a45aaa1d5425964d",
+          "url": "https://github.com/Rullst/Rullst/commit/c439130254f3a4dc78d81e6c144fe32c3f3548d1"
+        },
+        "date": 1785870128774,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 68,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
