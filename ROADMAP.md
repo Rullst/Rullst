@@ -3,7 +3,7 @@
 
 This roadmap outlines the strategic direction and technical milestones of **Rullst**, transitioning it from an ambitious full-stack architecture into the world's most productive, secure, and performant web framework.
 
-Our philosophy: **"Developer Experience like Laravel, Performance like Rust, Architected for Humans and AI."**
+Our philosophy: **"Security, Developer Experience and Performance, Architected for Humans and AI."**
 
 ---
 
@@ -119,6 +119,7 @@ graph TD
   - [x] `cargo rullst inspect <route|model>` CLI tool to inspect expanded Rust code.
 - [x] **Granular Cargo Features:** Opt-in crate features across `rullst-core`, `rullst-orm`, `rullst-auth`, etc.
 - [x] **Native Axum/Tower Zero Lock-In Interoperability:** 100% 1:1 mapping between Rullst extractors and native Axum/Tower.
+- [ ] **Framework Escape Hatches (`cargo rullst eject` & `rullst::raw_axum!`):** Expand declarative macros into 100% pure Axum/Tokio code, allowing enterprise teams to bypass abstractions and configure low-level Hyper/Tower layers directly without framework lock-in.
 - [x] **Enhanced Proc-Macro Error Diagnostics:** Line-specific error messages with actionable resolution hints.
 - [x] **Community Extension Package Standard (`Rullst Packages`):** Standardized `RullstPackage` trait and manifest specification.
 
@@ -140,6 +141,9 @@ graph TD
 ### 🗄️ Milestone 6: Active Record, Migrations, Seeders & Turso/libSQL (`rullst-orm`)
 - [x] **Migration Engine:** SQL & DSL definitions with `db:migrate`, `db:rollback`, `db:status`.
 - [x] **Active Record Relationships:** `HasMany`, `BelongsTo`, `BelongsToMany` associations with Eager/Lazy loading.
+- [ ] **Hybrid ORM Engine (Active Record + Data Mapper Repository Pattern):**
+  - **Active Record Mode** (`User::find(id).await`, `user.save().await`) for rapid prototyping, simple CRUDs, and 90% of business logic.
+  - **Data Mapper / Repository Layer** (`rullst::repository!` / `UserRepository::find_with_orders(...)`) for enterprise queries, complex joins, and typed SQL mapping without coupling domain structs to database schemas.
 - [x] **Seeders & Factories:** `cargo rullst db:seed` with mock entity factory generators.
 - [x] **Declarative Migrations (Destructive Operations):** Full resource synchronization protected by safe-by-default flags.
 - [x] **Turso & libSQL Integration:** Native Turso embedded replica support.
@@ -178,6 +182,11 @@ graph TD
 - [x] **Rullst Capital (SaaS Billing Boilerplate):** Stripe & LemonSqueezy subscription integration via `cargo rullst make:billing`.
 - [ ] **Rullst Capital Revenue Dashboard:** Native MRR/ARR analytics, plan distribution breakdown, churn metrics, and live Stripe/LemonSqueezy webhook event inspector in Studio/Nexus.
 - [x] **Rullst Shield (Wasm WAF & Bot Management):** WAF middleware with bot blocking and PII masking.
+- [ ] **Autonomous AI Security Engine (`rullst-security` / `rullst::shield::ai`):**
+  - **RASP (Runtime Application Self-Protection):** Zero-latency kernel-level request inspector blocking SQL Injection, XSS, Path Traversal, SSRF, and RCE before reaching controllers.
+  - **AI Threat Sentinel (`rullst-security-ai`):** Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and applying dynamic IP bans or Proof-of-Work challenge tokens.
+  - **AI Vulnerability Auditor (`cargo rullst audit --ai`):** CLI security scanner analyzing dependency CVEs, `.env` secret leaks, and permission boundaries with automated AI patch suggestions.
+  - **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`):** Live dashboard showing blocked attack vectors, IP reputation scores, and AI incident reports.
 - [x] **Rullst Foundry CLI:** Provisioning & deployment scripts for AWS, Hetzner, GCP, Azure, OCI, and DigitalOcean.
 
 ### 🔬 Milestone 12: Post-Quantum Web Architecture
@@ -189,9 +198,12 @@ graph TD
 
 ## ⚡ Pilar IV: Frontend Fusion, Real-Time & Production Utilities
 
-### ⚡ Milestone 13: HTMX First-Class, Reactive SSR & Partial Views
+### ⚡ Milestone 13: HTMX First-Class, Hybrid Frontend & Partial Views
 - [x] **Native Reactive SSR (HTMX Live State):** `#[htmx]` macro for server-side state evaluation and minimal DOM patches.
 - [x] **HTMX First-Class Support:** Request header helpers (`is_htmx`), partial template rendering, and TailwindCSS auto-integration.
+- [ ] **Hybrid Frontend Architecture (Zero-Bundle HTMX Default + Leptos/Dioxus SSR Adapters):**
+  - **Zero-Bundle Mode (Default):** HTML5 + HTMX + TailwindCSS + `rullst::html!` macro delivering 0KB JavaScript bundle and instant initial page loads.
+  - **Full Reactive SSR Mode (Optional Adapters):** First-class integration with Leptos & Dioxus for complex rich-client dashboards and stateful SPAs.
 
 ### 📦 Milestone 14: Production Utilities (Queues, Cache, Scheduler & Docker)
 - [x] **Docker & Containerization:** Multi-stage `Dockerfile` and `docker-compose.yml` generation via `--docker`.
@@ -210,6 +222,7 @@ graph TD
 - [x] **AI-Powered "Self-Healing" Error Console:** Interactive local AI assistant patching compilation and runtime errors.
 - [x] **Native SaaS Multi-Tenancy (`rullst::multitenant`):** Subdomain, header, or DB schema multi-tenancy isolation.
 - [x] **Hybrid Hot-Reloading:** Dynamic library (`dylib`) hot-swapping & AST HTML fragment live updates.
+- [ ] **Dylib Hot Reloading ABI Integrity Guard:** Automated ABI hash validation per build to prevent memory leaks and Tokio runtime state mismatches during dynamic library hot-swapping.
 
 ### 🚀 Milestone 16: Real-Time Engine, Storage & Dynamic Package Ecosystem
 - [ ] **Native Real-Time Engine (`rullst::realtime`):** Declarative WebSockets & Server-Sent Events (SSE) channel manager (`Channel`, `Broadcast`, `Presence`) integrated with HTMX and frontend Islands.
@@ -247,4 +260,4 @@ graph TD
 
 ## 🗺️ Execution Strategy
 
-We proceed **milestone by milestone**, maintaining **100% test coverage**, **Zero-Panics Policy**, and **SST (Single Source of Truth) architecture**.
+We proceed **milestone by milestone**, trying to maintain **100% test coverage**, **Zero-Panics Policy**, and **SST (Single Source of Truth) architecture**.

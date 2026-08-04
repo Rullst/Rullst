@@ -135,20 +135,59 @@ pub async fn handle_ai_prompt(Json(payload): Json<PromptRequest>) -> impl IntoRe
         .ok();
 
     let (provider_name, response_text) = if let Some(ref url) = custom_url {
-        ("Custom OpenAI-Compatible (DeepSeek / Qwen / Kimi / Groq)", format!("Endpoint: '{}'\nPrompt: '{}'\nContext: '{}'\n\n[Custom Provider]: Connection successful! Active model ready.", url, payload.prompt, payload.system_context.as_deref().unwrap_or("None")))
+        (
+            "Custom OpenAI-Compatible (DeepSeek / Qwen / Kimi / Groq)",
+            format!(
+                "Endpoint: '{}'\nPrompt: '{}'\nContext: '{}'\n\n[Custom Provider]: Connection successful! Active model ready.",
+                url,
+                payload.prompt,
+                payload.system_context.as_deref().unwrap_or("None")
+            ),
+        )
     } else if has_gemini {
-        ("Google Gemini", format!("Prompt: '{}'\nContext: '{}'\n\n[Gemini AI]: Connection successful! Active model ready.", payload.prompt, payload.system_context.as_deref().unwrap_or("None")))
+        (
+            "Google Gemini",
+            format!(
+                "Prompt: '{}'\nContext: '{}'\n\n[Gemini AI]: Connection successful! Active model ready.",
+                payload.prompt,
+                payload.system_context.as_deref().unwrap_or("None")
+            ),
+        )
     } else if has_openai {
-        ("OpenAI (ChatGPT)", format!("Prompt: '{}'\nContext: '{}'\n\n[OpenAI]: Connection successful! Active model ready.", payload.prompt, payload.system_context.as_deref().unwrap_or("None")))
+        (
+            "OpenAI (ChatGPT)",
+            format!(
+                "Prompt: '{}'\nContext: '{}'\n\n[OpenAI]: Connection successful! Active model ready.",
+                payload.prompt,
+                payload.system_context.as_deref().unwrap_or("None")
+            ),
+        )
     } else if has_anthropic {
-        ("Anthropic Claude", format!("Prompt: '{}'\nContext: '{}'\n\n[Claude AI]: Connection successful! Active model ready.", payload.prompt, payload.system_context.as_deref().unwrap_or("None")))
+        (
+            "Anthropic Claude",
+            format!(
+                "Prompt: '{}'\nContext: '{}'\n\n[Claude AI]: Connection successful! Active model ready.",
+                payload.prompt,
+                payload.system_context.as_deref().unwrap_or("None")
+            ),
+        )
     } else if has_ollama {
-        ("Local Ollama", format!("Prompt: '{}'\nContext: '{}'\n\n[Ollama]: Connection successful! Local model ready.", payload.prompt, payload.system_context.as_deref().unwrap_or("None")))
+        (
+            "Local Ollama",
+            format!(
+                "Prompt: '{}'\nContext: '{}'\n\n[Ollama]: Connection successful! Local model ready.",
+                payload.prompt,
+                payload.system_context.as_deref().unwrap_or("None")
+            ),
+        )
     } else {
-        ("No Provider Configured", format!(
-            "⚠️ No AI API key detected in environment.\n\nRullst AI supports ANY provider! Add one of the following to your project's .env file:\n\n• Google Gemini:       GEMINI_API_KEY=your_key\n• OpenAI (ChatGPT):    OPENAI_API_KEY=your_key\n• Anthropic Claude:    ANTHROPIC_API_KEY=your_key\n• Local Ollama:        OLLAMA_HOST=http://localhost:11434\n• DeepSeek/Qwen/Kimi:  OPENAI_BASE_URL=https://api.deepseek.com & OPENAI_API_KEY=your_key\n\nThen restart the server (cargo rullst dev or dash).\n\nReceived Prompt: '{}'",
-            payload.prompt
-        ))
+        (
+            "No Provider Configured",
+            format!(
+                "⚠️ No AI API key detected in environment.\n\nRullst AI supports ANY provider! Add one of the following to your project's .env file:\n\n• Google Gemini:       GEMINI_API_KEY=your_key\n• OpenAI (ChatGPT):    OPENAI_API_KEY=your_key\n• Anthropic Claude:    ANTHROPIC_API_KEY=your_key\n• Local Ollama:        OLLAMA_HOST=http://localhost:11434\n• DeepSeek/Qwen/Kimi:  OPENAI_BASE_URL=https://api.deepseek.com & OPENAI_API_KEY=your_key\n\nThen restart the server (cargo rullst dev or dash).\n\nReceived Prompt: '{}'",
+                payload.prompt
+            ),
+        )
     };
 
     Json(PromptResponse {

@@ -387,10 +387,10 @@ impl Orm {
             {
                 let path = std::path::Path::new(path_part);
                 // Ensure the parent directory exists
-                if let Some(parent) = path.parent() {
-                    if !parent.as_os_str().is_empty() {
-                        let _ = std::fs::create_dir_all(parent);
-                    }
+                if let Some(parent) = path.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    let _ = std::fs::create_dir_all(parent);
                 }
                 // Touch-create the SQLite file if it doesn't exist so that
                 // drivers without implicit `mode=rwc` support (or without the
@@ -495,10 +495,7 @@ impl Orm {
 
     /// Retrieve the active driver string (defaults to "sqlite" if DB is not initialized yet)
     pub fn driver() -> &'static str {
-        DB_DRIVER
-            .get()
-            .map(|s| s.as_str())
-            .unwrap_or("sqlite")
+        DB_DRIVER.get().map(|s| s.as_str()).unwrap_or("sqlite")
     }
 
     /// Fallible variant of [`Orm::driver`].

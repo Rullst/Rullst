@@ -705,7 +705,7 @@ async fn nexus_chat_page(
 
     // Left Control Panel: Schema & Quick Commands
     content.push_str("<div class=\"nexus-chat-schema\" style=\"display: flex; flex-direction: column; gap: 1rem;\">");
-    
+
     // Quick Preset Commands
     content.push_str("<div class=\"nexus-card\" style=\"padding: 1rem; margin: 0;\">");
     content.push_str("<div class=\"nexus-schema-title\" style=\"margin-bottom: 0.75rem;\">&#9889; Quick Commands</div>");
@@ -743,7 +743,8 @@ async fn nexus_chat_page(
     );
     content.push_str("</form></div></div>");
 
-    content.push_str(r#"
+    content.push_str(
+        r#"
 <script>
 function setAiPrompt(text) {
   const input = document.getElementById('nexus-chat-input');
@@ -753,7 +754,8 @@ function setAiPrompt(text) {
   }
 }
 </script>
-"#);
+"#,
+    );
 
     if headers.contains_key("hx-request") {
         Html(content)
@@ -855,8 +857,7 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
         || msg_lower.contains("qwen")
         || msg_lower.contains("kimi")
     {
-        return format!(
-            "<p><strong>🌐 Universal LLM Setup Guide:</strong></p>\
+        return "<p><strong>🌐 Universal LLM Setup Guide:</strong></p>\
              <p>Rullst AI supports <strong>any LLM provider</strong> out of the box! Add any of these variables to your project's <code class=\"nexus-code\">.env</code> file:</p>\
              <ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">\
                <li><strong>Google Gemini:</strong> <code class=\"nexus-code\">GEMINI_API_KEY=your_key</code></li>\
@@ -865,8 +866,7 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
                <li><strong>Local Ollama:</strong> <code class=\"nexus-code\">OLLAMA_HOST=http://localhost:11434</code></li>\
                <li><strong>DeepSeek / Qwen / Kimi:</strong> <code class=\"nexus-code\">OPENAI_BASE_URL=https://...</code></li>\
              </ul>\
-             <p style=\"font-size: 0.8rem; color: var(--text-300);\">Then restart your dev server (<code class=\"nexus-code\">cargo rullst dev</code> or <code class=\"nexus-code\">dash</code>).</p>"
-        );
+             <p style=\"font-size: 0.8rem; color: var(--text-300);\">Then restart your dev server (<code class=\"nexus-code\">cargo rullst dev</code> or <code class=\"nexus-code\">dash</code>).</p>".to_string();
     }
 
     // Check if query matches a specific table registered in the project
@@ -883,7 +883,11 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
             cols.join(", ")
         };
 
-        if msg_lower.contains("count") || msg_lower.contains("how many") || msg_lower.contains("total") || msg_lower.contains("record") {
+        if msg_lower.contains("count")
+            || msg_lower.contains("how many")
+            || msg_lower.contains("total")
+            || msg_lower.contains("record")
+        {
             format!(
                 "<p><strong>📊 Count Query for <code>{}</code>:</strong></p>\
                  <pre class=\"nexus-schema-pre\" style=\"padding: 0.75rem;\">SELECT COUNT(*) AS total_{} FROM {};</pre>\
@@ -903,7 +907,9 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
         || msg_lower.contains("record")
         || msg_lower.contains("total")
     {
-        let mut list_html = String::from("<p><strong>📊 Total Record Count Queries for Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">");
+        let mut list_html = String::from(
+            "<p><strong>📊 Total Record Count Queries for Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">",
+        );
         for entry in state.registry.iter() {
             list_html.push_str(&format!(
                 "<li><strong>{}</strong>: <code class=\"nexus-code\">SELECT COUNT(*) AS total_{} FROM {};</code></li>",
@@ -917,9 +923,12 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
         || msg_lower.contains("list")
         || msg_lower.contains("show")
     {
-        let mut list_html = String::from("<p><strong>📊 Registered Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem;\">");
+        let mut list_html = String::from(
+            "<p><strong>📊 Registered Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem;\">",
+        );
         for entry in state.registry.iter() {
-            let field_names: Vec<String> = entry.fields.iter().map(|f| f.name.to_string()).collect();
+            let field_names: Vec<String> =
+                entry.fields.iter().map(|f| f.name.to_string()).collect();
             list_html.push_str(&format!(
                 "<li><strong>{}</strong> (table: <code>{}</code>) &mdash; fields: <code>{}</code></li>",
                 entry.label, entry.table, field_names.join(", ")
@@ -930,13 +939,21 @@ fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> String
     } else {
         // Fallback: Pick the first registered table if available
         if let Some(first_entry) = state.registry.first() {
-            let cols: Vec<String> = first_entry.fields.iter().map(|f| f.name.to_string()).collect();
+            let cols: Vec<String> = first_entry
+                .fields
+                .iter()
+                .map(|f| f.name.to_string())
+                .collect();
             format!(
                 "<p>I analyzed your query relative to your schema.</p>\
                  <p>Here is an example query for your <strong><code>{}</code></strong> model:</p>\
                  <pre class=\"nexus-schema-pre\" style=\"padding: 0.75rem;\">SELECT {} FROM {} LIMIT 10;</pre>\
                  <p style=\"font-size: 0.8rem; color: var(--text-300);\">💡 <em>Tip: You can ask about any table directly (e.g. \"show {}\" or \"count {}\").</em></p>",
-                first_entry.table, cols.join(", "), first_entry.table, first_entry.table, first_entry.table
+                first_entry.table,
+                cols.join(", "),
+                first_entry.table,
+                first_entry.table,
+                first_entry.table
             )
         } else {
             format!(
