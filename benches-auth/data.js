@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785867235049,
+  "lastUpdate": 1785869963772,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1535,6 +1535,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1390,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "aaf7f370fc953cfcba41f04dde1e2decdf5b1728",
+          "message": "style: apply consistent rustfmt code formatting across the codebase and reorder crate modules",
+          "timestamp": "2026-08-04T15:51:27-03:00",
+          "tree_id": "dfe1617f4c9d4a595e74b03af024a01952519742",
+          "url": "https://github.com/Rullst/Rullst/commit/aaf7f370fc953cfcba41f04dde1e2decdf5b1728"
+        },
+        "date": 1785869962973,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 742,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 611,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1359,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1392,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
