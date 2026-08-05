@@ -14,7 +14,11 @@ pub fn create_new_live_component(name: &str) -> Result<(), Box<dyn std::error::E
     let file_path = live_dir.join(format!("{}.rs", file_name));
 
     if file_path.exists() {
-        return Err(format!("LiveComponent file '{}' already exists!", file_path.display()).into());
+        return Err(format!(
+            "LiveComponent file '{}' already exists!",
+            file_path.display()
+        )
+        .into());
     }
 
     let mut code = String::new();
@@ -31,7 +35,9 @@ pub fn create_new_live_component(name: &str) -> Result<(), Box<dyn std::error::E
     code.push_str("        self.count = 0;\n");
     code.push_str("    }\n\n");
     code.push_str("    async fn handle_event(&mut self, payload: Value) {\n");
-    code.push_str("        if let Some(action) = payload.get(\"action\").and_then(|v| v.as_str()) {\n");
+    code.push_str(
+        "        if let Some(action) = payload.get(\"action\").and_then(|v| v.as_str()) {\n",
+    );
     code.push_str("            match action {\n");
     code.push_str("                \"increment\" => self.count += 1,\n");
     code.push_str("                \"decrement\" => self.count -= 1,\n");
@@ -64,10 +70,22 @@ pub fn create_new_live_component(name: &str) -> Result<(), Box<dyn std::error::E
 
     println!(
         "{}",
-        format!("✨ Created LiveComponent '{}' at {}", struct_name, file_path.display()).bold().green()
+        format!(
+            "✨ Created LiveComponent '{}' at {}",
+            struct_name,
+            file_path.display()
+        )
+        .bold()
+        .green()
     );
     println!("  Mount in your controller using:");
-    println!("   {}", format!("let html = rullst::live::Live::mount::<{struct_name}>(\"/ws/{file_name}\").await;").cyan());
+    println!(
+        "   {}",
+        format!(
+            "let html = rullst::live::Live::mount::<{struct_name}>(\"/ws/{file_name}\").await;"
+        )
+        .cyan()
+    );
 
     Ok(())
 }

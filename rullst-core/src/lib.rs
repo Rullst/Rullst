@@ -45,9 +45,6 @@ pub mod htmx;
 /// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
-/// Interactive Scalar API documentation UI.
-pub mod scalar;
-#[cfg(not(target_arch = "wasm32"))]
 /// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
@@ -64,6 +61,9 @@ pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
+#[cfg(not(target_arch = "wasm32"))]
+/// Interactive Scalar API documentation UI.
+pub mod scalar;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scheduler;
 #[cfg(not(target_arch = "wasm32"))]

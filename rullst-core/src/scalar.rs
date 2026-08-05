@@ -1,11 +1,7 @@
 //! Interactive Scalar API Documentation Page (`/docs`)
 #![cfg(not(target_arch = "wasm32"))]
 
-use axum::{
-    response::Html,
-    routing::get,
-    Router,
-};
+use axum::{Router, response::Html, routing::get};
 
 /// Generates the HTML5 Scalar API documentation interface.
 pub fn render_scalar_html(openapi_url: &str) -> String {
@@ -65,10 +61,7 @@ mod tests {
     async fn test_scalar_docs_endpoint() {
         let app = scalar_docs_router("/openapi.json");
 
-        let req = Request::builder()
-            .uri("/docs")
-            .body(Body::empty())
-            .unwrap();
+        let req = Request::builder().uri("/docs").body(Body::empty()).unwrap();
         let response = app.oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }

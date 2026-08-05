@@ -1,15 +1,15 @@
 //! Rullst Capital Revenue Dashboard & Webhook Event Inspector (`/studio/tools/revenue`)
 
 use axum::{
-    Json,
+    Json, Router,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use rullst_capital::RevenueDashboardManager;
 use std::sync::Arc;
 
-static REVENUE_MANAGER: std::sync::OnceLock<Arc<RevenueDashboardManager>> = std::sync::OnceLock::new();
+static REVENUE_MANAGER: std::sync::OnceLock<Arc<RevenueDashboardManager>> =
+    std::sync::OnceLock::new();
 
 fn get_revenue_manager() -> Arc<RevenueDashboardManager> {
     REVENUE_MANAGER
@@ -170,7 +170,10 @@ pub async fn api_revenue_handler() -> impl IntoResponse {
 /// Returns an Axum `Router` mounting the Rullst Capital Revenue Dashboard endpoints.
 pub fn router() -> Router {
     Router::new()
-        .route("/studio/tools/revenue", get(|| async { Html(render_revenue_dashboard_page()) }))
+        .route(
+            "/studio/tools/revenue",
+            get(|| async { Html(render_revenue_dashboard_page()) }),
+        )
         .route("/api/revenue", get(api_revenue_handler))
 }
 

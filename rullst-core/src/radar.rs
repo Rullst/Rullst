@@ -1,12 +1,7 @@
 //! Rullst Radar — Kernel-Level Telemetry & Tokio Runtime Visualizer (`rullst::radar`)
 #![cfg(not(target_arch = "wasm32"))]
 
-use axum::{
-    Json,
-    response::IntoResponse,
-    routing::get,
-    Router,
-};
+use axum::{Json, Router, response::IntoResponse, routing::get};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -8,7 +8,10 @@ use crate::blueprints::deploy::{
 };
 
 pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    println!("{}", "🚀 Rullst 1-Click Cloud Deployment Wizard".bold().cyan());
+    println!(
+        "{}",
+        "🚀 Rullst 1-Click Cloud Deployment Wizard".bold().cyan()
+    );
 
     let platform = match platform_arg {
         Some(p) => p.to_lowercase(),
@@ -40,8 +43,16 @@ pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::
 
     // Ensure Dockerfile exists
     if !Path::new("Dockerfile").exists() {
-        println!("{}", "🐳 Dockerfile missing. Scaffolding optimized multi-stage build...".yellow());
-        crate::generators::project::generate_docker_files(Path::new("."), &project_name, None, None)?;
+        println!(
+            "{}",
+            "🐳 Dockerfile missing. Scaffolding optimized multi-stage build...".yellow()
+        );
+        crate::generators::project::generate_docker_files(
+            Path::new("."),
+            &project_name,
+            None,
+            None,
+        )?;
     }
 
     match platform.as_str() {
@@ -89,16 +100,22 @@ fn deploy_fly(project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "\n🚀 Deploying to Fly.io...".bold().magenta());
 
     // Try executing flyctl deploy if available
-    let status = Command::new("flyctl")
-        .args(["deploy"])
-        .status();
+    let status = Command::new("flyctl").args(["deploy"]).status();
 
     match status {
         Ok(s) if s.success() => {
-            println!("{}", "🎉 Application successfully deployed to Fly.io!".bold().green());
+            println!(
+                "{}",
+                "🎉 Application successfully deployed to Fly.io!"
+                    .bold()
+                    .green()
+            );
         }
         _ => {
-            println!("{}", "💡 Fly CLI ('flyctl') not found or failed. Execute manually:".yellow());
+            println!(
+                "{}",
+                "💡 Fly CLI ('flyctl') not found or failed. Execute manually:".yellow()
+            );
             println!("   {}", "fly launch".cyan());
             println!("   {}", "fly deploy".cyan());
         }
@@ -115,21 +132,30 @@ fn deploy_railway(project_name: &str) -> Result<(), Box<dyn std::error::Error>> 
         fs::write(railway_file, content)?;
         println!("{}", format!("  ✅ Created {}", railway_file).green());
     } else {
-        println!("{}", format!("  ℹ️ Existing {} retained.", railway_file).blue());
+        println!(
+            "{}",
+            format!("  ℹ️ Existing {} retained.", railway_file).blue()
+        );
     }
 
     println!("{}", "\n🚀 Deploying to Railway...".bold().magenta());
 
-    let status = Command::new("railway")
-        .args(["up"])
-        .status();
+    let status = Command::new("railway").args(["up"]).status();
 
     match status {
         Ok(s) if s.success() => {
-            println!("{}", "🎉 Application successfully deployed to Railway!".bold().green());
+            println!(
+                "{}",
+                "🎉 Application successfully deployed to Railway!"
+                    .bold()
+                    .green()
+            );
         }
         _ => {
-            println!("{}", "💡 Railway CLI ('railway') not found or failed. Execute manually:".yellow());
+            println!(
+                "{}",
+                "💡 Railway CLI ('railway') not found or failed. Execute manually:".yellow()
+            );
             println!("   {}", "railway login".cyan());
             println!("   {}", "railway up".cyan());
         }
@@ -146,10 +172,18 @@ fn deploy_render(project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
         fs::write(render_file, content)?;
         println!("{}", format!("  ✅ Created {}", render_file).green());
     } else {
-        println!("{}", format!("  ℹ️ Existing {} retained.", render_file).blue());
+        println!(
+            "{}",
+            format!("  ℹ️ Existing {} retained.", render_file).blue()
+        );
     }
 
-    println!("{}", "\n✨ Render Blueprint generated successfully!".bold().green());
+    println!(
+        "{}",
+        "\n✨ Render Blueprint generated successfully!"
+            .bold()
+            .green()
+    );
     println!("  Connect your GitHub repository to Render and select 'New Blueprint Instance'.");
 
     Ok(())
@@ -169,7 +203,12 @@ fn deploy_vps(_project_name: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", format!("  ✅ Created {}", caddy_file).green());
     }
 
-    println!("{}", "\n🔒 VPS Production Infrastructure Provisioned!".bold().green());
+    println!(
+        "{}",
+        "\n🔒 VPS Production Infrastructure Provisioned!"
+            .bold()
+            .green()
+    );
     println!("  To launch on your VPS server:");
     println!("   DOMAIN=yourdomain.com docker compose -f docker-compose.prod.yml up -d --build");
 

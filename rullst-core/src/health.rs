@@ -1,13 +1,7 @@
 //! Kubernetes and Cloud-Native Health Probes (Liveness & Readiness)
 #![cfg(not(target_arch = "wasm32"))]
 
-use axum::{
-    Json,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
-    Router,
-};
+use axum::{Json, Router, http::StatusCode, response::IntoResponse, routing::get};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -42,7 +36,7 @@ pub async fn liveness_handler() -> impl IntoResponse {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    
+
     let boot_time = START_TIME.load(Ordering::Relaxed);
     let uptime = if boot_time > 0 && now >= boot_time {
         now - boot_time

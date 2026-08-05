@@ -75,7 +75,9 @@ impl RevenueDashboardManager {
                 event_type: "checkout.session.completed".to_string(),
                 status: "processed".to_string(),
                 timestamp: now.saturating_sub(120),
-                payload_snippet: "{\"amount_total\": 4900, \"currency\": \"usd\", \"customer\": \"cus_N123\"}".to_string(),
+                payload_snippet:
+                    "{\"amount_total\": 4900, \"currency\": \"usd\", \"customer\": \"cus_N123\"}"
+                        .to_string(),
             },
             WebhookEventRecord {
                 id: "evt_102".to_string(),
@@ -95,10 +97,7 @@ impl RevenueDashboardManager {
 
     /// Retrieves current revenue metrics.
     pub fn get_metrics(&self) -> RevenueMetrics {
-        self.metrics
-            .read()
-            .map(|m| m.clone())
-            .unwrap_or_default()
+        self.metrics.read().map(|m| m.clone()).unwrap_or_default()
     }
 
     /// Records a new incoming webhook event into the audit log buffer.

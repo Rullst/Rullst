@@ -17,14 +17,31 @@ pub fn generate_k8s_manifests() -> Result<(), Box<dyn std::error::Error>> {
 
     let port = 3000;
 
-    fs::write(target_dir.join("deployment.yaml"), deployment_yaml(&project_name, port))?;
-    fs::write(target_dir.join("service.yaml"), service_yaml(&project_name, port))?;
-    fs::write(target_dir.join("configmap.yaml"), configmap_yaml(&project_name, port))?;
+    fs::write(
+        target_dir.join("deployment.yaml"),
+        deployment_yaml(&project_name, port),
+    )?;
+    fs::write(
+        target_dir.join("service.yaml"),
+        service_yaml(&project_name, port),
+    )?;
+    fs::write(
+        target_dir.join("configmap.yaml"),
+        configmap_yaml(&project_name, port),
+    )?;
     fs::write(target_dir.join("hpa.yaml"), hpa_yaml(&project_name))?;
     fs::write(target_dir.join("ingress.yaml"), ingress_yaml(&project_name))?;
-    fs::write(target_dir.join("all-in-one.yaml"), all_in_one_yaml(&project_name, port))?;
+    fs::write(
+        target_dir.join("all-in-one.yaml"),
+        all_in_one_yaml(&project_name, port),
+    )?;
 
-    println!("{}", "☸️  Kubernetes Manifests Scaffolded Successfully!".green().bold());
+    println!(
+        "{}",
+        "☸️  Kubernetes Manifests Scaffolded Successfully!"
+            .green()
+            .bold()
+    );
     println!("   📁 Location: {}", "k8s/".cyan());
     println!("   📄 Files created:");
     println!("      • k8s/deployment.yaml");
@@ -33,7 +50,10 @@ pub fn generate_k8s_manifests() -> Result<(), Box<dyn std::error::Error>> {
     println!("      • k8s/hpa.yaml");
     println!("      • k8s/ingress.yaml");
     println!("      • k8s/all-in-one.yaml");
-    println!("\n   💡 Deployment Command: {}", "kubectl apply -f k8s/".bold().yellow());
+    println!(
+        "\n   💡 Deployment Command: {}",
+        "kubectl apply -f k8s/".bold().yellow()
+    );
 
     Ok(())
 }
@@ -42,7 +62,12 @@ fn get_project_name() -> Option<String> {
     let content = fs::read_to_string("Cargo.toml").ok()?;
     for line in content.lines() {
         if line.starts_with("name = ") {
-            return Some(line.replace("name = ", "").replace('"', "").trim().to_string());
+            return Some(
+                line.replace("name = ", "")
+                    .replace('"', "")
+                    .trim()
+                    .to_string(),
+            );
         }
     }
     None

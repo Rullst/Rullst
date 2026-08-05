@@ -26,9 +26,20 @@ pub fn router() -> Router {
 
     fs::write(target_path, code_content)?;
 
-    println!("{}", "📖 Scalar Interactive API Docs Scaffolded Successfully!".green().bold());
-    println!("   📁 Controller: {}", "src/controllers/docs_controller.rs".cyan());
-    println!("   🌐 Access URL: {}", "http://localhost:3000/docs".bold().yellow());
+    println!(
+        "{}",
+        "📖 Scalar Interactive API Docs Scaffolded Successfully!"
+            .green()
+            .bold()
+    );
+    println!(
+        "   📁 Controller: {}",
+        "src/controllers/docs_controller.rs".cyan()
+    );
+    println!(
+        "   🌐 Access URL: {}",
+        "http://localhost:3000/docs".bold().yellow()
+    );
     println!("   💡 Spec Source: {}", "/openapi.json".bold());
 
     Ok(())

@@ -5,7 +5,7 @@
 
 use axum::{
     extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    http::{StatusCode, request::Parts},
 };
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
@@ -34,8 +34,7 @@ impl Container {
 
     /// Registers a concrete service instance in the container.
     pub fn register<T: Send + Sync + 'static>(&mut self, service: T) {
-        self.services
-            .insert(TypeId::of::<T>(), Arc::new(service));
+        self.services.insert(TypeId::of::<T>(), Arc::new(service));
     }
 
     /// Registers an `Arc`-wrapped service instance in the container.

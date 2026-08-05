@@ -36,7 +36,9 @@ message HelloResponse {{
         fs::write(&proto_path, proto_code)?;
         println!(
             "{}",
-            format!("✨ Created Protobuf definition at {}", proto_path.display()).bold().green()
+            format!("✨ Created Protobuf definition at {}", proto_path.display())
+                .bold()
+                .green()
         );
     }
 
@@ -48,7 +50,11 @@ message HelloResponse {{
 
     let file_path = grpc_dir.join(format!("{}.rs", file_name));
     if file_path.exists() {
-        return Err(format!("gRPC service file '{}' already exists!", file_path.display()).into());
+        return Err(format!(
+            "gRPC service file '{}' already exists!",
+            file_path.display()
+        )
+        .into());
     }
 
     let mut code = String::new();
@@ -59,18 +65,16 @@ message HelloResponse {{
         file_name
     ));
     code.push_str("pub mod proto {\n");
-    code.push_str(&format!(
-        "    tonic::include_proto!(\"{}\");\n",
-        file_name
-    ));
+    code.push_str(&format!("    tonic::include_proto!(\"{}\");\n", file_name));
     code.push_str("}\n\n");
-    code.push_str(&format!(
-        "use proto::{}____service_server::{}____service;\n",
-        file_name, service_name
-    ).replace("____", ""));
-    code.push_str(&format!(
-        "use proto::{{HelloRequest, HelloResponse}};\n\n"
-    ));
+    code.push_str(
+        &format!(
+            "use proto::{}____service_server::{}____service;\n",
+            file_name, service_name
+        )
+        .replace("____", ""),
+    );
+    code.push_str(&"use proto::{HelloRequest, HelloResponse};\n\n".to_string());
     code.push_str("#[derive(Debug, Default)]\n");
     code.push_str(&format!("pub struct {}ServiceImpl;\n\n", service_name));
     code.push_str("#[tonic::async_trait]\n");
@@ -106,10 +110,16 @@ message HelloResponse {{
 
     println!(
         "{}",
-        format!("✨ Created gRPC Service handler '{}' at {}", service_name, file_path.display()).bold().green()
+        format!(
+            "✨ Created gRPC Service handler '{}' at {}",
+            service_name,
+            file_path.display()
+        )
+        .bold()
+        .green()
     );
     println!("  To mount gRPC server alongside Axum HTTP in main.rs:");
-    println!("   {}", format!("use tonic::transport::Server;").cyan());
+    println!("   {}", "use tonic::transport::Server;".to_string().cyan());
     println!("   {}", format!("// Server::builder().add_service({}ServiceServer::new({}ServiceImpl::default())).serve(addr).await?;", service_name, service_name).cyan());
 
     Ok(())

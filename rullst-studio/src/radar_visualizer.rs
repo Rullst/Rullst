@@ -1,10 +1,9 @@
 //! Rullst Radar Kernel-Level Telemetry Visualizer (`/studio/tools/radar`)
 
 use axum::{
-    Json,
+    Json, Router,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use rullst_core::radar::RadarSnapshot;
 
@@ -105,7 +104,10 @@ pub async fn api_radar_handler() -> impl IntoResponse {
 /// Returns an Axum `Router` mounting the Rullst Radar Telemetry endpoints.
 pub fn router() -> Router {
     Router::new()
-        .route("/studio/tools/radar", get(|| async { Html(render_radar_page()) }))
+        .route(
+            "/studio/tools/radar",
+            get(|| async { Html(render_radar_page()) }),
+        )
         .route("/api/radar", get(api_radar_handler))
 }
 
