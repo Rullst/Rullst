@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785960535634,
+  "lastUpdate": 1785962438216,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1079,6 +1079,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 72,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eb0bb605c7635c1f5095d4ba47c431091c248079",
+          "message": "chore: reorganize roadmap into pillar-based milestones with target releases",
+          "timestamp": "2026-08-05T17:32:31-03:00",
+          "tree_id": "1758c244218b0aae799cfe030be51df9fb13db74",
+          "url": "https://github.com/Rullst/Rullst/commit/eb0bb605c7635c1f5095d4ba47c431091c248079"
+        },
+        "date": 1785962437713,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
