@@ -18,7 +18,15 @@ cargo clippy --workspace --all-features --fix --allow-staged && \
 cargo fmt --all && \
 cargo publish -p rullst-core --dry-run && \
 cargo publish -p rullst-orm --dry-run && \
-cargo publish -p rullst-iot --dry-run
+cargo publish -p rullst-iot --dry-run && \
+cargo publish -p rullst-security --dry-run && \
+cargo publish -p rullst-auth --dry-run && \
+cargo publish -p rullst-capital --dry-run && \
+cargo publish -p rullst-nexus --dry-run && \
+cargo publish -p rullst-studio --dry-run && \
+cargo publish -p rullst-ai --dry-run && \
+cargo publish -p cargo-rullst --dry-run
+
 
 
 
