@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785960515892,
+  "lastUpdate": 1785962417362,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1727,6 +1727,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1406,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eb0bb605c7635c1f5095d4ba47c431091c248079",
+          "message": "chore: reorganize roadmap into pillar-based milestones with target releases",
+          "timestamp": "2026-08-05T17:32:31-03:00",
+          "tree_id": "1758c244218b0aae799cfe030be51df9fb13db74",
+          "url": "https://github.com/Rullst/Rullst/commit/eb0bb605c7635c1f5095d4ba47c431091c248079"
+        },
+        "date": 1785962416807,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 722,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 609,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1362,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1397,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
