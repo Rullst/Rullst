@@ -205,28 +205,30 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 
 | Feature | **Rullst** | **Loco** | **Topcoat** | **Dioxus / Leptos** | **Axum / Actix** |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **HTTP & Routing** | ✅ | ✅ | ✅ | ✅ (SSR) | ✅ |
-| **Built-in ORM** | ✅ (Rullst-ORM) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
+| **HTTP & High-Performance Routing** | ✅ (Axum Engine) | ✅ | ✅ | ✅ (SSR) | ✅ |
+| **Active Record & Data Mapper ORM** | ✅ (`rullst-orm`) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
+| **Compile-Time Zero-Cost DI Container** | ✅ (`rullst::di` & `Inject<T>`) | ❌ | ❌ | ❌ | ❌ |
+| **1-Click PaaS Cloud Deployment** | ✅ (`cargo rullst deploy`) | ❌ | ❌ | ❌ | ❌ |
+| **RASP Security Layer (Pre-Controller Inspection)** | ✅ (`rullst-security`) | ❌ | ❌ | ❌ | ❌ |
+| **Rullst Vault & Transparent Field Encryption** | ✅ (`#[orm(encrypted)]` + `Zeroize`) | ❌ | ❌ | ❌ | ❌ |
+| **Synthetic Honeypots & Automated Bot Ban** | ✅ (`rullst-honey`) | ❌ | ❌ | ❌ | ❌ |
+| **HMAC Tamper-Proof Cryptographic Audit Log** | ✅ (`rullst-audit-log`) | ❌ | ❌ | ❌ | ❌ |
+| **Visual Threat Radar (SOC Dashboard)** | ✅ (`/studio/security`) | ❌ | ❌ | ❌ | ❌ |
+| **Air-Gapped Local AI Security (Ollama)** | ✅ (`llama3` / `mistral`) | ❌ | ❌ | ❌ | ❌ |
+| **LiveView Server-Driven Reactive UI** | ✅ (`rullst::live` + `make:live`) | ❌ | ✅ (Signals) | ❌ | ❌ |
+| **gRPC Microservices & Protobuf Scaffolding** | ✅ (`rullst-grpc` / Tonic) | ❌ | ❌ | ❌ | ❌ |
+| **Kubernetes Native Manifests & Health Probes** | ✅ (`make:k8s` + `/health`) | ❌ | ❌ | ❌ | ❌ |
+| **Interactive Scalar API Docs Playground** | ✅ (Built-in `/docs`) | ❌ | ❌ | ❌ | ❌ |
 | **Web-based Database Studio** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
-| **Auto-Generated Admin Panel**| ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
-| **Auto-Generated Mermaid Diagram** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
-| **Dynamic Feature Flags** | ✅ (DB-backed) | ❌ | ❌ | ❌ | ❌ |
-| **Real-time Request Logger** | ✅ (SSE Stream) | ❌ | ❌ | ❌ | ❌ |
-| **Wasm Islands (Frontend)** | ✅ (Pure Rust) | ❌ | ❌ | ✅ (Core focus) | ❌ |
-| **Reactive SSR (No-JS)** | ✅ (Pure Rust) | ❌ | ✅ (Signals)| ❌ | ❌ |
-| **Mobile/Desktop Apps** | ✅ (Tauri Integration)| ❌ | ❌ | ✅ (Dioxus) | ❌ |
-| **Hot-Reloading** | ✅ (Built-in) | ❌ | ❌ | ✅ (Dioxus) | ❌ |
-| **Zero-Panics Policy** | ✅ (Enforced) | ❌ | ❌ | ❌ | ❌ |
-| **TypeScript SDK Generator** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
-| **OpenAPI / Swagger** | ✅ (Auto-Generated) | ❌ | ❌ | ❌ | ✅ (Via utoipa/poem-openapi) |
-| **AI Agents & RAG Integration** | ✅ (Built-in via `rullst-ai`) | ❌ | ❌ | ❌ | ❌ |
-| **Visual Threat Radar & Honeypots** | ✅ (Built-in via `rullst-security`) | ❌ | ❌ | ❌ | ❌ |
-| **Embedded IoT & Edge Hardware** | ✅ (`no_std` via `rullst-iot`) | ❌ | ❌ | ❌ | ❌ |
-| **Background Workers** | ✅ (Queue + Redis) | ✅ (Task worker) | ❌ | ❌ | ❌ |
-| **OpenTelemetry & Prometheus Exporter** | ✅ (`GET /metrics` + OTLP) | ❌ | ❌ | ❌ | ❌ |
-| **Interactive Scalar API Docs** | ✅ (Built-in `/docs`) | ❌ | ❌ | ❌ | ❌ |
-| **Kubernetes Native Infrastructure** | ✅ (`cargo rullst make:k8s` + Probes) | ❌ | ❌ | ❌ | ❌ |
-| **SaaS Revenue Dashboard** | ✅ (Built-in `rullst-capital`) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Generated Admin Panel (CMS)** | ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
+| **Kernel Telemetry & Prometheus Exporter** | ✅ (`rullst::radar` + `/metrics`) | ❌ | ❌ | ❌ | ❌ |
+| **Embedded IoT & Edge Hardware (`#![no_std]`)** | ✅ (`rullst-iot` / STM32 / ESP32) | ❌ | ❌ | ❌ | ❌ |
+| **SaaS Revenue Dashboard & Stripe Billing** | ✅ (`rullst-capital`) | ❌ | ❌ | ❌ | ❌ |
+| **Background Workers & Redis Task Queues** | ✅ (`rullst::queue`) | ✅ (Task worker) | ❌ | ❌ | ❌ |
+| **Wasm Islands & Hybrid SSR** | ✅ (`#[client_component]`) | ❌ | ❌ | ✅ (Core focus) | ❌ |
+| **TypeScript AST SDK Generator** | ✅ (`cargo rullst generate:ts`) | ❌ | ❌ | ❌ | ❌ |
+| **Zero-Panics Policy Enforced** | ✅ (Typed `AppError` & Lints) | ❌ | ❌ | ❌ | ❌ |
+| **Framework Escape Hatch (Zero Lock-in)** | ✅ (`cargo rullst eject`) | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
