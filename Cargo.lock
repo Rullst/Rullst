@@ -5536,6 +5536,7 @@ dependencies = [
  "axum",
  "chrono",
  "futures-util",
+ "rullst-capital",
  "rullst-core",
  "rullst-macros",
  "rullst-orm",

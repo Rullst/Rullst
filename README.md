@@ -223,7 +223,10 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Visual Threat Radar & Honeypots** | ✅ (Built-in via `rullst-security`) | ❌ | ❌ | ❌ | ❌ |
 | **Embedded IoT & Edge Hardware** | ✅ (`no_std` via `rullst-iot`) | ❌ | ❌ | ❌ | ❌ |
 | **Background Workers** | ✅ (Queue + Redis) | ✅ (Task worker) | ❌ | ❌ | ❌ |
-| **OpenTelemetry Integration** | ✅ (Built-in) | ❌ | ❌ | ❌ | ❌ |
+| **OpenTelemetry & Prometheus Exporter** | ✅ (`GET /metrics` + OTLP) | ❌ | ❌ | ❌ | ❌ |
+| **Interactive Scalar API Docs** | ✅ (Built-in `/docs`) | ❌ | ❌ | ❌ | ❌ |
+| **Kubernetes Native Infrastructure** | ✅ (`cargo rullst make:k8s` + Probes) | ❌ | ❌ | ❌ | ❌ |
+| **SaaS Revenue Dashboard** | ✅ (Built-in `rullst-capital`) | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

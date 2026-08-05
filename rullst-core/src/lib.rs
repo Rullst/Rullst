@@ -21,6 +21,9 @@ pub mod cache;
 /// Edge client components rendering module.
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
+/// Compile-Time Zero-Cost Dependency Injection Container.
+pub mod di;
+#[cfg(not(target_arch = "wasm32"))]
 /// HTML visual logging and runtime console for development mode.
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
@@ -29,6 +32,9 @@ pub mod feature;
 #[cfg(not(target_arch = "wasm32"))]
 /// Hybrid Frontend SSR Adapters (Leptos, Dioxus, HTMX).
 pub mod frontend;
+#[cfg(not(target_arch = "wasm32"))]
+/// Kubernetes and Cloud-Native Health Probes.
+pub mod health;
 #[cfg(not(target_arch = "wasm32"))]
 /// Fast compile-time HTML rendering utilities.
 pub mod html;
@@ -39,10 +45,16 @@ pub mod htmx;
 /// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
+/// Interactive Scalar API documentation UI.
+pub mod scalar;
+#[cfg(not(target_arch = "wasm32"))]
 /// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
+#[cfg(not(target_arch = "wasm32"))]
+/// Rullst Radar Kernel-Level Telemetry & Tokio runtime visualizer.
+pub mod radar;
 #[cfg(not(target_arch = "wasm32"))]
 /// Native Real-Time Engine (Channels, Broadcast, Presence).
 pub mod realtime;

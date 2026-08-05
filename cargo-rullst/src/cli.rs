@@ -192,6 +192,30 @@ pub enum Commands {
     /// Scaffolds ChatSession and ChatMessage models for Conversational AI memory
     #[command(name = "make:chat-session")]
     MakeChatSession,
+    /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
+    #[command(name = "make:k8s")]
+    MakeK8s,
+    /// Scaffolds interactive Scalar API documentation router at /docs
+    #[command(name = "make:scalar")]
+    MakeScalar,
+    /// Scaffolds a new LiveView-style reactive server component in src/live/
+    #[command(name = "make:live")]
+    MakeLive {
+        /// Name of the LiveComponent (e.g. Counter or UserFeed)
+        name: String,
+    },
+    /// Scaffolds a new gRPC service and Protobuf schema in proto/ and src/grpc/
+    #[command(name = "make:grpc")]
+    MakeGrpc {
+        /// Name of the gRPC service (e.g. UserService or OrderService)
+        name: String,
+    },
+    /// Deploys application to PaaS cloud providers (Fly.io, Railway, Render, VPS)
+    Deploy {
+        /// Target deployment platform (fly, railway, render, vps)
+        #[arg(short, long)]
+        platform: Option<String>,
+    },
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
     /// Starts the Rullst development server with neon spinners
@@ -455,6 +479,21 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;
+        }
+        Commands::MakeK8s => {
+            crate::generators::k8s::generate_k8s_manifests()?;
+        }
+        Commands::MakeScalar => {
+            crate::generators::scalar::generate_scalar_docs()?;
+        }
+        Commands::MakeLive { name } => {
+            crate::generators::live::create_new_live_component(name)?;
+        }
+        Commands::MakeGrpc { name } => {
+            crate::generators::grpc::create_new_grpc_service(name)?;
+        }
+        Commands::Deploy { platform } => {
+            crate::generators::deploy::run_deploy(platform.as_deref())?;
         }
     }
 

@@ -9,14 +9,17 @@ Below is the **exhaustively detailed** reference for absolutely all commands and
 ## 🏗️ 1. Project Initialization & Maintenance
 
 ### `cargo rullst new <name>`
-Creates a Rullst project from scratch. This command doesn't just clone a template; it builds the directory tree, injects the database connection into `.env`, creates the `Cargo.toml` with the correct features, and generates a `main.rs` prepared with routing configurations.
+Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
+* **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket, Uptime Monitor.
+* **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
+* **Frontend Engine:** Zero-Bundle HTMX + TailwindCSS (0KB JS default), Leptos SSR Adapter, or Dioxus SSR Adapter.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Changes the default scaffolding behavior. Instead of preparing a Full-Stack project with HTML rendering, it generates a headless project (JSON API only), focusing strictly on JSON and removing template dependencies.
-  * `--docker`: Automatically adds a highly optimized multi-stage `Dockerfile` for Rust, a `docker-compose.yml` (with the database), and the `.dockerignore`.
-  * `--turso`: Scaffolds a Turso/libSQL sidecar (`sqld`) configuration for edge database replication.
-  * `--nix`: Adds `flake.nix` and `.envrc` (direnv) files to create a 100% reproducible development environment isolated from the host OS.
+  * `--api`: Scaffolds a headless JSON API project (no HTML view rendering).
+  * `--docker`: Adds multi-stage `Dockerfile`, `docker-compose.yml`, and `.dockerignore`.
+  * `--turso`: Scaffolds Turso/libSQL sidecar (`sqld`) configuration for edge database replication.
+  * `--nix`: Adds `flake.nix` and `.envrc` (direnv) files for a 100% reproducible environment.
 
 ### `cargo rullst upgrade`
 Globally updates the CLI on your machine (`cargo install cargo-rullst`) and simultaneously scans your current project's `Cargo.toml` to ensure Rullst and its internal macros (like `rullst-macros` and `rullst-connect`) are updated to the corresponding stable version, running automatic codemods if breaking changes are detected.
@@ -77,6 +80,21 @@ Prepares your project to become a Desktop or Mobile App. It generates Tauri/Omni
 
 ### `cargo rullst make:iot <DeviceName>`
 Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway) in `src/iot/` pre-configured with `rullst-iot` telemetry models and MQTT/CoAP protocol formatters.
+
+### `cargo rullst make:k8s`
+Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.
+
+### `cargo rullst make:scalar`
+Scaffolds an interactive Scalar API Documentation controller at `src/controllers/docs_controller.rs` serving modern OpenAPI UI at `http://localhost:3000/docs`.
+
+### `cargo rullst make:live <ComponentName>`
+Scaffolds a new LiveView-style reactive server component at `src/live/<name>.rs` enabling real-time WebSocket state synchronization and HTMX Out-Of-Band (OOB) HTML swaps without writing JavaScript.
+
+### `cargo rullst make:grpc <ServiceName>`
+Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
+
+### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
+1-Click deployment wizard generating cloud manifests (`fly.toml`, `railway.json`, `render.yaml`, `docker-compose.prod.yml` with Caddy SSL) and launching the deployment.
 
 ### `cargo rullst auth`
 The Supreme Command. With just one command, it creates an entire Authentication system in your codebase, including:

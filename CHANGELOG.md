@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **One-Click PaaS Deploy (`cargo rullst deploy`)**: Added 1-click cloud deployment CLI supporting Fly.io, Railway, Render, and VPS Docker Compose + Caddy reverse proxy with automatic SSL certificates.
+- **LiveView-Style Server-Driven UI (`rullst::live` & `cargo rullst make:live`)**: Added real-time WebSocket state synchronization engine and `make:live` component scaffolding for zero-JavaScript reactive interfaces.
+- **Zero-Cost Compile-Time Dependency Injection (`rullst::di`)**: Introduced static dispatch DI container (`Container`), `Injectable` trait, and Axum `Inject<T>` extractor.
+- **Microsserviços gRPC (`cargo rullst make:grpc`)**: Added `make:grpc` CLI generator scaffolding Protobuf `.proto` definitions and `tonic` gRPC service implementations.
+- **Rullst Radar — Kernel-Level Telemetry (`rullst::radar` & `/studio/tools/radar`)**: Added real-time process RSS memory tracking, Tokio runtime tick latency measurement, and native Prometheus text-format exporter (`GET /metrics`).
+- **Kubernetes-Native Infrastructure (`cargo rullst make:k8s` & Health Probes)**: Added `make:k8s` CLI generator for Cloud-Native manifests (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, `all-in-one.yaml`) and built-in Liveness (`GET /health`) and Readiness (`GET /ready`) HTTP probes.
+- **Interactive Scalar API Docs (`cargo rullst make:scalar` & `/docs`)**: Added `make:scalar` CLI generator and zero-config Scalar OpenAPI reference page served at `/docs` with CDN loading and static offline fallback.
+- **Rullst Capital Revenue Dashboard (`/studio/tools/revenue`)**: Added real-time MRR/ARR analytics metrics (`RevenueMetrics`), active subscriber stats, churn rate calculator, and live Stripe/LemonSqueezy Webhook Audit Inspector.
+- **Interactive CLI Wizard Options (`cargo rullst new`)**: Added interactive selection prompts for ORM Architecture (Active Record, Data Mapper / Repository, Hybrid) and Frontend Engine (Zero-Bundle HTMX, Leptos SSR, Dioxus SSR).
 - **3 New CI/CD Workflows:**
   - **`no_std-build.yml`:** Automated bare-metal compilation check for `rullst-iot` on 3 targets (STM32 Cortex-M4/M7, Cortex-M0, ESP32-C3 RISC-V).
   - **`iot-integration.yml`:** IoT integration test suite running all 18 unit tests + QEMU Cortex-M simulation on push.

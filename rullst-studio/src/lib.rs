@@ -15,6 +15,8 @@ pub mod feature_flags;
 pub mod jobs_monitor;
 pub mod logger;
 pub mod migration_manager;
+pub mod radar_visualizer;
+pub mod revenue_dashboard;
 pub mod security_radar;
 pub mod traces_visualizer;
 
@@ -61,6 +63,8 @@ impl Studio {
             .nest("/features", feature_flags::router())
             .nest("/er", er_diagram::router())
             .nest("/security", security_radar::router())
+            .nest("/capital", revenue_dashboard::router())
+            .nest("/radar", radar_visualizer::router())
             .route("/tools/traces", get(traces_visualizer::render_traces_page));
 
         if let Some(openapi) = self.openapi {

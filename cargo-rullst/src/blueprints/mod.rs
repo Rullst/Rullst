@@ -6,7 +6,9 @@ use std::path::Path;
 
 pub mod blank;
 pub mod blog;
+pub mod deploy;
 pub mod erp;
+pub mod k8s;
 pub mod lms;
 pub mod portfolio;
 pub mod saas;

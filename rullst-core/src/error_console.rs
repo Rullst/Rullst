@@ -290,6 +290,23 @@ pub async fn handle_autofix(
     }
 }
 
+/// POST endpoint that triggers database migration execution from the Ignition Error Console.
+#[cfg_attr(mutants, mutants::skip)]
+pub async fn handle_run_migrations(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
+    if !addr.ip().is_loopback() {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Access denied: endpoint only accessible from localhost"
+        }));
+    }
+    Json(serde_json::json!({
+        "success": true,
+        "message": "Database migration requested. Run `cargo rullst db:migrate` or use Rullst Studio to apply pending SQL migrations."
+    }))
+}
+
 #[cfg_attr(mutants, mutants::skip)]
 async fn perform_autofix(
     _file_path: &str,

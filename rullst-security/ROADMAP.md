@@ -1,6 +1,6 @@
 # Rullst Security - Roadmap 🛡️
 
-`rullst-security` is the dedicated high-assurance security suite of the Rullst Framework, responsible for threat deception, sanitization, access guards, auditability, and AI-driven defense.
+`rullst-security` is the dedicated high-assurance security suite of the Rullst Framework, responsible for threat deception, sanitization, access guards, auditability, autonomous AI-driven defense, and post-quantum protection.
 
 ---
 
@@ -13,14 +13,17 @@
 
 ---
 
-## 🚀 Phase 2: Autonomous Intelligence & Threat Radar (Upcoming)
+## 🚀 Phase 2: Autonomous Intelligence & Threat Radar — Completed
 - [x] **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`)**: Real-time visual dashboard displaying active threat attack vectors, live IP reputation scoring, blocked honeypot hits, and AI incident reports.
-- [ ] **AI Threat Sentinel (`rullst-security-ai`)**: Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and issuing dynamic Proof-of-Work challenge tokens.
-- [ ] **RASP Engine (Runtime Application Self-Protection)**: Zero-latency request inspector blocking SQL Injection, XSS, Path Traversal, and SSRF before controller execution.
-- [ ] **Rullst Vault (`rullst-vault`)**: Zero-trust secret management with in-memory zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
+- [x] **AI Threat Sentinel (`rullst-security-ai`)**: Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and issuing dynamic Proof-of-Work challenge tokens.
+- [x] **RASP Engine (Runtime Application Self-Protection)**: Zero-latency request inspector blocking SQL Injection, XSS, Path Traversal, and SSRF before controller execution.
+- [x] **Rullst Vault (`rullst-vault`)**: Zero-trust secret management with in-memory zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
 
 ---
 
-## 🔬 Phase 3: Post-Quantum & Deep Security (Future)
-- [ ] **Hardware Security Module (HSM) Integration**: Hardware token signing and Key Management System (KMS) integration (AWS KMS, Vault).
-- [ ] **Post-Quantum Cryptography Bridge**: Interface for quantum-resistant session encryption algorithms (ML-KEM / Kyber).
+## 🔬 Phase 3: Post-Quantum & Deep Security (Upcoming)
+- [ ] **Multi-Factor Authentication Engine (`rullst-security::mfa`)**: Native RFC 6238 TOTP (Time-based One-Time Password) generator, verification validator, and QR code builder for 2FA onboarding.
+- [ ] **Real-Time Secret Guard (`rullst-security::secret_guard`)**: Zero-latency log and HTTP response interceptor preventing accidental leaks of JWT secrets, API keys, or private SSH keys.
+- [ ] **Hardware Security Module (HSM) & KMS Integration**: Hardware token signing and Key Management System integration (AWS KMS, HashiCorp Vault).
+- [ ] **Post-Quantum Cryptography Bridge (`rullst-security::pqc`)**: NIST ML-KEM (Kyber) & ML-DSA (Dilithium) quantum-resistant session encryption algorithms.
+- [ ] **SLSA Binary Attestation & Cryptographic SBOM**: In-memory executable checksum validation preventing binary tampering and supply chain attacks in production.

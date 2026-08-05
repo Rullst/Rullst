@@ -1,18 +1,20 @@
 # Rullst Capital: SaaS Billing Made Easy
 
-**Rullst Capital** is the billing and subscription orchestration layer for Rullst SaaS applications.
+**Rullst Capital** is the billing, subscription orchestration, and revenue analytics layer for Rullst SaaS applications.
 
-If you generated your project using the `SaaS` blueprint (`cargo rullst new` -> Select `SaaS Starter`), your application already comes wired with Capital, allowing you to charge your users from day one.
+If you generated your project using the `SaaS` blueprint (`cargo rullst new` -> Select `SaaS Starter`) or ran `cargo rullst make:billing`, your application comes pre-wired with Capital, allowing you to charge users from day one.
 
 ## Core Features
 
-- **Multi-Provider Support:** Rullst Capital currently supports `Stripe` and `LemonSqueezy`. You can swap between them by simply changing the `BILLING_PROVIDER` environment variable. No code changes required!
-- **Webhook Handling:** Secure webhook endpoints are automatically set up to listen to subscription updates, payment successes, and cancellations.
-- **Database Synchronization:** When a payment succeeds, Capital automatically updates the `subscriptions` table in your local database via the `rullst-orm`, keeping user access in sync with their payment status.
+- **Multi-Provider Support:** Supports `Stripe` and `LemonSqueezy`. Swap between them by changing `BILLING_PROVIDER` in `.env`.
+- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber stats, and churn rate calculations built right into Rullst Studio.
+- **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
+- **Webhook Handling:** Secure webhook handlers listen to subscription creations, renewals, upgrades, and cancellations.
+- **Database Synchronization:** Automatically updates the `subscriptions` table via `rullst-orm`, keeping user access in sync with payment status.
 
 ## Configuration
 
-In your `.env` file, configure your keys:
+In your `.env` file:
 
 ```env
 BILLING_PROVIDER=stripe # or lemonsqueezy
@@ -22,9 +24,8 @@ BILLING_WEBHOOK_SECRET=whsec_...
 
 ## How It Works in Your App
 
-The generated `billing_controller.rs` provides two primary endpoints:
+The generated `billing_controller.rs` provides primary endpoints:
 
-1. **Checkout Redirect:** When a user clicks "Upgrade to Pro", they hit `/billing/checkout?plan=price_pro`. Rullst Capital instantly communicates with Stripe/LemonSqueezy to create a secure checkout session and redirects the user.
-2. **Webhook Listener:** The `/billing/webhook` route securely verifies the signature of the incoming request and delegates it to the `webhook_handler`. The handler then updates the user's `plan_id` and `ends_at` timestamp in your local database.
-
-This architecture ensures your application stays extremely fast and never stores sensitive payment data on your servers.
+1. **Checkout Redirect:** Hits `/billing/checkout?plan=price_pro`, creating a secure checkout session with Stripe/LemonSqueezy.
+2. **Webhook Listener:** The `/billing/webhook` route verifies HMAC signatures and updates `plan_id` and `ends_at` timestamps in your database.
+3. **Studio Dashboard:** Access `http://localhost:5555/studio/capital` to view live MRR/ARR charts and inspect incoming webhook payloads.

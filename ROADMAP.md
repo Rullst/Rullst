@@ -27,20 +27,20 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M14** | ⚡ Production Utilities | Queues, Redis/Memory Cache, Task Scheduler & Docker | `[x] Completed` |
 | **M15** | ⚡ Frontend & Islands | Wasm Islands (`#[client_component]`), Live Server-Driven UI & Hot-Reloading | `[x] Completed` |
 | **M16** | ⚡ Real-Time & Storage | Real-Time Engine (`rullst::realtime`), Storage & Package Registry (`cargo rullst pkg`) | `[ ] Planned (New)` |
-| **M17** | 🤖 AI & Telemetry | Hardware Telemetry, Native OpenTelemetry & Kernel Radar Monitoring | `[🔄 In Progress]` |
+| **M17** | 🤖 AI & Telemetry | Hardware Telemetry, Native OpenTelemetry & Kernel Radar Monitoring | `[x] Completed` |
 | **M18** | 🤖 AI & Persistence | Zero-Copy Event Streaming & Immutable Ledger Engine (`rullst::ledger`) | `[ ] Planned` |
 | **M19** | 🤖 AI & Mobile | Omni-Frontend Protocol, Mobile Hyper-Media Bridge & AI Tool-Calling | `[ ] Planned` |
 | **M20** | 🤖 AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning | `[ ] Planned` |
 | **M21** | 🤖 AI & Self-Evolving | Polymorphic Core Engine, Self-Recompilation & Auto-Healing | `[ ] Planned` |
 | **M22** | 🔌 IoT & Hardware | Embedded Runtime, MQTT/CoAP & Edge AI (`rullst-iot`) | `[x] Completed` |
 | **M23** | 🛰️ Aerospace & Mobility | Aerospace, Autonomous Vehicles, Robotics & Defense (`rullst-orbit` & `rullst-auto`) | `[ ] Planned` |
-| **M24** | 🏆 DX Supremacy | Zero-Cost Compile-Time DI Container (`rullst::di`) | `[ ] Planned` |
-| **M25** | 🚀 Deployment | One-Click PaaS Deploy (`cargo rullst deploy`) & Rullst Cloud Alpha | `[ ] Planned` |
-| **M26** | ⚡ Real-Time UI | `rullst::live` — LiveView-Style Server-Driven UI (WebSocket + HTMX OOB) | `[ ] Planned` |
+| **M24** | 🏆 DX Supremacy | Zero-Cost Compile-Time DI Container (`rullst::di`) | `[x] Completed` |
+| **M25** | 🚀 Deployment | One-Click PaaS Deploy (`cargo rullst deploy`) & Rullst Cloud Alpha | `[x] Completed` |
+| **M26** | ⚡ Real-Time UI | `rullst::live` — LiveView-Style Server-Driven UI (WebSocket + HTMX OOB) | `[x] Completed` |
 | **M27** | 🔌 Embedded Async | Async `rullst-iot` (Embassy Executor integration, `no_std` async/await) | `[ ] Planned` |
-| **M28** | ☸️ Cloud-Native | Kubernetes Native (`cargo rullst make:k8s`, health probes, `rullst-operator`) | `[ ] Planned` |
-| **M29** | 📖 Interactive Docs | Embedded Scalar API Playground at `/docs` + ORM SQL Error Console in Ignition | `[ ] Planned` |
-| **M30** | 🌐 gRPC & Plugin Marketplace | `rullst-grpc` (Tonic) & searchable Packages web UI at `rullst.github.io/packages` | `[ ] Planned` |
+| **M28** | ☸️ Cloud-Native | Kubernetes Native (`cargo rullst make:k8s`, health probes, `rullst-operator`) | `[x] Completed` |
+| **M29** | 📖 Interactive Docs | Embedded Scalar API Playground at `/docs` + ORM SQL Error Console in Ignition | `[x] Completed` |
+| **M30** | 🌐 gRPC & Plugin Marketplace | `rullst-grpc` (Tonic) & searchable Packages web UI at `rullst.github.io/packages` | `[x] Completed` |
 
 ---
 
@@ -194,7 +194,7 @@ graph TD
 - [x] **Rullst Nexus Panel (Auto-Generated CMS):** Out-of-the-box admin panel with dynamic HTMX CRUD and AI natural language DB chat (`/nexus/chat`).
 - [x] **Rullst Omni (Desktop & Mobile):** Scaffolding Tauri v2 wrappers for cross-platform desktop/mobile deployment via `cargo rullst make:omni`.
 - [x] **Rullst Capital (SaaS Billing Boilerplate):** Stripe & LemonSqueezy subscription integration via `cargo rullst make:billing`.
-- [ ] **Rullst Capital Revenue Dashboard:** Native MRR/ARR analytics, plan distribution breakdown, churn metrics, and live Stripe/LemonSqueezy webhook event inspector in Studio/Nexus.
+- [x] **Rullst Capital Revenue Dashboard:** Native MRR/ARR analytics, plan distribution breakdown, churn metrics, and live Stripe/LemonSqueezy webhook event inspector in Studio/Nexus.
 - [x] **Rullst Shield (Wasm WAF & Bot Management):** WAF middleware with bot blocking and PII masking.
 - [x] **Autonomous AI Security Engine (`rullst-security` / `rullst::shield::ai`):**
   - [x] **RASP (Runtime Application Self-Protection):** Zero-latency kernel-level request inspector blocking SQL Injection, XSS, Path Traversal, SSRF, and RCE before reaching controllers.
@@ -257,7 +257,7 @@ graph TD
 
 ### 📊 Milestone 17: Hardware Telemetry & Radar Monitoring
 - [x] **Native OpenTelemetry:** Zero-config telemetry export to Datadog, Grafana Loki, or Prometheus.
-- [ ] **Rullst Radar (Kernel-Level Telemetry):** Visual dashboard for CPU, Mutex contention, memory leaks, and I/O bottlenecks.
+- [x] **Rullst Radar (Kernel-Level Telemetry):** Visual dashboard for CPU, Mutex contention, memory leaks, and I/O bottlenecks.
 - [x] **Distributed Tracing Visualizer (`rullst::studio::traces`):** Built-in Jaeger/Zipkin-style flamegraph inspector in Rullst Studio (`http://localhost:5555/studio/tools/traces`) visualizing microsecond-level HTTP, SQL, and AI prompt spans.
 - [ ] **Time-Travel Debugging in Error Console:** Last 50 event replay visualizer for server panics.
 

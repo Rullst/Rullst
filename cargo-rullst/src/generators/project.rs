@@ -44,6 +44,8 @@ pub struct ProjectWizardOptions {
     pub wants_ai: bool,
     pub wants_redis: bool,
     pub turso: bool,
+    pub orm_pattern: String,
+    pub frontend_engine: String,
 }
 
 fn run_project_wizard(
@@ -64,6 +66,8 @@ fn run_project_wizard(
             wants_ai: false,
             wants_redis: false,
             turso,
+            orm_pattern: "Active Record".to_string(),
+            frontend_engine: "Zero-Bundle HTMX".to_string(),
         });
     }
 
@@ -177,6 +181,45 @@ fn run_project_wizard(
             .interact()?;
     }
 
+    let mut orm_pattern = "Active Record".to_string();
+    let mut frontend_engine = "Zero-Bundle HTMX".to_string();
+
+    if db_needed {
+        let orm_options = &[
+            "Active Record Mode (User::find(id) — Rapid CRUD & 90% of business logic)",
+            "Data Mapper / Repository (UserRepository::find() — Decoupled domain structs)",
+            "Hybrid Architecture (Active Record + Data Mapper Repository Pattern)",
+        ];
+        let orm_selection = dialoguer::Select::with_theme(&theme)
+            .with_prompt("🏗️ Select ORM Pattern / Architecture")
+            .default(0)
+            .items(&orm_options[..])
+            .interact()?;
+        orm_pattern = match orm_selection {
+            1 => "Repository".to_string(),
+            2 => "Hybrid".to_string(),
+            _ => "Active Record".to_string(),
+        };
+    }
+
+    if !api {
+        let fe_options = &[
+            "Zero-Bundle HTMX + TailwindCSS (0KB JS bundle, fast HTML5 SSR — Default)",
+            "Leptos SSR Adapter (Rich reactive client-side Rust components)",
+            "Dioxus SSR Adapter (Cross-platform VDOM reactive components)",
+        ];
+        let fe_selection = dialoguer::Select::with_theme(&theme)
+            .with_prompt("🎨 Select Frontend Engine")
+            .default(0)
+            .items(&fe_options[..])
+            .interact()?;
+        frontend_engine = match fe_selection {
+            1 => "Leptos SSR".to_string(),
+            2 => "Dioxus SSR".to_string(),
+            _ => "Zero-Bundle HTMX".to_string(),
+        };
+    }
+
     let wants_ai = dialoguer::Confirm::with_theme(&theme)
         .with_prompt("🤖 Will your project need Artificial Intelligence features (rullst-ai)?")
         .default(false)
@@ -197,6 +240,8 @@ fn run_project_wizard(
         wants_ai,
         wants_redis,
         turso,
+        orm_pattern,
+        frontend_engine,
     })
 }
 

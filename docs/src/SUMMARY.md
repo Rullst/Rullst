@@ -11,6 +11,51 @@
 - [💳 Rullst Capital: SaaS Billing Made Easy](5-rullst-capital.md)
 - [🧠 Integrating AI into Rullst](6-ai-integration-tutorial.md)
 
+# 🍳 Rullst Cookbook & Tutorials
+
+## 🟢 Level 1: Basic (Foundations & CRUD)
+- [01. Hello Rullst!](tutorials/01-hello-world.md)
+- [02. CLI Automation & Generators](tutorials/02-cli-generators.md)
+- [03. Active Record CRUD Operations](tutorials/03-active-record-crud.md)
+- [04. Data Mapper & Repository Pattern](tutorials/04-repository-pattern.md)
+- [05. Database Migrations & Seeds](tutorials/05-migrations-and-seeds.md)
+- [06. Zero-Bundle HTMX UI](tutorials/06-htmx-zero-bundle.md)
+- [07. Forms & DTO Validation](tutorials/07-forms-and-validation.md)
+- [08. Controllers & Middlewares](tutorials/08-routing-and-middlewares.md)
+- [09. Environment Config](tutorials/09-environment-config.md)
+- [10. Static Assets & Compression](tutorials/10-static-assets-and-compression.md)
+
+## 🟡 Level 2: Intermediate (Security, Auth & Real-Time)
+- [11. Authentication Scaffolding](tutorials/11-authentication-system.md)
+- [12. JWT vs Session Auth](tutorials/12-jwt-and-session-auth.md)
+- [13. RBAC & IDOR Protection](tutorials/13-rbac-authorization.md)
+- [14. RASP Security Layer](tutorials/14-rasp-security-layer.md)
+- [15. Vault & Field Encryption](tutorials/15-rullst-vault-encryption.md)
+- [16. LiveView Server-Driven UI](tutorials/16-liveview-server-driven-ui.md)
+- [17. Real-Time WebSockets & Presence](tutorials/17-websockets-realtime-chat.md)
+- [18. Wasm Islands in Pure Rust](tutorials/18-wasm-islands-rust.md)
+- [19. SaaS Billing with Capital](tutorials/19-saas-billing-capital.md)
+- [20. Background Jobs & Task Queues](tutorials/20-background-jobs-queues.md)
+
+## 🔴 Level 3: Advanced (Enterprise, AI, IoT & Cloud)
+- [21. Air-Gapped Local AI with Ollama](tutorials/21-local-ai-ollama.md)
+- [22. RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)
+- [23. Kernel Telemetry & Prometheus](tutorials/23-rullst-radar-prometheus.md)
+- [24. Interactive Scalar API Docs](tutorials/24-scalar-api-docs.md)
+- [25. Kubernetes Deployment & Probes](tutorials/25-kubernetes-deployment.md)
+- [26. 1-Click PaaS Cloud Deploy](tutorials/26-one-click-paas-deploy.md)
+- [27. Zero-Cost Dependency Injection](tutorials/27-zero-cost-di.md)
+- [28. gRPC Microservices with Tonic](tutorials/28-grpc-microservices.md)
+- [29. Embedded IoT & Edge Systems](tutorials/29-embedded-iot-edge.md)
+- [30. Framework Escape Hatch](tutorials/30-framework-escape-hatch.md)
+
+## 💎 Level 4: Master Capstones & End-to-End Enterprise
+- [31. Full-Stack SaaS Enterprise End-to-End (AWS & GCP)](tutorials/31-end-to-end-saas-aws-gcp.md)
+- [32. SOC Threat Radar & Autonomous AI Security](tutorials/32-ai-sentinel-soc-dashboard.md)
+- [33. Multi-Tenant B2B Enterprise Architecture](tutorials/33-multi-tenant-b2b-saas.md)
+- [34. Live Analytics Dashboard & WebSockets](tutorials/34-realtime-dashboard-liveview-websockets.md)
+- [35. Sub-Microsecond Tuning & High-Availability](tutorials/35-high-performance-benchmarking.md)
+
 # Reference
 - [📜 Framework Spec](spec.md)
 - [🔓 Zero Lock-In & Axum/SQLx Interoperability](axum-sqlx-migration.md)
