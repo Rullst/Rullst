@@ -1,7 +1,12 @@
 //! Interactive Scalar API Documentation Page (`/docs`)
 #![cfg(not(target_arch = "wasm32"))]
 
-use axum::{Router, response::Html, routing::get};
+use axum::{
+    Router,
+    response::{Html, Json, IntoResponse},
+    routing::get,
+};
+use serde_json::json;
 
 /// Generates the HTML5 Scalar API documentation interface.
 pub fn render_scalar_html(openapi_url: &str) -> String {
@@ -44,10 +49,27 @@ pub fn render_scalar_html(openapi_url: &str) -> String {
     )
 }
 
-/// Returns an Axum `Router` mounting the interactive Scalar API documentation at `/docs`.
+/// Returns an Axum `Router` mounting the interactive Scalar API documentation at `/docs` and `/openapi.json`.
 pub fn scalar_docs_router(openapi_url: &'static str) -> Router {
     let html_content = render_scalar_html(openapi_url);
-    Router::new().route("/docs", get(move || async move { Html(html_content) }))
+    Router::new()
+        .route("/docs", get(move || async move { Html(html_content) }))
+        .route("/openapi.json", get(|| async move {
+            if let Ok(content) = std::fs::read_to_string("openapi.json") {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+                    return Json(parsed).into_response();
+                }
+            }
+            Json(json!({
+                "openapi": "3.0.0",
+                "info": {
+                    "title": "Rullst Application API",
+                    "description": "Interactive API documentation powered by Rullst & Scalar UI.",
+                    "version": "1.0.0"
+                },
+                "paths": {}
+            })).into_response()
+        }))
 }
 
 #[cfg(test)]

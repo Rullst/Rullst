@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Tool-Calling Automático para Agentes de IA (`rullst-ai::tools`)**: Added `ToolRegistry` and `AiTool` trait for exporting OpenAI, Anthropic, and Ollama compatible JSON Function Calling schemas and executing dynamic tools (Milestone 19).
+- **Agentic DevOps & Infrastructure Tuning (`rullst-core::devops`)**: Introduced `DevOpsAgent` inspecting Tokio runtime tick latency and RAM memory from `rullst::radar` to calculate autonomous SQLx connection pool and thread scaling recommendations (Milestone 22).
+- **Auto-Healing Database Migrations (`rullst-orm::auto_healing`)**: Added `SchemaErrorInterceptor` diagnosing SQLx missing table/column errors during development and generating corrective SQL migration scripts (Milestone 23).
 - **One-Click PaaS Deploy (`cargo rullst deploy`)**: Added 1-click cloud deployment CLI supporting Fly.io, Railway, Render, and VPS Docker Compose + Caddy reverse proxy with automatic SSL certificates.
 - **LiveView-Style Server-Driven UI (`rullst::live` & `cargo rullst make:live`)**: Added real-time WebSocket state synchronization engine and `make:live` component scaffolding for zero-JavaScript reactive interfaces.
 - **Zero-Cost Compile-Time Dependency Injection (`rullst::di`)**: Introduced static dispatch DI container (`Container`), `Injectable` trait, and Axum `Inject<T>` extractor.

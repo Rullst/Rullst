@@ -29,11 +29,11 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M16** | ⚡ Pilar IV: Wasm Islands | Wasm Islands (`#[client_component]`) & Interactive Client Components | `[x] Completed` | v12.0.0 |
 | **M17** | ⚡ Pilar IV: Real-Time & Storage | Real-Time Engine (`rullst::realtime`), Storage & Package Registry (`cargo rullst pkg`) | `[x] Completed` | v12.0.0 |
 | **M18** | ⚡ Pilar IV: LiveView UI | `rullst::live` — LiveView-Style Reactive Server-Driven UI (`cargo rullst make:live`) | `[x] Completed` | v12.0.0 |
-| **M19** | 🤖 Pilar V: AI & Telemetry | Rullst Radar Kernel Telemetry, Tokio Latency & Prometheus `/metrics` | `[x] Completed` | v12.0.0 |
+| **M19** | 🤖 Pilar V: AI & Telemetry | Rullst Radar Kernel Telemetry, Tool-Calling for AI Agents & Prometheus `/metrics` | `[x] Completed` | v12.0.0 |
 | **M20** | 🤖 Pilar V: AI & Persistence | Zero-Copy Event Streaming & Immutable Ledger Engine (`rullst::ledger`) | `[ ] Planned` | v12.1.0 |
 | **M21** | 🤖 Pilar V: AI & Mobile | Omni-Frontend Protocol & Mobile Hyper-Media Bridge | `[ ] Planned` | v12.1.0 |
-| **M22** | 🤖 Pilar V: AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning | `[ ] Planned` | v13.0.0 |
-| **M23** | 🤖 Pilar V: AI & Self-Evolving | Polymorphic Core Engine & Auto-Healing | `[ ] Planned` | v13.0.0 |
+| **M22** | 🤖 Pilar V: AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning (v12.0.0: `rullst-core::devops`) | `[ ] Planned` | v13.0.0 |
+| **M23** | 🤖 Pilar V: AI & Self-Evolving | Polymorphic Core Engine & Auto-Healing Runtime (v12.0.0: `rullst-orm::auto_healing`) | `[ ] Planned` | v13.0.0 |
 | **M24** | 🔌 Pilar VI: Embedded IoT | Embedded Runtime (`#![no_std]`), Modbus, MQTT Sparkplug B, BLE & Edge AI (`rullst-iot`) | `[x] Completed` | v12.0.0 |
 | **M25** | 🔌 Pilar VI: Embedded Async | Async `rullst-iot` (Embassy Executor integration, `no_std` async/await) | `[ ] Planned` | v12.1.0 |
 | **M26** | ☸️ Pilar VII: PaaS Deploy | One-Click PaaS Cloud Deploy (`cargo rullst deploy`) & VPS Caddy SSL | `[x] Completed` | v12.0.0 |
@@ -91,11 +91,11 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 ---
 
 ### 🤖 Pilar V: AI-Native Core & Telemetry
-- [x] **Milestone 19:** Rullst Radar Kernel Telemetry (`rullst::radar`), Tokio Runtime Latency & Prometheus Exporter (`GET /metrics`).
+- [x] **Milestone 19:** Rullst Radar Kernel Telemetry (`rullst::radar`), Tool-Calling Schema Generator for AI Agents (`rullst-ai::tools`) & Prometheus Exporter (`GET /metrics`).
 - [ ] **Milestone 20:** Zero-Copy Event Streaming & Immutable Ledger Engine (`rullst::ledger`) (`[ ] Planned for v12.1.0`).
 - [ ] **Milestone 21:** Omni-Frontend Protocol & Mobile Hyper-Media Bridge (`[ ] Planned for v12.1.0`).
-- [ ] **Milestone 22:** Agentic DevOps & Autonomous Infrastructure Provisioning (`[ ] Planned for v13.0.0`).
-- [ ] **Milestone 23:** Polymorphic Core Engine & Auto-Healing (`[ ] Planned for v13.0.0`).
+- [ ] **Milestone 22:** Agentic DevOps & Autonomous Infrastructure Provisioning (`[ ] Planned for v13.0.0`) *(Phase 1 delivered in v12.0.0 via `rullst-core::devops` telemetry tuning)*.
+- [ ] **Milestone 23:** Polymorphic Core Engine & Auto-Healing Runtime (`[ ] Planned for v13.0.0`) *(Phase 1 delivered in v12.0.0 via `rullst-orm::auto_healing` SQL schema error interceptor)*.
 
 ---
 

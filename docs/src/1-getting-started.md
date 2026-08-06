@@ -42,6 +42,8 @@ cargo rullst dev
 
 > [!TIP]
 > The `cargo rullst dev` command automatically compiles your code and spins up a local server. If you edit any `.rs` file, it will instantly recompile using Hot Reload!
+> 
+> For a detailed guide on choosing ORM patterns (Active Record vs Data Mapper vs Hybrid) and Frontend Engines (HTMX vs Leptos vs Dioxus), check out our [Architecture Choices Guide](architecture-decisions.md).
 
 
 ## 3. Rullst Blueprints Showcase

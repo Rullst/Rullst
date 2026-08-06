@@ -275,7 +275,23 @@ impl Server {
         addr: SocketAddr,
         is_dev: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut app = self.router.into_axum();
+        let mut app = self
+            .router
+            .into_axum()
+            .merge(crate::scalar::scalar_docs_router("/openapi.json"));
+
+        app = app.layer(axum::middleware::from_fn(|req: axum::extract::Request, next: axum::middleware::Next| async move {
+            let method = req.method().to_string();
+            let path = req.uri().path().to_string();
+            let start = std::time::Instant::now();
+            let res = next.run(req).await;
+            let status = res.status().as_u16();
+            let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+            if !path.starts_with("/_rullst_hmr") {
+                println!("[HTTP] {} {} -> {} ({:.2} ms)", method, path, status, elapsed);
+            }
+            res
+        }));
 
         app = app.layer(axum::Extension(app_config.security.clone()));
 
@@ -511,12 +527,22 @@ impl Service<axum::extract::Request> for HotSwapService {
                 crate::resilience::backpressure_middleware(sh.clone(), req, next)
             }));
         }
+        let method = req.method().to_string();
+        let path = req.uri().path().to_string();
+        let start = std::time::Instant::now();
         use tower::ServiceExt;
         let fut = router.oneshot(req);
         Box::pin(async move {
             let handle = tokio::spawn(async move { fut.await });
             match handle.await {
-                Ok(Ok(res)) => Ok(res),
+                Ok(Ok(res)) => {
+                    let status = res.status().as_u16();
+                    let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+                    if !path.starts_with("/_rullst_hmr") {
+                        println!("[HTTP] {} {} -> {} ({:.2} ms)", method, path, status, elapsed);
+                    }
+                    Ok(res)
+                }
                 Ok(Err(_)) => Self::handle_oneshot_error(),
                 Err(join_err) => Self::handle_panic_error(join_err).await,
             }
@@ -629,8 +655,10 @@ fn load_dylib_router(
     // Convert *mut Router back to Router box and extract it
     let rullst_router = unsafe { *Box::from_raw(router_ptr) };
 
-    // Convert Rullst Router to Axum Router
-    let mut axum_router = rullst_router.into_axum();
+    // Convert Rullst Router to Axum Router and mount built-in Scalar API docs (/docs)
+    let mut axum_router = rullst_router
+        .into_axum()
+        .merge(crate::scalar::scalar_docs_router("/openapi.json"));
 
     // Serve static files from "static" directory if it exists
     if std::path::Path::new("static").exists() {

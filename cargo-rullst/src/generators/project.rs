@@ -186,9 +186,9 @@ fn run_project_wizard(
 
     if db_needed {
         let orm_options = &[
-            "Active Record Mode (User::find(id) — Rapid CRUD & 90% of business logic)",
-            "Data Mapper / Repository (UserRepository::find() — Decoupled domain structs)",
-            "Hybrid Architecture (Active Record + Data Mapper Repository Pattern)",
+            "Active Record Mode (Recommended — User::find(id), fastest development & rapid CRUD)",
+            "Data Mapper / Repository (For Enterprise DDD — UserRepository::find(), decoupled domain structs)",
+            "Hybrid Architecture (Active Record for simple models + Repository Pattern for complex domain entities)",
         ];
         let orm_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("🏗️ Select ORM Pattern / Architecture")
@@ -204,9 +204,9 @@ fn run_project_wizard(
 
     if !api {
         let fe_options = &[
-            "Zero-Bundle HTMX + TailwindCSS (0KB JS bundle, fast HTML5 SSR — Default)",
-            "Leptos SSR Adapter (Rich reactive client-side Rust components)",
-            "Dioxus SSR Adapter (Cross-platform VDOM reactive components)",
+            "Zero-Bundle HTMX + TailwindCSS (Recommended — 0KB JS bundle, instant page loads & HTML5 SSR)",
+            "Leptos SSR Adapter (Full-stack Rust UI — React-like signals & WebAssembly interactivity)",
+            "Dioxus SSR Adapter (Cross-platform UI — React-like Virtual DOM for Web, Mobile & Desktop)",
         ];
         let fe_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("🎨 Select Frontend Engine")

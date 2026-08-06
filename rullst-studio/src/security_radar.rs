@@ -22,13 +22,15 @@ pub fn router() -> Router {
 }
 
 async fn get_radar_stats() -> Json<ThreatRadarStats> {
+    use std::sync::atomic::Ordering;
+    let store = rullst_security::SecurityStore::global();
     Json(ThreatRadarStats {
-        honeypot_traps_blocked: 142,
-        active_ip_bans: 18,
-        xss_sanitizations: 89,
-        rbac_violations_prevented: 12,
+        honeypot_traps_blocked: store.honeypot_traps_count.load(Ordering::Relaxed),
+        active_ip_bans: store.banned_ips.len(),
+        xss_sanitizations: store.sanitizations_count.load(Ordering::Relaxed),
+        rbac_violations_prevented: store.rbac_denials_count.load(Ordering::Relaxed),
         audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
-        threat_level: "ELEVATED_GUARD".to_string(),
+        threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
     })
 }
 

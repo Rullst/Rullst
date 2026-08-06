@@ -553,6 +553,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Install RullstPackage community extension",
                 ),
                 ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
+                ("cargo rullst eject", "Zero lock-in framework escape hatch to pure Axum"),
             ],
         ),
         (
@@ -573,6 +574,26 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 (
                     "cargo rullst make:island <name>",
                     "New interactive Wasm Island",
+                ),
+                (
+                    "cargo rullst make:live <Name>",
+                    "Scaffold LiveView Server-Driven UI component",
+                ),
+                (
+                    "cargo rullst make:grpc <Name>",
+                    "Scaffold gRPC microservice & Protobuf schema",
+                ),
+                (
+                    "cargo rullst make:k8s",
+                    "Generate Kubernetes manifests & health probes",
+                ),
+                (
+                    "cargo rullst make:scalar",
+                    "Scaffold interactive Scalar OpenAPI docs",
+                ),
+                (
+                    "cargo rullst make:iot <Name>",
+                    "Scaffold bare-metal IoT edge sensor node",
                 ),
                 (
                     "cargo rullst generate:models",
@@ -632,6 +653,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
         (
             "🚀  DEPLOY",
             vec![
+                (
+                    "cargo rullst deploy [--platform=...]",
+                    "1-Click PaaS deploy (Fly, Railway, Render, VPS Caddy)",
+                ),
                 ("cargo rullst dockerize", "Generate Docker files"),
                 (
                     "cargo rullst generate:buildah",

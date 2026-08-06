@@ -65,13 +65,24 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    let main_path = Path::new("src/main.rs");
-    if !main_path.exists() {
-        println!("{}", "❌ Error: File src/main.rs not found.".red());
-        std::process::exit(1);
+    let mut main_content = String::new();
+    if Path::new("src/main.rs").exists() {
+        if let Ok(c) = fs::read_to_string("src/main.rs") {
+            main_content.push_str(&c);
+            main_content.push('\n');
+        }
+    }
+    if Path::new("src/lib.rs").exists() {
+        if let Ok(c) = fs::read_to_string("src/lib.rs") {
+            main_content.push_str(&c);
+            main_content.push('\n');
+        }
     }
 
-    let main_content = fs::read_to_string(main_path)?;
+    if main_content.is_empty() {
+        println!("{}", "❌ Error: Neither src/main.rs nor src/lib.rs found.".red());
+        std::process::exit(1);
+    }
 
     // Parses Axum get/post/put/delete routing patterns
     let route_regex = regex::Regex::new(
@@ -100,13 +111,20 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             .join("/");
 
         let description = extract_description_from_handler(&handler_path)
-            .unwrap_or_else(|| format!("Ação '{}' executada pelo handler.", handler_path));
+            .unwrap_or_else(|| format!("Action '{}' executed by handler.", handler_path));
 
         let mut parameters = serde_json::json!([]);
         for segment in path.split('/') {
-            if segment.starts_with(':') {
+            let param_name = if segment.starts_with(':') {
+                Some(&segment[1..])
+            } else if segment.starts_with('{') && segment.ends_with('}') && segment.len() > 2 {
+                Some(&segment[1..segment.len() - 1])
+            } else {
+                None
+            };
+            if let Some(p) = param_name {
                 parameters.as_array_mut().unwrap().push(serde_json::json!({
-                    "name": &segment[1..],
+                    "name": p,
                     "in": "path",
                     "required": true,
                     "schema": {
@@ -141,7 +159,7 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     let openapi = serde_json::json!({
         "openapi": "3.0.0",
         "info": {
-            "title": "Especificação da API Rullst",
+            "title": "Rullst API Specification",
             "description": "Specification automatically generated via the cargo-rullst static analyzer.",
             "version": "1.0.0"
         },

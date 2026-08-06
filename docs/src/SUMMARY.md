@@ -5,6 +5,7 @@
 
 # Core Features
 - [📖 Getting Started & Blueprints Showcase](1-getting-started.md)
+- [🏗️ Architecture Choices: ORM & Frontend](architecture-decisions.md)
 - [🤖 Rullst AI: Developing with Autonomous Agents](2-rullst-ai.md)
 - [📊 Rullst Studio: Real-Time Monitoring](3-rullst-studio.md)
 - [⚙️ Rullst Nexus: Your Instant CMS](4-rullst-nexus.md)

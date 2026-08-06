@@ -18,6 +18,7 @@ rullst-core = { version = "12.0.0", path = "../rullst-core" }
 rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
 rullst-capital = { version = "12.0.0", path = "../rullst-capital" }
 rullst-macros = { version = "12.0.0", path = "../rullst-macros" }
+rullst-security = { version = "12.0.0", path = "../rullst-security" }
 
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }

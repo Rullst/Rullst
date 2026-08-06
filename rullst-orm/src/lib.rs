@@ -1,5 +1,8 @@
 pub use sqlx;
 
+/// Auto-Healing Database Migrations & SQL Interceptor (Milestone 21).
+pub mod auto_healing;
+
 #[cfg(not(any(
     feature = "strict-postgres",
     feature = "strict-mysql",

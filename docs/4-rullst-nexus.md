@@ -44,3 +44,7 @@ let router = router.nest_axum("/nexus", nexus);
 3. **Highly Customizable:** The `hidden` and `readonly` flags in `FieldMeta` ensure you control exactly what the administrative team can see and modify.
 
 To access it, open your browser at the `/nexus` route on your app.
+
+## 🛡️ Threat Radar SOC & Security Monitoring
+
+Rullst Nexus includes an integrated **Threat Radar SOC Dashboard** at `/nexus/security`. For a detailed guide on honeypot traps, active WAF IP bans, RASP rules, and HMAC audit streams, refer to [Threat Radar & Security SOC Guide](threat-radar-soc-guide.md).

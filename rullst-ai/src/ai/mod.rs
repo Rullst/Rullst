@@ -5,6 +5,10 @@ use std::sync::Arc;
 pub mod providers;
 /// RAG prompt building utilities.
 pub mod rag;
+/// Function Calling & Tool-Calling schema generator for AI Agents (Milestone 19).
+pub mod tools;
+
+pub use tools::*;
 
 #[derive(Debug)]
 /// Errors that can occur when calling AI APIs or processing models.

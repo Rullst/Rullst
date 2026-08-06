@@ -20,11 +20,27 @@ impl Default for HoneypotState {
     fn default() -> Self {
         Self::new(vec![
             "/.env".to_string(),
+            "/.env.local".to_string(),
+            "/.env.production".to_string(),
             "/.git/config".to_string(),
+            "/.aws/credentials".to_string(),
+            "/.vscode/sftp.json".to_string(),
+            "/.ds_store".to_string(),
             "/admin.php".to_string(),
             "/wp-login.php".to_string(),
-            "/phpmyadmin".to_string(),
+            "/wp-admin/".to_string(),
+            "/phpmyadmin/".to_string(),
             "/config.json".to_string(),
+            "/setup.php".to_string(),
+            "/xmlrpc.php".to_string(),
+            "/actuator/health".to_string(),
+            "/console".to_string(),
+            "/api/v1/debug".to_string(),
+            "/swagger-ui.html".to_string(),
+            "/database.sqlite".to_string(),
+            "/backup.sql".to_string(),
+            "/server-status".to_string(),
+            "/docker-compose.yml".to_string(),
         ])
     }
 }
@@ -124,7 +140,8 @@ where
         let path = req.uri().path().to_string();
         if self.state.is_trap(&path) {
             tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, "Honeypot trap triggered. Banning IP.");
-            self.state.ban_ip(client_ip);
+            self.state.ban_ip(client_ip.clone());
+            crate::telemetry::SecurityStore::global().record_honeypot_trap(&client_ip, &path);
             let res = (
                 StatusCode::FORBIDDEN,
                 "Access Denied: Honeypot Trap Triggered",

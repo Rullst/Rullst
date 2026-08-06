@@ -8,6 +8,8 @@
 - [🤖 Rullst AI: Developing with Autonomous Agents](2-rullst-ai.md)
 - [📊 Rullst Studio: Real-Time Monitoring](3-rullst-studio.md)
 - [⚙️ Rullst Nexus: Your Instant CMS](4-rullst-nexus.md)
+- [🛡️ Threat Radar & Security SOC Guide](threat-radar-soc-guide.md)
+- [⚡ Telemetry & Observability Guide](telemetry-guide.md)
 - [💳 Rullst Capital: SaaS Billing Made Easy](5-rullst-capital.md)
 - [🧠 Integrating AI into Rullst](6-ai-integration-tutorial.md)
 

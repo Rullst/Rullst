@@ -32,6 +32,34 @@ struct App {
     db_provider: String,
 }
 
+fn open_browser_url(url: &str) {
+    let url_str = url.to_string();
+    std::thread::spawn(move || {
+        #[cfg(target_os = "windows")]
+        let _ = std::process::Command::new("cmd")
+            .arg("/c")
+            .arg("start")
+            .arg(&url_str)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+
+        #[cfg(target_os = "macos")]
+        let _ = std::process::Command::new("open")
+            .arg(&url_str)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+
+        #[cfg(target_os = "linux")]
+        let _ = std::process::Command::new("xdg-open")
+            .arg(&url_str)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+    });
+}
+
 fn detect_db_provider() -> String {
     if let Ok(env_str) = std::fs::read_to_string(".env") {
         for line in env_str.lines() {
@@ -144,12 +172,44 @@ pub async fn run(
                         KeyCode::Char('o') => {
                             app.sys_logs.push("🌐 Launching application in browser...".to_string());
                             let url = format!("http://127.0.0.1:{}", app.port);
-                            #[cfg(target_os = "windows")]
-                            let _ = std::process::Command::new("cmd").arg("/c").arg("start").arg(&url).spawn();
-                            #[cfg(target_os = "macos")]
-                            let _ = std::process::Command::new("open").arg(&url).spawn();
-                            #[cfg(target_os = "linux")]
-                            let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+                            open_browser_url(&url);
+                        }
+                        KeyCode::Char('s') => {
+                            app.sys_logs.push("📊 Launching Rullst Studio service in background...".to_string());
+                            let cargo_cmd = std::env::args().next().unwrap_or_default();
+                            let _ = std::process::Command::new(cargo_cmd)
+                                .arg("studio")
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .spawn();
+                            app.sys_logs.push("🌐 Opening http://127.0.0.1:5555 in 1.5s...".to_string());
+                            std::thread::spawn(move || {
+                                std::thread::sleep(std::time::Duration::from_millis(1500));
+                                open_browser_url("http://127.0.0.1:5555");
+                            });
+                        }
+                        KeyCode::Char('d') => {
+                            let openapi_path = std::path::Path::new("openapi.json");
+                            if !openapi_path.exists() {
+                                app.sys_logs.push("⚙️ Auto-generating openapi.json specification...".to_string());
+                                if let Err(e) = crate::generators::openapi::generate_openapi_spec() {
+                                    app.sys_logs.push(format!("⚠️ Failed to generate openapi.json: {}", e));
+                                } else {
+                                    app.sys_logs.push("✅ openapi.json generated successfully!".to_string());
+                                }
+                            }
+                            let docs_path = std::path::Path::new("src/controllers/docs_controller.rs");
+                            if !docs_path.exists() {
+                                app.sys_logs.push("⚙️ Auto-scaffolding Scalar API Docs (src/controllers/docs_controller.rs)...".to_string());
+                                if let Err(e) = crate::generators::scalar::generate_scalar_docs() {
+                                    app.sys_logs.push(format!("⚠️ Failed to scaffold docs: {}", e));
+                                } else {
+                                    app.sys_logs.push("✅ Scalar API Docs generated successfully!".to_string());
+                                }
+                            }
+                            app.sys_logs.push("📜 Opening Scalar API Docs (/docs)...".to_string());
+                            let url = format!("http://127.0.0.1:{}/docs", app.port);
+                            open_browser_url(&url);
                         }
                         KeyCode::Char('m') => {
                             app.sys_logs.push("⏳ Running db:migrate...".to_string());
@@ -363,6 +423,16 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
             Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)),
             Span::styled(&app.db_provider, Style::default().fg(Color::Yellow)),
         ]),
+        Line::from(vec![
+            Span::styled("  🔑 Nexus CMS:", Style::default().fg(Color::DarkGray)),
+            Span::styled(" admin / password", Style::default().fg(Color::Cyan)),
+            Span::styled(format!(" (http://127.0.0.1:{}/nexus)", app.port), Style::default().fg(Color::DarkGray)),
+        ]),
+        Line::from(vec![
+            Span::styled("  🛡️ Studio Guard:", Style::default().fg(Color::DarkGray)),
+            Span::styled(" Loopback 127.0.0.1:5555", Style::default().fg(Color::Green)),
+            Span::styled(" (Press [s])", Style::default().fg(Color::DarkGray)),
+        ]),
         Line::from(vec![Span::raw("")]),
         Line::from(vec![
             Span::styled(
@@ -396,28 +466,35 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Open in Browser  │  "),
+        Span::raw(" Open App  │  "),
+        Span::styled(
+            "[s]",
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" DB Studio  │  "),
+        Span::styled(
+            "[d]",
+            Style::default()
+                .fg(Color::Blue)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" API Docs  │  "),
         Span::styled(
             "[m]",
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Run db:migrate  │  "),
+        Span::raw(" Migrate  │  "),
         Span::styled(
             "[c]",
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Clear Logs  │  "),
-        Span::styled(
-            "[↑/↓]",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" Scroll  │  "),
+        Span::raw(" Clear  │  "),
         Span::styled(
             "[q/Esc]",
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),

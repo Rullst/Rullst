@@ -24,6 +24,9 @@ pub mod client;
 /// Compile-Time Zero-Cost Dependency Injection Container.
 pub mod di;
 #[cfg(not(target_arch = "wasm32"))]
+/// Agentic DevOps Engine & Infrastructure Tuning (Milestone 20).
+pub mod devops;
+#[cfg(not(target_arch = "wasm32"))]
 /// HTML visual logging and runtime console for development mode.
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]
