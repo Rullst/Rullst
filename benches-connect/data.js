@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785967940691,
+  "lastUpdate": 1785994014062,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1139,6 +1139,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 74,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c73d7fa3106142f71130c26dc637ed46935ae1bc",
+          "message": "feat: implement nexus ai chat system with schema-aware query generation and llm configuration guide",
+          "timestamp": "2026-08-06T02:17:42-03:00",
+          "tree_id": "7e8a5714c00359ce9a2ccd626e61231c1324268c",
+          "url": "https://github.com/Rullst/Rullst/commit/c73d7fa3106142f71130c26dc637ed46935ae1bc"
+        },
+        "date": 1785994013600,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 75,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
