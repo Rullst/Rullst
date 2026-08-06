@@ -115,7 +115,10 @@ mod tests {
                 required: true,
             }]
         }
-        fn execute(&self, payload: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        fn execute(
+            &self,
+            payload: Value,
+        ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
             Ok(payload)
         }
     }

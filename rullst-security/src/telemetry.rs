@@ -1,7 +1,7 @@
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
-use dashmap::DashMap;
 
 static GLOBAL_SECURITY_STORE: OnceLock<SecurityStore> = OnceLock::new();
 
@@ -125,7 +125,8 @@ impl SecurityStore {
     }
 
     pub fn record_prompt_injection_blocked(&self, ip: &str, prompt_snippet: &str) {
-        self.prompt_injections_blocked_count.fetch_add(1, Ordering::Relaxed);
+        self.prompt_injections_blocked_count
+            .fetch_add(1, Ordering::Relaxed);
         self.prompts_inspected_count.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut events) = self.live_events.lock() {
             events.insert(
@@ -149,7 +150,8 @@ impl SecurityStore {
     }
 
     pub fn record_pii_masked(&self, count: usize) {
-        self.pii_masked_count.fetch_add(count as u64, Ordering::Relaxed);
+        self.pii_masked_count
+            .fetch_add(count as u64, Ordering::Relaxed);
     }
 
     pub fn record_rbac_denial(&self, actor: &str, resource: &str) {
@@ -196,11 +198,11 @@ fn current_timestamp_str() -> String {
 pub fn get_real_rss_memory_mb() -> f64 {
     if let Ok(statm) = std::fs::read_to_string("/proc/self/statm") {
         let parts: Vec<&str> = statm.split_whitespace().collect();
-        if parts.len() >= 2 {
-            if let Ok(pages) = parts[1].parse::<u64>() {
-                let bytes = pages * 4096;
-                return (bytes as f64) / (1024.0 * 1024.0);
-            }
+        if parts.len() >= 2
+            && let Ok(pages) = parts[1].parse::<u64>()
+        {
+            let bytes = pages * 4096;
+            return (bytes as f64) / (1024.0 * 1024.0);
         }
     }
     14.2

@@ -21,11 +21,11 @@ pub mod cache;
 /// Edge client components rendering module.
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
-/// Compile-Time Zero-Cost Dependency Injection Container.
-pub mod di;
-#[cfg(not(target_arch = "wasm32"))]
 /// Agentic DevOps Engine & Infrastructure Tuning (Milestone 20).
 pub mod devops;
+#[cfg(not(target_arch = "wasm32"))]
+/// Compile-Time Zero-Cost Dependency Injection Container.
+pub mod di;
 #[cfg(not(target_arch = "wasm32"))]
 /// HTML visual logging and runtime console for development mode.
 pub mod error_console;

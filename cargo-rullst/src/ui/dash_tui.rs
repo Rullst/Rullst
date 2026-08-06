@@ -426,11 +426,17 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         Line::from(vec![
             Span::styled("  🔑 Nexus CMS:", Style::default().fg(Color::DarkGray)),
             Span::styled(" admin / password", Style::default().fg(Color::Cyan)),
-            Span::styled(format!(" (http://127.0.0.1:{}/nexus)", app.port), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!(" (http://127.0.0.1:{}/nexus)", app.port),
+                Style::default().fg(Color::DarkGray),
+            ),
         ]),
         Line::from(vec![
             Span::styled("  🛡️ Studio Guard:", Style::default().fg(Color::DarkGray)),
-            Span::styled(" Loopback 127.0.0.1:5555", Style::default().fg(Color::Green)),
+            Span::styled(
+                " Loopback 127.0.0.1:5555",
+                Style::default().fg(Color::Green),
+            ),
             Span::styled(" (Press [s])", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![Span::raw("")]),

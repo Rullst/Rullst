@@ -3,7 +3,7 @@
 
 use axum::{
     Router,
-    response::{Html, Json, IntoResponse},
+    response::{Html, IntoResponse, Json},
     routing::get,
 };
 use serde_json::json;
@@ -54,13 +54,15 @@ pub fn scalar_docs_router(openapi_url: &'static str) -> Router {
     let html_content = render_scalar_html(openapi_url);
     Router::new()
         .route("/docs", get(move || async move { Html(html_content) }))
-        .route("/openapi.json", get(|| async move {
-            if let Ok(content) = std::fs::read_to_string("openapi.json") {
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
-                    return Json(parsed).into_response();
+        .route(
+            "/openapi.json",
+            get(|| async move {
+                if let Ok(content) = std::fs::read_to_string("openapi.json") {
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+                        return Json(parsed).into_response();
+                    }
                 }
-            }
-            Json(json!({
+                Json(json!({
                 "openapi": "3.0.0",
                 "info": {
                     "title": "Rullst Application API",
@@ -69,7 +71,8 @@ pub fn scalar_docs_router(openapi_url: &'static str) -> Router {
                 },
                 "paths": {}
             })).into_response()
-        }))
+            }),
+        )
 }
 
 #[cfg(test)]

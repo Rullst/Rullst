@@ -18,9 +18,21 @@ pub fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String 
         );
     }
     out.push_str("<div class=\"nexus-nav-divider\"></div>");
-    let ai_active = if active_table == Some("chat") { " nexus-nav-active" } else { "" };
-    let sec_active = if active_table == Some("security") { " nexus-nav-active" } else { "" };
-    let tel_active = if active_table == Some("telemetry") { " nexus-nav-active" } else { "" };
+    let ai_active = if active_table == Some("chat") {
+        " nexus-nav-active"
+    } else {
+        ""
+    };
+    let sec_active = if active_table == Some("security") {
+        " nexus-nav-active"
+    } else {
+        ""
+    };
+    let tel_active = if active_table == Some("telemetry") {
+        " nexus-nav-active"
+    } else {
+        ""
+    };
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!(

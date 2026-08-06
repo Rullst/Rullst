@@ -60,7 +60,8 @@ impl DevOpsAgent {
 
         // 3. Analyze SQLx Database Connection Pool Saturation
         if db_pool_max_connections > 0 {
-            let pool_utilization = db_pool_active_connections as f64 / db_pool_max_connections as f64;
+            let pool_utilization =
+                db_pool_active_connections as f64 / db_pool_max_connections as f64;
             if pool_utilization > 0.85 {
                 recommendations.push(InfrastructureRecommendation {
                     metric_name: "db_pool_utilization".to_string(),

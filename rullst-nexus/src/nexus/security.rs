@@ -2,9 +2,9 @@ use axum::{extract::State, response::Html};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
-use crate::nexus::ai_chat::detect_ai_provider;
 
 /// GET /nexus/security — Visual Threat Radar (SOC) with 100% Real Live Security Telemetry.
 #[cfg_attr(mutants, mutants::skip)]
@@ -14,7 +14,10 @@ pub async fn nexus_security_page(
 ) -> Html<String> {
     let (ai_active, provider_name) = detect_ai_provider();
     let ai_status_badge = if ai_active {
-        format!("<span class=\"nexus-badge\" style=\"background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);\">Active: {}</span>", provider_name)
+        format!(
+            "<span class=\"nexus-badge\" style=\"background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);\">Active: {}</span>",
+            provider_name
+        )
     } else {
         "<span class=\"nexus-badge\" style=\"background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4);\">Offline / Embedded Intelligence</span>".to_string()
     };
@@ -22,7 +25,9 @@ pub async fn nexus_security_page(
     let store = rullst_security::SecurityStore::global();
     let honeypots_count = store.honeypot_traps_count.load(Ordering::Relaxed);
     let active_bans_count = store.banned_ips.len();
-    let prompt_injections_count = store.prompt_injections_blocked_count.load(Ordering::Relaxed);
+    let prompt_injections_count = store
+        .prompt_injections_blocked_count
+        .load(Ordering::Relaxed);
     let sanitizations_count = store.sanitizations_count.load(Ordering::Relaxed);
     let prompts_inspected = store.prompts_inspected_count.load(Ordering::Relaxed);
     let pii_masked = store.pii_masked_count.load(Ordering::Relaxed);
@@ -52,12 +57,28 @@ pub async fn nexus_security_page(
     let mut honeypot_routes_html = String::new();
     if store.honeypot_route_hits.is_empty() {
         let default_traps = vec![
-            "/.env", "/.env.local", "/.env.production", "/.git/config",
-            "/.aws/credentials", "/.vscode/sftp.json", "/.ds_store", "/admin.php",
-            "/wp-login.php", "/wp-admin/", "/phpmyadmin/", "/config.json",
-            "/setup.php", "/xmlrpc.php", "/actuator/health", "/console",
-            "/api/v1/debug", "/swagger-ui.html", "/database.sqlite", "/backup.sql",
-            "/server-status", "/docker-compose.yml",
+            "/.env",
+            "/.env.local",
+            "/.env.production",
+            "/.git/config",
+            "/.aws/credentials",
+            "/.vscode/sftp.json",
+            "/.ds_store",
+            "/admin.php",
+            "/wp-login.php",
+            "/wp-admin/",
+            "/phpmyadmin/",
+            "/config.json",
+            "/setup.php",
+            "/xmlrpc.php",
+            "/actuator/health",
+            "/console",
+            "/api/v1/debug",
+            "/swagger-ui.html",
+            "/database.sqlite",
+            "/backup.sql",
+            "/server-status",
+            "/docker-compose.yml",
         ];
         for trap in default_traps {
             honeypot_routes_html.push_str(&format!(
@@ -119,7 +140,8 @@ pub async fn nexus_security_page(
         }
     }
 
-    let content = format!(r#"
+    let content = format!(
+        r#"
 <div class="nexus-card" style="display: flex; flex-direction: column; gap: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
         <div>
@@ -205,7 +227,8 @@ pub async fn nexus_security_page(
         </div>
     </div>
 </div>
-"#);
+"#
+    );
 
     if headers.contains_key("hx-request") {
         Html(content)

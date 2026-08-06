@@ -280,18 +280,23 @@ impl Server {
             .into_axum()
             .merge(crate::scalar::scalar_docs_router("/openapi.json"));
 
-        app = app.layer(axum::middleware::from_fn(|req: axum::extract::Request, next: axum::middleware::Next| async move {
-            let method = req.method().to_string();
-            let path = req.uri().path().to_string();
-            let start = std::time::Instant::now();
-            let res = next.run(req).await;
-            let status = res.status().as_u16();
-            let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-            if !path.starts_with("/_rullst_hmr") {
-                println!("[HTTP] {} {} -> {} ({:.2} ms)", method, path, status, elapsed);
-            }
-            res
-        }));
+        app = app.layer(axum::middleware::from_fn(
+            |req: axum::extract::Request, next: axum::middleware::Next| async move {
+                let method = req.method().to_string();
+                let path = req.uri().path().to_string();
+                let start = std::time::Instant::now();
+                let res = next.run(req).await;
+                let status = res.status().as_u16();
+                let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+                if !path.starts_with("/_rullst_hmr") {
+                    println!(
+                        "[HTTP] {} {} -> {} ({:.2} ms)",
+                        method, path, status, elapsed
+                    );
+                }
+                res
+            },
+        ));
 
         app = app.layer(axum::Extension(app_config.security.clone()));
 
@@ -539,7 +544,10 @@ impl Service<axum::extract::Request> for HotSwapService {
                     let status = res.status().as_u16();
                     let elapsed = start.elapsed().as_secs_f64() * 1000.0;
                     if !path.starts_with("/_rullst_hmr") {
-                        println!("[HTTP] {} {} -> {} ({:.2} ms)", method, path, status, elapsed);
+                        println!(
+                            "[HTTP] {} {} -> {} ({:.2} ms)",
+                            method, path, status, elapsed
+                        );
                     }
                     Ok(res)
                 }

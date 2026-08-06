@@ -1,9 +1,9 @@
 use axum::{extract::State, response::Html};
 use std::sync::Arc;
 
+use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
-use crate::nexus::ai_chat::detect_ai_provider;
 
 /// GET /nexus/telemetry — Microsecond Telemetry & Async Spans in Rullst Nexus.
 #[cfg_attr(mutants, mutants::skip)]
@@ -13,9 +13,15 @@ pub async fn nexus_telemetry_page(
 ) -> Html<String> {
     let (ai_active, provider_name) = detect_ai_provider();
     let (ai_metric_val, ai_metric_sub) = if ai_active {
-        ("~410 ms".to_string(), format!("Active Provider: {}", provider_name))
+        (
+            "~410 ms".to_string(),
+            format!("Active Provider: {}", provider_name),
+        )
     } else {
-        ("N/A".to_string(), "Configure any LLM API key or Ollama in .env".to_string())
+        (
+            "N/A".to_string(),
+            "Configure any LLM API key or Ollama in .env".to_string(),
+        )
     };
 
     let real_rss_ram_mb = rullst_security::get_real_rss_memory_mb();

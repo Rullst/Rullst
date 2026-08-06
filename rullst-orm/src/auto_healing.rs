@@ -23,9 +23,15 @@ impl SchemaErrorInterceptor {
         let err_lower = error_message.to_lowercase();
 
         // 1. Detect missing column error (e.g., Postgres: column "phone" of relation "users" does not exist)
-        if err_lower.contains("column") && (err_lower.contains("does not exist") || err_lower.contains("no such column")) {
-            let col_name = self.extract_quoted_name(&err_lower, "column").unwrap_or_else(|| "missing_column".to_string());
-            let table_name = self.extract_quoted_name(&err_lower, "relation").unwrap_or_else(|| "target_table".to_string());
+        if err_lower.contains("column")
+            && (err_lower.contains("does not exist") || err_lower.contains("no such column"))
+        {
+            let col_name = self
+                .extract_quoted_name(&err_lower, "column")
+                .unwrap_or_else(|| "missing_column".to_string());
+            let table_name = self
+                .extract_quoted_name(&err_lower, "relation")
+                .unwrap_or_else(|| "target_table".to_string());
 
             return Some(SuggestedMigration {
                 name: format!("add_{}_to_{}", col_name, table_name),
@@ -37,7 +43,8 @@ impl SchemaErrorInterceptor {
 
         // 2. Detect missing table error (e.g., relation "orders" does not exist or no such table: orders)
         if err_lower.contains("relation") || err_lower.contains("no such table") {
-            let table_name = self.extract_quoted_name(&err_lower, "relation")
+            let table_name = self
+                .extract_quoted_name(&err_lower, "relation")
                 .or_else(|| self.extract_quoted_name(&err_lower, "table"))
                 .unwrap_or_else(|| "missing_table".to_string());
 
@@ -83,7 +90,10 @@ mod tests {
         assert!(migration.is_some());
         let m = migration.unwrap();
         assert_eq!(m.target_table, "users");
-        assert!(m.sql_statement.contains("ALTER TABLE users ADD COLUMN phone TEXT;"));
+        assert!(
+            m.sql_statement
+                .contains("ALTER TABLE users ADD COLUMN phone TEXT;")
+        );
     }
 
     #[test]

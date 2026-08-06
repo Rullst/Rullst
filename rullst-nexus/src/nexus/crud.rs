@@ -112,7 +112,12 @@ pub fn build_table_query(
         let text_fields: Vec<String> = entry
             .fields
             .iter()
-            .filter(|f| matches!(f.kind, FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url))
+            .filter(|f| {
+                matches!(
+                    f.kind,
+                    FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
+                )
+            })
             .map(|f| sanitize_identifier(f.name))
             .collect();
 
@@ -412,7 +417,10 @@ pub async fn render_record_form(
         if let Some(pool) = rullst_core::db::safe_pool() {
             let clean_table = sanitize_identifier(t);
             let clean_pk = sanitize_identifier(pk);
-            let sql = format!("SELECT * FROM {} WHERE {} = ? LIMIT 1", clean_table, clean_pk);
+            let sql = format!(
+                "SELECT * FROM {} WHERE {} = ? LIMIT 1",
+                clean_table, clean_pk
+            );
             rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
                 .bind(id)
                 .fetch_optional(pool)
@@ -937,20 +945,16 @@ pub async fn nexus_batch_action(
     }
     let placeholders_str = placeholders.join(",");
 
-    match form.action.as_str() {
-        "delete" => {
-            let sql = format!(
-                "DELETE FROM {} WHERE {} IN ({})",
-                clean_table, clean_pk, placeholders_str
-            );
-            let mut query =
-                rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-            for id in &form.selected_ids {
-                query = query.bind(id);
-            }
-            let _ = query.execute(pool).await;
+    if form.action.as_str() == "delete" {
+        let sql = format!(
+            "DELETE FROM {} WHERE {} IN ({})",
+            clean_table, clean_pk, placeholders_str
+        );
+        let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+        for id in &form.selected_ids {
+            query = query.bind(id);
         }
-        _ => {}
+        let _ = query.execute(pool).await;
     }
 
     axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response()

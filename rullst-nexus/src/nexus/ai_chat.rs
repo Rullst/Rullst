@@ -2,8 +2,8 @@ use axum::{extract::State, response::Html};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::nexus::types::NexusState;
 use crate::nexus::crud::field_kind_label;
+use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
 
 #[derive(Deserialize, Serialize)]

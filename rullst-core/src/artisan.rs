@@ -235,9 +235,17 @@ fn is_ai_configured() -> bool {
 async fn studio_security_handler() -> axum::response::Html<String> {
     let ai_active = is_ai_configured();
     let (ai_card_status, ai_card_color, ai_subtext) = if ai_active {
-        ("ENFORCED", "text-cyan-400", "Prompt Injection & Data Sanitizer Active")
+        (
+            "ENFORCED",
+            "text-cyan-400",
+            "Prompt Injection & Data Sanitizer Active",
+        )
     } else {
-        ("NOT CONFIGURED", "text-amber-400", "Missing GEMINI_API_KEY or OPENAI_API_KEY in .env")
+        (
+            "NOT CONFIGURED",
+            "text-amber-400",
+            "Missing GEMINI_API_KEY or OPENAI_API_KEY in .env",
+        )
     };
 
     let ai_filter_status = if ai_active {

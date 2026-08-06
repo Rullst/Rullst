@@ -13,8 +13,8 @@ pub use types::*;
 pub use ui::*;
 
 use axum::{
-    routing::{delete, get, post, put},
     Router as AxumRouter,
+    routing::{delete, get, post, put},
 };
 use std::sync::Arc;
 

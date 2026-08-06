@@ -80,7 +80,10 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if main_content.is_empty() {
-        println!("{}", "❌ Error: Neither src/main.rs nor src/lib.rs found.".red());
+        println!(
+            "{}",
+            "❌ Error: Neither src/main.rs nor src/lib.rs found.".red()
+        );
         std::process::exit(1);
     }
 

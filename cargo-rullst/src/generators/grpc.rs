@@ -74,7 +74,7 @@ message HelloResponse {{
         )
         .replace("____", ""),
     );
-    code.push_str(&"use proto::{HelloRequest, HelloResponse};\n\n".to_string());
+    code.push_str("use proto::{HelloRequest, HelloResponse};\n\n");
     code.push_str("#[derive(Debug, Default)]\n");
     code.push_str(&format!("pub struct {}ServiceImpl;\n\n", service_name));
     code.push_str("#[tonic::async_trait]\n");

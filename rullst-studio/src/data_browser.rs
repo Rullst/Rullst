@@ -293,12 +293,15 @@ fn resolve_driver_display_name() -> String {
             }
         }
     }
-    rullst_core::db::safe_driver().unwrap_or("sqlite").to_uppercase()
+    rullst_core::db::safe_driver()
+        .unwrap_or("sqlite")
+        .to_uppercase()
 }
 
 fn render_sidebar_oob(tables: &[String], active_table: Option<&str>) -> String {
     if tables.is_empty() {
-        return r#"<aside id="studio-sidebar" hx-swap-oob="outerHTML" class="hidden"></aside>"#.to_string();
+        return r#"<aside id="studio-sidebar" hx-swap-oob="outerHTML" class="hidden"></aside>"#
+            .to_string();
     }
 
     let mut sidebar_links = String::new();
@@ -484,7 +487,8 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         );
     }
 
-    let mut dash_content_str = String::from(r##"<div class="p-8 font-mono space-y-8 max-w-7xl mx-auto overflow-y-auto">
+    let mut dash_content_str = String::from(
+        r##"<div class="p-8 font-mono space-y-8 max-w-7xl mx-auto overflow-y-auto">
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div class="flex items-center gap-4">
@@ -513,7 +517,8 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                 <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Database Engine</div>
-                <div class="text-2xl font-bold text-sky-400 mt-1 uppercase">"##);
+                <div class="text-2xl font-bold text-sky-400 mt-1 uppercase">"##,
+    );
     dash_content_str.push_str(&driver_name);
     dash_content_str.push_str(r##"</div>
                 <div class="text-xs text-slate-400 mt-2">SQLx Async Zero-Lock Pool</div>
@@ -592,12 +597,18 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         <div>
             <h2 class="text-lg font-bold text-slate-200 mb-4">🗄️ Inspect Schema Tables ("##);
     let _ = write!(dash_content_str, "{})</h2>", tables_count);
-    dash_content_str.push_str(r##"<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">"##);
+    dash_content_str
+        .push_str(r##"<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">"##);
     dash_content_str.push_str(&table_badges_html);
     dash_content_str.push_str("</div></div></div>");
 
     if is_htmx {
-        Html(format!("{}{}", dash_content_str, render_sidebar_oob(&[], None))).into_response()
+        Html(format!(
+            "{}{}",
+            dash_content_str,
+            render_sidebar_oob(&[], None)
+        ))
+        .into_response()
     } else {
         Html(studio_layout(dash_content_str, None, &[])).into_response()
     }
@@ -866,7 +877,12 @@ pub async fn handle_table(
     };
 
     if is_htmx {
-        Html(format!("{}{}", table_main_html, render_sidebar_oob(&tables, Some(&table_name)))).into_response()
+        Html(format!(
+            "{}{}",
+            table_main_html,
+            render_sidebar_oob(&tables, Some(&table_name))
+        ))
+        .into_response()
     } else {
         Html(studio_layout(table_main_html, Some(&table_name), &tables)).into_response()
     }
@@ -894,23 +910,35 @@ pub async fn handle_studio_tools_ai(headers: axum::http::HeaderMap) -> impl Into
 }
 
 fn detect_ai_provider() -> (bool, String) {
-    if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-        if !key.trim().is_empty() { return (true, "Google Gemini API".to_string()); }
+    if let Ok(key) = std::env::var("GEMINI_API_KEY")
+        && !key.trim().is_empty()
+    {
+        return (true, "Google Gemini API".to_string());
     }
-    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-        if !key.trim().is_empty() { return (true, "OpenAI (ChatGPT / GPT-4o)".to_string()); }
+    if let Ok(key) = std::env::var("OPENAI_API_KEY")
+        && !key.trim().is_empty()
+    {
+        return (true, "OpenAI (ChatGPT / GPT-4o)".to_string());
     }
-    if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-        if !key.trim().is_empty() { return (true, "Anthropic Claude".to_string()); }
+    if let Ok(key) = std::env::var("ANTHROPIC_API_KEY")
+        && !key.trim().is_empty()
+    {
+        return (true, "Anthropic Claude".to_string());
     }
-    if let Ok(key) = std::env::var("DEEPSEEK_API_KEY") {
-        if !key.trim().is_empty() { return (true, "DeepSeek / Qwen / Moonshot".to_string()); }
+    if let Ok(key) = std::env::var("DEEPSEEK_API_KEY")
+        && !key.trim().is_empty()
+    {
+        return (true, "DeepSeek / Qwen / Moonshot".to_string());
     }
-    if let Ok(key) = std::env::var("GROQ_API_KEY") {
-        if !key.trim().is_empty() { return (true, "Groq Llama 3".to_string()); }
+    if let Ok(key) = std::env::var("GROQ_API_KEY")
+        && !key.trim().is_empty()
+    {
+        return (true, "Groq Llama 3".to_string());
     }
-    if let Ok(host) = std::env::var("OLLAMA_HOST") {
-        if !host.trim().is_empty() { return (true, "Local Ollama (Offline)".to_string()); }
+    if let Ok(host) = std::env::var("OLLAMA_HOST")
+        && !host.trim().is_empty()
+    {
+        return (true, "Local Ollama (Offline)".to_string());
     }
     (false, "No AI Provider Configured".to_string())
 }
@@ -919,9 +947,17 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
     let is_htmx = headers.contains_key("hx-request");
     let (ai_active, provider_name) = detect_ai_provider();
     let (ai_card_status, ai_card_color, ai_subtext) = if ai_active {
-        ("ENFORCED".to_string(), "text-cyan-400", format!("Active Provider: {}", provider_name))
+        (
+            "ENFORCED".to_string(),
+            "text-cyan-400",
+            format!("Active Provider: {}", provider_name),
+        )
     } else {
-        ("NOT CONFIGURED".to_string(), "text-amber-400", "No AI API key or Local Ollama detected".to_string())
+        (
+            "NOT CONFIGURED".to_string(),
+            "text-amber-400",
+            "No AI API key or Local Ollama detected".to_string(),
+        )
     };
 
     let ai_filter_status = if ai_active {
@@ -1061,9 +1097,15 @@ pub async fn handle_studio_tools_telemetry(headers: axum::http::HeaderMap) -> im
     let is_htmx = headers.contains_key("hx-request");
     let (ai_active, provider_name) = detect_ai_provider();
     let (ai_metric_val, ai_metric_sub) = if ai_active {
-        ("~410 ms".to_string(), format!("Active Provider: {}", provider_name))
+        (
+            "~410 ms".to_string(),
+            format!("Active Provider: {}", provider_name),
+        )
     } else {
-        ("N/A".to_string(), "Configure any LLM API key in .env to track AI spans".to_string())
+        (
+            "N/A".to_string(),
+            "Configure any LLM API key in .env to track AI spans".to_string(),
+        )
     };
 
     let ai_span_row = if ai_active {
