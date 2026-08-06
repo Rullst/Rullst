@@ -5,7 +5,8 @@ use std::hint::black_box;
 fn bench_html_sanitizer(c: &mut Criterion) {
     let mut group = c.benchmark_group("html_sanitizer");
 
-    let dirty_input = "<script>alert('xss')</script><p>Clean Text <a href=\"javascript:evil()\">Link</a></p>";
+    let dirty_input =
+        "<script>alert('xss')</script><p>Clean Text <a href=\"javascript:evil()\">Link</a></p>";
 
     group.bench_function("sanitize_html_xss", |b| {
         b.iter(|| HtmlSanitizer::sanitize(black_box(dirty_input)))

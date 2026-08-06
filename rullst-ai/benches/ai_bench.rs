@@ -60,7 +60,8 @@ fn bench_message_context_tokens(c: &mut Criterion) {
         },
         Message {
             role: "assistant".to_string(),
-            content: "Use generics or impl Trait instead of dyn Trait for zero cost abstractions.".to_string(),
+            content: "Use generics or impl Trait instead of dyn Trait for zero cost abstractions."
+                .to_string(),
         },
     ];
 

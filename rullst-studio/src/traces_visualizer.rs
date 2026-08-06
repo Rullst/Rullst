@@ -17,10 +17,22 @@ pub async fn render_traces_page() -> Html<String> {
     } else {
         for span in spans.iter().rev() {
             let (badge_class, badge_text) = match span.kind.as_str() {
-                "sql" => ("bg-blue-500/10 text-blue-400 border-blue-500/20", "SQL QUERY"),
-                "ai" => ("bg-purple-500/10 text-purple-400 border-purple-500/20", "AI GENERATION"),
-                "job" => ("bg-amber-500/10 text-amber-400 border-amber-500/20", "ASYNC JOB"),
-                _ => ("bg-emerald-500/10 text-emerald-400 border-emerald-500/20", "HTTP REQUEST"),
+                "sql" => (
+                    "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                    "SQL QUERY",
+                ),
+                "ai" => (
+                    "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                    "AI GENERATION",
+                ),
+                "job" => (
+                    "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                    "ASYNC JOB",
+                ),
+                _ => (
+                    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                    "HTTP REQUEST",
+                ),
             };
 
             rows_html.push_str(&format!(

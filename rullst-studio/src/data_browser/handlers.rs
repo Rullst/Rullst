@@ -248,10 +248,17 @@ pub async fn handle_table(
     let per_page = 25;
     let offset = (page - 1) * per_page;
 
-    let total_records = count_table_rows(&clean_table, if search_str.is_empty() { None } else { Some(search_str) })
-        .await
-        .unwrap_or(0);
-    let total_pages = (total_records + per_page - 1) / per_page;
+    let total_records = count_table_rows(
+        &clean_table,
+        if search_str.is_empty() {
+            None
+        } else {
+            Some(search_str)
+        },
+    )
+    .await
+    .unwrap_or(0);
+    let total_pages = total_records.div_ceil(per_page);
 
     let quoted_table = quote_table_name(driver, &clean_table);
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
@@ -333,7 +340,12 @@ pub async fn handle_table(
     );
 
     if is_htmx {
-        Html(format!("{}{}", content_html, render_sidebar_oob(&tables, Some(&clean_table)))).into_response()
+        Html(format!(
+            "{}{}",
+            content_html,
+            render_sidebar_oob(&tables, Some(&clean_table))
+        ))
+        .into_response()
     } else {
         Html(studio_layout(content_html, Some(&clean_table), &tables)).into_response()
     }
@@ -388,7 +400,12 @@ async fn fetch_table_schema(
     Ok((col_names, primary_keys))
 }
 
-fn build_pagination_html(clean_table: &str, search_str: &str, page: usize, total_pages: usize) -> String {
+fn build_pagination_html(
+    clean_table: &str,
+    search_str: &str,
+    page: usize,
+    total_pages: usize,
+) -> String {
     if total_pages <= 1 {
         return String::new();
     }

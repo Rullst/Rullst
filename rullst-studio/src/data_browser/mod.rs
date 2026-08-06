@@ -9,7 +9,7 @@ pub mod layout;
 #[cfg(test)]
 mod tests;
 
-pub use db::{ensure_pool_initialized, resolve_db_url, TableQuery};
+pub use db::{TableQuery, ensure_pool_initialized, resolve_db_url};
 pub use handlers::*;
 pub use layout::{render_sidebar_oob, studio_layout};
 
@@ -33,10 +33,7 @@ pub fn router() -> Router {
             "/api/revenue",
             axum::routing::get(crate::revenue_dashboard::api_revenue_handler),
         )
-        .route(
-            "/api/traces",
-            axum::routing::get(handle_studio_traces),
-        )
+        .route("/api/traces", axum::routing::get(handle_studio_traces))
         .route(
             "/studio/migrations",
             axum::routing::get(handle_studio_tools_migrations),
@@ -46,18 +43,9 @@ pub fn router() -> Router {
             "/studio/security",
             axum::routing::get(handle_studio_tools_security),
         )
-        .route(
-            "/studio/radar",
-            axum::routing::get(handle_studio_radar),
-        )
-        .route(
-            "/studio/capital",
-            axum::routing::get(handle_studio_capital),
-        )
-        .route(
-            "/studio/traces",
-            axum::routing::get(handle_studio_traces),
-        )
+        .route("/studio/radar", axum::routing::get(handle_studio_radar))
+        .route("/studio/capital", axum::routing::get(handle_studio_capital))
+        .route("/studio/traces", axum::routing::get(handle_studio_traces))
         // Backward-compatible route aliases for legacy /studio/tools/* endpoints
         .route(
             "/studio/tools/migrations",
@@ -122,7 +110,9 @@ impl IntoStudioPort for Option<u16> {
 }
 
 /// Run Rullst Studio standalone dev server on specified port (default 5555)
-pub async fn run_studio(port: impl IntoStudioPort) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_studio(
+    port: impl IntoStudioPort,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let port_num = port.into_port();
     let app = router();
     let addr = format!("127.0.0.1:{}", port_num);

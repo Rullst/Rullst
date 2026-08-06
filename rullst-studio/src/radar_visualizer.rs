@@ -24,11 +24,26 @@ pub fn render_radar_page() -> String {
         span_rows_html.push_str(r#"<div class="space-y-2 font-mono text-xs">"#);
         for span in spans.iter().rev().take(15) {
             let (badge_color, badge_text) = match span.kind.as_str() {
-                "sql" => ("bg-blue-500/10 text-blue-400 border-blue-500/20", "SQL QUERY"),
-                "ai" => ("bg-purple-500/10 text-purple-400 border-purple-500/20", "AI GENERATION"),
-                "job" => ("bg-amber-500/10 text-amber-400 border-amber-500/20", "ASYNC JOB"),
-                "security" => ("bg-rose-500/10 text-rose-400 border-rose-500/20", "SECURITY WAF"),
-                _ => ("bg-emerald-500/10 text-emerald-400 border-emerald-500/20", "HTTP REQUEST"),
+                "sql" => (
+                    "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                    "SQL QUERY",
+                ),
+                "ai" => (
+                    "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                    "AI GENERATION",
+                ),
+                "job" => (
+                    "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                    "ASYNC JOB",
+                ),
+                "security" => (
+                    "bg-rose-500/10 text-rose-400 border-rose-500/20",
+                    "SECURITY WAF",
+                ),
+                _ => (
+                    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                    "HTTP REQUEST",
+                ),
             };
 
             span_rows_html.push_str(&format!(
@@ -136,10 +151,7 @@ pub async fn api_radar_handler() -> impl IntoResponse {
 /// Returns an Axum `Router` mounting the Rullst Radar Telemetry endpoints.
 pub fn router() -> Router {
     Router::new()
-        .route(
-            "/studio/radar",
-            get(|| async { Html(render_radar_page()) }),
-        )
+        .route("/studio/radar", get(|| async { Html(render_radar_page()) }))
         .route(
             "/studio/tools/radar",
             get(|| async { Html(render_radar_page()) }),

@@ -146,7 +146,10 @@ pub fn build_schema_query(driver: &str, clean_table: &str) -> String {
 }
 
 /// Dynamic SQLite table row counter
-pub async fn count_table_rows(table: &str, search_query: Option<&str>) -> Result<usize, sqlx::Error> {
+pub async fn count_table_rows(
+    table: &str,
+    search_query: Option<&str>,
+) -> Result<usize, sqlx::Error> {
     let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
