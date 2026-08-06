@@ -182,7 +182,7 @@ impl SecurityStore {
     }
 }
 
-fn current_timestamp_str() -> String {
+pub fn current_timestamp_str() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

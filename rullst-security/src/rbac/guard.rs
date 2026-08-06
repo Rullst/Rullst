@@ -43,6 +43,20 @@ impl RbacGuard {
         if ctx.has_role(required_role) || ctx.has_role("admin") {
             Ok(())
         } else {
+            let store = crate::telemetry::SecurityStore::global();
+            store.inc_rbac_denials();
+            if let Ok(mut events) = store.live_events.lock() {
+                events.insert(
+                    0,
+                    crate::telemetry::LiveSecurityEvent {
+                        event_type: "RBAC_DENIAL".to_string(),
+                        details: format!("User {} denied access requiring role '{}'", ctx.user_id, required_role),
+                        client_ip: "127.0.0.1".to_string(),
+                        timestamp_str: crate::telemetry::current_timestamp_str(),
+                        verified_hmac: true,
+                    },
+                );
+            }
             Err(format!("Access Denied: Required role '{}'", required_role))
         }
     }
@@ -58,10 +72,21 @@ impl RbacGuard {
         {
             Ok(())
         } else {
-            Err(
-                "Access Denied: Insufficient ownership or role permissions (BOLA Guard)"
-                    .to_string(),
-            )
+            let store = crate::telemetry::SecurityStore::global();
+            store.inc_rbac_denials();
+            if let Ok(mut events) = store.live_events.lock() {
+                events.insert(
+                    0,
+                    crate::telemetry::LiveSecurityEvent {
+                        event_type: "RBAC_DENIAL".to_string(),
+                        details: format!("User {} denied ownership/role access for resource owner {}", ctx.user_id, resource_owner_id),
+                        client_ip: "127.0.0.1".to_string(),
+                        timestamp_str: crate::telemetry::current_timestamp_str(),
+                        verified_hmac: true,
+                    },
+                );
+            }
+            Err("Access Denied: Insufficient permissions or ownership".to_string())
         }
     }
 }

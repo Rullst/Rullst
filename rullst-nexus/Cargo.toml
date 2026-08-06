@@ -19,6 +19,7 @@ rullst-core = { version = "12.0.0", path = "../rullst-core" }
 rullst-orm = { version = "12.0.0", path = "../rullst-orm" }
 rullst-auth = { version = "12.0.0", path = "../rullst-auth" }
 rullst-security = { version = "12.0.0", path = "../rullst-security" }
+rullst-ai = { version = "12.0.0", path = "../rullst-ai" }
 axum = { version = "0.8.9" }
 base64 = "0.22.1"
 subtle = "2.6.1"

@@ -1,13 +1,19 @@
 // src/blueprints/blank.rs — Blank Starter blueprint templates.
 
+use super::common;
+
 pub fn file_manifest(
     project_name: &str,
     project_name_safe: &str,
     api: bool,
     hot_reload: bool,
     db_needed: bool,
+    orm_pattern: &str,
+    frontend_engine: &str,
 ) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
+    let is_repo = common::is_repo_mode(orm_pattern);
+    let _ = (project_name_safe, api, hot_reload, frontend_engine);
 
     let db_model_code = if db_needed {
         "use rullst::db::{Orm, FromRow};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
@@ -72,8 +78,9 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
                 db_status_code = db_status_code
             )
         } else {
+            let fe_imports = common::frontend_page_imports(frontend_engine);
             format!(
-                r##"use rullst::{{html, routes, Router, response::{{Html, IntoResponse}}}};
+                r##"{fe_imports}use rullst::{{routes, Router, response::{{Html, IntoResponse}}}};
 use rullst::htmx::{{HtmxRequest, render_page}};
 
 {migrations_mod_declaration}
@@ -426,6 +433,17 @@ pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
 }
 "##;
         manifest.push(("src/migrations/mod.rs", migrations_mod.to_string()));
+
+        if is_repo {
+            manifest.push((
+                "src/repositories/user_repository.rs",
+                common::generate_repository("User", "users"),
+            ));
+            manifest.push((
+                "src/repositories/mod.rs",
+                common::generate_repositories_mod(&["User"]),
+            ));
+        }
     }
 
     manifest

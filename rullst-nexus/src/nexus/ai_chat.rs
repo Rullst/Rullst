@@ -244,7 +244,40 @@ pub async fn nexus_chat_query(
     axum::extract::Form(req): axum::extract::Form<ChatRequest>,
 ) -> Html<String> {
     let user_msg = rullst_core::html::escape_str(&req.message);
-    let ai_response = generate_smart_nexus_ai_response(&req.message, &state);
+
+    let (has_provider, _provider_name) = detect_ai_provider();
+    let ai_response = if has_provider {
+        let schema_summary: String = state
+            .registry
+            .iter()
+            .map(|m| {
+                let cols: Vec<String> = m
+                    .fields
+                    .iter()
+                    .map(|f| format!("{} ({})", f.name, field_kind_label(&f.kind)))
+                    .collect();
+                format!("* {} ({}): {}", m.label, m.table, cols.join(", "))
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let system_prompt = format!(
+            "You are Nexus AI Assistant for a Rust web application built with Rullst Framework.\n\
+             Database Schema:\n{}\n\
+             Answer the user's question concisely in HTML format (using <p>, <code>, <pre>, <ul>, <strong> tags).",
+            schema_summary
+        );
+
+        match rullst_ai::AiClient::auto() {
+            Ok(client) => match client.chat().system(&system_prompt).user(&req.message).send().await {
+                Ok(resp) => resp,
+                Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
+            },
+            Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
+        }
+    } else {
+        generate_smart_nexus_ai_response(&req.message, &state)
+    };
 
     Html(format!(
         "<div class=\"nexus-chat-bubble nexus-chat-user\">\
@@ -257,3 +290,4 @@ pub async fn nexus_chat_query(
          </div>"
     ))
 }
+

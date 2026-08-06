@@ -1,19 +1,25 @@
 // src/blueprints/lms.rs — LMS Course Platform blueprint templates.
 
-pub fn file_manifest(project_name_safe: &str, hot_reload: bool) -> Vec<(&'static str, String)> {
+use super::common;
+
+pub fn file_manifest(project_name_safe: &str, hot_reload: bool, orm_pattern: &str, frontend_engine: &str) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
+    let is_repo = common::is_repo_mode(orm_pattern);
+    let _ = (project_name_safe, frontend_engine);
 
     // 1. main.rs
     if hot_reload {
-        let lib_rs = r##"use rullst::{routes, Router};
+        let repo_decl = common::repo_mod_decl(orm_pattern);
+        let lib_rs = format!(
+            r##"use rullst::{{routes, Router}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {
+pub extern "C" fn rullst_router_init() -> *mut Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("LMS Admin")
@@ -24,19 +30,20 @@ pub extern "C" fn rullst_router_init() -> *mut Router {
 
     let router = routes![
         get("/" => controllers::lms_controller::index),
-        get("/courses/{id}" => controllers::lms_controller::show_course),
-        get("/lessons/{id}/play" => controllers::lms_controller::play_lesson),
+        get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus);
     Box::into_raw(Box::new(router))
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/lib.rs", lib_rs));
 
         let main_rs = format!(
             r##"pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
@@ -66,19 +73,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
+            repo_decl = repo_decl,
             project_name_safe = project_name_safe
         );
         manifest.push(("src/main.rs", main_rs));
     } else {
-        let main_rs = r##"use rullst::{routes, Server};
+        let repo_decl = common::repo_mod_decl(orm_pattern);
+        let main_rs = format!(
+            r##"use rullst::{{routes, Server}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
@@ -92,24 +102,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => controllers::lms_controller::index),
-        get("/courses/{id}" => controllers::lms_controller::show_course),
-        get("/lessons/{id}/play" => controllers::lms_controller::play_lesson),
+        get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus);
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {
-        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
         println!("📊 Rullst Studio running on port 5555");
-    }
+    }}
     println!("🚀 LMS server starting on port 3000...");
     Server::new(router)
         .run(3000)
         .await?;
 
     Ok(())
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/main.rs", main_rs));
     }
 
@@ -340,10 +351,13 @@ pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
     // 5. Pages
-    let lms_page = r##"use rullst::html;
-use crate::models::category::Category;
+    let fe_imports = common::frontend_page_imports(frontend_engine);
+    let lms_page = format!(
+        r##"{fe_imports}use crate::models::category::Category;
 use crate::models::course::Course;
-use crate::models::lesson::Lesson;
+use crate::models::lesson::Lesson;"##,
+        fe_imports = fe_imports
+    ) + r##"
 
 pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
     html! {
@@ -492,6 +506,26 @@ pub fn video_player_snippet(title: &str, video_url: &str) -> String {
     let pages_mod = r##"pub mod lms;
 "##;
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
+
+    // Repository layer (if applicable)
+    if is_repo {
+        manifest.push((
+            "src/repositories/course_repository.rs",
+            common::generate_repository("Course", "courses"),
+        ));
+        manifest.push((
+            "src/repositories/lesson_repository.rs",
+            common::generate_repository("Lesson", "lessons"),
+        ));
+        manifest.push((
+            "src/repositories/category_repository.rs",
+            common::generate_repository("Category", "categories"),
+        ));
+        manifest.push((
+            "src/repositories/mod.rs",
+            common::generate_repositories_mod(&["Course", "Lesson", "Category"]),
+        ));
+    }
 
     manifest
 }

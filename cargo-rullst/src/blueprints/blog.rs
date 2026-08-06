@@ -1,19 +1,26 @@
 // src/blueprints/blog.rs — Blog / Content System blueprint templates.
 
-pub fn file_manifest(project_name_safe: &str, hot_reload: bool) -> Vec<(&'static str, String)> {
+use super::common;
+
+pub fn file_manifest(project_name_safe: &str, hot_reload: bool, orm_pattern: &str, frontend_engine: &str) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
+
+    let repo_decl = common::repo_mod_decl(orm_pattern);
+    let is_repo = common::is_repo_mode(orm_pattern);
+    let _ = project_name_safe;
 
     // 1. src/main.rs
     if hot_reload {
-        let lib_rs = r##"use rullst::{routes, Router};
+        let lib_rs = format!(
+            r##"use rullst::{{routes, Router}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {
+pub extern "C" fn rullst_router_init() -> *mut Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("Blog Admin")
@@ -22,12 +29,13 @@ pub extern "C" fn rullst_router_init() -> *mut Router {
 
     let router = routes![
         get("/" => controllers::blog_controller::index),
-        get("/posts/{slug}" => controllers::blog_controller::show),
+        get("/posts/{{slug}}" => controllers::blog_controller::show),
     ].nest_axum("/nexus", nexus);
     Box::into_raw(Box::new(router))
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/lib.rs", lib_rs));
 
         let main_rs = format!(
@@ -197,34 +205,60 @@ impl NexusModel for Post {
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
     // 4. Controller
-    let blog_controller = r##"use rullst::server::{Path, IntoResponse};
+    let repo_import = if is_repo {
+        "use crate::repositories::post_repository::PostRepository;"
+    } else {
+        "use crate::models::post::Post;"
+    };
+    let all_call = if is_repo {
+        "PostRepository::find_all().await.unwrap_or_default()"
+    } else {
+        "Post::all().await.unwrap_or_default()"
+    };
+
+    let blog_controller = format!(r##"use rullst::server::{{Path, IntoResponse}};
 use rullst::response::Html;
-use crate::models::post::Post;
+{repo_import}
 use crate::pages::blog;
 
-pub async fn index() -> impl IntoResponse {
-    let posts = Post::all().await.unwrap_or_default();
+pub async fn index() -> impl IntoResponse {{
+    let posts = {all_call};
     Html(blog::index_page(posts))
-}
+}}
 
-pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {
-    let posts = Post::all().await.unwrap_or_default();
+pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
+    let posts = {all_call};
     let post = posts.into_iter().find(|p| p.slug == slug).unwrap();
     Html(blog::detail_page(post))
-}
-"##;
+}}
+"##,
+        repo_import = repo_import,
+        all_call = all_call,
+    );
     manifest.push((
         "src/controllers/blog_controller.rs",
-        blog_controller.to_string(),
+        blog_controller,
     ));
 
     let controllers_mod = r##"pub mod blog_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
+    // Repository layer (if applicable)
+    if is_repo {
+        manifest.push((
+            "src/repositories/post_repository.rs",
+            common::generate_repository("Post", "posts"),
+        ));
+        manifest.push((
+            "src/repositories/mod.rs",
+            common::generate_repositories_mod(&["Post"]),
+        ));
+    }
+
     // 5. Pages
-    let blog_page = r##"use rullst::html;
-use crate::models::post::Post;
+    let page_header = common::frontend_page_imports(frontend_engine);
+    let blog_page_body = r##"use crate::models::post::Post;
 
 pub fn index_page(posts: Vec<Post>) -> String {
     html! {
@@ -314,7 +348,8 @@ pub fn detail_page(post: Post) -> String {
     }
 }
 "##;
-    manifest.push(("src/pages/blog.rs", blog_page.to_string()));
+    let blog_page = page_header + blog_page_body;
+    manifest.push(("src/pages/blog.rs", blog_page));
 
     let pages_mod = r##"pub mod blog;
 "##;

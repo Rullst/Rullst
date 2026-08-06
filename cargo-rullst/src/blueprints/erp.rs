@@ -1,18 +1,24 @@
 // src/blueprints/erp.rs — ERP Pocket blueprint templates.
 
-pub fn file_manifest(project_name_safe: &str, hot_reload: bool) -> Vec<(&'static str, String)> {
+use super::common;
+
+pub fn file_manifest(project_name_safe: &str, hot_reload: bool, orm_pattern: &str, frontend_engine: &str) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
+    let is_repo = common::is_repo_mode(orm_pattern);
+    let _ = (project_name_safe, frontend_engine);
 
     if hot_reload {
-        let lib_rs = r##"use rullst::{routes, Router};
+        let repo_decl = common::repo_mod_decl(orm_pattern);
+        let lib_rs = format!(
+            r##"use rullst::{{routes, Router}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {
+pub extern "C" fn rullst_router_init() -> *mut Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("ERP Admin")
@@ -23,19 +29,20 @@ pub extern "C" fn rullst_router_init() -> *mut Router {
     let router = routes![
         get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
-        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
+        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
     ].nest_axum("/nexus", nexus);
     Box::into_raw(Box::new(router))
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/lib.rs", lib_rs));
 
         let main_rs = format!(
             r##"pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
@@ -67,19 +74,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
+            repo_decl = repo_decl,
             project_name_safe = project_name_safe
         );
         manifest.push(("src/main.rs", main_rs));
     } else {
-        let main_rs = r##"use rullst::{routes, Server};
+        let repo_decl = common::repo_mod_decl(orm_pattern);
+        let main_rs = format!(
+            r##"use rullst::{{routes, Server}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
@@ -93,24 +103,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let router = routes![
         get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
-        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
+        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
     ].nest_axum("/nexus", nexus);
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {
-        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
         println!("📊 Rullst Studio running on port 5555");
-    }
+    }}
     println!("🚀 ERP Pocket server starting on port 3000...");
     Server::new(router)
         .run(3000)
         .await?;
 
     Ok(())
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/main.rs", main_rs));
     }
 
@@ -364,9 +375,12 @@ pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoRe
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
 
     // 10. ERP Page View
-    let erp_page = r##"use rullst::html;
-use crate::models::product::Product;
-use crate::models::order::Order;
+    let fe_imports = common::frontend_page_imports(frontend_engine);
+    let erp_page = format!(
+        r##"{fe_imports}use crate::models::product::Product;
+use crate::models::order::Order;"##,
+        fe_imports = fe_imports
+    ) + r##"
 
 pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
     let total_sales: f64 = orders.iter()
@@ -599,6 +613,22 @@ fn render_forms(products: &[Product]) -> String {
 }
 "##;
     manifest.push(("src/pages/erp.rs", erp_page.to_string()));
+
+    // Repository layer (if applicable)
+    if is_repo {
+        manifest.push((
+            "src/repositories/product_repository.rs",
+            common::generate_repository("Product", "products"),
+        ));
+        manifest.push((
+            "src/repositories/order_repository.rs",
+            common::generate_repository("Order", "orders"),
+        ));
+        manifest.push((
+            "src/repositories/mod.rs",
+            common::generate_repositories_mod(&["Product", "Order"]),
+        ));
+    }
 
     manifest
 }

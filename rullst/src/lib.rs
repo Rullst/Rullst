@@ -8,6 +8,8 @@ pub mod db {
 
 #[cfg(feature = "orm")]
 pub use rullst_orm as orm;
+#[cfg(feature = "orm")]
+pub use rullst_orm;
 
 #[cfg(feature = "auth")]
 pub use rullst_auth as auth;

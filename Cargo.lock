@@ -5460,6 +5460,7 @@ version = "12.0.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "rullst-ai",
  "rullst-auth",
  "rullst-core",
  "rullst-orm",

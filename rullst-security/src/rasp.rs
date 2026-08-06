@@ -81,6 +81,19 @@ where
         let uri_str = req.uri().to_string();
 
         if RaspInspector::inspect_uri(&uri_str) {
+            let store = crate::telemetry::SecurityStore::global();
+            if let Ok(mut events) = store.live_events.lock() {
+                events.insert(
+                    0,
+                    crate::telemetry::LiveSecurityEvent {
+                        event_type: "RASP_PAYLOAD_INTERCEPTED".to_string(),
+                        details: format!("Intercepted malicious payload in URI: {}", uri_str),
+                        client_ip: "127.0.0.1".to_string(),
+                        timestamp_str: crate::telemetry::current_timestamp_str(),
+                        verified_hmac: true,
+                    },
+                );
+            }
             let res = (
                 StatusCode::FORBIDDEN,
                 "🛡️ RASP Security Violation: Malicious payload intercepted.",

@@ -73,12 +73,32 @@ impl RevenueDashboardManager {
         self.metrics.read().map(|m| m.clone()).unwrap_or_default()
     }
 
-    /// Records a new incoming webhook event into the audit log buffer.
+    /// Updates current revenue metrics.
+    pub fn update_metrics(&self, new_metrics: RevenueMetrics) {
+        if let Ok(mut m) = self.metrics.write() {
+            *m = new_metrics;
+        }
+    }
+
+    /// Records a new incoming webhook event into the audit log buffer and updates live metrics.
     pub fn record_event(&self, event: WebhookEventRecord) {
+        let is_processed = event.status == "processed";
+        let is_sub_or_payment = event.event_type.contains("subscription") || event.event_type.contains("payment_succeeded");
+
         if let Ok(mut events) = self.events.write() {
             events.insert(0, event);
             if events.len() > 100 {
                 events.pop();
+            }
+        }
+
+        // Dynamically update metrics based on payment events
+        if is_processed && is_sub_or_payment {
+            if let Ok(mut m) = self.metrics.write() {
+                m.active_subscriptions += 1;
+                m.mrr_cents += 2900; // default tier $29.00
+                m.arr_cents = m.mrr_cents * 12;
+                m.net_revenue_cents += 2816; // net after ~2.9% fees
             }
         }
     }
