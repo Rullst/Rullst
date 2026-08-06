@@ -125,3 +125,63 @@ jobs:
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
           benchmark-data-dir-path: 'benches-connect'
+
+      # ── rullst-security (RASP inspection, RbacGuard, Vault zeroization) ────────
+      - name: Run bench — rullst-security (RASP, RBAC, Vault)
+        run: cargo bench -p rullst-security --bench security_bench -- --output-format bencher | tee bench_security.txt
+
+      - name: Reset Cargo.lock after bench
+        run: git checkout Cargo.lock || true
+
+      - name: Publish → gh-pages:benches-security/
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        with:
+          name: 'Rullst Security Benchmark'
+          tool: 'cargo'
+          output-file-path: bench_security.txt
+          fail-on-alert: true
+          alert-threshold: '300%'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          auto-push: ${{ github.event_name != 'pull_request' }}
+          benchmark-data-dir-path: 'benches-security'
+
+      # ── rullst-ai (AiGuardrails, PII masking, token context) ───────────────────
+      - name: Run bench — rullst-ai (Guardrails, PII masking, Token context)
+        run: cargo bench -p rullst-ai --bench ai_bench -- --output-format bencher | tee bench_ai.txt
+
+      - name: Reset Cargo.lock after bench
+        run: git checkout Cargo.lock || true
+
+      - name: Publish → gh-pages:benches-ai/
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        with:
+          name: 'Rullst AI Benchmark'
+          tool: 'cargo'
+          output-file-path: bench_ai.txt
+          fail-on-alert: true
+          alert-threshold: '300%'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          auto-push: ${{ github.event_name != 'pull_request' }}
+          benchmark-data-dir-path: 'benches-ai'
+
+      # ── rullst-capital (Webhook validation, Subscription parsing) ───────────────
+      - name: Run bench — rullst-capital (Webhooks, Subscription parsing)
+        run: cargo bench -p rullst-capital --bench capital_bench -- --output-format bencher | tee bench_capital.txt
+
+      - name: Reset Cargo.lock after bench
+        run: git checkout Cargo.lock || true
+
+      - name: Publish → gh-pages:benches-capital/
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        with:
+          name: 'Rullst Capital Benchmark'
+          tool: 'cargo'
+          output-file-path: bench_capital.txt
+          fail-on-alert: true
+          alert-threshold: '300%'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          auto-push: ${{ github.event_name != 'pull_request' }}
+          benchmark-data-dir-path: 'benches-capital'

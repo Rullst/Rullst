@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rullst Security — RASP, HMAC & Vault Benchmarks</title>
+  <meta name="description" content="Performance benchmarks for rullst-security RASP payload inspection, HMAC audit log ledger, and Vault AES-256 zeroization." />
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
+  <style>
+    :root{--bg:#020617;--main:#f8fafc;--muted:#94a3b8;--p:#f59e0b;--s:#10b981;--gb:rgba(15,23,42,.6);--gb2:rgba(255,255,255,.05)}
+    *{box-sizing:border-box}body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--main);min-height:100vh}
+    .blob{position:fixed;filter:blur(100px);z-index:-1;opacity:.35;border-radius:50%}
+    .blob-1{top:-10%;left:-10%;width:500px;height:500px;background:var(--p)}
+    .blob-2{bottom:-10%;right:-10%;width:600px;height:600px;background:var(--s)}
+    .wrap{max-width:1200px;margin:0 auto;padding:4rem 2rem}
+    header{text-align:center;margin-bottom:4rem}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--p);padding:.4rem 1rem;border-radius:999px;font-size:.85rem;font-weight:600;margin-bottom:1.5rem}
+    h1{font-size:3.5rem;font-weight:800;margin-bottom:1rem;background:linear-gradient(135deg,var(--p),var(--s));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.05em}
+    p.sub{color:var(--muted);font-size:1.1rem;max-width:700px;margin:0 auto 2rem;line-height:1.7}
+    .links{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border-radius:8px;font-weight:600;text-decoration:none;transition:all .2s;font-size:.9rem}
+    .btn-o{border:1px solid rgba(255,255,255,.1);color:var(--main);background:rgba(255,255,255,.05)}.btn-o:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:3rem}
+    .card{background:rgba(0,0,0,.3);border:1px solid var(--gb2);border-radius:12px;padding:1.5rem;transition:transform .2s,border-color .2s}
+    .card:hover{transform:translateY(-5px);border-color:rgba(245,158,11,.3)}
+    .card .ic{font-size:1.8rem;margin-bottom:.75rem}
+    .card h3{font-size:1rem;margin:0 0 .5rem;color:var(--p)}.card p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.6}
+    code{background:rgba(245,158,11,.1);padding:.1rem .4rem;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.85em;color:var(--p)}
+    .glass{background:var(--gb);backdrop-filter:blur(16px);border:1px solid var(--gb2);border-radius:16px;padding:2rem;margin-bottom:2rem;box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}
+    h2{font-size:1.5rem;margin:0 0 1.5rem;display:flex;align-items:center;gap:.5rem}
+    .chart-c{position:relative;height:400px;width:100%}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}
+    th,td{padding:1rem;text-align:left;border-bottom:1px solid var(--gb2)}
+    th{color:var(--s);font-weight:600;white-space:nowrap}
+    td.mono{font-family:'JetBrains Mono',monospace;color:var(--p)}
+    .ok{display:inline-block;padding:.25rem .6rem;border-radius:4px;font-size:.75rem;font-weight:700;background:rgba(245,158,11,.2);color:var(--p)}
+    .good{background:rgba(52,211,153,.2);color:#34d399}
+    #loading{text-align:center;padding:4rem;color:var(--muted);font-size:1.2rem}
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div><div class="blob blob-2"></div>
+  <div class="wrap">
+    <header>
+      <div class="badge">🛡️ rullst-security</div>
+      <h1>Security & RASP Engine Benchmarks</h1>
+      <p class="sub">Performance benchmarks for zero-trust <code>HtmlSanitizer</code>, <code>RbacGuard</code> BOLA protection, and <code>VaultSecret</code> zeroization memory safety.</p>
+      <div class="links">
+        <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
+        <a href="/Rullst/benches/" class="btn btn-o">⚡ Core</a>
+        <a href="/Rullst/benches/auth/" class="btn btn-o">🔐 Auth</a>
+        <a href="/Rullst/benches/orm/" class="btn btn-o">🗄️ ORM</a>
+        <a href="/Rullst/benches/security/" class="btn btn-o">🛡️ Security</a>
+      </div>
+    </header>
+    <div class="grid">
+      <div class="card"><div class="ic">🧹</div><h3>HTML & XSS Sanitizer</h3><p><code>HtmlSanitizer::sanitize(input)</code>: Ammonia-powered sanitization filtering XSS and malicious SVG vectors in sub-microseconds.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3>RBAC & BOLA Guard</h3><p><code>RbacGuard::authorize_owner_or_role(ctx)</code>: Zero-overhead role and ownership verification preventing IDOR attacks.</p></div>
+      <div class="card"><div class="ic">🔐</div><h3>Vault Zeroization</h3><p><code>VaultSecret::new()</code>: Zero-trust secret management with in-memory zeroization upon drop.</p></div>
+    </div>
+    <div class="glass">
+      <h2>📊 Microsecond Benchmark Trends</h2>
+      <div id="loading">Loading benchmark dataset...</div>
+      <div class="chart-c" id="chart-wrap" style="display:none;"><canvas id="canvas"></canvas></div>
+    </div>
+  </div>
+</body>
+</html>

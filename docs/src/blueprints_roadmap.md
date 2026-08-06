@@ -18,8 +18,7 @@ Every blueprint added to the CLI must meet three fundamental principles:
 | ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|
 | **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/Medium businesses with an offline-first, crash-immune system. |
-| **5** | 📡 Uptime Monitoring Service | Asynchronous Workers (`rullst::queue`) + Health Checks | Uptime Kuma alternative running on a $5 VPS with zero memory usage. |
-| **6** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
+| **5** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
 | **7** | 🤖 AI Agent & RAG Boilerplate | `rullst::ai` (Ollama/Gemini/OpenAI) + Local Vector Embedding | Intelligent parsing of local and private PDF/TXT documents. |
 | **8** | 🪙 AI Credit-Based SaaS | Streaming (SSE) + `rullst-orm` (Concurrency Lock) + Stripe | AI SaaS platforms with token consumption secured against race conditions. |
 | **9** | 🏥 Scheduling & Clinics | HTMX Calendar + Cron Scheduler + Double-Booking Locks | Barbershops, doctors, and freelancers with duplicate reservation prevention. |

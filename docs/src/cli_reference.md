@@ -10,7 +10,7 @@ Below is the **exhaustively detailed** reference for absolutely all commands and
 
 ### `cargo rullst new <name>`
 Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
-* **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket, Uptime Monitor.
+* **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
 * **Frontend Engine:** Zero-Bundle HTMX + TailwindCSS (0KB JS default), Leptos SSR Adapter, or Dioxus SSR Adapter.
 * **Arguments:**

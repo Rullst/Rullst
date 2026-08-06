@@ -9,10 +9,10 @@ While you develop your application on port `3000`, Rullst Studio automatically b
 The Studio acts as a zero-overhead local observability dashboard. It connects to your Rullst application via WebSockets in the background to capture runtime telemetry without affecting your app's performance.
 
 With Rullst Studio, you can:
-- **📡 Rullst Radar (`/studio/radar`):** Kernel-level telemetry visualizer displaying Tokio runtime tick latency (in µs), active async tasks, process CPU, RSS memory consumption, and a direct link to the Prometheus `/metrics` exporter.
+- **📡 Rullst Radar & Telemetry (`/studio/radar`):** Real-time kernel telemetry visualizer displaying Tokio runtime tick latency (in µs), active async tasks, process CPU, RSS memory consumption, live microsecond async spans, and a direct link to the Prometheus `/metrics` exporter.
 - **💳 Revenue Dashboard (`/studio/capital`):** Real-time SaaS MRR/ARR analytics, active subscriber count, churn rate calculator, and live Stripe / LemonSqueezy Webhook Audit Inspector.
 - **🛡️ Visual Threat Radar / SOC (`/studio/security`):** Real-time threat vectors, banned IP reputation scores, blocked honeypot hits (`rullst-honey`), and RASP incident reports.
-- **📊 Distributed Tracing Visualizer (`/studio/tools/traces`):** Jaeger/Zipkin-style flamegraph inspector visualizing microsecond-level HTTP, SQL, and AI prompt spans.
+- **📊 Distributed Tracing Visualizer (`/studio/traces`):** Jaeger/Zipkin-style flamegraph inspector visualizing microsecond-level HTTP, SQL, and AI prompt spans.
 - **Monitor Traffic & SQL Auditing:** Real-time HTTP request streams and `rullst-orm` SQL query time inspections for hunting N+1 query bottlenecks.
 - **Debug Async Jobs & Queues:** Visualize worker queues and retry failing jobs.
 

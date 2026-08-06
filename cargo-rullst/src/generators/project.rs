@@ -127,7 +127,6 @@ fn run_project_wizard(
             "SaaS App Starter (Authentication + Stripe payments billing template)".to_string(),
             "Blog / Press (Static site generator pre-wired with Nexus CMS)".to_string(),
             "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
-            "Uptime Monitor (Ping dashboard, background status checker, glassmorphism)".to_string(),
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("👉 Select a Starter Blueprint")

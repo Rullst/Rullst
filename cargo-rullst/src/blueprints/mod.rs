@@ -12,7 +12,6 @@ pub mod k8s;
 pub mod lms;
 pub mod portfolio;
 pub mod saas;
-pub mod uptime;
 
 pub fn apply(
     id: usize,
@@ -30,7 +29,6 @@ pub fn apply(
         3 => saas::file_manifest(project_name_safe, hot_reload),
         4 => blog::file_manifest(project_name_safe, hot_reload),
         5 => erp::file_manifest(project_name_safe, hot_reload),
-        6 => uptime::file_manifest(project_name_safe, hot_reload),
         _ => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed),
     };
 

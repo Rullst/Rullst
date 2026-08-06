@@ -1,14 +1,69 @@
-# AI Agents Guidelines for Rullst Framework
+# AI Agents & Assistants Guidelines for Rullst Framework
 
-Welcome! If you are an autonomous AI or coding assistant contributing to Rullst, this document is for you. Rullst is designed from the ground up to be "AI-native", meaning the architecture specifically avoids "magic" reflection at runtime in favor of strong typing and compile-time guarantees, which helps AIs reason about the code.
+Welcome! If you are an autonomous AI agent or coding assistant contributing to **Rullst**, this document is your primary directive manual. 
 
-## Core Directives
+Rullst is designed from the ground up to be **AI-Native**, meaning its architecture explicitly avoids runtime "magic" reflection in favor of strong compile-time typing, macro-driven code generation, and explicit APIs. This makes the codebase easy to reason about, optimize, and safely refactor.
 
-1. **Static Dispatch over Dynamic**: Prefer static dispatch (`impl Trait` or generics) over `dyn Trait` to ensure explicit concrete types for AI context tracking and optimization.
-2. **Explicit APIs**: Avoid hidden state or implicit magic. Every controller, middleware, and model should be explicit.
-3. **SST (Single Source of Truth)**: The `docs/spec.md` is our absolute law. Always reference it before proposing architectural changes.
-4. **Error Handling**: Use the typed `AppError` enum and never `panic!()`, `unwrap()`, or `expect()` in production paths. Graceful degradation is a must. In tests, however, `unwrap()` and `expect()` are fully allowed and encouraged for assertions.
-5. **Codegen**: When creating new features, prefer scaffolding generators (`make:*` commands) over manual file creation to maintain structural consistency.
-6. **HTML Macros**: Boolean attributes in the `html!` macro must be explicitly quoted (e.g., `required="true"`).
+---
 
-Please read `.ai-rules` for specific context limits and linting boundaries.
+## 📜 1. Single Source of Truth (SST)
+The document [`docs/spec.md`](file:///home/venelouis/Desktop/REPOS/Rullst/docs/spec.md) is our absolute law. Always reference `docs/spec.md` before proposing or executing architectural changes, file scaffoldings, or API modifications.
+
+---
+
+## 🏛️ 2. Crate Architecture Overview
+
+The Rullst framework is organized into decoupled, high-performance crates:
+
+| Crate | Responsibilities |
+| :--- | :--- |
+| **`rullst-core`** | Server runtime, Tokio executor integration, `routes!` macro, `RadarSnapshot` telemetry & `SpanCollector`. |
+| **`rullst-orm`** | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector. |
+| **`rullst-auth`** | JWT authentication, Argon2 password hashing, session management, OAuth2 integration. |
+| **`rullst-security`** | RASP engine, double-submit cookie CSRF, leaky-bucket rate limiting, honeypot traps, WAF middleware. |
+| **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
+| **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
+| **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
+| **`rullst-capital`** | Real-time SaaS MRR/ARR analytics, Stripe/LemonSqueezy webhook audit log ledger. |
+| **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). |
+| **`cargo-rullst`** | Developer CLI scaffold generator (`make:*` commands), AST + Dylib hot-reloading engine. |
+
+---
+
+## 🛡️ 3. Core Coding Directives & Invariants
+
+### 3.1. Zero-Panic Policy in Production Code
+- Never use `panic!()`, `unwrap()`, or `expect()` in non-test production paths.
+- Always use the typed `AppError` enum for graceful degradation and structured error responses.
+- In `#[test]` modules, `unwrap()` and `expect()` are fully allowed and encouraged for assertions.
+
+### 3.2. Static Dispatch over Dynamic
+- Prefer static dispatch (`impl Trait` or generic parameters) over `dyn Trait`.
+- Explicit concrete types improve compile-time optimization, inline expansion, and AI context tracking.
+
+### 3.3. HTML Macro Rules (`html!`)
+- Boolean attributes inside the `html!` macro must be explicitly quoted (e.g. `required="true"`, `disabled="true"`).
+- Prefer zero-bundle HTMX + Tailwind CSS server-side rendering over client-side JS bundles.
+
+### 3.4. Security Invariants
+- All dynamic SQL inputs must use SQLx parameterization (`sqlx::query(...)`) or strict alphanumeric sanitization (`sanitize_identifier`).
+- CSRF middleware (`Double-Submit Cookie`) and WAF middleware are mandatory for production endpoints.
+- Avoid introducing new `unsafe` blocks unless strictly necessary for OS FFI, and document safety invariants explicitly.
+
+### 3.5. Studio & Observability Directives
+- Studio sub-routes must follow the clean URL standard without `/tools/` (e.g. `/studio/radar`, `/studio/capital`, `/studio/security`, `/studio/traces`).
+- Studio visualizers must use real runtime data (`RadarSnapshot::collect()`, `SpanCollector`, real DB queries). Never hardcode mock data in Studio or Nexus.
+- All Studio pages must render using the unified dark glassmorphic `studio_layout` design system (`slate-950` palette, live status pulse badges).
+
+### 3.6. Modular Code & File Size Standard (< 500 Lines Target)
+- Keep source files focused, decoupled, and concise (target max 500 lines per file).
+- Avoid monolithic single-file bloat by decomposing large modules into dedicated sub-module directories using Rust's `mod` system (e.g. `data_browser/` containing `db.rs`, `layout.rs`, `handlers.rs`, `mod.rs`).
+- Smaller files improve compile times, IDE performance, and AI context tracking precision.
+
+---
+
+## 🧪 4. Testing & Verification Workflow
+
+1. Always run `cargo test -p <target-crate>` after modifying codebase files.
+2. Verify that existing API signatures and public contracts remain unbroken.
+3. Prefer CLI scaffolding generators (`cargo rullst make:*`) when adding new entities, controllers, or migrations.

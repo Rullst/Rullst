@@ -1,4 +1,4 @@
-//! Rullst Capital Revenue Dashboard & Webhook Event Inspector (`/studio/tools/revenue`)
+//! Rullst Capital Revenue Dashboard & Webhook Event Inspector (`/studio/capital`)
 
 use axum::{
     Json, Router,
@@ -11,13 +11,13 @@ use std::sync::Arc;
 static REVENUE_MANAGER: std::sync::OnceLock<Arc<RevenueDashboardManager>> =
     std::sync::OnceLock::new();
 
-fn get_revenue_manager() -> Arc<RevenueDashboardManager> {
+pub fn get_revenue_manager() -> Arc<RevenueDashboardManager> {
     REVENUE_MANAGER
         .get_or_init(|| Arc::new(RevenueDashboardManager::new()))
         .clone()
 }
 
-/// Renders the glassmorphic Rullst Capital Revenue Dashboard HTML interface.
+/// Renders the glassmorphic Rullst Capital Revenue Dashboard HTML interface fragment.
 pub fn render_revenue_dashboard_page() -> String {
     let mgr = get_revenue_manager();
     let metrics = mgr.get_metrics();
@@ -28,135 +28,115 @@ pub fn render_revenue_dashboard_page() -> String {
     let net_fmt = format!("${:.2}", metrics.net_revenue_cents as f64 / 100.0);
 
     let mut event_rows = String::new();
-    for evt in events {
-        let badge_class = if evt.status == "processed" {
-            "background: rgba(34,197,94,0.2); color: #4ade80;"
-        } else {
-            "background: rgba(239,68,68,0.2); color: #fca5a5;"
-        };
+    if events.is_empty() {
+        event_rows.push_str(
+            r#"<tr>
+                <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 font-medium bg-slate-950/40">
+                    No payment webhook events recorded yet. Webhooks from Stripe or LemonSqueezy will automatically appear here in real-time.
+                </td>
+            </tr>"#,
+        );
+    } else {
+        for evt in &events {
+            let (badge_class, badge_text) = if evt.status == "processed" {
+                ("bg-emerald-500/10 text-emerald-400 border-emerald-500/20", "PROCESSED")
+            } else {
+                ("bg-rose-500/10 text-rose-400 border-rose-500/20", "FAILED")
+            };
 
-        event_rows.push_str(&format!(
-            r###"<tr>
-                <td style="padding:0.75rem;border-bottom:1px solid #334155;"><code>{}</code></td>
-                <td style="padding:0.75rem;border-bottom:1px solid #334155;text-transform:uppercase;font-weight:600;">{}</td>
-                <td style="padding:0.75rem;border-bottom:1px solid #334155;"><code>{}</code></td>
-                <td style="padding:0.75rem;border-bottom:1px solid #334155;"><span style="padding:0.25rem 0.5rem;border-radius:0.25rem;font-size:0.8rem;{}">{}</span></td>
-            </tr>"###,
-            evt.id, evt.provider, evt.event_type, badge_class, evt.status
-        ));
+            event_rows.push_str(&format!(
+                r#"<tr class="hover:bg-slate-900/50 transition">
+                    <td class="px-6 py-4 font-mono text-xs text-slate-300 font-semibold">{id}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-400 uppercase">{provider}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-sky-400">{event_type}</td>
+                    <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold border {badge_class}">{badge_text}</span></td>
+                </tr>"#,
+                id = rullst_core::html::escape_str(&evt.id),
+                provider = rullst_core::html::escape_str(&evt.provider),
+                event_type = rullst_core::html::escape_str(&evt.event_type),
+                badge_class = badge_class,
+                badge_text = badge_text
+            ));
+        }
     }
 
     format!(
-        r###"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rullst Capital — Revenue Dashboard & Webhook Inspector</title>
-    <style>
-        body {{
-            margin: 0;
-            padding: 2rem;
-            background: #0f172a;
-            color: #f8fafc;
-            font-family: system-ui, -apple-system, sans-serif;
-        }}
-        .grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }}
-        .card {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid #334155;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            backdrop-filter: blur(12px);
-        }}
-        .card-label {{
-            font-size: 0.875rem;
-            color: #94a3b8;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }}
-        .card-value {{
-            font-size: 2rem;
-            font-weight: 700;
-            color: #38bdf8;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 0.75rem;
-            overflow: hidden;
-        }}
-        th {{
-            background: #1e293b;
-            padding: 1rem;
-            text-align: left;
-            font-size: 0.85rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-        }}
-    </style>
-</head>
-<body>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
-        <div>
-            <h1 style="margin:0;color:#38bdf8;">💳 Rullst Capital Dashboard</h1>
-            <p style="margin:0.25rem 0 0 0;color:#94a3b8;">Real-time SaaS MRR/ARR analytics & Stripe/LemonSqueezy Webhook Inspector</p>
-        </div>
-    </div>
+        r#"<div class="p-8 font-mono space-y-8 max-w-7xl mx-auto">
+            <header class="pb-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <span>💳 Rullst Capital Dashboard</span>
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">Real-time SaaS MRR/ARR Revenue Analytics & Live Payment Webhook Inspector</p>
+                </div>
+                <span class="px-3.5 py-1.5 bg-emerald-950 border border-emerald-800/80 rounded-full text-xs font-bold text-emerald-400 flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Stripe & LemonSqueezy Ready</span>
+                </span>
+            </header>
 
-    <div class="grid">
-        <div class="card">
-            <div class="card-label">Monthly Recurring (MRR)</div>
-            <div class="card-value">{mrr}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Annual Recurring (ARR)</div>
-            <div class="card-value" style="color:#4ade80;">{arr}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Net Revenue</div>
-            <div class="card-value" style="color:#a78bfa;">{net}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Active Subscribers</div>
-            <div class="card-value" style="color:#facc15;">{subs}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Churn Rate</div>
-            <div class="card-value" style="color:#f87171;">{churn:.1}%</div>
-        </div>
-    </div>
+            <!-- Revenue KPI Metric Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Monthly Recurring (MRR)</div>
+                    <div class="text-2xl font-bold text-sky-400 mt-1">{mrr}</div>
+                    <div class="text-xs text-slate-400 mt-2">Active recurring revenue</div>
+                </div>
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Annual Recurring (ARR)</div>
+                    <div class="text-2xl font-bold text-emerald-400 mt-1">{arr}</div>
+                    <div class="text-xs text-slate-400 mt-2">Annualized run-rate</div>
+                </div>
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Net Revenue</div>
+                    <div class="text-2xl font-bold text-indigo-400 mt-1">{net}</div>
+                    <div class="text-xs text-slate-400 mt-2">Net after provider fees</div>
+                </div>
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Active Subscribers</div>
+                    <div class="text-2xl font-bold text-amber-400 mt-1">{subs}</div>
+                    <div class="text-xs text-slate-400 mt-2">Total paying customers</div>
+                </div>
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Churn Rate</div>
+                    <div class="text-2xl font-bold text-purple-400 mt-1">{churn:.1}%</div>
+                    <div class="text-xs text-slate-400 mt-2">Estimated monthly churn</div>
+                </div>
+            </div>
 
-    <div class="card" style="padding:1rem;">
-        <h2 style="margin:0 0 1rem 0;font-size:1.2rem;color:#f8fafc;">📡 Live Webhook Audit Log Inspector</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Event ID</th>
-                    <th>Provider</th>
-                    <th>Event Type</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>"###,
+            <!-- Webhook Audit Log Table -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md space-y-4 p-6">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                    <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                        <span>📡 Live Webhook Audit Log Inspector</span>
+                    </h2>
+                    <span class="text-xs font-semibold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                        {events_count} Webhook Events Recorded
+                    </span>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
+                                <th class="px-6 py-3.5">Event ID</th>
+                                <th class="px-6 py-3.5">Provider</th>
+                                <th class="px-6 py-3.5">Event Type</th>
+                                <th class="px-6 py-3.5">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/80">
+                            {rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>"#,
         mrr = mrr_fmt,
         arr = arr_fmt,
         net = net_fmt,
         subs = metrics.active_subscriptions,
         churn = metrics.churn_rate_percent,
+        events_count = events.len(),
         rows = event_rows
     )
 }
@@ -170,6 +150,10 @@ pub async fn api_revenue_handler() -> impl IntoResponse {
 /// Returns an Axum `Router` mounting the Rullst Capital Revenue Dashboard endpoints.
 pub fn router() -> Router {
     Router::new()
+        .route(
+            "/studio/capital",
+            get(|| async { Html(render_revenue_dashboard_page()) }),
+        )
         .route(
             "/studio/tools/revenue",
             get(|| async { Html(render_revenue_dashboard_page()) }),
@@ -189,7 +173,7 @@ mod tests {
         let app = router();
 
         let req = Request::builder()
-            .uri("/studio/tools/revenue")
+            .uri("/studio/capital")
             .body(Body::empty())
             .unwrap();
         let page_resp = app.clone().oneshot(req).await.unwrap();

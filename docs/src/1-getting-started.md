@@ -85,14 +85,7 @@ A static site generator pre-wired with Nexus CMS. It features:
 - A fully functional Markdown parser engine.
 - SEO-friendly metadata injection.
 
-## 6. Uptime Monitor
-**Use Case:** Infrastructure tracking and observability.
-A robust system designed to ping URLs and track their health. It features:
-- A dashboard with live status indicators.
-- A background worker (`rullst::runtime::spawn`) that loops every minute to check endpoints.
-- *Note: Background workers include a startup delay to ensure the database pool is fully initialized before querying.*
-
-## 7. ERP Pocket
+## 6. ERP Pocket
 **Use Case:** Business management, stock, and inventory tracking.
 A complete back-office suite out of the box. It features:
 - A complex relational database schema (Products and Orders).

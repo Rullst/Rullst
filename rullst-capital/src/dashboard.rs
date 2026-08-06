@@ -2,7 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Real-time revenue analytics metrics payload.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -22,11 +21,11 @@ pub struct RevenueMetrics {
 impl Default for RevenueMetrics {
     fn default() -> Self {
         Self {
-            mrr_cents: 1250000,
-            arr_cents: 15000000,
-            net_revenue_cents: 12100000,
-            active_subscriptions: 248,
-            churn_rate_percent: 1.8,
+            mrr_cents: 0,
+            arr_cents: 0,
+            net_revenue_cents: 0,
+            active_subscriptions: 0,
+            churn_rate_percent: 0.0,
         }
     }
 }
@@ -63,35 +62,9 @@ impl Default for RevenueDashboardManager {
 impl RevenueDashboardManager {
     /// Creates a new `RevenueDashboardManager` with default initial state.
     pub fn new() -> Self {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-
-        let mock_events = vec![
-            WebhookEventRecord {
-                id: "evt_101".to_string(),
-                provider: "stripe".to_string(),
-                event_type: "checkout.session.completed".to_string(),
-                status: "processed".to_string(),
-                timestamp: now.saturating_sub(120),
-                payload_snippet:
-                    "{\"amount_total\": 4900, \"currency\": \"usd\", \"customer\": \"cus_N123\"}"
-                        .to_string(),
-            },
-            WebhookEventRecord {
-                id: "evt_102".to_string(),
-                provider: "lemonsqueezy".to_string(),
-                event_type: "subscription_created".to_string(),
-                status: "processed".to_string(),
-                timestamp: now.saturating_sub(600),
-                payload_snippet: "{\"order_id\": \"order_882\", \"status\": \"paid\"}".to_string(),
-            },
-        ];
-
         Self {
             metrics: RwLock::new(RevenueMetrics::default()),
-            events: RwLock::new(mock_events),
+            events: RwLock::new(Vec::new()),
         }
     }
 
@@ -127,10 +100,10 @@ mod tests {
     fn test_revenue_dashboard_manager() {
         let manager = RevenueDashboardManager::new();
         let metrics = manager.get_metrics();
-        assert!(metrics.mrr_cents > 0);
+        assert_eq!(metrics.mrr_cents, 0);
 
         let initial_events = manager.get_recent_events(10);
-        assert!(!initial_events.is_empty());
+        assert!(initial_events.is_empty());
 
         let new_evt = WebhookEventRecord {
             id: "evt_test".to_string(),
@@ -143,6 +116,7 @@ mod tests {
 
         manager.record_event(new_evt);
         let updated_events = manager.get_recent_events(10);
+        assert_eq!(updated_events.len(), 1);
         assert_eq!(updated_events[0].id, "evt_test");
     }
 }

@@ -12,7 +12,7 @@ use rullst_core::AppError;
 
 pub async fn admin_only_dashboard(user: UserContext) -> Result<String, AppError> {
     // Authorize role
-    RbacGuard::authorize_role(&user, "admin")?;
+    RbacGuard::authorize(&user, "admin").map_err(|e| AppError::Forbidden(e))?;
     
     Ok("Welcome to the Secret Admin Panel".to_string())
 }
@@ -27,10 +27,11 @@ Authorize entity ownership dynamically:
 ```rust
 pub async fn update_document(
     user: UserContext,
-    doc_owner_id: i64,
+    doc_owner_id: &str,
 ) -> Result<(), AppError> {
     // Ensures current user owns the resource or has 'admin' role
-    RbacGuard::authorize_owner_or_role(&user, doc_owner_id, "admin")?;
+    RbacGuard::authorize_owner_or_role(&user, doc_owner_id, "admin")
+        .map_err(|e| AppError::Forbidden(e))?;
     
     // Proceed with update
     Ok(())
@@ -40,5 +41,5 @@ pub async fn update_document(
 ---
 
 ## 💡 Key Takeaways
-- `RbacGuard::authorize_role` returns `AppError::Forbidden` if permissions fail.
+- `RbacGuard::authorize` returns an authorization error if permissions fail.
 - `authorize_owner_or_role` prevents IDOR/BOLA vulnerabilities across API endpoints.
