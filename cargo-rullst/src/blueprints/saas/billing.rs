@@ -4,7 +4,7 @@ pub fn get_billing_pages() -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
 
     let pages_billing = r##"use rullst::html;
-use axum::response::Html;
+use rullst::response::Html;
 
 fn pricing_head() -> String {
     r#"

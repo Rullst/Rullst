@@ -485,7 +485,7 @@ pub async fn handle_studio_tools_ai(headers: axum::http::HeaderMap) -> impl Into
 pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
     let (ai_active, provider_name) = detect_ai_provider();
-    let (ai_card_status, ai_card_color, ai_subtext) = if ai_active {
+    let (_ai_card_status, _ai_card_color, _ai_subtext) = if ai_active {
         (
             "ENFORCED".to_string(),
             "text-cyan-400",
@@ -542,6 +542,17 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         ""
     };
 
+    let sec_store = rullst_security::SecurityStore::global();
+    let log_redactions = sec_store.log_redactions_count.load(std::sync::atomic::Ordering::Relaxed);
+    let zero_trust_mismatches = sec_store.zero_trust_mismatches_count.load(std::sync::atomic::Ordering::Relaxed);
+    let schema_violations = sec_store.schema_violations_count.load(std::sync::atomic::Ordering::Relaxed);
+    let sri_signed = sec_store.sri_signed_assets_count.load(std::sync::atomic::Ordering::Relaxed);
+    let mfa_verifications = sec_store.mfa_verifications_count.load(std::sync::atomic::Ordering::Relaxed);
+    let deception_hits = sec_store.deception_hits_count.load(std::sync::atomic::Ordering::Relaxed);
+    let cswsh_blocks = sec_store.cswsh_blocks_count.load(std::sync::atomic::Ordering::Relaxed);
+    let rate_limit_blocks = sec_store.rate_limit_blocks_count.load(std::sync::atomic::Ordering::Relaxed);
+    let siem_dispatches = sec_store.siem_dispatches_count.load(std::sync::atomic::Ordering::Relaxed);
+
     let content = format!(
         r#"<div class="p-8 font-mono space-y-8">
             <header class="pb-6 border-b border-slate-800 flex items-center justify-between">
@@ -549,33 +560,60 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     <h1 class="text-3xl font-bold text-amber-400 flex items-center gap-3">
                         <span>🛡️ Visual Threat Radar & AI Security</span>
                     </h1>
-                    <p class="text-slate-400 text-sm mt-1">Rullst Security SOC Shield, RASP Engine, AI Sentinel & Tamper Audit Log</p>
+                    <p class="text-slate-400 text-sm mt-1">Rullst Security SOC Shield, RASP Engine, AI Sentinel & Real-Time SOC Telemetry</p>
                 </div>
-                <span class="px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-lg text-xs font-bold">
-                    🛡️ Zero-Trust Defense Active
+                <span class="px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-lg text-xs font-bold flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    🛡️ Enterprise Threat Radar Active
                 </span>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 9 Live Metric Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
                 <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">RASP Engine</div>
-                    <div class="text-2xl font-bold text-emerald-400 mt-1">ACTIVE</div>
-                    <div class="text-xs text-slate-400 mt-2">Zero-panic memory protection</div>
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔒 Secret Log Redactor</div>
+                    <div class="text-3xl font-bold text-emerald-400 mt-1">{log_redactions}</div>
+                    <div class="text-xs text-slate-400 mt-2">Zero-leak bearer &amp; token redactions</div>
                 </div>
                 <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">AI Sentinel Shield</div>
-                    <div class="text-2xl font-bold {ai_card_color} mt-1">{ai_card_status}</div>
-                    <div class="text-xs text-slate-400 mt-2">{ai_subtext}</div>
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🧬 Zero-Trust Fingerprints</div>
+                    <div class="text-3xl font-bold text-cyan-400 mt-1">{zero_trust_mismatches}</div>
+                    <div class="text-xs text-slate-400 mt-2">Hijack &amp; subnet drift interventions</div>
                 </div>
                 <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">HMAC Audit Trail</div>
-                    <div class="text-2xl font-bold text-amber-400 mt-1">VERIFIED</div>
-                    <div class="text-xs text-slate-400 mt-2">SHA-256 tamper-proof log ledger</div>
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🛡️ Schema Guard Intercepts</div>
+                    <div class="text-3xl font-bold text-amber-400 mt-1">{schema_violations}</div>
+                    <div class="text-xs text-slate-400 mt-2">JSON depth &amp; payload size limits</div>
                 </div>
                 <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Honeypot Traps</div>
-                    <div class="text-2xl font-bold text-emerald-400 mt-1">ARMED</div>
-                    <div class="text-xs text-slate-400 mt-2">Listening on /.env, /wp-admin</div>
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔑 Subresource Integrity (SRI)</div>
+                    <div class="text-3xl font-bold text-purple-400 mt-1">{sri_signed}</div>
+                    <div class="text-xs text-slate-400 mt-2">SHA-384 asset signature tags</div>
+                </div>
+                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔐 TOTP MFA Validations</div>
+                    <div class="text-3xl font-bold text-emerald-400 mt-1">{mfa_verifications}</div>
+                    <div class="text-xs text-slate-400 mt-2">RFC 6238 2FA authentications</div>
+                </div>
+                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🍯 Dynamic Deception Traps</div>
+                    <div class="text-3xl font-bold text-rose-400 mt-1">{deception_hits}</div>
+                    <div class="text-xs text-slate-400 mt-2">Decoy route hits (/.env, /admin)</div>
+                </div>
+                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🌐 CSWSH Protection</div>
+                    <div class="text-3xl font-bold text-yellow-400 mt-1">{cswsh_blocks}</div>
+                    <div class="text-xs text-slate-400 mt-2">Cross-Site WebSocket hijacks blocked</div>
+                </div>
+                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">⚡ Sliding-Window Rate Limit</div>
+                    <div class="text-3xl font-bold text-cyan-400 mt-1">{rate_limit_blocks}</div>
+                    <div class="text-xs text-slate-400 mt-2">IP bucket throttles enforced</div>
+                </div>
+                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">📡 SIEM Common Event Log</div>
+                    <div class="text-3xl font-bold text-emerald-400 mt-1">{siem_dispatches}</div>
+                    <div class="text-xs text-slate-400 mt-2">CEF &amp; Webhook alerts exported</div>
                 </div>
             </div>
 

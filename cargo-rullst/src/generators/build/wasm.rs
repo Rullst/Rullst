@@ -3,7 +3,6 @@
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 

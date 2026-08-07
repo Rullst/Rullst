@@ -284,11 +284,9 @@ pub async fn render_table_rows(
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
                  hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
                  hx-target=\"#nexus-modal-body\" \
-                 hx-on:htmx:after-request=\"document.getElementById('nexus-modal').showModal()\">&#9999;&#65039;</button>\
+                 hx-on:htmx:after-request=\"document.getElementById(&apos;nexus-modal&apos;).showModal()\">&#9999;&#65039;</button>\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" \
-                 hx-delete=\"/nexus/table/{t}/{row_id}\" \
-                 hx-target=\"#row-{row_id}\" \
-                 hx-confirm=\"Delete this record?\">&#128465;&#65039;</button>\
+                 onclick=\"nexusDelete(&apos;{t}&apos;, &apos;{row_id}&apos;)\">&#128465;&#65039;</button>\
                  </td></tr>"
             ));
             out
@@ -535,24 +533,19 @@ pub async fn render_record_form(
     } else {
         format!("/nexus/table/{t}")
     };
+    let action_url_id = action_url.trim_start_matches('/').replace('/', "-");
+    let form_id = action_url_id.replace('-', "_");
 
     format!(
         "<h3 class=\"nexus-modal-title\">{title}</h3>\
-         <form method=\"POST\" action=\"{action_url}\" hx-post=\"{action_url}\" hx-target=\"#nexus-toast\" \
-         hx-on:submit=\"let m = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)')); if (m && this.querySelector('.nexus-csrf-input')) this.querySelector('.nexus-csrf-input').value = m[2];\" \
-         hx-on:htmx:after-request=\"if(evt.detail.successful) {{ document.getElementById('nexus-modal').close(); htmx.ajax('GET', window.location.pathname, {{target: '#nexus-content'}}); }}\">\
-         <input type=\"hidden\" name=\"_token\" class=\"nexus-csrf-input\" />\
+         <form id=\"nexus-frm-{form_id}\" autocomplete=\"off\" onsubmit=\"return false;\">\
          <div class=\"nexus-fields-grid\">{fields_html}</div>\
          <div class=\"nexus-form-actions\">\
-         <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"document.getElementById('nexus-modal').close()\">Cancel</button>\
-         <button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">Save Record</button>\
-         </div></form>\
-         <script>\
-         document.querySelectorAll('.nexus-csrf-input').forEach(function(el) {{\
-             let m = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)'));\
-             if (m) el.value = m[2];\
-         }});\
-         </script>"
+         <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" \
+         onclick=\"document.getElementById(&apos;nexus-modal&apos;).close()\">Cancel</button>\
+         <button id=\"nexus-save-{form_id}\" type=\"button\" class=\"nexus-btn nexus-btn-primary\" \
+         onclick=\"nexusSave(&apos;nexus-frm-{form_id}&apos;, &apos;{action_url}&apos;, this)\">Save Record</button>\
+         </div></form>"
     )
 }
 
@@ -674,7 +667,7 @@ pub async fn nexus_new_form(
 pub async fn nexus_create_record(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
-    axum::extract::Form(data): axum::extract::Form<std::collections::HashMap<String, String>>,
+    axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
 ) -> impl axum::response::IntoResponse {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -686,6 +679,13 @@ pub async fn nexus_create_record(
                 .into_response();
         }
     };
+
+    let mut data = std::collections::HashMap::new();
+    for (k, v) in data_vec {
+        if !v.is_empty() || !data.contains_key(&k) {
+            data.insert(k, v);
+        }
+    }
 
     let mut keys = Vec::new();
     let mut values = Vec::new();
@@ -792,7 +792,7 @@ pub async fn nexus_edit_form(
 pub async fn nexus_update_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
-    axum::extract::Form(data): axum::extract::Form<std::collections::HashMap<String, String>>,
+    axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
 ) -> impl axum::response::IntoResponse {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -804,6 +804,13 @@ pub async fn nexus_update_record(
                 .into_response();
         }
     };
+
+    let mut data = std::collections::HashMap::new();
+    for (k, v) in data_vec {
+        if !v.is_empty() || !data.contains_key(&k) {
+            data.insert(k, v);
+        }
+    }
 
     let clean_table = sanitize_identifier(&table);
     let clean_pk = sanitize_identifier(entry.pk);
@@ -935,31 +942,13 @@ pub async fn nexus_delete_record(
     }
 
     if success {
-        (
-            StatusCode::OK,
-            Html(format!(
-                "<tr id=\"row-{id}\" class=\"nexus-row-deleted\">\
-                 <td colspan=\"99\">\
-                 <div class=\"nexus-toast nexus-toast-warning\">\
-                 &#128465;&#65039; {} #{} deleted.\
-                 </div></td></tr>",
-                entry.label,
-                rullst_core::html::escape_str(&id)
-            )),
-        )
-            .into_response()
+        (StatusCode::OK, "Record deleted successfully.").into_response()
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#10060; Failed to delete {} #{}: {}\
-                 </div>",
-                entry.label,
-                rullst_core::html::escape_str(&id),
-                rullst_core::html::escape_str(&err_msg)
-            ))
-        ).into_response()
+            format!("Failed to delete {} #{}: {}", entry.label, id, err_msg),
+        )
+            .into_response()
     }
 }
 

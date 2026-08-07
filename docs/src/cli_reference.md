@@ -194,10 +194,10 @@ Creates the monolithic final Production binary of the backend and executes pre-c
 Injects infrastructure files (Dockerfile or Nix Flake) directly into a pre-existing project (similar to the flags used in `new`).
 
 ### `cargo rullst foundry:init`
-Prepares the `Foundry.toml` manifest, which maps environment variables and Cloud provider configurations (AWS, DigitalOcean) for 1-click deployment.
+Generates the `Foundry.toml` deployment manifest at the project root containing SSH access settings (host IP, user, SSH key, deploy path) and environment variables for direct Bare-Metal / Cloud VPS deployment (Hetzner, DigitalOcean, AWS EC2, Linode, Vultr). Automatically adds `Foundry.toml` to `.gitignore`.
 
 ### `cargo rullst foundry:deploy`
-Reads your `Foundry.toml` and, using the configured credentials, packages and orchestrates the deployment via API directly to your cloud, returning the final public URL of your application.
+Executes an automated 5-step SSH deployment pipeline against your remote Linux server: local release build (`cargo build --release`), remote directory & systemd provisioning via SSH, `scp` binary transfer with SHA-256 integrity verification, remote database migrations (`cargo rullst db:migrate`), and zero-downtime service reload with HTTP health probes (`GET /health`).
 
 ### `cargo rullst omni`
 Initializes your native application client (after using `make:omni`), launching the operating system window.

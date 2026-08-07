@@ -44,6 +44,10 @@ pub fn build_cargo_toml(
     if blueprint_selection >= 1 || db_needed {
         rullst_features.push("nexus");
     }
+    if blueprint_selection == 2 {
+        rullst_features.push("auth");
+        rullst_features.push("capital");
+    }
 
     let rullst_line = if rullst_features.is_empty() {
         " }".to_string()

@@ -62,16 +62,71 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     );
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
     out.push_str("<link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\n");
-    out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\" defer></script>\n");
+    out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\"></script>\n");
     out.push_str("<script>\n");
     out.push_str("document.addEventListener('htmx:configRequest', function(evt) {\n");
-    out.push_str(
-        "    let match = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)'));\n",
-    );
+    out.push_str("    let match = document.cookie.match(/(^| )rullst_csrf=([^;]+)/);\n");
     out.push_str("    if (match) {\n");
     out.push_str("        evt.detail.headers['X-CSRF-Token'] = match[2];\n");
     out.push_str("    }\n");
     out.push_str("});\n");
+    out.push_str("function getCsrf() {\n");
+    out.push_str("    let m = document.cookie.match(/(^| )rullst_csrf=([^;]+)/);\n");
+    out.push_str("    return m ? m[2] : '';\n");
+    out.push_str("}\n");
+    out.push_str("function nexusToast(msg, kind) {\n");
+    out.push_str("    let el = document.getElementById('nexus-toast');\n");
+    out.push_str("    if (!el) return;\n");
+    out.push_str("    let icon = kind === 'success' ? '&#9989;' : kind === 'warning' ? '&#9888;&#65039;' : '&#10060;';\n");
+    out.push_str("    el.innerHTML = '<div class=\"nexus-toast nexus-toast-' + (kind || 'success') + '\">' + icon + ' ' + msg + '</div>';\n");
+    out.push_str("    setTimeout(function() { el.innerHTML = ''; }, 3500);\n");
+    out.push_str("}\n");
+    out.push_str("function nexusDelete(table, id) {\n");
+    out.push_str("    if (!confirm('Are you sure you want to delete record #' + id + '?')) return;\n");
+    out.push_str("    fetch('/nexus/table/' + table + '/' + id, {\n");
+    out.push_str("        method: 'DELETE',\n");
+    out.push_str("        credentials: 'same-origin',\n");
+    out.push_str("        headers: { 'X-CSRF-Token': getCsrf() }\n");
+    out.push_str("    }).then(function(res) {\n");
+    out.push_str("        if (res.ok) {\n");
+    out.push_str("            let row = document.getElementById('row-' + id);\n");
+    out.push_str("            if (row) row.remove();\n");
+    out.push_str("            nexusToast('Record #' + id + ' deleted.', 'success');\n");
+    out.push_str("        } else {\n");
+    out.push_str("            res.text().then(function(txt) { nexusToast('Delete failed: ' + txt, 'danger'); });\n");
+    out.push_str("        }\n");
+    out.push_str("    }).catch(function(err) {\n");
+    out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
+    out.push_str("    });\n");
+    out.push_str("}\n");
+    out.push_str("function nexusSave(formId, actionUrl, btn) {\n");
+    out.push_str("    let form = document.getElementById(formId);\n");
+    out.push_str("    if (!form) return;\n");
+    out.push_str("    let body = new URLSearchParams(new FormData(form)).toString();\n");
+    out.push_str("    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }\n");
+    out.push_str("    fetch(actionUrl, {\n");
+    out.push_str("        method: 'POST',\n");
+    out.push_str("        credentials: 'same-origin',\n");
+    out.push_str("        headers: {\n");
+    out.push_str("            'Content-Type': 'application/x-www-form-urlencoded',\n");
+    out.push_str("            'X-CSRF-Token': getCsrf()\n");
+    out.push_str("        },\n");
+    out.push_str("        body: body\n");
+    out.push_str("    }).then(function(res) {\n");
+    out.push_str("        if (btn) { btn.disabled = false; btn.textContent = 'Save Record'; }\n");
+    out.push_str("        if (res.ok) {\n");
+    out.push_str("            let modal = document.getElementById('nexus-modal');\n");
+    out.push_str("            if (modal) modal.close();\n");
+    out.push_str("            nexusToast('Saved successfully!', 'success');\n");
+    out.push_str("            htmx.ajax('GET', window.location.pathname, { target: '#nexus-content', swap: 'innerHTML' });\n");
+    out.push_str("        } else {\n");
+    out.push_str("            res.text().then(function(txt) { nexusToast('Save failed: ' + txt, 'danger'); });\n");
+    out.push_str("        }\n");
+    out.push_str("    }).catch(function(err) {\n");
+    out.push_str("        if (btn) { btn.disabled = false; btn.textContent = 'Save Record'; }\n");
+    out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
+    out.push_str("    });\n");
+    out.push_str("}\n");
     out.push_str("</script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
     out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n");
@@ -241,6 +296,7 @@ html, body { height: 100%; }
 .nexus-toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500; z-index: 1000; box-shadow: var(--shadow); }
 .nexus-toast-success { background: rgba(16,185,129,0.15); border: 1px solid var(--green); color: var(--green); animation: nexus-toast-in 0.3s ease; }
 .nexus-toast-warning { background: rgba(245,158,11,0.15); border: 1px solid var(--yellow); color: var(--yellow); animation: nexus-toast-in 0.3s ease; }
+.nexus-toast-danger { background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #ef4444; animation: nexus-toast-in 0.3s ease; }
 @keyframes nexus-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 /* == Modal ============================================================= */

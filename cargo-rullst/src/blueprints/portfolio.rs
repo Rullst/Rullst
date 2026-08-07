@@ -382,7 +382,6 @@ impl SkillRepository {
     let portfolio_controller = if is_repo_mode {
         r##"use rullst::server::IntoResponse;
 use rullst::response::Html;
-use crate::models::profile::Profile;
 use crate::repositories::profile_repository::ProfileRepository;
 use crate::repositories::project_repository::ProjectRepository;
 use crate::repositories::experience_repository::ExperienceRepository;
@@ -472,15 +471,30 @@ pub async fn index() -> impl IntoResponse {
             r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
     let sidebar_html = render_sidebar(profile, skills);
     let content_html = render_content(projects, experiences);
-    dioxus::ssr::render_element(rsx! {
+    let styles = cv_styles();
+    let body_inner = dioxus::ssr::render_element(rsx! {
         div { class: "dioxus-ssr-portfolio",
-            style { "{cv_styles()}" }
+            style { "{styles}" }
             div { class: "layout",
                 div { dangerous_inner_html: "{sidebar_html}" }
                 div { dangerous_inner_html: "{content_html}" }
             }
         }
-    })
+    });
+
+    format!(
+        "<!DOCTYPE html>\n<html lang=\"en\" class=\"dark\">\n<head>\n\
+         <meta charset=\"UTF-8\" />\n\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n\
+         <title>{} &mdash; {}</title>\n\
+         <link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\n\
+         <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n\
+         <link href=\"https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n\
+         </head>\n<body>\n{}\n</body>\n</html>",
+        rullst_core::html::escape_str(&profile.name),
+        rullst_core::html::escape_str(&profile.title),
+        body_inner
+    )
 }"#
         )
     } else {
