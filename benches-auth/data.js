@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785993993551,
+  "lastUpdate": 1786076591281,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -1871,6 +1871,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1433,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6a5e4e9d7ffbe9e81ee7bb5466f84b0cb806cef6",
+          "message": "refactor: streamline studio routing, introduce Redis feature, and add architecture documentation",
+          "timestamp": "2026-08-07T01:14:34-03:00",
+          "tree_id": "07f21b4b693884ecad509c4048403f0e9ad1be20",
+          "url": "https://github.com/Rullst/Rullst/commit/6a5e4e9d7ffbe9e81ee7bb5466f84b0cb806cef6"
+        },
+        "date": 1786076590900,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 727,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 613,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1372,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1377,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
