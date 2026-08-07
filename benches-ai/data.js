@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786129108278,
+  "lastUpdate": 1786131894745,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -95,6 +95,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 584,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2cbc70c57c390d4e8120869134d0b31be102dbbe",
+          "message": "feat: add multi-factor authentication, security auditing, and enhanced threat mitigation middleware with dashboard tracking",
+          "timestamp": "2026-08-07T16:34:05-03:00",
+          "tree_id": "452620a622f1445ff98131090074ad81df01cf72",
+          "url": "https://github.com/Rullst/Rullst/commit/2cbc70c57c390d4e8120869134d0b31be102dbbe"
+        },
+        "date": 1786131894082,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1621,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 358,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 739,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
