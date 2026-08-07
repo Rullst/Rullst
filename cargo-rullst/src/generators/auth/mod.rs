@@ -1,6 +1,7 @@
 // cargo-rullst/src/generators/auth/mod.rs — Root of authentication generator module (< 60 lines).
 
 pub mod controllers;
+pub mod mfa;
 pub mod models;
 pub mod views;
 

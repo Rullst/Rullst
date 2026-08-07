@@ -12,6 +12,15 @@ pub struct ThreatRadarStats {
     pub active_ip_bans: usize,
     pub xss_sanitizations: u64,
     pub rbac_violations_prevented: u64,
+    pub log_redactions: u64,
+    pub zero_trust_mismatches: u64,
+    pub schema_violations: u64,
+    pub sri_signed_assets: u64,
+    pub mfa_verifications: u64,
+    pub deception_hits: u64,
+    pub cswsh_blocks: u64,
+    pub rate_limit_blocks: u64,
+    pub siem_dispatches: u64,
     pub audit_chain_integrity: String,
     pub threat_level: String,
     pub live_events: Vec<rullst_security::LiveSecurityEvent>,
@@ -36,6 +45,15 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         active_ip_bans: store.banned_ips.len(),
         xss_sanitizations: store.sanitizations_count.load(Ordering::Relaxed),
         rbac_violations_prevented: store.rbac_denials_count.load(Ordering::Relaxed),
+        log_redactions: store.log_redactions_count.load(Ordering::Relaxed),
+        zero_trust_mismatches: store.zero_trust_mismatches_count.load(Ordering::Relaxed),
+        schema_violations: store.schema_violations_count.load(Ordering::Relaxed),
+        sri_signed_assets: store.sri_signed_assets_count.load(Ordering::Relaxed),
+        mfa_verifications: store.mfa_verifications_count.load(Ordering::Relaxed),
+        deception_hits: store.deception_hits_count.load(Ordering::Relaxed),
+        cswsh_blocks: store.cswsh_blocks_count.load(Ordering::Relaxed),
+        rate_limit_blocks: store.rate_limit_blocks_count.load(Ordering::Relaxed),
+        siem_dispatches: store.siem_dispatches_count.load(Ordering::Relaxed),
         audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
         threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
         live_events: events,
@@ -47,6 +65,10 @@ async fn render_radar_dashboard() -> Html<String> {
     let honeypot_count = store.honeypot_traps_count.load(Ordering::Relaxed);
     let ip_bans_count = store.banned_ips.len();
     let xss_count = store.sanitizations_count.load(Ordering::Relaxed);
+    let log_redactions_count = store.log_redactions_count.load(Ordering::Relaxed);
+    let zero_trust_mismatches_count = store.zero_trust_mismatches_count.load(Ordering::Relaxed);
+    let schema_violations_count = store.schema_violations_count.load(Ordering::Relaxed);
+    let sri_signed_assets_count = store.sri_signed_assets_count.load(Ordering::Relaxed);
 
     let events = store
         .live_events
@@ -134,6 +156,30 @@ async fn render_radar_dashboard() -> Html<String> {
         </div>
     </div>
 
+    <!-- Deep Security & Zero-Trust Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Log Secrets Redacted</span>
+            <div class="text-3xl font-extrabold text-amber-400 mt-2" id="stat-redactions">{log_redactions_count}</div>
+            <p class="text-xs text-slate-500 mt-1">Zero-Leak Log & Password Sanitizer</p>
+        </div>
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Zero-Trust Mismatches</span>
+            <div class="text-3xl font-extrabold text-rose-500 mt-2" id="stat-zerotrust">{zero_trust_mismatches_count}</div>
+            <p class="text-xs text-slate-500 mt-1">Client Session Fingerprint Shield</p>
+        </div>
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schema / Bomb Intercepts</span>
+            <div class="text-3xl font-extrabold text-indigo-400 mt-2" id="stat-schema">{schema_violations_count}</div>
+            <p class="text-xs text-slate-500 mt-1">Payload Size & Nesting Depth Limits</p>
+        </div>
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SRI Signed Assets</span>
+            <div class="text-3xl font-extrabold text-emerald-400 mt-2" id="stat-sri">{sri_signed_assets_count}</div>
+            <p class="text-xs text-slate-500 mt-1">Subresource SHA-384 Integrity Tags</p>
+        </div>
+    </div>
+
     <!-- Charts & Logs Section -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Live Threat Chart -->
@@ -199,6 +245,10 @@ async fn render_radar_dashboard() -> Html<String> {
                     document.getElementById('stat-honeypot').innerText = data.honeypot_traps_blocked;
                     document.getElementById('stat-ipbans').innerText = data.active_ip_bans;
                     document.getElementById('stat-xss').innerText = data.xss_sanitizations;
+                    document.getElementById('stat-redactions').innerText = data.log_redactions;
+                    document.getElementById('stat-zerotrust').innerText = data.zero_trust_mismatches;
+                    document.getElementById('stat-schema').innerText = data.schema_violations;
+                    document.getElementById('stat-sri').innerText = data.sri_signed_assets;
 
                     if (data.live_events && data.live_events.length > 0) {{
                         const stream = document.getElementById('incident-stream');
@@ -224,6 +274,10 @@ async fn render_radar_dashboard() -> Html<String> {
         honeypot_count = honeypot_count,
         ip_bans_count = ip_bans_count,
         xss_count = xss_count,
+        log_redactions_count = log_redactions_count,
+        zero_trust_mismatches_count = zero_trust_mismatches_count,
+        schema_violations_count = schema_violations_count,
+        sri_signed_assets_count = sri_signed_assets_count,
         incidents_html = incidents_html
     ))
 }

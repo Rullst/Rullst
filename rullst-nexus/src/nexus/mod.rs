@@ -74,7 +74,7 @@ impl Nexus {
             .route("/table/{table}/new", get(nexus_new_form))
             .route("/table/{table}", post(nexus_create_record))
             .route("/table/{table}/{id}/edit", get(nexus_edit_form))
-            .route("/table/{table}/{id}", put(nexus_update_record))
+            .route("/table/{table}/{id}", put(nexus_update_record).post(nexus_update_record))
             .route("/table/{table}/{id}", delete(nexus_delete_record))
             .route("/table/{table}/batch", post(nexus_batch_action))
             .route("/chat", get(nexus_chat_page))

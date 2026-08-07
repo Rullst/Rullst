@@ -206,7 +206,7 @@ pub async fn nexus_chat_page(
     content.push_str("<span class=\"nexus-chat-avatar\">&#129302;</span>");
     content.push_str("<div class=\"nexus-chat-text\">Hello! I have full offline intelligence about your database schema. Ask me anything &mdash; for example:<br><em>\"List all courses\"</em>, <em>\"Show tables\"</em>, or <em>\"How do I setup DeepSeek/Qwen?\"</em><br><br><small style=\"color: var(--text-300);\">&#128161; <b>Tip:</b> Click any Quick Command on the left or type your query below.</small></div>");
     content.push_str("</div></div>");
-    content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on::after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
+    content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on:htmx:after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
     content.push_str("<input type=\"text\" name=\"message\" id=\"nexus-chat-input\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" aria-label=\"Ask the AI assistant\" autocomplete=\"off\" required />");
     content.push_str(
         "<button type=\"submit\" class=\"nexus-btn nexus-btn-ai\">Send &#9992;&#65039;</button>",

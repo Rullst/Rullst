@@ -22,8 +22,32 @@ Zero-latency middleware (`RaspSecurityLayer`, `RaspInspector`) inspecting URI pa
 ### 🔐 Rullst Vault (`rullst-security::vault`)
 Zero-trust secret management with in-memory zeroization (`Zeroize`) preventing heap dump leaks (`VaultSecret<T>`) and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
 
+### 🔍 Log & Secret Redaction Engine (`rullst-security::log_redactor`)
+High-speed log and payload sanitizer (`redact_secrets`) masking Authorization Bearer tokens, passwords, AWS access keys, and API secrets prior to stdout/tracing log output.
+
+### 🔑 Subresource Integrity (SRI) Signer (`rullst-security::sri`)
+SHA-384 asset integrity calculator (`compute_sri_hash`, `sri_script_tag`, `sri_link_tag`) generating subresource integrity attributes to shield applications against static asset supply chain tampering.
+
+### 👤 Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)
+Cryptographic session binding (`generate_fingerprint`, `verify_fingerprint`) matching client `User-Agent`, IP subnets, and language headers to prevent stolen JWT session hijacking.
+
+### 📲 Multi-Factor Authentication Engine (`rullst-security::mfa`)
+Native RFC 6238 TOTP engine (`generate_mfa_secret`, `generate_totp_code`, `verify_totp_code`, `build_otpauth_uri`) providing 2FA onboarding, 6-digit TOTP verification, and QR code URI generation.
+
+### 🪤 Dynamic Threat Deception Traps (`rullst-security::deception`)
+Dynamic decoy route registry (`register_deception_trap`, `deception_trap_middleware`) baiting automated scanners (`/api/v1/admin/debug`, `/graphql/v1`) and triggering instant WAF IP bans.
+
+### 🔌 Cross-Site WebSocket Hijacking Guard (`rullst-security::cswsh`)
+WebSocket upgrade handshake validator (`cswsh_guard_middleware`) verifying Origin and Host headers to prevent unauthorized cross-origin WebSocket streams.
+
+### 🛝 Sliding-Window Rate Limiter (`rullst-security::rate_limit`)
+In-memory sliding-window IP rate limiter (`rate_limit_middleware`, `is_rate_limited`) protecting sensitive login, password reset, and API endpoints from brute-force attacks.
+
+### 📢 SIEM & SOC Alert Streamer (`rullst-security::siem`)
+Security incident alert exporter (`format_cef_event`, `dispatch_siem_alert`) formatting events into Common Event Format (CEF) or JSON webhooks for external SOC tools (Datadog, Splunk, Elastic, Slack).
+
 ### 📊 Visual Threat Radar (SOC)
-Visual dashboard integrated into Rullst Studio (`http://localhost:5555/studio/security`) displaying active threat attack vectors, live IP reputation scoring, blocked honeypot hits, and AI incident reports.
+Visual dashboard integrated into Rullst Studio (`http://localhost:5555/studio/security`) and Rullst Nexus (`http://localhost:3000/nexus/security`) displaying active threat attack vectors, live IP reputation scoring, log redaction counts, zero-trust mismatches, schema violations, MFA verifications, rate limit drops, SIEM dispatches, and AI incident reports.
 
 ---
 

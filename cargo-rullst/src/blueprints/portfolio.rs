@@ -202,7 +202,7 @@ impl Migration for CreatePortfolioTables {
 
         rullst::db::sqlx::query(
             "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url, created_at, updated_at) VALUES 
-             (1, 'Alex Rivera', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'alex.rivera@rullst.dev', 'https://rullst.dev', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com', datetime('now'), datetime('now'))"
+             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com', datetime('now'), datetime('now'))"
         ).execute(pool).await?;
 
         rullst::db::sqlx::query(
@@ -327,11 +327,11 @@ impl ProfileRepository {
     pub async fn get() -> Profile {
         Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
             id: 1,
-            name: "Alex Rivera".to_string(),
+            name: "Vene Light".to_string(),
             title: "Senior Rust & AI Systems Engineer".to_string(),
             subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
-            email: "alex.rivera@rullst.dev".to_string(),
-            website: "https://rullst.dev".to_string(),
+            email: "rullst@veneloius.de".to_string(),
+            website: "https://rullst.github.io/".to_string(),
             avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
             github_url: "https://github.com/Rullst".to_string(),
             linkedin_url: "https://linkedin.com".to_string(),
@@ -410,11 +410,11 @@ use crate::pages::home;
 pub async fn index() -> impl IntoResponse {
     let profile = Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
         id: 1,
-        name: "Alex Rivera".to_string(),
+        name: "Vene Light".to_string(),
         title: "Senior Rust & AI Systems Engineer".to_string(),
         subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
-        email: "alex.rivera@rullst.dev".to_string(),
-        website: "https://rullst.dev".to_string(),
+        email: "rullst@veneloius.de".to_string(),
+        website: "https://rullst.github.io/".to_string(),
         avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
         github_url: "https://github.com/Rullst".to_string(),
         linkedin_url: "https://linkedin.com".to_string(),
@@ -451,6 +451,7 @@ pub async fn index() -> impl IntoResponse {
             <head>
                 <meta charset="UTF-8" />
                 <title>"Rullst Developer — Leptos SSR Portfolio"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
                 <style>{styles.clone()}</style>
             </head>
@@ -493,6 +494,7 @@ pub async fn index() -> impl IntoResponse {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Developer — AI & Rust Portfolio"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
                 <style>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
@@ -637,6 +639,7 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
                 <div class="contact-item">"📧 "{{&profile.email}}</div>
                 <div class="contact-item">"🌐 "<a href={{&profile.website}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
                 <div class="contact-item">"💻 "<a href={{&profile.github_url}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
+                <div class="contact-item">"💼 "<a href={{&profile.linkedin_url}} target="_blank" style="color: var(--text-muted);">{{&profile.linkedin_url}}</a></div>
             </div>
 
             <div>

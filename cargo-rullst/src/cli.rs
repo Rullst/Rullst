@@ -195,6 +195,9 @@ pub enum Commands {
     /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
     #[command(name = "make:k8s")]
     MakeK8s,
+    /// Scaffolds a complete 2FA TOTP authentication system in src/controllers/mfa.rs
+    #[command(name = "make:mfa")]
+    MakeMfa,
     /// Scaffolds interactive Scalar API documentation router at /docs
     #[command(name = "make:scalar")]
     MakeScalar,
@@ -260,11 +263,14 @@ pub enum Commands {
         /// Target item to inspect (e.g. routes, models, schema, or file path)
         target: Option<String>,
     },
-    /// Runs AI-assisted security audit for secret leaks, CVEs, and permissions
+    /// Runs AI-assisted security audit for secret leaks, CVEs, and compliance posture
     Audit {
         /// Optional: Enable AI Sentinel analysis suggestions
         #[arg(long)]
         ai: bool,
+        /// Optional: Export SECURITY_COMPLIANCE.md report evaluating OWASP Top 10, SOC2, and ISO 27001
+        #[arg(long)]
+        compliance: bool,
     },
     /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
     Eject {
@@ -474,14 +480,17 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Inspect { target } => {
             inspect_project(target.as_deref())?;
         }
-        Commands::Audit { ai } => {
-            crate::generators::audit::run_security_audit(*ai)?;
+        Commands::Audit { ai, compliance } => {
+            crate::generators::audit::run_security_audit(*ai, *compliance)?;
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;
         }
         Commands::MakeK8s => {
             crate::generators::k8s::generate_k8s_manifests()?;
+        }
+        Commands::MakeMfa => {
+            crate::generators::auth::mfa::scaffold_mfa_system()?;
         }
         Commands::MakeScalar => {
             crate::generators::scalar::generate_scalar_docs()?;

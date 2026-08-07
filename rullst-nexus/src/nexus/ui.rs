@@ -61,7 +61,7 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         format_args!("<title>{brand} &mdash; Nexus Panel</title>\n"),
     );
     out.push_str("<meta name=\"description\" content=\"Rullst Nexus: Auto-Generated CMS &amp; AI Admin Panel\" />\n");
-    out.push_str("<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🦀%3C/text%3E%3C/svg%3E\" />\n");
+    out.push_str("<link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\n");
     out.push_str("<script src=\"https://unpkg.com/htmx.org@2.0.4\" defer></script>\n");
     out.push_str("<script>\n");
     out.push_str("document.addEventListener('htmx:configRequest', function(evt) {\n");
@@ -81,7 +81,7 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
 
     out.push_str("<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\">");
     out.push_str("<div class=\"nexus-brand\">");
-    out.push_str("<span class=\"nexus-brand-icon\">&#129408;</span>");
+    out.push_str("<img src=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" class=\"nexus-brand-logo\" alt=\"Rullst\" style=\"width: 24px; height: 24px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 8px;\" />");
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!("<span class=\"nexus-brand-name\">{brand}</span>"),
@@ -112,7 +112,7 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         "<div class=\"nexus-content\" id=\"nexus-content\" hx-indicator=\"#nexus-htmx-indicator\">",
     );
     out.push_str(content);
-    out.push_str("</div></main>\n</body>\n</html>");
+    out.push_str("</div><div id=\"nexus-toast\"></div></main>\n</body>\n</html>");
     out
 }
 

@@ -122,10 +122,17 @@ pub fn build_table_query(
             .collect();
 
         if !text_fields.is_empty() {
+            let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
             let where_clauses: Vec<String> = text_fields
                 .iter()
                 .enumerate()
-                .map(|(idx, col)| format!("{} LIKE ${}", col, idx + 1))
+                .map(|(idx, col)| {
+                    if driver == "postgres" {
+                        format!("{} LIKE ${}", col, idx + 1)
+                    } else {
+                        format!("{} LIKE ?", col)
+                    }
+                })
                 .collect();
 
             sql.push_str(" WHERE ");
@@ -277,7 +284,7 @@ pub async fn render_table_rows(
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
                  hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
                  hx-target=\"#nexus-modal-body\" \
-                 hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">&#9999;&#65039;</button>\
+                 hx-on:htmx:after-request=\"document.getElementById('nexus-modal').showModal()\">&#9999;&#65039;</button>\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" \
                  hx-delete=\"/nexus/table/{t}/{row_id}\" \
                  hx-target=\"#row-{row_id}\" \
@@ -337,7 +344,7 @@ pub async fn render_table_view(
          <p class=\"nexus-page-subtitle\">Manage <code>{t}</code> collection records.</p></div>\
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" \
          hx-get=\"/nexus/table/{t}/new\" hx-target=\"#nexus-modal-body\" \
-         hx-on::after-request=\"document.getElementById(&quot;nexus-modal&quot;).showModal()\">\
+         hx-on:htmx:after-request=\"document.getElementById('nexus-modal').showModal()\">\
          &#43; New {lb}</button></div>"
     );
 
@@ -389,7 +396,7 @@ pub async fn render_table_view(
     out.push_str(
         "<dialog id=\"nexus-modal\" class=\"nexus-modal\">\
          <button type=\"button\" class=\"nexus-modal-close\" onclick=\"document.getElementById('nexus-modal').close()\">&times;</button>\
-         <div class=\"nexus-modal-inner\" id=\"nexus-modal-body\"></div>\
+         <div class=\"nexus-modal-inner\" id=\"nexus-modal-body\" hx-on:htmx:after-swap=\"document.getElementById('nexus-modal').showModal()\"></div>\
          </dialog>",
     );
 
@@ -415,17 +422,21 @@ pub async fn render_record_form(
     use rullst_orm::_sqlx::Row;
     let row_data = if let Some(id) = record_id {
         if let Some(pool) = rullst_core::db::safe_pool() {
+            let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
             let clean_table = sanitize_identifier(t);
             let clean_pk = sanitize_identifier(pk);
-            let sql = format!(
-                "SELECT * FROM {} WHERE {} = ? LIMIT 1",
-                clean_table, clean_pk
-            );
-            rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
-                .bind(id)
-                .fetch_optional(pool)
-                .await
-                .unwrap_or(None)
+            let sql = if driver == "postgres" {
+                format!("SELECT * FROM {} WHERE {} = $1 LIMIT 1", clean_table, clean_pk)
+            } else {
+                format!("SELECT * FROM {} WHERE {} = ? LIMIT 1", clean_table, clean_pk)
+            };
+            let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+            if let Ok(num_id) = id.parse::<i64>() {
+                q = q.bind(num_id);
+            } else {
+                q = q.bind(id);
+            }
+            q.fetch_optional(pool).await.unwrap_or(None)
         } else {
             None
         }
@@ -446,12 +457,14 @@ pub async fn render_record_form(
                     if b { "1".to_string() } else { "0".to_string() }
                 }
                 FieldKind::Number | FieldKind::ForeignKey { .. } => {
-                    if let Ok(v) = r.try_get::<i64, _>(fname) {
+                    if let Ok(v) = r.try_get::<i32, _>(fname) {
+                        v.to_string()
+                    } else if let Ok(v) = r.try_get::<i64, _>(fname) {
                         v.to_string()
                     } else if let Ok(v) = r.try_get::<f64, _>(fname) {
                         v.to_string()
-                    } else if let Ok(v) = r.try_get::<i32, _>(fname) {
-                        v.to_string()
+                    } else if let Ok(v) = r.try_get::<String, _>(fname) {
+                        v
                     } else {
                         "".to_string()
                     }
@@ -517,21 +530,29 @@ pub async fn render_record_form(
         acc
     });
 
-    let (action_url, method_attr) = if let Some(id) = record_id {
-        (format!("/nexus/table/{t}/{id}"), "hx-put")
+    let action_url = if let Some(id) = record_id {
+        format!("/nexus/table/{t}/{id}")
     } else {
-        (format!("/nexus/table/{t}"), "hx-post")
+        format!("/nexus/table/{t}")
     };
 
     format!(
         "<h3 class=\"nexus-modal-title\">{title}</h3>\
-         <form {method_attr}=\"{action_url}\" hx-target=\"#nexus-toast\" \
-         hx-on::after-request=\"if(event.detail.successful) {{ document.getElementById('nexus-modal').close(); htmx.trigger('#nexus-table-body', 'keyup'); }}\">\
+         <form method=\"POST\" action=\"{action_url}\" hx-post=\"{action_url}\" hx-target=\"#nexus-toast\" \
+         hx-on:submit=\"let m = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)')); if (m && this.querySelector('.nexus-csrf-input')) this.querySelector('.nexus-csrf-input').value = m[2];\" \
+         hx-on:htmx:after-request=\"if(evt.detail.successful) {{ document.getElementById('nexus-modal').close(); htmx.ajax('GET', window.location.pathname, {{target: '#nexus-content'}}); }}\">\
+         <input type=\"hidden\" name=\"_token\" class=\"nexus-csrf-input\" />\
          <div class=\"nexus-fields-grid\">{fields_html}</div>\
          <div class=\"nexus-form-actions\">\
          <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"document.getElementById('nexus-modal').close()\">Cancel</button>\
          <button type=\"submit\" class=\"nexus-btn nexus-btn-primary\">Save Record</button>\
-         </div></form>"
+         </div></form>\
+         <script>\
+         document.querySelectorAll('.nexus-csrf-input').forEach(function(el) {{\
+             let m = document.cookie.match(new RegExp('(^| )rullst_csrf=([^;]+)'));\
+             if (m) el.value = m[2];\
+         }});\
+         </script>"
     )
 }
 
@@ -692,14 +713,22 @@ pub async fn nexus_create_record(
 
     let clean_table = sanitize_identifier(&table);
     let clean_keys: Vec<String> = keys.iter().map(|k| sanitize_identifier(k)).collect();
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let placeholders = (0..clean_keys.len())
+        .map(|i| {
+            if driver == "postgres" {
+                format!("${}", i + 1)
+            } else {
+                "?".to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
     let sql = format!(
         "INSERT INTO {} ({}) VALUES ({})",
         clean_table,
         clean_keys.join(", "),
-        (0..clean_keys.len())
-            .map(|i| format!("${}", i + 1))
-            .collect::<Vec<_>>()
-            .join(", ")
+        placeholders
     );
 
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
@@ -778,6 +807,7 @@ pub async fn nexus_update_record(
 
     let clean_table = sanitize_identifier(&table);
     let clean_pk = sanitize_identifier(entry.pk);
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut updates = Vec::new();
     let mut values = Vec::new();
     for f in &entry.fields {
@@ -785,23 +815,37 @@ pub async fn nexus_update_record(
             && let Some(val) = data.get(f.name)
         {
             let clean_field = sanitize_identifier(f.name);
-            updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
+            if driver == "postgres" {
+                updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
+            } else {
+                updates.push(format!("{} = ?", clean_field));
+            }
             values.push(val);
         }
     }
 
+    let pk_placeholder = if driver == "postgres" {
+        format!("${}", updates.len() + 1)
+    } else {
+        "?".to_string()
+    };
+
     let sql = format!(
-        "UPDATE {} SET {} WHERE {} = ${}",
+        "UPDATE {} SET {} WHERE {} = {}",
         clean_table,
         updates.join(", "),
         clean_pk,
-        updates.len() + 1
+        pk_placeholder
     );
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
     for v in values {
         query = query.bind(v);
     }
-    query = query.bind(id.clone());
+    if let Ok(num_id) = id.parse::<i64>() {
+        query = query.bind(num_id);
+    } else {
+        query = query.bind(id.clone());
+    }
 
     let mut success = false;
     let mut err_msg = String::new();
@@ -860,18 +904,25 @@ pub async fn nexus_delete_record(
         }
     };
 
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table);
     let clean_pk = sanitize_identifier(entry.pk);
-    let sql = format!("DELETE FROM {} WHERE {} = ?", clean_table, clean_pk);
+    let sql = if driver == "postgres" {
+        format!("DELETE FROM {} WHERE {} = $1", clean_table, clean_pk)
+    } else {
+        format!("DELETE FROM {} WHERE {} = ?", clean_table, clean_pk)
+    };
     let mut success = false;
     let mut err_msg = String::new();
 
     if let Some(pool) = rullst_core::db::safe_pool() {
-        match rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()))
-            .bind(&id)
-            .execute(pool)
-            .await
-        {
+        let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+        if let Ok(num_id) = id.parse::<i64>() {
+            q = q.bind(num_id);
+        } else {
+            q = q.bind(&id);
+        }
+        match q.execute(pool).await {
             Ok(_) => {
                 success = true;
             }

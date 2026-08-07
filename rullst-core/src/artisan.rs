@@ -179,8 +179,8 @@ async fn studio_home_handler() -> axum::response::Html<String> {
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div class="flex items-center gap-4">
-                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                    <span class="text-2xl">🦀</span>
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2">
+                    <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" class="h-9 w-9 object-contain" alt="Rullst" />
                 </div>
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">

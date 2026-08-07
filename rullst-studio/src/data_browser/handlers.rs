@@ -72,8 +72,8 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div class="flex items-center gap-4">
-                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                    <span class="text-2xl">🦀</span>
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2">
+                    <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" class="h-9 w-9 object-contain" alt="Rullst" />
                 </div>
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
@@ -186,15 +186,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                 </a>
             </div>
         </div>
-
-        <!-- Active Database Tables Quick Access -->
-        <div>
-            <h2 class="text-lg font-bold text-slate-200 mb-4">🗄️ Inspect Schema Tables ("##);
-    let _ = write!(dash_content_str, "{})</h2>", tables_count);
-    dash_content_str
-        .push_str(r##"<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">"##);
-    dash_content_str.push_str(&table_badges_html);
-    dash_content_str.push_str("</div></div></div>");
+    </div>"##);
 
     if is_htmx {
         Html(format!(
@@ -444,7 +436,35 @@ fn build_pagination_html(
 
 pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
-    let content = crate::migration_manager::render_migration_manager_html();
+    let mut table_badges_html = String::new();
+    let mut tables_count = 0;
+
+    if let Ok(tables) = fetch_tables().await {
+        tables_count = tables.len();
+        for t in &tables {
+            let clean = escape_html_attr(t.as_str());
+            let enc = urlencoding::encode(t.as_str());
+            let _ = write!(
+                table_badges_html,
+                r##"<a href="#" hx-get="/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+                    <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
+                    <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
+                </a>"##,
+                enc, clean
+            );
+        }
+    }
+
+    let schema_section = if tables_count > 0 {
+        format!(
+            r##"<div class="mt-8 pt-6 border-t border-slate-800"><h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2"><span>🗄️ Inspect Schema Tables ({})</span></h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">{}</div></div>"##,
+            tables_count, table_badges_html
+        )
+    } else {
+        String::new()
+    };
+
+    let content = crate::migration_manager::render_migration_manager_html(&schema_section);
     if is_htmx {
         Html(format!("{}{}", content, render_sidebar_oob(&[], None))).into_response()
     } else {

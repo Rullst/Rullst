@@ -28,6 +28,15 @@ pub struct SecurityStore {
     pub prompt_injections_blocked_count: AtomicU64,
     pub prompts_inspected_count: AtomicU64,
     pub pii_masked_count: AtomicU64,
+    pub log_redactions_count: AtomicU64,
+    pub zero_trust_mismatches_count: AtomicU64,
+    pub schema_violations_count: AtomicU64,
+    pub sri_signed_assets_count: AtomicU64,
+    pub mfa_verifications_count: AtomicU64,
+    pub deception_hits_count: AtomicU64,
+    pub cswsh_blocks_count: AtomicU64,
+    pub rate_limit_blocks_count: AtomicU64,
+    pub siem_dispatches_count: AtomicU64,
     pub banned_ips: DashMap<String, BannedIpRecord>,
     pub honeypot_route_hits: DashMap<String, AtomicU64>,
     pub live_events: Mutex<Vec<LiveSecurityEvent>>,
@@ -48,6 +57,15 @@ impl SecurityStore {
             prompt_injections_blocked_count: AtomicU64::new(0),
             prompts_inspected_count: AtomicU64::new(0),
             pii_masked_count: AtomicU64::new(0),
+            log_redactions_count: AtomicU64::new(0),
+            zero_trust_mismatches_count: AtomicU64::new(0),
+            schema_violations_count: AtomicU64::new(0),
+            sri_signed_assets_count: AtomicU64::new(0),
+            mfa_verifications_count: AtomicU64::new(0),
+            deception_hits_count: AtomicU64::new(0),
+            cswsh_blocks_count: AtomicU64::new(0),
+            rate_limit_blocks_count: AtomicU64::new(0),
+            siem_dispatches_count: AtomicU64::new(0),
             banned_ips: DashMap::new(),
             honeypot_route_hits: DashMap::new(),
             live_events: Mutex::new(Vec::new()),
@@ -173,11 +191,56 @@ impl SecurityStore {
         }
     }
 
+    pub fn inc_log_redactions(&self) {
+        self.log_redactions_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_zero_trust_mismatches(&self) {
+        self.zero_trust_mismatches_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_schema_violations(&self) {
+        self.schema_violations_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_sri_signed_assets(&self) {
+        self.sri_signed_assets_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_mfa_verifications(&self) {
+        self.mfa_verifications_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_deception_hits(&self) {
+        self.deception_hits_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_cswsh_blocks(&self) {
+        self.cswsh_blocks_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_rate_limit_blocks(&self) {
+        self.rate_limit_blocks_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_siem_dispatches(&self) {
+        self.siem_dispatches_count.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn snapshot(&self) -> TelemetrySnapshot {
         TelemetrySnapshot {
             sanitizations: self.sanitizations_count.load(Ordering::Relaxed),
             honeypot_traps: self.honeypot_traps_count.load(Ordering::Relaxed),
             rbac_denials: self.rbac_denials_count.load(Ordering::Relaxed),
+            log_redactions: self.log_redactions_count.load(Ordering::Relaxed),
+            zero_trust_mismatches: self.zero_trust_mismatches_count.load(Ordering::Relaxed),
+            schema_violations: self.schema_violations_count.load(Ordering::Relaxed),
+            sri_signed_assets: self.sri_signed_assets_count.load(Ordering::Relaxed),
+            mfa_verifications: self.mfa_verifications_count.load(Ordering::Relaxed),
+            deception_hits: self.deception_hits_count.load(Ordering::Relaxed),
+            cswsh_blocks: self.cswsh_blocks_count.load(Ordering::Relaxed),
+            rate_limit_blocks: self.rate_limit_blocks_count.load(Ordering::Relaxed),
+            siem_dispatches: self.siem_dispatches_count.load(Ordering::Relaxed),
         }
     }
 }
@@ -215,4 +278,13 @@ pub struct TelemetrySnapshot {
     pub sanitizations: u64,
     pub honeypot_traps: u64,
     pub rbac_denials: u64,
+    pub log_redactions: u64,
+    pub zero_trust_mismatches: u64,
+    pub schema_violations: u64,
+    pub sri_signed_assets: u64,
+    pub mfa_verifications: u64,
+    pub deception_hits: u64,
+    pub cswsh_blocks: u64,
+    pub rate_limit_blocks: u64,
+    pub siem_dispatches: u64,
 }

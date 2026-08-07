@@ -16,8 +16,8 @@ pub struct ApiResponse {
 }
 
 /// Renders the "Database Tools" HTML tab for Rullst Studio
-pub fn render_migration_manager_html() -> String {
-    r#"
+pub fn render_migration_manager_html(schema_tables_html: &str) -> String {
+    let base = r#"
 <div class="max-w-6xl mx-auto p-6 space-y-6">
   <div class="bg-slate-800/80 p-6 rounded-2xl border border-slate-700/60 shadow-xl backdrop-blur-md space-y-4">
     <div>
@@ -96,6 +96,8 @@ pub fn render_migration_manager_html() -> String {
     <div id="output-header" class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Operation Output</div>
     <div id="output-content" class="text-slate-200 whitespace-pre-wrap font-mono text-xs"></div>
   </div>
+
+  SCHEMA_TABLES_PLACEHOLDER
 </div>
 
 <script>
@@ -118,7 +120,7 @@ async function triggerSeeder() {
   const card = document.getElementById('tool-output-card');
   const content = document.getElementById('output-content');
   card.classList.remove('hidden');
-  content.innerText = 'Executing seeders...';
+  content.innerText = 'Running seeders...';
 
   try {
     const res = await fetch('/_studio/api/seeders/run', { method: 'POST' });
@@ -129,7 +131,9 @@ async function triggerSeeder() {
   }
 }
 </script>
-"#.to_string()
+"#;
+
+    base.replace("SCHEMA_TABLES_PLACEHOLDER", schema_tables_html)
 }
 
 pub async fn handle_run_migrations() -> impl IntoResponse {

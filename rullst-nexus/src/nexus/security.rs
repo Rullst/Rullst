@@ -31,6 +31,15 @@ pub async fn nexus_security_page(
     let sanitizations_count = store.sanitizations_count.load(Ordering::Relaxed);
     let prompts_inspected = store.prompts_inspected_count.load(Ordering::Relaxed);
     let pii_masked = store.pii_masked_count.load(Ordering::Relaxed);
+    let log_redactions = store.log_redactions_count.load(Ordering::Relaxed);
+    let zero_trust_mismatches = store.zero_trust_mismatches_count.load(Ordering::Relaxed);
+    let schema_violations = store.schema_violations_count.load(Ordering::Relaxed);
+    let sri_signed_assets = store.sri_signed_assets_count.load(Ordering::Relaxed);
+    let mfa_verifications = store.mfa_verifications_count.load(Ordering::Relaxed);
+    let deception_hits = store.deception_hits_count.load(Ordering::Relaxed);
+    let cswsh_blocks = store.cswsh_blocks_count.load(Ordering::Relaxed);
+    let rate_limit_blocks = store.rate_limit_blocks_count.load(Ordering::Relaxed);
+    let siem_dispatches = store.siem_dispatches_count.load(Ordering::Relaxed);
 
     // Build Banned IPs List
     let mut banned_ips_html = String::new();
@@ -199,6 +208,51 @@ pub async fn nexus_security_page(
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
                 <span style="color: var(--text-muted); font-size: 11px; display: block;">HMAC Audit Chain</span>
                 <span style="font-size: 20px; font-weight: 700; color: #34d399;">100% VERIFIED</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deep Security & Zero-Trust Defense Primitives -->
+    <div style="background: rgba(16, 185, 129, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.25);">
+        <h3 style="margin: 0 0 12px 0; color: #34d399; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+            <span>🛡️ Deep Security & Zero-Trust Defenses</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px;">
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Log Secrets Redacted</span>
+                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{log_redactions}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Zero-Trust Mismatches</span>
+                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{zero_trust_mismatches}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Schema / Bomb Blocked</span>
+                <span style="font-size: 20px; font-weight: 700; color: #818cf8;">{schema_violations}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">SRI Signed Assets</span>
+                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{sri_signed_assets}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">MFA TOTP Verified</span>
+                <span style="font-size: 20px; font-weight: 700; color: #38bdf8;">{mfa_verifications}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Deception Traps Hit</span>
+                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{deception_hits}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">CSWSH Hijacks Blocked</span>
+                <span style="font-size: 20px; font-weight: 700; color: #c084fc;">{cswsh_blocks}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Rate Limit Drops</span>
+                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{rate_limit_blocks}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">SIEM Alerts Streamed</span>
+                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{siem_dispatches}</span>
             </div>
         </div>
     </div>

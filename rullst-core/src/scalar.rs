@@ -17,7 +17,7 @@ pub fn render_scalar_html(openapi_url: &str) -> String {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>API Documentation — Rullst Scalar UI</title>
-    <link rel="icon" type="image/svg+xml" href="https://rullst.dev/favicon.svg">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png">
     <style>
         body {{
             margin: 0;

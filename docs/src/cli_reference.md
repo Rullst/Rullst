@@ -103,6 +103,9 @@ The Supreme Command. With just one command, it creates an entire Authentication 
 - Session or Token Middleware.
 - Complete HTML Views for Login and Signup (unless `--api` is used).
 
+### `cargo rullst make:mfa`
+Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/mfa.rs` providing RFC 6238 Base32 secret generation, 6-digit TOTP code validation, and `otpauth://` QR URI generation.
+
 ---
 
 ## 🗄️ 3. Database and Migrations (`db:*`)
@@ -146,8 +149,11 @@ Connects to a legacy database (that already exists and has tables), maps the ent
 ### `cargo rullst generate:ai-context`
 Creates the brain map of your project (`.llms.txt`). It summarizes the folder structure, conventions, and dependencies so that AI Assistants (like Cursor and Github Copilot) perfectly understand the framework when you ask them for help.
 
-### `cargo rullst audit [--ai]`
+### `cargo rullst audit [--ai] [--compliance]`
 Runs an AI-assisted security audit scanning `.env` for secret leaks, verifying dependency CVEs via `cargo audit`, and evaluating RBAC permission boundaries with AI Sentinel suggestions.
+* **Flags:**
+  * `--ai`: Enables AI Sentinel suggestions for threat mitigation.
+  * `--compliance`: Generates a `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC2 Type II, and ISO 27001 control requirements.
 
 ### `cargo rullst eject [--force] [--output <path>]`
 Expands all Rullst framework abstractions into 100% pure Axum and Tokio Rust code (`src/ejected_main.rs`), eliminating framework lock-in and allowing low-level Tower/Hyper customization.
