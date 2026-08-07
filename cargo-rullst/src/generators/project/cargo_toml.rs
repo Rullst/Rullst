@@ -33,9 +33,6 @@ pub fn build_cargo_toml(
     if db_needed {
         rullst_features.push("orm");
     }
-    if hot_reload {
-        rullst_features.push("hot-reload");
-    }
     if wants_ai {
         rullst_features.push("ai");
     }
@@ -43,13 +40,13 @@ pub fn build_cargo_toml(
         rullst_features.push("redis");
     }
 
-    if blueprint_selection == 1 {
+    rullst_features.push("studio");
+    if blueprint_selection >= 1 || db_needed {
         rullst_features.push("nexus");
-        rullst_features.push("studio");
     }
 
     let rullst_line = if rullst_features.is_empty() {
-        format!("{}}}", rullst_dep)
+        " }".to_string()
     } else {
         let feats_str = rullst_features
             .iter()
@@ -98,7 +95,7 @@ edition = "2021"
             "MySQL" => "mysql",
             _ => "sqlite",
         };
-        let sqlx_features = format!("\"runtime-tokio-rustls\", \"{}\"", sqlx_driver_feature);
+        let sqlx_features = format!("\"runtime-tokio\", \"tls-rustls\", \"{}\"", sqlx_driver_feature);
 
         let sibling_orm = current_dir.join("rullst-orm");
         let orm_dep = if sibling_orm.exists() {
@@ -114,7 +111,7 @@ edition = "2021"
         };
 
         cargo_toml.push_str(&format!(
-            r#"{orm_dep}sqlx = {{ version = "0.8", default-features = false, features = [{sqlx_features}] }}
+            r#"{orm_dep}sqlx = {{ version = "0.9", default-features = false, features = [{sqlx_features}] }}
 "#,
             orm_dep = orm_dep,
             sqlx_features = sqlx_features

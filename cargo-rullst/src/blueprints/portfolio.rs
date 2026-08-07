@@ -30,6 +30,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("Portfolio CMS Admin")
+        .register::<models::profile::Profile>()
         .register::<models::project::Project>()
         .register::<models::experience::Experience>()
         .register::<models::skill::Skill>()
@@ -109,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("Portfolio CMS Admin")
+        .register::<models::profile::Profile>()
         .register::<models::project::Project>()
         .register::<models::experience::Experience>()
         .register::<models::skill::Skill>()
@@ -157,6 +159,19 @@ impl Migration for CreatePortfolioTables {
     }
 
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::create("profiles", |table| {
+            table.id();
+            table.string("name").not_null();
+            table.string("title").not_null();
+            table.string("subtitle").not_null();
+            table.string("email").not_null();
+            table.string("website").not_null();
+            table.string("avatar_url").not_null();
+            table.string("github_url").not_null();
+            table.string("linkedin_url").not_null();
+            table.timestamps();
+        }).await?;
+
         Schema::create("projects", |table| {
             table.id();
             table.string("title").not_null();
@@ -186,6 +201,11 @@ impl Migration for CreatePortfolioTables {
         let pool = rullst::db::Orm::pool();
 
         rullst::db::sqlx::query(
+            "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url, created_at, updated_at) VALUES 
+             (1, 'Alex Rivera', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'alex.rivera@rullst.dev', 'https://rullst.dev', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com', datetime('now'), datetime('now'))"
+        ).execute(pool).await?;
+
+        rullst::db::sqlx::query(
             "INSERT INTO projects (id, title, description, url, tags, is_featured, created_at, updated_at) VALUES 
              (1, 'Rullst AI Engine', 'High-performance Rust AI inference engine leveraging hyper-optimized matrix operations.', 'https://github.com/Rullst/Rullst', 'Rust, AI, Tokio', 1, datetime('now'), datetime('now')),
              (2, 'Nexus Auto-CMS', 'Zero-config auto-generated Admin CMS for Rust ORM models.', 'https://github.com/Rullst/Rullst', 'Rust, HTMX, Axum', 1, datetime('now'), datetime('now'))"
@@ -213,6 +233,7 @@ impl Migration for CreatePortfolioTables {
         Schema::drop_if_exists("skills").await?;
         Schema::drop_if_exists("experiences").await?;
         Schema::drop_if_exists("projects").await?;
+        Schema::drop_if_exists("profiles").await?;
         Ok(())
     }
 }
@@ -223,15 +244,34 @@ impl Migration for CreatePortfolioTables {
     ));
 
     // 3. Models
-    let models_mod = r##"pub mod project;
+    let models_mod = r##"pub mod profile;
+pub mod project;
 pub mod experience;
 pub mod skill;
 "##;
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
-    let project_model = r##"use rullst::db::{Orm, FromRow};
+    let profile_model = r##"use rullst::db::{Orm, FromRow, Nexus};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "profiles")]
+pub struct Profile {
+    pub id: i32,
+    pub name: String,
+    pub title: String,
+    pub subtitle: String,
+    pub email: String,
+    pub website: String,
+    pub avatar_url: String,
+    pub github_url: String,
+    pub linkedin_url: String,
+}
+"##;
+    manifest.push(("src/models/profile.rs", profile_model.to_string()));
+
+    let project_model = r##"use rullst::db::{Orm, FromRow, Nexus};
+
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
 #[orm(table = "projects")]
 pub struct Project {
     pub id: i32,
@@ -244,9 +284,9 @@ pub struct Project {
 "##;
     manifest.push(("src/models/project.rs", project_model.to_string()));
 
-    let experience_model = r##"use rullst::db::{Orm, FromRow};
+    let experience_model = r##"use rullst::db::{Orm, FromRow, Nexus};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
 #[orm(table = "experiences")]
 pub struct Experience {
     pub id: i32,
@@ -258,9 +298,9 @@ pub struct Experience {
 "##;
     manifest.push(("src/models/experience.rs", experience_model.to_string()));
 
-    let skill_model = r##"use rullst::db::{Orm, FromRow};
+    let skill_model = r##"use rullst::db::{Orm, FromRow, Nexus};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
 #[orm(table = "skills")]
 pub struct Skill {
     pub id: i32,
@@ -272,11 +312,34 @@ pub struct Skill {
 
     // 4. Repositories (if Repository Pattern or Hybrid Mode selected)
     if is_repo_mode {
-        let repo_mod = r##"pub mod project_repository;
+        let repo_mod = r##"pub mod profile_repository;
+pub mod project_repository;
 pub mod experience_repository;
 pub mod skill_repository;
 "##;
         manifest.push(("src/repositories/mod.rs", repo_mod.to_string()));
+
+        let profile_repo = r##"use crate::models::profile::Profile;
+
+pub struct ProfileRepository;
+
+impl ProfileRepository {
+    pub async fn get() -> Profile {
+        Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
+            id: 1,
+            name: "Alex Rivera".to_string(),
+            title: "Senior Rust & AI Systems Engineer".to_string(),
+            subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
+            email: "alex.rivera@rullst.dev".to_string(),
+            website: "https://rullst.dev".to_string(),
+            avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
+            github_url: "https://github.com/Rullst".to_string(),
+            linkedin_url: "https://linkedin.com".to_string(),
+        })
+    }
+}
+"##;
+        manifest.push(("src/repositories/profile_repository.rs", profile_repo.to_string()));
 
         let project_repo = r##"use crate::models::project::Project;
 
@@ -319,33 +382,48 @@ impl SkillRepository {
     let portfolio_controller = if is_repo_mode {
         r##"use rullst::server::IntoResponse;
 use rullst::response::Html;
+use crate::models::profile::Profile;
+use crate::repositories::profile_repository::ProfileRepository;
 use crate::repositories::project_repository::ProjectRepository;
 use crate::repositories::experience_repository::ExperienceRepository;
 use crate::repositories::skill_repository::SkillRepository;
 use crate::pages::home;
 
 pub async fn index() -> impl IntoResponse {
+    let profile = ProfileRepository::get().await;
     let projects = ProjectRepository::all().await;
     let experiences = ExperienceRepository::all().await;
     let skills = SkillRepository::all().await;
 
-    Html(home::render("Senior Rust & AI Engineer (DDD Repository Pattern)", &projects, &experiences, &skills))
+    Html(home::render(&profile, &projects, &experiences, &skills))
 }
 "##.to_string()
     } else {
         r##"use rullst::server::IntoResponse;
 use rullst::response::Html;
+use crate::models::profile::Profile;
 use crate::models::project::Project;
 use crate::models::experience::Experience;
 use crate::models::skill::Skill;
 use crate::pages::home;
 
 pub async fn index() -> impl IntoResponse {
+    let profile = Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
+        id: 1,
+        name: "Alex Rivera".to_string(),
+        title: "Senior Rust & AI Systems Engineer".to_string(),
+        subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
+        email: "alex.rivera@rullst.dev".to_string(),
+        website: "https://rullst.dev".to_string(),
+        avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
+        github_url: "https://github.com/Rullst".to_string(),
+        linkedin_url: "https://linkedin.com".to_string(),
+    });
     let projects = Project::all().await.unwrap_or_default();
     let experiences = Experience::all().await.unwrap_or_default();
     let skills = Skill::all().await.unwrap_or_default();
 
-    Html(home::render("Senior Rust & AI Engineer (Active Record Pattern)", &projects, &experiences, &skills))
+    Html(home::render(&profile, &projects, &experiences, &skills))
 }
 "##.to_string()
     };
@@ -363,39 +441,37 @@ pub async fn index() -> impl IntoResponse {
     let (engine_badge, engine_imports, render_fn_code) = if frontend_engine.contains("Leptos") {
         (
             "⚡ Rullst Leptos SSR Adapter Engine Active",
-            "use leptos::prelude::*;",
-            r#"pub fn render(role_title: &str, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
-    let sidebar_html = render_sidebar(role_title, skills);
+            "use leptos::prelude::*;\nuse rullst::html;",
+            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+    let sidebar_html = render_sidebar(profile, skills);
     let content_html = render_content(projects, experiences);
     let styles = cv_styles();
-    leptos::ssr::render_to_string(move || {
-        view! {
-            <html lang="en" class="dark">
-                <head>
-                    <meta charset="UTF-8" />
-                    <title>"Rullst Developer — Leptos SSR Portfolio"</title>
-                    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-                    <style>{styles.clone()}</style>
-                </head>
-                <body>
-                    <div class="layout">
-                        <div class="sidebar-wrapper" inner_html=sidebar_html.clone() />
-                        <div class="content-wrapper" inner_html=content_html.clone() />
-                    </div>
-                </body>
-            </html>
-        }
-    })
+    view! {
+        <html lang="en" class="dark">
+            <head>
+                <meta charset="UTF-8" />
+                <title>"Rullst Developer — Leptos SSR Portfolio"</title>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+                <style>{styles.clone()}</style>
+            </head>
+            <body>
+                <div class="layout">
+                    <div class="sidebar-wrapper" inner_html=sidebar_html.clone() />
+                    <div class="content-wrapper" inner_html=content_html.clone() />
+                </div>
+            </body>
+        </html>
+    }.to_html()
 }"#
         )
     } else if frontend_engine.contains("Dioxus") {
         (
             "🎨 Rullst Dioxus Virtual DOM SSR Engine Active",
-            "use dioxus::prelude::*;",
-            r#"pub fn render(role_title: &str, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
-    let sidebar_html = render_sidebar(role_title, skills);
+            "use dioxus::prelude::*;\nuse rullst::html;",
+            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+    let sidebar_html = render_sidebar(profile, skills);
     let content_html = render_content(projects, experiences);
-    dioxus_ssr::render_element(rsx! {
+    dioxus::ssr::render_element(rsx! {
         div { class: "dioxus-ssr-portfolio",
             style { "{cv_styles()}" }
             div { class: "layout",
@@ -410,7 +486,7 @@ pub async fn index() -> impl IntoResponse {
         (
             "🔥 Rullst Zero-Bundle HTMX + Tailwind Engine Active",
             "use rullst::html;",
-            r#"pub fn render(role_title: &str, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
     html! {
         <html lang="en">
             <head>
@@ -427,7 +503,7 @@ pub async fn index() -> impl IntoResponse {
                 <div class="glow-blob glow-2"></div>
                 
                 <div class="layout">
-                    { rullst::html::RawHtml(render_sidebar(role_title, skills)) }
+                    { rullst::html::RawHtml(render_sidebar(profile, skills)) }
                     { rullst::html::RawHtml(render_content(projects, experiences)) }
                 </div>
             </body>
@@ -440,6 +516,7 @@ pub async fn index() -> impl IntoResponse {
     let home_page = format!(
         r##"// Frontend Adapter: {frontend_engine}
 {engine_imports}
+use crate::models::profile::Profile;
 use crate::models::project::Project;
 use crate::models::experience::Experience;
 use crate::models::skill::Skill;
@@ -544,21 +621,22 @@ fn cv_styles() -> String {{
     "#.to_string()
 }}
 
-fn render_sidebar(role_title: &str, skills: &[Skill]) -> String {{
+fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
     html! {{
         <aside class="sidebar">
             <div style="text-align: center;">
-                <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" class="profile-img" />
-                <h1>"Rullst Developer"</h1>
-                <h2 class="role">{{role_title}}</h2>
+                <img src={{&profile.avatar_url}} alt={{&profile.name}} class="profile-img" />
+                <h1>{{&profile.name}}</h1>
+                <h2 class="role">{{&profile.title}}</h2>
                 <div class="engine-badge">"{engine_badge}"</div>
-                <p class="summary">"Specialized in high-performance fullstack systems, agentic AI frameworks, and immersive web experiences powered by Rust."</p>
+                <p class="summary">{{&profile.subtitle}}</p>
                 <a href="/nexus" target="_blank" class="cms-btn">"⚙️ Manage via Nexus CMS"</a>
             </div>
             
             <div class="contact-info">
-                <div class="contact-item">"📧 dev@rullst.io"</div>
-                <div class="contact-item">"🌐 github.com/Rullst"</div>
+                <div class="contact-item">"📧 "{{&profile.email}}</div>
+                <div class="contact-item">"🌐 "<a href={{&profile.website}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
+                <div class="contact-item">"💻 "<a href={{&profile.github_url}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
             </div>
 
             <div>

@@ -167,7 +167,7 @@ pub fn run_project_wizard(
         };
     }
 
-    if !api {
+    if !api && blueprint_selection >= 1 {
         let fe_options = &[
             "Zero-Bundle HTMX + TailwindCSS (Recommended — 0KB JS bundle, instant page loads & HTML5 SSR)",
             "Leptos SSR Adapter (Full-stack Rust UI — React-like signals & WebAssembly interactivity)",
@@ -191,7 +191,7 @@ pub fn run_project_wizard(
         .interact()?;
 
     let wants_redis = dialoguer::Confirm::with_theme(&theme)
-        .with_prompt("🚀 Do you want to use Redis? (Adds advanced caching/jobs, but requires a separate server/cloud costs)")
+        .with_prompt("🚀 Enable Redis? (Ultra-fast in-memory cache & distributed jobs; auto-falls back to RAM if offline)")
         .default(false)
         .interact()?;
 

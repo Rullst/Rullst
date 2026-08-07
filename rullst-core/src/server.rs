@@ -111,6 +111,7 @@ impl Server {
     /// Start the HTTP server on the specified port
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = crate::artisan::check_and_run_artisan(vec![], vec![]).await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await;
 

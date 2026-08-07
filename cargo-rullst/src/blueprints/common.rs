@@ -126,12 +126,12 @@ pub fn frontend_cargo_dependency(frontend_engine: &str) -> String {
 pub fn frontend_page_imports(frontend_engine: &str) -> String {
     if frontend_engine.contains("Leptos") {
         format!(
-            "// Frontend Adapter: {}\nuse leptos::prelude::*;\n",
+            "// Frontend Adapter: {}\nuse leptos::prelude::*;\nuse rullst::html;\n",
             frontend_engine
         )
     } else if frontend_engine.contains("Dioxus") {
         format!(
-            "// Frontend Adapter: {}\nuse dioxus::prelude::*;\n",
+            "// Frontend Adapter: {}\nuse dioxus::prelude::*;\nuse rullst::html;\n",
             frontend_engine
         )
     } else {
@@ -149,7 +149,7 @@ pub fn frontend_page_imports(frontend_engine: &str) -> String {
 pub fn render_page_layout(frontend_engine: &str) -> String {
     if frontend_engine.contains("Leptos") {
         r#"pub fn render_layout(title: &str, body_html: &str) -> String {
-    leptos::ssr::render_to_string(move || view! {
+    view! {
         <!DOCTYPE html>
         <html lang="en" class="dark">
             <head>
@@ -162,12 +162,12 @@ pub fn render_page_layout(frontend_engine: &str) -> String {
                 </div>
             </body>
         </html>
-    })
+    }.to_html()
 }
 "#.to_string()
     } else if frontend_engine.contains("Dioxus") {
         r#"pub fn render_layout(title: &str, body_html: &str) -> String {
-    dioxus_ssr::render_element(rsx! {
+    dioxus::ssr::render_element(rsx! {
         div { class: "dioxus-ssr-container",
             h1 { "{title}" }
             div { "{body_html}" }

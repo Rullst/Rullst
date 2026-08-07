@@ -37,6 +37,38 @@ let nexus = rullst::nexus::Nexus::new()
 let router = router.nest_axum("/nexus", nexus);
 ```
 
+## 👤 Example: Dynamic Profile Settings in Blueprints
+
+Starter blueprints like **Portfolio** use Nexus reflection to expose single-row or multi-row site configuration settings (such as developer name, title, bio, email, personal website, avatar photo, and social links).
+
+```rust
+use rullst::db::{Orm, FromRow, Nexus};
+
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "profile")]
+pub struct Profile {
+    pub id: i32,
+    pub name: String,
+    pub title: String,
+    pub subtitle: String,
+    pub email: String,
+    pub website: String,
+    pub avatar_url: String,
+    pub github_url: String,
+    pub linkedin_url: String,
+}
+```
+
+When registered in Nexus:
+```rust
+let nexus = rullst::nexus::Nexus::new()
+    .with_brand("Portfolio Admin")
+    .register::<models::profile::Profile>()
+    .build();
+```
+
+Administrators can edit the developer profile fields directly at `/nexus`. Changes to name, title, bio, email, website, avatar image, and social URLs immediately update the live portfolio website without requiring code changes or server redeployment!
+
 ## Benefits of Nexus
 
 1. **Zero Front-end Effort:** Nexus renders responsive tables, creation/edition modals, and delete buttons using HTML and HTMX without writing a single line of JS.

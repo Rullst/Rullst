@@ -12,6 +12,7 @@
 - [💳 Rullst Capital: SaaS Billing Made Easy](5-rullst-capital.md)
 - [🧠 Integrating AI into Rullst](6-ai-integration-tutorial.md)
 - [⚡ Rullst AI Token Economy & Local LLMs](7-ai-token-economy-and-local-llms.md)
+- [⚡ Redis Architecture, Caching & Distributed Queues](redis-guide.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 

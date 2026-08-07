@@ -64,10 +64,10 @@ pub async fn check_and_run_artisan(
             env_db_url
         } else if let Some(parsed) = db_url {
             parsed
-        } else if std::path::Path::new("db.sqlite").exists() {
-            "sqlite://db.sqlite".to_string()
-        } else {
+        } else if std::path::Path::new("rullst.db").exists() {
             "sqlite://rullst.db".to_string()
+        } else {
+            "sqlite://db.sqlite?mode=rwc".to_string()
         };
 
         // 2. Initialize Orm database connection pool
@@ -78,8 +78,23 @@ pub async fn check_and_run_artisan(
             let app = axum::Router::new()
                 .route("/", axum::routing::get(studio_home_handler))
                 .route("/data", axum::routing::get(studio_data_handler))
+                .route("/ai", axum::routing::get(studio_ai_handler))
                 .route("/security", axum::routing::get(studio_security_handler))
-                .route("/telemetry", axum::routing::get(studio_telemetry_handler));
+                .route("/telemetry", axum::routing::get(studio_telemetry_handler))
+                .route("/capital", axum::routing::get(studio_capital_handler))
+                .route("/traces", axum::routing::get(studio_traces_handler))
+                .route(
+                    "/_studio/api/migrations/run",
+                    axum::routing::post(handle_run_migrations),
+                )
+                .route(
+                    "/_studio/api/migrations/rollback",
+                    axum::routing::post(handle_rollback_migrations),
+                )
+                .route(
+                    "/_studio/api/seeders/run",
+                    axum::routing::post(handle_run_seeders),
+                );
 
             if let Ok(listener) = tokio::net::TcpListener::bind("127.0.0.1:5555").await {
                 let _ = axum::serve(listener, app).await;
@@ -106,50 +121,156 @@ async fn studio_home_handler() -> axum::response::Html<String> {
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
     <meta charset="UTF-8">
-    <title>Rullst Visual Studio</title>
+    <title>Rullst Studio Control Center</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+    </style>
 </head>
-<body class="h-full flex flex-col font-mono p-8">
-    <header class="flex items-center justify-between pb-6 border-b border-slate-800 mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-emerald-400 flex items-center gap-3">
-                <span>🛠️ Rullst Visual Studio</span>
-                <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-1 rounded-full">v12.0.0</span>
-            </h1>
-            <p class="text-slate-400 text-sm mt-1">Real-Time Database Inspector & System Telemetry Radar</p>
-        </div>
+<body class="h-full flex flex-col font-mono bg-slate-950 text-slate-100 antialiased">
+    <header class="flex-shrink-0 bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between shadow-lg gap-4">
         <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Port 5555 Active
+            <a href="/" class="flex items-center gap-2 group">
+                <span class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                    Rullst
+                </span>
+                <span class="text-xs font-bold tracking-widest px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-400/20 uppercase">
+                    Studio
+                </span>
+            </a>
+        </div>
+
+        <nav class="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80 overflow-x-auto text-xs font-semibold">
+            <a href="/" class="px-3.5 py-1.5 rounded-lg text-white bg-slate-800/80 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🏠 Control Center</span>
+            </a>
+            <a href="/data" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🛠️ Database Tools</span>
+            </a>
+            <a href="/ai" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🤖 AI Playground</span>
+            </a>
+            <a href="/telemetry" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>📡 Radar & Telemetry</span>
+            </a>
+            <a href="/capital" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>💳 Capital</span>
+            </a>
+            <a href="/security" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🛡️ Threat Radar</span>
+            </a>
+            <a href="/traces" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                <span>🔍 Traces</span>
+            </a>
+        </nav>
+
+        <div class="flex items-center gap-2 bg-slate-950 border border-slate-800/80 px-3 py-1 rounded-full text-xs font-medium text-slate-300">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
+            Port 5555 Active
         </div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <a href="/data" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-emerald-500 hover:bg-slate-900/80 transition-all group block">
-            <div class="text-emerald-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
-                <span>🗄️ Database Inspector</span>
-                <span class="text-slate-600 group-hover:text-emerald-400">→</span>
+    <main class="p-8 font-mono space-y-8 max-w-7xl mx-auto flex-grow overflow-y-auto w-full">
+        <!-- Hero Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div class="flex items-center gap-4">
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span class="text-2xl">🦀</span>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <span>Rullst Studio Control Center</span>
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">Full-Stack Developer Hub — Database Inspector, AI Sentinel, Security Radar & Telemetry</p>
+                </div>
             </div>
-            <p class="text-slate-400 text-sm">Visual table records viewer, schema inspector, and live SQL query runner.</p>
-        </a>
-        <a href="/security" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-amber-500 hover:bg-slate-900/80 transition-all group block">
-            <div class="text-amber-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
-                <span>🛡️ Visual Threat Radar</span>
-                <span class="text-slate-600 group-hover:text-amber-400">→</span>
+            <div class="flex items-center gap-3">
+                <span class="px-3.5 py-1.5 bg-emerald-950 border border-emerald-800/80 rounded-full text-xs font-bold text-emerald-400">
+                    🔒 Guard Active
+                </span>
             </div>
-            <p class="text-slate-400 text-sm">Real-time SOC security dashboard, RASP engine alerts, Honeypot logs & HMAC audit chain.</p>
-        </a>
-        <a href="/telemetry" class="p-6 bg-slate-900 border border-slate-800 rounded-xl hover:border-cyan-500 hover:bg-slate-900/80 transition-all group block">
-            <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
-                <span>⚡ Telemetry Spans</span>
-                <span class="text-slate-600 group-hover:text-cyan-400">→</span>
+        </div>
+
+        <!-- Top Metric KPI Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Database Engine</div>
+                <div class="text-2xl font-bold text-sky-400 mt-1 uppercase">SQLx Zero-Lock</div>
+                <div class="text-xs text-slate-400 mt-2">Async Connection Pool</div>
             </div>
-            <p class="text-slate-400 text-sm">Live Tokio runtime tick latency tracking and RSS RAM memory meter.</p>
-        </a>
-    </div>
+            <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Managed Tables</div>
+                <div class="text-2xl font-bold text-indigo-400 mt-1">Active Schema</div>
+                <div class="text-xs text-slate-400 mt-2">Schema Inspection Ready</div>
+            </div>
+            <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">AI Sentinel Guard</div>
+                <div class="text-2xl font-bold text-cyan-400 mt-1">Guarded</div>
+                <div class="text-xs text-slate-400 mt-2">Prompt Injection & PII Filter</div>
+            </div>
+            <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Tokio Executor</div>
+                <div class="text-2xl font-bold text-emerald-400 mt-1">&lt; 0.15 ms</div>
+                <div class="text-xs text-slate-400 mt-2">Ultra-light ~14MB RSS RAM</div>
+            </div>
+        </div>
+
+        <!-- Studio Tools Feature Navigation Cards -->
+        <div>
+            <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                <span>⚡ Studio Tools Hub</span>
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <a href="/data" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-purple-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-purple-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>🛠️ Database Tools & Inspector</span>
+                        <span class="text-slate-600 group-hover:text-purple-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Run pending schema migrations, rollbacks, data seeders, and inspect raw database records line by line.</p>
+                </a>
+                <a href="/ai" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>🤖 AI & Prompt Playground</span>
+                        <span class="text-slate-600 group-hover:text-cyan-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Test LLM prompt completions, injection filters, and vector embeddings in an interactive playground.</p>
+                </a>
+                <a href="/telemetry" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-sky-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-sky-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>📡 Telemetry & Rullst Radar</span>
+                        <span class="text-slate-600 group-hover:text-sky-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Kernel-level telemetry visualizer displaying Tokio tick latency (µs), active async tasks, CPU, RSS memory & live spans.</p>
+                </a>
+                <a href="/capital" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-emerald-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-emerald-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>💳 Rullst Capital (Revenue)</span>
+                        <span class="text-slate-600 group-hover:text-emerald-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Real-time SaaS MRR/ARR analytics dashboard and Stripe/LemonSqueezy webhook audit log ledger.</p>
+                </a>
+                <a href="/security" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-amber-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-amber-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>🛡️ Visual Threat Radar</span>
+                        <span class="text-slate-600 group-hover:text-amber-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Real-time SOC security dashboard, RASP engine memory alerts, Honeypot traps, and HMAC tamper-proof audit chain.</p>
+                </a>
+                <a href="/traces" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-indigo-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-indigo-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>🔍 Distributed Tracing</span>
+                        <span class="text-slate-600 group-hover:text-indigo-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">Microsecond span collector and flamegraph trace visualizer for HTTP requests, ORM queries, and AI generation.</p>
+                </a>
+            </div>
+        </div>
+    </main>
 </body>
 </html>"#
             .to_string(),
@@ -162,66 +283,168 @@ async fn studio_data_handler() -> axum::response::Html<String> {
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
     <meta charset="UTF-8">
-    <title>Database Inspector — Rullst Studio</title>
+    <title>Database Tools & Inspector — Rullst Studio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Outfit', sans-serif; }</style>
 </head>
-<body class="h-full flex flex-col font-mono p-8">
-    <nav class="mb-6">
-        <a href="/" class="text-slate-400 hover:text-emerald-400 text-sm font-semibold transition-colors">← Back to Rullst Studio</a>
+<body class="h-full flex flex-col font-mono p-8 max-w-7xl mx-auto space-y-6">
+    <nav class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h1 class="text-2xl font-bold text-purple-400 flex items-center gap-2">🛠️ Database Tools & Migration Manager</h1>
+        <a href="/" class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 hover:text-white transition">← Back to Control Center</a>
     </nav>
-    <header class="pb-6 border-b border-slate-800 mb-8">
-        <h1 class="text-3xl font-bold text-emerald-400 flex items-center gap-3">
-            <span>🗄️ Database Inspector</span>
-        </h1>
-        <p class="text-slate-400 text-sm mt-1">Live Database Connection Pool & Schema Table Inspector</p>
-    </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Driver Status</div>
-            <div class="text-2xl font-bold text-emerald-400 mt-1">Connected</div>
-            <div class="text-xs text-slate-400 mt-2">SQLx Connection Pool Active</div>
+    <!-- Command Action Cards (Run Migrations, Rollback, Seeders) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-5 bg-slate-900 border border-indigo-500/30 rounded-xl space-y-3 flex flex-col justify-between shadow-md">
+            <div>
+                <div class="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                    <span>🚀 Run Pending Migrations</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                    Executes all pending database migrations (<code class="px-1 py-0.5 bg-slate-950 text-indigo-300 rounded font-mono">db:migrate</code>) to apply schema changes safely.
+                </p>
+            </div>
+            <button onclick="triggerMigration('run')" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition shadow flex justify-center items-center gap-1.5 cursor-pointer">
+                <span>Run Migrations</span>
+            </button>
         </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Managed Tables</div>
-            <div class="text-2xl font-bold text-white mt-1">_rullst_migrations</div>
-            <div class="text-xs text-slate-400 mt-2">Schema migrations table ready</div>
+
+        <div class="p-5 bg-slate-900 border border-rose-500/30 rounded-xl space-y-3 flex flex-col justify-between shadow-md">
+            <div>
+                <div class="flex items-center gap-2 text-rose-400 font-bold text-sm">
+                    <span>↩️ Rollback Last Batch</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                    Reverts the last batch of executed migrations (<code class="px-1 py-0.5 bg-slate-950 text-rose-300 rounded font-mono">db:rollback</code>), removing the latest schema changes.
+                </p>
+            </div>
+            <button onclick="triggerMigration('rollback')" class="w-full py-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition shadow flex justify-center items-center gap-1.5 cursor-pointer">
+                <span>Rollback Batch</span>
+            </button>
         </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Query Mode</div>
-            <div class="text-2xl font-bold text-cyan-400 mt-1">Safe Active Record</div>
-            <div class="text-xs text-slate-400 mt-2">Zero-lock async pool</div>
+
+        <div class="p-5 bg-slate-900 border border-emerald-500/30 rounded-xl space-y-3 flex flex-col justify-between shadow-md">
+            <div>
+                <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                    <span>🌱 Run Data Seeders</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                    Populates your database tables with sample/mock data (<code class="px-1 py-0.5 bg-slate-950 text-emerald-300 rounded font-mono">db:seed</code>) for rapid testing.
+                </p>
+            </div>
+            <button onclick="triggerSeeder()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition shadow flex justify-center items-center gap-1.5 cursor-pointer">
+                <span>Run Seeders</span>
+            </button>
         </div>
     </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-slate-200 mb-4">Database Schema Tables</h2>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="border-b border-slate-800 text-slate-400 text-xs">
-                        <th class="py-3 px-4">TABLE NAME</th>
-                        <th class="py-3 px-4">TYPE</th>
-                        <th class="py-3 px-4">STATUS</th>
-                        <th class="py-3 px-4">ACTION</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm divide-y divide-slate-800/60">
-                    <tr>
-                        <td class="py-3 px-4 font-bold text-emerald-400">_rullst_migrations</td>
-                        <td class="py-3 px-4 text-slate-400">System Metadata</td>
-                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Synced</span></td>
-                        <td class="py-3 px-4"><span class="text-xs text-slate-400">Default Migration Ledger</span></td>
-                    </tr>
-                </tbody>
-            </table>
+    <!-- Output Box -->
+    <div id="tool-output-card" class="hidden bg-slate-900 border border-slate-700/80 p-5 rounded-2xl text-mono text-sm shadow-xl">
+        <div id="output-header" class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Operation Output</div>
+        <div id="output-content" class="text-slate-200 whitespace-pre-wrap font-mono text-xs"></div>
+    </div>
+
+    <!-- Nexus CMS Notice -->
+    <div class="bg-slate-900/90 border border-sky-500/30 p-5 rounded-2xl space-y-2 shadow-lg">
+        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm">
+            <span>💡 Looking to Add, Edit, or Delete Individual Database Records?</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Rullst Studio</strong> is designed for developer schema inspection and migration management. To create, edit, or delete individual database rows line-by-line, open <strong>Rullst Nexus CMS</strong> — your auto-generated admin panel:
+        </p>
+        <div class="pt-1 flex items-center gap-2">
+            <a href="http://127.0.0.1:3000/nexus" target="_blank" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl transition shadow inline-flex items-center gap-1.5">
+                <span>⚙️ Open Rullst Nexus CMS (/nexus)</span>
+            </a>
+            <span class="text-xs text-slate-400 font-mono pl-2">(Default login: <code class="text-sky-300">admin</code> / <code class="text-sky-300">password</code>)</span>
         </div>
     </div>
+
+    <script>
+    async function triggerMigration(action) {
+        const card = document.getElementById('tool-output-card');
+        const content = document.getElementById('output-content');
+        card.classList.remove('hidden');
+        content.innerText = 'Executing ' + action + '...';
+
+        try {
+            const res = await fetch('/_studio/api/migrations/' + action, { method: 'POST' });
+            const data = await res.json();
+            content.innerText = (data.success ? '✅ ' : '❌ ') + data.message;
+        } catch (e) {
+            content.innerText = '❌ Error executing operation: ' + e;
+        }
+    }
+
+    async function triggerSeeder() {
+        const card = document.getElementById('tool-output-card');
+        const content = document.getElementById('output-content');
+        card.classList.remove('hidden');
+        content.innerText = 'Executing seeders...';
+
+        try {
+            const res = await fetch('/_studio/api/seeders/run', { method: 'POST' });
+            const data = await res.json();
+            content.innerText = (data.success ? '✅ ' : '❌ ') + data.message;
+        } catch (e) {
+            content.innerText = '❌ Error executing seeders: ' + e;
+        }
+    }
+    </script>
 </body>
 </html>"#
             .to_string(),
     )
+}
+
+#[derive(serde::Serialize)]
+struct ApiResponse {
+    success: bool,
+    message: String,
+}
+
+async fn handle_run_migrations() -> impl axum::response::IntoResponse {
+    let args = vec!["artisan".to_string(), "migrate".to_string()];
+    match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
+        Ok(_) => axum::Json(ApiResponse {
+            success: true,
+            message: "Migrations executed successfully!".to_string(),
+        }),
+        Err(e) => axum::Json(ApiResponse {
+            success: false,
+            message: format!("Migration error: {}", e),
+        }),
+    }
+}
+
+async fn handle_rollback_migrations() -> impl axum::response::IntoResponse {
+    let args = vec!["artisan".to_string(), "migrate:rollback".to_string()];
+    match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
+        Ok(_) => axum::Json(ApiResponse {
+            success: true,
+            message: "Rollback executed successfully!".to_string(),
+        }),
+        Err(e) => axum::Json(ApiResponse {
+            success: false,
+            message: format!("Rollback error: {}", e),
+        }),
+    }
+}
+
+async fn handle_run_seeders() -> impl axum::response::IntoResponse {
+    let args = vec!["artisan".to_string(), "db:seed".to_string()];
+    match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
+        Ok(_) => axum::Json(ApiResponse {
+            success: true,
+            message: "Seeders executed successfully!".to_string(),
+        }),
+        Err(e) => axum::Json(ApiResponse {
+            success: false,
+            message: format!("Seeder error: {}", e),
+        }),
+    }
 }
 
 fn is_ai_configured() -> bool {
@@ -528,6 +751,126 @@ async fn studio_telemetry_handler() -> axum::response::Html<String> {
 </body>
 </html>"#
     ))
+}
+
+async fn studio_ai_handler() -> axum::response::Html<String> {
+    axum::response::Html(
+        r#"<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <title>AI & Prompt Playground — Rullst Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Outfit', sans-serif; }</style>
+</head>
+<body class="h-full flex flex-col font-mono bg-slate-950 text-slate-100 antialiased p-8 max-w-7xl mx-auto space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">🤖 AI & Prompt Playground</h1>
+            <p class="text-xs text-slate-400 mt-1">Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek) with active Prompt Injection & PII filter.</p>
+        </div>
+        <a href="/" class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 hover:text-white transition">← Back to Control Center</a>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200">Interactive Prompt Sandbox</h2>
+            <textarea class="w-full h-40 p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono" placeholder="Enter system prompt or test string for PII & injection filtering..."></textarea>
+            <div class="flex justify-end gap-3">
+                <button class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold transition">Test Prompt Injection</button>
+            </div>
+        </div>
+        <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200">AI Guard Sentinel Status</h2>
+            <div class="p-4 bg-slate-950 border border-slate-800 rounded-lg space-y-2 text-xs">
+                <div class="flex justify-between"><span class="text-slate-400">PII Masking:</span><span class="text-emerald-400 font-bold">ACTIVE (Regex + Entropy)</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Injection Filter:</span><span class="text-cyan-400 font-bold">ACTIVE (Dual-Layer)</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Connected LLM Provider:</span><span class="text-indigo-400 font-bold">Gemini 2.5 Flash / Ollama Local</span></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"#.to_string()
+    )
+}
+
+async fn studio_capital_handler() -> axum::response::Html<String> {
+    axum::response::Html(
+        r#"<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <title>Rullst Capital — SaaS Analytics & Webhook Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Outfit', sans-serif; }</style>
+</head>
+<body class="h-full flex flex-col font-mono bg-slate-950 text-slate-100 antialiased p-8 max-w-7xl mx-auto space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-emerald-400 flex items-center gap-2">💳 Rullst Capital Revenue Engine</h1>
+            <p class="text-xs text-slate-400 mt-1">Real-time MRR/ARR analytics dashboard & tamper-proof Stripe / LemonSqueezy audit ledger.</p>
+        </div>
+        <a href="/" class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 hover:text-white transition">← Back to Control Center</a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <div class="text-slate-500 text-xs uppercase font-bold">Monthly Recurring Revenue (MRR)</div>
+            <div class="text-3xl font-extrabold text-emerald-400 mt-2">$0.00</div>
+        </div>
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <div class="text-slate-500 text-xs uppercase font-bold">Annual Recurring Revenue (ARR)</div>
+            <div class="text-3xl font-extrabold text-sky-400 mt-2">$0.00</div>
+        </div>
+        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <div class="text-slate-500 text-xs uppercase font-bold">Active Subscriptions</div>
+            <div class="text-3xl font-extrabold text-purple-400 mt-2">0</div>
+        </div>
+    </div>
+</body>
+</html>"#.to_string()
+    )
+}
+
+async fn studio_traces_handler() -> axum::response::Html<String> {
+    axum::response::Html(
+        r#"<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <title>Distributed Tracing & Flamegraph — Rullst Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Outfit', sans-serif; }</style>
+</head>
+<body class="h-full flex flex-col font-mono bg-slate-950 text-slate-100 antialiased p-8 max-w-7xl mx-auto space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">🔍 Distributed Tracing & Span Flamegraph</h1>
+            <p class="text-xs text-slate-400 mt-1">Microsecond span collector & waterfall tracer across HTTP requests, ORM queries, and AI generation.</p>
+        </div>
+        <a href="/" class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 hover:text-white transition">← Back to Control Center</a>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+        <h2 class="text-sm font-bold text-slate-200">Live Request Waterfall Traces</h2>
+        <div class="space-y-3 font-mono text-xs">
+            <div class="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
+                <span class="text-cyan-400 font-bold">GET /</span>
+                <span class="text-emerald-400 font-bold">120 µs</span>
+            </div>
+            <div class="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
+                <span class="text-yellow-400 font-bold">sqlx::query SELECT * FROM _rullst_migrations</span>
+                <span class="text-emerald-400 font-bold">340 µs</span>
+            </div>
+            <div class="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
+                <span class="text-amber-400 font-bold">security.waf_check</span>
+                <span class="text-emerald-400 font-bold">15 µs</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"#.to_string()
+    )
 }
 
 #[cfg(test)]

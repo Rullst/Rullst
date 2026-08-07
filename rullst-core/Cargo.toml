@@ -9,6 +9,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
 studio = []
+redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]

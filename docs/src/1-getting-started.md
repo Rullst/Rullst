@@ -54,15 +54,16 @@ When you run `cargo rullst`, the wizard will ask you to select a Blueprint. All 
 
 ## 1. Blank Starter
 **Use Case:** Custom, from-scratch development.
-This is the minimal template. It includes a simple HTMX reactive counter to demonstrate the frontend-backend communication, but leaves the rest entirely up to you.
+This is the minimal template powered by zero-bundle HTMX. It includes a simple reactive counter to demonstrate server-driven communication while keeping your project 100% clean and free of heavy dependencies. If you want full-featured Leptos SSR or Dioxus SSR UI components generated out of the box, select one of the rich blueprints below (Portfolio, SaaS, LMS, Blog, ERP).
 
 ## 2. Portfolio 🔥
 **Use Case:** Developer showcases and personal branding.
 **Status:** HOT!
 A visually stunning, glassmorphic portfolio template designed specifically for Rullst/AI developers. It includes:
-- A responsive Hero section with glowing text.
-- Project cards with hover animations.
-- A built-in contact form.
+- **Profile Settings in Nexus CMS (`/nexus`)**: Edit your name, title, bio, email, website URL, avatar photo, GitHub, and LinkedIn links live without changing code.
+- A responsive sidebar and Hero section with glowing glassmorphism effects.
+- Interactive Experience timeline and Skills tags.
+- Project cards showcase with live external links.
 
 ## 3. LMS Platform
 **Use Case:** Online course platforms and video streaming.

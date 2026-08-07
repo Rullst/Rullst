@@ -55,3 +55,4 @@ pub async fn trigger_welcome_email(email: String) -> Result<(), rullst_core::App
 ## 💡 Key Takeaways
 - Queue drivers support in-memory processing for local development and Redis for distributed production setups.
 - Failed jobs automatically retry with exponential backoff.
+- For a deep dive into Redis caching, RAM fallback, and single-node vs cloud deployment, see the [Redis Architecture Guide](../redis-guide.md).

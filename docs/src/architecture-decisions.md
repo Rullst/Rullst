@@ -113,6 +113,39 @@ Full-stack cross-platform Rust UI framework utilizing Virtual DOM and RSX macro 
 
 ---
 
+### 🏛️ Scope: Application Site vs. Built-in Admin Tools (Nexus & Studio)
+
+When you select a Frontend Engine (e.g. Dioxus SSR, Leptos SSR, or HTMX):
+
+1. **Application Site Routes (`/`, `/courses`, `/posts`, etc.)**: Render using your chosen Frontend Engine (Dioxus, Leptos, or HTMX).
+2. **Rullst Studio (`/studio`) & Rullst Nexus (`/nexus`)**: Are embedded developer and administrative control rooms provided directly by the framework kernel (`rullst-studio` and `rullst-nexus`). They are pre-compiled with an ultra-lightweight, zero-bundle HTMX + dark glassmorphic interface.
+
+> **Key Benefit:** Regardless of whether you select Dioxus SSR or Leptos SSR for your main application, your administrative panel (`/nexus`) and telemetry dashboard (`/studio`) load instantly with zero client-side JavaScript bundle overhead!
+
+---
+
+### 🌐 Project Types: Full-Stack Web App vs. Headless REST API
+
+During project creation (`cargo rullst`), you can choose between two main application modes:
+
+1. **Full-Stack Web App**:
+   - Generates server-side rendered pages using your chosen Frontend Engine (HTMX, Leptos SSR, or Dioxus SSR).
+   - Prompts for Frontend Engine selection during wizard setup.
+   - Ideal for SaaS platforms, portfolios, e-commerce, blogs, and administrative systems.
+
+2. **Headless REST API**:
+   - Generates lightweight JSON endpoints (`rullst::server::Json(payload)`).
+   - Automatically skips Frontend Engine selection to keep dependencies clean and minimal.
+   - Ideal for microservices, mobile app backends, and headless APIs.
+
+### 🛠️ Developer Tools & Admin Panels (Studio & Nexus Availability)
+
+- **Rullst Visual Studio (`http://127.0.0.1:5555`)**: Launched automatically in development mode across **all** project types (Full-Stack and Headless REST API). Provides real-time Database Inspector, RASP Security Radar, and Tokio Telemetry Spans.
+- **Rullst TUI Dashboard (`cargo rullst dash`)**: Interactive CLI terminal dashboard monitoring HMR builds, HTTP request logs, and dev shortcuts across all project types.
+- **Rullst Nexus Auto-CMS (`/nexus`)**: Pre-configured out of the box in starter blueprints (**Portfolio**, **SaaS**, **LMS**, **Blog**, **ERP**). For **Blank Starter** or custom API projects, the `nexus` feature is enabled in `Cargo.toml` whenever a database is present, allowing you to register custom models via `.nest_axum("/nexus", nexus)` at any time.
+
+---
+
 ### 4. Integration with Rullst Omni (`cargo rullst make:omni`)
 
 #### Clarifying Frontend Engines vs. Rullst Omni (Tauri 2.0 Integration)
