@@ -69,6 +69,11 @@ async fn render_radar_dashboard() -> Html<String> {
     let zero_trust_mismatches_count = store.zero_trust_mismatches_count.load(Ordering::Relaxed);
     let schema_violations_count = store.schema_violations_count.load(Ordering::Relaxed);
     let sri_signed_assets_count = store.sri_signed_assets_count.load(Ordering::Relaxed);
+    let mfa_verifications_count = store.mfa_verifications_count.load(Ordering::Relaxed);
+    let deception_hits_count = store.deception_hits_count.load(Ordering::Relaxed);
+    let cswsh_blocks_count = store.cswsh_blocks_count.load(Ordering::Relaxed);
+    let rate_limit_blocks_count = store.rate_limit_blocks_count.load(Ordering::Relaxed);
+    let siem_dispatches_count = store.siem_dispatches_count.load(Ordering::Relaxed);
 
     let events = store
         .live_events
@@ -157,26 +162,51 @@ async fn render_radar_dashboard() -> Html<String> {
     </div>
 
     <!-- Deep Security & Zero-Trust Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Log Secrets Redacted</span>
-            <div class="text-3xl font-extrabold text-amber-400 mt-2" id="stat-redactions">{log_redactions_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Zero-Leak Log & Password Sanitizer</p>
+            <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-redactions">{log_redactions_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Zero-Leak Log Sanitizer</p>
         </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Zero-Trust Mismatches</span>
-            <div class="text-3xl font-extrabold text-rose-500 mt-2" id="stat-zerotrust">{zero_trust_mismatches_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Client Session Fingerprint Shield</p>
+            <div class="text-2xl font-extrabold text-rose-500 mt-1" id="stat-zerotrust">{zero_trust_mismatches_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Client Fingerprint Shield</p>
         </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schema / Bomb Intercepts</span>
-            <div class="text-3xl font-extrabold text-indigo-400 mt-2" id="stat-schema">{schema_violations_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Payload Size & Nesting Depth Limits</p>
+            <div class="text-2xl font-extrabold text-indigo-400 mt-1" id="stat-schema">{schema_violations_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Payload Size & Depth Limits</p>
         </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SRI Signed Assets</span>
-            <div class="text-3xl font-extrabold text-emerald-400 mt-2" id="stat-sri">{sri_signed_assets_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Subresource SHA-384 Integrity Tags</p>
+            <div class="text-2xl font-extrabold text-emerald-400 mt-1" id="stat-sri">{sri_signed_assets_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Subresource Integrity Tags</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">MFA TOTP Verified</span>
+            <div class="text-2xl font-extrabold text-sky-400 mt-1" id="stat-mfa">{mfa_verifications_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">RFC 6238 2FA Verifications</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Deception Traps Hit</span>
+            <div class="text-2xl font-extrabold text-rose-400 mt-1" id="stat-deception">{deception_hits_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Decoy Bot Trap Interceptions</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">CSWSH Blocked</span>
+            <div class="text-2xl font-extrabold text-purple-400 mt-1" id="stat-cswsh">{cswsh_blocks_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Cross-Site WebSocket Hijacks</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Rate Limit Drops</span>
+            <div class="text-2xl font-extrabold text-amber-500 mt-1" id="stat-ratelimit">{rate_limit_blocks_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Sliding-Window IP Limits</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SIEM Alerts Streamed</span>
+            <div class="text-2xl font-extrabold text-emerald-500 mt-1" id="stat-siem">{siem_dispatches_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">CEF / JSON SOC Exports</p>
         </div>
     </div>
 
@@ -237,7 +267,7 @@ async fn render_radar_dashboard() -> Html<String> {
             }}
         }});
 
-        async fnPollStats() {{
+        async function fnPollStats() {{
             try {{
                 const res = await fetch('/studio/security/stats');
                 if (res.ok) {{
@@ -249,6 +279,11 @@ async fn render_radar_dashboard() -> Html<String> {
                     document.getElementById('stat-zerotrust').innerText = data.zero_trust_mismatches;
                     document.getElementById('stat-schema').innerText = data.schema_violations;
                     document.getElementById('stat-sri').innerText = data.sri_signed_assets;
+                    document.getElementById('stat-mfa').innerText = data.mfa_verifications;
+                    document.getElementById('stat-deception').innerText = data.deception_hits;
+                    document.getElementById('stat-cswsh').innerText = data.cswsh_blocks;
+                    document.getElementById('stat-ratelimit').innerText = data.rate_limit_blocks;
+                    document.getElementById('stat-siem').innerText = data.siem_dispatches;
 
                     if (data.live_events && data.live_events.length > 0) {{
                         const stream = document.getElementById('incident-stream');
@@ -278,6 +313,11 @@ async fn render_radar_dashboard() -> Html<String> {
         zero_trust_mismatches_count = zero_trust_mismatches_count,
         schema_violations_count = schema_violations_count,
         sri_signed_assets_count = sri_signed_assets_count,
+        mfa_verifications_count = mfa_verifications_count,
+        deception_hits_count = deception_hits_count,
+        cswsh_blocks_count = cswsh_blocks_count,
+        rate_limit_blocks_count = rate_limit_blocks_count,
+        siem_dispatches_count = siem_dispatches_count,
         incidents_html = incidents_html
     ))
 }

@@ -96,9 +96,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
             ],
         ),
         (
-            "🔐  AUTH & BILLING",
+            "🔐  AUTH & SECURITY",
             vec![
                 ("cargo rullst auth", "Scaffold full auth system"),
+                ("cargo rullst make:mfa", "Scaffold 2FA TOTP authentication system"),
+                (
+                    "cargo rullst audit [--ai] [--compliance]",
+                    "Run AI vulnerability & OWASP/SOC2 compliance audit",
+                ),
                 ("cargo rullst make:billing", "Scaffold Stripe billing"),
                 ("cargo rullst make:cors", "Add CORS middleware"),
                 ("cargo rullst make:jwt", "Add JWT middleware"),

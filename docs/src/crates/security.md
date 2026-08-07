@@ -73,20 +73,133 @@ AI_MODEL=llama3:8b
 
 ---
 
-## 🚀 Usage Example
+---
+
+## 🚀 Usage Examples for New Enterprise Security Features
+
+### 📲 1. Multi-Factor Authentication (2FA / TOTP)
+```rust
+use rullst_security::{generate_mfa_secret, generate_totp_code, verify_totp_code, build_otpauth_uri};
+
+// Step 1: Onboard user by generating Base32 secret & QR Code URI
+let secret = generate_mfa_secret();
+let uri = build_otpauth_uri("MyApp", "user@example.com", &secret);
+println!("Scan QR Code: {}", uri);
+
+// Step 2: Validate 6-digit TOTP code during login (supports +-1 time drift window)
+let user_code = "123456";
+if verify_totp_code(&secret, user_code) {
+    println!("2FA Verification Successful!");
+} else {
+    println!("Invalid 2FA Code");
+}
+```
+
+### 🔍 2. Real-Time Log & Secret Redactor
+```rust
+use rullst_security::redact_secrets;
+
+let raw_log = "User auth token: Bearer eyJhbG... and AWS_KEY=AKIA1234567890ABCDEF";
+let safe_log = redact_secrets(raw_log);
+
+// Output: User auth token: [REDACTED_BEARER_TOKEN] and AWS_KEY=[REDACTED_AWS_KEY]
+println!("{}", safe_log);
+```
+
+### 🔑 3. Subresource Integrity (SRI) Signer
+```rust
+use rullst_security::{compute_sri_hash, sri_script_tag, sri_link_tag};
+
+// Generate SHA-384 SRI script tag for external CDN assets
+let script_tag = sri_script_tag("https://cdn.example.com/app.js", "console.log('App JS');");
+// Output: <script src="https://cdn.example.com/app.js" integrity="sha384-..." crossorigin="anonymous"></script>
+
+let link_tag = sri_link_tag("https://cdn.example.com/style.css", "body { margin: 0; }");
+```
+
+### 👤 4. Zero-Trust Client Session Fingerprinting
+```rust
+use rullst_security::{generate_fingerprint, verify_fingerprint};
+
+// Bind session to client User-Agent, Accept-Language, and IP Subnet
+let fp = generate_fingerprint("Mozilla/5.0...", "en-US", "203.0.113.45");
+
+// Invalidate session instantly if client fingerprint mismatches (stolen JWT prevention)
+let valid = verify_fingerprint(&fp, "Mozilla/5.0...", "en-US", "203.0.113.45");
+assert!(valid);
+```
+
+### 🪤 5. Dynamic Threat Deception Traps
+```rust
+use rullst_security::{deception_trap_middleware, register_deception_trap};
+use axum::{Router, middleware};
+
+// Register custom decoy routes to bait scanners
+register_deception_trap("/api/v1/internal_debug");
+
+let app = Router::new()
+    .layer(middleware::from_fn(deception_trap_middleware));
+```
+
+### 🔌 6. Cross-Site WebSocket Hijacking (CSWSH) Guard
+```rust
+use rullst_security::cswsh_guard_middleware;
+use axum::{Router, middleware};
+
+// Protect WebSocket upgrade endpoints against cross-origin hijacking
+let app = Router::new()
+    .route("/ws", axum::routing::get(ws_handler))
+    .layer(middleware::from_fn(cswsh_guard_middleware));
+```
+
+### 🛝 7. Sliding-Window Rate Limiter
+```rust
+use rullst_security::rate_limit_middleware;
+use axum::{Router, middleware};
+
+// Enforce 120 req/min sliding-window IP rate limit on sensitive routes
+let app = Router::new()
+    .route("/login", axum::routing::post(login_handler))
+    .layer(middleware::from_fn(rate_limit_middleware));
+```
+
+### 📢 8. SIEM & SOC Alert Streamer
+```rust
+use rullst_security::{dispatch_siem_alert, format_cef_event, LiveSecurityEvent};
+
+// Stream real-time security events to Datadog / Splunk / Elastic / Slack
+dispatch_siem_alert(
+    "UNAUTHORIZED_ADMIN_ACCESS",
+    "IP 192.168.1.10 attempted admin access",
+    "192.168.1.10"
+);
+```
+
+### 📋 9. Automated Security & Compliance Auditor CLI
+```bash
+# Run automated OWASP Top 10, SOC2 Type II, and ISO 27001 compliance audit
+cargo rullst audit --compliance
+
+# Output: Generates SECURITY_COMPLIANCE.md with full controls evaluation
+```
+
+---
+
+## 🚀 Full Stack Axum Setup Example
 
 ```rust
-use axum::{Router, routing::get};
+use axum::{Router, routing::get, middleware};
 use rullst_security::{
     HoneypotLayer, HoneypotState, CspSecurityLayer, HtmlSanitizer,
-    RaspSecurityLayer, VaultSecret,
+    RaspSecurityLayer, VaultSecret, schema_guard_middleware,
+    cswsh_guard_middleware, rate_limit_middleware, deception_trap_middleware
 };
 
 #[tokio::main]
 async fn main() {
     let state = HoneypotState::default();
 
-    // Zeroize secret upon drop
+    // In-memory zeroization upon drop
     let secret = VaultSecret::new("super_secret_api_key".to_string());
 
     let app = Router::new()
@@ -94,6 +207,10 @@ async fn main() {
             let safe_input = HtmlSanitizer::sanitize("<b>Clean Text</b>");
             safe_input
         }))
+        .layer(middleware::from_fn(rate_limit_middleware))
+        .layer(middleware::from_fn(schema_guard_middleware))
+        .layer(middleware::from_fn(deception_trap_middleware))
+        .layer(middleware::from_fn(cswsh_guard_middleware))
         .layer(RaspSecurityLayer::default())
         .layer(CspSecurityLayer::default())
         .layer(HoneypotLayer::new(state));
