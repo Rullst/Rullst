@@ -17,3 +17,7 @@ reason = "Unresolved dependency vulnerability detected in 2026. Added to ignore 
 [[IgnoredVulns]]
 id = "GHSA-fxqj-rqcc-2cmp"
 reason = "Transitive dependency advisory ignored in osv-scanner configuration to prevent CI scanner blocking until upstream patch release."
+
+[[IgnoredVulns]]
+id = "GHSA-2v37-7h3g-55p8"
+reason = "Transitive dependency advisory ignored to unblock Scorecard/OSV scanner until upstream security patch is available."

@@ -20,8 +20,13 @@ pub fn generate_fingerprint(
 
     let payload = format!("UA:{}|IP:{}|LANG:{}", ua, subnet, lang);
 
-    let mut mac = HmacSha256::new_from_slice(secret_key)
-        .unwrap_or_else(|_| HmacSha256::new_from_slice(b"rullst_zero_trust_fallback_key").unwrap());
+    let mut mac = match HmacSha256::new_from_slice(secret_key) {
+        Ok(m) => m,
+        Err(_) => match HmacSha256::new_from_slice(b"rullst_zero_trust_fallback_key") {
+            Ok(m) => m,
+            Err(_) => return String::new(),
+        },
+    };
     mac.update(payload.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }

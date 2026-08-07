@@ -47,8 +47,13 @@ pub fn decode_base32(b32: &str) -> Option<Vec<u8>> {
 
 /// Computes an RFC 6238 6-digit TOTP code for a secret at a specific counter step.
 pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
-    let mut mac = HmacSha1::new_from_slice(secret_bytes)
-        .unwrap_or_else(|_| HmacSha1::new_from_slice(b"mfa_fallback_key").unwrap());
+    let mut mac = match HmacSha1::new_from_slice(secret_bytes) {
+        Ok(m) => m,
+        Err(_) => match HmacSha1::new_from_slice(b"mfa_fallback_key") {
+            Ok(m) => m,
+            Err(_) => return 0,
+        },
+    };
     mac.update(&counter.to_be_bytes());
     let result = mac.finalize().into_bytes();
 

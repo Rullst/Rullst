@@ -76,6 +76,7 @@ pub fn scalar_docs_router(openapi_url: &'static str) -> Router {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use axum::body::Body;

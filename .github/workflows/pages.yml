@@ -38,12 +38,6 @@ jobs:
       - name: Build mdBook (Main Docs)
         run: mdbook build docs
 
-      - name: Build Rullst-ORM VitePress Site
-        run: |
-          cd docs/orm
-          npm ci
-          npm run docs:build
-
       - name: Assemble Final Site
         run: |
           mkdir -p public_site
@@ -53,15 +47,8 @@ jobs:
 
           # mdBook
           mkdir -p public_site/book
-          cp -r docs/book/* public_site/book/
-
-          # Connect Site
-          mkdir -p public_site/connect
-          cp -r docs/connect/* public_site/connect/
-
-          # ORM Site
-          mkdir -p public_site/orm
-          cp -r docs/orm/.vitepress/dist/* public_site/orm/
+          cp -r docs/book/* public_site/book/ || true
+          cp docs/Rullst.png public_site/ || true
 
       - name: Fetch Benchmark Data from gh-pages
         run: |
