@@ -2,7 +2,12 @@
 
 use super::common;
 
-pub fn file_manifest(project_name_safe: &str, hot_reload: bool, orm_pattern: &str, frontend_engine: &str) -> Vec<(&'static str, String)> {
+pub fn file_manifest(
+    project_name_safe: &str,
+    hot_reload: bool,
+    orm_pattern: &str,
+    frontend_engine: &str,
+) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
 
     let repo_decl = common::repo_mod_decl(orm_pattern);
@@ -216,7 +221,8 @@ impl NexusModel for Post {
         "Post::all().await.unwrap_or_default()"
     };
 
-    let blog_controller = format!(r##"use rullst::server::{{Path, IntoResponse}};
+    let blog_controller = format!(
+        r##"use rullst::server::{{Path, IntoResponse}};
 use rullst::response::Html;
 {repo_import}
 use crate::pages::blog;
@@ -235,10 +241,7 @@ pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
         repo_import = repo_import,
         all_call = all_call,
     );
-    manifest.push((
-        "src/controllers/blog_controller.rs",
-        blog_controller,
-    ));
+    manifest.push(("src/controllers/blog_controller.rs", blog_controller));
 
     let controllers_mod = r##"pub mod blog_controller;
 "##;

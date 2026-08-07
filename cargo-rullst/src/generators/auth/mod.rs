@@ -32,7 +32,9 @@ pub fn scaffold_auth_system() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "{}",
-        "✅ Authentication system scaffolded successfully!".green().bold()
+        "✅ Authentication system scaffolded successfully!"
+            .green()
+            .bold()
     );
 
     Ok(())

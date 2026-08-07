@@ -321,4 +321,3 @@ async fn render_radar_dashboard() -> Html<String> {
         incidents_html = incidents_html
     ))
 }
-

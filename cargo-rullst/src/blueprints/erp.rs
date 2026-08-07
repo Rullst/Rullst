@@ -2,7 +2,12 @@
 
 use super::common;
 
-pub fn file_manifest(project_name_safe: &str, hot_reload: bool, orm_pattern: &str, frontend_engine: &str) -> Vec<(&'static str, String)> {
+pub fn file_manifest(
+    project_name_safe: &str,
+    hot_reload: bool,
+    orm_pattern: &str,
+    frontend_engine: &str,
+) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
     let is_repo = common::is_repo_mode(orm_pattern);
     let _ = (project_name_safe, frontend_engine);

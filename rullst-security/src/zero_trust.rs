@@ -36,10 +36,7 @@ pub fn verify_fingerprint(
 ) -> bool {
     let current_fp = generate_fingerprint(secret_key, user_agent, client_ip, accept_language);
     let valid = expected_fp.len() == current_fp.len()
-        && expected_fp
-            .as_bytes()
-            .ct_eq(current_fp.as_bytes())
-            .into();
+        && expected_fp.as_bytes().ct_eq(current_fp.as_bytes()).into();
 
     if !valid {
         SecurityStore::global().inc_zero_trust_mismatches();

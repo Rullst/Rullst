@@ -32,9 +32,7 @@ pub fn inspect_json_payload(
                 return Err("Payload exceeds maximum allowed object nesting depth");
             }
         } else if b == b'}' || b == b']' {
-            if current_depth > 0 {
-                current_depth -= 1;
-            }
+            current_depth = current_depth.saturating_sub(1);
         }
     }
 
@@ -101,7 +99,10 @@ mod tests {
 
         let res = inspect_json_payload(&deep_json, 10, 1024 * 1024);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), "Payload exceeds maximum allowed object nesting depth");
+        assert_eq!(
+            res.unwrap_err(),
+            "Payload exceeds maximum allowed object nesting depth"
+        );
     }
 
     #[test]

@@ -6,8 +6,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 static RATE_LIMIT_STORE: OnceLock<DashMap<String, (Instant, AtomicU64)>> = OnceLock::new();
@@ -21,9 +21,9 @@ pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Dura
     let store = global_rate_limit_store();
     let now = Instant::now();
 
-    let mut entry = store.entry(client_ip.to_string()).or_insert_with(|| {
-        (now, AtomicU64::new(0))
-    });
+    let mut entry = store
+        .entry(client_ip.to_string())
+        .or_insert_with(|| (now, AtomicU64::new(0)));
 
     let (start_time, count) = entry.value_mut();
     if now.duration_since(*start_time) > window_duration {

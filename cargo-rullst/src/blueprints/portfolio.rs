@@ -339,7 +339,10 @@ impl ProfileRepository {
     }
 }
 "##;
-        manifest.push(("src/repositories/profile_repository.rs", profile_repo.to_string()));
+        manifest.push((
+            "src/repositories/profile_repository.rs",
+            profile_repo.to_string(),
+        ));
 
         let project_repo = r##"use crate::models::project::Project;
 
@@ -351,7 +354,10 @@ impl ProjectRepository {
     }
 }
 "##;
-        manifest.push(("src/repositories/project_repository.rs", project_repo.to_string()));
+        manifest.push((
+            "src/repositories/project_repository.rs",
+            project_repo.to_string(),
+        ));
 
         let exp_repo = r##"use crate::models::experience::Experience;
 
@@ -363,7 +369,10 @@ impl ExperienceRepository {
     }
 }
 "##;
-        manifest.push(("src/repositories/experience_repository.rs", exp_repo.to_string()));
+        manifest.push((
+            "src/repositories/experience_repository.rs",
+            exp_repo.to_string(),
+        ));
 
         let skill_repo = r##"use crate::models::skill::Skill;
 
@@ -375,7 +384,10 @@ impl SkillRepository {
     }
 }
 "##;
-        manifest.push(("src/repositories/skill_repository.rs", skill_repo.to_string()));
+        manifest.push((
+            "src/repositories/skill_repository.rs",
+            skill_repo.to_string(),
+        ));
     }
 
     // 5. Controller
@@ -396,7 +408,8 @@ pub async fn index() -> impl IntoResponse {
 
     Html(home::render(&profile, &projects, &experiences, &skills))
 }
-"##.to_string()
+"##
+        .to_string()
     } else {
         r##"use rullst::server::IntoResponse;
 use rullst::response::Html;
@@ -462,7 +475,7 @@ pub async fn index() -> impl IntoResponse {
             </body>
         </html>
     }.to_html()
-}"#
+}"#,
         )
     } else if frontend_engine.contains("Dioxus") {
         (
@@ -495,7 +508,7 @@ pub async fn index() -> impl IntoResponse {
         rullst_core::html::escape_str(&profile.title),
         body_inner
     )
-}"#
+}"#,
         )
     } else {
         (
@@ -525,7 +538,7 @@ pub async fn index() -> impl IntoResponse {
             </body>
         </html>
     }
-}"#
+}"#,
         )
     };
 

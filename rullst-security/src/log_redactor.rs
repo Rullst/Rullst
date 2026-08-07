@@ -10,21 +10,21 @@ pub fn redact_secrets(input: &str) -> String {
     let mut redacted = false;
 
     // Mask Authorization Bearer tokens
-    if result.contains("Bearer ") {
-        if let Some(idx) = result.find("Bearer ") {
-            let start = idx + 7;
-            let end = result[start..]
-                .find(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == ',')
-                .map(|i| start + i)
-                .unwrap_or(result.len());
+    if result.contains("Bearer ")
+        && let Some(idx) = result.find("Bearer ")
+    {
+        let start = idx + 7;
+        let end = result[start..]
+            .find(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == ',')
+            .map(|i| start + i)
+            .unwrap_or(result.len());
 
-            if end > start {
-                let token_slice = &result[start..end];
-                if token_slice.len() > 6 {
-                    let masked = format!("{}...", &token_slice[..4]);
-                    result.replace_range(start..end, &masked);
-                    redacted = true;
-                }
+        if end > start {
+            let token_slice = &result[start..end];
+            if token_slice.len() > 6 {
+                let masked = format!("{}...", &token_slice[..4]);
+                result.replace_range(start..end, &masked);
+                redacted = true;
             }
         }
     }
@@ -46,12 +46,12 @@ pub fn redact_secrets(input: &str) -> String {
     }
 
     // Mask AWS secret keys (AKIA... or 40-char secret keys)
-    if result.contains("AKIA") {
-        if let Some(idx) = result.find("AKIA") {
-            let end = (idx + 20).min(result.len());
-            result.replace_range(idx..end, "AKIA****************");
-            redacted = true;
-        }
+    if result.contains("AKIA")
+        && let Some(idx) = result.find("AKIA")
+    {
+        let end = (idx + 20).min(result.len());
+        result.replace_range(idx..end, "AKIA****************");
+        redacted = true;
     }
 
     if redacted {

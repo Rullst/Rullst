@@ -1,7 +1,7 @@
 use crate::telemetry::SecurityStore;
 use axum::{
     extract::Request,
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -33,7 +33,10 @@ pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
                 .or_else(|| orig.strip_prefix("https://"))
                 .unwrap_or(orig);
 
-            if orig_host == h || orig_host.starts_with("localhost") || orig_host.starts_with("127.0.0.1") {
+            if orig_host == h
+                || orig_host.starts_with("localhost")
+                || orig_host.starts_with("127.0.0.1")
+            {
                 valid = true;
             }
         } else if origin.is_none() {

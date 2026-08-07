@@ -269,7 +269,13 @@ pub async fn nexus_chat_query(
         );
 
         match rullst_ai::AiClient::auto() {
-            Ok(client) => match client.chat().system(&system_prompt).user(&req.message).send().await {
+            Ok(client) => match client
+                .chat()
+                .system(&system_prompt)
+                .user(&req.message)
+                .send()
+                .await
+            {
                 Ok(resp) => resp,
                 Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
             },
@@ -290,4 +296,3 @@ pub async fn nexus_chat_query(
          </div>"
     ))
 }
-

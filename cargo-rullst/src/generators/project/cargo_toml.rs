@@ -99,7 +99,10 @@ edition = "2021"
             "MySQL" => "mysql",
             _ => "sqlite",
         };
-        let sqlx_features = format!("\"runtime-tokio\", \"tls-rustls\", \"{}\"", sqlx_driver_feature);
+        let sqlx_features = format!(
+            "\"runtime-tokio\", \"tls-rustls\", \"{}\"",
+            sqlx_driver_feature
+        );
 
         let sibling_orm = current_dir.join("rullst-orm");
         let orm_dep = if sibling_orm.exists() {

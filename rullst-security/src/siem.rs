@@ -1,4 +1,4 @@
-use crate::telemetry::{current_timestamp_str, LiveSecurityEvent, SecurityStore};
+use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -22,11 +22,7 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
 
     format!(
         "CEF:0|RullstSecurity|Framework|12.0.0|{}|{}|{}|src={} msg={}",
-        event.event_type,
-        event.event_type,
-        severity,
-        event.client_ip,
-        event.details
+        event.event_type, event.event_type, severity, event.client_ip, event.details
     )
 }
 

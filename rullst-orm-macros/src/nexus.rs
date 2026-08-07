@@ -9,16 +9,16 @@ pub fn derive_nexus_impl(input: TokenStream) -> TokenStream {
     let mut table_name = format!("{}s", name.to_string().to_lowercase());
 
     for attr in &input.attrs {
-        if attr.path().is_ident("orm") || attr.path().is_ident("nexus") {
-            if let syn::Meta::List(ref meta_list) = attr.meta {
-                let _ = meta_list.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("table") {
-                        let value: syn::LitStr = meta.value()?.parse()?;
-                        table_name = value.value();
-                    }
-                    Ok(())
-                });
-            }
+        if (attr.path().is_ident("orm") || attr.path().is_ident("nexus"))
+            && let syn::Meta::List(ref meta_list) = attr.meta
+        {
+            let _ = meta_list.parse_nested_meta(|meta| {
+                if meta.path.is_ident("table") {
+                    let value: syn::LitStr = meta.value()?.parse()?;
+                    table_name = value.value();
+                }
+                Ok(())
+            });
         }
     }
 

@@ -54,9 +54,9 @@ pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
 
     let offset = (result[result.len() - 1] & 0x0f) as usize;
     let binary = ((result[offset] & 0x7f) as u32) << 24
-        | ((result[offset + 1] & 0xff) as u32) << 16
-        | ((result[offset + 2] & 0xff) as u32) << 8
-        | ((result[offset + 3] & 0xff) as u32);
+        | (result[offset + 1] as u32) << 16
+        | (result[offset + 2] as u32) << 8
+        | (result[offset + 3] as u32);
 
     binary % 1_000_000
 }
@@ -134,6 +134,8 @@ mod tests {
     #[test]
     fn test_otpauth_uri_builder() {
         let uri = build_otpauth_uri("RullstApp", "user@example.com", "JBSWY3DPEHPK3PXP");
-        assert!(uri.starts_with("otpauth://totp/RullstApp:user@example.com?secret=JBSWY3DPEHPK3PXP"));
+        assert!(
+            uri.starts_with("otpauth://totp/RullstApp:user@example.com?secret=JBSWY3DPEHPK3PXP")
+        );
     }
 }

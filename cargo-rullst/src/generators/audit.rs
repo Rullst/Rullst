@@ -115,10 +115,16 @@ pub fn run_security_audit(
         report.push_str("| **ISO/IEC 27001 (A.12.4 Logging & Monitoring)** | ✅ PASS | Tamper-proof HMAC SHA-256 Audit Chain verified |\n\n");
         report.push_str("## 🔒 Active Framework Controls\n");
         report.push_str("- [x] **RASP Payload Inspector (`rullst-security::rasp`)**\n");
-        report.push_str("- [x] **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**\n");
-        report.push_str("- [x] **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**\n");
+        report.push_str(
+            "- [x] **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**\n",
+        );
+        report.push_str(
+            "- [x] **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**\n",
+        );
         report.push_str("- [x] **Subresource Integrity Signer (`rullst-security::sri`)**\n");
-        report.push_str("- [x] **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**\n");
+        report.push_str(
+            "- [x] **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**\n",
+        );
 
         fs::write("SECURITY_COMPLIANCE.md", &report)?;
         println!(

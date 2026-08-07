@@ -82,7 +82,9 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out.push_str("    setTimeout(function() { el.innerHTML = ''; }, 3500);\n");
     out.push_str("}\n");
     out.push_str("function nexusDelete(table, id) {\n");
-    out.push_str("    if (!confirm('Are you sure you want to delete record #' + id + '?')) return;\n");
+    out.push_str(
+        "    if (!confirm('Are you sure you want to delete record #' + id + '?')) return;\n",
+    );
     out.push_str("    fetch('/nexus/table/' + table + '/' + id, {\n");
     out.push_str("        method: 'DELETE',\n");
     out.push_str("        credentials: 'same-origin',\n");

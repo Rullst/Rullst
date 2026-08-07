@@ -26,13 +26,29 @@ pub fn apply(
     frontend_engine: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let manifest = match id {
-        0 => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed, orm_pattern, frontend_engine),
+        0 => blank::file_manifest(
+            project_name,
+            project_name_safe,
+            api,
+            hot_reload,
+            db_needed,
+            orm_pattern,
+            frontend_engine,
+        ),
         1 => portfolio::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
         2 => lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
         3 => saas::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
         4 => blog::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
         5 => erp::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
-        _ => blank::file_manifest(project_name, project_name_safe, api, hot_reload, db_needed, orm_pattern, frontend_engine),
+        _ => blank::file_manifest(
+            project_name,
+            project_name_safe,
+            api,
+            hot_reload,
+            db_needed,
+            orm_pattern,
+            frontend_engine,
+        ),
     };
 
     for (rel_path, content) in manifest {

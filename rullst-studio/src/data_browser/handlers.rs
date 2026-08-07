@@ -543,15 +543,33 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
     };
 
     let sec_store = rullst_security::SecurityStore::global();
-    let log_redactions = sec_store.log_redactions_count.load(std::sync::atomic::Ordering::Relaxed);
-    let zero_trust_mismatches = sec_store.zero_trust_mismatches_count.load(std::sync::atomic::Ordering::Relaxed);
-    let schema_violations = sec_store.schema_violations_count.load(std::sync::atomic::Ordering::Relaxed);
-    let sri_signed = sec_store.sri_signed_assets_count.load(std::sync::atomic::Ordering::Relaxed);
-    let mfa_verifications = sec_store.mfa_verifications_count.load(std::sync::atomic::Ordering::Relaxed);
-    let deception_hits = sec_store.deception_hits_count.load(std::sync::atomic::Ordering::Relaxed);
-    let cswsh_blocks = sec_store.cswsh_blocks_count.load(std::sync::atomic::Ordering::Relaxed);
-    let rate_limit_blocks = sec_store.rate_limit_blocks_count.load(std::sync::atomic::Ordering::Relaxed);
-    let siem_dispatches = sec_store.siem_dispatches_count.load(std::sync::atomic::Ordering::Relaxed);
+    let log_redactions = sec_store
+        .log_redactions_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let zero_trust_mismatches = sec_store
+        .zero_trust_mismatches_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let schema_violations = sec_store
+        .schema_violations_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let sri_signed = sec_store
+        .sri_signed_assets_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let mfa_verifications = sec_store
+        .mfa_verifications_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let deception_hits = sec_store
+        .deception_hits_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let cswsh_blocks = sec_store
+        .cswsh_blocks_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let rate_limit_blocks = sec_store
+        .rate_limit_blocks_count
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let siem_dispatches = sec_store
+        .siem_dispatches_count
+        .load(std::sync::atomic::Ordering::Relaxed);
 
     let content = format!(
         r#"<div class="p-8 font-mono space-y-8">

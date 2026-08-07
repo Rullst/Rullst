@@ -50,7 +50,10 @@ impl RbacGuard {
                     0,
                     crate::telemetry::LiveSecurityEvent {
                         event_type: "RBAC_DENIAL".to_string(),
-                        details: format!("User {} denied access requiring role '{}'", ctx.user_id, required_role),
+                        details: format!(
+                            "User {} denied access requiring role '{}'",
+                            ctx.user_id, required_role
+                        ),
                         client_ip: "127.0.0.1".to_string(),
                         timestamp_str: crate::telemetry::current_timestamp_str(),
                         verified_hmac: true,
@@ -79,7 +82,10 @@ impl RbacGuard {
                     0,
                     crate::telemetry::LiveSecurityEvent {
                         event_type: "RBAC_DENIAL".to_string(),
-                        details: format!("User {} denied ownership/role access for resource owner {}", ctx.user_id, resource_owner_id),
+                        details: format!(
+                            "User {} denied ownership/role access for resource owner {}",
+                            ctx.user_id, resource_owner_id
+                        ),
                         client_ip: "127.0.0.1".to_string(),
                         timestamp_str: crate::telemetry::current_timestamp_str(),
                         verified_hmac: true,

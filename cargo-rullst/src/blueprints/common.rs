@@ -164,7 +164,8 @@ pub fn render_page_layout(frontend_engine: &str) -> String {
         </html>
     }.to_html()
 }
-"#.to_string()
+"#
+        .to_string()
     } else if frontend_engine.contains("Dioxus") {
         r#"pub fn render_layout(title: &str, body_html: &str) -> String {
     dioxus::ssr::render_element(rsx! {
@@ -174,7 +175,8 @@ pub fn render_page_layout(frontend_engine: &str) -> String {
         }
     })
 }
-"#.to_string()
+"#
+        .to_string()
     } else {
         r#"pub fn render_layout(title: &str, body_html: &str) -> String {
     rullst::html! {
@@ -189,7 +191,8 @@ pub fn render_page_layout(frontend_engine: &str) -> String {
         </html>
     }
 }
-"#.to_string()
+"#
+        .to_string()
     }
 }
 
@@ -218,5 +221,3 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         routes_block = routes_block,
     )
 }
-
-

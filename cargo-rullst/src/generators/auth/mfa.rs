@@ -70,7 +70,9 @@ pub async fn mfa_verify(Form(form): Form<MfaVerifyForm>) -> impl IntoResponse {
 
     println!(
         "{}",
-        "✅ 2FA MFA TOTP controller scaffolded successfully!".green().bold()
+        "✅ 2FA MFA TOTP controller scaffolded successfully!"
+            .green()
+            .bold()
     );
 
     Ok(())

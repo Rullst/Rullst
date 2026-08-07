@@ -150,7 +150,10 @@ pub async fn dashboard() -> impl IntoResponse {
     auth::dashboard_page()
 }
 "##;
-    manifest.push(("src/controllers/auth_controller.rs", auth_controller_code.to_string()));
+    manifest.push((
+        "src/controllers/auth_controller.rs",
+        auth_controller_code.to_string(),
+    ));
 
     let billing_controller_code = r##"use rullst::server::{IntoResponse, Redirect, StatusCode};
 use crate::pages::billing;
@@ -167,7 +170,10 @@ pub async fn webhook_handler() -> impl IntoResponse {
     StatusCode::OK
 }
 "##;
-    manifest.push(("src/controllers/billing_controller.rs", billing_controller_code.to_string()));
+    manifest.push((
+        "src/controllers/billing_controller.rs",
+        billing_controller_code.to_string(),
+    ));
 
     let controllers_mod = "pub mod auth_controller;\npub mod billing_controller;\n";
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
@@ -197,7 +203,10 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     Redirect::to("/login").into_response()
 }
 "##;
-    manifest.push(("src/middlewares/auth_middleware.rs", auth_middleware_code.to_string()));
+    manifest.push((
+        "src/middlewares/auth_middleware.rs",
+        auth_middleware_code.to_string(),
+    ));
 
     let middlewares_mod = "pub mod auth_middleware;\n";
     manifest.push(("src/middlewares/mod.rs", middlewares_mod.to_string()));
@@ -357,4 +366,3 @@ pub fn dashboard_page() -> Html<String> {
 
     manifest
 }
-

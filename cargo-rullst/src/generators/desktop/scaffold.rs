@@ -123,7 +123,9 @@ pub fn scaffold_omni_system() -> Result<(), Box<dyn std::error::Error>> {
 
 fn write_omni_files(omni_dir: &Path, src_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     // index.html
-    fs::write(src_dir.join("index.html"), r#"<!DOCTYPE html>
+    fs::write(
+        src_dir.join("index.html"),
+        r#"<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -133,20 +135,26 @@ fn write_omni_files(omni_dir: &Path, src_dir: &Path) -> Result<(), Box<dyn std::
     <h2 style="animation: pulse 1.5s infinite;">Starting Omni Engine...</h2>
     <style>@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }</style>
   </body>
-</html>"#)?;
+</html>"#,
+    )?;
 
     // package.json
-    fs::write(omni_dir.join("package.json"), r#"{
+    fs::write(
+        omni_dir.join("package.json"),
+        r#"{
   "name": "rullst-omni",
   "version": "1.0.0",
   "scripts": {
     "tauri": "npx -y @tauri-apps/cli@^2.0.0"
   }
 }
-"#)?;
+"#,
+    )?;
 
     // Cargo.toml
-    fs::write(omni_dir.join("Cargo.toml"), r#"[package]
+    fs::write(
+        omni_dir.join("Cargo.toml"),
+        r#"[package]
 name = "rullst-omni"
 version = "0.1.0"
 description = "Rullst Omni Application"
@@ -168,10 +176,13 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.13", features = ["blocking"] }
 
 [workspace]
-"#)?;
+"#,
+    )?;
 
     // tauri.conf.json
-    fs::write(omni_dir.join("tauri.conf.json"), r#"{
+    fs::write(
+        omni_dir.join("tauri.conf.json"),
+        r#"{
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RullstOmni",
   "version": "0.1.0",
@@ -205,13 +216,19 @@ reqwest = { version = "0.13", features = ["blocking"] }
     ]
   }
 }
-"#)?;
+"#,
+    )?;
 
     // build.rs
-    fs::write(omni_dir.join("build.rs"), "fn main() {\n    tauri_build::build();\n}\n")?;
+    fs::write(
+        omni_dir.join("build.rs"),
+        "fn main() {\n    tauri_build::build();\n}\n",
+    )?;
 
     // src/lib.rs
-    fs::write(src_dir.join("lib.rs"), r#"
+    fs::write(
+        src_dir.join("lib.rs"),
+        r#"
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::process::{Command, Child};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -298,13 +315,19 @@ pub fn run() {
             .expect("error while running tauri application on mobile");
     }
 }
-"#)?;
+"#,
+    )?;
 
     // src/main.rs
-    fs::write(src_dir.join("main.rs"), "#![cfg_attr(not(debug_assertions), windows_subsystem = \"windows\")]\n\nfn main() {\n    rullst_omni::run();\n}\n")?;
+    fs::write(
+        src_dir.join("main.rs"),
+        "#![cfg_attr(not(debug_assertions), windows_subsystem = \"windows\")]\n\nfn main() {\n    rullst_omni::run();\n}\n",
+    )?;
 
     // README.md
-    fs::write(omni_dir.join("README.md"), r#"# Rullst Omni (Tauri-powered Desktop & Mobile App wrapper)
+    fs::write(
+        omni_dir.join("README.md"),
+        r#"# Rullst Omni (Tauri-powered Desktop & Mobile App wrapper)
 
 This directory contains the cross-platform Tauri packaging wrapper for your Rullst application.
 
@@ -345,7 +368,8 @@ To run on an iOS simulator or device:
    ```bash
    cargo rullst omni ios
    ```
-"#)?;
+"#,
+    )?;
 
     Ok(())
 }

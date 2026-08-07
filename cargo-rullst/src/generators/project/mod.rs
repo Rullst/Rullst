@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 
 pub use env_config::{generate_buildah_script, generate_nix_files};
-pub use wizard::{run_project_wizard, ProjectWizardOptions};
+pub use wizard::{ProjectWizardOptions, run_project_wizard};
 
 pub fn has_binary(name: &str) -> bool {
     if name
@@ -142,7 +142,10 @@ pub fn create_new_project(
         if migrate_success {
             println!("{}", "  ✅ Database tables created successfully.".green());
         } else {
-            println!("{}", "  ⚠️ Warning: Failed to run initial database migrations.".yellow());
+            println!(
+                "{}",
+                "  ⚠️ Warning: Failed to run initial database migrations.".yellow()
+            );
         }
     }
 
@@ -159,7 +162,12 @@ pub fn create_new_project(
     println!("{}", "How to run:".magenta());
     println!("{}", format!("  cd {}", name).cyan());
     println!("{}", "  Then, choose your experience:".white().dimmed());
-    println!("{}", "    cargo rullst dash  (interactive dashboard)".white().bold());
+    println!(
+        "{}",
+        "    cargo rullst dash  (interactive dashboard)"
+            .white()
+            .bold()
+    );
     println!("{}", "    cargo rullst dev   (standard output)".white());
 
     Ok(())

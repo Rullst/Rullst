@@ -196,7 +196,8 @@ impl SecurityStore {
     }
 
     pub fn inc_zero_trust_mismatches(&self) {
-        self.zero_trust_mismatches_count.fetch_add(1, Ordering::Relaxed);
+        self.zero_trust_mismatches_count
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn inc_schema_violations(&self) {

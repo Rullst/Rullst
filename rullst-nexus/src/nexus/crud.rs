@@ -424,9 +424,15 @@ pub async fn render_record_form(
             let clean_table = sanitize_identifier(t);
             let clean_pk = sanitize_identifier(pk);
             let sql = if driver == "postgres" {
-                format!("SELECT * FROM {} WHERE {} = $1 LIMIT 1", clean_table, clean_pk)
+                format!(
+                    "SELECT * FROM {} WHERE {} = $1 LIMIT 1",
+                    clean_table, clean_pk
+                )
             } else {
-                format!("SELECT * FROM {} WHERE {} = ? LIMIT 1", clean_table, clean_pk)
+                format!(
+                    "SELECT * FROM {} WHERE {} = ? LIMIT 1",
+                    clean_table, clean_pk
+                )
             };
             let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
             if let Ok(num_id) = id.parse::<i64>() {
