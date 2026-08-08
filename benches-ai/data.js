@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786152104276,
+  "lastUpdate": 1786154261073,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -335,6 +335,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 577,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28bbbf9a2738bf0d655fd753c84224dc8031d1c7",
+          "message": "refactor: unindent test module and remove incomplete function body in tests.rs",
+          "timestamp": "2026-08-07T22:46:53-03:00",
+          "tree_id": "0ed3592e4c105444257691198eed0995225714e8",
+          "url": "https://github.com/Rullst/Rullst/commit/28bbbf9a2738bf0d655fd753c84224dc8031d1c7"
+        },
+        "date": 1786154260618,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1533,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 409,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 781,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
