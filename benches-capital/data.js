@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786154313185,
+  "lastUpdate": 1786155083200,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -328,6 +328,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "33a17298ccfe0e2878283af1bb5a89141b95e6c4",
+          "message": "docs: add link to dedicated benchmark repository in README",
+          "timestamp": "2026-08-07T22:59:10-03:00",
+          "tree_id": "404278cd822e2a65fdfca520d8e64b38f70f8a34",
+          "url": "https://github.com/Rullst/Rullst/commit/33a17298ccfe0e2878283af1bb5a89141b95e6c4"
+        },
+        "date": 1786155082449,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
