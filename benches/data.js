@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786160617292,
+  "lastUpdate": 1786168674351,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -7399,6 +7399,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1877,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "79915f65c53ec9d1e2df2e57f07cb0213714335a",
+          "message": "more tests workflows ci/cd",
+          "timestamp": "2026-08-08T02:55:34-03:00",
+          "tree_id": "861995cff6daaca59408bc62a2d959318e60686f",
+          "url": "https://github.com/Rullst/Rullst/commit/79915f65c53ec9d1e2df2e57f07cb0213714335a"
+        },
+        "date": 1786168673371,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 753,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 977,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 612,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2346,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
