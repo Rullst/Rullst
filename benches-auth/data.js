@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786147630734,
+  "lastUpdate": 1786149626894,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2111,6 +2111,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1420,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34ee50f1290b5064a2ce8b1d097c4ff543fa3713",
+          "message": "fix(clippy): allow too-many-arguments on generator functions and clean legacy website",
+          "timestamp": "2026-08-07T21:32:10-03:00",
+          "tree_id": "ca61f9a0fa752be4e1c3e150d72b8b833a8442ea",
+          "url": "https://github.com/Rullst/Rullst/commit/34ee50f1290b5064a2ce8b1d097c4ff543fa3713"
+        },
+        "date": 1786149626164,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 610,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 516,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1180,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1171,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
