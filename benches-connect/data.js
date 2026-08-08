@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786145001845,
+  "lastUpdate": 1786147651242,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1289,6 +1289,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 59,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fe57d1eace8910d16230fd769ffbee90b2f6f97a",
+          "message": "fix(ci): resolve zero-panics lints, fix pages build, update typos and osv exemptions",
+          "timestamp": "2026-08-07T20:57:30-03:00",
+          "tree_id": "99734da3472262452083a420a5308f605aa9d971",
+          "url": "https://github.com/Rullst/Rullst/commit/fe57d1eace8910d16230fd769ffbee90b2f6f97a"
+        },
+        "date": 1786147650466,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
