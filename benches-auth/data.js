@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786144984076,
+  "lastUpdate": 1786147630734,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2063,6 +2063,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1097,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fe57d1eace8910d16230fd769ffbee90b2f6f97a",
+          "message": "fix(ci): resolve zero-panics lints, fix pages build, update typos and osv exemptions",
+          "timestamp": "2026-08-07T20:57:30-03:00",
+          "tree_id": "99734da3472262452083a420a5308f605aa9d971",
+          "url": "https://github.com/Rullst/Rullst/commit/fe57d1eace8910d16230fd769ffbee90b2f6f97a"
+        },
+        "date": 1786147629996,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 724,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 614,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1367,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1420,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
