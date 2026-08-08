@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786149734186,
+  "lastUpdate": 1786152042764,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -322,6 +322,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 24,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32e1f244542c8d4f5200184d05b9fbed333e5f64",
+          "message": "fix(site): update navbar buttons, add interactive benches anchor, wire full footer links, and fix 404 bench routes",
+          "timestamp": "2026-08-07T22:11:22-03:00",
+          "tree_id": "42058c6e6105d02d6e244e7ab7763a5cf61e5b9e",
+          "url": "https://github.com/Rullst/Rullst/commit/32e1f244542c8d4f5200184d05b9fbed333e5f64"
+        },
+        "date": 1786152042080,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 121505,
+            "range": "± 40208",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 426,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 21,
             "range": "± 0",
             "unit": "ns/iter"
           }
