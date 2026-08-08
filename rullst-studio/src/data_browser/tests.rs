@@ -1,9 +1,6 @@
 //! Studio Data Browser Tests
 
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::super::db::*;
+use super::db::*;
 
     #[test]
     fn test_escape_html_attr() {
@@ -156,4 +153,3 @@ mod tests {
         assert!(html.contains("text-slate-600 font-mono italic"));
         assert!(html.contains("text-slate-300"));
     }
-}

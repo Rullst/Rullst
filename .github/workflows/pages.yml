@@ -85,6 +85,24 @@ jobs:
             && mv benches-connect/data.js public_site/benches/connect/data.js || true
           cp docs/benches_connect_template.html public_site/benches/connect/index.html
 
+          # ── rullst-security bench ──────────────────────────────────────────────
+          mkdir -p public_site/benches/security
+          git checkout origin/gh-pages -- benches-security/data.js 2>/dev/null \
+            && mv benches-security/data.js public_site/benches/security/data.js || true
+          cp docs/benches_security_template.html public_site/benches/security/index.html
+
+          # ── rullst-ai bench ────────────────────────────────────────────────────
+          mkdir -p public_site/benches/ai
+          git checkout origin/gh-pages -- benches-ai/data.js 2>/dev/null \
+            && mv benches-ai/data.js public_site/benches/ai/data.js || true
+          cp docs/benches_ai_template.html public_site/benches/ai/index.html
+
+          # ── rullst-capital bench ───────────────────────────────────────────────
+          mkdir -p public_site/benches/capital
+          git checkout origin/gh-pages -- benches-capital/data.js 2>/dev/null \
+            && mv benches-capital/data.js public_site/benches/capital/data.js || true
+          cp docs/benches_capital_template.html public_site/benches/capital/index.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:

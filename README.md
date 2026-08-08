@@ -50,7 +50,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 - **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
-- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/migration/axum-sqlx.md).
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
 
 ---
 
@@ -210,6 +210,9 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Compile-Time Zero-Cost DI Container** | ✅ (`rullst::di` & `Inject<T>`) | ❌ | ❌ | ❌ | ❌ |
 | **1-Click PaaS Cloud Deployment** | ✅ (`cargo rullst deploy`) | ❌ | ❌ | ❌ | ❌ |
 | **RASP Security Layer (Pre-Controller Inspection)** | ✅ (`rullst-security`) | ❌ | ❌ | ❌ | ❌ |
+| **Passkeys & WebAuthn (FIDO2 Passwordless)** | ✅ (`rullst-auth::passkey`) | ❌ | ❌ | ❌ | ❌ |
+| **Granular RBAC & Role Permission Matrix** | ✅ (`rullst-auth::rbac`) | ❌ | ❌ | ❌ | ❌ |
+| **Zero-Trust Device & Session Fingerprinting** | ✅ (`rullst-security::zero_trust`) | ❌ | ❌ | ❌ | ❌ |
 | **Rullst Vault & Transparent Field Encryption** | ✅ (`#[orm(encrypted)]` + `Zeroize`) | ❌ | ❌ | ❌ | ❌ |
 | **Synthetic Honeypots & Automated Bot Ban** | ✅ (`rullst-honey`) | ❌ | ❌ | ❌ | ❌ |
 | **HMAC Tamper-Proof Cryptographic Audit Log** | ✅ (`rullst-audit-log`) | ❌ | ❌ | ❌ | ❌ |

@@ -52,15 +52,9 @@
         <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
           style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub Docs</a>
 
-        <a href="/Rullst/benches/" class="btn btn-outline"
+        <a href="#benches" class="btn btn-outline"
           style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05);">📊
           Interactive Benches</a>
-
-        <a href="/Rullst/benches/security/" class="btn btn-outline"
-          style="border-color: rgba(245, 158, 11, 0.3); color: #f59e0b; background: rgba(245, 158, 11, 0.05);">🛡️ Security Bench</a>
-
-        <a href="/Rullst/benches/ai/" class="btn btn-outline"
-          style="border-color: rgba(6, 182, 212, 0.3); color: #06b6d4; background: rgba(6, 182, 212, 0.05);">🤖 AI Bench</a>
 
         <a href="https://github.com/Rullst/Benchmarks" target="_blank" class="btn btn-outline"
           style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05);">📈
@@ -403,7 +397,7 @@ let response = client.chat(vec![
       </div>
     </div>
 
-    <div style="max-width: 1000px; margin: 4rem auto 2rem; padding: 0 1rem;">
+    <div id="benches" style="max-width: 1000px; margin: 4rem auto 2rem; padding: 0 1rem; scroll-margin-top: 5rem;">
       <h2 style="text-align: center; font-size: 1.8rem; margin-bottom: 2rem; color: #f8fafc;">📈 Performance CI Dashboards</h2>
       <p style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Track automated microsecond regression benchmarks updated on every commit across all crates.</p>
       
@@ -450,11 +444,16 @@ let response = client.chat(vec![
 
   <footer class="footer">
     <p>Built with ❤️ by the Rullst Community.</p>
-    <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="text-emerald">💬 Join the Discord</a>
+    <div style="margin-top: 1rem; display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; font-size: 0.95rem;">
+      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" style="color: #10b981; text-decoration: none;">💬 Join the Discord</a>
       <a href="https://github.com/Rullst/Rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">⭐ GitHub Repo</a>
       <a href="https://x.com/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">🐦 Twitter/X</a>
       <a href="https://youtube.com/@Rullst_Official" target="_blank" style="color: #94a3b8; text-decoration: none;">📺 YouTube</a>
+      <a href="https://dev.to/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📝 Dev.to</a>
+      <a href="https://hashnode.com/@venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📓 Hashnode</a>
+      <a href="https://instagram.com/rullst.framework" target="_blank" style="color: #94a3b8; text-decoration: none;">📸 Instagram</a>
+      <a href="https://tiktok.com/@rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">🎵 TikTok</a>
+      <a href="javascript:void(0)" id="open-privacy-link" style="color: #38bdf8; text-decoration: none;">🔒 Privacy Policy</a>
     </div>
     <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem; font-style: italic;">
       "All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."
@@ -522,6 +521,15 @@ let response = client.chat(vec![
 
       acceptBtn.addEventListener('click', () => closeBanner(true));
       declineBtn.addEventListener('click', () => closeBanner(false));
+
+      const privacyLink = document.getElementById('open-privacy-link');
+      if (privacyLink) {
+        privacyLink.addEventListener('click', () => {
+          banner.style.opacity = '1';
+          banner.style.transform = 'translate(-50%, -50%) scale(1)';
+          banner.style.pointerEvents = 'auto';
+        });
+      }
     });
   </script>
 </body>
