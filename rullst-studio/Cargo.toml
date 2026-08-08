@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
 default = []

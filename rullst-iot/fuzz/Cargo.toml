@@ -1,0 +1,33 @@
+[package]
+name = "rullst-iot-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rullst-iot = { path = ".." }
+
+[[bin]]
+name = "fuzz_modbus"
+path = "fuzz_targets/fuzz_modbus.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_ota"
+path = "fuzz_targets/fuzz_ota.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_anomaly"
+path = "fuzz_targets/fuzz_anomaly.rs"
+test = false
+doc = false

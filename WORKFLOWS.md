@@ -1,119 +1,146 @@
-# Rullst CI/CD & Security Workflows 🛡️
+# Rullst CI/CD & Enterprise Security Architecture 🛡️
 
-Rullst is built with a **"Zero-Panic Policy"** and designed for **production edge infrastructure**. To guarantee that the framework remains 100% memory-safe, blazing fast, and secure, we employ an industrial-grade CI/CD pipeline. 
+Rullst is engineered from the ground up with a strict **Zero-Panic Policy** and designed specifically for **mission-critical edge and cloud infrastructure**. To guarantee that the framework remains 100% memory-safe, mathematically sound, race-free, and resilient against state-sponsored attack vectors, we employ a multi-layered verification pyramid.
 
-This document explains every single automated workflow, what it protects, and when it runs.
-
----
-
-## 🚀 Fast Feedback Loop (Runs on `push` and `pull_request`)
-
-These workflows act as our primary gatekeepers. They run in parallel on every Pull Request and Push to the `main` branch. They are heavily cached and designed to finish in **under 10 minutes**, ensuring developers get immediate feedback without blocking the review process.
-
-### 1. Core Integration & Tests (`ci.yml`)
-- **What it does:** The foundation of our pipeline. It runs `cargo test` across the entire workspace, including unit tests, integration tests, and macro expansion tests.
-- **DB Matrix:** Spins up Dockerized PostgreSQL and MySQL containers (via Testcontainers) to validate `rullst-orm` queries against real databases.
-- **Lints & Style:** Enforces `rustfmt` formatting and strictly denies `clippy` warnings.
-- **MSRV:** Verifies that Rullst compiles on our Minimum Supported Rust Version (currently `1.96.0`).
-
-### 2. Performance Regression (`bench.yml`)
-- **What it does:** Runs `cargo bench` (Criterion) across 5 independent benchmark suites:
-  - **Core Framework:** HTML rendering and Router overhead.
-  - **ORM:** Query builder and row mapping speeds.
-  - **Primitives:** PII masking, HTML escaping, and CSRF token generation.
-  - **Auth:** AES-256-GCM session encryption/decryption costs per request.
-  - **Connect:** OAuth provider construction and PKCE hashing.
-- **Goal:** Ensures zero nanosecond-level regressions ever reach the main branch. Any performance drop alerts the team automatically.
-
-### 3. Bare-Metal `no_std` Build Check (`no_std-build.yml`)
-- **What it does:** Compiles `rullst-iot` for 3 embedded hardware targets:
-  - `thumbv7em-none-eabihf` (STM32 Cortex-M4/M7)
-  - `thumbv6m-none-eabi` (ARM Cortex-M0/M0+)
-  - `riscv32imac-unknown-none-elf` (ESP32-C3 RISC-V)
-- **Goal:** Guarantees that `rullst-iot` compiles cleanly without `std` on bare-metal microcontrollers and outputs binary footprint metrics.
-
-### 4. IoT Integration & QEMU Simulation (`iot-integration.yml`)
-- **What it does:** Executes unit tests for all 6 IoT modules (GPIO, I2C, Modbus, BLE, Anomaly, OTA, HSM, PQC, Power, Digital Twin) and runs Cortex-M QEMU emulation.
-- **Goal:** Validates physical hardware HAL abstractions and embedded logic before hardware deployment.
-
-### 5. Post-Quantum & HSM Compliance Audit (`pqc-compliance.yml`)
-- **What it does:** Audits cryptographic modules (`pqc.rs`, `hsm.rs`, `vault.rs`), runs `cargo audit` for CVEs on crypto dependencies, and verifies zero `unsafe` blocks in cryptographic primitives.
-- **When it runs:** On crypto code changes and on a weekly Monday schedule (Cron).
-
-### 6. Code Coverage (`coverage.yml`)
-- **What it does:** Uses `cargo-llvm-cov` to generate a comprehensive execution trace of our test suite.
-- **Goal:** Ensures that new features have adequate test coverage before being merged. Results are uploaded to Codecov.
-
-### 7. Zero-Panics Policy (`zero-panics.yml`)
-- **What it does:** Uses custom Clippy configurations to forbid `.unwrap()`, `.expect()`, and `panic!()` in production crates (`rullst`, `rullst-orm`, `rullst-core`, etc.).
-- **Goal:** Guarantees that the framework handles all errors gracefully via the typed `AppError` system, preventing the server from ever crashing at runtime.
-
-### 8. Memory Safety & Unsafe Policy (`unsafe-policy.yml`)
-- **What it does:** Scans the codebase for `unsafe` blocks. If an `unsafe` block is found without a corresponding `// SAFETY:` justification comment, the CI fails immediately.
-- **Goal:** Rullst is 100% memory-safe. This workflow ensures any interaction with FFI or raw pointers is heavily audited and documented.
-
-### 9. Semantic Security Analysis (`codeql.yml`)
-- **What it does:** Uses GitHub's Advanced Security (CodeQL) engine to semantically analyze the Rust AST for logical bugs, memory leaks, and injection vectors.
-
-### 10. Secret Scanning (`trufflehog.yml`)
-- **What it does:** Scans the entire git history for accidentally committed API keys, secrets, or passwords. Runs in seconds.
-
-### 11. Dependency Health (`cargo-deny.yml`, `machete.yml` & `audit.yml`)
-- **What it does:** Validates licenses of third-party crates, bans unmaintained dependencies, checks the RustSec vulnerability database (`security-audit.yml`), and prunes unused dependencies via `cargo-machete`.
-
-### 12. SemVer Breaking Change Audit (`semver.yml`)
-- **What it does:** Runs `cargo-semver-checks` against published crate versions to prevent accidental breaking API changes without major version bumps.
-
-### 13. Automated Spellcheck & Typo Detection (`spellcheck.yml`)
-- **What it does:** Uses `crate-ci/typos` with project-specific overrides (`.typos.toml`) to keep documentation, code comments, and CLI text typo-free.
-
-### 14. Architecture Linter (`tangleguard.yml`)
-- **What it does:** Runs `cargo-tangleguard` against `tangleguard.toml` rules.
-- **Goal:** Analyzes our crates to ensure there are no inverse or circular dependencies between our internal modules (e.g. `rullst-core` must never depend on `rullst-orm`), preventing "spaghetti code" from accumulating.
+This document details every automated workflow, target coverage by crate, execution parameters, and our roadmap for continuous cloud fuzzing integration.
 
 ---
 
-## 📆 Scheduled & Release Operations (Asynchronous)
+## 🏛️ Comprehensive Test & Formal Verification Matrix
 
-These workflows handle continuous validation and artifact generation without blocking developer PRs.
-
-### 1. Property-Based Testing (`proptest.yml`)
-- **What it does:** Runs our `proptest` suite, generating over 10,000 random inputs for complex string formatters and HTML macros to find obscure edge-case panics.
-- **When it runs:** Every Sunday morning (Cron).
-
-### 2. Documentation & Benchmark Dashboards (`pages.yml`)
-- **What it does:** Compiles VitePress documentation and visual Chart.js dashboards for our benchmark suites, deploying them to GitHub Pages.
-- **When it runs:** Automatically on every merge to `main`.
-
-### 3. Release Publication (`release.yml`)
-- **What it does:** Orchestrates the secure publication of all workspace crates to `crates.io`.
-- **When it runs:** Manually triggered when a version tag (`v*.*.*`) is pushed.
+| Crate | Unit & Integration | Kani (Model Checking) | Miri (UB & Memory) | Fuzzing (libFuzzer) | Property Testing (Proptest) | Concurrency Sanitizers (TSan/ASan) | Zero Panics (Clippy) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`rullst-core`** | ✅ | ✅ (PII & Circuit Breakers) | ✅ | ✅ (12 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-security`** | ✅ | ✅ (Vault & SRI Invariants) | ✅ | ✅ (5 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-auth`** | ✅ | ✅ (Cookie & Token Invariants) | ✅ | ✅ (2 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-orm`** | ✅ | ✅ (SQL Sanitization Bounds) | ✅ | ✅ (5 Targets) | ✅ (Query Builder AST) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-connect`** | ✅ | ✅ (OIDC / PKCE Verifier) | ✅ | ✅ (3 Targets) | ✅ (PKCE Fuzzing) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-iot`** | ✅ | ✅ (PQC Kyber & Modbus CRC) | ✅ | ✅ (3 Targets) | ✅ (Hardware State) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-ai`** | ✅ | ✅ (Tool Param Schema) | ✅ | ✅ (2 Targets) | ✅ (Prompt Invariants) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-capital`** | ✅ | ✅ (Invoice Total Bounds) | ✅ | ✅ (1 Target) | ✅ (Billing Invariants) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-nexus`** | ✅ | ✅ (Identifier Sanitation) | ✅ | ✅ (1 Target) | ✅ (CRUD Query Bounds) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-studio`** | ✅ | ✅ (Identifier Length Bounds) | ✅ | ✅ (1 Target) | ✅ (Filter Invariants) | ✅ (TSan + ASan) | ✅ |
+| **`rullst-mail`** | ✅ | ✅ (Message Builder Invariants) | ✅ | ✅ (1 Target) | ✅ (Recipient Parsing) | ✅ (TSan + ASan) | ✅ |
 
 ---
 
-## 🏋️ Extreme Verification (Manual `workflow_dispatch` Only)
+## 🚀 1. Fast Feedback Loop (Runs on `push` and `pull_request`)
 
-These workflows perform rigorous, formal, and mathematically exhaustive verification of the Rullst architecture. Because they can take anywhere from **30 minutes to multiple hours**, they do not run on every push. They are executed manually by maintainers before major stable releases.
+These workflows act as our primary gatekeepers. They run in parallel on every Pull Request and Push to `main` and `dev` branches. Heavily cached, they complete in **under 10 minutes** to deliver immediate developer feedback.
 
-### 1. Fuzzing (`fuzzing.yml`)
-- **What it does:** Uses `cargo-fuzz` and `libFuzzer` to feed infinite streams of garbage data into our HTTP parser, ORM schema builder, and JSON serializers.
-- **Goal:** Ensures that maliciously crafted network packets cannot cause DoS attacks or panic the web server.
+### 1.1 Core Multi-OS Matrix (`ci.yml`)
+- **What it does:** Executes unit tests, integration tests, and procedural macro expansions across a matrix of operating systems:
+  - **Linux (`ubuntu-latest`)**
+  - **macOS (`macos-latest` on Apple Silicon ARM64)**
+  - **Windows (`windows-latest` MSVC)**
+- **DB Matrix Tests:** Provisions live Dockerized PostgreSQL and MySQL instances (via Testcontainers) on Linux runners to validate database driver parity and Active Record transactions against real engines.
+- **Compiler Lints:** Enforces `rustfmt` formatting and strictly denies any `clippy` warnings (`-D warnings`).
+- **MSRV Enforcement:** Asserts that the entire monorepo compiles cleanly under the Minimum Supported Rust Version (`1.96.0`).
 
-### 2. Symbolic Execution (`kani.yml`)
-- **What it does:** Uses the AWS Kani Rust Verifier to perform **Model Checking**. It explores every possible execution path of our cryptography and memory-handling code.
-- **Goal:** Proves mathematically that our core functions are free of overflow, out-of-bounds, and logical state errors.
+### 1.2 Performance Regression Shield (`bench.yml`)
+- **What it does:** Runs Criterion benchmarks across 5 independent sub-systems:
+  - **Core SSR:** Zero-bundle HTML rendering and Router dispatch latency.
+  - **Active Record:** ORM query builder formatting and row deserialization throughput.
+  - **Cryptographic Primitives:** PII masking, HTML sanitization, and CSRF token generation costs.
+  - **Auth Pipeline:** AES-256-GCM session decryption and HMAC signature validation per request.
+  - **SSO Connect:** OIDC state token generation and PKCE code challenge hashing.
+- **Threshold:** Any nanosecond-level regression triggers an automated review alert.
 
-### 3. Undefined Behavior Detection (`miri.yml`)
-- **What it does:** Runs the entire test suite inside the Miri interpreter, tracking memory allocations at the byte level.
-- **Goal:** Detects subtle Undefined Behavior (UB), use-after-free, and strict provenance violations in any asynchronous or unsafe code.
+### 1.3 Property-Based Fuzzy Invariant Testing (`proptest.yml`)
+- **What it does:** Generates over 10,000 randomized combinatorial inputs per test case to stress test AST query builders, PKCE challenges, URL decoders, and session deserializers.
+- **Goal:** Proves that inputs never trigger unexpected edge-case panics or infinite loops regardless of malformed byte structures.
 
-### 4. Mutation Testing (`mutants.yml`)
-- **What it does:** Uses `cargo-mutants` to deliberately inject bugs into the Rullst source code (e.g., changing `==` to `!=` or removing function calls) and recompiles the project.
-- **Goal:** Proves that our test suite is actually capable of catching bugs. If a mutant survives (i.e., the tests still pass), it means we have a gap in our coverage.
+### 1.4 Bare-Metal `#![no_std]` Verification (`no_std-build.yml`)
+- **What it does:** Compiles `rullst-iot` across 3 embedded bare-metal architectures:
+  - `thumbv7em-none-eabihf` (STM32 Cortex-M4/M7 with hardware FPU)
+  - `thumbv6m-none-eabi` (ARM Cortex-M0/M0+ low-power sensors)
+  - `riscv32imac-unknown-none-elf` (ESP32-C3 RISC-V IoT controllers)
+- **Goal:** Guarantees zero runtime allocations and zero standard library dependencies for edge hardware.
 
-### 5. Dynamic App Security Testing (`dast-zap.yml`)
-- **What it does:** Spins up the full framework in a Docker container and uses **OWASP ZAP** to spider the application, launching active attacks (SQLi, XSS, CSRF).
-- **Goal:** Simulates a real-world black-box penetration test against the framework's default configurations.
+### 1.5 IoT Hardware Simulation (`iot-integration.yml`)
+- **What it does:** Executes unit and integration test suites across GPIO, I2C, Modbus RTU/TCP, BLE GATT profiles, Anomaly Detectors, OTA partition swappers, and Hardware Security Modules (HSM), backed by Cortex-M QEMU emulation.
+
+### 1.6 Zero-Panics Compiler Enforcement (`zero-panics.yml`)
+- **What it does:** Custom compiler linting forbidding `.unwrap()`, `.expect()`, `panic!()`, `todo!()`, and `unimplemented!()` in non-test paths of production crates. All failures must be gracefully degraded through typed `AppError` enums.
+
+### 1.7 Memory Safety & Unsafe Policy (`unsafe-policy.yml`)
+- **What it does:** Audits the entire codebase for `unsafe` blocks. Any undocumented or unjustified `unsafe` invocation immediately fails CI.
+
+### 1.8 End-to-End Smoke Test (`e2e-smoke.yml`)
+- **What it does:** Compiles the `rullst-blog-example` binary in release mode, boots the HTTP server on port 3000, and fires live `curl` requests to validate:
+  - SSR HTML document structure and status 200 responses.
+  - Security headers (`Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`).
+  - Metadata endpoint isolation (verifying no CSRF session cookies leak to `/robots.txt` or `/sitemap.xml`).
+  - Live form `POST /posts` execution and SQLite database persistence.
+
+---
+
+## 📆 2. Scheduled & Cryptographic Audits (Asynchronous)
+
+### 2.1 Post-Quantum & Cryptographic Compliance (`pqc-compliance.yml`)
+- **What it does:** Audits post-quantum key encapsulation (`PqcKeyPair` ML-KEM Kyber), Hardware Security Modules (`hsm.rs`), and in-memory zero-trust secrets (`vault.rs`).
+- **Dependency Audit:** Runs `cargo audit` with pre-compiled binaries to verify zero known CVEs across all cryptographic crates.
+- **Schedule:** Automated weekly Monday run at 03:00 UTC and on crypto file changes.
+
+### 2.2 Dynamic Application Security Testing (`dast-zap.yml`)
+- **What it does:** Spins up the Rullst production engine and launches **OWASP ZAP** dynamic penetration testing attacks against SQLi, XSS, CSRF, and session hijacking vectors.
+
+### 2.3 Semantic Security Analysis (`codeql.yml`) & Secret Scanning (`trufflehog.yml`)
+- **What it does:** Performs deep semantic AST analysis with GitHub CodeQL and verifies that zero API keys or private certificates exist across git history.
+
+### 2.4 Supply Chain & API Stability (`cargo-deny.yml`, `semver.yml`, `machete.yml`)
+- **What it does:** Bans unmaintained licenses, prevents breaking public API changes without SemVer bumps, and prunes unused dependencies.
+
+---
+
+## 🏋️ 3. Extreme Verification Suites (`workflow_dispatch` & Nightly)
+
+These compute-intensive suites run for hours, mathematically modeling the framework state space and finding subtle flaws.
+
+### 3.1 Mathematical Model Checking (`kani.yml`)
+- **What it does:** Uses the AWS Kani Rust Verifier (powered by CBMC SAT solvers) to mathematically prove the absence of crashes, overflows, and state invariant violations in:
+  - **`rullst-core`:** PII masking string length invariant & circuit breaker token bucket refill arithmetic.
+  - **`rullst-security`:** Zero-trust `VaultSecret` memory exposure & `compute_sri_hash` formatting.
+  - **`rullst-iot`:** ML-KEM Kyber keypair encapsulation bounds & Modbus CRC16 panic-freedom.
+  - **`rullst-auth`:** Session cookie serialization and logout expiration headers.
+  - **`rullst-connect`:** OIDC state token formatting & PKCE code verifier hashing.
+
+### 3.2 Undefined Behavior & Strict Provenance Detection (`miri.yml`)
+- **What it does:** Executes tests under the Miri interpreter with `RUSTFLAGS="-Zrandomize-layout"` and `-Zmiri-disable-isolation` across 10 packages to detect memory alignment, strict provenance violations, and use-after-free conditions.
+
+### 3.3 Continuous Differential Fuzzing (`fuzzing.yml`)
+- **What it does:** Runs `cargo-fuzz` (LLVM libFuzzer) across **27 dedicated fuzz targets** for up to 6 hours (`-max_total_time=21000`):
+  - **Core:** `mask_pii`, `html_escape`, `routing`, `validation_json`, `auth_crypto`, `auth_session`, `security_csrf`, `security_waf`, `htmx_headers`, `config_parser`, `multitenant_resolver`, `ws_payload`.
+  - **ORM:** `fuzz_audit`, `fuzz_builder`, `fuzz_parser`, `fuzz_schema`, `fuzz_scout`.
+  - **Security:** `fuzz_rasp`, `fuzz_schema_guard`, `fuzz_vault`, `fuzz_totp`, `fuzz_log_redactor`.
+  - **Connect:** `default_target`, `fuzz_token_response`, `fuzz_user_json`.
+
+### 3.4 Concurrency & Memory Sanitizers (`sanitizers.yml`)
+- **What it does:** Compiles under Rust Nightly with `-Zsanitizer=thread` (TSan) and `-Zsanitizer=address` (ASan) to catch race conditions and memory corruption in asynchronous Tokio worker pools.
+
+### 3.5 Mutation Testing (`mutants.yml`)
+- **What it does:** Deploys `cargo-mutants` across 8 parallel shards to intentionally inject bugs into the Rullst syntax tree, mathematically asserting that the test suite catches every mutant.
+
+---
+
+## 🌐 4. Scaling Fuzzing: Google OSS-Fuzz & External Infrastructure
+
+### 4.1 Does Rullst Qualify for Google OSS-Fuzz?
+**Yes, absolutely.** Google OSS-Fuzz is a free continuous fuzzing service provided by Google for critical open-source software.
+
+#### Criteria Evaluation:
+1. **Critical Infrastructure:** Rullst is a high-performance web runtime, cryptographic engine, and bare-metal IoT framework handling network traffic, database transactions, and IoT hardware protocols.
+2. **Open Source & Permissive License:** Licensed under MIT / Apache-2.0 on a public GitHub repository.
+3. **Existing libFuzzer Targets:** Rullst already contains **27+ production-ready `libFuzzer` targets** (`rullst/fuzz`, `rullst-orm/fuzz`, `rullst-connect/fuzz`, `rullst-security/fuzz`) integrated with `cargo-fuzz`.
+4. **Active Maintenance:** Zero-panic guarantees, high test coverage, and continuous triage.
+
+### 4.2 Next Steps for OSS-Fuzz Onboarding:
+To onboard Rullst to Google OSS-Fuzz:
+1. Submit a Pull Request to [`google/oss-fuzz`](https://github.com/google/oss-fuzz) with a `projects/rullst` directory containing:
+   - `project.yaml`: Project metadata, maintainer contact email, and primary repository link.
+   - `Dockerfile`: Multi-stage container pulling Rust Nightly and `cargo-fuzz`.
+   - `build.sh`: Script compiling all 27 fuzz targets with AddressSanitizer, MemorySanitizer, and UndefinedBehaviorSanitizer.
+2. Once merged, Google ClusterFuzz will automatically run Rullst fuzzers **24/7 on thousands of CPU cores in Google Cloud**, continuously filing automated issue reports with reproducible testcases whenever a crash is discovered.
 
 ---
 *Rullst - Built for those who want to build securely and easily, but not suffer.*

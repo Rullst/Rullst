@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-orm-macros', 'rullst-auth', 'rullst-core', 'rullst-ai', 'rullst-capital']
+        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-orm-macros', 'rullst-auth', 'rullst-core', 'rullst-ai', 'rullst-capital', 'rullst-security', 'rullst-iot', 'rullst-nexus', 'rullst-studio', 'rullst-mail']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       

@@ -636,3 +636,17 @@ mod tests_additional {
         assert!(res.is_err());
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_message_builder_recipient() {
+        let msg = Message::new().to("user@rullst.dev").subject("Hello");
+        assert_eq!(msg.to, "user@rullst.dev");
+        assert_eq!(msg.subject, "Hello");
+    }
+}
+

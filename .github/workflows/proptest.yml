@@ -1,6 +1,10 @@
 name: Property Testing
 
 on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
   schedule:
     - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (avoids GitHub Actions weekend congestion)
   workflow_dispatch:
@@ -42,3 +46,9 @@ jobs:
         env:
           PROPTEST_CASES: 10000
         run: cargo test -p rullst-connect --lib --release
+
+      - name: Run Proptests — Security & Auth (AES-GCM, Vault, CSRF, Token)
+        env:
+          PROPTEST_CASES: 10000
+        run: cargo test -p rullst-security -p rullst-auth --release
+

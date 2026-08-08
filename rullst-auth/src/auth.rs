@@ -445,3 +445,18 @@ mod tests {
         assert!(parse_app_key_from_toml(toml_invalid).is_none());
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_make_logout_cookie_invariants() {
+        let cookie = make_logout_cookie();
+        assert!(cookie.starts_with("rullst_session=;"));
+        assert!(cookie.contains("Max-Age=0"));
+        assert!(cookie.contains("HttpOnly"));
+    }
+}
+

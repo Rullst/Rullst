@@ -1,0 +1,91 @@
+name: End-to-End Smoke Tests (E2E)
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RUST_BACKTRACE: 1
+
+jobs:
+  smoke_blog:
+    name: E2E Smoke Test (Blog Example)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Configure environment for Blog Example
+        working-directory: examples/blog
+        run: |
+          echo "APP_KEY=12345678901234567890123456789012" >> .env
+          echo "APP_ENV=production" >> .env
+          echo "DATABASE_URL=sqlite://blog.db" >> .env
+          touch blog.db
+
+      - name: Compile Blog Example
+        run: cargo build --release -p rullst-blog-example
+
+      - name: Start Blog Server in Background
+        working-directory: examples/blog
+        run: |
+          ../../target/release/rullst-blog-example &
+          sleep 3
+          curl -s --retry 10 --retry-connrefused --retry-delay 2 http://localhost:3000/robots.txt > /dev/null
+          echo "Server is live on http://localhost:3000"
+
+      - name: Verify GET / (SSR HTML & Security Headers)
+        run: |
+          echo "Testing GET /..."
+          RESPONSE=$(curl -s -i http://localhost:3000/)
+          echo "$RESPONSE" | grep -i "HTTP/1.1 200 OK\|HTTP/2 200"
+          echo "$RESPONSE" | grep -i "Rullst Dev Blog"
+          echo "$RESPONSE" | grep -i "Content-Security-Policy:"
+          echo "$RESPONSE" | grep -i "X-Content-Type-Options: nosniff"
+          echo "$RESPONSE" | grep -i "X-Frame-Options: DENY"
+          echo "✅ GET / verified successfully."
+
+      - name: Verify Static / Metadata Endpoints (No CSRF cookie leak)
+        run: |
+          echo "Testing GET /robots.txt..."
+          ROBOTS=$(curl -s -i http://localhost:3000/robots.txt)
+          echo "$ROBOTS" | grep -i "Disallow: /"
+          if echo "$ROBOTS" | grep -i "Set-Cookie: rullst_csrf"; then
+            echo "❌ Unexpected CSRF cookie found on /robots.txt"
+            exit 1
+          fi
+          echo "✅ /robots.txt verified."
+
+          echo "Testing GET /sitemap.xml..."
+          SITEMAP=$(curl -s -i http://localhost:3000/sitemap.xml)
+          echo "$SITEMAP" | grep -i "xml"
+          if echo "$SITEMAP" | grep -i "Set-Cookie: rullst_csrf"; then
+            echo "❌ Unexpected CSRF cookie found on /sitemap.xml"
+            exit 1
+          fi
+          echo "✅ /sitemap.xml verified."
+
+      - name: Verify POST /posts & Database Persistence
+        run: |
+          echo "Submitting new post..."
+          curl -s -X POST http://localhost:3000/posts \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "title=Smoke%20Test%20Post&body=Automated%20E2E%20Verification%20Passed"
+
+          echo "Verifying post appeared in SSR feed..."
+          FEED=$(curl -s http://localhost:3000/)
+          echo "$FEED" | grep -i "Smoke Test Post"
+          echo "$FEED" | grep -i "Automated E2E Verification Passed"
+          echo "✅ End-to-end post creation and SSR rendering passed."

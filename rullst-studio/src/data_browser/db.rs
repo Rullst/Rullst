@@ -294,3 +294,19 @@ pub fn resolve_driver_display_name() -> String {
         .unwrap_or("sqlite")
         .to_uppercase()
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_sanitize_identifier_length_bound() {
+        let id: [u8; 8] = kani::any();
+        if let Ok(s) = std::str::from_utf8(&id) {
+            let clean = sanitize_identifier(s);
+            assert!(clean.len() <= 64);
+        }
+    }
+}
+

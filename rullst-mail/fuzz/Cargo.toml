@@ -1,0 +1,21 @@
+[package]
+name = "rullst-mail-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rullst-mail = { path = ".." }
+
+[[bin]]
+name = "fuzz_mail"
+path = "fuzz_targets/fuzz_mail.rs"
+test = false
+doc = false

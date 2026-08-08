@@ -1005,3 +1005,21 @@ pub async fn nexus_batch_action(
 
     axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response()
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_sanitize_identifier_alphanumeric_or_underscore() {
+        let name: [u8; 8] = kani::any();
+        if let Ok(s) = std::str::from_utf8(&name) {
+            let clean = sanitize_identifier(s);
+            for ch in clean.chars() {
+                assert!(ch.is_alphanumeric() || ch == '_');
+            }
+        }
+    }
+}
+

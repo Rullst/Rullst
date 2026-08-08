@@ -1,0 +1,11 @@
+homepage: "https://github.com/Rullst/Rullst"
+language: rust
+primary_contact: "maintainers@rullst.dev"
+auto_ccs:
+  - "security@rullst.dev"
+sanitizers:
+  - address
+  - undefined
+fuzzing_engines:
+  - libfuzzer
+main_repo: "https://github.com/Rullst/Rullst.git"

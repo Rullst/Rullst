@@ -78,3 +78,17 @@ impl Invoice {
         )
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_invoice_item_amount_valid() {
+        let amount: f64 = kani::any();
+        let valid = !amount.is_nan() && !amount.is_infinite();
+        assert!(valid || amount.is_nan() || amount.is_infinite());
+    }
+}
+

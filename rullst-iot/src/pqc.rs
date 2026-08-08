@@ -66,3 +66,22 @@ mod tests {
         assert_eq!(ct.len(), 32);
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_pqc_keypair_bounds() {
+        let seed: [u8; 8] = kani::any();
+        let keypair = PqcKeyPair::from_seed(&seed);
+        assert_eq!(keypair.public_key.len(), 32);
+        assert_eq!(keypair.secret_key.len(), 32);
+
+        let data: [u8; 8] = kani::any();
+        let ct = keypair.encapsulate(&data);
+        assert_eq!(ct.len(), 32);
+    }
+}
+

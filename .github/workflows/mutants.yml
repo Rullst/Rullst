@@ -26,7 +26,9 @@ jobs:
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
       - name: Install cargo-mutants
-        run: cargo install cargo-mutants
+        uses: taiki-e/install-action@065d6a08a14e61e89fb0a4c10eecdbdef39c7d8e # v2.85.4
+        with:
+          tool: cargo-mutants
 
       - name: Run mutants shard on whole workspace
         # We test the entire workspace, divided in 8 shards

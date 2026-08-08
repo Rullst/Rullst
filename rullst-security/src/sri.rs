@@ -53,3 +53,17 @@ mod tests {
         assert!(tag.contains("crossorigin=\"anonymous\""));
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_compute_sri_hash_format() {
+        let bytes: [u8; 4] = kani::any();
+        let hash = compute_sri_hash(&bytes);
+        assert!(hash.starts_with("sha384-"));
+    }
+}
+

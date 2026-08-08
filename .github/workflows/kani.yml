@@ -11,12 +11,12 @@ env:
 
 jobs:
   kani:
-    name: kani
+    name: kani (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst-core', 'rullst-connect', 'rullst-macros']
+        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-orm', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail']
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

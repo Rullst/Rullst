@@ -136,3 +136,22 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_tool_param_instantiation() {
+        let req: bool = kani::any();
+        let param = ToolParam {
+            name: "param".to_string(),
+            param_type: "string".to_string(),
+            description: "desc".to_string(),
+            required: req,
+        };
+        assert_eq!(param.required, req);
+    }
+}
+
