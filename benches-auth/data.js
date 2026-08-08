@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786154862995,
+  "lastUpdate": 1786155562824,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2303,6 +2303,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1403,
             "range": "± 46",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "38b19b3bc6361e2262a2d9567e6ca1e5469950b0",
+          "message": "docs: remove hardcoded microsecond numbers and point directly to live interactive benchmarks",
+          "timestamp": "2026-08-07T23:08:50-03:00",
+          "tree_id": "e30b75743691d0fbb12615787337008abd19a45a",
+          "url": "https://github.com/Rullst/Rullst/commit/38b19b3bc6361e2262a2d9567e6ca1e5469950b0"
+        },
+        "date": 1786155562159,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 579,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 500,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1138,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1231,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
