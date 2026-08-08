@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786147280917,
+  "lastUpdate": 1786149257332,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -7075,6 +7075,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2323,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34ee50f1290b5064a2ce8b1d097c4ff543fa3713",
+          "message": "fix(clippy): allow too-many-arguments on generator functions and clean legacy website",
+          "timestamp": "2026-08-07T21:32:10-03:00",
+          "tree_id": "ca61f9a0fa752be4e1c3e150d72b8b833a8442ea",
+          "url": "https://github.com/Rullst/Rullst/commit/34ee50f1290b5064a2ce8b1d097c4ff543fa3713"
+        },
+        "date": 1786149255692,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 632,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 895,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 668,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1841,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
