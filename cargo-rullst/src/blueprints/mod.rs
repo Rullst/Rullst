@@ -14,6 +14,7 @@ pub mod lms;
 pub mod portfolio;
 pub mod saas;
 
+#[allow(clippy::too_many_arguments)]
 pub fn apply(
     id: usize,
     path: &Path,

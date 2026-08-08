@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_cargo_toml(
     project_name_safe: &str,
     hot_reload: bool,
