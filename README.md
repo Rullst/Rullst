@@ -147,7 +147,7 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 
 > 📊 **Explore live results & reproducible suites:**
 > - [**📈 Interactive Benches Dashboard**](https://rullst.github.io/Rullst/#benches) — Real-time telemetry and microsecond visualizers on the official site.
-> - [**github.com/Rullst/Benchmarks**](https://github.com/Rullst/Benchmarks) ([rullst.github.io/Benchmarks](https://rullst.github.io/Benchmarks/)) — Open benchmark repository with reproducible TechEmpower-style setups, Criterion HTML reports, memory profiling, and continuous performance regression CI.
+> - [**⚖️ Comparative Benchmarks**](https://github.com/Rullst/Benchmarks) — Open benchmark repository with reproducible TechEmpower-style setups, Criterion HTML reports, memory profiling, and continuous performance regression CI.
 
 - 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
 - 🎨 **Developer Control Room & Nexus CMS**: An all-in-one Web Suite (`cargo rullst studio` at `:5555`) with Data Browser, Visual Threat Radar, Real-time Metrics, and auto-generated Admin Panels (`/nexus`) from your Structs.
@@ -165,7 +165,7 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 ---
 <br>
 
-![Rullst CLI Initiating LMS Blueprint](<Interative Terminal Dashboard.png>)
+![Rullst CLI Initiating LMS Blueprint](https://github.com/Rullst/Rullst/blob/main/Interative%20Terminal%20Dashboard.png)
 
 ---
 

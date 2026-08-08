@@ -72,7 +72,9 @@ jobs:
           # 10049 = Storable and Cacheable Content (Handled by production middleware)
           # 10202 = Absence of Anti-CSRF Tokens (False positive on GET routes in example app)
           # 10063 = Permissions Policy Header Not Set (Not required for simple example)
-          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)\n10202\tIGNORE\t(CSRF)\n10063\tIGNORE\t(Permissions-Policy)" > .zap/rules.tsv
+          # 10010 = Cookie No HttpOnly Flag (Double-Submit CSRF token is intentionally readable by frontend scripts)
+          # 10112 = Session Management Response Identified (Informational alert for session responses)
+          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)\n10202\tIGNORE\t(CSRF)\n10063\tIGNORE\t(Permissions-Policy)\n10010\tIGNORE\t(HttpOnly-CSRF)\n10112\tIGNORE\t(Session-Management)" > .zap/rules.tsv
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0

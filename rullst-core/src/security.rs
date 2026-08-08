@@ -44,7 +44,30 @@ pub async fn csrf_middleware(req: Request, next: Next) -> Response {
     }
 }
 
+fn is_csrf_exempt_path(path: &str) -> bool {
+    path == "/robots.txt"
+        || path == "/sitemap.xml"
+        || path == "/favicon.ico"
+        || path.starts_with("/static/")
+        || path.ends_with(".txt")
+        || path.ends_with(".xml")
+        || path.ends_with(".ico")
+        || path.ends_with(".json")
+        || path.ends_with(".css")
+        || path.ends_with(".js")
+        || path.ends_with(".png")
+        || path.ends_with(".jpg")
+        || path.ends_with(".jpeg")
+        || path.ends_with(".svg")
+        || path.ends_with(".webp")
+        || path.ends_with(".wasm")
+}
+
 async fn handle_csrf_get(req: Request, next: Next) -> Response {
+    if is_csrf_exempt_path(req.uri().path()) {
+        return next.run(req).await;
+    }
+
     let has_cookie = req
         .headers()
         .get(header::COOKIE)
