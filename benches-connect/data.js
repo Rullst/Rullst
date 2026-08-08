@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786155583407,
+  "lastUpdate": 1786161000895,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1468,6 +1468,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 69,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "346851fa7f8a665d043d9036f076c8dc9c58f32a",
+          "message": "refactor: implement CSRF exemption list, update ZAP suppression rules, and harden PQC compliance pipeline",
+          "timestamp": "2026-08-08T00:41:09-03:00",
+          "tree_id": "045d627448f3ac4e0f51b8f699c92f354545ea16",
+          "url": "https://github.com/Rullst/Rullst/commit/346851fa7f8a665d043d9036f076c8dc9c58f32a"
+        },
+        "date": 1786161000145,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 73,
             "range": "± 1",
             "unit": "ns/iter"
           }
