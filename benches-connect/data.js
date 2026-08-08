@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786151963146,
+  "lastUpdate": 1786154115466,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1379,6 +1379,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 57,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28bbbf9a2738bf0d655fd753c84224dc8031d1c7",
+          "message": "refactor: unindent test module and remove incomplete function body in tests.rs",
+          "timestamp": "2026-08-07T22:46:53-03:00",
+          "tree_id": "0ed3592e4c105444257691198eed0995225714e8",
+          "url": "https://github.com/Rullst/Rullst/commit/28bbbf9a2738bf0d655fd753c84224dc8031d1c7"
+        },
+        "date": 1786154115015,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
