@@ -132,12 +132,12 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 
 ### ⚡ Unmatched Performance
 
-Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed. In our official [Criterion micro-benchmarks](BENCHMARKS.md):
+Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed:
 
-- **SSR HTML5 Rendering**: `~1.07 µs` (4.2x faster than Dioxus, 8.5x faster than Leptos).
-- **Macro Routing (`routes!`)**: `~974 ns` (Zero-overhead Axum static dispatch).
+- **SSR HTML5 Rendering**: `~1.07 µs` (Zero-bundle static string rendering).
+- **Macro Routing (`routes!`)**: `~974 ns` (Axum-backed compile-time dispatch).
 - **HtmlSanitizer & XSS Shield**: `~0.37 µs` (Ammonia AST filtering).
-- **RbacGuard Role & Ownership BOLA**: `~0.15 µs` (Zero-allocation constant-time guard).
+- **RbacGuard Role & Ownership BOLA**: `~0.15 µs` (Zero-allocation bitflags guard).
 - **Vault In-Memory Zeroization**: `~0.06 µs` (Cryptographic drop memory wiping).
 - **Stripe Webhook Signature Verification**: `~0.52 µs` (Constant-time HMAC-SHA256).
 - **Passkey WebAuthn Challenge Parser**: `~0.48 µs` (FIDO2 passwordless auth).
@@ -145,7 +145,9 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 - **AI Guardrail Prompt Sanitizer**: `~0.45 µs` (Prompt injection neutralization).
 - **RAG Cosine Vector Similarity**: `~0.11 µs` (SIMD vector similarity computation).
 
-> 📊 **Deep-dive into the numbers →** [**github.com/Rullst/Benchmarks**](https://github.com/Rullst/Benchmarks) — our dedicated benchmark repository with reproducible TechEmpower-style results, Criterion reports, memory profiling, and continuous performance regression CI against Axum, Actix-Web, NestJS, Go Fiber, and Hono.
+> 📊 **Explore live results & reproducible suites:**
+> - [**📈 Interactive Benches Dashboard**](https://rullst.github.io/Rullst/#benches) — Real-time telemetry and microsecond visualizers on the official site.
+> - [**github.com/Rullst/Benchmarks**](https://github.com/Rullst/Benchmarks) ([rullst.github.io/Benchmarks](https://rullst.github.io/Benchmarks/)) — Open benchmark repository with reproducible TechEmpower-style setups, Criterion HTML reports, memory profiling, and continuous performance regression CI.
 
 - 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
 - 🎨 **Developer Control Room & Nexus CMS**: An all-in-one Web Suite (`cargo rullst studio` at `:5555`) with Data Browser, Visual Threat Radar, Real-time Metrics, and auto-generated Admin Panels (`/nexus`) from your Structs.
