@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786151945501,
+  "lastUpdate": 1786154095509,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2207,6 +2207,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1090,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28bbbf9a2738bf0d655fd753c84224dc8031d1c7",
+          "message": "refactor: unindent test module and remove incomplete function body in tests.rs",
+          "timestamp": "2026-08-07T22:46:53-03:00",
+          "tree_id": "0ed3592e4c105444257691198eed0995225714e8",
+          "url": "https://github.com/Rullst/Rullst/commit/28bbbf9a2738bf0d655fd753c84224dc8031d1c7"
+        },
+        "date": 1786154095050,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 725,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 626,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1365,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1394,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
