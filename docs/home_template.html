@@ -149,7 +149,7 @@ let all_users = User::all().await?;</code></pre>
         <!-- Tab 2: SSR -->
         <div id="tab-ssr" class="doc-tab-pane" style="display: none;">
           <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Native html! Macro & Zero-Bundle SSR</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Blazing-fast JSX-like syntax in pure Rust that compiles directly into optimized static strings (~1.07 µs).</p>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Blazing-fast JSX-like syntax in pure Rust that compiles directly into optimized static strings without runtime Virtual DOM overhead.</p>
           <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #34d399; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst::html;
 
 fn dashboard_view(user: &User) -> String {

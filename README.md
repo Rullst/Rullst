@@ -134,16 +134,16 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 
 Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed:
 
-- **SSR HTML5 Rendering**: `~1.07 µs` (Zero-bundle static string rendering).
-- **Macro Routing (`routes!`)**: `~974 ns` (Axum-backed compile-time dispatch).
-- **HtmlSanitizer & XSS Shield**: `~0.37 µs` (Ammonia AST filtering).
-- **RbacGuard Role & Ownership BOLA**: `~0.15 µs` (Zero-allocation bitflags guard).
-- **Vault In-Memory Zeroization**: `~0.06 µs` (Cryptographic drop memory wiping).
-- **Stripe Webhook Signature Verification**: `~0.52 µs` (Constant-time HMAC-SHA256).
-- **Passkey WebAuthn Challenge Parser**: `~0.48 µs` (FIDO2 passwordless auth).
-- **Zero-Trust Device Fingerprinting**: `~0.29 µs` (Subnet-aware session binding).
-- **AI Guardrail Prompt Sanitizer**: `~0.45 µs` (Prompt injection neutralization).
-- **RAG Cosine Vector Similarity**: `~0.11 µs` (SIMD vector similarity computation).
+- **SSR HTML5 Rendering**: Zero-bundle static string rendering avoiding Virtual DOM allocations.
+- **Macro Routing (`routes!`)**: Direct compile-time static dispatch powered by Axum and Tokio.
+- **HtmlSanitizer & XSS Shield**: High-speed Ammonia AST payload filtering.
+- **RbacGuard Role & Ownership BOLA**: Zero-allocation bitflags security authorization.
+- **Vault In-Memory Zeroization**: Cryptographic drop memory wiping preventing cold-boot RAM inspection.
+- **Stripe Webhook Signature Verification**: Constant-time HMAC-SHA256 protecting against timing attacks.
+- **Passkey WebAuthn Challenge Parser**: High-performance FIDO2 passwordless auth parsing.
+- **Zero-Trust Device Fingerprinting**: Subnet-aware session binding with zero runtime overhead.
+- **AI Guardrail Prompt Sanitizer**: In-memory prompt injection neutralization before LLM transport.
+- **RAG Cosine Vector Similarity**: SIMD-accelerated local vector embedding similarity computation.
 
 > 📊 **Explore live results & reproducible suites:**
 > - [**📈 Interactive Benches Dashboard**](https://rullst.github.io/Rullst/#benches) — Real-time telemetry and microsecond visualizers on the official site.
