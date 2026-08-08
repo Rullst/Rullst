@@ -145,6 +145,8 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 - **AI Guardrail Prompt Sanitizer**: `~0.45 µs` (Prompt injection neutralization).
 - **RAG Cosine Vector Similarity**: `~0.11 µs` (SIMD vector similarity computation).
 
+> 📊 **Deep-dive into the numbers →** [**github.com/Rullst/Benchmarks**](https://github.com/Rullst/Benchmarks) — our dedicated benchmark repository with reproducible TechEmpower-style results, Criterion reports, memory profiling, and continuous performance regression CI against Axum, Actix-Web, NestJS, Go Fiber, and Hono.
+
 - 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
 - 🎨 **Developer Control Room & Nexus CMS**: An all-in-one Web Suite (`cargo rullst studio` at `:5555`) with Data Browser, Visual Threat Radar, Real-time Metrics, and auto-generated Admin Panels (`/nexus`) from your Structs.
 - 🛡️ **RASP Engine & Pre-Controller Shield**: Kernel-level AST payload filtering protecting against XSS, SQLi, and BOLA before requests ever reach your controllers.
