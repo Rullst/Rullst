@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786149647183,
+  "lastUpdate": 1786151963146,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1348,6 +1348,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 67,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32e1f244542c8d4f5200184d05b9fbed333e5f64",
+          "message": "fix(site): update navbar buttons, add interactive benches anchor, wire full footer links, and fix 404 bench routes",
+          "timestamp": "2026-08-07T22:11:22-03:00",
+          "tree_id": "42058c6e6105d02d6e244e7ab7763a5cf61e5b9e",
+          "url": "https://github.com/Rullst/Rullst/commit/32e1f244542c8d4f5200184d05b9fbed333e5f64"
+        },
+        "date": 1786151962458,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 57,
             "range": "± 0",
             "unit": "ns/iter"
           }
