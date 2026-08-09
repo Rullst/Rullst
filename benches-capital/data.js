@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786169240184,
+  "lastUpdate": 1786245644180,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -496,6 +496,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "80c5731a7f7409ec7c4c7d46d7c2509d551fcc78",
+          "message": "refactor: consolidate failure entry update logic in login_guard to return current count correctly",
+          "timestamp": "2026-08-09T00:09:08-03:00",
+          "tree_id": "53b194905a4a8818861239047f31655ca8988180",
+          "url": "https://github.com/Rullst/Rullst/commit/80c5731a7f7409ec7c4c7d46d7c2509d551fcc78"
+        },
+        "date": 1786245643504,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
