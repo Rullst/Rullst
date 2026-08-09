@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786245426970,
+  "lastUpdate": 1786246641272,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2495,6 +2495,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1401,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6bf14ffb7fdc095e4e5a89ec3908d030b2202203",
+          "message": "refactor: improve code formatting, rename header configuration variables, and remove trailing whitespace across the codebase.",
+          "timestamp": "2026-08-09T00:29:19-03:00",
+          "tree_id": "8be2ccd69c76dc86a8880f81a487acaf443c629f",
+          "url": "https://github.com/Rullst/Rullst/commit/6bf14ffb7fdc095e4e5a89ec3908d030b2202203"
+        },
+        "date": 1786246640943,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 719,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 612,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1365,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1377,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
