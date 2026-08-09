@@ -103,8 +103,12 @@ async fn render_radar_dashboard() -> Html<String> {
     } else {
         for evt in events {
             let (badge_color, border_color) = match evt.event_type.as_str() {
-                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => ("text-rose-400", "border-rose-900/40"),
-                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => ("text-cyan-400", "border-cyan-900/40"),
+                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => {
+                    ("text-rose-400", "border-rose-900/40")
+                }
+                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => {
+                    ("text-cyan-400", "border-cyan-900/40")
+                }
                 _ => ("text-amber-400", "border-amber-900/40"),
             };
 

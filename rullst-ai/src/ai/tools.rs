@@ -154,4 +154,3 @@ mod kani_proofs {
         assert_eq!(param.required, req);
     }
 }
-

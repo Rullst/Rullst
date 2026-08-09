@@ -167,7 +167,8 @@ mod tests {
 
     #[test]
     fn test_mask_database_url() {
-        let payload = b"{\"db\": \"postgres://admin:super_secret_password_123@localhost:5432/app\"}";
+        let payload =
+            b"{\"db\": \"postgres://admin:super_secret_password_123@localhost:5432/app\"}";
         let (masked, was_modified) = mask_response_payload(payload);
         assert!(was_modified);
         let masked_str = String::from_utf8(masked).unwrap();

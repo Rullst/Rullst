@@ -309,4 +309,3 @@ mod kani_proofs {
         }
     }
 }
-

@@ -66,4 +66,3 @@ mod kani_proofs {
         assert!(hash.starts_with("sha384-"));
     }
 }
-

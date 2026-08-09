@@ -111,4 +111,3 @@ mod kani_proofs {
         }
     }
 }
-

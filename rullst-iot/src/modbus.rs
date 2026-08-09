@@ -69,4 +69,3 @@ mod kani_proofs {
         assert!(crc <= u16::MAX);
     }
 }
-

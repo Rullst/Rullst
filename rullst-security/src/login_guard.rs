@@ -82,7 +82,10 @@ impl LoginGuard {
         }
 
         let current_count = {
-            let mut entry = self.failures.entry(identity.to_string()).or_insert((0, now));
+            let mut entry = self
+                .failures
+                .entry(identity.to_string())
+                .or_insert((0, now));
             let (count, last_attempt) = entry.value_mut();
 
             // Reset if beyond window

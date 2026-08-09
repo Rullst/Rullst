@@ -649,4 +649,3 @@ mod kani_proofs {
         assert_eq!(msg.subject, "Hello");
     }
 }
-

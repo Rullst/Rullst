@@ -1022,4 +1022,3 @@ mod kani_proofs {
         }
     }
 }
-

@@ -84,4 +84,3 @@ mod kani_proofs {
         assert_eq!(ct.len(), 32);
     }
 }
-

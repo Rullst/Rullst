@@ -91,4 +91,3 @@ mod kani_proofs {
         assert!(valid || amount.is_nan() || amount.is_infinite());
     }
 }
-

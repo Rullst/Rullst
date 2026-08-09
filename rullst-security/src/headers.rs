@@ -118,50 +118,50 @@ where
             let mut res = fut.await?;
             let headers = res.headers_mut();
 
-            if let Some(ref hsts) = config.hsts
-                && let Ok(v) = HeaderValue::from_str(hsts)
+            if let Some(ref hsts_val) = config.hsts
+                && let Ok(v) = HeaderValue::from_str(hsts_val)
             {
                 headers.insert(HeaderName::from_static("strict-transport-security"), v);
             }
 
-            if let Some(ref fo) = config.frame_options
-                && let Ok(v) = HeaderValue::from_str(fo)
+            if let Some(ref frame_opt) = config.frame_options
+                && let Ok(v) = HeaderValue::from_str(frame_opt)
             {
                 headers.insert(HeaderName::from_static("x-frame-options"), v);
             }
 
-            if let Some(ref cto) = config.content_type_options
-                && let Ok(v) = HeaderValue::from_str(cto)
+            if let Some(ref content_type_opt) = config.content_type_options
+                && let Ok(v) = HeaderValue::from_str(content_type_opt)
             {
                 headers.insert(HeaderName::from_static("x-content-type-options"), v);
             }
 
-            if let Some(ref rp) = config.referrer_policy
-                && let Ok(v) = HeaderValue::from_str(rp)
+            if let Some(ref referrer_pol) = config.referrer_policy
+                && let Ok(v) = HeaderValue::from_str(referrer_pol)
             {
                 headers.insert(HeaderName::from_static("referrer-policy"), v);
             }
 
-            if let Some(ref pp) = config.permissions_policy
-                && let Ok(v) = HeaderValue::from_str(pp)
+            if let Some(ref permissions_pol) = config.permissions_policy
+                && let Ok(v) = HeaderValue::from_str(permissions_pol)
             {
                 headers.insert(HeaderName::from_static("permissions-policy"), v);
             }
 
-            if let Some(ref coop) = config.coop
-                && let Ok(v) = HeaderValue::from_str(coop)
+            if let Some(ref coop_opt) = config.coop
+                && let Ok(v) = HeaderValue::from_str(coop_opt)
             {
                 headers.insert(HeaderName::from_static("cross-origin-opener-policy"), v);
             }
 
-            if let Some(ref coep) = config.coep
-                && let Ok(v) = HeaderValue::from_str(coep)
+            if let Some(ref coep_opt) = config.coep
+                && let Ok(v) = HeaderValue::from_str(coep_opt)
             {
                 headers.insert(HeaderName::from_static("cross-origin-embedder-policy"), v);
             }
 
-            if let Some(ref corp) = config.corp
-                && let Ok(v) = HeaderValue::from_str(corp)
+            if let Some(ref corp_opt) = config.corp
+                && let Ok(v) = HeaderValue::from_str(corp_opt)
             {
                 headers.insert(HeaderName::from_static("cross-origin-resource-policy"), v);
             }

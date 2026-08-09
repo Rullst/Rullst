@@ -459,4 +459,3 @@ mod kani_proofs {
         assert!(cookie.contains("HttpOnly"));
     }
 }
-
