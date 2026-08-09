@@ -81,19 +81,21 @@ impl LoginGuard {
             return Duration::from_secs(5);
         }
 
-        let mut entry = self.failures.entry(identity.to_string()).or_insert((0, now));
-        let (count, last_attempt) = entry.value_mut();
+        let current_count = {
+            let mut entry = self.failures.entry(identity.to_string()).or_insert((0, now));
+            let (count, last_attempt) = entry.value_mut();
 
-        // Reset if beyond window
-        if now.duration_since(*last_attempt) > self.window_duration {
-            *count = 1;
-            *last_attempt = now;
-            return Duration::ZERO;
-        }
-
-        *count += 1;
-        *last_attempt = now;
-        let current_count = *count;
+            // Reset if beyond window
+            if now.duration_since(*last_attempt) > self.window_duration {
+                *count = 1;
+                *last_attempt = now;
+                1
+            } else {
+                *count += 1;
+                *last_attempt = now;
+                *count
+            }
+        };
 
         if current_count >= self.max_failures {
             self.jails
