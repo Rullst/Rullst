@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786245447213,
+  "lastUpdate": 1786246661311,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1559,6 +1559,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6bf14ffb7fdc095e4e5a89ec3908d030b2202203",
+          "message": "refactor: improve code formatting, rename header configuration variables, and remove trailing whitespace across the codebase.",
+          "timestamp": "2026-08-09T00:29:19-03:00",
+          "tree_id": "8be2ccd69c76dc86a8880f81a487acaf443c629f",
+          "url": "https://github.com/Rullst/Rullst/commit/6bf14ffb7fdc095e4e5a89ec3908d030b2202203"
+        },
+        "date": 1786246660970,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
