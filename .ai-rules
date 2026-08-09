@@ -1,12 +1,15 @@
 # Rullst AI Context & Execution Rules
-
+ 
 - **SST Compliance:** Read `docs/spec.md` before initiating any architectural refactors or file scaffolding.
 - **Modular Code Size Standard:** Keep source files concise and modular (target max 500 lines per file). Decompose large monolithic files (> 500 lines) into dedicated sub-module directories using Rust's `mod` system.
 - **Error Handling:** Enforce zero-panic policy in production code using typed `AppError` enum; no `unwrap()`, `expect()`, or `panic!()` in non-test paths.
 - **Dispatch Pattern:** Prefer static dispatch (`impl Trait` or generics) over `dyn Trait` for explicit concrete typing.
 - **HTML Macros:** Boolean attributes in `html!` macros must be explicitly quoted (e.g., `required="true"`, `disabled="true"`).
-- **Security First:** Parameterize all dynamic SQL inputs; sanitize identifiers with `sanitize_identifier()`. WAF & CSRF middleware are mandatory for production endpoints.
+- **Security First:** Parameterize all dynamic SQL inputs; sanitize identifiers with `sanitize_identifier()`. WAF, CSRF, and OWASP Secure Headers middleware are mandatory for production endpoints.
+- **IDOR / BOLA Guard:** Parameterized routes (`/:id`, `/{id}`) must enforce ownership/RBAC validation via `RbacGuard::authorize_owner_or_role`.
+- **Zero-Leak DLP:** Responses and logs must not leak secrets or private keys (use `rullst_security::dlp` & `log_redactor`).
 - **No Unsafe Code:** Avoid introducing new `unsafe` blocks unless strictly necessary for OS/C FFI with documented safety bounds.
 - **Studio Standards:** Use clean URLs (`/studio/*` without `/tools/`), dark glassmorphic `studio_layout` design, and 100% real non-mocked probes (`RadarSnapshot` & `SpanCollector`).
-- **Scaffolding:** Use CLI scaffolding commands (`cargo rullst make:*`) for structural consistency across models, controllers, and migrations.
+- **Scaffolding:** Use CLI scaffolding commands (`cargo rullst make:*`) for structural consistency across models, controllers, migrations, LiveView, and gRPC.
+- **Official Contact:** Official framework email is `officialrullst@gmail.com`.
 - **Verification:** Always run `cargo test -p <crate>` to verify code correctness before concluding tasks.

@@ -263,7 +263,7 @@ pub enum Commands {
         /// Target item to inspect (e.g. routes, models, schema, or file path)
         target: Option<String>,
     },
-    /// Runs AI-assisted security audit for secret leaks, CVEs, and compliance posture
+    /// Runs AI-assisted security audit for secret leaks, CVEs, IDOR/BOLA routes, and compliance posture
     Audit {
         /// Optional: Enable AI Sentinel analysis suggestions
         #[arg(long)]
@@ -271,6 +271,9 @@ pub enum Commands {
         /// Optional: Export SECURITY_COMPLIANCE.md report evaluating OWASP Top 10, SOC2, and ISO 27001
         #[arg(long)]
         compliance: bool,
+        /// Optional: Run static IDOR / BOLA vulnerability scanner on parameterized routes
+        #[arg(long)]
+        idor: bool,
     },
     /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
     Eject {
@@ -480,8 +483,12 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Inspect { target } => {
             inspect_project(target.as_deref())?;
         }
-        Commands::Audit { ai, compliance } => {
-            crate::generators::audit::run_security_audit(*ai, *compliance)?;
+        Commands::Audit {
+            ai,
+            compliance,
+            idor,
+        } => {
+            crate::generators::audit::run_security_audit(*ai, *compliance, *idor)?;
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;

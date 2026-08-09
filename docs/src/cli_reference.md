@@ -149,11 +149,12 @@ Connects to a legacy database (that already exists and has tables), maps the ent
 ### `cargo rullst generate:ai-context`
 Creates the brain map of your project (`.llms.txt`). It summarizes the folder structure, conventions, and dependencies so that AI Assistants (like Cursor and Github Copilot) perfectly understand the framework when you ask them for help.
 
-### `cargo rullst audit [--ai] [--compliance]`
-Runs an AI-assisted security audit scanning `.env` for secret leaks, verifying dependency CVEs via `cargo audit`, and evaluating RBAC permission boundaries with AI Sentinel suggestions.
+### `cargo rullst audit [--ai] [--compliance] [--idor]`
+Runs an AI-assisted security audit scanning `.env` for secret leaks, verifying dependency CVEs via `cargo audit`, detecting IDOR/BOLA authorization gaps in parameterized routes, and evaluating RBAC permission boundaries with AI Sentinel suggestions.
 * **Flags:**
   * `--ai`: Enables AI Sentinel suggestions for threat mitigation.
   * `--compliance`: Generates a `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC2 Type II, and ISO 27001 control requirements.
+  * `--idor`: Runs recursive static AST analysis across all routes (`/:id`, `/{id}`, `/users/:user_id`) to verify if ownership checks (`RbacGuard::authorize_owner_or_role`) are properly enforced.
 
 ### `cargo rullst eject [--force] [--output <path>]`
 Expands all Rullst framework abstractions into 100% pure Axum and Tokio Rust code (`src/ejected_main.rs`), eliminating framework lock-in and allowing low-level Tower/Hyper customization.

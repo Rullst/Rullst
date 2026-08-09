@@ -58,6 +58,11 @@ fn handle_scaffold_code(
         "🚪  Middleware            (cargo rullst make:middleware)",
         "⚙️  Background Worker     (cargo rullst make:worker)",
         "📂  Blank Migration       (cargo rullst make:migration)",
+        "⚡  LiveView Reactive UI  (cargo rullst make:live)",
+        "🏝️  Wasm Island Component (cargo rullst make:island)",
+        "📡  Scalar API Playground (cargo rullst make:scalar)",
+        "☸️  Kubernetes Manifests  (cargo rullst make:k8s)",
+        "🔌  gRPC Microservice     (cargo rullst make:grpc)",
         "🤖  Introspect DB Models  (cargo rullst generate:models)",
     ];
     let selection = dialoguer::Select::with_theme(theme)
@@ -92,7 +97,35 @@ fn handle_scaffold_code(
             "make:migration",
             vec![],
         ),
-        5 => {
+        5 => (
+            "Enter LiveView component name (e.g. Counter):",
+            "make:live",
+            vec![],
+        ),
+        6 => (
+            "Enter Wasm island component name (e.g. Chart):",
+            "make:island",
+            vec![],
+        ),
+        7 => {
+            return execute_command(vec![
+                std::env::args().next().unwrap_or_default(),
+                "make:scalar".to_string(),
+            ]);
+        }
+        8 => {
+            return execute_command(vec![
+                std::env::args().next().unwrap_or_default(),
+                "make:k8s".to_string(),
+            ]);
+        }
+        9 => {
+            return execute_command(vec![
+                std::env::args().next().unwrap_or_default(),
+                "make:grpc".to_string(),
+            ]);
+        }
+        10 => {
             return execute_command(vec![
                 std::env::args().next().unwrap_or_default(),
                 "generate:models".to_string(),
@@ -147,32 +180,40 @@ fn handle_auth_billing(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let choices = [
         "🔐  Scaffold Full Auth System  (cargo rullst auth)",
+        "📲  Scaffold 2FA TOTP System   (cargo rullst make:mfa)",
+        "🛡️  Run Security & IDOR Audit  (cargo rullst audit --ai --compliance --idor)",
         "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
         "🌐  Add CORS Middleware        (cargo rullst make:cors)",
         "🔑  Add JWT Middleware         (cargo rullst make:jwt)",
     ];
     let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Choose auth & billing action:\n")
+        .with_prompt("Choose auth & security action:\n")
         .default(0)
         .items(&choices[..])
         .interact()?;
-    let cmd = match selection {
-        0 => "auth",
-        1 => "make:billing",
-        2 => "make:cors",
-        3 => "make:jwt",
+    let mut args = vec![std::env::args().next().unwrap_or_default()];
+    match selection {
+        0 => args.push("auth".to_string()),
+        1 => args.push("make:mfa".to_string()),
+        2 => {
+            args.push("audit".to_string());
+            args.push("--ai".to_string());
+            args.push("--compliance".to_string());
+            args.push("--idor".to_string());
+        }
+        3 => args.push("make:billing".to_string()),
+        4 => args.push("make:cors".to_string()),
+        5 => args.push("make:jwt".to_string()),
         _ => return Ok(()),
     };
-    execute_command(vec![
-        std::env::args().next().unwrap_or_default(),
-        cmd.to_string(),
-    ])
+    execute_command(args)
 }
 
 fn handle_deploy(
     theme: &dialoguer::theme::ColorfulTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let choices = [
+        "🚀  One-Click PaaS Deploy      (cargo rullst deploy)",
         "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
         "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
     ];
@@ -182,8 +223,9 @@ fn handle_deploy(
         .items(&choices[..])
         .interact()?;
     let cmd = match selection {
-        0 => "foundry:init",
-        1 => "foundry:deploy",
+        0 => "deploy",
+        1 => "foundry:init",
+        2 => "foundry:deploy",
         _ => return Ok(()),
     };
     execute_command(vec![
@@ -206,15 +248,15 @@ fn handle_existing_project(
         ),
         format!(
             "🛠  Scaffold Code            {}",
-            "(Controllers, Models, Middlewares, Workers)".dimmed()
+            "(Controllers, Models, LiveView, Islands, gRPC)".dimmed()
         ),
         format!(
             "🗄  Database Operations      {}",
             "(Migrate, Rollback, Status, Seed)".dimmed()
         ),
         format!(
-            "🔐  Integrate Auth & Billing {}",
-            "(Auth, Stripe/LemonSqueezy, Passkeys)".dimmed()
+            "🔐  Integrate Auth & Security {}",
+            "(Auth, 2FA MFA, IDOR/SOC Audit, Billing)".dimmed()
         ),
         format!(
             "🖥  Package for Desktop/App  {}",
@@ -230,7 +272,7 @@ fn handle_existing_project(
         ),
         format!(
             "🚀  Deploy to Cloud          {}",
-            "(Foundry: AWS, GCP, Hetzner, Azure, DO)".dimmed()
+            "(1-Click PaaS: Fly, Railway, Render, VPS)".dimmed()
         ),
         format!(
             "🔄  Safe Upgrade             {}",

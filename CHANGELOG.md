@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **OWASP Secure Headers Suite (`rullst-security::headers`)**: Unified middleware layer (`SecureHeadersLayer`, `SecureHeadersConfig`) enforcing HSTS, dynamic CSP Nonce, Permissions-Policy, COOP, COEP, and CORP, granting an out-of-the-box A+ rating on security audits (`securityheaders.com`).
+- **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: In-memory progressive async delay engine (`LoginGuard`) applying progressive delay (0s to 5s) and 15-minute temporary jail bans after 5 consecutive authentication failures.
+- **RASP Deep Request & Header Inspector (`rullst-security::rasp`)**: Enhanced runtime application self-protection with `inspect_text` and `inspect_headers` intercepting JNDI/Log4j, RCE, and advanced SQL injection vectors before handler dispatch.
+- **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Data Loss Prevention middleware (`DlpResponseLayer`, `mask_response_payload`) intercepting outgoing HTTP response streams to neutralize accidental leakage of private keys, AWS credentials, and database passwords.
+- **CLI IDOR / BOLA Static Audit Scanner (`cargo rullst audit --idor`)**: Static AST analyzer in `cargo-rullst` scanning parameterized routes (`/:id`, `/{id}`, `/users/:user_id`) to verify that ownership validation (`RbacGuard::authorize_owner_or_role`) is enforced.
 - **Multi-Factor Authentication Engine (`rullst-security::mfa` & `cargo rullst make:mfa`)**: Native RFC 6238 TOTP engine (`generate_mfa_secret`, `generate_totp_code`, `verify_totp_code`, `build_otpauth_uri`) and CLI subcommand `make:mfa` for 2FA TOTP scaffolding.
 - **Dynamic Threat Deception Traps (`rullst-security::deception`)**: Dynamic decoy route registry (`register_deception_trap`, `deception_trap_middleware`) baiting automated scanners (`/api/v1/admin/debug`, `/graphql/v1`) and triggering instant WAF IP bans.
 - **Cross-Site WebSocket Hijacking Guard (`rullst-security::cswsh`)**: WebSocket upgrade handshake validator (`cswsh_guard_middleware`) verifying Origin and Host headers to prevent unauthorized cross-origin WebSocket streams.
@@ -17,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**: Cryptographic session binding (`generate_fingerprint`, `verify_fingerprint`) matching client `User-Agent`, IP subnets, and language headers to prevent stolen JWT session hijacking.
 - **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**: Middleware (`schema_guard_middleware`, `inspect_json_payload`) enforcing JSON payload size limits and maximum object nesting depth to block JSON bomb DoS attacks.
 - **Automated Security Compliance Exporter (`cargo rullst audit --compliance`)**: Automated compliance scanning CLI flag exporting a Markdown `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC2 Type II, and ISO 27001 control requirements.
-- **Threat Radar UI Expansion (Studio & Nexus)**: Integrated real-time metric cards, zero-trust session status badges, log redaction counters, MFA verifications, rate limit drops, and SIEM alerts into `/studio/security` and `/nexus/security`.
+- **Threat Radar UI Expansion (Studio & Nexus)**: Integrated real-time metric cards for Login Jail bans, DLP leaks prevented, OWASP Headers A+, and IDOR route scans into `/studio/security` and `/nexus/security`.
 - **Enterprise-Grade Concurrency & Memory Sanitizers (`sanitizers.yml`)**: Added continuous Nightly ThreadSanitizer (`TSan`) detecting data races and AddressSanitizer (`ASan`) detecting memory leaks across all 11 workspace packages.
 - **Cross-Platform Multi-OS CI Matrix (`ci.yml`)**: Expanded test suite to validate Ubuntu, macOS (Apple Silicon ARM64), and Windows MSVC runners.
 - **Automated End-to-End Smoke Verification (`e2e-smoke.yml`)**: Automated production binary boot of `examples/blog`, live SSR HTML status 200 checks, security header validation, CSRF metadata exemption, and form submission database persistence.

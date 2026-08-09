@@ -20,13 +20,16 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-core`** | Server runtime, Tokio executor integration, `routes!` macro, `RadarSnapshot` telemetry & `SpanCollector`. |
 | **`rullst-orm`** | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector. |
 | **`rullst-auth`** | JWT authentication, Argon2 password hashing, session management, OAuth2 integration. |
-| **`rullst-security`** | RASP engine, double-submit cookie CSRF, leaky-bucket rate limiting, honeypot traps, WAF middleware. |
-| **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
-| **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
+| **`rullst-security`** | RASP deep inspection, OWASP Secure Headers A+, Login Jail tarpit, DLP interceptor, honeypot traps, WAF middleware. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
 | **`rullst-capital`** | Real-time SaaS MRR/ARR analytics, Stripe/LemonSqueezy webhook audit log ledger. |
+| **`rullst-connect`** | Enterprise message queues (RabbitMQ, Redis Streams, Kafka), WebSockets sync, SSE event streams. |
+| **`rullst-iot`** | High-throughput MQTT 5.0 broker client, industrial edge sensor ingestion, zero-copy packet parser. |
+| **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery. |
+| **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
+| **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). |
-| **`cargo-rullst`** | Developer CLI scaffold generator (`make:*` commands), AST + Dylib hot-reloading engine. |
+| **`cargo-rullst`** | Developer CLI scaffold generator (`make:*` commands), AST IDOR scanner, and 1-Click cloud deployer. |
 
 ---
 
@@ -47,7 +50,8 @@ The Rullst framework is organized into decoupled, high-performance crates:
 
 ### 3.4. Security Invariants
 - All dynamic SQL inputs must use SQLx parameterization (`sqlx::query(...)`) or strict alphanumeric sanitization (`sanitize_identifier`).
-- CSRF middleware (`Double-Submit Cookie`) and WAF middleware are mandatory for production endpoints.
+- CSRF middleware (`Double-Submit Cookie`), OWASP Secure Headers (`SecureHeadersLayer`), and WAF middleware are mandatory for production endpoints.
+- Parameterized data routes (`/:id`, `/{id}`) must enforce ownership validation via `RbacGuard::authorize_owner_or_role` or `UserContext`.
 - Avoid introducing new `unsafe` blocks unless strictly necessary for OS FFI, and document safety invariants explicitly.
 
 ### 3.5. Studio & Observability Directives
@@ -59,6 +63,10 @@ The Rullst framework is organized into decoupled, high-performance crates:
 - Keep source files focused, decoupled, and concise (target max 500 lines per file).
 - Avoid monolithic single-file bloat by decomposing large modules into dedicated sub-module directories using Rust's `mod` system (e.g. `data_browser/` containing `db.rs`, `layout.rs`, `handlers.rs`, `mod.rs`).
 - Smaller files improve compile times, IDE performance, and AI context tracking precision.
+
+### 3.7. Official Inquiries & Vulnerability Disclosure
+- Official Framework Email: `officialrullst@gmail.com`.
+- Security vulnerabilities must be handled via coordinated private disclosure directly to the core team.
 
 ---
 

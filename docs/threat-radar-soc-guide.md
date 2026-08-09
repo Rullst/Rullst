@@ -192,25 +192,86 @@ Once configured, restart your dev server (`cargo rullst dev` or `cargo rullst da
 
 ## 4. Underlying Security Engines & Code Mechanics
 
-### RASP (Runtime Application Self-Protection)
+### RASP Deep Request Inspector (Runtime Application Self-Protection)
 
 Implemented in `rullst-security/src/rasp.rs`:
 ```rust
 pub struct RaspInspector;
 
 impl RaspInspector {
-    pub fn inspect_uri(uri: &str) -> bool {
-        let lower = uri.to_lowercase();
-        // Detects SQL Injection, Path Traversal, SSRF, and RCE patterns
+    pub fn inspect_text(payload: &str) -> bool {
+        let lower = payload.to_lowercase();
+        // Detects SQLi, Path Traversal, SSRF, RCE, Shell Injections, and JNDI/Log4j
         lower.contains("union select") 
             || lower.contains("' or '1'='1")
+            || lower.contains("sleep(")
             || lower.contains("../")
             || lower.contains("169.254.169.254")
             || lower.contains("; cat ")
+            || lower.contains("${jndi:")
+            || lower.contains("${ldap:")
+    }
+
+    pub fn inspect_headers(headers: &HeaderMap) -> bool {
+        // Validates User-Agent, Referer, and custom headers for malicious injection payloads
+        ...
     }
 }
 ```
-* **Tower Integration**: `RaspSecurityLayer` wraps Axum routes, intercepting requests before business handlers run. Requests failing inspection receive an immediate `403 Forbidden` with zero CPU overhead.
+* **Tower Integration**: `RaspSecurityLayer` wraps Axum routes, inspecting URIs and request headers before business handlers run. Requests failing inspection receive an immediate `403 Forbidden` with zero CPU overhead.
+
+---
+
+### OWASP Secure Headers Suite (`rullst-security::headers`)
+
+Implemented in `rullst-security/src/headers.rs`:
+`SecureHeadersLayer` injects enterprise-grade defensive headers into all HTTP responses:
+* `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (HSTS)
+* `X-Content-Type-Options: nosniff`
+* `X-Frame-Options: DENY`
+* `Referrer-Policy: strict-origin-when-cross-origin`
+* `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`
+* `Cross-Origin-Opener-Policy: same-origin` (COOP)
+* `Cross-Origin-Embedder-Policy: require-corp` (COEP)
+* `Cross-Origin-Resource-Policy: same-origin` (CORP)
+* Dynamic Cryptographic Nonces for Content Security Policy (`nonce-<base64>`).
+* **Result**: Guarantees an immediate **A+ rating** on standard security benchmarks (`securityheaders.com`).
+
+---
+
+### Anti-Bruteforce Tarpit & Login Jail (`rullst-security::login_guard`)
+
+Implemented in `rullst-security/src/login_guard.rs`:
+```rust
+let guard = LoginGuard::global();
+
+// On authentication failure:
+let delay = guard.record_login_failure(&client_ip);
+tokio::time::sleep(delay).await;
+
+// If 5 consecutive failures occur:
+// IP is jailed for 15 minutes and live telemetry event is dispatched.
+if guard.is_jailed(&client_ip) {
+    return (StatusCode::TOO_MANY_REQUESTS, "Account/IP temporarily jailed").into_response();
+}
+```
+
+---
+
+### HTTP Response DLP Interceptor (`rullst-security::dlp`)
+
+Implemented in `rullst-security/src/dlp.rs`:
+`DlpResponseLayer` buffers and inspects outgoing HTTP response streams to neutralize accidental credential leakage before leaving the server perimeter:
+* **Private Keys**: Replaces `-----BEGIN RSA PRIVATE KEY-----...` with `[DLP_BLOCKED_PRIVATE_KEY]`.
+* **AWS Credentials**: Masks `AKIA...` access keys with `AKIA****************`.
+* **Database Connection URLs**: Neutralizes connection strings (`postgres://user:pass@host/db` $\rightarrow$ `postgres://user:*****@host/db`).
+
+---
+
+### Static IDOR / BOLA Vulnerability Scanner (`cargo rullst audit --idor`)
+
+Integrated into `cargo-rullst/src/generators/audit.rs`:
+Recursively traverses project source files to verify that all parameterized routes (`/:id`, `/{id}`, `/users/:user_id`) explicitly enforce role-based or ownership authorization via `RbacGuard::authorize_owner_or_role` or `UserContext`. Emits alerts during build/audit workflows when unprotected data routes are discovered.
 
 ---
 

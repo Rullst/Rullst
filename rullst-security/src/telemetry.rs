@@ -37,6 +37,10 @@ pub struct SecurityStore {
     pub cswsh_blocks_count: AtomicU64,
     pub rate_limit_blocks_count: AtomicU64,
     pub siem_dispatches_count: AtomicU64,
+    pub login_jail_bans_count: AtomicU64,
+    pub dlp_secrets_masked_count: AtomicU64,
+    pub secure_headers_applied_count: AtomicU64,
+    pub idor_warnings_count: AtomicU64,
     pub banned_ips: DashMap<String, BannedIpRecord>,
     pub honeypot_route_hits: DashMap<String, AtomicU64>,
     pub live_events: Mutex<Vec<LiveSecurityEvent>>,
@@ -66,6 +70,10 @@ impl SecurityStore {
             cswsh_blocks_count: AtomicU64::new(0),
             rate_limit_blocks_count: AtomicU64::new(0),
             siem_dispatches_count: AtomicU64::new(0),
+            login_jail_bans_count: AtomicU64::new(0),
+            dlp_secrets_masked_count: AtomicU64::new(0),
+            secure_headers_applied_count: AtomicU64::new(0),
+            idor_warnings_count: AtomicU64::new(0),
             banned_ips: DashMap::new(),
             honeypot_route_hits: DashMap::new(),
             live_events: Mutex::new(Vec::new()),
@@ -228,6 +236,24 @@ impl SecurityStore {
         self.siem_dispatches_count.fetch_add(1, Ordering::Relaxed);
     }
 
+    pub fn inc_login_jail_bans(&self) {
+        self.login_jail_bans_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_dlp_masked(&self) {
+        self.dlp_secrets_masked_count
+            .fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_secure_headers(&self) {
+        self.secure_headers_applied_count
+            .fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_idor_warnings(&self) {
+        self.idor_warnings_count.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn snapshot(&self) -> TelemetrySnapshot {
         TelemetrySnapshot {
             sanitizations: self.sanitizations_count.load(Ordering::Relaxed),
@@ -242,6 +268,10 @@ impl SecurityStore {
             cswsh_blocks: self.cswsh_blocks_count.load(Ordering::Relaxed),
             rate_limit_blocks: self.rate_limit_blocks_count.load(Ordering::Relaxed),
             siem_dispatches: self.siem_dispatches_count.load(Ordering::Relaxed),
+            login_jail_bans: self.login_jail_bans_count.load(Ordering::Relaxed),
+            dlp_secrets_masked: self.dlp_secrets_masked_count.load(Ordering::Relaxed),
+            secure_headers_applied: self.secure_headers_applied_count.load(Ordering::Relaxed),
+            idor_warnings: self.idor_warnings_count.load(Ordering::Relaxed),
         }
     }
 }
@@ -288,4 +318,8 @@ pub struct TelemetrySnapshot {
     pub cswsh_blocks: u64,
     pub rate_limit_blocks: u64,
     pub siem_dispatches: u64,
+    pub login_jail_bans: u64,
+    pub dlp_secrets_masked: u64,
+    pub secure_headers_applied: u64,
+    pub idor_warnings: u64,
 }

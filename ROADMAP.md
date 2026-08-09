@@ -76,7 +76,7 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 - [x] **Milestone 9:** Authentication Engine (Local, OAuth, Passkeys & WebAuthn).
 - [x] **Milestone 10:** Mailer System (`rullst::mail`), DTO Validation, Rate Limiting & Shield.
 - [x] **Milestone 11:** Free Enterprise Revolution: Rullst Nexus CMS, Rullst Omni & SaaS Billing (`rullst-capital`).
-- [x] **Milestone 12:** Autonomous AI Security Suite: RASP Engine, Rullst Vault (`Zeroize`), Honeypots, HMAC Audit Chain & SOC Threat Radar (`/studio/security`).
+- [x] **Milestone 12:** Autonomous AI Security Suite: RASP Deep Inspector, Rullst Vault (`Zeroize`), Honeypots, HMAC Audit Chain, OWASP Secure Headers A+, Anti-Bruteforce Login Jail, Response DLP Interceptor, MFA TOTP, Zero-Trust Fingerprinting, CLI IDOR Scanner (`cargo rullst audit --idor`) & SOC Threat Radar (`/studio/security`).
 - [ ] **Milestone 13:** Post-Quantum Web Architecture (`rullst-quantum` / NIST PQC) (`[ ] Planned for v13.0.0`).
 
 ---
@@ -129,9 +129,9 @@ We proceed maintaining **100% test coverage**, **Zero-Panics Policy**, and **SST
 
 | Version | Status | Key Milestones Included |
 | :--- | :---: | :--- |
-| **v12.0.0** | `[x] Released (Golden Master)` | **M1-M7, M9-M12, M14-M19, M24, M26-M30** (Full-Stack, Security RASP/Vault/SOC, K8s, Scalar, PaaS Deploy, LiveView, DI, gRPC) |
-| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **MFA TOTP Engine** |
-| **v13.0.0** | `[ ] Planned (Major Release)` | **M13** (Post-Quantum Crate), **M22** (Agentic DevOps), **M23** (Polymorphic Engine), **M31** (Aerospace & Mobility) |
+| **v12.0.0** | `[x] Released (Golden Master)` | **M1-M7, M9-M12, M14-M19, M24, M26-M30** (Full-Stack, Security RASP/Vault/SOC/DLP/LoginJail/Headers/IDOR, K8s, Scalar, PaaS Deploy, LiveView, DI, gRPC) |
+| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **Multi-Tenant SaaS Isolation Guard (`tenant_guard`)**, **Cloud KMS Engine** |
+| **v13.0.0** | `[ ] Planned (Major Release)` | **M13** (Post-Quantum PQC Crate), **M22** (Agentic DevOps), **M23** (Polymorphic Engine), **M31** (Aerospace & Mobility), **eBPF Kernel Threat Containment** |
 
 ---
 

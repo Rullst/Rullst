@@ -21,6 +21,10 @@ pub struct ThreatRadarStats {
     pub cswsh_blocks: u64,
     pub rate_limit_blocks: u64,
     pub siem_dispatches: u64,
+    pub login_jail_bans: u64,
+    pub dlp_secrets_masked: u64,
+    pub secure_headers_applied: u64,
+    pub idor_warnings: u64,
     pub audit_chain_integrity: String,
     pub threat_level: String,
     pub live_events: Vec<rullst_security::LiveSecurityEvent>,
@@ -54,6 +58,10 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         cswsh_blocks: store.cswsh_blocks_count.load(Ordering::Relaxed),
         rate_limit_blocks: store.rate_limit_blocks_count.load(Ordering::Relaxed),
         siem_dispatches: store.siem_dispatches_count.load(Ordering::Relaxed),
+        login_jail_bans: store.login_jail_bans_count.load(Ordering::Relaxed),
+        dlp_secrets_masked: store.dlp_secrets_masked_count.load(Ordering::Relaxed),
+        secure_headers_applied: store.secure_headers_applied_count.load(Ordering::Relaxed),
+        idor_warnings: store.idor_warnings_count.load(Ordering::Relaxed),
         audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
         threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
         live_events: events,
@@ -74,6 +82,10 @@ async fn render_radar_dashboard() -> Html<String> {
     let cswsh_blocks_count = store.cswsh_blocks_count.load(Ordering::Relaxed);
     let rate_limit_blocks_count = store.rate_limit_blocks_count.load(Ordering::Relaxed);
     let siem_dispatches_count = store.siem_dispatches_count.load(Ordering::Relaxed);
+    let login_jail_bans_count = store.login_jail_bans_count.load(Ordering::Relaxed);
+    let dlp_secrets_masked_count = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
+    let secure_headers_applied_count = store.secure_headers_applied_count.load(Ordering::Relaxed);
+    let idor_warnings_count = store.idor_warnings_count.load(Ordering::Relaxed);
 
     let events = store
         .live_events
@@ -91,8 +103,8 @@ async fn render_radar_dashboard() -> Html<String> {
     } else {
         for evt in events {
             let (badge_color, border_color) = match evt.event_type.as_str() {
-                "HONEYPOT_TRAP_TRIGGERED" => ("text-rose-400", "border-rose-900/40"),
-                "XSS_SANITIZED" => ("text-cyan-400", "border-cyan-900/40"),
+                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => ("text-rose-400", "border-rose-900/40"),
+                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => ("text-cyan-400", "border-cyan-900/40"),
                 _ => ("text-amber-400", "border-amber-900/40"),
             };
 
@@ -162,11 +174,26 @@ async fn render_radar_dashboard() -> Html<String> {
     </div>
 
     <!-- Deep Security & Zero-Trust Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Log Secrets Redacted</span>
             <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-redactions">{log_redactions_count}</div>
             <p class="text-[10px] text-slate-500 mt-1">Zero-Leak Log Sanitizer</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Login Jail Bans</span>
+            <div class="text-2xl font-extrabold text-rose-500 mt-1" id="stat-loginjail">{login_jail_bans_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Anti-Bruteforce Tarpit Jails</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">DLP Leaks Blocked</span>
+            <div class="text-2xl font-extrabold text-emerald-400 mt-1" id="stat-dlp">{dlp_secrets_masked_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Response Secret Interceptor</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">OWASP Headers Applied</span>
+            <div class="text-2xl font-extrabold text-sky-400 mt-1" id="stat-headers">{secure_headers_applied_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">A+ Rating Security Suite</p>
         </div>
         <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Zero-Trust Mismatches</span>
@@ -207,6 +234,11 @@ async fn render_radar_dashboard() -> Html<String> {
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SIEM Alerts Streamed</span>
             <div class="text-2xl font-extrabold text-emerald-500 mt-1" id="stat-siem">{siem_dispatches_count}</div>
             <p class="text-[10px] text-slate-500 mt-1">CEF / JSON SOC Exports</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">IDOR Scanner Audited</span>
+            <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-idor">{idor_warnings_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Static RBAC/Ownership Guard</p>
         </div>
     </div>
 

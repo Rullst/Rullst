@@ -1,25 +1,73 @@
-# Security Policy
+# Security Policy 🛡️
 
 ## Supported Versions
 
-Rullst is currently in active development. Only the latest major release (v4.x) receives security updates.
+Rullst adopts strict Semantic Versioning. Active security patches, CVE remediations, and vulnerability fixes are provided for the latest major release family (`v12.x`).
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 4.x.x   | :white_check_mark: |
-| < 4.0.1 | :x:                |
+| Version | Supported | Status |
+| :--- | :---: | :--- |
+| **12.x.x** | :white_check_mark: | **Current Stable Production Release** |
+| < 12.0.0 | :x: | End of Life (Deprecated) |
 
-## Reporting a Vulnerability
+---
 
-If you discover a security vulnerability within Rullst, please DO NOT open a public issue. Instead, send an email to the core maintainers team at rullst.rullst@creio.eu.
+## 🚨 Reporting a Vulnerability
 
-Please include the following information in your report:
-- The type of vulnerability (e.g., XSS, SQLi, CSRF, Path Traversal).
-- The steps to reproduce the vulnerability.
-- Any potential impact on user data or server integrity.
+If you discover a potential security vulnerability within the Rullst framework, CLI tools, or runtime libraries, please **DO NOT open a public GitHub issue or pull request**.
 
-All security vulnerabilities will be promptly addressed. We practice coordinated disclosure and will credit you in the release notes if your report leads to a patch.
+Please send an encrypted or direct disclosure report to the Rullst Core Security Team at:
+👉 **`officialrullst@gmail.com`**
 
-## Security Posture
+### What to Include in Your Report:
+1. **Vulnerability Type**: (e.g., Remote Code Execution, SQL Injection, Authentication Bypass, IDOR/BOLA, CSWSH, Memory Safety violation).
+2. **Affected Crate & Version**: (e.g., `rullst-security v12.0.0`, `rullst-auth v12.0.0`, `cargo-rullst v12.0.0`).
+3. **Proof of Concept (PoC)**: Minimal reproducible example or step-by-step reproduction instructions.
+4. **Estimated Impact**: Criticality assessment, attack vector preconditions, and potential blast radius.
 
-Rullst adopts a "Secure by Design" philosophy and runs continuous automated security pipelines (DAST via OWASP ZAP, SAST via Cargo Deny, and Fuzzing) to prevent regressions. Please refer to our `audit.md` for our latest comprehensive Code Audit report.
+### Coordinated Vulnerability Disclosure (CVD):
+* **Initial Response**: Within 24-48 hours of receipt.
+* **Triage & Patch**: High and Critical vulnerabilities are patched within 72 hours and released as a patch update (`v12.x.y`).
+* **Attribution**: We publicly credit security researchers in our [CHANGELOG.md](file:///home/venelouis/Desktop/REPOS/Rullst/CHANGELOG.md) and release advisories unless anonymity is requested.
+
+---
+
+## 🏛️ Rullst Security Architecture Matrix (v12.0.0)
+
+Rullst is built with a **Zero-Trust Application Self-Protection** architecture embedding defensive layers directly into the compiled binary:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Rullst Zero-Trust Perimeter                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  1. Ingress Protection:   WAF Middleware + Honeypot Decoys + CSWSH Guard    │
+│  2. Identity & Defense:   Anti-Bruteforce Tarpit & Login Jail (DashMap)     │
+│  3. Deep Inspection:      RASP Layer (URI + Headers + Text + JNDI/RCE)      │
+│  4. Data Protection:      Zeroize Vault + Field AES-256-GCM Encryption      │
+│  5. Egress Defense:       HTTP Response DLP Interceptor (Private Keys/AWS)  │
+│  6. Client Hardening:     OWASP Secure Headers Suite (A+ Benchmark)         │
+│  7. Tamper-Proof Trail:   HMAC SHA-256 Cryptographic Audit Ledger Block     │
+│  8. Threat Radar SOC:     Live Telemetry & SIEM Streamer (CEF / JSON Webhook│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core Security Engines:
+* **OWASP Secure Headers Layer (`rullst-security::headers`)**: Out-of-the-box A+ score on `securityheaders.com` enforcing HSTS, CSP Nonce, Permissions-Policy, COOP, COEP, and CORP.
+* **Anti-Bruteforce Login Jail (`rullst-security::login_guard`)**: Progressive async delay tarpit (0s-4s) and temporary 15-minute in-memory jail bans after 5 failed authentication attempts.
+* **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Neutralizes accidental leakage of private keys, AWS access keys, and database connection strings before responses leave the server.
+* **RASP Deep Request Inspector (`rullst-security::rasp`)**: Runtime protection filtering URI, text payloads, and HTTP headers against SQLi, SSRF, RCE, and Log4j exploits.
+* **CLI IDOR / BOLA Static Scanner (`cargo rullst audit --idor`)**: Recursive AST scanner identifying unauthenticated entity access across parameterized routes (`/:id`, `/{id}`).
+* **Automated Compliance Exporter (`cargo rullst audit --compliance`)**: Automated generation of `SECURITY_COMPLIANCE.md` reports mapping codebase controls to OWASP Top 10, SOC2 Type II, and ISO 27001 requirements.
+
+---
+
+## 🧪 Continuous Security & Assurance Verification
+
+Every commit and pull request in the Rullst ecosystem undergoes rigorous automated security verification:
+
+| Verification Suite | Target | Tooling |
+| :--- | :--- | :--- |
+| **Formal Verification** | State transitions, cryptographic ledgers | **Kani Verifier (100% proofs)** |
+| **Memory Safety & UB** | Strict provenance, alignment, concurrency | **Miri Interpreter (13 packages)** |
+| **Dynamic Sanitizers** | Data races (`TSan`), memory leaks (`ASan`) | **Nightly ThreadSanitizer & ASan** |
+| **Continuous Fuzzing** | Input parsers, macro decoders, network streams| **libFuzzer & Google OSS-Fuzz** |
+| **Supply Chain Audit** | Dependency CVEs, license compliance | **`cargo-audit`, `cargo-deny`, SLSA 3** |

@@ -40,6 +40,10 @@ pub async fn nexus_security_page(
     let cswsh_blocks = store.cswsh_blocks_count.load(Ordering::Relaxed);
     let rate_limit_blocks = store.rate_limit_blocks_count.load(Ordering::Relaxed);
     let siem_dispatches = store.siem_dispatches_count.load(Ordering::Relaxed);
+    let login_jail_bans = store.login_jail_bans_count.load(Ordering::Relaxed);
+    let dlp_secrets_masked = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
+    let secure_headers_applied = store.secure_headers_applied_count.load(Ordering::Relaxed);
+    let idor_warnings = store.idor_warnings_count.load(Ordering::Relaxed);
 
     // Build Banned IPs List
     let mut banned_ips_html = String::new();
@@ -223,6 +227,18 @@ pub async fn nexus_security_page(
                 <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{log_redactions}</span>
             </div>
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Login Jail Bans</span>
+                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{login_jail_bans}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">DLP Leaks Blocked</span>
+                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{dlp_secrets_masked}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">OWASP Headers Applied</span>
+                <span style="font-size: 20px; font-weight: 700; color: #38bdf8;">{secure_headers_applied}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
                 <span style="color: var(--text-muted); font-size: 11px; display: block;">Zero-Trust Mismatches</span>
                 <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{zero_trust_mismatches}</span>
             </div>
@@ -253,6 +269,10 @@ pub async fn nexus_security_page(
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
                 <span style="color: var(--text-muted); font-size: 11px; display: block;">SIEM Alerts Streamed</span>
                 <span style="font-size: 20px; font-weight: 700; color: #34d399;">{siem_dispatches}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">IDOR Route Warnings</span>
+                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{idor_warnings}</span>
             </div>
         </div>
     </div>

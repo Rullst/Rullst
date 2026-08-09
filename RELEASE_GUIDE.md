@@ -49,18 +49,21 @@ Every push to `dev` automatically triggers the CI (GitHub Actions), which:
 
 Before releasing, make sure:
 
-- [ ] All CI checks on `dev` are ✅ **green** on GitHub
-- [ ] You have manually tested the feature locally
-- [ ] The `CHANGELOG.md` has a new section describing what changed
-- [ ] All `Cargo.toml` versions have been bumped (e.g., `1.0.4` → `1.0.5`) in:
-  - `rullst-macros/Cargo.toml`
-  - `rullst/Cargo.toml` (also update `rullst-macros` dependency version)
-  - `cargo-rullst/Cargo.toml`
-- [ ] README badges are synchronized by running:
-
-```powershell
-cargo sync
-```
+- [ ] All CI checks on `dev` are ✅ **green** on GitHub:
+  - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS ARM64, Windows MSVC).
+  - `kani.yml`: 100% formal mathematical verification proofs.
+  - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`).
+  - `miri.yml`: Undefined Behavior & strict provenance across 13 packages.
+  - `fuzzing.yml`: Continuous libFuzzer and Google OSS-Fuzz readiness.
+  - `e2e-smoke.yml`: Live SSR HTML status 200 checks, CSRF, and SQLite/Postgres persistence.
+- [ ] You have manually verified local features and tests (`cargo test --workspace`).
+- [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
+- [ ] All 11+ crate `Cargo.toml` versions are synchronized (`12.0.0`):
+  - `rullst-macros`, `rullst-orm-macros`
+  - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
+  - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
+  - `rullst-studio`, `rullst-nexus`
+  - `cargo-rullst`, `rullst`
 
 ---
 
@@ -78,20 +81,19 @@ git merge dev
 # 3. Push main
 git push origin main
 
-# 4. Create a version tag (replace 1.0.5 with your actual version)
-git tag v1.0.5
+# 4. Create a version tag (e.g. v12.0.0)
+git tag v12.0.0
 
-# 5. Push the tag — THIS triggers the automatic crates.io publish!
-git push origin v1.0.5
+# 5. Push the tag — THIS triggers the automatic crates.io publish pipeline!
+git push origin v12.0.0
 ```
 
-That's it! GitHub Actions will automatically:
-1. ✅ Run all tests one final time
-2. 📦 Publish `rullst-macros` to crates.io
-3. ⏳ Wait 30 seconds for crates.io to index it
-4. 📦 Publish `rullst` to crates.io
-5. ⏳ Wait 30 seconds
-6. 📦 Publish `cargo-rullst` to crates.io
+GitHub Actions will automatically execute the topological crate publish pipeline:
+1. ✅ `rullst-macros` & `rullst-orm-macros`
+2. 📦 Core primitives: `rullst-core`, `rullst-security`, `rullst-auth`, `rullst-orm`
+3. 📦 Domain crates: `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
+4. 📦 Dashboards: `rullst-studio`, `rullst-nexus`
+5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
 ---
 
@@ -103,12 +105,11 @@ After the release, immediately start the next development cycle on `dev`:
 # Switch back to dev
 git checkout dev
 
-# Open rullst-macros/Cargo.toml, rullst/Cargo.toml, cargo-rullst/Cargo.toml
-# and bump version to the NEXT version (e.g., 1.0.6)
-# Also add a new [Unreleased] section to CHANGELOG.md
+# Update versions to next iteration (e.g., 12.1.0-dev)
+# Add new [Unreleased] section to CHANGELOG.md
 
 git add .
-git commit -m "chore: bump version to 1.0.6-dev"
+git commit -m "chore: bump version to 12.1.0-dev"
 git push
 ```
 
