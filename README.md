@@ -1,3 +1,7 @@
+<div align="center">
+  <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>
+</div>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
@@ -271,5 +275,5 @@ Rullst is now a unified Monorepo! The framework's core (`rullst`), the database 
 <br>
 
 <div align="center">
-  <p><i>"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</i></p>
+  <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>
 </div>
