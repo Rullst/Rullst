@@ -1,60 +1,123 @@
 # Rullst Capital 💳
 
-`rullst-capital` is the native monetization and billing engine for the Rullst Framework. It abstracts away the immense complexity of handling SaaS subscriptions, webhooks, and invoice generation so you can focus on building your product.
+`rullst-capital` is the native monetization, subscription, and financial billing engine for the Rullst Framework. It abstracts away the complexity of handling global SaaS subscriptions, domestic low-fee gateways, digital wallets, crypto payments, international B2B payouts, and cryptographically verified webhooks.
 
-## ✨ Features
+## 🚀 Core Features
 
-- **Zero-Panic Guarantees:** 100% safe Rust. Fails gracefully on API rate limits or malformed webhook payloads.
-- **Provider Agnostic (Almost):** First-class, deeply integrated support for **Stripe**, with abstractions in place for LemonSqueezy and Paddle.
-- **Webhook Handling:** Built-in cryptographic signature verification for Stripe Webhooks to prevent replay and spoofing attacks.
-- **Subscription Management:** Easily upgrade, downgrade, prorate, or cancel subscriptions directly from Rust structs.
-- **Invoice & Tax Handling:** Automatically generates downloadable PDF receipts and synchronizes tax records.
+- **Multi-Provider Architecture:** Zero-panic, first-class support for 10 global, regional, and Web3 payment providers. Switch providers effortlessly without rewriting application handlers.
+- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber metrics, and churn rate calculations built right into Rullst Studio.
+- **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
+- **Webhook Handling & Database Synchronization:** Secure, constant-time HMAC-verified webhook handlers that listen to subscription creations, renewals, upgrades, and cancellations, automatically updating database records via `rullst-orm`.
+
+---
+
+## ✨ Supported Providers
+
+| Provider | Type / Archetype | Key Features & Strengths |
+| :--- | :--- | :--- |
+| **Stripe** | Global Direct Merchant | 135+ currencies, Apple/Google Pay, customer portals, metered usage. |
+| **Lemon Squeezy** | Global Merchant of Record (MoR) | Automated EU VAT and US state sales tax compliance for global sales. |
+| **InfinitePay** | Brazil Domestic Gateway (CloudWalk) | **Pix at 0.00% fee**, instant D+0 payouts, lowest domestic credit card rates (~0.75% to 1.44%) with transparent installment interest pass-through. |
+| **Polar.sh** | Developer-First MoR & Open Source | Built specifically for developers, GitHub funding, software licenses, and micro-SaaS. |
+| **Paddle** | Enterprise Global MoR | Comprehensive Merchant of Record for European & US B2B SaaS. |
+| **Razorpay** | India & Southeast Asia | Recurring UPI autopay, Indian credit cards, net banking, and Asian subscriptions. |
+| **Mercado Pago** | Latin America (Regional) | Broadest regional coverage across Brazil, Argentina, Mexico, Chile, and Colombia. |
+| **Coinbase Commerce** | Global Web3 / Crypto | Self-custody and hosted crypto charges (BTC, ETH, SOL, USDC/USDT) with automated on-chain webhook verification. |
+| **PicPay** | Brazil Digital Wallet & QR Code | Instant consumer wallet and QR-code payments for Brazilian users. |
+| **Wise** | Global Multi-Currency Payouts | High-speed, low-fee international B2B payouts and contractor disbursements across 40+ currencies. |
+
+---
 
 ## 🚀 Quickstart
 
-Add `rullst-capital` to your project:
+Add `rullst-capital` to your `Cargo.toml`:
 
-```bash
-cargo add rullst-capital
+```toml
+[dependencies]
+rullst-capital = "12.0.0"
 ```
 
-### Handling Stripe Webhooks
-
-Rullst Capital provides pre-built route handlers that automatically verify signatures and map JSON payloads into strongly-typed Rust enums.
+### Initializing a Provider
 
 ```rust
-use rullst::{Router, routing::post};
-use rullst_capital::stripe::{WebhookHandler, WebhookConfig};
-use rullst_capital::events::SubscriptionEvent;
+use rullst_capital::{
+    init_provider, StripeProvider, LemonSqueezyProvider, InfinitePayProvider,
+    PolarProvider, PaddleProvider, RazorpayProvider, MercadoPagoProvider,
+    CoinbaseCommerceProvider, PicPayProvider, WiseProvider,
+};
 
-async fn handle_subscription_updates(event: SubscriptionEvent) {
-    match event {
-        SubscriptionEvent::Created(sub) => println!("New subscriber: {}", sub.customer_id),
-        SubscriptionEvent::Canceled(sub) => println!("Lost subscriber: {}", sub.customer_id),
+// 1. Stripe (Global Direct)
+init_provider(Box::new(StripeProvider::new(
+    std::env::var("STRIPE_SECRET_KEY").unwrap(),
+    std::env::var("STRIPE_WEBHOOK_SECRET").unwrap(),
+)));
+
+// 2. InfinitePay (Brazil - Pix 0% fee)
+// init_provider(Box::new(InfinitePayProvider::new(
+//     std::env::var("INFINITEPAY_API_KEY").unwrap(),
+//     std::env::var("INFINITEPAY_WEBHOOK_SECRET").unwrap(),
+// )));
+
+// 3. Polar.sh (Developer-first MoR)
+// init_provider(Box::new(PolarProvider::new(
+//     std::env::var("POLAR_ACCESS_TOKEN").unwrap(),
+//     std::env::var("POLAR_WEBHOOK_SECRET").unwrap(),
+// )));
+```
+
+### Creating Checkout Sessions
+
+```rust
+use rullst_capital::provider;
+
+async fn checkout_handler() -> Result<String, String> {
+    if let Some(p) = provider() {
+        let checkout_url = p.create_checkout_session(
+            "customer@example.com",
+            "plan_pro_monthly",
+            "https://mysaas.com/billing/success",
+        ).await?;
+        
+        Ok(checkout_url)
+    } else {
+        Err("No billing provider configured".to_string())
+    }
+}
+```
+
+### Intercepting and Verifying Webhooks
+
+`rullst-capital` includes an Axum middleware [`verify_webhook`](src/webhook.rs) that cryptographically verifies HMAC signatures using constant-time comparisons (`subtle::ConstantTimeEq`), parsing payloads into unified [`WebhookEvent`](src/providers/mod.rs) structs.
+
+```rust
+use axum::{Router, routing::post, Extension};
+use rullst_capital::{verify_webhook, WebhookEvent, SubscriptionStatus};
+
+async fn handle_webhook_event(Extension(event): Extension<WebhookEvent>) {
+    match event.status {
+        SubscriptionStatus::Active => {
+            println!("✅ Subscription active for customer: {}", event.customer_email);
+        }
+        SubscriptionStatus::Canceled => {
+            println!("⚠️ Subscription canceled: {}", event.subscription_id);
+        }
+        SubscriptionStatus::PastDue => {
+            println!("🚨 Payment past due for customer: {}", event.customer_email);
+        }
         _ => {}
     }
 }
 
-#[tokio::main]
-async fn main() {
-    let config = WebhookConfig::new("whsec_your_stripe_secret");
-    
-    // The WebhookHandler automatically verifies signatures
-    // and parses the payload into a typed event.
-    let handler = WebhookHandler::new(config)
-        .on_subscription(handle_subscription_updates);
-
-    let app = Router::new()
-        .route("/webhooks/stripe", post(handler.into_service()));
-        
-    // ... start server ...
+pub fn router() -> Router {
+    Router::new()
+        .route("/webhooks/billing", post(handle_webhook_event))
+        .layer(axum::middleware::from_fn(verify_webhook))
 }
 ```
 
-## 🔐 Security Audit
+---
 
-`rullst-capital` treats webhook endpoints as hostile territory. It utilizes constant-time cryptographic comparisons (`hmac`) to verify Stripe signatures, preventing timing attacks. Missing or malformed `Stripe-Signature` headers result in an immediate `400 Bad Request` without allocating memory for the payload body.
+## 🔐 Security Invariants
 
-## 📚 Documentation
-
-For advanced usage, including metered billing, syncing products from Stripe, and customer portal session generation, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+- **Constant-Time Verification**: All HMAC-SHA256 signatures are validated with `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
+- **Zero Allocations on Invalid Signatures**: Requests missing or with corrupted signature headers are rejected with `401 Unauthorized` before passing down the middleware pipeline.

@@ -61,6 +61,8 @@
 
 # Reference
 - [📜 Framework Spec](spec.md)
+- [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
+- [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [🔓 Zero Lock-In & Axum/SQLx Interoperability](axum-sqlx-migration.md)
 - [🔌 Rullst Extension Packages Spec](packages-spec.md)
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)

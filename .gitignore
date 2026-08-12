@@ -14,6 +14,9 @@ storage/
 cargo-rullst/src/bin/test_colored.rs
 
 # Rullst Framework Temporary & Scratch files
+coverage_report.txt
+scratch*.rs
+scratch/
 patch.txt
 patch_studio.rs
 symlink_diff.txt

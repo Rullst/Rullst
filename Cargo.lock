@@ -5339,6 +5339,7 @@ dependencies = [
  "axum",
  "chrono",
  "criterion",
+ "hex",
  "reqwest",
  "ring",
  "rullst-core",

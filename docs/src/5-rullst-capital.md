@@ -1,31 +1,68 @@
-# Rullst Capital: SaaS Billing Made Easy
+# Rullst Capital: SaaS Billing & Financial Engine 💳
 
-**Rullst Capital** is the billing, subscription orchestration, and revenue analytics layer for Rullst SaaS applications.
+**Rullst Capital** (`rullst-capital`) is the native monetization, subscription orchestration, revenue analytics, and payment infrastructure layer for the Rullst Framework.
 
-If you generated your project using the `SaaS` blueprint (`cargo rullst new` -> Select `SaaS Starter`) or ran `cargo rullst make:billing`, your application comes pre-wired with Capital, allowing you to charge users from day one.
+If you generated your project using the `SaaS` blueprint (`cargo rullst new my-saas --blueprint saas`) or ran `cargo rullst make:billing`, your application comes pre-wired with Capital, allowing you to charge users globally, accept Pix with zero fees in Brazil, support developer-first open-source backer tiers, or accept Web3 crypto payments from day one.
 
-## Core Features
+---
 
-- **Multi-Provider Support:** Supports `Stripe` and `LemonSqueezy`. Swap between them by changing `BILLING_PROVIDER` in `.env`.
-- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber stats, and churn rate calculations built right into Rullst Studio.
+## 🌟 Supported Payment Gateways
+
+Rullst Capital supports 10 major financial providers out of the box:
+
+- 🌐 **Stripe**: Global direct merchant for cards, Apple Pay, Google Pay, and customer portals.
+- 🍋 **Lemon Squeezy**: Global Merchant of Record (MoR) with automated EU VAT and US state sales tax compliance.
+- 🇧🇷 **InfinitePay**: Brazil domestic gateway with **Pix at 0.00% fee**, instant D+0 settlement, and lowest credit card rates.
+- ⚡ **Polar.sh**: Developer-first Merchant of Record for open-source funding, software licenses, and micro-SaaS.
+- 🛡️ **Paddle**: Enterprise Merchant of Record for global B2B SaaS.
+- 🇮🇳 **Razorpay**: Dominant payment gateway across India and Southeast Asia for UPI, cards, and subscriptions.
+- 🌎 **Mercado Pago**: Broadest Latin American regional coverage (Argentina, Mexico, Chile, Colombia, Brazil).
+- ₿ **Coinbase Commerce**: Borderless Web3 crypto payments (Bitcoin, Ethereum, Solana, USDC/USDT).
+- 📱 **PicPay**: Consumer digital wallet and QR-code checkout in Brazil.
+- 💸 **Wise**: High-speed, low-fee international B2B payouts and contractor disbursements across 40+ currencies.
+
+> 📚 **Looking for a deep dive into provider selection and fees?** Check out the comprehensive **[Payment Gateways Guide](payment-gateways-guide.md)**.
+
+---
+
+## 🚀 Core Features
+
+- **Multi-Provider Support:** First-class, zero-panic support for 10 top global, regional, and Web3 payment providers. Switch providers effortlessly by changing configuration or initializing the corresponding `BillingProvider`.
+- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber statistics, and churn rate calculations built right into Rullst Studio.
 - **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
-- **Webhook Handling:** Secure webhook handlers listen to subscription creations, renewals, upgrades, and cancellations.
-- **Database Synchronization:** Automatically updates the `subscriptions` table via `rullst-orm`, keeping user access in sync with payment status.
+- **Webhook Handling & Database Synchronization:** Secure, constant-time HMAC-verified webhook handlers that listen to subscription creations, renewals, upgrades, and cancellations, automatically synchronizing user state and access levels via `rullst-orm`.
 
-## Configuration
+---
+
+## ⚙️ Configuration
 
 In your `.env` file:
 
 ```env
-BILLING_PROVIDER=stripe # or lemonsqueezy
-BILLING_API_KEY=sk_test_...
-BILLING_WEBHOOK_SECRET=whsec_...
+# Choose provider: stripe | lemonsqueezy | infinitepay | polar | paddle | razorpay | mercadopago | coinbase | picpay
+BILLING_PROVIDER=infinitepay
+
+# Provider credentials
+BILLING_API_KEY=your_api_key_or_token
+BILLING_WEBHOOK_SECRET=your_webhook_signing_secret
 ```
 
-## How It Works in Your App
+---
 
-The generated `billing_controller.rs` provides primary endpoints:
+## 💻 Code Example: Initializing in Rust
 
-1. **Checkout Redirect:** Hits `/billing/checkout?plan=price_pro`, creating a secure checkout session with Stripe/LemonSqueezy.
-2. **Webhook Listener:** The `/billing/webhook` route verifies HMAC signatures and updates `plan_id` and `ends_at` timestamps in your database.
-3. **Studio Dashboard:** Access `http://localhost:5555/studio/capital` to view live MRR/ARR charts and inspect incoming webhook payloads.
+```rust
+use rullst_capital::{init_provider, InfinitePayProvider, StripeProvider, PolarProvider, RazorpayProvider};
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Example: InfinitePay (0% Pix Fee in Brazil)
+    init_provider(Box::new(InfinitePayProvider::new(
+        std::env::var("BILLING_API_KEY")?,
+        std::env::var("BILLING_WEBHOOK_SECRET")?,
+    )));
+
+    println!("💳 Rullst Capital initialized with InfinitePay");
+    Ok(())
+}
+```

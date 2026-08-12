@@ -20,6 +20,24 @@
 
 ---
 
+### 💡 The Rullst Philosophy
+
+Unlike other frameworks, Rullst strives to be **simultaneously simple and complete**, with a relentless focus on **security** and **developer experience (DX)**.
+
+The origins of this philosophy can be traced back to the very creation of the Rust programming language. The story goes that Graydon Hoare, the original creator of Rust, lived in an apartment building with an elevator that kept crashing due to software bugs in its underlying C/C++ code. Frustrated by having to climb the stairs because of memory safety vulnerabilities, he set out to create a language that was incredibly fast, yet guaranteed memory safety by design—so that developers could build things that "just worked" without fear.
+
+Rullst was forged with this exact mindset. We believe that web development shouldn't be a constant struggle against the framework, the language, or runtime bugs. Rullst is built for those who want to build with ease and safety, harnessing the raw speed and resource efficiency of Rust.
+
+### Our Core Tenets
+
+1. **Simple yet Complete:** We solve the hardest web development problems out-of-the-box securely (routing, auth, ORM, background jobs, hot-reloading), without sacrificing simplicity or completeness. You shouldn't have to piece together 15 different micro-libraries just to build a secure SaaS.
+
+2. **Built for Humans and AIs:** Rullst is architected to be highly legible and free of runtime "magic". By heavily utilizing static dispatch and compile-time guarantees, the codebase is transparent. This empowers both human developers and AI coding agents to collaborate and build production-ready systems rapidly, even without deep prior framework knowledge.
+
+Rullst is not just a tool; it is a commitment to **Emotional Productivity**. We take care of the boilerplate and the security pitfalls so you can focus entirely on creating value.
+
+---
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
@@ -29,28 +47,6 @@ We've rewritten our entire documentation from scratch into a beautiful, high-per
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
 > **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
-
----
-
-### 🏛️ The Rullst Monorepo (v12.0.0+)
-
-Rullst is now a unified Monorepo! The framework's core (`rullst`), the database layer (`rullst-orm`), and the frontend connectivity (`rullst-connect`) are now engineered in lockstep under a single repository. This unified architecture ensures 100% compatibility across the stack, centralized security audits, and a seamless developer experience from backend to edge.
-
-**Explore the Ecosystem:**
-- 🦀 **[Rullst Core (Web Framework)](https://github.com/Rullst/Rullst)**
-- 💾 **[Rullst-ORM (Database Layer)](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**
-- 🔌 **[Rullst-Connect (Frontend Integration)](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**
-
----
-
-### 🔓 Zero Lock-In Guarantee (100% Axum & SQLx)
-
-Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does not invent proprietary HTTP abstractions or locked-in router types. Every Rullst controller, extractor, and middleware maps 1:1 to standard Axum and Tower equivalents:
-
-- **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
-- **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
-- **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
-- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
 
 ---
 
@@ -93,18 +89,62 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 | **no_std Build Check** | [![no_std Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml) | Validates `rullst-iot` compiles on STM32, ESP32-C3, Cortex-M bare-metal targets |
 | **OTA Signature Verification** | [![OTA Integrity](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml) | Ed25519 cryptographic integrity check on all OTA firmware updates |
 | **PQC Compliance Audit** | [![PQC Compliance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml) | Weekly NIST ML-KEM / Kyber & HSM compliance audit (unsafe-free cryptographic modules) |
-| **Concurrency Sanitizers** | [![Sanitizers](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/sanitizers.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | ThreadSanitizer & AddressSanitizer race-condition and heap validation |
-| **E2E Smoke Tests** | [![E2E Smoke Tests](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml) | Automated end-to-end HTTP, SSR, SQLite, and Security Header verification |
 | **MSRV** | [![MSRV](https://img.shields.io/badge/MSRV-1.96.0-orange?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Minimum Supported Rust Version |
 
 </div>
 
 > 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**
 
+---
+
+### ⚡ Unmatched Performance
+
+Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed:
+
+- **SSR HTML5 Rendering**: Zero-bundle static string rendering avoiding Virtual DOM allocations.
+- **Macro Routing (`routes!`)**: Direct compile-time static dispatch powered by Axum and Tokio.
+- **HtmlSanitizer & XSS Shield**: High-speed Ammonia AST payload filtering.
+- **RbacGuard Role & Ownership BOLA**: Zero-allocation bitflags security authorization.
+- **Vault In-Memory Zeroization**: Cryptographic drop memory wiping preventing cold-boot RAM inspection.
+- **Stripe Webhook Signature Verification**: Constant-time HMAC-SHA256 protecting against timing attacks.
+- **Passkey WebAuthn Challenge Parser**: High-performance FIDO2 passwordless auth parsing.
+- **Zero-Trust Device Fingerprinting**: Subnet-aware session binding with zero runtime overhead.
+- **AI Guardrail Prompt Sanitizer**: In-memory prompt injection neutralization before LLM transport.
+- **RAG Cosine Vector Similarity**: SIMD-accelerated local vector embedding similarity computation.
+
+> 📊 **Explore live results & reproducible suites:**
+> - [**📈 Interactive Benches Dashboard**](https://rullst.github.io/Rullst/#benches) — Real-time telemetry and microsecond visualizers on the official site.
+> - [**⚖️ Comparative Benchmarks**](https://rullst.github.io/Benchmarks/) — Open benchmark repository with reproducible TechEmpower-style setups, Criterion HTML reports, memory profiling, and continuous performance regression CI.
+
+- 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
+- 🎨 **Developer Control Room & Nexus CMS**: An all-in-one Web Suite (`cargo rullst studio` at `:5555`) with Data Browser, Visual Threat Radar, Real-time Metrics, and auto-generated Admin Panels (`/nexus`) from your Structs.
+- 🛡️ **RASP Engine & Pre-Controller Shield**: Kernel-level AST payload filtering protecting against XSS, SQLi, and BOLA before requests ever reach your controllers.
+- 🔑 **Passkeys & WebAuthn (FIDO2)**: Hardware-backed passwordless authentication using biometric face/touch ID and security keys.
+- 🌐 **Provider-Agnostic AI (Local & Cloud)**: Connect to **ANY local LLM** (Ollama, LM Studio, vLLM, LocalAI, Jan.ai) or commercial cloud (Gemini, Claude, OpenAI, DeepSeek) with built-in prompt injection filters and PII masking.
+- 💳 **Capital SaaS Ledger & Billing**: Real-time MRR/ARR analytics and constant-time HMAC signature verification for Stripe and LemonSqueezy webhooks.
+- 🔐 **Enterprise Vault & Memory Zeroization**: Field-level database encryption (`#[orm(encrypted)]`) with cryptographic `Zeroize` memory clearing upon drop.
+- 🔄 **Expressive Active Record Transactions**: Borrow-checker safe `User::transaction(|tx| async move { ... })` with automatic task-local scoping (`CURRENT_TX`), commit-on-success, and rollback-on-error behavior.
+- 🔄 **Reverse ORM Scaffolding**: Automatically reverse-engineer Rust `struct` models from existing database tables using `cargo rullst make:models-from-db`.
+- 🔍 **Static CLI Inspection**: Inspect active route tables, ORM models, and JSON schemas directly in the terminal via `cargo rullst inspect`.
+- 🛡️ **Zero-Panic Policy**: Hardened architecture built with typed `AppError` enums for 100% crash-free edge infrastructure.
+- ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, SaaS Starters, Uptime Monitors, and Cloud Deployments (`cargo rullst deploy`).
+
+---
+
+### 🔓 Zero Lock-In Guarantee (100% Axum & SQLx)
+
+Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does not invent proprietary HTTP abstractions or locked-in router types. Every Rullst controller, extractor, and middleware maps 1:1 to standard Axum and Tower equivalents:
+
+- **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
+- **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
+- **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
+
+
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="100%"/>
+  <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -128,41 +168,6 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
     </td>
   </tr>
 </table>
-
-
----
-
-### ⚡ Unmatched Performance
-
-Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity without sacrificing bare-metal speed:
-
-- **SSR HTML5 Rendering**: Zero-bundle static string rendering avoiding Virtual DOM allocations.
-- **Macro Routing (`routes!`)**: Direct compile-time static dispatch powered by Axum and Tokio.
-- **HtmlSanitizer & XSS Shield**: High-speed Ammonia AST payload filtering.
-- **RbacGuard Role & Ownership BOLA**: Zero-allocation bitflags security authorization.
-- **Vault In-Memory Zeroization**: Cryptographic drop memory wiping preventing cold-boot RAM inspection.
-- **Stripe Webhook Signature Verification**: Constant-time HMAC-SHA256 protecting against timing attacks.
-- **Passkey WebAuthn Challenge Parser**: High-performance FIDO2 passwordless auth parsing.
-- **Zero-Trust Device Fingerprinting**: Subnet-aware session binding with zero runtime overhead.
-- **AI Guardrail Prompt Sanitizer**: In-memory prompt injection neutralization before LLM transport.
-- **RAG Cosine Vector Similarity**: SIMD-accelerated local vector embedding similarity computation.
-
-> 📊 **Explore live results & reproducible suites:**
-> - [**📈 Interactive Benches Dashboard**](https://rullst.github.io/Rullst/#benches) — Real-time telemetry and microsecond visualizers on the official site.
-> - [**⚖️ Comparative Benchmarks**](https://github.com/Rullst/Benchmarks) — Open benchmark repository with reproducible TechEmpower-style setups, Criterion HTML reports, memory profiling, and continuous performance regression CI.
-
-- 🚀 **Hybrid Hot-Reloading & Fast Linkers**: Sub-second incremental compilation with `mold` and `lld` pre-configured in `.cargo/config.toml`, paired with WebSockets morphdom UI hot-swapping.
-- 🎨 **Developer Control Room & Nexus CMS**: An all-in-one Web Suite (`cargo rullst studio` at `:5555`) with Data Browser, Visual Threat Radar, Real-time Metrics, and auto-generated Admin Panels (`/nexus`) from your Structs.
-- 🛡️ **RASP Engine & Pre-Controller Shield**: Kernel-level AST payload filtering protecting against XSS, SQLi, and BOLA before requests ever reach your controllers.
-- 🔑 **Passkeys & WebAuthn (FIDO2)**: Hardware-backed passwordless authentication using biometric face/touch ID and security keys.
-- 🌐 **Provider-Agnostic AI (Local & Cloud)**: Connect to **ANY local LLM** (Ollama, LM Studio, vLLM, LocalAI, Jan.ai) or commercial cloud (Gemini, Claude, OpenAI, DeepSeek) with built-in prompt injection filters and PII masking.
-- 💳 **Capital SaaS Ledger & Billing**: Real-time MRR/ARR analytics and constant-time HMAC signature verification for Stripe and LemonSqueezy webhooks.
-- 🔐 **Enterprise Vault & Memory Zeroization**: Field-level database encryption (`#[orm(encrypted)]`) with cryptographic `Zeroize` memory clearing upon drop.
-- 🔄 **Expressive Active Record Transactions**: Borrow-checker safe `User::transaction(|tx| async move { ... })` with automatic task-local scoping (`CURRENT_TX`), commit-on-success, and rollback-on-error behavior.
-- 🔄 **Reverse ORM Scaffolding**: Automatically reverse-engineer Rust `struct` models from existing database tables using `cargo rullst make:models-from-db`.
-- 🔍 **Static CLI Inspection**: Inspect active route tables, ORM models, and JSON schemas directly in the terminal via `cargo rullst inspect`.
-- 🛡️ **Zero-Panic Policy**: Hardened architecture built with typed `AppError` enums for 100% crash-free edge infrastructure.
-- ⚡ **Interactive Scaffolding**: 1-click generators for Auth, ERPs, SaaS Starters, Uptime Monitors, and Cloud Deployments (`cargo rullst deploy`).
 
 ---
 <br>
@@ -252,21 +257,16 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 
 ---
 
-### 💡 The Rullst Philosophy
+### 🏛️ The Rullst Monorepo (v12.0.0+)
 
-Unlike other frameworks, Rullst strives to be **simultaneously simple and complete**, with a relentless focus on **security** and **developer experience (DX)**.
+Rullst is now a unified Monorepo! The framework's core (`rullst`), the database layer (`rullst-orm`), and the frontend connectivity (`rullst-connect`) are now engineered in lockstep under a single repository. This unified architecture ensures 100% compatibility across the stack, centralized security audits, and a seamless developer experience from backend to edge.
 
-The origins of this philosophy can be traced back to the very creation of the Rust programming language. The story goes that Graydon Hoare, the original creator of Rust, lived in an apartment building with an elevator that kept crashing due to software bugs in its underlying C/C++ code. Frustrated by having to climb the stairs because of memory safety vulnerabilities, he set out to create a language that was incredibly fast, yet guaranteed memory safety by design—so that developers could build things that "just worked" without fear.
+**Explore the Ecosystem:**
+- 🦀 **[Rullst Core (Web Framework)](https://github.com/Rullst/Rullst)**
+- 💾 **[Rullst-ORM (Database Layer)](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**
+- 🔌 **[Rullst-Connect (Frontend Integration)](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**
 
-Rullst was forged with this exact mindset. We believe that web development shouldn't be a constant struggle against the framework, the language, or runtime bugs. Rullst is built for those who want to build with ease and safety, harnessing the raw speed and resource efficiency of Rust.
-
-### Our Core Tenets
-
-1. **Simple yet Complete:** We solve the hardest web development problems out-of-the-box securely (routing, auth, ORM, background jobs, hot-reloading), without sacrificing simplicity or completeness. You shouldn't have to piece together 15 different micro-libraries just to build a secure SaaS.
-
-2. **Built for Humans and AIs:** Rullst is architected to be highly legible and free of runtime "magic". By heavily utilizing static dispatch and compile-time guarantees, the codebase is transparent. This empowers both human developers and AI coding agents to collaborate and build production-ready systems rapidly, even without deep prior framework knowledge.
-
-Rullst is not just a tool; it is a commitment to **Emotional Productivity**. We take care of the boilerplate and the security pitfalls so you can focus entirely on creating value.
+---
 
 <br>
 

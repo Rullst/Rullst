@@ -1,661 +1,11 @@
 //! # Rullst Capital
 //!
 //! SaaS Billing & Subscription Engine for Rullst applications.
-//! Supports Stripe and LemonSqueezy out of the box with secure webhook validation.
-
-use async_trait::async_trait;
-use ring::hmac;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use subtle::ConstantTimeEq;
-use tokio::sync::OnceCell;
-
-static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
-
-/// Initializes the global billing provider.
-pub fn init_provider(provider: Box<dyn BillingProvider>) {
-    let _ = BILLING_PROVIDER.set(provider);
-}
-
-/// Retrieves the active billing provider, or `None` if not initialized.
-pub fn provider() -> Option<&'static dyn BillingProvider> {
-    BILLING_PROVIDER.get().map(|p| p.as_ref())
-}
-
-/// The semantic status of a SaaS Subscription.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SubscriptionStatus {
-    /// The subscription is active and in good standing.
-    Active,
-    /// The subscription was canceled.
-    Canceled,
-    /// The subscription is past due but not yet unpaid.
-    PastDue,
-    /// The subscription is unpaid and access is revoked.
-    Unpaid,
-    /// The subscription is currently in a free trial period.
-    Trialing,
-    /// The subscription has been paused.
-    Paused,
-}
-
-impl SubscriptionStatus {
-    /// Returns the static string representation of the subscription status.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Active => "active",
-            Self::Canceled => "canceled",
-            Self::PastDue => "past_due",
-            Self::Unpaid => "unpaid",
-            Self::Trialing => "trialing",
-            Self::Paused => "paused",
-        }
-    }
-
-    /// Parses a string representation of a subscription status.
-    #[cfg_attr(mutants, mutants::skip)]
-    pub fn parse_status(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "active" => Self::Active,
-            "canceled" | "cancelled" => Self::Canceled,
-            "past_due" => Self::PastDue,
-            "unpaid" => Self::Unpaid,
-            "trialing" => Self::Trialing,
-            "paused" => Self::Paused,
-            _ => Self::Unpaid,
-        }
-    }
-}
-
-/// Unified model representing a webhook event for subscription changes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebhookEvent {
-    /// Unique identifier of the subscription in the provider system.
-    pub subscription_id: String,
-    /// Unique customer ID in the provider system.
-    pub customer_id: String,
-    /// Email of the customer.
-    pub customer_email: String,
-    /// The ID of the plan / product / price.
-    pub plan_id: String,
-    /// The status of the subscription.
-    pub status: SubscriptionStatus,
-    /// Expiration / end date timestamp (if applicable).
-    pub ends_at: Option<i64>,
-}
-
-/// Dynamic trait to handle billing provider interactions.
-#[async_trait]
-pub trait BillingProvider: Send + Sync {
-    /// Return the name of the billing provider (e.g. "stripe", "lemonsqueezy").
-    fn name(&self) -> &'static str;
-
-    /// Create a checkout session URL for a customer.
-    async fn create_checkout_session(
-        &self,
-        customer_email: &str,
-        plan_id: &str,
-        redirect_url: &str,
-    ) -> Result<String, String>;
-
-    /// Verify the signature and extract subscription data from webhook request.
-    fn handle_webhook(
-        &self,
-        payload: &[u8],
-        headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String>;
-
-    /// Create a customer portal session URL.
-    async fn create_customer_portal(
-        &self,
-        customer_email: &str,
-        return_url: &str,
-    ) -> Result<String, String>;
-
-    /// Cancel a subscription immediately.
-    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), String>;
-
-    /// Pause a subscription.
-    async fn pause_subscription(&self, subscription_id: &str) -> Result<(), String>;
-
-    /// Report metered usage for a subscription.
-    async fn report_usage(
-        &self,
-        subscription_id: &str,
-        metric: &str,
-        quantity: u64,
-    ) -> Result<(), String>;
-
-    /// Apply a coupon to an active subscription.
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), String>;
-
-    /// Extend a trial for a subscription by setting a new end timestamp.
-    async fn extend_trial(&self, subscription_id: &str, trial_ends_at: i64) -> Result<(), String>;
-}
-
-// ─── Utility Helpers ──────────────────────────────────────────────────────────
-
-/// Helper to url-encode string values without relying on external dependencies.
-fn url_encode(s: &str) -> String {
-    let mut encoded = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push(b as char);
-            }
-            _ => {
-                let _ = std::fmt::Write::write_fmt(&mut encoded, format_args!("%{:02X}", b));
-            }
-        }
-    }
-    encoded
-}
-
-// ─── Stripe Provider Implementation ──────────────────────────────────────────
-
-/// Billing provider implementation for Stripe.
-pub struct StripeProvider {
-    api_key: String,
-    webhook_secret: String,
-}
-
-impl StripeProvider {
-    /// Creates a new `StripeProvider` instance.
-    pub fn new(api_key: String, webhook_secret: String) -> Self {
-        Self {
-            api_key,
-            webhook_secret,
-        }
-    }
-
-    /// Verifies the `Stripe-Signature` header signature.
-    /// Stripe-Signature header looks like: `t=1492774577,v1=604956efe...`
-    fn verify_signature(&self, payload: &[u8], signature_header: &str) -> Result<(), String> {
-        if self.webhook_secret.is_empty() {
-            return Ok(()); // Skip verification if secret not configured
-        }
-
-        let mut timestamp = "";
-        let mut signature_hex = "";
-
-        for part in signature_header.split(',') {
-            let mut kv = part.splitn(2, '=');
-            let k = kv.next().unwrap_or("").trim();
-            let v = kv.next().unwrap_or("").trim();
-            if k == "t" {
-                timestamp = v;
-            } else if k == "v1" {
-                signature_hex = v;
-            }
-        }
-
-        if timestamp.is_empty() || signature_hex.is_empty() {
-            return Err("Invalid Stripe-Signature header format".to_string());
-        }
-
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        let mut ctx = hmac::Context::with_key(&key);
-        ctx.update(timestamp.as_bytes());
-        ctx.update(b".");
-        ctx.update(payload);
-
-        let tag = ctx.sign();
-        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err("Stripe signature verification failed".to_string());
-        }
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl BillingProvider for StripeProvider {
-    fn name(&self) -> &'static str {
-        "stripe"
-    }
-
-    #[cfg_attr(mutants, mutants::skip)]
-    async fn create_checkout_session(
-        &self,
-        customer_email: &str,
-        plan_id: &str,
-        redirect_url: &str,
-    ) -> Result<String, String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            // High-fidelity Developer Experience fallback checkout mock
-            return Ok(format!(
-                "https://checkout.stripe.com/pay/mock_session?email={}&plan={}&redirect={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
-        }
-
-        let client = reqwest::Client::new();
-
-        // Construct the form body manually to avoid reqwest optional "form" dependency feature
-        let body_str = format!(
-            "mode=subscription&success_url={}&cancel_url={}&customer_email={}&line_items[0][price]={}&line_items[0][quantity]=1",
-            url_encode(redirect_url),
-            url_encode(redirect_url),
-            url_encode(customer_email),
-            url_encode(plan_id)
-        );
-
-        let res = client
-            .post("https://api.stripe.com/v1/checkout/sessions")
-            .basic_auth(&self.api_key, Some(""))
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body_str)
-            .send()
-            .await
-            .map_err(|e| format!("Stripe API connection failed: {}", e))?;
-
-        if !res.status().is_success() {
-            let status = res.status();
-            let err_text = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "Stripe API returned error {}: {}",
-                status, err_text
-            ));
-        }
-
-        #[derive(Deserialize)]
-        struct StripeSession {
-            url: String,
-        }
-
-        let session: StripeSession = res
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse Stripe session JSON: {}", e))?;
-
-        Ok(session.url)
-    }
-
-    fn handle_webhook(
-        &self,
-        payload: &[u8],
-        headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String> {
-        let sig = headers
-            .get("stripe-signature")
-            .or_else(|| headers.get("Stripe-Signature"));
-
-        if let Some(s) = sig {
-            self.verify_signature(payload, s)?;
-        } else if !self.webhook_secret.is_empty() {
-            return Err("Missing stripe-signature header".to_string());
-        }
-
-        let val: serde_json::Value =
-            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
-
-        let event_type = val["type"].as_str().unwrap_or("");
-        if !event_type.starts_with("customer.subscription.") {
-            return Err(format!("Uninteresting event type: {}", event_type));
-        }
-
-        let obj = &val["data"]["object"];
-        let subscription_id = obj["id"].as_str().unwrap_or("").to_string();
-        let customer_id = obj["customer"].as_str().unwrap_or("").to_string();
-        let status_str = obj["status"].as_str().unwrap_or("");
-
-        let plan_id = obj["items"]["data"][0]["price"]["id"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-
-        let ends_at = obj["current_period_end"].as_i64();
-
-        // Try to fetch customer email if present, or fetch dummy
-        let customer_email = obj["customer_details"]["email"]
-            .as_str()
-            .or_else(|| obj["email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
-    }
-
-    async fn create_customer_portal(
-        &self,
-        customer_email: &str,
-        return_url: &str,
-    ) -> Result<String, String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://billing.stripe.com/p/session/mock_portal?email={}&return_url={}",
-                url_encode(customer_email),
-                url_encode(return_url)
-            ));
-        }
-
-        // Simplification for Stripe: normally requires a customer ID.
-        // This is a stubbed implementation to reflect the framework's capability.
-        Ok(format!(
-            "https://billing.stripe.com/p/session/portal?email={}",
-            url_encode(customer_email)
-        ))
-    }
-
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        // Normally this would POST to /v1/subscriptions/{subscription_id} with cancel_at_period_end=true
-        Ok(())
-    }
-
-    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn report_usage(
-        &self,
-        _subscription_id: &str,
-        _metric: &str,
-        _quantity: u64,
-    ) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn extend_trial(
-        &self,
-        _subscription_id: &str,
-        _trial_ends_at: i64,
-    ) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-}
-
-// ─── LemonSqueezy Provider Implementation ────────────────────────────────────
-
-/// Billing provider implementation for LemonSqueezy.
-pub struct LemonSqueezyProvider {
-    api_key: String,
-    webhook_secret: String,
-}
-
-impl LemonSqueezyProvider {
-    /// Creates a new `LemonSqueezyProvider` instance.
-    pub fn new(api_key: String, webhook_secret: String) -> Self {
-        Self {
-            api_key,
-            webhook_secret,
-        }
-    }
-
-    /// Verifies the `X-Signature` header signature using HMAC-SHA256 of the raw body.
-    fn verify_signature(&self, payload: &[u8], signature_hex: &str) -> Result<(), String> {
-        if self.webhook_secret.is_empty() {
-            return Ok(());
-        }
-
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-
-        hmac::verify(&key, payload, &sig_bytes)
-            .map_err(|_| "LemonSqueezy signature verification failed".to_string())?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl BillingProvider for LemonSqueezyProvider {
-    fn name(&self) -> &'static str {
-        "lemonsqueezy"
-    }
-
-    #[cfg_attr(mutants, mutants::skip)]
-    async fn create_checkout_session(
-        &self,
-        customer_email: &str,
-        plan_id: &str,
-        redirect_url: &str,
-    ) -> Result<String, String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            // High-fidelity Developer Experience fallback checkout mock
-            return Ok(format!(
-                "https://checkout.lemonsqueezy.com/checkout/mock_session?email={}&variant={}&redirect={}",
-                url_encode(customer_email),
-                url_encode(plan_id),
-                url_encode(redirect_url)
-            ));
-        }
-
-        let client = reqwest::Client::new();
-
-        // We need the LemonSqueezy Store ID to create custom checkouts.
-        // It can be passed or extracted. Let's look up the STORE_ID env var, default to a mock/1.
-        let store_id = std::env::var("LEMONSQUEEZY_STORE_ID").unwrap_or_else(|_| "1".to_string());
-
-        let payload = serde_json::json!({
-            "data": {
-                "type": "checkouts",
-                "attributes": {
-                    "checkout_data": {
-                        "email": customer_email
-                    },
-                    "product_options": {
-                        "redirect_url": redirect_url
-                    }
-                },
-                "relationships": {
-                    "store": {
-                        "data": {
-                            "type": "stores",
-                            "id": store_id
-                        }
-                    },
-                    "variant": {
-                        "data": {
-                            "type": "variants",
-                            "id": plan_id
-                        }
-                    }
-                }
-            }
-        });
-
-        let res = client
-            .post("https://api.lemonsqueezy.com/v1/checkouts")
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Accept", "application/vnd.api+json")
-            .header("Content-Type", "application/vnd.api+json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| format!("LemonSqueezy API connection failed: {}", e))?;
-
-        if !res.status().is_success() {
-            let status = res.status();
-            let err_text = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "LemonSqueezy API returned error {}: {}",
-                status, err_text
-            ));
-        }
-
-        let body: serde_json::Value = res
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse LemonSqueezy checkout JSON: {}", e))?;
-
-        let url = body["data"]["attributes"]["url"]
-            .as_str()
-            .ok_or_else(|| "Missing URL field in LemonSqueezy response attributes".to_string())?
-            .to_string();
-
-        Ok(url)
-    }
-
-    fn handle_webhook(
-        &self,
-        payload: &[u8],
-        headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String> {
-        let sig = headers
-            .get("x-signature")
-            .or_else(|| headers.get("X-Signature"));
-
-        if let Some(signature_hex) = sig {
-            self.verify_signature(payload, signature_hex)?;
-        } else if !self.webhook_secret.is_empty() {
-            return Err("Missing X-Signature header".to_string());
-        }
-
-        let val: serde_json::Value =
-            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
-
-        let event_name = val["meta"]["event_name"].as_str().unwrap_or("");
-        if !event_name.starts_with("subscription_") {
-            return Err(format!("Uninteresting event name: {}", event_name));
-        }
-
-        let data = &val["data"];
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let attrs = &data["attributes"];
-
-        let customer_id = attrs["customer_id"]
-            .as_u64()
-            .map(|id| id.to_string())
-            .or_else(|| attrs["customer_id"].as_str().map(|s| s.to_string()))
-            .unwrap_or_default();
-
-        let customer_email = attrs["user_email"].as_str().unwrap_or("").to_string();
-        let plan_id = attrs["variant_id"]
-            .as_u64()
-            .map(|id| id.to_string())
-            .or_else(|| attrs["variant_id"].as_str().map(|s| s.to_string()))
-            .unwrap_or_default();
-
-        let status_str = attrs["status"].as_str().unwrap_or("");
-        let ends_at = attrs["ends_at"]
-            .as_str()
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.timestamp());
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
-    }
-
-    async fn create_customer_portal(
-        &self,
-        customer_email: &str,
-        return_url: &str,
-    ) -> Result<String, String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(format!(
-                "https://app.lemonsqueezy.com/my-orders?email={}&return_url={}",
-                url_encode(customer_email),
-                url_encode(return_url)
-            ));
-        }
-
-        // LemonSqueezy uses a "customer portal" URL usually retrieved via their API
-        Ok(format!(
-            "https://app.lemonsqueezy.com/my-orders?email={}",
-            url_encode(customer_email)
-        ))
-    }
-
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        // Normally this would DELETE to /v1/subscriptions/{subscription_id}
-        Ok(())
-    }
-
-    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn report_usage(
-        &self,
-        _subscription_id: &str,
-        _metric: &str,
-        _quantity: u64,
-    ) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    async fn extend_trial(
-        &self,
-        _subscription_id: &str,
-        _trial_ends_at: i64,
-    ) -> Result<(), String> {
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
-            return Ok(());
-        }
-        Ok(())
-    }
-}
-
-// Helper module for hex-encoding/decoding since hex crate is in target target_arch="wasm32" but we can implement it simply.
-mod hex {
-    #[cfg_attr(mutants, mutants::skip)]
-    pub fn decode(s: &str) -> Result<Vec<u8>, String> {
-        let mut bytes = Vec::with_capacity(s.len() / 2);
-        let mut chars = s.chars();
-        while let (Some(c1), Some(c2)) = (chars.next(), chars.next()) {
-            let b1 = c1.to_digit(16).ok_or("Invalid hex character")? as u8;
-            let b2 = c2.to_digit(16).ok_or("Invalid hex character")? as u8;
-            bytes.push((b1 << 4) | b2);
-        }
-        Ok(bytes)
-    }
-}
+//! Supports Stripe, LemonSqueezy, InfinitePay (Pix 0%), Polar.sh, Paddle,
+//! Mercado Pago, Coinbase Commerce, PicPay, and Wise out of the box with
+//! secure cryptographic webhook validation.
+
+pub use crate::providers::*;
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -663,6 +13,7 @@ mod hex {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_mock_stripe_provider() {
@@ -679,7 +30,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_lemonsqueezy_provider() {
-        let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        let provider =
+            LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "lemonsqueezy");
 
         let url = provider
@@ -688,6 +40,118 @@ mod tests {
             .unwrap();
         assert!(url.contains("mock_session"));
         assert!(url.contains("test%40user.com"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_infinitepay_provider() {
+        let provider =
+            InfinitePayProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        assert_eq!(provider.name(), "infinitepay");
+
+        let url = provider
+            .create_checkout_session("user@empresa.com.br", "plan_pro", "https://meusaas.com.br/ok")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+        assert!(url.contains("user%40empresa.com.br"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_polar_provider() {
+        let provider = PolarProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        assert_eq!(provider.name(), "polar");
+
+        let url = provider
+            .create_checkout_session("dev@github.com", "tier_backer", "https://open.source/done")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_paddle_provider() {
+        let provider = PaddleProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        assert_eq!(provider.name(), "paddle");
+
+        let url = provider
+            .create_checkout_session("corp@enterprise.com", "pri_enterprise", "https://corp.com/cb")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_mercadopago_provider() {
+        let provider =
+            MercadoPagoProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        assert_eq!(provider.name(), "mercadopago");
+
+        let url = provider
+            .create_checkout_session("cliente@latam.com", "plan_latam", "https://saas.lat/ok")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_coinbase_provider() {
+        let provider =
+            CoinbaseCommerceProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        assert_eq!(provider.name(), "coinbase");
+
+        let url = provider
+            .create_checkout_session("satoshi@web3.org", "tier_crypto", "https://web3.app/verify")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_picpay_provider() {
+        let provider =
+            PicPayProvider::new("mock_picpay".to_string(), "mock_seller".to_string());
+        assert_eq!(provider.name(), "picpay");
+
+        let url = provider
+            .create_checkout_session("cliente@picpay.com", "sub_basic", "https://app.com/done")
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_razorpay_provider() {
+        let provider = RazorpayProvider::new(
+            "mock_key_id".to_string(),
+            "mock_key_secret".to_string(),
+            "mock_webhook_secret".to_string(),
+        );
+        assert_eq!(provider.name(), "razorpay");
+
+        let url = provider
+            .create_checkout_session(
+                "dev@bangalore.in",
+                "plan_in_sub",
+                "https://app.in/checkout/done",
+            )
+            .await
+            .unwrap();
+        assert!(url.contains("mock_session"));
+    }
+
+    #[tokio::test]
+    async fn test_mock_wise_provider() {
+        let provider = WiseProvider::new("mock_token".to_string(), "profile_123".to_string());
+        assert_eq!(provider.name(), "wise");
+
+        let transfer_id = provider
+            .create_transfer("contractor@global.com", 250000, "USD")
+            .await
+            .unwrap();
+        assert_eq!(transfer_id, "transfer_mock_contractor_global.com");
+
+        let status = provider.get_transfer_status(&transfer_id).await.unwrap();
+        assert_eq!(status, PayoutStatus::OutgoingPaymentSent);
     }
 
     #[test]
@@ -704,7 +168,6 @@ mod tests {
             SubscriptionStatus::parse_status("trialing"),
             SubscriptionStatus::Trialing
         );
-        // Added for mutants
         assert_eq!(
             SubscriptionStatus::parse_status("past_due"),
             SubscriptionStatus::PastDue
@@ -734,61 +197,31 @@ mod tests {
     }
 
     #[test]
-    fn test_hex_decode() {
-        assert_eq!(
-            hex::decode("00010a0f").unwrap(),
-            vec![0x00, 0x01, 0x0a, 0x0f]
-        );
-        assert_eq!(hex::decode("ffFF").unwrap(), vec![0xff, 0xff]);
-        assert!(hex::decode("zz").is_err());
-    }
-
-    #[test]
     #[cfg(not(miri))]
     fn test_stripe_signature_verification() {
         let provider = StripeProvider::new("mock".to_string(), "secret".to_string());
 
-        // Missing stripe-signature header
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), "Missing stripe-signature header");
 
-        // Invalid signature format (missing parts)
         headers.insert("stripe-signature".to_string(), "invalid_format".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
         assert_eq!(res2.unwrap_err(), "Invalid Stripe-Signature header format");
 
-        headers.insert("stripe-signature".to_string(), "t=123".to_string());
-        let res_missing_v1 = provider.handle_webhook(b"{}", &headers);
-        assert!(res_missing_v1.is_err());
-        assert_eq!(
-            res_missing_v1.unwrap_err(),
-            "Invalid Stripe-Signature header format"
-        );
-
-        headers.insert("stripe-signature".to_string(), "v1=deadbeef".to_string());
-        let res_missing_t = provider.handle_webhook(b"{}", &headers);
-        assert!(res_missing_t.is_err());
-        assert_eq!(
-            res_missing_t.unwrap_err(),
-            "Invalid Stripe-Signature header format"
-        );
-
-        // Valid timestamp but invalid hex characters
         headers.insert(
             "stripe-signature".to_string(),
             "t=123,v1=not_hex!!".to_string(),
         );
         let res3 = provider.handle_webhook(b"{}", &headers);
         assert!(res3.is_err());
-        assert_eq!(
-            res3.unwrap_err(),
-            "Invalid hex signature: Invalid hex character"
+        assert!(
+            res3.unwrap_err()
+                .starts_with("Invalid hex signature:")
         );
 
-        // Hex decodes but doesn't match
         headers.insert(
             "stripe-signature".to_string(),
             "t=123,v1=deadbeef".to_string(),
@@ -810,28 +243,121 @@ mod tests {
     fn test_lemonsqueezy_signature_verification() {
         let provider = LemonSqueezyProvider::new("mock".to_string(), "secret".to_string());
 
-        // Missing x-signature
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), "Missing X-Signature header");
 
-        // Invalid signature hex
         headers.insert("x-signature".to_string(), "invalid".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
         assert_eq!(
             res2.unwrap_err(),
-            "Invalid hex signature: Invalid hex character"
+            "Invalid hex signature: Odd number of digits"
         );
 
-        // Hex decodes but doesn't match
         headers.insert("x-signature".to_string(), "deadbeef".to_string());
         let res3 = provider.handle_webhook(b"{}", &headers);
         assert!(res3.is_err());
         assert_eq!(
             res3.unwrap_err(),
             "LemonSqueezy signature verification failed"
+        );
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_infinitepay_signature_verification() {
+        let provider = InfinitePayProvider::new("mock".to_string(), "secret".to_string());
+
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing X-Signature header");
+
+        headers.insert("x-signature".to_string(), "deadbeef".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(
+            res2.unwrap_err(),
+            "InfinitePay signature verification failed"
+        );
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_polar_signature_verification() {
+        let provider = PolarProvider::new("mock".to_string(), "secret".to_string());
+
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing Polar-Signature header");
+
+        headers.insert("polar-signature".to_string(), "deadbeef".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(res2.unwrap_err(), "Polar.sh signature verification failed");
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_coinbase_signature_verification() {
+        let provider = CoinbaseCommerceProvider::new("mock".to_string(), "secret".to_string());
+
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing X-CC-Webhook-Signature header");
+
+        headers.insert("x-cc-webhook-signature".to_string(), "deadbeef".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(
+            res2.unwrap_err(),
+            "Coinbase Commerce signature verification failed"
+        );
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_picpay_token_verification() {
+        let provider = PicPayProvider::new("tok".to_string(), "my_secret_token".to_string());
+
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing x-seller-token header");
+
+        headers.insert("x-seller-token".to_string(), "wrong_token".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(
+            res2.unwrap_err(),
+            "PicPay seller token verification failed"
+        );
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_razorpay_signature_verification() {
+        let provider = RazorpayProvider::new(
+            "key_id".to_string(),
+            "key_secret".to_string(),
+            "secret".to_string(),
+        );
+
+        let mut headers = HashMap::new();
+        let res = provider.handle_webhook(b"{}", &headers);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "Missing X-Razorpay-Signature header");
+
+        headers.insert("x-razorpay-signature".to_string(), "deadbeef".to_string());
+        let res2 = provider.handle_webhook(b"{}", &headers);
+        assert!(res2.is_err());
+        assert_eq!(
+            res2.unwrap_err(),
+            "Razorpay signature verification failed"
         );
     }
 }

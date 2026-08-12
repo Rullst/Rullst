@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@e12def577cfa90a18ebed4f0fbf1e2f5b66d7e00 # stable
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
 
       - name: Add target ${{ matrix.target }}
         run: rustup target add ${{ matrix.target }}

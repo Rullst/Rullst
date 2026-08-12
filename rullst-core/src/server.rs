@@ -151,6 +151,10 @@ impl Server {
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn init_database(&mut self, app_config: &crate::config::RullstConfig) {
+        if rullst_orm::Orm::try_pool().is_ok() {
+            return;
+        }
+
         let _ = dotenvy::from_filename_override(".env");
         let _ = dotenvy::dotenv();
 

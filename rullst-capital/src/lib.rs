@@ -2,6 +2,7 @@ pub mod billable;
 pub mod capital;
 pub mod dashboard;
 pub mod invoice;
+pub mod providers;
 
 #[cfg(feature = "axum")]
 pub mod webhook;

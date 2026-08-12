@@ -7,7 +7,7 @@ Rullst is designed from the ground up to be **AI-Native**, meaning its architect
 ---
 
 ## 📜 1. Single Source of Truth (SST)
-The document [`docs/spec.md`](file:///home/venelouis/Desktop/REPOS/Rullst/docs/spec.md) is our absolute law. Always reference `docs/spec.md` before proposing or executing architectural changes, file scaffoldings, or API modifications.
+The document [`docs/spec.md`](docs/spec.md) is our absolute law. Always reference `docs/spec.md` before proposing or executing architectural changes, file scaffoldings, or API modifications.
 
 ---
 

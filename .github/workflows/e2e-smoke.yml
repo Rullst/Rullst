@@ -43,14 +43,14 @@ jobs:
         run: |
           ../../target/release/rullst-blog-example &
           sleep 3
-          curl -s --retry 10 --retry-connrefused --retry-delay 2 http://localhost:3000/robots.txt > /dev/null
+          curl -s --retry 10 --retry-connrefused --retry-delay 2 -A "Mozilla/5.0" http://localhost:3000/robots.txt > /dev/null
           echo "Server is live on http://localhost:3000"
 
       - name: Verify GET / (SSR HTML & Security Headers)
         run: |
           echo "Testing GET /..."
-          RESPONSE=$(curl -s -i http://localhost:3000/)
-          echo "$RESPONSE" | grep -i "HTTP/1.1 200 OK\|HTTP/2 200"
+          RESPONSE=$(curl -s -i -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -c cookies.txt http://localhost:3000/)
+          echo "$RESPONSE" | grep -E "HTTP/(1\.1|2) 200"
           echo "$RESPONSE" | grep -i "Rullst Dev Blog"
           echo "$RESPONSE" | grep -i "Content-Security-Policy:"
           echo "$RESPONSE" | grep -i "X-Content-Type-Options: nosniff"
@@ -60,7 +60,7 @@ jobs:
       - name: Verify Static / Metadata Endpoints (No CSRF cookie leak)
         run: |
           echo "Testing GET /robots.txt..."
-          ROBOTS=$(curl -s -i http://localhost:3000/robots.txt)
+          ROBOTS=$(curl -s -i -A "Mozilla/5.0" http://localhost:3000/robots.txt)
           echo "$ROBOTS" | grep -i "Disallow: /"
           if echo "$ROBOTS" | grep -i "Set-Cookie: rullst_csrf"; then
             echo "❌ Unexpected CSRF cookie found on /robots.txt"
@@ -69,7 +69,7 @@ jobs:
           echo "✅ /robots.txt verified."
 
           echo "Testing GET /sitemap.xml..."
-          SITEMAP=$(curl -s -i http://localhost:3000/sitemap.xml)
+          SITEMAP=$(curl -s -i -A "Mozilla/5.0" http://localhost:3000/sitemap.xml)
           echo "$SITEMAP" | grep -i "xml"
           if echo "$SITEMAP" | grep -i "Set-Cookie: rullst_csrf"; then
             echo "❌ Unexpected CSRF cookie found on /sitemap.xml"
@@ -79,13 +79,18 @@ jobs:
 
       - name: Verify POST /posts & Database Persistence
         run: |
+          echo "Extracting CSRF token..."
+          CSRF_TOKEN=$(grep "rullst_csrf" cookies.txt | awk '{print $7}')
           echo "Submitting new post..."
           curl -s -X POST http://localhost:3000/posts \
+            -A "Mozilla/5.0" \
+            -b cookies.txt \
+            -H "X-CSRF-Token: $CSRF_TOKEN" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "title=Smoke%20Test%20Post&body=Automated%20E2E%20Verification%20Passed"
 
           echo "Verifying post appeared in SSR feed..."
-          FEED=$(curl -s http://localhost:3000/)
+          FEED=$(curl -s -A "Mozilla/5.0" http://localhost:3000/)
           echo "$FEED" | grep -i "Smoke Test Post"
           echo "$FEED" | grep -i "Automated E2E Verification Passed"
           echo "✅ End-to-end post creation and SSR rendering passed."
