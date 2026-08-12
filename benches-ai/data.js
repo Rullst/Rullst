@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786547623054,
+  "lastUpdate": 1786557780479,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -815,6 +815,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 580,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2d8255f9e6490e85dca531e87747837d83743106",
+          "message": "test: remove memory database initialization from server tests and disable studio/nexus tests under strict database features",
+          "timestamp": "2026-08-12T14:52:23-03:00",
+          "tree_id": "a98f524a8f547934a0a76dd58c68509bd6c86975",
+          "url": "https://github.com/Rullst/Rullst/commit/2d8255f9e6490e85dca531e87747837d83743106"
+        },
+        "date": 1786557780086,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1555,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 406,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 772,
+            "range": "± 89",
             "unit": "ns/iter"
           }
         ]
