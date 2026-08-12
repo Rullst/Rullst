@@ -51,7 +51,7 @@ jobs:
           echo "Testing GET /..."
           RESPONSE=$(curl -s -i -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -c cookies.txt http://localhost:3000/)
           echo "$RESPONSE" | grep -E "HTTP/(1\.1|2) 200"
-          echo "$RESPONSE" | grep -i "Rullst Dev Blog"
+          echo "$RESPONSE" | grep -i "Sovereign SaaS Blog"
           echo "$RESPONSE" | grep -i "Content-Security-Policy:"
           echo "$RESPONSE" | grep -i "X-Content-Type-Options: nosniff"
           echo "$RESPONSE" | grep -i "X-Frame-Options: DENY"

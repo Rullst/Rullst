@@ -943,7 +943,7 @@ dependencies = [
  "rand 0.10.2",
  "ratatui",
  "regex",
- "reqwest",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
  "sqlx",
@@ -2732,6 +2732,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -3953,7 +3954,7 @@ dependencies = [
  "bytes",
  "http 1.5.0",
  "opentelemetry",
- "reqwest",
+ "reqwest 0.13.4",
 ]
 
 [[package]]
@@ -3968,7 +3969,7 @@ dependencies = [
  "opentelemetry-proto",
  "opentelemetry_sdk",
  "prost",
- "reqwest",
+ "reqwest 0.13.4",
  "thiserror 2.0.19",
 ]
 
@@ -5077,6 +5078,46 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "reqwest"
+version = "0.12.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "futures-channel",
+ "futures-core",
+ "futures-util",
+ "http 1.5.0",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "js-sys",
+ "log",
+ "percent-encoding",
+ "pin-project-lite",
+ "quinn",
+ "rustls",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "sync_wrapper",
+ "tokio",
+ "tokio-rustls",
+ "tower",
+ "tower-http 0.6.11",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "webpki-roots",
+]
+
+[[package]]
+name = "reqwest"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
@@ -5127,7 +5168,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "http 1.5.0",
- "reqwest",
+ "reqwest 0.13.4",
  "thiserror 2.0.19",
  "tower-service",
 ]
@@ -5144,7 +5185,7 @@ dependencies = [
  "getrandom 0.2.17",
  "http 1.5.0",
  "hyper",
- "reqwest",
+ "reqwest 0.13.4",
  "reqwest-middleware",
  "retry-policies",
  "thiserror 2.0.19",
@@ -5241,7 +5282,7 @@ dependencies = [
  "opentelemetry_sdk",
  "proptest",
  "redis",
- "reqwest",
+ "reqwest 0.13.4",
  "rullst-ai",
  "rullst-auth",
  "rullst-capital",
@@ -5283,7 +5324,7 @@ dependencies = [
  "async-trait",
  "base64 0.23.0",
  "criterion",
- "reqwest",
+ "reqwest 0.13.4",
  "rullst-core",
  "serde",
  "serde_json",
@@ -5348,7 +5389,7 @@ dependencies = [
  "chrono",
  "criterion",
  "hex",
- "reqwest",
+ "reqwest 0.13.4",
  "ring",
  "rullst-core",
  "serde",
@@ -5371,7 +5412,7 @@ dependencies = [
  "loom",
  "proptest",
  "rand 0.10.2",
- "reqwest",
+ "reqwest 0.13.4",
  "reqwest-middleware",
  "reqwest-retry",
  "secrecy",
@@ -5456,7 +5497,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "lettre",
- "reqwest",
+ "reqwest 0.13.4",
  "rullst-core",
  "serde",
  "serde_json",
@@ -7574,6 +7615,7 @@ dependencies = [
  "base64 0.22.1",
  "mime_guess",
  "regex",
+ "reqwest 0.12.28",
  "rust-embed",
  "serde",
  "serde_json",
