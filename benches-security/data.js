@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786501159623,
+  "lastUpdate": 1786547561590,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -845,6 +845,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 427,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "603713a8549288649ce683acd15003378140a2c5",
+          "message": "feat: expand blog example into a comprehensive Rullst integration testbed with new security, AI, billing, and repository demo modules",
+          "timestamp": "2026-08-12T12:03:14-03:00",
+          "tree_id": "ac4df1d2d97dd608874c3739feff5fbef736a4c4",
+          "url": "https://github.com/Rullst/Rullst/commit/603713a8549288649ce683acd15003378140a2c5"
+        },
+        "date": 1786547560882,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 123480,
+            "range": "± 42535",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 419,
+            "range": "± 3",
             "unit": "ns/iter"
           },
           {
