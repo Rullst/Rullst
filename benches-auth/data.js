@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786547462036,
+  "lastUpdate": 1786557614322,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2687,6 +2687,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1109,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2d8255f9e6490e85dca531e87747837d83743106",
+          "message": "test: remove memory database initialization from server tests and disable studio/nexus tests under strict database features",
+          "timestamp": "2026-08-12T14:52:23-03:00",
+          "tree_id": "a98f524a8f547934a0a76dd58c68509bd6c86975",
+          "url": "https://github.com/Rullst/Rullst/commit/2d8255f9e6490e85dca531e87747837d83743106"
+        },
+        "date": 1786557613892,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 733,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 629,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1375,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1365,
+            "range": "± 38",
             "unit": "ns/iter"
           }
         ]
