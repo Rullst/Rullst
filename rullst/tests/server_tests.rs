@@ -38,7 +38,6 @@ async fn test_server_run_static() {
     let scheduler = rullst::scheduler::Scheduler::new();
 
     let server = Server::new(router)
-        .with_db("sqlite::memory:")
         .schedule(scheduler)
         .shield(shield)
         .rate_limit(limiter);

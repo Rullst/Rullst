@@ -1,5 +1,6 @@
 #![cfg(not(miri))]
 #![cfg(feature = "nexus")]
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use base64::Engine;
 use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
