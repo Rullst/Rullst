@@ -110,13 +110,16 @@ impl BillingProvider for InfinitePayProvider {
     ) -> Result<WebhookEvent, String> {
         let sig_header = headers
             .get("x-signature")
-            .or_else(|| headers.get("x-infinitepay-signature"))
-            .ok_or_else(|| "Missing X-Signature header".to_string())?;
+            .or_else(|| headers.get("x-infinitepay-signature"));
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing X-Signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let subscription_id = json["id"]
             .as_str()
@@ -192,7 +195,11 @@ impl BillingProvider for InfinitePayProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

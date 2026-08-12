@@ -120,20 +120,38 @@ impl BillingProvider for LemonSqueezyProvider {
     ) -> Result<WebhookEvent, String> {
         let sig_header = headers
             .get("x-signature")
-            .ok_or_else(|| "Missing X-Signature header".to_string())?;
+            .or_else(|| headers.get("X-Signature"));
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing X-Signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
+
+        if let Some(event_name) = json["meta"]["event_name"].as_str()
+            && !event_name.starts_with("subscription_")
+        {
+            return Err(format!("Uninteresting event name: {}", event_name));
+        }
 
         let data = &json["data"];
         let attrs = &data["attributes"];
 
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = attrs["customer_id"].to_string();
+        let customer_id = attrs["customer_id"]
+            .as_u64()
+            .map(|id| id.to_string())
+            .or_else(|| attrs["customer_id"].as_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| attrs["customer_id"].to_string());
         let customer_email = attrs["user_email"].as_str().unwrap_or("").to_string();
-        let plan_id = attrs["variant_id"].to_string();
+        let plan_id = attrs["variant_id"]
+            .as_u64()
+            .map(|id| id.to_string())
+            .or_else(|| attrs["variant_id"].as_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| attrs["variant_id"].to_string());
         let status_str = attrs["status"].as_str().unwrap_or("active");
 
         let ends_at = attrs["ends_at"].as_str().and_then(|s| {
@@ -184,7 +202,11 @@ impl BillingProvider for LemonSqueezyProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

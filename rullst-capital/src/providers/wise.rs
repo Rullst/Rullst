@@ -32,7 +32,10 @@ impl PayoutProvider for WiseProvider {
         currency: &str,
     ) -> Result<String, String> {
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
-            return Ok(format!("transfer_mock_{}", recipient_email.replace('@', "_")));
+            return Ok(format!(
+                "transfer_mock_{}",
+                recipient_email.replace('@', "_")
+            ));
         }
 
         let client = reqwest::Client::new();
@@ -109,8 +112,8 @@ impl PayoutProvider for WiseProvider {
 impl WiseProvider {
     /// Normalizes a webhook payload from Wise into a `PayoutEvent`.
     pub fn parse_webhook_payload(&self, payload: &[u8]) -> Result<PayoutEvent, String> {
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let data = &json["data"];
         let transfer_id = data["resource"]["id"]

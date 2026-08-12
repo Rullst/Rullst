@@ -90,7 +90,10 @@ impl BillingProvider for CoinbaseCommerceProvider {
             .map_err(|e| format!("Network error: {}", e))?;
 
         if !res.status().is_success() {
-            return Err(format!("Coinbase Commerce API error: HTTP {}", res.status()));
+            return Err(format!(
+                "Coinbase Commerce API error: HTTP {}",
+                res.status()
+            ));
         }
 
         let body: Value = res
@@ -109,14 +112,16 @@ impl BillingProvider for CoinbaseCommerceProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, String> {
-        let sig_header = headers
-            .get("x-cc-webhook-signature")
-            .ok_or_else(|| "Missing X-CC-Webhook-Signature header".to_string())?;
+        let sig_header = headers.get("x-cc-webhook-signature");
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing X-CC-Webhook-Signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let event = &json["event"];
         let data = &event["data"];
@@ -193,7 +198,11 @@ impl BillingProvider for CoinbaseCommerceProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

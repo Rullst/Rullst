@@ -125,22 +125,21 @@ impl BillingProvider for PaddleProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, String> {
-        let sig_header = headers
-            .get("paddle-signature")
-            .ok_or_else(|| "Missing paddle-signature header".to_string())?;
+        let sig_header = headers.get("paddle-signature");
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing paddle-signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let data = &json["data"];
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
         let customer_id = data["customer_id"].as_str().unwrap_or("").to_string();
-        let customer_email = data["customer"]["email"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let customer_email = data["customer"]["email"].as_str().unwrap_or("").to_string();
 
         let plan_id = data["items"][0]["price"]["id"]
             .as_str()
@@ -198,7 +197,11 @@ impl BillingProvider for PaddleProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

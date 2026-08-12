@@ -122,14 +122,20 @@ impl BillingProvider for StripeProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, String> {
-        let sig_header = headers
-            .get("stripe-signature")
-            .ok_or_else(|| "Missing stripe-signature header".to_string())?;
+        if let Some(sig_header) = headers.get("stripe-signature") {
+            self.verify_signature(payload, sig_header)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing stripe-signature header".to_string());
+        }
 
-        self.verify_signature(payload, sig_header)?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        if let Some(event_type) = json["type"].as_str()
+            && !event_type.starts_with("customer.subscription.")
+        {
+            return Err(format!("Uninteresting event: {}", event_type));
+        }
 
         let data = &json["data"]["object"];
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
@@ -137,6 +143,7 @@ impl BillingProvider for StripeProvider {
         let customer_email = data["customer_email"]
             .as_str()
             .or_else(|| data["customer_details"]["email"].as_str())
+            .or_else(|| data["email"].as_str())
             .unwrap_or("")
             .to_string();
 
@@ -200,7 +207,11 @@ impl BillingProvider for StripeProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

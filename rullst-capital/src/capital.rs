@@ -30,8 +30,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_lemonsqueezy_provider() {
-        let provider =
-            LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "lemonsqueezy");
 
         let url = provider
@@ -44,12 +43,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_infinitepay_provider() {
-        let provider =
-            InfinitePayProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        let provider = InfinitePayProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "infinitepay");
 
         let url = provider
-            .create_checkout_session("user@empresa.com.br", "plan_pro", "https://meusaas.com.br/ok")
+            .create_checkout_session(
+                "user@empresa.com.br",
+                "plan_pro",
+                "https://meusaas.com.br/ok",
+            )
             .await
             .unwrap();
         assert!(url.contains("mock_session"));
@@ -74,7 +76,11 @@ mod tests {
         assert_eq!(provider.name(), "paddle");
 
         let url = provider
-            .create_checkout_session("corp@enterprise.com", "pri_enterprise", "https://corp.com/cb")
+            .create_checkout_session(
+                "corp@enterprise.com",
+                "pri_enterprise",
+                "https://corp.com/cb",
+            )
             .await
             .unwrap();
         assert!(url.contains("mock_session"));
@@ -82,8 +88,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_mercadopago_provider() {
-        let provider =
-            MercadoPagoProvider::new("mock_key".to_string(), "mock_secret".to_string());
+        let provider = MercadoPagoProvider::new("mock_key".to_string(), "mock_secret".to_string());
         assert_eq!(provider.name(), "mercadopago");
 
         let url = provider
@@ -108,8 +113,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_picpay_provider() {
-        let provider =
-            PicPayProvider::new("mock_picpay".to_string(), "mock_seller".to_string());
+        let provider = PicPayProvider::new("mock_picpay".to_string(), "mock_seller".to_string());
         assert_eq!(provider.name(), "picpay");
 
         let url = provider
@@ -217,10 +221,7 @@ mod tests {
         );
         let res3 = provider.handle_webhook(b"{}", &headers);
         assert!(res3.is_err());
-        assert!(
-            res3.unwrap_err()
-                .starts_with("Invalid hex signature:")
-        );
+        assert!(res3.unwrap_err().starts_with("Invalid hex signature:"));
 
         headers.insert(
             "stripe-signature".to_string(),
@@ -332,10 +333,7 @@ mod tests {
         headers.insert("x-seller-token".to_string(), "wrong_token".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(
-            res2.unwrap_err(),
-            "PicPay seller token verification failed"
-        );
+        assert_eq!(res2.unwrap_err(), "PicPay seller token verification failed");
     }
 
     #[test]
@@ -355,9 +353,6 @@ mod tests {
         headers.insert("x-razorpay-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(
-            res2.unwrap_err(),
-            "Razorpay signature verification failed"
-        );
+        assert_eq!(res2.unwrap_err(), "Razorpay signature verification failed");
     }
 }

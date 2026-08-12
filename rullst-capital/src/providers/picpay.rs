@@ -103,14 +103,16 @@ impl BillingProvider for PicPayProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, String> {
-        let seller_header = headers
-            .get("x-seller-token")
-            .ok_or_else(|| "Missing x-seller-token header".to_string())?;
+        let seller_header = headers.get("x-seller-token");
 
-        self.verify_token(seller_header)?;
+        if let Some(token) = seller_header {
+            self.verify_token(token)?;
+        } else if !self.seller_token.is_empty() {
+            return Err("Missing x-seller-token header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let subscription_id = json["referenceId"]
             .as_str()
@@ -125,7 +127,10 @@ impl BillingProvider for PicPayProvider {
             .to_string();
 
         let customer_email = json["buyer"]["email"].as_str().unwrap_or("").to_string();
-        let plan_id = json["referenceId"].as_str().unwrap_or("default").to_string();
+        let plan_id = json["referenceId"]
+            .as_str()
+            .unwrap_or("default")
+            .to_string();
         let status_str = json["status"].as_str().unwrap_or("paid");
 
         Ok(WebhookEvent {
@@ -170,7 +175,11 @@ impl BillingProvider for PicPayProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

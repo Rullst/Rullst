@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Multi-Provider Payment Infrastructure Expansion (`rullst-capital::providers`)**: Decomposed `rullst-capital` into a decoupled, modular architecture under `src/providers/` (< 250 lines per module) supporting 10 payment and disbursement providers with constant-time HMAC-SHA256 signature verification (`subtle::ConstantTimeEq`), mock checkout fallbacks, and unified `WebhookEvent` mapping:
+  - **`InfinitePayProvider` (Brazil)**: Seamless Pix processing with **0.00% fee**, instant settlement (D+0/D+1), and domestic credit card rates (~0.75%-1.44%) with transparent installment interest pass-through.
+  - **`PolarProvider` (Developer-First)**: Merchant of Record (MoR) for monetizing open-source repositories, GitHub backers, software licenses, and micro-SaaS subscriptions.
+  - **`PaddleProvider` (Enterprise MoR)**: Global B2B SaaS quote-to-cash transactions with automated EU VAT and sales tax compliance.
+  - **`RazorpayProvider` (India & Southeast Asia)**: Recurring UPI Autopay, Indian credit cards, net banking, and subscription orders.
+  - **`MercadoPagoProvider` (LATAM)**: Regional subscriptions and payment preferences across Brazil, Argentina, Mexico, Chile, and Colombia.
+  - **`CoinbaseCommerceProvider` (Web3 & Crypto)**: Borderless cryptocurrency charges (Bitcoin, Ethereum, Solana, USDC/USDT) with automated on-chain webhook verification.
+  - **`PicPayProvider` (Brazil)**: Brazilian digital wallet and QR-code payments.
+  - **`WiseProvider` (Global Payouts)**: High-speed, low-fee international B2B payouts and contractor disbursements across 40+ currencies.
+- **Payment Gateways & Financial Infrastructure Guide (`docs/src/payment-gateways-guide.md`)**: Comprehensive architectural guide analyzing Direct Merchant vs Merchant of Record (MoR) vs Domestic Low-Fee vs Web3 Crypto vs International Payouts, complete fee comparison matrices, and step-by-step Rust configuration code.
+- **Monorepo Examples & Reference Apps Guide (`docs/src/examples.md`)**: Dedicated official book chapter detailing the role of the `examples/` directory in Rullst, contrasting monorepo showcases (`rullst-blog-example`) with interactive CLI scaffolding blueprints (`cargo rullst new ... --blueprint blog`).
+- **`examples/blog` Documentation (`examples/blog/README.md`)**: Complete architectural overview, local execution guide (`cargo run`), interactive route catalog (`/`, `/live-counter`, `/wasm-counter`), multi-tenant testing via `X-Tenant-ID` headers, and CI/CD integration details.
 - **OWASP Secure Headers Suite (`rullst-security::headers`)**: Unified middleware layer (`SecureHeadersLayer`, `SecureHeadersConfig`) enforcing HSTS, dynamic CSP Nonce, Permissions-Policy, COOP, COEP, and CORP, granting an out-of-the-box A+ rating on security audits (`securityheaders.com`).
 - **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: In-memory progressive async delay engine (`LoginGuard`) applying progressive delay (0s to 5s) and 15-minute temporary jail bans after 5 consecutive authentication failures.
 - **RASP Deep Request & Header Inspector (`rullst-security::rasp`)**: Enhanced runtime application self-protection with `inspect_text` and `inspect_headers` intercepting JNDI/Log4j, RCE, and advanced SQL injection vectors before handler dispatch.
@@ -132,6 +144,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Testing Foundations**: Scaffolded base integration tests for newly integrated crates (`rullst-auth`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-ai`) to ensure CI stability.
 
 ### Fixed
+- **Duplicate ORM Initialization in Server Runtime (`rullst-core::server`)**: Added an idempotency check (`if rullst_orm::Orm::try_pool().is_ok() { return; }`) in `Server::init_database` to prevent redundant connection pool initialization and eliminate warning logs when user code initializes `Orm::init` before starting the server.
+- **CI/CD Workflow Actions & Supply-Chain Hardening**:
+  - Replaced unresolvable `dtolnay/rust-toolchain` and `actions/cache` commit SHAs with pinned, verified commits across `no_std-build.yml` and `iot-integration.yml`.
+  - Pinned `FROM gcr.io/oss-fuzz-base/base-builder-rust` to an immutable SHA256 digest in `oss-fuzz/projects/rullst/Dockerfile` (Scorecard Pinned-Dependencies #200).
+  - Integrated 5 Dependabot dependency updates (`github/codeql-action`, `taiki-e/install-action`, `codecov/codecov-action`, `actions/upload-pages-artifact`).
+  - Added browser User-Agent headers and double-submit CSRF cookie/header forwarding in `e2e-smoke.yml` to satisfy production WAF and CSRF middleware rules.
+- **Absolute Local Path Sanitation**: Purged all absolute local machine path references across repository markdown files, book tutorials, and metadata in favor of clean relative links.
 - **Formal Verification (Kani) & State-Space Explosion**: Resolved SAT solver job cancellation (`The operation was canceled`) in `rullst-core` by optimizing unwinding bounds from `25` to `6` on string escaping and `5` on PII masking. Re-added `rullst-macros` to the Kani CI matrix.
 - **Fuzzing Target (`fuzz_parser`) Compilation Error**: Fixed `error: an inner attribute is not permitted in this context` in `rullst-orm-macros/src/parser.rs` when included in fuzz targets via `include!`. Replaced `#![...]` inner attribute with outer module attribute `#[cfg_attr(mutants, mutants::skip)]`.
 - **Mutation Coverage (`cargo-mutants`)**: Added unit test assertions and `mutants::skip` annotations across `rullst-capital`, `rullst-ai`, `rullst-connect`, `rullst-core`, `rullst-nexus`, and `cargo-rullst` CLI generators.

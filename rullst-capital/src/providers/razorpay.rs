@@ -105,14 +105,16 @@ impl BillingProvider for RazorpayProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, String> {
-        let sig_header = headers
-            .get("x-razorpay-signature")
-            .ok_or_else(|| "Missing X-Razorpay-Signature header".to_string())?;
+        let sig_header = headers.get("x-razorpay-signature");
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing X-Razorpay-Signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let event = json["event"].as_str().unwrap_or("");
         let sub_data = &json["payload"]["subscription"]["entity"];
@@ -196,7 +198,11 @@ impl BillingProvider for RazorpayProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }

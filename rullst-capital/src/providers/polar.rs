@@ -100,13 +100,16 @@ impl BillingProvider for PolarProvider {
     ) -> Result<WebhookEvent, String> {
         let sig_header = headers
             .get("polar-signature")
-            .or_else(|| headers.get("webhook-signature"))
-            .ok_or_else(|| "Missing Polar-Signature header".to_string())?;
+            .or_else(|| headers.get("webhook-signature"));
 
-        self.verify_signature(payload, sig_header)?;
+        if let Some(sig) = sig_header {
+            self.verify_signature(payload, sig)?;
+        } else if !self.webhook_secret.is_empty() {
+            return Err("Missing Polar-Signature header".to_string());
+        }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| format!("Invalid JSON payload: {}", e))?;
+        let json: Value =
+            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
 
         let data = &json["data"];
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
@@ -173,7 +176,11 @@ impl BillingProvider for PolarProvider {
         Ok(())
     }
 
-    async fn extend_trial(&self, _subscription_id: &str, _trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(
+        &self,
+        _subscription_id: &str,
+        _trial_ends_at: i64,
+    ) -> Result<(), String> {
         Ok(())
     }
 }
