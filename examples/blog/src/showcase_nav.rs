@@ -6,13 +6,41 @@ use rullst::html;
 /// Renders the universal Sovereign Showcase Header with navigation buttons.
 pub fn render_showcase_nav(active_route: &str) -> String {
     let routes = [
-        ("/", "⚡ HTMX SSR", "Zero-bundle instant server-side rendering"),
-        ("/editor", "🏝️ Wasm Island", "Client-side WebAssembly reactive component"),
-        ("/live-feed", "🔴 LiveView WS", "Persistent WebSocket bidirectional state sync"),
-        ("/posts/repository", "🔀 Repository ORM", "Decoupled Data Mapper & Aggregations"),
-        ("/pricing", "💳 Capital Billing", "SaaS MRR/ARR, Webhooks & SPED NFS-e"),
-        ("/security-demo", "🛡️ Security & RASP", "WAF, Login Jail, Tarpit & Honeypots"),
-        ("/ai-assistant", "🤖 AI & RAG", "Vector semantic search & Prompt Shield"),
+        (
+            "/",
+            "⚡ HTMX SSR",
+            "Zero-bundle instant server-side rendering",
+        ),
+        (
+            "/editor",
+            "🏝️ Wasm Island",
+            "Client-side WebAssembly reactive component",
+        ),
+        (
+            "/live-feed",
+            "🔴 LiveView WS",
+            "Persistent WebSocket bidirectional state sync",
+        ),
+        (
+            "/posts/repository",
+            "🔀 Repository ORM",
+            "Decoupled Data Mapper & Aggregations",
+        ),
+        (
+            "/pricing",
+            "💳 Capital Billing",
+            "SaaS MRR/ARR, Webhooks & SPED NFS-e",
+        ),
+        (
+            "/security-demo",
+            "🛡️ Security & RASP",
+            "WAF, Login Jail, Tarpit & Honeypots",
+        ),
+        (
+            "/ai-assistant",
+            "🤖 AI & RAG",
+            "Vector semantic search & Prompt Shield",
+        ),
     ];
 
     let buttons_html: String = routes
@@ -32,7 +60,8 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         })
         .collect();
 
-    let tenant_id = rullst::multitenant::current_tenant_id().unwrap_or_else(|| "community".to_string());
+    let tenant_id =
+        rullst::multitenant::current_tenant_id().unwrap_or_else(|| "community".to_string());
 
     html! {
         <div class="showcase-banner">

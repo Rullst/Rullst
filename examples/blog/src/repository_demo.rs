@@ -32,7 +32,7 @@ impl PostRepository {
                 SUM(LENGTH(body)) as total_bytes
             FROM posts
             GROUP BY tenant_id
-            ORDER BY total_posts DESC"
+            ORDER BY total_posts DESC",
         )
         .fetch_all(pool)
         .await?;

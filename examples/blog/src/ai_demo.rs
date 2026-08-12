@@ -130,12 +130,12 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
 
                         <form method="get" action="/ai-assistant" style="margin-top: 1.5rem;">
                             <div style="display: flex; gap: 0.75rem;">
-                                <input 
-                                    type="text" 
-                                    name="q" 
+                                <input
+                                    type="text"
+                                    name="q"
                                     value={&user_query}
-                                    placeholder="Search by meaning: e.g. 'security permissions', 'database multi-tenant', 'edge IoT'" 
-                                    style="flex: 1; background: #05070c; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; font-size: 0.95rem;" 
+                                    placeholder="Search by meaning: e.g. 'security permissions', 'database multi-tenant', 'edge IoT'"
+                                    style="flex: 1; background: #05070c; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; font-size: 0.95rem;"
                                 />
                                 <button type="submit" class="btn">"Semantic Search"</button>
                             </div>

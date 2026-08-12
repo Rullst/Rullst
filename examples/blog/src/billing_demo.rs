@@ -89,7 +89,10 @@ pub async fn pricing_page() -> impl IntoResponse {
     let signed_xml = sign_dps_xml(&unsigned_xml, &cert).unwrap_or_else(|_| unsigned_xml.clone());
 
     let xml_snippet = if signed_xml.len() > 250 {
-        format!("{}... [Valid XMLDSig Digital Signature Attached]", &signed_xml[..250])
+        format!(
+            "{}... [Valid XMLDSig Digital Signature Attached]",
+            &signed_xml[..250]
+        )
     } else {
         signed_xml
     };

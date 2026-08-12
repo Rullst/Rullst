@@ -243,7 +243,10 @@ pub mod app {
     }
 
     pub async fn robots_txt() -> impl IntoResponse {
-        (axum::http::StatusCode::OK, "User-agent: *\nDisallow: /studio\nDisallow: /nexus\n")
+        (
+            axum::http::StatusCode::OK,
+            "User-agent: *\nDisallow: /studio\nDisallow: /nexus\n",
+        )
     }
 
     pub async fn sitemap_xml() -> impl IntoResponse {
@@ -262,8 +265,14 @@ pub mod app {
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:;".parse().unwrap(),
         );
-        headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
-        headers.insert("Cross-Origin-Resource-Policy", "cross-origin".parse().unwrap());
+        headers.insert(
+            "Cross-Origin-Embedder-Policy",
+            "require-corp".parse().unwrap(),
+        );
+        headers.insert(
+            "Cross-Origin-Resource-Policy",
+            "cross-origin".parse().unwrap(),
+        );
         headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
         headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
         headers.insert("X-Frame-Options", "DENY".parse().unwrap());
