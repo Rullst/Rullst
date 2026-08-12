@@ -2,54 +2,41 @@ name: IoT Integration Tests (QEMU)
 
 on:
   push:
-    branches: [main, develop]
-    paths:
-      - "rullst-iot/**"
+    branches: [main, dev, develop]
   pull_request:
-    paths:
-      - "rullst-iot/**"
+    branches: [main, dev, develop]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
   CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   iot-unit-tests:
-    name: rullst-iot Unit Tests (std)
+    name: rullst-iot Unit Tests & OTA Integrity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
 
-      - name: Cache Cargo registry
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-${{ hashFiles('rullst-iot/Cargo.toml') }}
-
-      - name: Run unit tests
+      - name: Run unit & OTA signature tests
         run: cargo test -p rullst-iot --all-features
 
   iot-no-std-qemu:
-    name: rullst-iot no_std QEMU (Cortex-M)
+    name: rullst-iot no_std Cortex-M Target
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust + ARM target
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
-
-      - name: Add ARM target
-        run: rustup target add thumbv7em-none-eabihf
-
-      - name: Install QEMU ARM
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y qemu-system-arm
+        with:
+          targets: thumbv7em-none-eabihf
 
       - name: Build no_std binary (Cortex-M4)
         run: |
@@ -57,7 +44,7 @@ jobs:
             --target thumbv7em-none-eabihf \
             --no-default-features \
             --release
-        continue-on-error: true
 
       - name: Report no_std build status
         run: echo "rullst-iot no_std Cortex-M build complete."
+

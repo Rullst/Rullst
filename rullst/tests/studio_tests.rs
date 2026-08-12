@@ -1,6 +1,5 @@
 #![cfg(not(miri))]
 #![cfg(feature = "studio")]
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use rullst::studio::Studio;
 use rullst::testing::TestApp;
@@ -10,10 +9,10 @@ static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 async fn init_test_db() {
     INIT_DB.get_or_init(|| async {
         let db_path = "sqlite:file:studio_test.db?mode=rwc";
-        if let Err(e) = rullst_orm::Orm::init(db_path).await {
-            if !e.to_string().contains("already been initialized") {
-                panic!("Orm::init failed: {:?}", e);
-            }
+        if let Err(e) = rullst_orm::Orm::init(db_path).await
+            && !e.to_string().contains("already been initialized")
+        {
+            panic!("Orm::init failed: {:?}", e);
         }
         let pool = rullst::db::safe_pool().expect("pool should be initialized");
 
@@ -59,7 +58,7 @@ async fn test_studio_table_details_full_page() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/tables/studio_users").await;
+    let response = app.get("/tables/studio_users").await;
     response.assert_status(200);
     response.assert_see("studio_users");
     response.assert_see("Alice");
@@ -75,7 +74,7 @@ async fn test_studio_table_details_htmx() {
 
     // With HTMX header, it should return a partial HTML (no layout/header)
     let response = app
-        .get("/data/tables/studio_users")
+        .get("/tables/studio_users")
         .header("hx-request", "true")
         .await;
 
@@ -90,7 +89,7 @@ async fn test_studio_table_not_found() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/tables/nonexistent_table").await;
+    let response = app.get("/tables/nonexistent_table").await;
     response.assert_status(200); // Handled error returns 200 with error message
     response.assert_see("Table 'nonexistent_table' not found.");
 }
@@ -100,7 +99,7 @@ async fn test_studio_table_search() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/tables/studio_users?search=Alice").await;
+    let response = app.get("/tables/studio_users?search=Alice").await;
     response.assert_status(200);
     response.assert_see("Alice");
     response.assert_dont_see("Bob");
@@ -111,7 +110,7 @@ async fn test_studio_table_empty() {
     init_test_db().await;
     let app = TestApp::new(build_studio_router());
 
-    let response = app.get("/data/tables/studio_posts").await;
+    let response = app.get("/tables/studio_posts").await;
     response.assert_status(200);
     response.assert_see("No records found inside this table.");
 }

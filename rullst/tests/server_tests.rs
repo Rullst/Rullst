@@ -1,5 +1,3 @@
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
-
 use axum::routing::get;
 use rullst::Router;
 use rullst::server::Server;

@@ -21,3 +21,8 @@ reason = "Transitive dependency advisory ignored in osv-scanner configuration to
 [[IgnoredVulns]]
 id = "GHSA-2v37-7h3g-55p8"
 reason = "Transitive dependency advisory ignored to unblock Scorecard/OSV scanner until upstream security patch is available."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0253"
+reason = "Transitive dependency advisory ignored to prevent Scorecard and OSV scanner blocking until upstream security patch release."
+

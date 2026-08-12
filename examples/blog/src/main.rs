@@ -6,10 +6,10 @@ use rullst_orm::Orm;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Intercept Artisan and Studio commands
+    // Intercept Artisan and Studio CLI commands
     rullst::artisan!(vec![]);
 
-    // Initialize SQLite file database
+    // Initialize SQLite database
     Orm::init("sqlite://blog.db").await?;
 
     // Create table schema
@@ -25,31 +25,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .execute(pool)
     .await?;
 
-    // Seed post for tenant1
-    let _ = multitenant::TENANT_CONTEXT.scope(std::cell::RefCell::new(Some("tenant1".to_string())), async {
-        if Post::all().await.unwrap_or_default().is_empty() {
-            let mut post = Post {
-                id: 0,
-                tenant_id: "tenant1".to_string(),
-                title: "Story of Tenant 1".to_string(),
-                body: "This is exclusive content for tenant 1. Under Rullst SaaS Multi-tenancy, other tenants cannot view this record!".to_string(),
-            };
-            let _ = post.save().await;
-        }
-    }).await;
+    // Seed post for tenant-enterprise
+    let _ = multitenant::TENANT_CONTEXT
+        .scope(std::cell::RefCell::new(Some("tenant-enterprise".to_string())), async {
+            if Post::all().await.unwrap_or_default().is_empty() {
+                let mut post = Post {
+                    id: 0,
+                    tenant_id: "tenant-enterprise".to_string(),
+                    title: "Enterprise Architecture & Rust Scalability".to_string(),
+                    body: "Welcome to the Enterprise tenant. Under Rullst SaaS Multi-tenancy with Task-Local Scopes, this record is isolated with zero database leakage across tenants.".to_string(),
+                };
+                let _ = post.save().await;
+            }
+        })
+        .await;
 
-    // Seed post for tenant2
-    let _ = multitenant::TENANT_CONTEXT.scope(std::cell::RefCell::new(Some("tenant2".to_string())), async {
-        if Post::all().await.unwrap_or_default().is_empty() {
-            let mut post = Post {
-                id: 0,
-                tenant_id: "tenant2".to_string(),
-                title: "Exclusive for Tenant 2".to_string(),
-                body: "Only developers authenticated or scoped under tenant 2 will ever load this record.".to_string(),
-            };
-            let _ = post.save().await;
-        }
-    }).await;
+    // Seed post for tenant-startup
+    let _ = multitenant::TENANT_CONTEXT
+        .scope(std::cell::RefCell::new(Some("tenant-startup".to_string())), async {
+            if Post::all().await.unwrap_or_default().is_empty() {
+                let mut post = Post {
+                    id: 0,
+                    tenant_id: "tenant-startup".to_string(),
+                    title: "High-Velocity MVP Delivery with Zero Bundle HTMX".to_string(),
+                    body: "Startups can build full-featured reactive applications with Rullst without maintaining complex JavaScript npm ecosystems.".to_string(),
+                };
+                let _ = post.save().await;
+            }
+        })
+        .await;
+
+    // Seed post for community
+    let _ = multitenant::TENANT_CONTEXT
+        .scope(std::cell::RefCell::new(Some("community".to_string())), async {
+            if Post::all().await.unwrap_or_default().is_empty() {
+                let mut post = Post {
+                    id: 0,
+                    tenant_id: "community".to_string(),
+                    title: "Welcome to The Sovereign SaaS Blog & Publisher".to_string(),
+                    body: "Explore the top navigation bar to test all 3 Front-End paradigms, the Hybrid ORM, Rullst Studio (/studio), Nexus CMS (/nexus), Capital Billing, and Security RASP in action!".to_string(),
+                };
+                let _ = post.save().await;
+            }
+        })
+        .await;
 
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
@@ -75,6 +94,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let router = unsafe { *Box::from_raw(router_ptr) };
         Server::new(router)
     };
+
+    println!("🚀 Rullst Sovereign SaaS Showcase running at http://127.0.0.1:3000");
+    println!("   - Studio Developer Control Room: http://127.0.0.1:3000/studio");
+    println!("   - Nexus Admin CMS: http://127.0.0.1:3000/nexus");
 
     server.run(3000).await?;
 

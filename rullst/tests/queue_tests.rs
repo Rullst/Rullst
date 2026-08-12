@@ -1,5 +1,3 @@
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
-
 use rullst::queue::{Queue, Worker};
 use serde_json::json;
 
