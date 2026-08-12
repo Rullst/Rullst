@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786498268854,
+  "lastUpdate": 1786500999269,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -3886,6 +3886,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "generate_csrf_token_32_chars",
             "value": 129,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bc331fea2a60a3086d4393541223738599e8be81",
+          "message": "feat: implement native Brazilian NFS-e issuance module with A1 certificate signing and direct SEFAZ transmission",
+          "timestamp": "2026-08-11T23:09:53-03:00",
+          "tree_id": "4a808b2e3647d7d84b0f841660efc16ffdb6ccd8",
+          "url": "https://github.com/Rullst/Rullst/commit/bc331fea2a60a3086d4393541223738599e8be81"
+        },
+        "date": 1786500998510,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 169,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 51,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 129,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 214,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 744,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 153,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 106,
             "range": "± 0",
             "unit": "ns/iter"
           }
