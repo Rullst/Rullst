@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786498362630,
+  "lastUpdate": 1786501060684,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2591,6 +2591,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1388,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bc331fea2a60a3086d4393541223738599e8be81",
+          "message": "feat: implement native Brazilian NFS-e issuance module with A1 certificate signing and direct SEFAZ transmission",
+          "timestamp": "2026-08-11T23:09:53-03:00",
+          "tree_id": "4a808b2e3647d7d84b0f841660efc16ffdb6ccd8",
+          "url": "https://github.com/Rullst/Rullst/commit/bc331fea2a60a3086d4393541223738599e8be81"
+        },
+        "date": 1786501059936,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 619,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 522,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1177,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1104,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
