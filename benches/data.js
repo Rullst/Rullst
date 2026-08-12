@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786500722981,
+  "lastUpdate": 1786547122563,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -7669,6 +7669,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1741,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "603713a8549288649ce683acd15003378140a2c5",
+          "message": "feat: expand blog example into a comprehensive Rullst integration testbed with new security, AI, billing, and repository demo modules",
+          "timestamp": "2026-08-12T12:03:14-03:00",
+          "tree_id": "ac4df1d2d97dd608874c3739feff5fbef736a4c4",
+          "url": "https://github.com/Rullst/Rullst/commit/603713a8549288649ce683acd15003378140a2c5"
+        },
+        "date": 1786547120817,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 581,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 775,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 485,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1730,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
