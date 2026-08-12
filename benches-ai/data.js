@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786246808198,
+  "lastUpdate": 1786498580018,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -671,6 +671,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 787,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "299b192290af26d772d4d605eae07171fc57a099",
+          "message": "style: apply line wrapping and formatting improvements to documentation templates and markdown files",
+          "timestamp": "2026-08-11T22:22:51-03:00",
+          "tree_id": "1cc1d64006622b16e57dd996fb69273277df14b9",
+          "url": "https://github.com/Rullst/Rullst/commit/299b192290af26d772d4d605eae07171fc57a099"
+        },
+        "date": 1786498579471,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1594,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 417,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 786,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
