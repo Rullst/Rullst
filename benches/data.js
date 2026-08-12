@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786547122563,
+  "lastUpdate": 1786557260781,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -7723,6 +7723,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1730,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2d8255f9e6490e85dca531e87747837d83743106",
+          "message": "test: remove memory database initialization from server tests and disable studio/nexus tests under strict database features",
+          "timestamp": "2026-08-12T14:52:23-03:00",
+          "tree_id": "a98f524a8f547934a0a76dd58c68509bd6c86975",
+          "url": "https://github.com/Rullst/Rullst/commit/2d8255f9e6490e85dca531e87747837d83743106"
+        },
+        "date": 1786557260042,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 764,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1022,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 626,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2345,
+            "range": "± 30",
             "unit": "ns/iter"
           }
         ]
