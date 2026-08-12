@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786500999269,
+  "lastUpdate": 1786547401469,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -3953,6 +3953,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/safe_field_no_pii",
             "value": 153,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 106,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "603713a8549288649ce683acd15003378140a2c5",
+          "message": "feat: expand blog example into a comprehensive Rullst integration testbed with new security, AI, billing, and repository demo modules",
+          "timestamp": "2026-08-12T12:03:14-03:00",
+          "tree_id": "ac4df1d2d97dd608874c3739feff5fbef736a4c4",
+          "url": "https://github.com/Rullst/Rullst/commit/603713a8549288649ce683acd15003378140a2c5"
+        },
+        "date": 1786547400482,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 159,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 51,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 129,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 211,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 742,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 140,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
