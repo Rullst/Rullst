@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786558771019,
+  "lastUpdate": 1786575896809,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1733,6 +1733,36 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/91c107f03a578c22aaa9c9a370ea9ee41582d74f"
         },
         "date": 1786558770255,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "de3970bd14189258fbc6154ba5894411adbb3d20",
+          "message": "chore: update CI toolchain configurations, project brand name, and swagger-ui dependencies",
+          "timestamp": "2026-08-12T15:40:23-03:00",
+          "tree_id": "38b2c0e3ffe466325cda4963cba921e786d48e73",
+          "url": "https://github.com/Rullst/Rullst/commit/de3970bd14189258fbc6154ba5894411adbb3d20"
+        },
+        "date": 1786575896108,
         "tool": "cargo",
         "benches": [
           {
