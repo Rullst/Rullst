@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786558750148,
+  "lastUpdate": 1786575876317,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2783,6 +2783,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1400,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "de3970bd14189258fbc6154ba5894411adbb3d20",
+          "message": "chore: update CI toolchain configurations, project brand name, and swagger-ui dependencies",
+          "timestamp": "2026-08-12T15:40:23-03:00",
+          "tree_id": "38b2c0e3ffe466325cda4963cba921e786d48e73",
+          "url": "https://github.com/Rullst/Rullst/commit/de3970bd14189258fbc6154ba5894411adbb3d20"
+        },
+        "date": 1786575875578,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 740,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 628,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1371,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1391,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
