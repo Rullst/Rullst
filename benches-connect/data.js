@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786246661311,
+  "lastUpdate": 1786498383042,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1588,6 +1588,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 71,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "299b192290af26d772d4d605eae07171fc57a099",
+          "message": "style: apply line wrapping and formatting improvements to documentation templates and markdown files",
+          "timestamp": "2026-08-11T22:22:51-03:00",
+          "tree_id": "1cc1d64006622b16e57dd996fb69273277df14b9",
+          "url": "https://github.com/Rullst/Rullst/commit/299b192290af26d772d4d605eae07171fc57a099"
+        },
+        "date": 1786498382499,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
             "range": "± 1",
             "unit": "ns/iter"
           }
