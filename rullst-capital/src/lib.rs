@@ -1,6 +1,7 @@
 pub mod billable;
 pub mod capital;
 pub mod dashboard;
+pub mod fiscal;
 pub mod invoice;
 pub mod providers;
 
@@ -10,6 +11,7 @@ pub mod webhook;
 pub use billable::*;
 pub use capital::*;
 pub use dashboard::*;
+pub use fiscal::*;
 pub use invoice::*;
 
 #[cfg(feature = "axum")]

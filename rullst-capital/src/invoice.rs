@@ -77,6 +77,44 @@ impl Invoice {
             self.currency
         )
     }
+
+    /// Converts this paid invoice into a Declaração de Prestação de Serviços (DPS) for national NFS-e emission.
+    pub fn to_dps(
+        &self,
+        service_code: &str,
+        service_city_ibge: &str,
+        iss_rate: f64,
+    ) -> crate::fiscal::models::NfseDps {
+        let description = self
+            .items
+            .iter()
+            .map(|item| item.description.as_str())
+            .collect::<Vec<_>>()
+            .join("; ");
+
+        let sanitized_id: String = self
+            .invoice_id
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect();
+
+        crate::fiscal::models::NfseDps {
+            id: format!("DPS{}", sanitized_id),
+            series: "1".to_string(),
+            number: 1,
+            issued_at: self.date,
+            service_code: service_code.to_string(),
+            description: if description.is_empty() {
+                "Serviços de Tecnologia / SaaS".to_string()
+            } else {
+                description
+            },
+            amount: self.total,
+            iss_rate,
+            iss_retained: false,
+            service_city_ibge: service_city_ibge.to_string(),
+        }
+    }
 }
 
 #[cfg(kani)]

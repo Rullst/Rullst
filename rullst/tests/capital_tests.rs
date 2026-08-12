@@ -204,3 +204,28 @@ async fn test_lemonsqueezy_signature_verification_failure() {
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
     assert!(err.contains("Invalid hex"));
 }
+
+#[tokio::test]
+async fn test_invoice_to_dps_conversion() {
+    use chrono::Utc;
+    use rullst::capital::{Invoice, InvoiceItem};
+
+    let invoice = Invoice {
+        invoice_id: "inv_123456".to_string(),
+        customer_email: "cliente@empresa.com.br".to_string(),
+        date: Utc::now(),
+        items: vec![InvoiceItem {
+            description: "Assinatura Pro Mensal".to_string(),
+            amount: 99.00,
+        }],
+        total: 99.00,
+        currency: "BRL".to_string(),
+    };
+
+    let dps = invoice.to_dps("1.03.01", "3550308", 2.0);
+    assert_eq!(dps.id, "DPSinv123456");
+    assert_eq!(dps.amount, 99.00);
+    assert_eq!(dps.service_code, "1.03.01");
+    assert_eq!(dps.service_city_ibge, "3550308");
+    assert_eq!(dps.description, "Assinatura Pro Mensal");
+}

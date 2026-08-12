@@ -66,3 +66,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+---
+
+## 🧾 Zero-Cost Native Digital Invoices (NFS-e Padrão Nacional / SEFAZ)
+
+Rullst Capital includes a **native, direct digital invoice engine** for Brazilian SaaS with **R$ 0.00 intermediary fees per invoice**. It signs XML documents in memory using your company's A1 Digital Certificate (`.pfx`) and transmits them directly to the Receita Federal national portal:
+
+```rust
+use rullst_capital::fiscal::{
+    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
+    NfseEnvironment, TaxRegime,
+};
+
+// 1. Configure the emitting SaaS company
+let emitter = FiscalEmitter {
+    cnpj: "12.345.678/0001-90".to_string(),
+    inscricao_municipal: "1234567".to_string(),
+    legal_name: "Minha Empresa SaaS Ltda".to_string(),
+    trade_name: Some("MeuSaaS".to_string()),
+    ibge_code: "3550308".to_string(), // São Paulo
+    tax_regime: TaxRegime::SimplesNacional,
+};
+
+// 2. Customer data
+let customer = FiscalCustomer {
+    doc_number: "123.456.789-00".to_string(),
+    name: "João Silva".to_string(),
+    email: "joao@cliente.com.br".to_string(),
+    zip_code: Some("01310-100".to_string()),
+    address: Some("Av Paulista, 1000".to_string()),
+    ibge_code: Some("3550308".to_string()),
+};
+
+// 3. Convert paid invoice to national DPS format
+let dps = invoice.to_dps("1.03.01", "3550308", 2.0); // 1.03.01 = SaaS & Hosting, 2.0% ISS
+
+// 4. Load A1 certificate (.pfx in base64 from vault)
+let cert = FiscalCertificate::from_base64(
+    &std::env::var("CERTIFICADO_A1_BASE64")?,
+    &std::env::var("CERTIFICADO_A1_SENHA")?,
+);
+
+// 5. Emit directly to Receita Federal with R$ 0.00 fee!
+let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Production).await?;
+println!("✅ NFS-e emitida com sucesso! Chave de Acesso: {}", response.access_key);
+```
+
