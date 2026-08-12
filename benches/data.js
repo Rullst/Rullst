@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786557260781,
+  "lastUpdate": 1786558394690,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -7777,6 +7777,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2345,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "91c107f03a578c22aaa9c9a370ea9ee41582d74f",
+          "message": "style: reformat code for consistency using multi-line style throughout blog examples",
+          "timestamp": "2026-08-12T15:11:02-03:00",
+          "tree_id": "a5fb6e605c46262e266e99e0b1dc97c808a4e005",
+          "url": "https://github.com/Rullst/Rullst/commit/91c107f03a578c22aaa9c9a370ea9ee41582d74f"
+        },
+        "date": 1786558393760,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 744,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 986,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 636,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2294,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
