@@ -79,7 +79,7 @@ pub fn render_revenue_dashboard_page() -> String {
             </header>
 
             <!-- Revenue KPI Metric Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Monthly Recurring (MRR)</div>
                     <div class="text-2xl font-bold text-sky-400 mt-1">{mrr}</div>

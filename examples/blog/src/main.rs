@@ -25,47 +25,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .execute(pool)
     .await?;
 
-    // Seed post for tenant-enterprise
-    let _ = multitenant::TENANT_CONTEXT
-        .scope(std::cell::RefCell::new(Some("tenant-enterprise".to_string())), async {
-            if Post::all().await.unwrap_or_default().is_empty() {
-                let mut post = Post {
-                    id: 0,
-                    tenant_id: "tenant-enterprise".to_string(),
-                    title: "Enterprise Architecture & Rust Scalability".to_string(),
-                    body: "Welcome to the Enterprise tenant. Under Rullst SaaS Multi-tenancy with Task-Local Scopes, this record is isolated with zero database leakage across tenants.".to_string(),
-                };
-                let _ = post.save().await;
-            }
-        })
-        .await;
+    // Clean old startup/enterprise seeds if migrating
+    let _ = rullst::db::sqlx::query(
+        "DELETE FROM posts WHERE title LIKE 'Enterprise Architecture%' OR title LIKE 'High-Velocity MVP%'"
+    )
+    .execute(pool)
+    .await;
 
-    // Seed post for tenant-startup
-    let _ = multitenant::TENANT_CONTEXT
-        .scope(std::cell::RefCell::new(Some("tenant-startup".to_string())), async {
-            if Post::all().await.unwrap_or_default().is_empty() {
-                let mut post = Post {
-                    id: 0,
-                    tenant_id: "tenant-startup".to_string(),
-                    title: "High-Velocity MVP Delivery with Zero Bundle HTMX".to_string(),
-                    body: "Startups can build full-featured reactive applications with Rullst without maintaining complex JavaScript npm ecosystems.".to_string(),
-                };
-                let _ = post.save().await;
-            }
-        })
-        .await;
-
-    // Seed post for community
+    // Seed Sovereign SaaS Blog Posts
     let _ = multitenant::TENANT_CONTEXT
         .scope(std::cell::RefCell::new(Some("community".to_string())), async {
-            if Post::all().await.unwrap_or_default().is_empty() {
-                let mut post = Post {
+            // 1. Unified Welcome & Overview Post
+            let welcome_exists = Post::query()
+                .where_eq("title", "Welcome to The Sovereign SaaS Blog & Publisher")
+                .first()
+                .await
+                .unwrap_or(None)
+                .is_some();
+
+            if !welcome_exists {
+                let mut post1 = Post {
                     id: 0,
                     tenant_id: "community".to_string(),
                     title: "Welcome to The Sovereign SaaS Blog & Publisher".to_string(),
-                    body: "Explore the top navigation bar to test all 3 Front-End paradigms, the Hybrid ORM, Rullst Studio (/studio), Nexus CMS (/nexus), Capital Billing, and Security RASP in action!".to_string(),
+                    body: "Welcome to The Sovereign SaaS Blog & Publisher. Explore the top navigation bar to test all front-end paradigms, the Hybrid ORM, Rullst Studio (/studio), Nexus CMS (/nexus), Capital Billing, and Security RASP in action!\n\nUnder Rullst SaaS Multi-tenancy with Task-Local Scopes, database records are strictly isolated with zero cross-tenant leakage. Startups and enterprise teams can build full-featured reactive applications in pure Rust with high velocity without maintaining complex JavaScript npm ecosystems.".to_string(),
                 };
-                let _ = post.save().await;
+                let _ = post1.save().await;
+            }
+
+            // 2. Architecture Comparison: Rullst vs Leptos vs Dioxus Post
+            let comparison_exists = Post::query()
+                .where_eq("title", "Architecture Deep Dive: Rullst vs Leptos vs Dioxus")
+                .first()
+                .await
+                .unwrap_or(None)
+                .is_some();
+
+            if !comparison_exists {
+                let mut post2 = Post {
+                    id: 0,
+                    tenant_id: "community".to_string(),
+                    title: "Architecture Deep Dive: Rullst vs Leptos vs Dioxus".to_string(),
+                    body: "Here is an in-depth breakdown of the 3 front-end paradigms supported and demonstrated in Rullst:\n\n1. ⚡ HTMX SSR (Rullst Native Standard):\n- Core Philosophy: Pure Server-Side Rendering with compile-time `html!` macro.\n- Client Footprint: Zero JavaScript bundle overhead. Microsecond Time-to-First-Byte (TTFB).\n- Best For: Ultra-fast SEO-rich dashboards, SaaS backends, minimal battery and RAM usage on user devices.\n\n2. 🏝️ Wasm Island (Leptos Pattern):\n- Core Philosophy: High-performance WebAssembly (.wasm) binary compiled via `wasm-bindgen`.\n- Client Footprint: Client-side execution inside the browser's WebAssembly VM with fine-grained reactive Signals.\n- Best For: Complex in-browser tools, rich graphics, video processors, and zero-latency client computations.\n\n3. 🔴 LiveView WS (Dioxus Pattern):\n- Core Philosophy: Server-Driven UI synchronized in real-time over persistent WebSockets.\n- Client Footprint: Zero client state logic. State resides entirely in Tokio server memory; state mutations trigger automatic DOM diff patches pushed to the browser.\n- Best For: Real-time feeds, live chat, interactive collaboration, and event-driven admin dashboards.".to_string(),
+                };
+                let _ = post2.save().await;
             }
         })
         .await;

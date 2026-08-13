@@ -95,10 +95,15 @@ pub fn build_table_query(
     let limit = 15;
     let offset = (page - 1) * limit;
 
-    let select_cols: Vec<String> = visible_fields
+    let mut select_cols: Vec<String> = visible_fields
         .iter()
         .map(|f| sanitize_identifier(f.name))
         .collect();
+
+    let clean_pk = sanitize_identifier(entry.pk);
+    if !select_cols.contains(&clean_pk) {
+        select_cols.insert(0, clean_pk);
+    }
 
     let mut select_list = select_cols.join(", ");
     if select_list.is_empty() {
@@ -232,6 +237,8 @@ pub async fn render_table_rows(
                 v.to_string()
             } else if let Ok(v) = row.try_get::<i32, _>(pk) {
                 v.to_string()
+            } else if let Ok(v) = row.try_get::<f64, _>(pk) {
+                (v as i64).to_string()
             } else {
                 row.try_get::<String, _>(pk).unwrap_or_else(|_| "0".to_string())
             };

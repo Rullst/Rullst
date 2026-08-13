@@ -109,7 +109,8 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
-                <title>"Rullst AI - RAG & Vector Semantic Search"</title>
+                <title>"Rullst AI - Provider-Agnostic Vector Semantic Search"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
             </head>
             <body>

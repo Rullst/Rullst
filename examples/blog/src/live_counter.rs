@@ -37,26 +37,29 @@ impl CounterComponent {
                     {self.count}
                 </div>
 
-                <div style="display: flex; gap: 1rem; justify-content: center;">
-
+                <form ws-send="true" style="display: flex; gap: 1rem; justify-content: center; margin: 0;">
                     <button
-                        hx-vals=r#"{"rullst_event": "decrement"}"#
+                        type="submit"
+                        name="rullst_event"
+                        value="decrement"
                         aria-label="Decrease counter"
                         style="padding: 0.75rem 1.5rem; background: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
-                        "- Diminuir"
+                        "- Decrease"
                     </button>
                     <button
-                        hx-vals=r#"{"rullst_event": "increment"}"#
+                        type="submit"
+                        name="rullst_event"
+                        value="increment"
                         aria-label="Increase counter"
                         style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
-                        "+ Aumentar"
+                        "+ Increase"
                     </button>
-                </div>
+                </form>
 
                 <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem;">
-                    "✨ Mágica do Rust: Nenhum arquivo JS criado. Todo o estado é mantido no servidor e as re-renderizações são feitas e enviadas via WebSockets pelo Rullst!"
+                    "✨ Rust Magic: Zero JS files created. All state is maintained on the server and re-renders are sent via WebSockets by Rullst!"
                 </p>
             </div>
         }

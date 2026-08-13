@@ -8,17 +8,17 @@ pub fn render_showcase_nav(active_route: &str) -> String {
     let routes = [
         (
             "/",
-            "⚡ HTMX SSR",
+            "⚡ HTMX SSR (Rullst Native Standard)",
             "Zero-bundle instant server-side rendering",
         ),
         (
             "/editor",
-            "🏝️ Wasm Island",
+            "🏝️ Wasm Island (Leptos Pattern)",
             "Client-side WebAssembly reactive component",
         ),
         (
             "/live-feed",
-            "🔴 LiveView WS",
+            "🔴 LiveView WS (Dioxus Pattern)",
             "Persistent WebSocket bidirectional state sync",
         ),
         (
@@ -40,6 +40,11 @@ pub fn render_showcase_nav(active_route: &str) -> String {
             "/ai-assistant",
             "🤖 AI & RAG",
             "Vector semantic search & Prompt Shield",
+        ),
+        (
+            "/omni",
+            "📱 Omni App (Mobile & Desktop)",
+            "Interactive Mobile Viewport Simulator and Desktop Exporter",
         ),
     ];
 
@@ -66,23 +71,43 @@ pub fn render_showcase_nav(active_route: &str) -> String {
     html! {
         <div class="showcase-banner">
             <div class="showcase-banner-inner">
-                <div class="showcase-brand">
+                <a href="/" class="showcase-brand" style="text-decoration: none; color: inherit;">
+                    <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" class="showcase-brand-img" />
                     <span class="showcase-logo">"RULLST"</span>
                     <span class="showcase-badge">"v12.0 Enterprise"</span>
                     <span class="tenant-badge" title="Active Multi-Tenant Context">
                         "Tenant: " <strong>{&tenant_id}</strong>
                     </span>
+                </a>
+
+                <button type="button" class="hamburger-btn" onclick="var d=document.getElementById('showcase-drawer'); if(d){d.classList.toggle('open');}" aria-label="Toggle Navigation Menu">
+                    "☰"
+                </button>
+
+                <div class="showcase-nav-list desktop-nav">
+                    { rullst::html::RawHtml(buttons_html.clone()) }
                 </div>
-                <div class="showcase-nav-list">
-                    { rullst::html::RawHtml(buttons_html) }
-                </div>
-                <div class="showcase-portals">
+                <div class="showcase-portals desktop-nav">
                     <a href="/studio" target="_blank" class="portal-btn studio-btn" title="Open Developer Control Room">
                         "🚀 Studio"
                     </a>
                     <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">
                         "🛡️ Nexus"
                     </a>
+                </div>
+
+                <div id="showcase-drawer" class="showcase-mobile-drawer">
+                    <div class="showcase-mobile-nav-list">
+                        { rullst::html::RawHtml(buttons_html) }
+                    </div>
+                    <div class="showcase-mobile-portals">
+                        <a href="/studio" target="_blank" class="portal-btn studio-btn" title="Open Developer Control Room">
+                            "🚀 Studio"
+                        </a>
+                        <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">
+                            "🛡️ Nexus"
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -135,6 +160,13 @@ pub fn render_shared_styles() -> String {
         align-items: center;
         gap: 0.6rem;
     }
+    .showcase-brand-img {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        flex-shrink: 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
     .showcase-logo {
         font-weight: 900;
         font-size: 1.15rem;
@@ -160,11 +192,70 @@ pub fn render_shared_styles() -> String {
         padding: 0.15rem 0.5rem;
         border-radius: 0.375rem;
     }
+    .hamburger-btn {
+        display: none;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid #334155;
+        color: #fff;
+        font-size: 1.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .hamburger-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: #3b82f6;
+    }
     .showcase-nav-list {
         display: flex;
         align-items: center;
         gap: 0.4rem;
         flex-wrap: wrap;
+    }
+    .showcase-mobile-drawer {
+        display: none;
+    }
+    @media (max-width: 900px) {
+        .hamburger-btn {
+            display: block;
+        }
+        .desktop-nav {
+            display: none !important;
+        }
+        .showcase-mobile-drawer {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding-top: 0.75rem;
+            margin-top: 0.5rem;
+            border-top: 1px solid #1e293b;
+        }
+        .showcase-mobile-drawer.open {
+            display: flex;
+        }
+        .showcase-mobile-nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            width: 100%;
+        }
+        .showcase-mobile-nav-list .showcase-btn {
+            width: 100%;
+            text-align: left;
+            padding: 0.6rem 0.85rem;
+        }
+        .showcase-mobile-portals {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .showcase-mobile-portals .portal-btn {
+            flex: 1;
+            text-align: center;
+            padding: 0.6rem;
+        }
     }
     .showcase-btn {
         color: var(--text-muted);

@@ -102,6 +102,7 @@ pub async fn pricing_page() -> impl IntoResponse {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst Capital - SaaS Monetization & Fiscal Engine"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
             </head>
             <body>

@@ -115,3 +115,35 @@ async fn test_studio_table_empty() {
     response.assert_status(200);
     response.assert_see("No records found inside this table.");
 }
+
+#[tokio::test]
+async fn test_studio_all_tool_endpoints() {
+    init_test_db().await;
+    let app = TestApp::new(build_studio_router());
+
+    // Test prefixed routes (/studio/*)
+    let endpoints = vec![
+        "/studio",
+        "/studio/migrations",
+        "/studio/ai",
+        "/studio/radar",
+        "/studio/capital",
+        "/studio/security",
+        "/studio/traces",
+        "/migrations",
+        "/ai",
+        "/radar",
+        "/capital",
+        "/security",
+        "/traces",
+    ];
+
+    for ep in endpoints {
+        let resp = app.get(ep).await;
+        resp.assert_status(200);
+
+        // Test with HTMX header
+        let htmx_resp = app.get(ep).header("hx-request", "true").await;
+        htmx_resp.assert_status(200);
+    }
+}

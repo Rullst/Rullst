@@ -5,6 +5,7 @@
 pub mod ai_demo;
 pub mod billing_demo;
 pub mod interactive_counter;
+pub mod omni_demo;
 pub mod repository_demo;
 pub mod security_demo;
 pub mod showcase_nav;
@@ -31,6 +32,53 @@ pub mod app {
         pub tenant_id: String,
         pub title: String,
         pub body: String,
+    }
+
+    impl rullst_nexus::NexusModel for Post {
+        fn nexus_table() -> &'static str {
+            "posts"
+        }
+        fn nexus_label() -> &'static str {
+            "Blog Posts"
+        }
+        fn nexus_icon() -> &'static str {
+            "📝"
+        }
+        fn nexus_pk() -> &'static str {
+            "id"
+        }
+        fn nexus_fields() -> Vec<rullst_nexus::FieldMeta> {
+            vec![
+                rullst_nexus::FieldMeta {
+                    name: "id",
+                    label: "ID",
+                    kind: rullst_nexus::FieldKind::Number,
+                    hidden: true,
+                    readonly: true,
+                },
+                rullst_nexus::FieldMeta {
+                    name: "tenant_id",
+                    label: "Tenant ID",
+                    kind: rullst_nexus::FieldKind::Text,
+                    hidden: false,
+                    readonly: false,
+                },
+                rullst_nexus::FieldMeta {
+                    name: "title",
+                    label: "Title",
+                    kind: rullst_nexus::FieldKind::Text,
+                    hidden: false,
+                    readonly: false,
+                },
+                rullst_nexus::FieldMeta {
+                    name: "body",
+                    label: "Content",
+                    kind: rullst_nexus::FieldKind::Textarea,
+                    hidden: false,
+                    readonly: false,
+                },
+            ]
+        }
     }
 
     impl PostQueryBuilder {
@@ -92,6 +140,7 @@ pub mod app {
                 <head>
                     <meta charset="utf-8" />
                     <title>"Rullst Sovereign SaaS Blog & Publisher"</title>
+                    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                     <style>{ rullst::html::RawHtml(styles) }</style>
                 </head>
                 <body>
@@ -162,9 +211,10 @@ pub mod app {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst LiveView - Real-time WebSockets Feed"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
-                <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
-                <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js" integrity="sha384-QILjBFil9/FrWrP1Y9Qh3vBfd7kiQE8h1BX9auwiVgsFlGwe4tEl7Y966BG178W6" crossorigin="anonymous"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+                <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
             </head>
             <body>
                 { rullst::html::RawHtml(nav) }
@@ -199,6 +249,7 @@ pub mod app {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst Wasm Island - Client-side Reactive WebAssembly"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
             </head>
             <body>
@@ -242,6 +293,10 @@ pub mod app {
         )
     }
 
+    pub async fn favicon_handler() -> impl IntoResponse {
+        Redirect::temporary("https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png")
+    }
+
     pub async fn robots_txt() -> impl IntoResponse {
         (
             axum::http::StatusCode::OK,
@@ -263,19 +318,14 @@ pub mod app {
         let headers = response.headers_mut();
         headers.insert(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:;".parse().unwrap(),
-        );
-        headers.insert(
-            "Cross-Origin-Embedder-Policy",
-            "require-corp".parse().unwrap(),
+            "default-src 'self' https://unpkg.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://*.githubusercontent.com; connect-src 'self' ws: wss:;".parse().unwrap(),
         );
         headers.insert(
             "Cross-Origin-Resource-Policy",
             "cross-origin".parse().unwrap(),
         );
-        headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
         headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
-        headers.insert("X-Frame-Options", "DENY".parse().unwrap());
+        headers.insert("X-Frame-Options", "SAMEORIGIN".parse().unwrap());
         headers.insert("X-XSS-Protection", "1; mode=block".parse().unwrap());
         response
     }
@@ -293,6 +343,7 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
     let studio_router = rullst_studio::Studio::new().into_router();
     let nexus_router = rullst_nexus::Nexus::new()
         .with_brand("Rullst Sovereign Publisher")
+        .register::<Post>()
         .build();
 
     let router = routes![
@@ -308,7 +359,9 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
         get("/billing" => crate::billing_demo::pricing_page),
         get("/security-demo" => crate::security_demo::security_page),
         get("/ai-assistant" => crate::ai_demo::ai_page),
+        get("/omni" => crate::omni_demo::omni_page),
         get("/wp-admin" => honeypot_trap),
+        get("/favicon.ico" => favicon_handler),
         get("/robots.txt" => robots_txt),
         get("/sitemap.xml" => sitemap_xml),
     ]

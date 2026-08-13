@@ -194,6 +194,8 @@ async fn test_nexus_full_flow() {
     res_table.assert_status(200);
     res_table.assert_see("Alice");
     res_table.assert_see("bob@example.com");
+    res_table.assert_see("id=\"row-1\"");
+    res_table.assert_see("id=\"row-2\"");
 
     // 4. Search view
     let res_search = app
@@ -202,6 +204,7 @@ async fn test_nexus_full_flow() {
         .await;
     res_search.assert_status(200);
     res_search.assert_see("Alice");
+    res_search.assert_see("id=\"row-1\"");
     res_search.assert_dont_see("Bob");
 
     // 5. New Form rendering

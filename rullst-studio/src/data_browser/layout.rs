@@ -19,7 +19,7 @@ pub fn render_sidebar_oob(tables: &[String], active_table: Option<&str>) -> Stri
             "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-l-4 border-transparent"
         };
 
-        let path = format!("/tables/{}", urlencoding::encode(t));
+        let path = format!("/studio/tables/{}", urlencoding::encode(t));
         let link_html = html! {
             <a href="#"
                hx-get={path.as_str()}
@@ -85,7 +85,7 @@ pub fn studio_layout(content: String, active_table: Option<&str>, tables: &[Stri
         <body class="h-full text-slate-100 flex flex-col antialiased selection:bg-sky-500/30 selection:text-sky-200">
             <header class="flex-shrink-0 bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between shadow-lg gap-4">
                 <div class="flex items-center gap-3">
-                    <a href="#" hx-get="/" hx-target="#studio-content" hx-push-url="true" class="flex items-center gap-2 group">
+                    <a href="#" hx-get="/studio" hx-target="#studio-content" hx-push-url="true" class="flex items-center gap-2 group">
                         <span class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
                             "Rullst"
                         </span>
@@ -96,7 +96,7 @@ pub fn studio_layout(content: String, active_table: Option<&str>, tables: &[Stri
                 </div>
 
                 <nav class="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80 overflow-x-auto text-xs font-semibold">
-                    <a href="#" hx-get="/" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="#" hx-get="/studio" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🏠 Control Center"</span>
                     </a>
                     <a href="#" hx-get="/studio/migrations" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">

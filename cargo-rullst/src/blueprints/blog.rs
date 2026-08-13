@@ -35,6 +35,8 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
     let router = routes![
         get("/" => controllers::blog_controller::index),
         get("/posts/{{slug}}" => controllers::blog_controller::show),
+        get("/robots.txt" => controllers::blog_controller::robots_txt),
+        get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
     ].nest_axum("/nexus", nexus);
     Box::into_raw(Box::new(router))
 }}
@@ -104,6 +106,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let router = routes![
         get("/" => controllers::blog_controller::index),
         get("/posts/{slug}" => controllers::blog_controller::show),
+        get("/robots.txt" => controllers::blog_controller::robots_txt),
+        get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
     ].nest_axum("/nexus", nexus);
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
@@ -236,6 +240,21 @@ pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
     let posts = {all_call};
     let post = posts.into_iter().find(|p| p.slug == slug).unwrap();
     Html(blog::detail_page(post))
+}}
+
+pub async fn robots_txt() -> impl IntoResponse {{
+    (
+        rullst::http::StatusCode::OK,
+        "User-agent: *\nDisallow: /studio\nDisallow: /nexus\nSitemap: /sitemap.xml\n",
+    )
+}}
+
+pub async fn sitemap_xml() -> impl IntoResponse {{
+    (
+        rullst::http::StatusCode::OK,
+        [(rullst::http::header::CONTENT_TYPE, "application/xml")],
+        r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>/</loc></url></urlset>"#,
+    )
 }}
 "##,
         repo_import = repo_import,

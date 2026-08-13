@@ -59,7 +59,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         let enc = urlencoding::encode(t.as_str());
         let _ = write!(
             table_badges_html,
-            r##"<a href="#" hx-get="/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+            r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
                 <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
                 <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
             </a>"##,
@@ -290,7 +290,7 @@ pub async fn handle_table(
                            name="search"
                            value="{}"
                            placeholder="Search records..."
-                           hx-get="/tables/{}"
+                           hx-get="/studio/tables/{}"
                            hx-target="#studio-content"
                            hx-trigger="keyup changed delay:300ms"
                            hx-push-url="true"
@@ -408,7 +408,7 @@ fn build_pagination_html(
     if page > 1 {
         let _ = write!(
             html,
-            r##"<a href="#" hx-get="/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Previous</a>"##,
+            r##"<a href="#" hx-get="/studio/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Previous</a>"##,
             encoded_tbl,
             page - 1,
             urlencoding::encode(search_str)
@@ -424,7 +424,7 @@ fn build_pagination_html(
     if page < total_pages {
         let _ = write!(
             html,
-            r##"<a href="#" hx-get="/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Next</a>"##,
+            r##"<a href="#" hx-get="/studio/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Next</a>"##,
             encoded_tbl,
             page + 1,
             urlencoding::encode(search_str)
@@ -446,7 +446,7 @@ pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> i
             let enc = urlencoding::encode(t.as_str());
             let _ = write!(
                 table_badges_html,
-                r##"<a href="#" hx-get="/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+                r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
                     <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
                     <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
                 </a>"##,
@@ -571,74 +571,131 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         .siem_dispatches_count
         .load(std::sync::atomic::Ordering::Relaxed);
 
+    let events = sec_store
+        .live_events
+        .lock()
+        .map(|e| e.iter().take(6).cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    let mut incidents_html = String::new();
+    if events.is_empty() {
+        incidents_html.push_str(
+            r#"<div class="p-6 text-center text-xs text-slate-500 font-medium bg-slate-950/60 border border-slate-800/80 rounded-xl">
+                🛡️ Zero critical threats detected. RASP Honeypot traps and WAF guards operating normally.
+            </div>"#,
+        );
+    } else {
+        incidents_html.push_str(r#"<div class="space-y-3 font-mono text-xs">"#);
+        for evt in events {
+            let (badge_color, border_color) = match evt.event_type.as_str() {
+                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => {
+                    ("text-rose-400 border-rose-500/30 bg-rose-500/10", "border-rose-900/40")
+                }
+                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => {
+                    ("text-cyan-400 border-cyan-500/30 bg-cyan-500/10", "border-cyan-900/40")
+                }
+                _ => ("text-amber-400 border-amber-500/30 bg-amber-500/10", "border-amber-900/40"),
+            };
+
+            incidents_html.push_str(&format!(
+                r#"<div class="p-3.5 bg-slate-950 border {border_color} rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold border {badge_color}">{evt_type}</span>
+                        <span class="text-slate-300 font-semibold">{details}</span>
+                    </div>
+                    <span class="text-slate-500 text-[11px] font-mono">{ts}</span>
+                </div>"#,
+                border_color = border_color,
+                badge_color = badge_color,
+                evt_type = rullst_core::html::escape_str(&evt.event_type),
+                ts = rullst_core::html::escape_str(&evt.timestamp_str),
+                details = rullst_core::html::escape_str(&evt.details)
+            ));
+        }
+        incidents_html.push_str("</div>");
+    }
+
     let content = format!(
-        r#"<div class="p-8 font-mono space-y-8">
-            <header class="pb-6 border-b border-slate-800 flex items-center justify-between">
+        r#"<div class="p-6 md:p-8 font-mono space-y-8 max-w-7xl mx-auto overflow-y-auto">
+            <header class="pb-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold text-amber-400 flex items-center gap-3">
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-amber-400 flex items-center gap-3">
                         <span>🛡️ Visual Threat Radar & AI Security</span>
                     </h1>
-                    <p class="text-slate-400 text-sm mt-1">Rullst Security SOC Shield, RASP Engine, AI Sentinel & Real-Time SOC Telemetry</p>
+                    <p class="text-slate-400 text-xs md:text-sm mt-1">Rullst Security SOC Shield, RASP Engine, AI Sentinel & Real-Time SOC Telemetry</p>
                 </div>
-                <span class="px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-lg text-xs font-bold flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    🛡️ Enterprise Threat Radar Active
-                </span>
+                <div class="flex items-center gap-3">
+                    <span class="px-3.5 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 rounded-full text-xs font-bold flex items-center gap-2 shadow-inner">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        Production Shield Active
+                    </span>
+                </div>
             </header>
 
             <!-- 9 Live Metric Cards Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔒 Secret Log Redactor</div>
                     <div class="text-3xl font-bold text-emerald-400 mt-1">{log_redactions}</div>
                     <div class="text-xs text-slate-400 mt-2">Zero-leak bearer &amp; token redactions</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🧬 Zero-Trust Fingerprints</div>
                     <div class="text-3xl font-bold text-cyan-400 mt-1">{zero_trust_mismatches}</div>
                     <div class="text-xs text-slate-400 mt-2">Hijack &amp; subnet drift interventions</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🛡️ Schema Guard Intercepts</div>
                     <div class="text-3xl font-bold text-amber-400 mt-1">{schema_violations}</div>
                     <div class="text-xs text-slate-400 mt-2">JSON depth &amp; payload size limits</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔑 Subresource Integrity (SRI)</div>
                     <div class="text-3xl font-bold text-purple-400 mt-1">{sri_signed}</div>
                     <div class="text-xs text-slate-400 mt-2">SHA-384 asset signature tags</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔐 TOTP MFA Validations</div>
                     <div class="text-3xl font-bold text-emerald-400 mt-1">{mfa_verifications}</div>
                     <div class="text-xs text-slate-400 mt-2">RFC 6238 2FA authentications</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🍯 Dynamic Deception Traps</div>
                     <div class="text-3xl font-bold text-rose-400 mt-1">{deception_hits}</div>
                     <div class="text-xs text-slate-400 mt-2">Decoy route hits (/.env, /admin)</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🌐 CSWSH Protection</div>
                     <div class="text-3xl font-bold text-yellow-400 mt-1">{cswsh_blocks}</div>
                     <div class="text-xs text-slate-400 mt-2">Cross-Site WebSocket hijacks blocked</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">⚡ Sliding-Window Rate Limit</div>
                     <div class="text-3xl font-bold text-cyan-400 mt-1">{rate_limit_blocks}</div>
                     <div class="text-xs text-slate-400 mt-2">IP bucket throttles enforced</div>
                 </div>
-                <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
+                <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">📡 SIEM Common Event Log</div>
                     <div class="text-3xl font-bold text-emerald-400 mt-1">{siem_dispatches}</div>
                     <div class="text-xs text-slate-400 mt-2">CEF &amp; Webhook alerts exported</div>
                 </div>
             </div>
 
+            <!-- Live Security Incident Feed -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-md">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                        <span>🚨 Live Security Incident Stream</span>
+                    </h2>
+                    <span class="text-xs text-slate-500 font-mono">Real-Time In-Memory Stream</span>
+                </div>
+                {incidents_html}
+            </div>
+
             {ai_setup_box}
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-md">
                     <h2 class="text-lg font-bold text-cyan-400 mb-4 flex items-center gap-2">
                         <span>🤖 rullst-ai Guardrails</span>
                     </h2>
@@ -658,7 +715,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-md">
                     <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
                         <span>🔒 rullst-security Built-ins</span>
                     </h2>
@@ -678,7 +735,21 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     </div>
                 </div>
             </div>
-        </div>"#
+        </div>"#,
+        log_redactions = log_redactions,
+        zero_trust_mismatches = zero_trust_mismatches,
+        schema_violations = schema_violations,
+        sri_signed = sri_signed,
+        mfa_verifications = mfa_verifications,
+        deception_hits = deception_hits,
+        cswsh_blocks = cswsh_blocks,
+        rate_limit_blocks = rate_limit_blocks,
+        siem_dispatches = siem_dispatches,
+        incidents_html = incidents_html,
+        ai_setup_box = ai_setup_box,
+        ai_filter_status = ai_filter_status,
+        ai_masking_status = ai_masking_status,
+        ai_quota_status = ai_quota_status
     );
 
     if is_htmx {
