@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786575876317,
+  "lastUpdate": 1786625120749,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -2831,6 +2831,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1391,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ff0282f330397a21fb718a4d87654ccef38745ab",
+          "message": "ci: migrate to setup-rust-toolchain, update toolchain components, and include missing packages in zero-panic checks",
+          "timestamp": "2026-08-13T09:37:06-03:00",
+          "tree_id": "d1c0bcc61e2ec2f5653abfff1f989e80db70bc81",
+          "url": "https://github.com/Rullst/Rullst/commit/ff0282f330397a21fb718a4d87654ccef38745ab"
+        },
+        "date": 1786625120065,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 729,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 615,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1382,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1424,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
