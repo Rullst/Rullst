@@ -34,6 +34,7 @@ jobs:
           cargo clippy \
             -p rullst \
             -p rullst-core \
+            -p rullst-security \
             -p rullst-orm \
             -p rullst-connect \
             -p rullst-auth \
@@ -42,6 +43,7 @@ jobs:
             -p rullst-nexus \
             -p rullst-capital \
             -p rullst-studio \
+            -p rullst-iot \
             --lib --all-features \
             -- \
             -D clippy::unwrap_used \
