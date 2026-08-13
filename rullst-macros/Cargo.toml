@@ -3,11 +3,15 @@ name = "rullst-macros"
 version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
-description = "JSX-like compilation macros for Rullst framework"
+rust-version = "1.96.0"
+description = "Procedural and JSX-like compilation macros for the Rullst framework"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-rust-version = "1.96.0"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-macros"
+keywords = ["rullst", "macros", "proc-macro", "jsx", "html"]
+categories = ["development-tools::procedural-macro-helpers"]
 
 [lib]
 proc-macro = true

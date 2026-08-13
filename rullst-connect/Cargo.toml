@@ -1,12 +1,17 @@
 [package]
 name = "rullst-connect"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
-description = "OAuth2 Social Login for Rust web frameworks."
+rust-version = "1.96.0"
+description = "OAuth2 social login, enterprise message queues, and real-time synchronization for Rullst."
 license = "MIT"
-repository = "https://github.com/Rullst/rullst-connect"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-connect"
+keywords = ["oauth2", "connect", "authentication", "login", "queues"]
 categories = ["web-programming", "authentication"]
-keywords = ["oauth2", "connect", "authentication", "login"]
 
 [features]
 default = []

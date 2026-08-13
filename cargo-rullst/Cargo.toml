@@ -3,11 +3,15 @@ name = "cargo-rullst"
 version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
-description = "The official command-line interface (CLI) for managing Rullst applications."
+rust-version = "1.96.0"
+description = "The official command-line interface (CLI) for managing and scaffolding Rullst applications."
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-rust-version = "1.96.0"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/cargo-rullst"
+keywords = ["rullst", "cli", "scaffold", "generator", "devtools"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "cargo-rullst"

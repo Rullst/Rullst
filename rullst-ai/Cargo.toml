@@ -1,8 +1,17 @@
 [package]
 name = "rullst-ai"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
+rust-version = "1.96.0"
+description = "Provider-agnostic LLM client, prompt defense, and PII masking engine for Rullst."
 license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-ai"
+keywords = ["ai", "llm", "openai", "gemini", "claude"]
+categories = ["api-bindings", "web-programming"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }

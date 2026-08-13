@@ -1,8 +1,17 @@
 [package]
 name = "rullst-security"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
+rust-version = "1.96.0"
+description = "Runtime application security, RASP, OWASP headers, Login Jail, and WAF middleware for Rullst."
 license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-security"
+keywords = ["security", "owasp", "rasp", "waf", "middleware"]
+categories = ["web-programming", "network-programming"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }

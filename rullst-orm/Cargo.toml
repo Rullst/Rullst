@@ -1,15 +1,17 @@
 [package]
 name = "rullst-orm"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
-authors = ["Venelouis"]
-description = "Fast, un-opinionated, database-agnostic ORM for Rust"
+description = "Fast, un-opinionated, database-agnostic ORM and query builder for Rust"
 license = "MIT"
-repository = "https://github.com/Rullst/rullst-orm"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-orm"
 keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
-readme = "../README.md"
 
 [dependencies]
 mutants = "0.0.4"

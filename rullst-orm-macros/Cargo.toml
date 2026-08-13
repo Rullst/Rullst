@@ -1,12 +1,17 @@
 [package]
 name = "rullst-orm-macros"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
-description = "Procedural macros for the rullst-orm ORM."
+description = "Procedural macros and derive attributes for the rullst-orm Active Record pattern."
 license = "MIT"
-repository = "https://github.com/Rullst/rullst-orm"
 readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-orm-macros"
+keywords = ["orm", "proc-macro", "database", "sqlx", "derive"]
+categories = ["development-tools::procedural-macro-helpers", "database"]
 
 [lib]
 proc-macro = true

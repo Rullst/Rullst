@@ -1,8 +1,17 @@
 [package]
 name = "rullst-capital"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
+rust-version = "1.96.0"
+description = "Real-time SaaS billing metrics, MRR/ARR analytics, and webhook audit log ledger for Rullst."
 license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-capital"
+keywords = ["saas", "mrr", "stripe", "billing", "analytics"]
+categories = ["web-programming"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }

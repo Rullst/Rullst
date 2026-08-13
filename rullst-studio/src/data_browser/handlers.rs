@@ -588,13 +588,18 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         incidents_html.push_str(r#"<div class="space-y-3 font-mono text-xs">"#);
         for evt in events {
             let (badge_color, border_color) = match evt.event_type.as_str() {
-                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => {
-                    ("text-rose-400 border-rose-500/30 bg-rose-500/10", "border-rose-900/40")
-                }
-                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => {
-                    ("text-cyan-400 border-cyan-500/30 bg-cyan-500/10", "border-cyan-900/40")
-                }
-                _ => ("text-amber-400 border-amber-500/30 bg-amber-500/10", "border-amber-900/40"),
+                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => (
+                    "text-rose-400 border-rose-500/30 bg-rose-500/10",
+                    "border-rose-900/40",
+                ),
+                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => (
+                    "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
+                    "border-cyan-900/40",
+                ),
+                _ => (
+                    "text-amber-400 border-amber-500/30 bg-amber-500/10",
+                    "border-amber-900/40",
+                ),
             };
 
             incidents_html.push_str(&format!(

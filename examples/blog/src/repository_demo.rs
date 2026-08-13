@@ -76,7 +76,9 @@ impl PostRepository {
         let posts = rows
             .into_iter()
             .map(|r| RawPostRecord {
-                id: r.try_get::<i64, _>("id").unwrap_or_else(|_| r.get::<i32, _>("id") as i64),
+                id: r
+                    .try_get::<i64, _>("id")
+                    .unwrap_or_else(|_| r.get::<i32, _>("id") as i64),
                 tenant_id: r.get("tenant_id"),
                 title: r.get("title"),
                 body: r.get("body"),

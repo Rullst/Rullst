@@ -1,10 +1,17 @@
 [package]
 name = "rullst-iot"
 version = "12.0.0"
+authors = ["Rullst Core Team"]
 edition = "2024"
-authors = ["Rullst Team <team@rullst.dev>"]
-license = "MIT OR Apache-2.0"
-description = "Embedded IoT & Edge Hardware Supremacy crate for the Rullst Framework (#![no_std] compatible)."
+rust-version = "1.96.0"
+description = "Embedded IoT and edge sensor ingestion engine for Rullst (#![no_std] compatible)."
+license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-iot"
+keywords = ["iot", "embedded", "no-std", "mqtt", "sensors"]
+categories = ["embedded", "no-std", "network-programming"]
 
 [features]
 default = ["std"]
