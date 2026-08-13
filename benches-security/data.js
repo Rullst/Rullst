@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786625226021,
+  "lastUpdate": 1786651442594,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -1126,6 +1126,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d512c91c085dd1e2d5089a6aa2d5c5c619db576b",
+          "message": "chore: standardize package metadata across all crates and refactor studio routing for readability",
+          "timestamp": "2026-08-13T16:54:09-03:00",
+          "tree_id": "0f3f9bebed17a5ef6288a3f72161d5e2c1e4d090",
+          "url": "https://github.com/Rullst/Rullst/commit/d512c91c085dd1e2d5089a6aa2d5c5c619db576b"
+        },
+        "date": 1786651441827,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 170992,
+            "range": "± 42734",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 664,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
