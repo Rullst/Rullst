@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786575896809,
+  "lastUpdate": 1786625141374,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1769,6 +1769,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 70,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ff0282f330397a21fb718a4d87654ccef38745ab",
+          "message": "ci: migrate to setup-rust-toolchain, update toolchain components, and include missing packages in zero-panic checks",
+          "timestamp": "2026-08-13T09:37:06-03:00",
+          "tree_id": "d1c0bcc61e2ec2f5653abfff1f989e80db70bc81",
+          "url": "https://github.com/Rullst/Rullst/commit/ff0282f330397a21fb718a4d87654ccef38745ab"
+        },
+        "date": 1786625140706,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
