@@ -21,10 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
-        with:
-          toolchain: stable
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
 
       - name: Run unit & OTA signature tests
         run: cargo test -p rullst-iot --all-features
@@ -35,11 +33,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Rust + ARM target
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+      - name: Set up Rust toolchain (with target)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          toolchain: stable
-          targets: thumbv7em-none-eabihf
+          target: thumbv7em-none-eabihf
+
+      - name: Add ARM target
+        run: rustup target add thumbv7em-none-eabihf
 
       - name: Build no_std binary (Cortex-M4)
         run: |
