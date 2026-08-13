@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786625288609,
+  "lastUpdate": 1786651504822,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1007,6 +1007,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 783,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d512c91c085dd1e2d5089a6aa2d5c5c619db576b",
+          "message": "chore: standardize package metadata across all crates and refactor studio routing for readability",
+          "timestamp": "2026-08-13T16:54:09-03:00",
+          "tree_id": "0f3f9bebed17a5ef6288a3f72161d5e2c1e4d090",
+          "url": "https://github.com/Rullst/Rullst/commit/d512c91c085dd1e2d5089a6aa2d5c5c619db576b"
+        },
+        "date": 1786651504026,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1653,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 391,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 783,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
