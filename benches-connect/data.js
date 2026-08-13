@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786625141374,
+  "lastUpdate": 1786651357356,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -1798,6 +1798,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 71,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d512c91c085dd1e2d5089a6aa2d5c5c619db576b",
+          "message": "chore: standardize package metadata across all crates and refactor studio routing for readability",
+          "timestamp": "2026-08-13T16:54:09-03:00",
+          "tree_id": "0f3f9bebed17a5ef6288a3f72161d5e2c1e4d090",
+          "url": "https://github.com/Rullst/Rullst/commit/d512c91c085dd1e2d5089a6aa2d5c5c619db576b"
+        },
+        "date": 1786651356588,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
             "range": "± 0",
             "unit": "ns/iter"
           }
