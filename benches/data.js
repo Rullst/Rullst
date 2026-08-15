@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786812830608,
+  "lastUpdate": 1786819427973,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8101,6 +8101,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1840,
             "range": "± 34",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "10dce6749335e9c0456c20ec6a5710d203ecde8f",
+          "message": "feat: replace Topcoat CSS demonstration with Pico CSS integration in examples",
+          "timestamp": "2026-08-15T15:41:39-03:00",
+          "tree_id": "fbecad99e3c93155a04ceb3d571cd65695eb87bb",
+          "url": "https://github.com/Rullst/Rullst/commit/10dce6749335e9c0456c20ec6a5710d203ecde8f"
+        },
+        "date": 1786819427222,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 991,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 641,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2318,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
