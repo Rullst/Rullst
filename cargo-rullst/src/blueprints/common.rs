@@ -101,8 +101,8 @@ pub fn frontend_engine_badge(frontend_engine: &str) -> &'static str {
         "⚡ Rullst LiveView Server-Driven UI Active"
     } else if frontend_engine.contains("Wasm") || frontend_engine.contains("Island") {
         "🏝️ Rullst Reactive Wasm Island Engine Active"
-    } else if frontend_engine.contains("Topcoat") {
-        "🎨 Rullst Zero-Build Pure CSS (Topcoat UI) Active"
+    } else if frontend_engine.contains("Pico") || frontend_engine.contains("Topcoat") {
+        "🎨 Rullst Zero-Build Semantic CSS (Pico.css) Active"
     } else if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
         "📄 Rullst File-Based Classic Templates (Tera) Active"
     } else {

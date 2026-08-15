@@ -145,7 +145,7 @@ While single-paradigm frameworks force developers into a single rigid model (eit
 | **Dioxus** | Virtual DOM (React-style) | Client VDOM reconciliation | Heavy (`.wasm` / JS) | ❌ None | ❌ None | ❌ None |
 | **Loco.rs** | File-Based (`templates/*.html`) | Static HTML + external JS | 0 KB | ❌ Basic | ❌ None | ❌ None |
 | **Topcoat Tokio** | Transpiled Micro-JS SSR | Macro-generated JS snippets | Light (JS snippets) | ❌ None | ❌ None | ❌ None |
-| **👑 Rullst** | **Sovereign Multi-Engine** (HTMX SSR, LiveView WS, Wasm Islands, Topcoat Pure CSS, Tera Templates) | **Tokio WebSockets LiveView diffs OR Wasm Islands** | **0 KB JS by default** | **✅ RASP AST Shield + AI Firewall + Anti-Timing Guard** | **✅ `rullst-capital` (11 Gateways + SPED NFS-e)** | **✅ Studio (`:5555`) + Nexus CMS (`/nexus`)** |
+| **👑 Rullst** | **Sovereign Multi-Engine** (HTMX SSR, LiveView WS, Wasm Islands, Pico Semantic CSS, Tera Templates) | **Tokio WebSockets LiveView diffs OR Wasm Islands** | **0 KB JS by default** | **✅ RASP AST Shield + AI Firewall + Anti-Timing Guard** | **✅ `rullst-capital` (11 Gateways + SPED NFS-e)** | **✅ Studio (`:5555`) + Nexus CMS (`/nexus`)** |
 
 ---
 
@@ -162,7 +162,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -179,10 +179,10 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
   </tr>
   <tr>
     <td align="center">
-      <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="https://github.com/Rullst/Rullst/blob/main/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>
@@ -190,7 +190,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 ---
 <br>
 
-![Rullst CLI Initiating LMS Blueprint](https://github.com/Rullst/Rullst/blob/main/Interative%20Terminal%20Dashboard.png)
+![Rullst CLI Initiating LMS Blueprint](https://raw.githubusercontent.com/Rullst/Rullst/main/Interative%20Terminal%20Dashboard.png)
 
 ---
 
@@ -234,7 +234,7 @@ These are the **titans of the Rust web ecosystem**. They provide pristine routin
 ### 🚂 Full-Stack Frameworks (Loco, Topcoat)
 **Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators with SeaORM and Tera templates.
 **Topcoat** is a new, experimental batteries-included framework from the Tokio team focusing on server-rendered reactivity via macro-transpiled micro-JS and Toasty ORM.
-* **Where Rullst Excels:** **Sovereign Multi-Engine & Total DX.** Rullst unifies all 5 frontend paradigms (HTMX, LiveView, Wasm Islands, Topcoat Pure CSS, Tera templates), provides an immersive Web-based Database Studio (`cargo rullst studio` at `:5555`), built-in RASP security shields, zero-panic architectural guarantees, and native Omni desktop/mobile packaging via **Tauri 2.0** (`cargo rullst make:omni`).
+* **Where Rullst Excels:** **Sovereign Multi-Engine & Total DX.** Rullst unifies all 5 frontend paradigms (HTMX, LiveView, Wasm Islands, Pico Semantic CSS, Tera templates), provides an immersive Web-based Database Studio (`cargo rullst studio` at `:5555`), built-in RASP security shields, zero-panic architectural guarantees, and native Omni desktop/mobile packaging via **Tauri 2.0** (`cargo rullst make:omni`).
 
 ### 🎨 Isomorphic Full-Stack Frameworks (Dioxus, Leptos)
 These are cutting-edge frameworks that let you write both frontend and backend in a single Rust file using Server Functions and SSR (similar to Next.js or Nuxt).
@@ -268,7 +268,7 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Embedded IoT & Edge Hardware (`#![no_std]`)** | ✅ (`rullst-iot` / STM32 / ESP32) | ❌ | ❌ | ❌ | ❌ |
 | **SaaS Revenue Dashboard & 11 Payment Gateways** | ✅ (`rullst-capital`: Stripe, Alipay, InfinitePay, SPED NFS-e) | ❌ | ❌ | ❌ | ❌ |
 | **Background Workers & Redis Task Queues** | ✅ (`rullst::queue`) | ✅ (Background Tasks) | ❌ | ❌ | ❌ |
-| **Wasm Islands & 5 Hybrid Frontend Engines** | ✅ (HTMX, LiveView, Wasm Islands, Topcoat, Tera) | ❌ (Tera Only) | ❌ (Micro-JS Only) | ✅ (Core WASM Focus) | ❌ |
+| **Wasm Islands & 5 Hybrid Frontend Engines** | ✅ (HTMX, LiveView, Wasm Islands, Pico Semantic CSS, Tera) | ❌ (Tera Only) | ❌ (Micro-JS Only) | ✅ (Core WASM Focus) | ❌ |
 | **TypeScript AST SDK Generator** | ✅ (`cargo rullst generate:ts`) | ❌ | ❌ | ❌ | ❌ |
 | **Zero-Panics Policy Enforced** | ✅ (Typed `AppError` & Lints) | ❌ | ❌ | ❌ | ❌ |
 | **Framework Escape Hatch (Zero Lock-in)** | ✅ (`cargo rullst eject`) | ❌ | ❌ | ❌ | ❌ |

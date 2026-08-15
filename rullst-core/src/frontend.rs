@@ -5,8 +5,8 @@
 //! 1. `HtmlAdapter`: Zero-Bundle HTMX + Tailwind SSR (`rullst::html!`)
 //! 2. `LiveViewAdapter`: Server-Driven UI via persistent Tokio WebSockets (`rullst::live`)
 //! 3. `WasmIslandAdapter`: Client-side reactive WebAssembly micro-frontends (`rullst::island`)
-//! 4. `TopcoatAdapter`: Zero-Build 60 FPS Pure CSS components (0 Node.js / 0 NPM)
-//! 5. `TemplateAdapter`: File-based Jinja2 / Tera template rendering
+//! 4. `PicoAdapter`: Zero-Build Semantic CSS adapter (Pico.css v2, 0 Node.js / 0 NPM)
+//! 5. `TemplateAdapter`: File-based Jinja2 / Tera template rendering (Loco / Rails pattern)
 
 use axum::response::{Html, IntoResponse, Response};
 
@@ -26,15 +26,18 @@ impl IntoResponse for HtmlAdapter {
     }
 }
 
-/// Topcoat Zero-Build Pure CSS adapter (60 FPS, 0 Node.js / 0 NPM).
+/// Pico.css Zero-Build Semantic CSS adapter (classless HTML, auto dark mode, 0 Node.js / 0 NPM).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TopcoatAdapter(pub String);
+pub struct PicoAdapter(pub String);
 
-impl IntoResponse for TopcoatAdapter {
+impl IntoResponse for PicoAdapter {
     fn into_response(self) -> Response {
         Html(self.0).into_response()
     }
 }
+
+/// Compatibility alias for Topcoat adapter.
+pub type TopcoatAdapter = PicoAdapter;
 
 /// File-based Jinja2 / Tera template adapter for classic MVC projects.
 #[derive(Clone, Debug, PartialEq, Eq)]

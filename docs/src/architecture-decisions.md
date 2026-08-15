@@ -80,7 +80,7 @@ Rullst allows you to choose your rendering strategy based on user experience goa
 | **1. Zero-Bundle HTMX + Tailwind** *(Default)* | **0 KB** | HTML5 Server-Driven | HTMX Attributes + `html!` | **HTMX Standard** | Web Apps, SaaS, Dashboards, E-commerce |
 | **2. LiveView Server-Driven UI** | **0 KB** | Server-Side State Machine | Persistent Tokio WebSockets | **Phoenix & Dioxus Live** | Real-time Feeds, Chat, Interactive Collaboration |
 | **3. Reactive Wasm Islands** | **Pontual** | Client WebAssembly VM | Fine-Grained Signals | **Leptos & Yew WASM** | Canvas, Markdown Editors, Offline Rich UIs |
-| **4. Zero-Build Pure CSS (Topcoat UI)** | **0 KB** | Pure CSS Server-Rendered | 60 FPS GPU Hardware Accel | **Adobe Topcoat CSS** | Backend Tools, Dashboards (0 Node.js / 0 NPM) |
+| **4. Zero-Build Semantic CSS (Pico.css)** | **0 KB** | Pure Semantic HTML (`<button>`, `<article>`) | Automatic OS Dark/Light Mode | **Pico.css v2** | Backend Tools, Dashboards, Minimalist UIs (0 Node.js / 0 NPM) |
 | **5. File-Based Classic Templates (Tera)** | **0 KB** | File Templates (`templates/*.html`) | Server-Rendered HTML | **Loco.rs, Rails & Django** | Traditional MVC monoliths with external HTML |
 
 ---
@@ -112,11 +112,11 @@ Client-side WebAssembly micro-frontends compiled via `wasm-bindgen` and mounted 
 
 ---
 
-### 4. Zero-Build Pure CSS (Topcoat UI)
-Ultra-high performance pure CSS component kit created by Adobe Web Platform benchmarked for 60 FPS performance with zero JavaScript runtime and zero Node.js/NPM build tools.
+### 4. Zero-Build Semantic CSS (Pico.css v2)
+Classless semantic CSS engine providing instant styling for native HTML5 tags with automatic dark/light mode detection and zero build tools.
 
-* **Pros:** Instant compiling with pure `cargo run`, zero npm dependencies, beautiful dark-mode native components out of the box.
-* **When to Pick:** Backend engineers and DevOps developers wanting clean, fast web dashboards without setting up JavaScript bundlers.
+* **Pros:** Instant compiling with pure `cargo run`, zero npm dependencies, automatic dark/light theme switching based on OS preferences, and pure semantic HTML tags without utility class bloat.
+* **When to Pick:** Backend engineers and DevOps developers wanting clean, accessible web dashboards without setting up JavaScript bundlers or utility CSS build chains.
 
 ---
 
@@ -132,7 +132,7 @@ Decoupled HTML templates stored in a dedicated `templates/` directory with full 
 
 When you select a Frontend Engine for your project:
 
-1. **Application Site Routes (`/`, `/courses`, `/posts`, etc.)**: Render using your chosen Frontend Engine (HTMX, LiveView, Wasm Island, Topcoat, or Tera).
+1. **Application Site Routes (`/`, `/courses`, `/posts`, etc.)**: Render using your chosen Frontend Engine (HTMX, LiveView, Wasm Island, Pico Semantic CSS, or Tera).
 2. **Rullst Studio (`/studio` at `:5555`) & Rullst Nexus (`/nexus`)**: Are embedded developer and administrative control rooms provided directly by the framework kernel (`rullst-studio` and `rullst-nexus`). They are pre-compiled with an ultra-lightweight, zero-bundle HTMX + dark glassmorphic interface.
 
 > **Key Benefit:** Regardless of the frontend engine chosen for your application, your administrative panel (`/nexus`) and telemetry dashboard (`/studio`) load instantly with zero client-side JavaScript bundle overhead!
@@ -165,7 +165,7 @@ During project creation (`cargo rullst new`), you can choose between two main ap
 
 #### Clarifying Frontend Engines vs. Rullst Omni (Tauri 2.0 Integration)
 * **Rullst Omni (`cargo rullst make:omni` / Tauri 2.0):** Acts as the **Native Operating System Shell & Container**. It creates native OS windows (`.exe`, `.app`, `.apk`, `.ipa`), handles system tray icons, native OS notifications, auto-updates, and low-level system APIs.
-* **Frontend Engine (HTMX / LiveView / Wasm / Topcoat):** Acts as the **UI Engine / Renderer** running inside the Omni webview window with zero friction.
+* **Frontend Engine (HTMX / LiveView / Wasm / Pico.css / Tera):** Acts as the **UI Engine / Renderer** running inside the Omni webview window with zero friction.
 
 ---
 

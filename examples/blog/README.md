@@ -14,7 +14,7 @@ graph TD
     Nav --> F1["1. Zero-Bundle HTMX SSR (/)"]
     Nav --> F2["2. LiveView Server-Driven UI (/live-feed)"]
     Nav --> F3["3. Wasm Island Editor (/editor)"]
-    Nav --> F4["4. Topcoat Pure CSS (/topcoat-demo)"]
+    Nav --> F4["4. Pico Semantic CSS (/pico-demo)"]
     Nav --> F5["5. File-Based Templates (/templates-demo)"]
     Nav --> O1["6. Hybrid ORM & Data Mapper (/posts/repository)"]
     Nav --> C1["7. Capital Billing & SPED DPS (/pricing)"]
@@ -29,7 +29,7 @@ Rullst is the only full-stack Rust framework that unifies all 5 major web presen
 - **Zero-Bundle HTMX SSR (`/`)**: Ultra-fast declarative HTML generated at compile time using the `html!` macro and Axum static dispatch with 0 KB JavaScript overhead.
 - **LiveView Server-Driven UI (`/live-feed`, `/_live`)**: Real-time state synchronization over persistent Tokio WebSockets (Phoenix LiveView / Dioxus Live pattern) with zero client-side logic.
 - **Wasm Reactive Island (`/editor`, `/wasm-counter`)**: Client-side reactive micro-frontend compiled with `wasm-bindgen` (Leptos / Yew WASM & Signals pattern) loaded pontually where heavy client computation is needed.
-- **Topcoat Pure CSS (`/topcoat-demo`)**: 60 FPS GPU-accelerated CSS component engine created by Adobe Web Platform with **zero Node.js/NPM builds** and instant dark-mode styling.
+- **Pico Semantic CSS (`/pico-demo`)**: Zero-Build semantic HTML5 styling powered by Pico.css v2 with automatic OS Dark/Light mode detection, **zero Node.js/NPM builds**, and 0 KB JavaScript.
 - **File-Based Classic Templates (`/templates-demo`)**: External Jinja2/Tera `.html` files in `templates/` with full layout inheritance (Django, Rails & Loco.rs pattern).
 
 ### 2. 🗄️ Hybrid ORM & Multi-Tenancy
@@ -67,7 +67,7 @@ Rullst is the only full-stack Rust framework that unifies all 5 major web presen
 | **Dioxus** | Virtual DOM | React-like Rust VDOM (Single Paradigm) | Cross-platform desktop & mobile interfaces |
 | **Loco.rs** | Askama / Tera | File-based `.html` templates (Single Paradigm) | Traditional Rails/Django-style MVC monoliths |
 | **Topcoat Tokio** | Transpiled Micro-JS | Server-rendered with macro-generated JS snippets | Server-side rendering without WASM |
-| **👑 Rullst** | **Sovereign Multi-Engine** | **All 5 Paradigms Natively Supported** (Zero-Bundle HTMX, LiveView WS, Wasm Islands, Topcoat Pure CSS, Tera Templates) | **Total freedom**: choose the optimal paradigm per page with zero lock-in |
+| **👑 Rullst** | **Sovereign Multi-Engine** | **All 5 Paradigms Natively Supported** (Zero-Bundle HTMX, LiveView WS, Wasm Islands, Pico Semantic CSS, Tera Templates) | **Total freedom**: choose the optimal paradigm per page with zero lock-in |
 
 ---
 
@@ -80,7 +80,7 @@ Rullst is the only full-stack Rust framework that unifies all 5 major web presen
 | `http://localhost:3000/posts/repository` | `GET` | **Repository ORM** | Data Mapper analytics and Intent-Based `@index` visualizer. |
 | `http://localhost:3000/live-feed` | `GET` | **LiveView** | Server-driven UI state synchronization over WebSockets. |
 | `http://localhost:3000/editor` | `GET` | **Wasm Island** | Client-side reactive WebAssembly micro-frontend. |
-| `http://localhost:3000/topcoat-demo` | `GET` | **Topcoat CSS** | 60 FPS native GPU-accelerated UI with 0 Node.js/NPM. |
+| `http://localhost:3000/pico-demo` | `GET` | **Pico CSS** | Zero-Build semantic HTML5 with automatic Dark/Light mode and 0 KB JS. |
 | `http://localhost:3000/templates-demo` | `GET` | **Tera Templates** | External Jinja2/Tera template from `templates/article.html`. |
 | `http://localhost:3000/pricing` | `GET` | **Capital** | SaaS pricing tiers, `Billable` quota check & SPED DPS XMLDSig. |
 | `http://localhost:3000/security-demo` | `GET` | **Security** | Interactive RASP, Anti-Timing Guard & AI Firewall sandbox. |

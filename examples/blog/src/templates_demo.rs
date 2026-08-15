@@ -3,11 +3,12 @@
 //! external HTML templates located in `templates/` with full separation of concerns.
 
 use axum::response::Html;
-use crate::showcase_nav::render_showcase_nav;
+use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
 
 /// Renders the file-based template demo page as an Axum HTML response.
 pub async fn render_templates_demo_page() -> Html<String> {
     let nav_html = render_showcase_nav("/templates-demo");
+    let shared_styles = render_shared_styles();
 
     // Template source loaded from templates/article.html
     let template_source = include_str!("../templates/article.html");
@@ -21,6 +22,7 @@ pub async fn render_templates_demo_page() -> Html<String> {
             "{{ content }}",
             "This page is rendered directly from an external HTML file located at 'templates/article.html'. Unlike inline macros, file-based templating enables UI designers and frontend developers to edit layout files without touching Rust source code or triggering Rust compiler recompilations.",
         )
+        .replace("{{ shared_styles | safe }}", &shared_styles)
         .replace("{{ nav_html | safe }}", &nav_html);
 
     Html(page_html)

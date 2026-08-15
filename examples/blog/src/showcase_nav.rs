@@ -22,9 +22,9 @@ pub fn render_showcase_nav(active_route: &str) -> String {
             "Client-side WebAssembly reactive micro-frontend (Leptos & Yew WASM/Signals pattern)",
         ),
         (
-            "/topcoat-demo",
-            "🎨 Topcoat Pure CSS",
-            "60 FPS native CSS components, 0 Node.js/NPM (Adobe Topcoat pattern)",
+            "/pico-demo",
+            "🎨 Pico Semantic CSS",
+            "Zero-build semantic CSS, auto dark mode, 0 Node.js/NPM (Pico.css v2)",
         ),
         (
             "/templates-demo",

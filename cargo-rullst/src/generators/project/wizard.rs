@@ -174,7 +174,7 @@ pub fn run_project_wizard(
             "Zero-Bundle HTMX + Tailwind (Recommended — 0KB JS bundle, instant page loads & pure Rust html! macro)",
             "LiveView Server-Driven UI (rullst::live — Real-time WebSockets state sync, 0 JS)",
             "Reactive Wasm Islands (rullst::island — Client-side WebAssembly micro-frontends)",
-            "Zero-Build Pure CSS (Topcoat UI — 60 FPS CSS components, 0 Node.js / 0 NPM required)",
+            "Zero-Build Semantic CSS (Pico.css — Classless HTML, auto Dark Mode, 0 Node.js / 0 NPM)",
             "File-Based Classic Templates (Tera / Askama — Jinja2 style templates in templates/*.html)",
         ];
         let fe_selection = dialoguer::Select::with_theme(&theme)
@@ -185,7 +185,7 @@ pub fn run_project_wizard(
         frontend_engine = match fe_selection {
             1 => "LiveView".to_string(),
             2 => "Wasm Island".to_string(),
-            3 => "Topcoat CSS".to_string(),
+            3 => "Pico CSS".to_string(),
             4 => "Tera Templates".to_string(),
             _ => "Zero-Bundle HTMX".to_string(),
         };

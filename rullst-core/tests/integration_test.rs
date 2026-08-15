@@ -1,6 +1,6 @@
 use rullst_core::{
     frontend::{
-        DioxusAdapter, HtmlAdapter, LeptosAdapter, LiveViewAdapter, TemplateAdapter,
+        DioxusAdapter, HtmlAdapter, LeptosAdapter, LiveViewAdapter, PicoAdapter, TemplateAdapter,
         TopcoatAdapter, WasmIslandAdapter,
     },
     realtime::{BroadcastManager, PresenceTracker},
@@ -11,8 +11,11 @@ fn test_frontend_adapters() {
     let html = HtmlAdapter("<h1>Hello World</h1>".to_string());
     assert_eq!(html.0, "<h1>Hello World</h1>");
 
-    let topcoat = TopcoatAdapter("<button class=\"topcoat-button\">Click</button>".to_string());
-    assert_eq!(topcoat.0, "<button class=\"topcoat-button\">Click</button>");
+    let pico = PicoAdapter("<button>Click</button>".to_string());
+    assert_eq!(pico.0, "<button>Click</button>");
+
+    let topcoat: TopcoatAdapter = PicoAdapter("<button>Click</button>".to_string());
+    assert_eq!(topcoat.0, "<button>Click</button>");
 
     let template = TemplateAdapter("<div>Rendered Jinja2 Template</div>".to_string());
     assert_eq!(template.0, "<div>Rendered Jinja2 Template</div>");

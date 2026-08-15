@@ -8,43 +8,44 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Outfit', sans-serif; background: #030712; color: #f9fafb; }
+        {{ shared_styles | safe }}
+        body { font-family: 'Outfit', sans-serif; background: #080b11; color: #f9fafb; margin: 0; padding: 0; min-height: 100vh; }
         .mono { font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
-<body class="min-h-screen">
+<body>
     {{ nav_html | safe }}
 
     <div class="max-w-4xl mx-auto px-6 py-12">
         <div class="text-center mb-10">
-            <span class="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-semibold tracking-wide uppercase">
+            <span class="px-3.5 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-bold tracking-wider uppercase inline-block">
                 📄 File-Based Classic Templates (Jinja2 / Tera Engine)
             </span>
-            <h1 class="text-4xl font-extrabold mt-4 text-white tracking-tight">{{ title }}</h1>
-            <p class="text-slate-400 mt-2 text-lg">Separating presentation HTML files from Rust domain logic (Loco / Django / Rails pattern).</p>
+            <h1 class="text-4xl sm:text-5xl font-extrabold mt-4 text-white tracking-tight leading-tight">{{ title }}</h1>
+            <p class="text-slate-400 mt-3 text-lg max-w-2xl mx-auto">Separating presentation HTML files from Rust domain logic (Loco / Django / Rails pattern).</p>
         </div>
 
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 backdrop-blur-xl shadow-2xl space-y-6">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-8 backdrop-blur-xl shadow-2xl space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-800/80 pb-6">
                 <div>
-                    <span class="text-xs text-slate-500 uppercase tracking-wider block">Author</span>
-                    <span class="text-emerald-400 font-medium">{{ author }}</span>
+                    <span class="text-xs text-slate-500 uppercase font-semibold tracking-wider block">Author</span>
+                    <span class="text-emerald-400 font-medium text-base">{{ author }}</span>
                 </div>
                 <div>
-                    <span class="text-xs text-slate-500 uppercase tracking-wider block">Published At</span>
+                    <span class="text-xs text-slate-500 uppercase font-semibold tracking-wider block">Published At</span>
                     <span class="text-slate-300 font-mono text-sm">{{ published_at }}</span>
                 </div>
                 <div>
-                    <span class="text-xs text-slate-500 uppercase tracking-wider block">Template File</span>
-                    <span class="text-amber-400 font-mono text-sm">templates/article.html</span>
+                    <span class="text-xs text-slate-500 uppercase font-semibold tracking-wider block">Template File</span>
+                    <span class="text-amber-400 font-mono text-sm bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">templates/article.html</span>
                 </div>
             </div>
 
-            <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed space-y-4">
+            <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed text-base space-y-4">
                 <p>{{ content }}</p>
             </div>
 
-            <div class="bg-slate-950/80 rounded-xl p-5 border border-slate-800/80 font-mono text-xs text-slate-400 space-y-2">
+            <div class="bg-slate-950/90 rounded-xl p-5 border border-slate-800 font-mono text-xs text-slate-400 space-y-2">
                 <div class="text-emerald-400 font-semibold">// How Tera/Jinja2 template rendering works in Rullst:</div>
                 <div class="text-slate-300">let mut context = tera::Context::new();</div>
                 <div class="text-slate-300">context.insert("title", &"Decoupled MVC Architectures in Rust");</div>
@@ -52,8 +53,10 @@
             </div>
         </div>
 
-        <div class="mt-8 bg-slate-900/30 border border-slate-800/60 rounded-xl p-6 text-sm text-slate-400">
-            <h3 class="text-white font-semibold mb-2">💡 Why File-Based Templates are Powerful</h3>
+        <div class="mt-8 bg-slate-900/40 border border-slate-800/60 rounded-xl p-6 text-sm text-slate-400">
+            <h3 class="text-white font-semibold text-base mb-2 flex items-center gap-2">
+                <span>💡</span> Why File-Based Templates are Powerful
+            </h3>
             <p class="leading-relaxed">
                 Developers coming from Django, Ruby on Rails, or Loco.rs often prefer keeping raw <code class="text-emerald-400">.html</code> files in a dedicated <code class="text-amber-400">templates/</code> directory. Rullst natively supports this workflow with zero ceremony, allowing full layout inheritance (<code class="text-slate-300">{% extends "base.html" %}</code>) and loop iterations.
             </p>

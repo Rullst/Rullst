@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Clean old startup/enterprise seeds if migrating
     let _ = rullst::db::sqlx::query(
-        "DELETE FROM posts WHERE title LIKE 'Enterprise Architecture%' OR title LIKE 'High-Velocity MVP%'"
+        "DELETE FROM posts WHERE title LIKE 'Enterprise Architecture%' OR title LIKE 'High-Velocity MVP%' OR title LIKE 'Architecture Deep Dive%' OR body LIKE '%Topcoat%'"
     )
     .execute(pool)
     .await;
@@ -54,22 +54,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // 2. Architecture Comparison: The 5 Frontend Paradigms in Rullst
-            let comparison_exists = Post::query()
-                .where_eq("title", "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst")
-                .first()
-                .await
-                .unwrap_or(None)
-                .is_some();
-
-            if !comparison_exists {
-                let mut post2 = Post {
-                    id: 0,
-                    tenant_id: "community".to_string(),
-                    title: "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst".to_string(),
-                    body: "Here is an in-depth breakdown of how Rullst unifies all 5 web paradigms natively, eliminating framework lock-in:\n\n1. ⚡ Zero-Bundle HTMX SSR (Rullst Native Standard):\n- Paradigm: Declarative HTML5 attributes with compile-time `html!` macro.\n- Footprint: 0 KB JavaScript bundle. Sub-millisecond TTFB.\n- Ideal For: SEO landing pages, SaaS dashboards, and CRUD apps.\n\n2. 🔴 LiveView Server-Driven UI (`rullst::live` — Phoenix & Dioxus pattern):\n- Paradigm: Bidirectional WebSocket state synchronization over Tokio.\n- Footprint: Zero client-side logic. State lives in server RAM; DOM diffs are pushed to the browser in real-time.\n- Ideal For: Live feeds, chats, reactive counters, and notifications.\n\n3. 🏝️ Reactive Wasm Islands (`rullst::island` — Leptos & Yew WASM/Signals pattern):\n- Paradigm: Client-side WebAssembly micro-frontends mounted pontually.\n- Footprint: Isolated WASM bytecode running in the browser VM.\n- Ideal For: Rich Markdown editors, canvas games, offline calculations, and charting.\n\n4. 🎨 Zero-Build Pure CSS (Adobe Topcoat pattern — `/topcoat-demo`):\n- Paradigm: 60 FPS GPU-accelerated CSS components without Node.js or NPM.\n- Footprint: 0 KB JS, instant loading, dark/light themes out of the box.\n- Ideal For: Backend developers wanting clean UIs with zero JS build pipelines.\n\n5. 📄 File-Based Classic Templates (Jinja2 / Tera Engine — Loco & Rails pattern — `/templates-demo`):\n- Paradigm: External HTML files located in `templates/*.html` with layout inheritance.\n- Footprint: Decoupled presentation layer for frontend designers.\n- Ideal For: Teams migrating from Django, Laravel, Rails, or Loco.rs.".to_string(),
-                };
-                let _ = post2.save().await;
-            }
+            let mut post2 = Post {
+                id: 0,
+                tenant_id: "community".to_string(),
+                title: "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst".to_string(),
+                body: "Here is an in-depth breakdown of how Rullst unifies all 5 web paradigms natively, eliminating framework lock-in:\n\n1. ⚡ Zero-Bundle HTMX SSR (Rullst Native Standard):\n- Paradigm: Declarative HTML5 attributes with compile-time `html!` macro.\n- Footprint: 0 KB JavaScript bundle. Sub-millisecond TTFB.\n- Ideal For: SEO landing pages, SaaS dashboards, and CRUD apps.\n\n2. 🔴 LiveView Server-Driven UI (`rullst::live` — Phoenix & Dioxus pattern):\n- Paradigm: Bidirectional WebSocket state synchronization over Tokio.\n- Footprint: Zero client-side logic. State lives in server RAM; DOM diffs are pushed to the browser in real-time.\n- Ideal For: Live feeds, chats, reactive counters, and notifications.\n\n3. 🏝️ Reactive Wasm Islands (`rullst::island` — Leptos & Yew WASM/Signals pattern):\n- Paradigm: Client-side WebAssembly micro-frontends mounted pontually.\n- Footprint: Isolated WASM bytecode running in the browser VM.\n- Ideal For: Rich Markdown editors, canvas games, offline calculations, and charting.\n\n4. 🎨 Zero-Build Semantic CSS (Pico.css v2 Engine — `/pico-demo`):\n- Paradigm: Classless semantic HTML5 styling with automatic OS Dark/Light theme detection.\n- Footprint: 0 KB JS, 0 Node.js / NPM build step, instant styling for pure HTML tags.\n- Ideal For: Backend developers wanting clean, accessible UIs with zero JS toolchains.\n\n5. 📄 File-Based Classic Templates (Jinja2 / Tera Engine — Loco & Rails pattern — `/templates-demo`):\n- Paradigm: External HTML files located in `templates/*.html` with layout inheritance.\n- Footprint: Decoupled presentation layer for frontend designers.\n- Ideal For: Teams migrating from Django, Laravel, Rails, or Loco.rs.".to_string(),
+            };
+            let _ = post2.save().await;
         })
         .await;
 
