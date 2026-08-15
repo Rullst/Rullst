@@ -65,7 +65,9 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         secure_headers_applied: store.secure_headers_applied_count.load(Ordering::Relaxed),
         idor_warnings: store.idor_warnings_count.load(Ordering::Relaxed),
         timing_guard_protected: store.timing_guard_protected_count.load(Ordering::Relaxed),
-        prompt_injections_blocked: store.prompt_injections_blocked_count.load(Ordering::Relaxed),
+        prompt_injections_blocked: store
+            .prompt_injections_blocked_count
+            .load(Ordering::Relaxed),
         audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
         threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
         live_events: events,
@@ -91,7 +93,9 @@ async fn render_radar_dashboard() -> Html<String> {
     let secure_headers_applied_count = store.secure_headers_applied_count.load(Ordering::Relaxed);
     let idor_warnings_count = store.idor_warnings_count.load(Ordering::Relaxed);
     let timing_guard_count = store.timing_guard_protected_count.load(Ordering::Relaxed);
-    let prompt_injections_count = store.prompt_injections_blocked_count.load(Ordering::Relaxed);
+    let prompt_injections_count = store
+        .prompt_injections_blocked_count
+        .load(Ordering::Relaxed);
 
     let events = store
         .live_events

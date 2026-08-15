@@ -38,7 +38,10 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                 </div>
             };
         } else {
-            let threat_name = report.threat_category.map(|t| t.as_str().to_string()).unwrap_or_else(|| "PROMPT_INJECTION".to_string());
+            let threat_name = report
+                .threat_category
+                .map(|t| t.as_str().to_string())
+                .unwrap_or_else(|| "PROMPT_INJECTION".to_string());
             test_result_html = html! {
                 <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;">
                     <h4 style="color: #f87171; margin: 0 0 0.5rem 0;">"🛡️ AI Security Alert: Malicious Prompt Intercepted!"</h4>
@@ -58,7 +61,8 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                     // Raw DB lookup would take ~2ms
                     tokio::time::sleep(std::time::Duration::from_millis(2)).await;
                     "USER_NOT_FOUND"
-                }).await;
+                })
+                .await;
                 let elapsed = start.elapsed();
 
                 test_result_html = html! {

@@ -5,11 +5,7 @@
 //! with cryptographically randomized micro-jitter.
 
 use crate::telemetry::SecurityStore;
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 use std::time::{Duration, Instant};
 
 /// Configuration for the Anti-Timing Attack Guard.
@@ -53,14 +49,15 @@ impl TimingScope {
     /// completed earlier than the configured target plus random jitter.
     pub async fn finish(self) {
         let elapsed = self.start_time.elapsed();
-        
+
         let jitter_micros = if self.config.max_jitter.as_micros() > 0 {
             (rand::random::<u32>() as u128) % self.config.max_jitter.as_micros()
         } else {
             0
         };
 
-        let target_duration = self.config.min_duration + Duration::from_micros(jitter_micros as u64);
+        let target_duration =
+            self.config.min_duration + Duration::from_micros(jitter_micros as u64);
 
         if elapsed < target_duration {
             let sleep_needed = target_duration - elapsed;
@@ -87,8 +84,8 @@ pub fn synthetic_argon2_cpu_work() {
     let mut state = [0x5au8; 32];
     for i in 0u64..1_500u64 {
         let mut hasher = Sha256::new();
-        hasher.update(&state);
-        hasher.update(&i.to_be_bytes());
+        hasher.update(state);
+        hasher.update(i.to_be_bytes());
         state = hasher.finalize().into();
     }
     // Prevent compiler dead-code elimination with black_box
@@ -96,10 +93,7 @@ pub fn synthetic_argon2_cpu_work() {
 }
 
 /// Async helper wrapping any closure with constant-time execution padding.
-pub async fn equalize_response_time<F, Fut, T>(
-    config: TimingGuardConfig,
-    action: F,
-) -> T
+pub async fn equalize_response_time<F, Fut, T>(config: TimingGuardConfig, action: F) -> T
 where
     F: FnOnce() -> Fut,
     Fut: std::future::Future<Output = T>,
@@ -135,7 +129,8 @@ mod tests {
         let result = equalize_response_time(config, || async {
             // Fast execution takes < 1ms
             42
-        }).await;
+        })
+        .await;
 
         let elapsed = start.elapsed();
         assert_eq!(result, 42);
@@ -158,7 +153,8 @@ mod tests {
         let result = equalize_response_time(config, || async {
             tokio::time::sleep(Duration::from_millis(35)).await;
             "done"
-        }).await;
+        })
+        .await;
 
         let elapsed = start.elapsed();
         assert_eq!(result, "done");
