@@ -2,8 +2,8 @@
 //! Demonstrates how developers coming from Django, Rails, and Loco.rs can render
 //! external HTML templates located in `templates/` with full separation of concerns.
 
-use axum::response::Html;
 use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
+use axum::response::Html;
 
 /// Renders the file-based template demo page as an Axum HTML response.
 pub async fn render_templates_demo_page() -> Html<String> {

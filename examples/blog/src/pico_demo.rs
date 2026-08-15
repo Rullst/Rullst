@@ -2,9 +2,9 @@
 //! Demonstrates classless, semantic HTML styling with Pico.css v2 with 0 KB JavaScript,
 //! zero NPM/Node.js dependencies, automatic OS Dark/Light theme detection, and pure Rust server-side rendering.
 
+use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
 use axum::response::Html;
 use rullst::html;
-use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
 
 /// Renders the Pico.css Semantic CSS demo page as an Axum HTML response.
 pub async fn render_pico_demo_page() -> Html<String> {
