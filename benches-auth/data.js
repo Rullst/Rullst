@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786821414392,
+  "lastUpdate": 1786830946736,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3119,6 +3119,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1350,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7fb6299e9550222f4a307c11fee1ac6549d2ba01",
+          "message": "refactor: modularize codebase into library, add rullst binary, and update studio port configurations",
+          "timestamp": "2026-08-15T18:47:21-03:00",
+          "tree_id": "e56f9421e5bf1bf08b55bf839487f9f47504156c",
+          "url": "https://github.com/Rullst/Rullst/commit/7fb6299e9550222f4a307c11fee1ac6549d2ba01"
+        },
+        "date": 1786830945962,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 544,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 489,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1088,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1128,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
