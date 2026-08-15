@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786813200939,
+  "lastUpdate": 1786819788677,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3023,6 +3023,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1178,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "10dce6749335e9c0456c20ec6a5710d203ecde8f",
+          "message": "feat: replace Topcoat CSS demonstration with Pico CSS integration in examples",
+          "timestamp": "2026-08-15T15:41:39-03:00",
+          "tree_id": "fbecad99e3c93155a04ceb3d571cd65695eb87bb",
+          "url": "https://github.com/Rullst/Rullst/commit/10dce6749335e9c0456c20ec6a5710d203ecde8f"
+        },
+        "date": 1786819788296,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 755,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 653,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1451,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1380,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
