@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786651504822,
+  "lastUpdate": 1786809263666,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1055,6 +1055,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 783,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b58e00e296bd9e9b03ee5b93dba68049e4363d4b",
+          "message": "feat: add Alipay billing provider and modularize billing demo examples",
+          "timestamp": "2026-08-15T12:43:47-03:00",
+          "tree_id": "af45eae3e94b9ff7b2d61c5d74c4d42e164f1872",
+          "url": "https://github.com/Rullst/Rullst/commit/b58e00e296bd9e9b03ee5b93dba68049e4363d4b"
+        },
+        "date": 1786809263160,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 981,
+            "range": "± 72",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 254,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 546,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
