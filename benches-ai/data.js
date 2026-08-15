@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786821582411,
+  "lastUpdate": 1786831117266,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1247,6 +1247,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 772,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7fb6299e9550222f4a307c11fee1ac6549d2ba01",
+          "message": "refactor: modularize codebase into library, add rullst binary, and update studio port configurations",
+          "timestamp": "2026-08-15T18:47:21-03:00",
+          "tree_id": "e56f9421e5bf1bf08b55bf839487f9f47504156c",
+          "url": "https://github.com/Rullst/Rullst/commit/7fb6299e9550222f4a307c11fee1ac6549d2ba01"
+        },
+        "date": 1786831116503,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1285,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 343,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 679,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
