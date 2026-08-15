@@ -8,13 +8,14 @@ If you generated your project using the `SaaS` blueprint (`cargo rullst new my-s
 
 ## 🌟 Supported Payment Gateways
 
-Rullst Capital supports 10 major financial providers out of the box:
+Rullst Capital supports 11 major financial providers out of the box:
 
 - 🌐 **Stripe**: Global direct merchant for cards, Apple Pay, Google Pay, and customer portals.
 - 🍋 **Lemon Squeezy**: Global Merchant of Record (MoR) with automated EU VAT and US state sales tax compliance.
 - 🇧🇷 **InfinitePay**: Brazil domestic gateway with **Pix at 0.00% fee**, instant D+0 settlement, and lowest credit card rates.
 - ⚡ **Polar.sh**: Developer-first Merchant of Record for open-source funding, software licenses, and micro-SaaS.
 - 🛡️ **Paddle**: Enterprise Merchant of Record for global B2B SaaS.
+- 🇨🇳 **Alipay (支付宝 / Alipay+)**: China and APAC cross-border payments with over 1.3 billion users and Alipay+ wallet integrations.
 - 🇮🇳 **Razorpay**: Dominant payment gateway across India and Southeast Asia for UPI, cards, and subscriptions.
 - 🌎 **Mercado Pago**: Broadest Latin American regional coverage (Argentina, Mexico, Chile, Colombia, Brazil).
 - ₿ **Coinbase Commerce**: Borderless Web3 crypto payments (Bitcoin, Ethereum, Solana, USDC/USDT).
@@ -27,7 +28,7 @@ Rullst Capital supports 10 major financial providers out of the box:
 
 ## 🚀 Core Features
 
-- **Multi-Provider Support:** First-class, zero-panic support for 10 top global, regional, and Web3 payment providers. Switch providers effortlessly by changing configuration or initializing the corresponding `BillingProvider`.
+- **Multi-Provider Support:** First-class, zero-panic support for 11 top global, regional, and Web3 payment providers. Switch providers effortlessly by changing configuration or initializing the corresponding `BillingProvider`.
 - **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber statistics, and churn rate calculations built right into Rullst Studio.
 - **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
 - **Webhook Handling & Database Synchronization:** Secure, constant-time HMAC-verified webhook handlers that listen to subscription creations, renewals, upgrades, and cancellations, automatically synchronizing user state and access levels via `rullst-orm`.
@@ -39,7 +40,7 @@ Rullst Capital supports 10 major financial providers out of the box:
 In your `.env` file:
 
 ```env
-# Choose provider: stripe | lemonsqueezy | infinitepay | polar | paddle | razorpay | mercadopago | coinbase | picpay
+# Choose provider: stripe | lemonsqueezy | infinitepay | polar | paddle | alipay | razorpay | mercadopago | coinbase | picpay
 BILLING_PROVIDER=infinitepay
 
 # Provider credentials

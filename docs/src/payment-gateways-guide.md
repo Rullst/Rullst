@@ -13,6 +13,7 @@ graph TD
     Capital[rullst-capital] --> Direct[Direct Merchant]
     Capital --> MoR[Merchant of Record - MoR]
     Capital --> Domestic[Domestic Fee Leader]
+    Capital --> APAC[Asia-Pacific & China Cross-Border]
     Capital --> Crypto[Web3 & Crypto]
     Capital --> Payouts[Global Payouts]
 
@@ -26,6 +27,7 @@ graph TD
     MoR --> Paddle[Paddle]
 
     Domestic --> InfinitePay[InfinitePay Brazil]
+    APAC --> Alipay[Alipay / Alipay+ China]
     Crypto --> Coinbase[Coinbase Commerce]
     Payouts --> Wise[Wise Transfers]
 ```
@@ -41,6 +43,7 @@ graph TD
 | 🇧🇷 **InfinitePay** | Brazil (CloudWalk Domestic) | **Pix: 0.00% (Zero)**<br>Card: ~0.75% to 1.44% | **Instant (D+0 / D+1)** | Domestic NF-e integration | Brazilian SaaS, low-margin platforms, high-volume domestic e-commerce. |
 | ⚡ **Polar.sh** | Developer-First MoR & Open Source | ~4.0% + $0.40 | Monthly / On-demand | **Automatic (MoR)** | Monetizing GitHub repos, software licenses, developer micro-SaaS, and backer tiers. |
 | 🛡️ **Paddle** | Enterprise Global MoR | ~5.0% + $0.50 | Monthly | **Automatic (MoR)** | European & US B2B enterprise SaaS with quote-to-cash workflows. |
+| 🇨🇳 **Alipay** | China & APAC Cross-Border (Alipay+) | ~1.5% to 2.8% | Instant / T+1 | Cross-border customs & VAT compliance | China consumer market (> 1.3B users), cross-border checkouts, and APAC digital wallets. |
 | 🇮🇳 **Razorpay** | India & Southeast Asia | ~2.0% + GST | 2 to 3 days | Domestic GST compliance | Recurring UPI autopay, Indian credit cards, net banking, and Asian subscriptions. |
 | 🌎 **Mercado Pago** | Latin America (Regional) | ~3.99% to 4.98% | Instant | Domestic fiscal compliance | Broad Latin American coverage across Argentina, Mexico, Chile, Colombia, and Brazil. |
 | ₿ **Coinbase Commerce** | Global Web3 / Crypto | ~1.0% | On-chain instant | None (Crypto self-custody) | Borderless crypto subscriptions (Bitcoin, Ethereum, Solana, USDC/USDT). |
@@ -52,20 +55,23 @@ graph TD
 ## 🔍 Why Were These Gateways Selected?
 
 ### 1. Direct Merchant vs. Merchant of Record (MoR)
-- **Direct Merchant (Stripe, Mercado Pago, InfinitePay)**: You are the seller on record. You receive funds directly into your bank account and are responsible for collecting, filing, and paying local taxes. You enjoy the **lowest transaction fees**.
+- **Direct Merchant (Stripe, Mercado Pago, InfinitePay, Alipay)**: You are the seller on record. You receive funds directly into your bank account and are responsible for collecting, filing, and paying local taxes. You enjoy the **lowest transaction fees**.
 - **Merchant of Record - MoR (Lemon Squeezy, Polar.sh, Paddle)**: The provider acts as the legal reseller of your software. They handle EU VAT, US state sales tax compliance, currency conversions, and fraud liability. In exchange for a slightly higher fee, you can sell worldwide without forming legal entities in multiple countries.
 
 ### 2. Why InfinitePay for Brazil?
 - **Pix at 0.00% fee**: Pix is the dominant payment method in Brazil. InfinitePay provides 100% zero-fee Pix processing with instant settlement.
 - **Lowest Domestic Credit Card Rates**: While global gateways charge ~3.99% + fixed fee for Brazilian cards, InfinitePay charges ~0.75% to 1.44% and allows transparent pass-through of installment interest (parcelamento em até 12x).
 
-### 3. Why Polar.sh for Developers?
+### 3. Why Alipay for China & Asia-Pacific?
+- **China's Dominant Super-App Ecosystem**: With over 1.3 billion active users, Alipay (Ant Group) is essential for software and SaaS platforms selling to Chinese consumers and Asian digital wallet ecosystems (Alipay+ connecting Kakao Pay, GCash, Touch 'n Go, TrueMoney, DANA).
+
+### 4. Why Polar.sh for Developers?
 - Built natively for software engineers. Deep integration with GitHub organizations, issue funding, repository sponsor tiers, and license key generation.
 
-### 4. Why Coinbase Commerce for Crypto?
+### 5. Why Coinbase Commerce for Crypto?
 - Eliminates cross-border banking restrictions and credit card fraud chargebacks. Accepts Bitcoin, Ethereum, Solana, and stablecoins (USDC/USDT) with automated on-chain webhook confirmations.
 
-### 5. Why Wise for Payouts?
+### 6. Why Wise for Payouts?
 - Most SaaS platforms eventually need to disburse earnings to international creators, affiliates, or remote contractors. Wise provides market mid-rate exchange rates with transparent batch transfer APIs.
 
 ---
@@ -80,7 +86,7 @@ In your `main.rs`:
 use rullst_capital::{
     init_provider, StripeProvider, LemonSqueezyProvider, InfinitePayProvider,
     PolarProvider, PaddleProvider, MercadoPagoProvider, CoinbaseCommerceProvider,
-    PicPayProvider,
+    PicPayProvider, AlipayProvider, RazorpayProvider,
 };
 
 #[rullst::runtime::main]
@@ -93,13 +99,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::var("INFINITEPAY_WEBHOOK_SECRET")?,
     )));
 
-    // Example B: Stripe for Global SaaS
+    // Example B: Alipay for China & APAC Cross-Border E-Commerce
+    // init_provider(Box::new(AlipayProvider::new(
+    //     std::env::var("ALIPAY_APP_ID")?,
+    //     std::env::var("ALIPAY_PRIVATE_KEY")?,
+    //     std::env::var("ALIPAY_PUBLIC_KEY")?,
+    // )));
+
+    // Example C: Stripe for Global SaaS
     // init_provider(Box::new(StripeProvider::new(
     //     std::env::var("STRIPE_SECRET_KEY")?,
     //     std::env::var("STRIPE_WEBHOOK_SECRET")?,
     // )));
 
-    // Example C: Polar.sh for Open-Source Devs
+    // Example D: Polar.sh for Open-Source Devs
     // init_provider(Box::new(PolarProvider::new(
     //     std::env::var("POLAR_ACCESS_TOKEN")?,
     //     std::env::var("POLAR_WEBHOOK_SECRET")?,

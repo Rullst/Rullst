@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::OnceCell;
 
+pub mod alipay;
 pub mod coinbase;
 pub mod infinitepay;
 pub mod lemonsqueezy;
@@ -14,6 +15,7 @@ pub mod razorpay;
 pub mod stripe;
 pub mod wise;
 
+pub use alipay::AlipayProvider;
 pub use coinbase::CoinbaseCommerceProvider;
 pub use infinitepay::InfinitePayProvider;
 pub use lemonsqueezy::LemonSqueezyProvider;

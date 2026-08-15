@@ -357,6 +357,7 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
         get("/wasm-counter" => wasm_demo),
         get("/pricing" => crate::billing_demo::pricing_page),
         get("/billing" => crate::billing_demo::pricing_page),
+        get("/checkout" => crate::billing_demo::checkout_handler),
         get("/security-demo" => crate::security_demo::security_page),
         get("/ai-assistant" => crate::ai_demo::ai_page),
         get("/omni" => crate::omni_demo::omni_page),
