@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786821064495,
+  "lastUpdate": 1786830598398,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8209,6 +8209,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2326,
             "range": "± 64",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7fb6299e9550222f4a307c11fee1ac6549d2ba01",
+          "message": "refactor: modularize codebase into library, add rullst binary, and update studio port configurations",
+          "timestamp": "2026-08-15T18:47:21-03:00",
+          "tree_id": "e56f9421e5bf1bf08b55bf839487f9f47504156c",
+          "url": "https://github.com/Rullst/Rullst/commit/7fb6299e9550222f4a307c11fee1ac6549d2ba01"
+        },
+        "date": 1786830596388,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 586,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 850,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 567,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1749,
+            "range": "± 52",
             "unit": "ns/iter"
           }
         ]
