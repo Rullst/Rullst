@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786813379084,
+  "lastUpdate": 1786819959673,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1151,6 +1151,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 836,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "10dce6749335e9c0456c20ec6a5710d203ecde8f",
+          "message": "feat: replace Topcoat CSS demonstration with Pico CSS integration in examples",
+          "timestamp": "2026-08-15T15:41:39-03:00",
+          "tree_id": "fbecad99e3c93155a04ceb3d571cd65695eb87bb",
+          "url": "https://github.com/Rullst/Rullst/commit/10dce6749335e9c0456c20ec6a5710d203ecde8f"
+        },
+        "date": 1786819959263,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1725,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 391,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 708,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
