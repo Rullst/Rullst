@@ -49,9 +49,34 @@ async fn main() {
 }
 ```
 
-## 🔐 Security Audit
+## 🔐 AI Security Firewall & Prompt Shield v2
 
-`rullst-ai` is designed with defense-in-depth against prompt injection. When exposing database tools to AI via MCP, the layer requires explicit `#[ai_accessible]` macros on `rullst-orm` models. By default, agents cannot execute destructive queries (`DELETE`/`UPDATE`) unless explicitly opted-in by the developer. 
+`rullst-ai` works natively with `rullst-security::ai_firewall` to provide zero-latency prompt inspection and defense-in-depth:
+
+```rust
+use rullst_security::{LlmFirewall, ai_firewall_middleware, PromptThreatCategory};
+
+// 1. Direct prompt inspection before dispatch
+let report = LlmFirewall::inspect_prompt(&payload.message);
+if !report.is_safe {
+    return Err(AiError::BlockedByFirewall(format!(
+        "Threat detected: {:?}",
+        report.threat_category
+    )));
+}
+
+// 2. Or attach AI Firewall middleware to route
+let app = Router::new()
+    .route("/api/chat", post(chat_handler))
+    .layer(axum::middleware::from_fn(ai_firewall_middleware));
+```
+
+### Threat Vectors Neutralized:
+- **Direct Jailbreaks:** "Ignore previous instructions", "DAN mode", "Developer Mode".
+- **System Prompt Exfiltration:** "Repeat initial prompt", "Reveal base instructions".
+- **Delimiter Collisions:** `<|im_start|>`, `[INST]`, `<<SYS>>`.
+- **Markdown Data Leaks:** Malicious image callback beacons `![leak](https://evil.com/...)`.
+- **Invisible Unicode:** Strips and flags `\u{200B}` zero-width injection attacks.
 
 ## 📚 Documentation
 

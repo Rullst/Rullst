@@ -41,6 +41,7 @@ pub struct SecurityStore {
     pub dlp_secrets_masked_count: AtomicU64,
     pub secure_headers_applied_count: AtomicU64,
     pub idor_warnings_count: AtomicU64,
+    pub timing_guard_protected_count: AtomicU64,
     pub banned_ips: DashMap<String, BannedIpRecord>,
     pub honeypot_route_hits: DashMap<String, AtomicU64>,
     pub live_events: Mutex<Vec<LiveSecurityEvent>>,
@@ -74,6 +75,7 @@ impl SecurityStore {
             dlp_secrets_masked_count: AtomicU64::new(0),
             secure_headers_applied_count: AtomicU64::new(0),
             idor_warnings_count: AtomicU64::new(0),
+            timing_guard_protected_count: AtomicU64::new(0),
             banned_ips: DashMap::new(),
             honeypot_route_hits: DashMap::new(),
             live_events: Mutex::new(Vec::new()),
@@ -254,6 +256,11 @@ impl SecurityStore {
         self.idor_warnings_count.fetch_add(1, Ordering::Relaxed);
     }
 
+    pub fn inc_timing_guard_protected(&self) {
+        self.timing_guard_protected_count
+            .fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn snapshot(&self) -> TelemetrySnapshot {
         TelemetrySnapshot {
             sanitizations: self.sanitizations_count.load(Ordering::Relaxed),
@@ -272,6 +279,8 @@ impl SecurityStore {
             dlp_secrets_masked: self.dlp_secrets_masked_count.load(Ordering::Relaxed),
             secure_headers_applied: self.secure_headers_applied_count.load(Ordering::Relaxed),
             idor_warnings: self.idor_warnings_count.load(Ordering::Relaxed),
+            timing_guard_protected: self.timing_guard_protected_count.load(Ordering::Relaxed),
+            prompt_injections_blocked: self.prompt_injections_blocked_count.load(Ordering::Relaxed),
         }
     }
 }
@@ -322,4 +331,6 @@ pub struct TelemetrySnapshot {
     pub dlp_secrets_masked: u64,
     pub secure_headers_applied: u64,
     pub idor_warnings: u64,
+    pub timing_guard_protected: u64,
+    pub prompt_injections_blocked: u64,
 }

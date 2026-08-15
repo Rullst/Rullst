@@ -1,3 +1,4 @@
+pub mod ai_firewall;
 pub mod audit;
 pub mod cswsh;
 pub mod deception;
@@ -15,9 +16,13 @@ pub mod schema_guard;
 pub mod siem;
 pub mod sri;
 pub mod telemetry;
+pub mod timing_guard;
 pub mod vault;
 pub mod zero_trust;
 
+pub use ai_firewall::{
+    LlmFirewall, PromptSafetyReport, PromptThreatCategory, ai_firewall_middleware,
+};
 pub use audit::{AuditChain, AuditLogger, AuditRecord, StdoutAuditLogger};
 pub use cswsh::cswsh_guard_middleware;
 pub use deception::{deception_trap_middleware, register_deception_trap};
@@ -39,6 +44,10 @@ pub use sri::{compute_sri_hash, sri_link_tag, sri_script_tag};
 pub use telemetry::{
     LiveSecurityEvent, SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
     get_real_rss_memory_mb,
+};
+pub use timing_guard::{
+    TimingGuardConfig, TimingScope, equalize_response_time, synthetic_argon2_cpu_work,
+    timing_guard_middleware,
 };
 pub use vault::{FieldEncryptor, VaultSecret};
 pub use zero_trust::{generate_fingerprint, verify_fingerprint};

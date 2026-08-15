@@ -21,6 +21,8 @@ pub enum AiError {
     ApiError(String),
     /// Configuration errors such as missing API keys.
     ConfigError(String),
+    /// Prompt blocked by the Rullst LLM Security Firewall (Prompt Shield v2).
+    BlockedByFirewall(String),
     /// Generic or fallback error string.
     Other(String),
 }
@@ -32,6 +34,7 @@ impl std::fmt::Display for AiError {
             AiError::SerializationError(err) => write!(f, "Serialization error: {}", err),
             AiError::ApiError(err) => write!(f, "API error: {}", err),
             AiError::ConfigError(err) => write!(f, "Configuration error: {}", err),
+            AiError::BlockedByFirewall(reason) => write!(f, "Blocked by AI Firewall: {}", reason),
             AiError::Other(err) => write!(f, "Error: {}", err),
         }
     }

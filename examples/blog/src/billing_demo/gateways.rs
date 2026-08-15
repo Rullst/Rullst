@@ -255,51 +255,67 @@ pub async fn simulate_provider_checkout(
     match provider_id {
         "stripe" => {
             let p = StripeProvider::new("mock_stripe_key".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "lemonsqueezy" => {
             let p = LemonSqueezyProvider::new("mock_lmsq".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "infinitepay" => {
             let p = InfinitePayProvider::new("mock_inf".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "polar" => {
             let p = PolarProvider::new("mock_polar".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "paddle" => {
             let p = PaddleProvider::new("mock_paddle".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "alipay" => {
-            let p = AlipayProvider::new("mock_alipay".to_string(), "mock_priv".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            let p = AlipayProvider::new(
+                "mock_alipay".to_string(),
+                "mock_priv".to_string(),
+                String::new(),
+            );
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "mercadopago" => {
             let p = MercadoPagoProvider::new("mock_mp".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "razorpay" => {
-            let p = RazorpayProvider::new("mock_rzp".to_string(), "mock_sec".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            let p = RazorpayProvider::new(
+                "mock_rzp".to_string(),
+                "mock_sec".to_string(),
+                String::new(),
+            );
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "coinbase" => {
             let p = CoinbaseCommerceProvider::new("mock_cb".to_string(), String::new());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
         "picpay" => {
             let p = PicPayProvider::new("mock_pic".to_string(), "mock_seller".to_string());
-            p.create_checkout_session(customer_email, plan_id, redirect_url).await
+            p.create_checkout_session(customer_email, plan_id, redirect_url)
+                .await
         }
-        "wise" => {
-            Ok(format!(
-                "https://wise.com/pay/mock_transfer?recipient={}&plan={}&amount=2900&currency=USD",
-                rullst_capital::url_encode(customer_email),
-                rullst_capital::url_encode(plan_id)
-            ))
-        }
+        "wise" => Ok(format!(
+            "https://wise.com/pay/mock_transfer?recipient={}&plan={}&amount=2900&currency=USD",
+            rullst_capital::url_encode(customer_email),
+            rullst_capital::url_encode(plan_id)
+        )),
         _ => Err(format!("Unknown provider: {}", provider_id)),
     }
 }

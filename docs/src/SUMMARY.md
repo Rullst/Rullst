@@ -61,6 +61,7 @@
 
 # Reference
 - [📜 Framework Spec](spec.md)
+- [🛡️ High-Assurance Security Architecture](security-architecture.md)
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [🔓 Zero Lock-In & Axum/SQLx Interoperability](axum-sqlx-migration.md)

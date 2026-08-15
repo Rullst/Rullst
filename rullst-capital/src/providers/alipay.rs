@@ -60,10 +60,10 @@ impl AlipayProvider {
         let tag = hmac::sign(&key, payload);
 
         // If signature is provided as hex
-        if let Ok(sig_bytes) = hex::decode(signature) {
-            if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 1 {
-                return Ok(());
-            }
+        if let Ok(sig_bytes) = hex::decode(signature)
+            && tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 1
+        {
+            return Ok(());
         }
 
         // If signature is raw or base64, compare against signature bytes directly
@@ -94,7 +94,11 @@ impl BillingProvider for AlipayProvider {
             return Ok(format!(
                 "{}?app_id={}&method=alipay.trade.page.pay&email={}&plan={}&return_url={}",
                 self.gateway_url,
-                url_encode(if self.app_id.is_empty() { "mock_alipay_app" } else { &self.app_id }),
+                url_encode(if self.app_id.is_empty() {
+                    "mock_alipay_app"
+                } else {
+                    &self.app_id
+                }),
                 url_encode(customer_email),
                 url_encode(plan_id),
                 url_encode(redirect_url)
@@ -142,10 +146,7 @@ impl BillingProvider for AlipayProvider {
         // Support both JSON payloads and URL-encoded notification form posts
         let (out_trade_no, trade_no, trade_status, buyer_email, plan_id, gmt_close) =
             if let Ok(json) = serde_json::from_slice::<Value>(payload) {
-                let out_trade_no = json["out_trade_no"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
+                let out_trade_no = json["out_trade_no"].as_str().unwrap_or("").to_string();
                 let trade_no = json["trade_no"].as_str().unwrap_or("").to_string();
                 let trade_status = json["trade_status"]
                     .as_str()
@@ -162,7 +163,14 @@ impl BillingProvider for AlipayProvider {
                     .unwrap_or("default")
                     .to_string();
                 let gmt_close = json["gmt_close"].as_i64();
-                (out_trade_no, trade_no, trade_status, buyer_email, plan_id, gmt_close)
+                (
+                    out_trade_no,
+                    trade_no,
+                    trade_status,
+                    buyer_email,
+                    plan_id,
+                    gmt_close,
+                )
             } else {
                 let body_str = String::from_utf8_lossy(payload);
                 let mut params = HashMap::new();
@@ -189,7 +197,14 @@ impl BillingProvider for AlipayProvider {
                     .get("subject")
                     .cloned()
                     .unwrap_or_else(|| "default".to_string());
-                (out_trade_no, trade_no, trade_status, buyer_email, plan_id, None)
+                (
+                    out_trade_no,
+                    trade_no,
+                    trade_status,
+                    buyer_email,
+                    plan_id,
+                    None,
+                )
             };
 
         let status = match trade_status.as_str() {

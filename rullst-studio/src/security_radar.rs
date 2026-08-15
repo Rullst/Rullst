@@ -25,6 +25,8 @@ pub struct ThreatRadarStats {
     pub dlp_secrets_masked: u64,
     pub secure_headers_applied: u64,
     pub idor_warnings: u64,
+    pub timing_guard_protected: u64,
+    pub prompt_injections_blocked: u64,
     pub audit_chain_integrity: String,
     pub threat_level: String,
     pub live_events: Vec<rullst_security::LiveSecurityEvent>,
@@ -62,6 +64,8 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         dlp_secrets_masked: store.dlp_secrets_masked_count.load(Ordering::Relaxed),
         secure_headers_applied: store.secure_headers_applied_count.load(Ordering::Relaxed),
         idor_warnings: store.idor_warnings_count.load(Ordering::Relaxed),
+        timing_guard_protected: store.timing_guard_protected_count.load(Ordering::Relaxed),
+        prompt_injections_blocked: store.prompt_injections_blocked_count.load(Ordering::Relaxed),
         audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
         threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
         live_events: events,
@@ -86,6 +90,8 @@ async fn render_radar_dashboard() -> Html<String> {
     let dlp_secrets_masked_count = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
     let secure_headers_applied_count = store.secure_headers_applied_count.load(Ordering::Relaxed);
     let idor_warnings_count = store.idor_warnings_count.load(Ordering::Relaxed);
+    let timing_guard_count = store.timing_guard_protected_count.load(Ordering::Relaxed);
+    let prompt_injections_count = store.prompt_injections_blocked_count.load(Ordering::Relaxed);
 
     let events = store
         .live_events
@@ -243,6 +249,16 @@ async fn render_radar_dashboard() -> Html<String> {
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">IDOR Scanner Audited</span>
             <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-idor">{idor_warnings_count}</div>
             <p class="text-[10px] text-slate-500 mt-1">Static RBAC/Ownership Guard</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Anti-Timing Guard</span>
+            <div class="text-2xl font-extrabold text-cyan-400 mt-1" id="stat-timingguard">{timing_guard_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Constant-Time Auth Padding</p>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Firewall Shield</span>
+            <div class="text-2xl font-extrabold text-rose-400 mt-1" id="stat-aifirewall">{prompt_injections_count}</div>
+            <p class="text-[10px] text-slate-500 mt-1">Jailbreak & Prompt Shield v2</p>
         </div>
     </div>
 

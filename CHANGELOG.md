@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time execution normalizer (`TimingGuardConfig`, `TimingScope`, `equalize_response_time`, `timing_guard_middleware`) enforcing guaranteed response durations with randomized micro-jitter and synthetic Argon2 CPU instruction cycles on non-existent users, mathematically eliminating side-channel user enumeration on authentication and password-reset endpoints.
+- **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Zero-latency multi-vector prompt defense engine and middleware (`LlmFirewall`, `ai_firewall_middleware`) scrutinizing inputs across direct jailbreaks (`Ignore previous instructions`, `DAN mode`), system prompt exfiltration, tokenizer delimiter collisions (`<|im_start|>`, `[INST]`), Markdown image exfiltration beacons, and invisible zero-width unicode character poisoning.
+- **High-Assurance Security Architecture Guide (`docs/src/security-architecture.md`)**: Comprehensive architectural guide detailing Rullst's Defense-in-Depth model, complete OWASP Top 10 & API Security Top 10 matrix mapping, and core security subsystem deep-dives.
 - **"The Sovereign SaaS Blog & Publisher" Reference Showcase (`examples/blog`)**: Transformed `examples/blog` into a comprehensive, production-grade reference showcase demonstrating 100% real, non-mocked integration across all Rullst subsystems:
   - **All 3 Front-End Paradigms**: Zero-Bundle HTMX SSR (`/`), LiveView Server-Driven UI with Tokio WebSockets (`/live-feed`, `/_live`), and Reactive Wasm Island (`/editor`, `/wasm-counter`).
   - **Hybrid ORM & Intent-Based Modeling**: Active Record multi-tenant auto-scoping via task-local storage (`apply_tenant_scope`) and Data Mapper / Repository pattern with parameterized SQLx domain aggregations (`/posts/repository`).

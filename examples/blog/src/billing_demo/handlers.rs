@@ -68,7 +68,9 @@ pub async fn checkout_handler(Query(params): Query<CheckoutParams>) -> impl Into
 
     let provider = params.provider.unwrap_or_else(|| "infinitepay".to_string());
     let plan = params.plan.unwrap_or_else(|| "pro_plan".to_string());
-    let email = params.email.unwrap_or_else(|| "user@rullst.com".to_string());
+    let email = params
+        .email
+        .unwrap_or_else(|| "user@rullst.com".to_string());
 
     let (free_can_post, xml_snippet) = compute_demo_data();
 

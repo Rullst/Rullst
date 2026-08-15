@@ -44,6 +44,7 @@ pub async fn nexus_security_page(
     let dlp_secrets_masked = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
     let secure_headers_applied = store.secure_headers_applied_count.load(Ordering::Relaxed);
     let idor_warnings = store.idor_warnings_count.load(Ordering::Relaxed);
+    let timing_guard_protected = store.timing_guard_protected_count.load(Ordering::Relaxed);
 
     // Build Banned IPs List
     let mut banned_ips_html = String::new();
@@ -273,6 +274,10 @@ pub async fn nexus_security_page(
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
                 <span style="color: var(--text-muted); font-size: 11px; display: block;">IDOR Route Warnings</span>
                 <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{idor_warnings}</span>
+            </div>
+            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Anti-Timing Protected</span>
+                <span style="font-size: 20px; font-weight: 700; color: #22d3ee;">{timing_guard_protected}</span>
             </div>
         </div>
     </div>

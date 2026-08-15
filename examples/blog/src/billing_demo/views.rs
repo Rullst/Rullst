@@ -70,7 +70,7 @@ pub fn render_pricing_page(
             <body>
                 { rullst::html::RawHtml(nav) }
                 <div class="container">
-                    
+
                     <div class="card pricing-hero">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                             <div>

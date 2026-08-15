@@ -34,7 +34,11 @@
 
 ---
 
-## ⚡ Phase 3: Enterprise SaaS & Zero-Trust Deepening (Planned for v12.1.0)
+## ⚡ Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12.0.0 / v12.1.0)
+- [x] **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time response padding for authentication, user lookup, and password-reset endpoints, eliminating timing side-channel attacks.
+- [x] **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Dedicated AI endpoint protection inspecting prompts for jailbreaks, system prompt leaking, indirect injection, and training data extraction.
+- [ ] **Zero-Downtime Secret Rotation & JWKS Server (`rullst-security::key_rotation`)**: Automated cryptographic key rotation with transition grace periods and dynamic `/oauth/jwks.json` serving, meeting SOC2/PCI-DSS compliance.
+- [ ] **Passkeys & WebAuthn FIDO2 Engine (`rullst-security::webauthn`)**: Native passwordless biometrics (Touch ID, Face ID, Windows Hello) and hardware token (YubiKey) authentication.
 - [ ] **Multi-Tenant SaaS Data Isolation Guard (`rullst-security::tenant_guard`)**: Zero-trust multi-tenancy middleware guaranteeing database query isolation and preventing cross-tenant data leakage in multi-tenant DB schemas.
 - [ ] **Hardware Security Module (HSM) & Cloud KMS Bridge (`rullst-security::kms`)**: Key signing and master key encryption abstraction supporting AWS KMS, Google Cloud KMS, HashiCorp Vault, and PKCS#11 hardware tokens.
 - [ ] **Adaptive WAF Anomaly Engine (`rullst-security::adaptive_waf`)**: Dynamic request scoring pipeline calculating a real-time risk index (0–100) per IP, escalating from stealth logging to JS challenge, CAPTCHA, or TCP drop.
@@ -47,6 +51,7 @@
 ## 🔬 Phase 4: Post-Quantum Architecture & Kernel-Level Defense (Planned for v13.0.0)
 - [ ] **Post-Quantum Cryptography Bridge (`rullst-security::pqc`)**: NIST ML-KEM (Kyber) & ML-DSA (Dilithium) quantum-resistant session encryption algorithms.
 - [ ] **Autonomous Threat Containment & OS Firewall Pipeline (`rullst-security::containment`)**: Rule engine dispatching kernel-level iptables/eBPF IP blocks or Cloudflare API bans when RASP threat thresholds are crossed.
+- [ ] **Sandboxed Wasm Plugin Engine (`rullst-security::wasm_sandbox`)**: Isolated WebAssembly execution sandbox for third-party multi-tenant SaaS extensions with strict memory/CPU limits and zero host filesystem access.
 - [ ] **Post-Quantum TLS & Hybrid KEM Handshake (`rullst-security::pqc_tls`)**: Hybrid X25519 + Kyber (ML-KEM-768) key exchange integration for client-server sessions against future quantum decryption threats.
 - [ ] **Cryptographic Binary SBOM & Runtime Attestation (`rullst-security::sbom`)**: In-memory executable checksum validation and `.so`/`.dylib` integrity checks against signed CycloneDX SBOM manifests.
 - [ ] **In-Memory Heap Zeroization & Guard Pages (`rullst-security::mem_guard`)**: Automatic memory sanitization for key buffers on drop (`zeroize::Zeroizing`) with OS guard page protection against memory heap dump exploits.
