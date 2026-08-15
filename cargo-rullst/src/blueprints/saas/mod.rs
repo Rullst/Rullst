@@ -16,7 +16,7 @@ pub fn file_manifest(
     let is_repo = common::is_repo_mode(orm_pattern);
     let _ = frontend_engine;
 
-    manifest.extend(routes::get_routes(project_name_safe, hot_reload));
+    manifest.extend(routes::get_routes(project_name_safe, hot_reload, orm_pattern));
     manifest.extend(models::get_models_and_migrations());
     manifest.extend(billing::get_billing_pages());
 

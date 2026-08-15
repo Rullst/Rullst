@@ -45,7 +45,7 @@ pub fn build_cargo_toml(
     if blueprint_selection >= 1 || db_needed {
         rullst_features.push("nexus");
     }
-    if blueprint_selection == 2 {
+    if blueprint_selection == 2 || blueprint_selection == 3 {
         rullst_features.push("auth");
         rullst_features.push("capital");
     }
@@ -127,6 +127,34 @@ edition = "2021"
     }
 
     if blueprint_selection == 3 {
+        let sibling_auth = current_dir.join("rullst-auth");
+        let auth_dep = if sibling_auth.exists() {
+            let absolute_path = sibling_auth
+                .canonicalize()?
+                .display()
+                .to_string()
+                .replace(r"\\?\", "")
+                .replace("\\", "/");
+            format!("rullst-auth = {{ path = \"{}\" }}\n", absolute_path)
+        } else {
+            "rullst-auth = \"12.0.0\"\n".to_string()
+        };
+        cargo_toml.push_str(&auth_dep);
+
+        let sibling_capital = current_dir.join("rullst-capital");
+        let capital_dep = if sibling_capital.exists() {
+            let absolute_path = sibling_capital
+                .canonicalize()?
+                .display()
+                .to_string()
+                .replace(r"\\?\", "")
+                .replace("\\", "/");
+            format!("rullst-capital = {{ path = \"{}\" }}\n", absolute_path)
+        } else {
+            "rullst-capital = \"12.0.0\"\n".to_string()
+        };
+        cargo_toml.push_str(&capital_dep);
+
         let sibling_path = current_dir.join("rullst-connect");
         let connect_dep = if sibling_path.exists() {
             let absolute_path = sibling_path

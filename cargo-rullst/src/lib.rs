@@ -11,14 +11,14 @@ pub mod pkg;
 pub mod ui;
 
 #[cfg_attr(mutants, mutants::skip)]
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     ui::trigger_background_update_check();
 
     let mut args: Vec<String> = std::env::args().collect();
 
     // Cargo passes the subcommand name ("rullst") as the first argument to the binary.
-    // We remove it so clap can parse the actual commands correctly.
-    if args.len() >= 2 && args[1] == "rullst" {
+    // When invoked directly as `rullst cli ...`, we also accept "cli" gracefully.
+    if args.len() >= 2 && (args[1] == "rullst" || args[1] == "cli") {
         args.remove(1);
     }
 

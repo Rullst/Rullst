@@ -13,9 +13,17 @@ documentation = "https://docs.rs/cargo-rullst"
 keywords = ["rullst", "cli", "scaffold", "generator", "devtools"]
 categories = ["command-line-utilities", "development-tools"]
 
+[lib]
+name = "cargo_rullst"
+path = "src/lib.rs"
+
 [[bin]]
 name = "cargo-rullst"
-path = "src/main.rs"
+path = "src/bin/cargo-rullst.rs"
+
+[[bin]]
+name = "rullst"
+path = "src/bin/rullst.rs"
 
 [[bin]]
 name = "sync-badges"

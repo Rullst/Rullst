@@ -132,43 +132,9 @@ pub fn frontend_page_imports(frontend_engine: &str) -> String {
     )
 }
 
-/// Generates the page renderer code block.
-/// For HTMX: uses `html!` macro.
-/// For Leptos SSR: uses `leptos::ssr::render_to_string(...)`.
-/// For Dioxus SSR: uses `dioxus_ssr::render_element(...)`.
-pub fn render_page_layout(frontend_engine: &str) -> String {
-    if frontend_engine.contains("Leptos") {
-        r#"pub fn render_layout(title: &str, body_html: &str) -> String {
-    view! {
-        <!DOCTYPE html>
-        <html lang="en" class="dark">
-            <head>
-                <meta charset="UTF-8" />
-                <title>{title.to_string()}</title>
-            </head>
-            <body>
-                <div class="leptos-ssr-container">
-                    {body_html.to_string()}
-                </div>
-            </body>
-        </html>
-    }.to_html()
-}
-"#
-        .to_string()
-    } else if frontend_engine.contains("Dioxus") {
-        r#"pub fn render_layout(title: &str, body_html: &str) -> String {
-    dioxus::ssr::render_element(rsx! {
-        div { class: "dioxus-ssr-container",
-            h1 { "{title}" }
-            div { "{body_html}" }
-        }
-    })
-}
-"#
-        .to_string()
-    } else {
-        r#"pub fn render_layout(title: &str, body_html: &str) -> String {
+/// Generates the page renderer code block using Rullst's compile-time `html!` macro.
+pub fn render_page_layout(_frontend_engine: &str) -> String {
+    r#"pub fn render_layout(title: &str, body_html: &str) -> String {
     rullst::html! {
         <html lang="en" class="dark">
             <head>
@@ -182,8 +148,7 @@ pub fn render_page_layout(frontend_engine: &str) -> String {
     }
 }
 "#
-        .to_string()
-    }
+    .to_string()
 }
 
 /// Generates the lib.rs router entry for hot-reload mode,

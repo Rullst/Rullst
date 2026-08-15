@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
     if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
         println!("📊 Rullst Studio running on port 5555");
     }}
     println!("🚀 ERP Pocket server starting on port 3000...");
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
     if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
         println!("📊 Rullst Studio running on port 5555");
     }}
     println!("🚀 ERP Pocket server starting on port 3000...");

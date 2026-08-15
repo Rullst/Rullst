@@ -48,7 +48,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         let main_rs = format!(
             r##"pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
     if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
         println!("📊 Rullst Studio running on port 5555");
     }}
     println!("🚀 Blog server starting on port 3000...");
@@ -81,19 +81,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
+            repo_decl = repo_decl,
             project_name_safe = project_name_safe
         );
         manifest.push(("src/main.rs", main_rs));
     } else {
-        let main_rs = r##"use rullst::{routes, Server};
+        let main_rs = format!(
+            r##"use rullst::{{routes, Server}};
 
 pub mod migrations;
 pub mod models;
-pub mod controllers;
+{repo_decl}pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
@@ -105,25 +107,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = routes![
         get("/" => controllers::blog_controller::index),
-        get("/posts/{slug}" => controllers::blog_controller::show),
+        get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
     ].nest_axum("/nexus", nexus);
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {
-        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
         println!("📊 Rullst Studio running on port 5555");
-    }
+    }}
     println!("🚀 Blog server starting on port 3000...");
     Server::new(router)
         .run(3000)
         .await?;
 
     Ok(())
-}
-"##
-        .to_string();
+}}
+"##,
+            repo_decl = repo_decl
+        );
         manifest.push(("src/main.rs", main_rs));
     }
 

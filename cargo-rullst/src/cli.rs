@@ -29,7 +29,8 @@ use crate::generators::{
 // ─── Clap Structs ─────────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "cargo-rullst")]
+#[command(name = "rullst")]
+#[command(version)]
 #[command(about = "Official CLI for the Rullst Framework", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
