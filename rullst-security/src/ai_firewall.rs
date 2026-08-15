@@ -9,7 +9,6 @@
 
 use crate::telemetry::SecurityStore;
 use axum::{
-    body::Bytes,
     extract::Request,
     http::StatusCode,
     middleware::Next,
