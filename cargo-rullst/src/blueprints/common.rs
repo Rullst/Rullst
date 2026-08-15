@@ -97,10 +97,14 @@ pub fn generate_repositories_mod(models: &[&str]) -> String {
 /// Returns a comment/badge indicating the active frontend engine.
 /// Used in generated page files as a header comment.
 pub fn frontend_engine_badge(frontend_engine: &str) -> &'static str {
-    if frontend_engine.contains("Leptos") {
-        "⚡ Rullst Leptos SSR Adapter Engine Active"
-    } else if frontend_engine.contains("Dioxus") {
-        "🎨 Rullst Dioxus Virtual DOM SSR Engine Active"
+    if frontend_engine.contains("LiveView") {
+        "⚡ Rullst LiveView Server-Driven UI Active"
+    } else if frontend_engine.contains("Wasm") || frontend_engine.contains("Island") {
+        "🏝️ Rullst Reactive Wasm Island Engine Active"
+    } else if frontend_engine.contains("Topcoat") {
+        "🎨 Rullst Zero-Build Pure CSS (Topcoat UI) Active"
+    } else if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
+        "📄 Rullst File-Based Classic Templates (Tera) Active"
     } else {
         "🔥 Rullst Zero-Bundle HTMX + Tailwind Engine Active"
     }
@@ -108,15 +112,13 @@ pub fn frontend_engine_badge(frontend_engine: &str) -> &'static str {
 
 /// Returns the frontend adapter import comment to inject at top of page files.
 pub fn frontend_adapter_comment(frontend_engine: &str) -> String {
-    format!("// Frontend Adapter: {}", frontend_engine)
+    format!("// Frontend Engine: {}", frontend_engine)
 }
 
 /// Returns the cargo dependency line for the chosen frontend engine.
 pub fn frontend_cargo_dependency(frontend_engine: &str) -> String {
-    if frontend_engine.contains("Leptos") {
-        "leptos = { version = \"0.7\", features = [\"ssr\"] }\n".to_string()
-    } else if frontend_engine.contains("Dioxus") {
-        "dioxus = { version = \"0.6\", features = [\"ssr\"] }\n".to_string()
+    if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
+        "tera = \"1.20\"\n".to_string()
     } else {
         String::new()
     }
@@ -124,22 +126,10 @@ pub fn frontend_cargo_dependency(frontend_engine: &str) -> String {
 
 /// Generates appropriate imports for the page module depending on frontend engine.
 pub fn frontend_page_imports(frontend_engine: &str) -> String {
-    if frontend_engine.contains("Leptos") {
-        format!(
-            "// Frontend Adapter: {}\nuse leptos::prelude::*;\nuse rullst::html;\n",
-            frontend_engine
-        )
-    } else if frontend_engine.contains("Dioxus") {
-        format!(
-            "// Frontend Adapter: {}\nuse dioxus::prelude::*;\nuse rullst::html;\n",
-            frontend_engine
-        )
-    } else {
-        format!(
-            "// Frontend Adapter: {}\nuse rullst::html;\n",
-            frontend_engine
-        )
-    }
+    format!(
+        "// Frontend Engine: {}\nuse rullst::html;\n",
+        frontend_engine
+    )
 }
 
 /// Generates the page renderer code block.

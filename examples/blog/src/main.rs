@@ -53,9 +53,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let _ = post1.save().await;
             }
 
-            // 2. Architecture Comparison: Rullst vs Leptos vs Dioxus Post
+            // 2. Architecture Comparison: The 5 Frontend Paradigms in Rullst
             let comparison_exists = Post::query()
-                .where_eq("title", "Architecture Deep Dive: Rullst vs Leptos vs Dioxus")
+                .where_eq("title", "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst")
                 .first()
                 .await
                 .unwrap_or(None)
@@ -65,8 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut post2 = Post {
                     id: 0,
                     tenant_id: "community".to_string(),
-                    title: "Architecture Deep Dive: Rullst vs Leptos vs Dioxus".to_string(),
-                    body: "Here is an in-depth breakdown of the 3 front-end paradigms supported and demonstrated in Rullst:\n\n1. ⚡ HTMX SSR (Rullst Native Standard):\n- Core Philosophy: Pure Server-Side Rendering with compile-time `html!` macro.\n- Client Footprint: Zero JavaScript bundle overhead. Microsecond Time-to-First-Byte (TTFB).\n- Best For: Ultra-fast SEO-rich dashboards, SaaS backends, minimal battery and RAM usage on user devices.\n\n2. 🏝️ Wasm Island (Leptos Pattern):\n- Core Philosophy: High-performance WebAssembly (.wasm) binary compiled via `wasm-bindgen`.\n- Client Footprint: Client-side execution inside the browser's WebAssembly VM with fine-grained reactive Signals.\n- Best For: Complex in-browser tools, rich graphics, video processors, and zero-latency client computations.\n\n3. 🔴 LiveView WS (Dioxus Pattern):\n- Core Philosophy: Server-Driven UI synchronized in real-time over persistent WebSockets.\n- Client Footprint: Zero client state logic. State resides entirely in Tokio server memory; state mutations trigger automatic DOM diff patches pushed to the browser.\n- Best For: Real-time feeds, live chat, interactive collaboration, and event-driven admin dashboards.".to_string(),
+                    title: "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst".to_string(),
+                    body: "Here is an in-depth breakdown of how Rullst unifies all 5 web paradigms natively, eliminating framework lock-in:\n\n1. ⚡ Zero-Bundle HTMX SSR (Rullst Native Standard):\n- Paradigm: Declarative HTML5 attributes with compile-time `html!` macro.\n- Footprint: 0 KB JavaScript bundle. Sub-millisecond TTFB.\n- Ideal For: SEO landing pages, SaaS dashboards, and CRUD apps.\n\n2. 🔴 LiveView Server-Driven UI (`rullst::live` — Phoenix & Dioxus pattern):\n- Paradigm: Bidirectional WebSocket state synchronization over Tokio.\n- Footprint: Zero client-side logic. State lives in server RAM; DOM diffs are pushed to the browser in real-time.\n- Ideal For: Live feeds, chats, reactive counters, and notifications.\n\n3. 🏝️ Reactive Wasm Islands (`rullst::island` — Leptos & Yew WASM/Signals pattern):\n- Paradigm: Client-side WebAssembly micro-frontends mounted pontually.\n- Footprint: Isolated WASM bytecode running in the browser VM.\n- Ideal For: Rich Markdown editors, canvas games, offline calculations, and charting.\n\n4. 🎨 Zero-Build Pure CSS (Adobe Topcoat pattern — `/topcoat-demo`):\n- Paradigm: 60 FPS GPU-accelerated CSS components without Node.js or NPM.\n- Footprint: 0 KB JS, instant loading, dark/light themes out of the box.\n- Ideal For: Backend developers wanting clean UIs with zero JS build pipelines.\n\n5. 📄 File-Based Classic Templates (Jinja2 / Tera Engine — Loco & Rails pattern — `/templates-demo`):\n- Paradigm: External HTML files located in `templates/*.html` with layout inheritance.\n- Footprint: Decoupled presentation layer for frontend designers.\n- Ideal For: Teams migrating from Django, Laravel, Rails, or Loco.rs.".to_string(),
                 };
                 let _ = post2.save().await;
             }

@@ -8,18 +8,28 @@ pub fn render_showcase_nav(active_route: &str) -> String {
     let routes = [
         (
             "/",
-            "⚡ HTMX SSR (Rullst Native Standard)",
-            "Zero-bundle instant server-side rendering",
-        ),
-        (
-            "/editor",
-            "🏝️ Wasm Island (Leptos Pattern)",
-            "Client-side WebAssembly reactive component",
+            "⚡ HTMX SSR (Zero-Bundle)",
+            "Zero-bundle declarative HTML5 SSR (HTMX Standard)",
         ),
         (
             "/live-feed",
-            "🔴 LiveView WS (Dioxus Pattern)",
-            "Persistent WebSocket bidirectional state sync",
+            "🔴 LiveView WS (rullst::live)",
+            "Persistent WebSocket bidirectional state sync (Phoenix & Dioxus pattern)",
+        ),
+        (
+            "/editor",
+            "🏝️ Wasm Island (rullst::island)",
+            "Client-side WebAssembly reactive micro-frontend (Leptos & Yew WASM/Signals pattern)",
+        ),
+        (
+            "/topcoat-demo",
+            "🎨 Topcoat Pure CSS",
+            "60 FPS native CSS components, 0 Node.js/NPM (Adobe Topcoat pattern)",
+        ),
+        (
+            "/templates-demo",
+            "📄 File Templates (Tera)",
+            "External Jinja2/Tera templates in templates/*.html (Loco, Django & Rails pattern)",
         ),
         (
             "/posts/repository",
@@ -43,7 +53,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         ),
         (
             "/omni",
-            "📱 Omni App (Mobile & Desktop)",
+            "📱 Omni App",
             "Interactive Mobile Viewport Simulator and Desktop Exporter",
         ),
     ];

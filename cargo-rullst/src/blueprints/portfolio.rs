@@ -1,4 +1,5 @@
 // src/blueprints/portfolio.rs — Dynamic Full-Stack Portfolio supporting Active Record, Repository, and Hybrid ORM patterns.
+use super::common;
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -450,71 +451,9 @@ pub async fn index() -> impl IntoResponse {
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
     // 6. Pages View
-    let (engine_badge, engine_imports, render_fn_code) = if frontend_engine.contains("Leptos") {
-        (
-            "⚡ Rullst Leptos SSR Adapter Engine Active",
-            "use leptos::prelude::*;\nuse rullst::html;",
-            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
-    let sidebar_html = render_sidebar(profile, skills);
-    let content_html = render_content(projects, experiences);
-    let styles = cv_styles();
-    view! {
-        <html lang="en" class="dark">
-            <head>
-                <meta charset="UTF-8" />
-                <title>"Rullst Developer — Leptos SSR Portfolio"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-                <style>{styles.clone()}</style>
-            </head>
-            <body>
-                <div class="layout">
-                    <div class="sidebar-wrapper" inner_html=sidebar_html.clone() />
-                    <div class="content-wrapper" inner_html=content_html.clone() />
-                </div>
-            </body>
-        </html>
-    }.to_html()
-}"#,
-        )
-    } else if frontend_engine.contains("Dioxus") {
-        (
-            "🎨 Rullst Dioxus Virtual DOM SSR Engine Active",
-            "use dioxus::prelude::*;\nuse rullst::html;",
-            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
-    let sidebar_html = render_sidebar(profile, skills);
-    let content_html = render_content(projects, experiences);
-    let styles = cv_styles();
-    let body_inner = dioxus::ssr::render_element(rsx! {
-        div { class: "dioxus-ssr-portfolio",
-            style { "{styles}" }
-            div { class: "layout",
-                div { dangerous_inner_html: "{sidebar_html}" }
-                div { dangerous_inner_html: "{content_html}" }
-            }
-        }
-    });
-
-    format!(
-        "<!DOCTYPE html>\n<html lang=\"en\" class=\"dark\">\n<head>\n\
-         <meta charset=\"UTF-8\" />\n\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n\
-         <title>{} &mdash; {}</title>\n\
-         <link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\n\
-         <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n\
-         <link href=\"https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n\
-         </head>\n<body>\n{}\n</body>\n</html>",
-        rullst_core::html::escape_str(&profile.name),
-        rullst_core::html::escape_str(&profile.title),
-        body_inner
-    )
-}"#,
-        )
-    } else {
-        (
-            "🔥 Rullst Zero-Bundle HTMX + Tailwind Engine Active",
-            "use rullst::html;",
-            r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+    let engine_badge = common::frontend_engine_badge(frontend_engine);
+    let engine_imports = "use rullst::html;";
+    let render_fn_code = r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
     html! {
         <html lang="en">
             <head>
@@ -538,9 +477,7 @@ pub async fn index() -> impl IntoResponse {
             </body>
         </html>
     }
-}"#,
-        )
-    };
+}"#;
 
     let home_page = format!(
         r##"// Frontend Adapter: {frontend_engine}

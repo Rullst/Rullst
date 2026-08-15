@@ -9,6 +9,8 @@ pub mod omni_demo;
 pub mod repository_demo;
 pub mod security_demo;
 pub mod showcase_nav;
+pub mod templates_demo;
+pub mod topcoat_demo;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod live_counter;
@@ -318,7 +320,7 @@ pub mod app {
         let headers = response.headers_mut();
         headers.insert(
             "Content-Security-Policy",
-            "default-src 'self' https://unpkg.com https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://*.githubusercontent.com; connect-src 'self' ws: wss:;".parse().unwrap(),
+            "default-src 'self' https://unpkg.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://*.githubusercontent.com; connect-src 'self' ws: wss:;".parse().unwrap(),
         );
         headers.insert(
             "Cross-Origin-Resource-Policy",
@@ -355,6 +357,8 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
         get("/live-counter" => live_demo),
         get("/_live" => live_ws),
         get("/wasm-counter" => wasm_demo),
+        get("/topcoat-demo" => crate::topcoat_demo::render_topcoat_demo_page),
+        get("/templates-demo" => crate::templates_demo::render_templates_demo_page),
         get("/pricing" => crate::billing_demo::pricing_page),
         get("/billing" => crate::billing_demo::pricing_page),
         get("/checkout" => crate::billing_demo::checkout_handler),

@@ -54,7 +54,7 @@ When you run `cargo rullst`, the wizard will ask you to select a Blueprint. All 
 
 ## 1. Blank Starter
 **Use Case:** Custom, from-scratch development.
-This is the minimal template powered by zero-bundle HTMX. It includes a simple reactive counter to demonstrate server-driven communication while keeping your project 100% clean and free of heavy dependencies. If you want full-featured Leptos SSR or Dioxus SSR UI components generated out of the box, select one of the rich blueprints below (Portfolio, SaaS, LMS, Blog, ERP).
+This is the minimal template powered by zero-bundle HTMX. It includes a simple reactive counter to demonstrate server-driven communication while keeping your project 100% clean and free of heavy dependencies. You can select any of the 5 native frontend engines (Zero-Bundle HTMX, LiveView, Wasm Islands, Topcoat Pure CSS, or Tera Templates) or choose one of the rich blueprints below (Portfolio, SaaS, LMS, Blog, ERP).
 
 ## 2. Portfolio 🔥
 **Use Case:** Developer showcases and personal branding.

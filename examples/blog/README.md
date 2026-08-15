@@ -14,17 +14,23 @@ graph TD
     Nav --> F1["1. Zero-Bundle HTMX SSR (/)"]
     Nav --> F2["2. LiveView Server-Driven UI (/live-feed)"]
     Nav --> F3["3. Wasm Island Editor (/editor)"]
-    Nav --> O1["4. Hybrid ORM & Data Mapper (/posts/repository)"]
-    Nav --> C1["5. Capital Billing & SPED DPS (/pricing)"]
-    Nav --> S1["6. Security RASP Sandbox (/security-demo)"]
-    Nav --> A1["7. AI Vector Search (/ai-assistant)"]
-    Nav --> CR["8. Studio (/studio) & Nexus (/nexus)"]
+    Nav --> F4["4. Topcoat Pure CSS (/topcoat-demo)"]
+    Nav --> F5["5. File-Based Templates (/templates-demo)"]
+    Nav --> O1["6. Hybrid ORM & Data Mapper (/posts/repository)"]
+    Nav --> C1["7. Capital Billing & SPED DPS (/pricing)"]
+    Nav --> S1["8. Security RASP Sandbox (/security-demo)"]
+    Nav --> A1["9. AI Vector Search (/ai-assistant)"]
+    Nav --> CR["10. Studio (/studio) & Nexus (/nexus)"]
 ```
 
-### 1. ⚡ All 3 Front-End Paradigms in Pure Rust
-- **Zero-Bundle HTMX SSR (`/`)**: Ultra-fast declarative HTML generated at compile time using the `html!` macro and Axum static dispatch.
-- **LiveView Server-Driven UI (`/live-feed`, `/_live`)**: Real-time state synchronization over persistent Tokio WebSockets with zero client-side JavaScript bundle.
-- **Wasm Reactive Island (`/editor`, `/wasm-counter`)**: Client-side reactive micro-frontend compiled with `wasm-bindgen` and zero VDOM overhead.
+### 1. ⚡ All 5 Front-End Paradigms Unified in Pure Rust
+Rullst is the only full-stack Rust framework that unifies all 5 major web presentation paradigms natively into a single coherent architecture:
+
+- **Zero-Bundle HTMX SSR (`/`)**: Ultra-fast declarative HTML generated at compile time using the `html!` macro and Axum static dispatch with 0 KB JavaScript overhead.
+- **LiveView Server-Driven UI (`/live-feed`, `/_live`)**: Real-time state synchronization over persistent Tokio WebSockets (Phoenix LiveView / Dioxus Live pattern) with zero client-side logic.
+- **Wasm Reactive Island (`/editor`, `/wasm-counter`)**: Client-side reactive micro-frontend compiled with `wasm-bindgen` (Leptos / Yew WASM & Signals pattern) loaded pontually where heavy client computation is needed.
+- **Topcoat Pure CSS (`/topcoat-demo`)**: 60 FPS GPU-accelerated CSS component engine created by Adobe Web Platform with **zero Node.js/NPM builds** and instant dark-mode styling.
+- **File-Based Classic Templates (`/templates-demo`)**: External Jinja2/Tera `.html` files in `templates/` with full layout inheritance (Django, Rails & Loco.rs pattern).
 
 ### 2. 🗄️ Hybrid ORM & Multi-Tenancy
 - **Active Record ([`lib.rs`](src/lib.rs))**: Zero-boilerplate data model with task-local SaaS multi-tenancy auto-scoping (`apply_tenant_scope`) responding to the `X-Tenant-ID` header.
@@ -37,6 +43,8 @@ graph TD
 
 ### 4. 🛡️ Security Sandbox & RASP Inspection ([`security_demo.rs`](src/security_demo.rs))
 - **RASP Engine**: Real-time inspection intercepting SQL Injection (`' OR '1'='1`) and Path Traversal (`../../../../etc/passwd`).
+- **Anti-Timing Guard**: Constant-time response normalization (250ms target) and synthetic Argon2 CPU cycles preventing user enumeration.
+- **AI Firewall v2**: Heuristic prompt shield blocking jailbreaks, DAN overrides, and zero-width unicode poisoning.
 - **DLP Secret Masking**: Automatic redacting of sensitive bearer tokens and passwords (`redact_secrets`).
 - **Login Jail**: Tarpit engine with progressive async backoff to defeat brute-force login attacks.
 - **Honeypot Trap**: Decoy route `/wp-admin` triggering automated alerts to the SOC Threat Radar.
@@ -51,29 +59,15 @@ graph TD
 
 ---
 
-## 🆚 Monorepo Showcase vs. CLI Blueprints
+## 🆚 Frontend Paradigms Matrix: Rullst vs. Ecosystem
 
-| Aspect | Monorepo Showcase (`examples/blog`) | CLI Scaffolding Blueprints (`cargo rullst new ... --blueprint blog`) |
-| :--- | :--- | :--- |
-| **Concept** | **"Kitchen Sink" / Living Testbed** of the framework. | **Clean Starter Boilerplate** for new commercial projects. |
-| **Primary Goal** | Exercises **100% of Rullst crates and features** in a single autonomous binary. | Provides a **clean, idiomatic, noise-free foundation** for developers to build production apps immediately. |
-| **Front-End Matrix** | Houses **all 3 paradigms simultaneously** (HTMX + LiveView WebSockets + Wasm Islands) to prove runtime interoperability. | Contains **only the frontend selected** by the developer during project creation (e.g. HTMX + Tailwind, React/Vite, Leptos SSR). |
-| **Dependencies** | Local path monorepo crates (`path = "../../rullst"`). | Public published registry dependencies (`rullst = "12.0.0"` from crates.io). |
-| **Included Features** | RASP attack sandboxes (`/security-demo`), Honeypots (`/wp-admin`), SPED NFS-e XMLDSig generator, and live mounted Studio & Nexus. | Production-ready MVC structure (`controllers/`, `models/`, `migrations/`, `pages/`) with zero clutter or demo artifacts. |
-| **CI/CD Integration** | Primary binary compiled and executed in automated **DAST ZAP scans, E2E Smoke suites, and Codecov coverage**. | Scaffold generator validated independently in CLI unit tests. |
-
----
-
-## 💡 Why This Separation is Essential (Zero Redundancy in Practice)
-
-1. **Developers Want a Clean Slate, Not Demo Artifacts**:
-   - When a developer bootstraps a new blog via `cargo rullst new my-blog --blueprint blog`, they expect a pristine production codebase.
-   - If the starter template included SQL injection testing buttons, `/wp-admin` honeypots, or conflicting frontend paradigms, developers would have to waste hours deleting demo code before starting actual development.
-   - The CLI blueprint delivers a **clean, production-grade starting point**.
-
-2. **Framework Maintainers Need a Complete Living Lab**:
-   - Framework maintainers and enterprise auditors need empirical proof that all decoupled crates (Security, ORM, Capital, AI, Live, Studio, Nexus) compile together without trait conflicts, panic paths, or memory leaks.
-   - `examples/blog` acts as that **living testbed**, serving as the single source of truth for end-to-end integration health.
+| Framework | Primary Engine | Paradigm Architecture | Ideal Use Case |
+| :--- | :--- | :--- | :--- |
+| **Leptos** | WASM & Signals | Client-side WASM hydration (Single Paradigm) | Rich SPAs with heavy client reactive computation |
+| **Dioxus** | Virtual DOM | React-like Rust VDOM (Single Paradigm) | Cross-platform desktop & mobile interfaces |
+| **Loco.rs** | Askama / Tera | File-based `.html` templates (Single Paradigm) | Traditional Rails/Django-style MVC monoliths |
+| **Topcoat Tokio** | Transpiled Micro-JS | Server-rendered with macro-generated JS snippets | Server-side rendering without WASM |
+| **👑 Rullst** | **Sovereign Multi-Engine** | **All 5 Paradigms Natively Supported** (Zero-Bundle HTMX, LiveView WS, Wasm Islands, Topcoat Pure CSS, Tera Templates) | **Total freedom**: choose the optimal paradigm per page with zero lock-in |
 
 ---
 
@@ -86,8 +80,10 @@ graph TD
 | `http://localhost:3000/posts/repository` | `GET` | **Repository ORM** | Data Mapper analytics and Intent-Based `@index` visualizer. |
 | `http://localhost:3000/live-feed` | `GET` | **LiveView** | Server-driven UI state synchronization over WebSockets. |
 | `http://localhost:3000/editor` | `GET` | **Wasm Island** | Client-side reactive WebAssembly micro-frontend. |
+| `http://localhost:3000/topcoat-demo` | `GET` | **Topcoat CSS** | 60 FPS native GPU-accelerated UI with 0 Node.js/NPM. |
+| `http://localhost:3000/templates-demo` | `GET` | **Tera Templates** | External Jinja2/Tera template from `templates/article.html`. |
 | `http://localhost:3000/pricing` | `GET` | **Capital** | SaaS pricing tiers, `Billable` quota check & SPED DPS XMLDSig. |
-| `http://localhost:3000/security-demo` | `GET` | **Security** | Interactive RASP, DLP masking & Login Jail tarpit sandbox. |
+| `http://localhost:3000/security-demo` | `GET` | **Security** | Interactive RASP, Anti-Timing Guard & AI Firewall sandbox. |
 | `http://localhost:3000/ai-assistant` | `GET` | **AI & RAG** | Vector semantic search with Cosine Similarity & Prompt Shield. |
 | `http://localhost:3000/wp-admin` | `GET` | **Honeypot** | Trap route triggering threat log to SOC Threat Radar. |
 | `http://localhost:3000/studio` | `GET` | **Studio** | Developer Control Room (Database Inspector, Radar, Traces). |

@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 ### Added
+- **Sovereign Modular Frontend Engines Matrix (`cargo-rullst` & `rullst-core::frontend`)**: Replaced third-party framework scaffolding wrappers with **5 clean, standalone, native frontend engines** in `cargo-rullst` wizard (`wizard.rs`) and `rullst-core`:
+  - **1. Zero-Bundle HTMX + Tailwind SSR**: Declarative compile-time `rullst::html!` macro with 0 KB JavaScript bundle overhead.
+  - **2. LiveView Server-Driven UI (`rullst::live`)**: Real-time state synchronization over persistent Tokio WebSockets (Phoenix & Dioxus pattern).
+  - **3. Reactive Wasm Islands (`rullst::island` / `#[client_component]`)**: High-performance client WebAssembly micro-frontends (Leptos & Yew pattern).
+  - **4. Zero-Build Pure CSS (Topcoat UI)**: 60 FPS GPU-accelerated CSS component engine with **0 Node.js / 0 NPM build dependencies** and instant dark-mode styling (`/topcoat-demo`).
+  - **5. File-Based Classic Templates (Jinja2 / Tera)**: External `.html` templates located in `templates/` with full layout inheritance (Django, Rails & Loco.rs pattern — `/templates-demo`).
+- **Comprehensive Framework Comparison Matrix (`README.md` & `docs/src/architecture-decisions.md`)**: Detailed breakdown contrasting Rullst's sovereign multi-engine architecture against Leptos (WASM/Signals), Dioxus (Virtual DOM), Loco.rs (Askama/Tera templates), and Topcoat Tokio (Transpiled micro-JS).
 - **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time execution normalizer (`TimingGuardConfig`, `TimingScope`, `equalize_response_time`, `timing_guard_middleware`) enforcing guaranteed response durations with randomized micro-jitter and synthetic Argon2 CPU instruction cycles on non-existent users, mathematically eliminating side-channel user enumeration on authentication and password-reset endpoints.
 - **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Zero-latency multi-vector prompt defense engine and middleware (`LlmFirewall`, `ai_firewall_middleware`) scrutinizing inputs across direct jailbreaks (`Ignore previous instructions`, `DAN mode`), system prompt exfiltration, tokenizer delimiter collisions (`<|im_start|>`, `[INST]`), Markdown image exfiltration beacons, and invisible zero-width unicode character poisoning.
 - **High-Assurance Security Architecture Guide (`docs/src/security-architecture.md`)**: Comprehensive architectural guide detailing Rullst's Defense-in-Depth model, complete OWASP Top 10 & API Security Top 10 matrix mapping, and core security subsystem deep-dives.

@@ -135,6 +135,20 @@ Rullst's "Zero-Cost Abstraction" architecture provides full-stack productivity w
 
 ---
 
+### 🌐 The Sovereign Frontend Matrix: Rullst vs. Ecosystem
+
+While single-paradigm frameworks force developers into a single rigid model (either heavy WASM hydration, Virtual DOM allocations, or legacy templates), **Rullst provides all 5 frontend presentation paradigms natively and interchangeably with zero lock-in**:
+
+| Framework | Primary Presentation Model | Reactivity Mechanism | Bundle Footprint | Built-in RASP & Security | Built-in Billing & SaaS | Admin CMS & Studio |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **Leptos** | WASM & Signals SSR | Client-side WASM reactive graph | Heavy (`.wasm` binary) | ❌ None | ❌ None | ❌ None |
+| **Dioxus** | Virtual DOM (React-style) | Client VDOM reconciliation | Heavy (`.wasm` / JS) | ❌ None | ❌ None | ❌ None |
+| **Loco.rs** | File-Based (`templates/*.html`) | Static HTML + external JS | 0 KB | ❌ Basic | ❌ None | ❌ None |
+| **Topcoat Tokio** | Transpiled Micro-JS SSR | Macro-generated JS snippets | Light (JS snippets) | ❌ None | ❌ None | ❌ None |
+| **👑 Rullst** | **Sovereign Multi-Engine** (HTMX SSR, LiveView WS, Wasm Islands, Topcoat Pure CSS, Tera Templates) | **Tokio WebSockets LiveView diffs OR Wasm Islands** | **0 KB JS by default** | **✅ RASP AST Shield + AI Firewall + Anti-Timing Guard** | **✅ `rullst-capital` (11 Gateways + SPED NFS-e)** | **✅ Studio (`:5555`) + Nexus CMS (`/nexus`)** |
+
+---
+
 ### 🔓 Zero Lock-In Guarantee (100% Axum & SQLx)
 
 Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does not invent proprietary HTTP abstractions or locked-in router types. Every Rullst controller, extractor, and middleware maps 1:1 to standard Axum and Tower equivalents:
@@ -180,7 +194,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 
 ---
 
-### 💻 The Beauty of Rullst
+### 💻 The Beauty of Rullst (Hello World)
 
 ```rust
 use rullst::{routing::get, html, Server, Response};
@@ -218,20 +232,20 @@ These are the **titans of the Rust web ecosystem**. They provide pristine routin
 * **Where Rullst Excels:** **Batteries Included.** Rullst actually uses *Axum* under the hood for its HTTP routing! But instead of leaving you in an empty room, Rullst gives you a fully furnished house. You get a CLI, ORM, Auth, Stripe integration, Background Workers, and **automatic OpenAPI & TypeScript SDK generation** out-of-the-box in 1 minute.
 
 ### 🚂 Full-Stack Frameworks (Loco, Topcoat)
-**Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators.
-**Topcoat** is an experimental, batteries-included framework from the Tokio team that focuses on reactive server-side rendering (SSR) without writing JavaScript.
-* **Where Rullst Excels:** **Emotional Productivity & DX.** Rullst takes a radically opinionated stance on Developer Experience. We provide an immersive Web-based Database Studio (`cargo rullst studio`), built-in Wasm Islands, zero-panic architectural guarantees, Nix reproducibility, and native Omni (Desktop/Mobile via Tauri) scaffolding. If you want the absolute easiest, most visually pleasing DX in Rust, Rullst is your home.
+**Loco** is a fantastic full-stack framework heavily inspired by Rails. It also uses Axum and provides great generators with SeaORM and Tera templates.
+**Topcoat** is a new, experimental batteries-included framework from the Tokio team focusing on server-rendered reactivity via macro-transpiled micro-JS and Toasty ORM.
+* **Where Rullst Excels:** **Sovereign Multi-Engine & Total DX.** Rullst unifies all 5 frontend paradigms (HTMX, LiveView, Wasm Islands, Topcoat Pure CSS, Tera templates), provides an immersive Web-based Database Studio (`cargo rullst studio` at `:5555`), built-in RASP security shields, zero-panic architectural guarantees, and native Omni desktop/mobile packaging via **Tauri 2.0** (`cargo rullst make:omni`).
 
 ### 🎨 Isomorphic Full-Stack Frameworks (Dioxus, Leptos)
 These are cutting-edge frameworks that let you write both frontend and backend in a single Rust file using Server Functions and SSR (similar to Next.js or Nuxt).
 * **The Catch:** They are heavily **Frontend/Component-Driven**. Your server's primary job is to hydrate and serve UI components. If you need a traditional backend architecture (dedicated Workers, Stripe webhooks, robust ORM migrations, pure REST APIs for mobile apps), an isomorphic model can sometimes feel restrictive or overly coupled to the UI.
-* **Where Rullst Excels:** **Architectural Freedom & Synergy.** Rullst is an **API-First / Traditional Full-Stack** (like Rails or Laravel). It gives you an uncompromised, heavy-duty backend layer. But we don't compete with Dioxus/Leptos/Tauri—we *embrace* them! Rullst allows you to use Dioxus for your frontend natively via Wasm Islands (`cargo rullst build:client`), or package your entire application into Desktop & Mobile apps via **Tauri** (`cargo rullst make:omni`).
+* **Where Rullst Excels:** **Architectural Freedom & Synergy.** Rullst gives you an uncompromised, heavy-duty backend layer. You can use Rullst's native **Reactive Wasm Islands** (`rullst::island` / `#[client_component]`) or **LiveView Server-Driven UI** (`rullst::live`), and package the application into Desktop & Mobile apps via **Tauri 2.0** (`cargo rullst make:omni`).
 
 ### 📊 The Full-Stack Feature Matrix
 
 | Feature | **Rullst** | **Loco** | **Topcoat** | **Dioxus / Leptos** | **Axum / Actix** |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **HTTP & High-Performance Routing** | ✅ (Axum Engine) | ✅ | ✅ | ✅ (SSR) | ✅ |
+| **HTTP & High-Performance Routing** | ✅ (Axum Engine) | ✅ (Axum) | ✅ (Axum) | ✅ (SSR Adapter) | ✅ (Native Primitives) |
 | **Active Record & Data Mapper ORM** | ✅ (`rullst-orm`) | ✅ (SeaORM) | ✅ (Toasty) | ❌ | ❌ |
 | **Compile-Time Zero-Cost DI Container** | ✅ (`rullst::di` & `Inject<T>`) | ❌ | ❌ | ❌ | ❌ |
 | **1-Click PaaS Cloud Deployment** | ✅ (`cargo rullst deploy`) | ❌ | ❌ | ❌ | ❌ |
@@ -244,17 +258,17 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **HMAC Tamper-Proof Cryptographic Audit Log** | ✅ (`rullst-audit-log`) | ❌ | ❌ | ❌ | ❌ |
 | **Visual Threat Radar (SOC Dashboard)** | ✅ (`/studio/security`) | ❌ | ❌ | ❌ | ❌ |
 | **Air-Gapped Local & Multi-Cloud AI (Zero-Leak)** | ✅ (`rullst-ai`: Ollama, LM Studio, vLLM, OpenAI, Claude, Gemini, DeepSeek) | ❌ | ❌ | ❌ | ❌ |
-| **LiveView Server-Driven Reactive UI** | ✅ (`rullst::live` + `make:live`) | ❌ | ✅ (Signals) | ❌ | ❌ |
+| **LiveView Server-Driven Reactive UI** | ✅ (`rullst::live` + `make:live`) | ❌ | ✅ (Transpiled Micro-JS) | ❌ (WASM Hydration Only) | ❌ |
 | **gRPC Microservices & Protobuf Scaffolding** | ✅ (`rullst-grpc` / Tonic) | ❌ | ❌ | ❌ | ❌ |
 | **Kubernetes Native Manifests & Health Probes** | ✅ (`make:k8s` + `/health`) | ❌ | ❌ | ❌ | ❌ |
 | **Interactive Scalar API Docs Playground** | ✅ (Built-in `/docs`) | ❌ | ❌ | ❌ | ❌ |
-| **Web-based Database Studio** | ✅ (Rullst Studio) | ❌ | ❌ | ❌ | ❌ |
-| **Auto-Generated Admin Panel (CMS)** | ✅ (Rullst Nexus) | ❌ | ❌ | ❌ | ❌ |
+| **Web-based Database Studio** | ✅ (Rullst Studio at `:5555`) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Generated Admin Panel (CMS)** | ✅ (Rullst Nexus at `/nexus`) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel Telemetry & Prometheus Exporter** | ✅ (`rullst::radar` + `/metrics`) | ❌ | ❌ | ❌ | ❌ |
 | **Embedded IoT & Edge Hardware (`#![no_std]`)** | ✅ (`rullst-iot` / STM32 / ESP32) | ❌ | ❌ | ❌ | ❌ |
-| **SaaS Revenue Dashboard & Stripe Billing** | ✅ (`rullst-capital`) | ❌ | ❌ | ❌ | ❌ |
-| **Background Workers & Redis Task Queues** | ✅ (`rullst::queue`) | ✅ (Task worker) | ❌ | ❌ | ❌ |
-| **Wasm Islands & Hybrid SSR** | ✅ (`#[client_component]`) | ❌ | ❌ | ✅ (Core focus) | ❌ |
+| **SaaS Revenue Dashboard & 11 Payment Gateways** | ✅ (`rullst-capital`: Stripe, Alipay, InfinitePay, SPED NFS-e) | ❌ | ❌ | ❌ | ❌ |
+| **Background Workers & Redis Task Queues** | ✅ (`rullst::queue`) | ✅ (Background Tasks) | ❌ | ❌ | ❌ |
+| **Wasm Islands & 5 Hybrid Frontend Engines** | ✅ (HTMX, LiveView, Wasm Islands, Topcoat, Tera) | ❌ (Tera Only) | ❌ (Micro-JS Only) | ✅ (Core WASM Focus) | ❌ |
 | **TypeScript AST SDK Generator** | ✅ (`cargo rullst generate:ts`) | ❌ | ❌ | ❌ | ❌ |
 | **Zero-Panics Policy Enforced** | ✅ (Typed `AppError` & Lints) | ❌ | ❌ | ❌ | ❌ |
 | **Framework Escape Hatch (Zero Lock-in)** | ✅ (`cargo rullst eject`) | ❌ | ❌ | ❌ | ❌ |

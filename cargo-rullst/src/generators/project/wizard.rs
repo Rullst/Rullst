@@ -171,9 +171,11 @@ pub fn run_project_wizard(
 
     if !api && blueprint_selection >= 1 {
         let fe_options = &[
-            "Zero-Bundle HTMX + TailwindCSS (Recommended — 0KB JS bundle, instant page loads & HTML5 SSR)",
-            "Leptos SSR Adapter (Full-stack Rust UI — React-like signals & WebAssembly interactivity)",
-            "Dioxus SSR Adapter (Cross-platform UI — React-like Virtual DOM for Web, Mobile & Desktop)",
+            "Zero-Bundle HTMX + Tailwind (Recommended — 0KB JS bundle, instant page loads & pure Rust html! macro)",
+            "LiveView Server-Driven UI (rullst::live — Real-time WebSockets state sync, 0 JS)",
+            "Reactive Wasm Islands (rullst::island — Client-side WebAssembly micro-frontends)",
+            "Zero-Build Pure CSS (Topcoat UI — 60 FPS CSS components, 0 Node.js / 0 NPM required)",
+            "File-Based Classic Templates (Tera / Askama — Jinja2 style templates in templates/*.html)",
         ];
         let fe_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("🎨 Select Frontend Engine")
@@ -181,8 +183,10 @@ pub fn run_project_wizard(
             .items(&fe_options[..])
             .interact()?;
         frontend_engine = match fe_selection {
-            1 => "Leptos SSR".to_string(),
-            2 => "Dioxus SSR".to_string(),
+            1 => "LiveView".to_string(),
+            2 => "Wasm Island".to_string(),
+            3 => "Topcoat CSS".to_string(),
+            4 => "Tera Templates".to_string(),
             _ => "Zero-Bundle HTMX".to_string(),
         };
     }

@@ -73,63 +73,78 @@ If you start your project with **Active Record**, you write fast, clean CRUD cod
 
 ## 🎨 Part 2: Frontend Engines Breakdown
 
-Rullst allows you to choose your rendering strategy based on user experience goals and team expertise.
+Rullst allows you to choose your rendering strategy based on user experience goals, bundle constraints, and team expertise.
 
-| Frontend Engine | JS Bundle Size | SSR Strategy | Interactivity Model | Target Use Cases |
-| :--- | :--- | :--- | :--- | :--- |
-| **Zero-Bundle HTMX + TailwindCSS** | **0 KB** | HTML5 Server-Driven | HTMX Attributes + LiveView | Web Apps, SaaS, Dashboards, E-commerce |
-| **Leptos SSR Adapter** | ~150 KB (Wasm) | Server-Side + Client Hydration | Rust Signals & Wasm | Complex Web UIs, Canvas, Web Games |
-| **Dioxus SSR Adapter** | ~180 KB (Wasm) | Server-Side + Client Hydration | Virtual DOM & Wasm | Multi-Platform (Web + Desktop + Mobile) |
+| Frontend Engine | JS Bundle Size | SSR Strategy | Interactivity Model | Framework Reference Pattern | Target Use Cases |
+| :--- | :---: | :--- | :--- | :--- | :--- |
+| **1. Zero-Bundle HTMX + Tailwind** *(Default)* | **0 KB** | HTML5 Server-Driven | HTMX Attributes + `html!` | **HTMX Standard** | Web Apps, SaaS, Dashboards, E-commerce |
+| **2. LiveView Server-Driven UI** | **0 KB** | Server-Side State Machine | Persistent Tokio WebSockets | **Phoenix & Dioxus Live** | Real-time Feeds, Chat, Interactive Collaboration |
+| **3. Reactive Wasm Islands** | **Pontual** | Client WebAssembly VM | Fine-Grained Signals | **Leptos & Yew WASM** | Canvas, Markdown Editors, Offline Rich UIs |
+| **4. Zero-Build Pure CSS (Topcoat UI)** | **0 KB** | Pure CSS Server-Rendered | 60 FPS GPU Hardware Accel | **Adobe Topcoat CSS** | Backend Tools, Dashboards (0 Node.js / 0 NPM) |
+| **5. File-Based Classic Templates (Tera)** | **0 KB** | File Templates (`templates/*.html`) | Server-Rendered HTML | **Loco.rs, Rails & Django** | Traditional MVC monoliths with external HTML |
 
 ---
 
 ### 1. Zero-Bundle HTMX + TailwindCSS *(Recommended Default)*
-Rullst renders semantic HTML5 on the server and streams tiny, targeted HTML swaps over the wire via HTMX and WebSockets (`rullst::live`).
+Rullst renders semantic HTML5 on the server at compile time using the `rullst::html!` macro and streams tiny, targeted HTML swaps over the wire via HTMX.
 
 * **Pros:**
   * **Sub-10ms Page Loads:** No heavy JavaScript bundles to parse or execute on the client.
   * **Maximum SEO & Accessibility:** Clean semantic HTML rendered instantly.
   * **Simpler Maintenance:** 100% of business logic stays on the server in type-safe Rust.
-* **When to Pick:** Recommended for 99% of web applications, SaaS platforms, portals, and e-commerce stores.
+* **When to Pick:** Recommended for 90% of web applications, SaaS platforms, portals, and e-commerce stores.
 
 ---
 
-### 2. Leptos SSR Adapter
-Full-stack reactive Rust framework utilizing fine-grained signals and WebAssembly client hydration.
+### 2. LiveView Server-Driven UI (`rullst::live`)
+State machine running directly in Tokio server memory with bidirectional WebSocket diff patching to the browser (the Phoenix LiveView & Dioxus Live pattern).
 
-* **Pros:** React-like reactive DX using pure Rust signals (`create_signal`).
-* **Cons:** Larger compile times and initial Wasm bundle downloads.
-* **When to Pick:** Highly dynamic client-side web tools (e.g. browser image editors, interactive charts, WebAssembly widgets).
+* **Pros:** Real-time reactivity without writing a single line of client JavaScript.
+* **When to Pick:** Live chat rooms, collaborative editing, real-time telemetry counters, and active IoT sensor dashboards.
 
-### 3. Dioxus SSR Adapter
-Full-stack cross-platform Rust UI framework utilizing Virtual DOM and RSX macro syntax.
+---
 
-* **Pros:**
-  * **React-Like Developer Experience:** Familiar `rsx!` macro syntax, hooks (`use_signal`), and component-based state.
-  * **Cross-Platform Reusability:** Share UI components across Web (Wasm), Desktop, and Mobile without rewriting component state.
-* **Cons:**
-  * Uses a Virtual DOM (VDOM) diffing engine, adding slight runtime overhead compared to fine-grained signal frameworks.
-* **When to Pick:** Teams coming from React/JSX who want a declarative Virtual DOM UI engine for multi-platform Web, Desktop, and Mobile applications.
+### 3. Reactive Wasm Islands (`rullst::island` / `#[client_component]`)
+Client-side WebAssembly micro-frontends compiled via `wasm-bindgen` and mounted pontually on specific pages (the Leptos & Yew WASM/Signals pattern).
+
+* **Pros:** True in-browser high-performance computing without VDOM overhead.
+* **When to Pick:** Highly dynamic client-side web tools (e.g. browser Markdown editors, canvas games, offline calculators, interactive charting).
+
+---
+
+### 4. Zero-Build Pure CSS (Topcoat UI)
+Ultra-high performance pure CSS component kit created by Adobe Web Platform benchmarked for 60 FPS performance with zero JavaScript runtime and zero Node.js/NPM build tools.
+
+* **Pros:** Instant compiling with pure `cargo run`, zero npm dependencies, beautiful dark-mode native components out of the box.
+* **When to Pick:** Backend engineers and DevOps developers wanting clean, fast web dashboards without setting up JavaScript bundlers.
+
+---
+
+### 5. File-Based Classic Templates (Jinja2 / Tera Engine)
+Decoupled HTML templates stored in a dedicated `templates/` directory with full layout inheritance (`{% extends "base.html" %}`).
+
+* **Pros:** Designers can modify HTML template files directly without touching Rust source code or triggering Rust compiler recompilations.
+* **When to Pick:** Teams migrating from Django, Ruby on Rails, Laravel, or Loco.rs.
 
 ---
 
 ### 🏛️ Scope: Application Site vs. Built-in Admin Tools (Nexus & Studio)
 
-When you select a Frontend Engine (e.g. Dioxus SSR, Leptos SSR, or HTMX):
+When you select a Frontend Engine for your project:
 
-1. **Application Site Routes (`/`, `/courses`, `/posts`, etc.)**: Render using your chosen Frontend Engine (Dioxus, Leptos, or HTMX).
-2. **Rullst Studio (`/studio`) & Rullst Nexus (`/nexus`)**: Are embedded developer and administrative control rooms provided directly by the framework kernel (`rullst-studio` and `rullst-nexus`). They are pre-compiled with an ultra-lightweight, zero-bundle HTMX + dark glassmorphic interface.
+1. **Application Site Routes (`/`, `/courses`, `/posts`, etc.)**: Render using your chosen Frontend Engine (HTMX, LiveView, Wasm Island, Topcoat, or Tera).
+2. **Rullst Studio (`/studio` at `:5555`) & Rullst Nexus (`/nexus`)**: Are embedded developer and administrative control rooms provided directly by the framework kernel (`rullst-studio` and `rullst-nexus`). They are pre-compiled with an ultra-lightweight, zero-bundle HTMX + dark glassmorphic interface.
 
-> **Key Benefit:** Regardless of whether you select Dioxus SSR or Leptos SSR for your main application, your administrative panel (`/nexus`) and telemetry dashboard (`/studio`) load instantly with zero client-side JavaScript bundle overhead!
+> **Key Benefit:** Regardless of the frontend engine chosen for your application, your administrative panel (`/nexus`) and telemetry dashboard (`/studio`) load instantly with zero client-side JavaScript bundle overhead!
 
 ---
 
 ### 🌐 Project Types: Full-Stack Web App vs. Headless REST API
 
-During project creation (`cargo rullst`), you can choose between two main application modes:
+During project creation (`cargo rullst new`), you can choose between two main application modes:
 
 1. **Full-Stack Web App**:
-   - Generates server-side rendered pages using your chosen Frontend Engine (HTMX, Leptos SSR, or Dioxus SSR).
+   - Generates server-side rendered pages using your chosen Frontend Engine.
    - Prompts for Frontend Engine selection during wizard setup.
    - Ideal for SaaS platforms, portfolios, e-commerce, blogs, and administrative systems.
 
@@ -149,21 +164,8 @@ During project creation (`cargo rullst`), you can choose between two main applic
 ### 4. Integration with Rullst Omni (`cargo rullst make:omni`)
 
 #### Clarifying Frontend Engines vs. Rullst Omni (Tauri 2.0 Integration)
-A common question arises: *If Dioxus supports desktop/mobile apps, how does it fit with Rullst Omni (which uses Tauri)? Do they conflict?*
-
-**The Answer: They integrate seamlessly and complement each other!**
-
 * **Rullst Omni (`cargo rullst make:omni` / Tauri 2.0):** Acts as the **Native Operating System Shell & Container**. It creates native OS windows (`.exe`, `.app`, `.apk`, `.ipa`), handles system tray icons, native OS notifications, auto-updates, and low-level system APIs.
-* **Dioxus / HTMX / Leptos:** Acts as the **UI Engine / Renderer** running inside the Omni webview window.
-
-#### How They Work Together:
-1. **Dioxus as the UI Layer:** Renders Virtual DOM components in Rust with smooth animations and state management.
-2. **Omni (Tauri) as the System Layer:** Exposes native OS capabilities (e.g. `omni::fs::read_file()`, native Bluetooth, system tray menus).
-
-When you build a desktop/mobile app with Rullst:
-- **HTMX + Rullst Omni:** Rullst renders fast server-driven UI inside the Tauri window with 0KB JS overhead.
-- **Leptos + Rullst Omni:** Leptos renders fine-grained reactive signals & Wasm UI inside the Tauri window with ultra-fast DOM updates.
-- **Dioxus + Rullst Omni:** Dioxus renders Virtual DOM UI inside the Tauri window with smooth cross-platform component state.
+* **Frontend Engine (HTMX / LiveView / Wasm / Topcoat):** Acts as the **UI Engine / Renderer** running inside the Omni webview window with zero friction.
 
 ---
 

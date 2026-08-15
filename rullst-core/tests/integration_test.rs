@@ -1,5 +1,8 @@
 use rullst_core::{
-    frontend::{DioxusAdapter, HtmlAdapter, LeptosAdapter},
+    frontend::{
+        DioxusAdapter, HtmlAdapter, LeptosAdapter, LiveViewAdapter, TemplateAdapter,
+        TopcoatAdapter, WasmIslandAdapter,
+    },
     realtime::{BroadcastManager, PresenceTracker},
 };
 
@@ -8,11 +11,23 @@ fn test_frontend_adapters() {
     let html = HtmlAdapter("<h1>Hello World</h1>".to_string());
     assert_eq!(html.0, "<h1>Hello World</h1>");
 
-    let leptos = LeptosAdapter::new("<div>Leptos View</div>");
-    assert_eq!(leptos.view, "<div>Leptos View</div>");
+    let topcoat = TopcoatAdapter("<button class=\"topcoat-button\">Click</button>".to_string());
+    assert_eq!(topcoat.0, "<button class=\"topcoat-button\">Click</button>");
 
-    let dioxus = DioxusAdapter::new("<div>Dioxus Component</div>");
-    assert_eq!(dioxus.component, "<div>Dioxus Component</div>");
+    let template = TemplateAdapter("<div>Rendered Jinja2 Template</div>".to_string());
+    assert_eq!(template.0, "<div>Rendered Jinja2 Template</div>");
+
+    let live = LiveViewAdapter::new("<div>LiveView Server UI</div>");
+    assert_eq!(live.view, "<div>LiveView Server UI</div>");
+
+    let island = WasmIslandAdapter::new("<div>Wasm Island Client UI</div>");
+    assert_eq!(island.component, "<div>Wasm Island Client UI</div>");
+
+    let leptos = LeptosAdapter::new("<div>Compatibility View</div>");
+    assert_eq!(leptos.view, "<div>Compatibility View</div>");
+
+    let dioxus = DioxusAdapter::new("<div>Compatibility Component</div>");
+    assert_eq!(dioxus.component, "<div>Compatibility Component</div>");
 }
 
 #[tokio::test]

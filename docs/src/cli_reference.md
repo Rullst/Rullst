@@ -12,7 +12,7 @@ Below is the **exhaustively detailed** reference for absolutely all commands and
 Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
 * **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
-* **Frontend Engine:** Zero-Bundle HTMX + TailwindCSS (0KB JS default), Leptos SSR Adapter, or Dioxus SSR Adapter.
+* **Frontend Engine:** Zero-Bundle HTMX + TailwindCSS (0KB JS default), LiveView Server-Driven UI (`rullst::live`), Reactive Wasm Islands (`rullst::island`), Zero-Build Pure CSS (Topcoat UI), or File-Based Classic Templates (Tera).
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
