@@ -46,3 +46,10 @@ build_rows_*
 **/build_rows_*
 studio_data_test_*
 **/studio_data_test_*
+studio_test_db_*
+**/studio_test_db_*
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal

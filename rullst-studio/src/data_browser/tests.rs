@@ -40,13 +40,7 @@ fn test_build_headers_html() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_db_operations() {
-    let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
-    let db_path = format!(
-        "sqlite:file:studio_data_test_{}?mode=memory&cache=shared",
-        unique_id
-    );
-    let _ = rullst_orm::Orm::init(&db_path).await;
-    let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
+    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
 
     let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
         .execute(pool)
@@ -85,13 +79,7 @@ async fn test_db_operations() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_get_any_value_as_string() {
-    let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
-    let db_path = format!(
-        "sqlite:file:val_test_{}?mode=memory&cache=shared",
-        unique_id
-    );
-    let _ = rullst_orm::Orm::init(&db_path).await;
-    let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
+    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
 
     let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
         .fetch_one(pool)
@@ -135,13 +123,7 @@ fn test_query_builders() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_build_rows_html() {
-    let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
-    let db_path = format!(
-        "sqlite:file:build_rows_{}?mode=memory&cache=shared",
-        unique_id
-    );
-    let _ = rullst_orm::Orm::init(&db_path).await;
-    let pool = rullst_core::db::safe_pool().expect("pool should be initialized");
+    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
 
     let row = sqlx::query("SELECT 'hello' as s, NULL as n")
         .fetch_one(pool)

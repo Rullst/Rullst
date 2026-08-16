@@ -22,24 +22,27 @@ Select the **Blank Starter** blueprint when prompted by the wizard.
 Open `src/main.rs`. You will see the standard Rullst application setup:
 
 ```rust
-use rullst::{routing::get, html, Server, Response, AppError};
+use rullst::{html, response::Html, routes, AppError, Server};
 
-#[routes]
-pub async fn home() -> Result<Response, AppError> {
-    Ok(html! {
+pub async fn home() -> Result<Html<String>, AppError> {
+    Ok(Html(html! {
         <div class="min-h-screen bg-slate-900 text-emerald-400 flex flex-col items-center justify-center font-sans">
             <h1 class="text-5xl font-extrabold mb-4">"Hello, Rullst! 📜🦀"</h1>
             <p class="text-slate-400 text-lg">"Built for Emotional Productivity and Extreme Security."</p>
         </div>
-    })
+    }))
 }
 
 #[tokio::main]
 async fn main() {
-    Server::new()
-        .route("/", get(home))
-        .run()
-        .await;
+    let app = routes![
+        get("/" => home)
+    ];
+
+    Server::new(app)
+        .run(3000)
+        .await
+        .unwrap();
 }
 ```
 

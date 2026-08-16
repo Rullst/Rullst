@@ -54,7 +54,7 @@ jobs:
           echo "$RESPONSE" | grep -i "Sovereign SaaS Blog"
           echo "$RESPONSE" | grep -i "Content-Security-Policy:"
           echo "$RESPONSE" | grep -i "X-Content-Type-Options: nosniff"
-          echo "$RESPONSE" | grep -i "X-Frame-Options: DENY"
+          echo "$RESPONSE" | grep -iE "X-Frame-Options: (SAMEORIGIN|DENY)"
           echo "✅ GET / verified successfully."
 
       - name: Verify Static / Metadata Endpoints (No CSRF cookie leak)

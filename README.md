@@ -42,6 +42,34 @@ Rullst is not just a tool; it is a commitment to **Emotional Productivity**. We 
 
 ---
 
+### 💻 The Beauty of Rullst (Hello World)
+
+```rust
+use rullst::{html, response::Html, routes, Server};
+
+async fn home() -> Html<String> {
+    Html(html! {
+        <div class="h-screen bg-slate-900 text-emerald-400 flex items-center justify-center">
+            <h1 class="text-4xl font-bold">"Hello, Rullst!"</h1>
+        </div>
+    })
+}
+
+#[tokio::main]
+async fn main() {
+    let app = routes![
+        get("/" => home)
+    ];
+
+    Server::new(app)
+        .run(3000)
+        .await
+        .unwrap();
+}
+```
+
+---
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:
@@ -98,6 +126,10 @@ We've rewritten our entire documentation from scratch into a beautiful, high-per
 </div>
 
 > 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-security.png" alt="Rullst Security RASP & WAF Shield" width="100%"/>
+</p>
 
 ---
 
@@ -162,7 +194,7 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 <br>
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -179,10 +211,10 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>
@@ -190,32 +222,13 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 ---
 <br>
 
-![Rullst CLI Initiating LMS Blueprint](https://raw.githubusercontent.com/Rullst/Rullst/main/Interative%20Terminal%20Dashboard.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
+</p>
 
----
-
-### 💻 The Beauty of Rullst (Hello World)
-
-```rust
-use rullst::{routing::get, html, Server, Response};
-
-#[routes]
-fn home() -> Response {
-    html! {
-        <div class="h-screen bg-slate-900 text-emerald-400 flex items-center justify-center">
-            <h1>"Hello, Rullst!"</h1>
-        </div>
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    Server::new()
-        .route("/", get(home))
-        .run()
-        .await;
-}
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
+</p>
 
 ---
 
