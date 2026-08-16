@@ -2,7 +2,11 @@
 
 use crate::blueprints::common;
 
-pub fn get_routes(project_name_safe: &str, hot_reload: bool, orm_pattern: &str) -> Vec<(&'static str, String)> {
+pub fn get_routes(
+    project_name_safe: &str,
+    hot_reload: bool,
+    orm_pattern: &str,
+) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
     let repo_decl = common::repo_mod_decl(orm_pattern);
 
