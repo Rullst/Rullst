@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786859092943,
+  "lastUpdate": 1786861851763,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3215,6 +3215,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1044,
             "range": "± 95",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4db5e073af71f80c6bf535ce2b73dcf5302320dd",
+          "message": "feat: re-export axum http primitives in lib.rs for easier access",
+          "timestamp": "2026-08-16T03:22:46-03:00",
+          "tree_id": "ca20103c97089051b4cab993548ce8f06f9c9de8",
+          "url": "https://github.com/Rullst/Rullst/commit/4db5e073af71f80c6bf535ce2b73dcf5302320dd"
+        },
+        "date": 1786861851354,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 766,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 658,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1467,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1410,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
