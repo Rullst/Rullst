@@ -125,6 +125,10 @@ pub use rullst_orm::{Orm, RullstModel};
 // Re-export Configuration types
 pub use config::{AppConfig, DatabaseConfig, RullstConfig, SecurityConfig};
 
+// Re-export HTTP primitives for convenience
+#[cfg(not(target_arch = "wasm32"))]
+pub use axum::http;
+
 // Re-export axum response types for convenience
 #[cfg(not(target_arch = "wasm32"))]
 /// Standard HTTP response types and helpers.
