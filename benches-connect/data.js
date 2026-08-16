@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786861872104,
+  "lastUpdate": 1786900224079,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2039,6 +2039,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 75,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "001c3e623343b87085fc7487e168cce3983388db",
+          "message": "refactor: update routing API, improve security policies, and standardize test database initialization",
+          "timestamp": "2026-08-16T14:01:41-03:00",
+          "tree_id": "d50b77e82998efd926143b88746af0837931477d",
+          "url": "https://github.com/Rullst/Rullst/commit/001c3e623343b87085fc7487e168cce3983388db"
+        },
+        "date": 1786900223598,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 71,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
