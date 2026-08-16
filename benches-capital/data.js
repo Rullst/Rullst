@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786831169676,
+  "lastUpdate": 1786859307629,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -1126,6 +1126,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "aca59f340bb3280d97f2042df2ddb826c2f33c9f",
+          "message": "style: reformat get_routes function arguments for improved readability",
+          "timestamp": "2026-08-16T02:37:07-03:00",
+          "tree_id": "ca27d1f3d2c358f31f0093fa5577c5ef59f8f684",
+          "url": "https://github.com/Rullst/Rullst/commit/aca59f340bb3280d97f2042df2ddb826c2f33c9f"
+        },
+        "date": 1786859307134,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 17,
             "range": "± 0",
             "unit": "ns/iter"
           },
