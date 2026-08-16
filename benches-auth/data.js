@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786861851763,
+  "lastUpdate": 1786900204061,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3263,6 +3263,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1410,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "001c3e623343b87085fc7487e168cce3983388db",
+          "message": "refactor: update routing API, improve security policies, and standardize test database initialization",
+          "timestamp": "2026-08-16T14:01:41-03:00",
+          "tree_id": "d50b77e82998efd926143b88746af0837931477d",
+          "url": "https://github.com/Rullst/Rullst/commit/001c3e623343b87085fc7487e168cce3983388db"
+        },
+        "date": 1786900203575,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 725,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 631,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1380,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1354,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
