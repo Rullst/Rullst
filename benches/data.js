@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786861492563,
+  "lastUpdate": 1786899849806,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8371,6 +8371,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2375,
             "range": "± 62",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "001c3e623343b87085fc7487e168cce3983388db",
+          "message": "refactor: update routing API, improve security policies, and standardize test database initialization",
+          "timestamp": "2026-08-16T14:01:41-03:00",
+          "tree_id": "d50b77e82998efd926143b88746af0837931477d",
+          "url": "https://github.com/Rullst/Rullst/commit/001c3e623343b87085fc7487e168cce3983388db"
+        },
+        "date": 1786899848765,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 723,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 978,
+            "range": "± 82",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 661,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2322,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
