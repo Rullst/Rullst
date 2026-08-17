@@ -40,7 +40,9 @@ fn test_build_headers_html() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_db_operations() {
-    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
+    let pool = ensure_pool_initialized()
+        .await
+        .expect("pool should be initialized");
 
     let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
         .execute(pool)
@@ -79,7 +81,9 @@ async fn test_db_operations() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_get_any_value_as_string() {
-    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
+    let pool = ensure_pool_initialized()
+        .await
+        .expect("pool should be initialized");
 
     let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
         .fetch_one(pool)
@@ -123,7 +127,9 @@ fn test_query_builders() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_build_rows_html() {
-    let pool = ensure_pool_initialized().await.expect("pool should be initialized");
+    let pool = ensure_pool_initialized()
+        .await
+        .expect("pool should be initialized");
 
     let row = sqlx::query("SELECT 'hello' as s, NULL as n")
         .fetch_one(pool)
