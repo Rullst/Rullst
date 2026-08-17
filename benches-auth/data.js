@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786900204061,
+  "lastUpdate": 1786997526420,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3311,6 +3311,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1354,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ed6e0e1eb7a1ab731c647c4b7618e1912bca48ac",
+          "message": "feat: add CI/CD infrastructure, initialize rullst-studio crate, and update development workflow documentation",
+          "timestamp": "2026-08-17T17:04:01-03:00",
+          "tree_id": "33da082ce4aa5c3c19eb27f9a630039c63e689b8",
+          "url": "https://github.com/Rullst/Rullst/commit/ed6e0e1eb7a1ab731c647c4b7618e1912bca48ac"
+        },
+        "date": 1786997525691,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 726,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 630,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1377,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1380,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
