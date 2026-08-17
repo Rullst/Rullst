@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786900423272,
+  "lastUpdate": 1786997753459,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -1241,6 +1241,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/001c3e623343b87085fc7487e168cce3983388db"
         },
         "date": 1786900422781,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ed6e0e1eb7a1ab731c647c4b7618e1912bca48ac",
+          "message": "feat: add CI/CD infrastructure, initialize rullst-studio crate, and update development workflow documentation",
+          "timestamp": "2026-08-17T17:04:01-03:00",
+          "tree_id": "33da082ce4aa5c3c19eb27f9a630039c63e689b8",
+          "url": "https://github.com/Rullst/Rullst/commit/ed6e0e1eb7a1ab731c647c4b7618e1912bca48ac"
+        },
+        "date": 1786997751703,
         "tool": "cargo",
         "benches": [
           {
