@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787015351776,
+  "lastUpdate": 1787017079434,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3407,6 +3407,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1095,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "35dc55663b40ab5b5e1efd7e79a1f823bdd4b735",
+          "message": "docs: update project setup instructions and reorganize README visual content",
+          "timestamp": "2026-08-17T22:30:12-03:00",
+          "tree_id": "3041fe30815ce428bda138a8cb21bf416160a74f",
+          "url": "https://github.com/Rullst/Rullst/commit/35dc55663b40ab5b5e1efd7e79a1f823bdd4b735"
+        },
+        "date": 1787017078893,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 731,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 610,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1392,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1406,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
