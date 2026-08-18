@@ -64,17 +64,30 @@ Rullst runs on Rust. If you don't have Rust installed yet, install it using the 
 ---
 
 #### 2️⃣ Step 2: Create Your Web Project
-Open your terminal and create a new project:
+In your terminal, choose how you want to create your project:
 
 ```bash
+# Option A: Create a new folder named 'my_app' and enter it
 cargo new my_app
 cd my_app
+
+# Option B: If you already created and opened an empty folder in your terminal/VS Code:
+cargo init
 ```
+
+> ⚠️ **Important**: Always make sure your terminal is inside the project folder containing the generated `Cargo.toml` file!
+> 
+> ```text
+> my_app/
+> ├── Cargo.toml    # (Dependencies and project metadata)
+> └── src/
+>     └── main.rs   # (Your server application entry point)
+> ```
 
 ---
 
 #### 3️⃣ Step 3: Add Rullst to Your Project
-Add Rullst and the Tokio async runtime to your `Cargo.toml` dependencies with a single command:
+Run these commands in your terminal (inside your project folder) to add Rullst and the Tokio runtime:
 
 ```bash
 cargo add rullst
@@ -84,7 +97,7 @@ cargo add tokio --features full
 ---
 
 #### 4️⃣ Step 4: Add the Code (`src/main.rs`)
-Open `src/main.rs` in your favorite code editor (e.g. VS Code, Cursor) and replace its contents with the Hello World code below:
+Open `src/main.rs` in your code editor and replace its entire contents with the Hello World code below:
 
 ---
 
@@ -127,7 +140,7 @@ async fn main() {
 ---
 
 #### 5️⃣ Step 5: Run Your Application! 🚀
-Back in your terminal, start the server:
+Inside your project folder (where `Cargo.toml` is located), start the server:
 
 ```bash
 cargo run
@@ -138,10 +151,50 @@ Open **`http://localhost:3000`** in your browser to see your high-performance we
 > 💡 **Pro-Tip (CLI Scaffolding)**: Want a complete MVC boilerplate with database migrations, JWT auth, and Docker setup? Use the official CLI generator:
 > ```bash
 > cargo install cargo-rullst
-> cargo rullst new my_app
+> cargo rullst
 > ```
 
 ---
+
+<br>
+<h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+</p>
+
+<h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
+<p align="center">
+<a href="https://www.youtube.com/watch?v=nDXLeNM327g">
+  <img src="https://img.youtube.com/vi/nDXLeNM327g/hqdefault.jpg" alt="How to build a SaaS with Rullst" width="430" />
+</a>
+</p>
+
+<table align="center" width="100%">
+  <tr>
+    <th align="center" width="50%"><h2>SaaS Blueprint</h2></th>
+    <th align="center" width="50%"><h2>LMS Blueprint</h2></th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+    </td>
+  </tr>
+</table>
+
+---
+<br>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
+</p>
+
 
 ### 📚 Documentation & Community
 
@@ -262,46 +315,6 @@ Rullst is built directly on top of **Axum**, **Tokio**, and **Tower**. It does n
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Convert Rullst controllers back to raw Axum with a 1-line import change.
 - 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
-
-
-<br>
-<h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
-</p>
-
-<h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
-<p align="center">
-<a href="https://www.youtube.com/watch?v=nDXLeNM327g">
-  <img src="https://img.youtube.com/vi/nDXLeNM327g/hqdefault.jpg" alt="How to build a SaaS with Rullst" width="430" />
-</a>
-</p>
-
-<table align="center" width="100%">
-  <tr>
-    <th align="center" width="50%"><h2>SaaS Blueprint</h2></th>
-    <th align="center" width="50%"><h2>LMS Blueprint</h2></th>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
-    </td>
-  </tr>
-</table>
-
----
-<br>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
-</p>
 
 ---
 
