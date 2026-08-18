@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787015512345,
+  "lastUpdate": 1787017243769,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1535,6 +1535,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 594,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "35dc55663b40ab5b5e1efd7e79a1f823bdd4b735",
+          "message": "docs: update project setup instructions and reorganize README visual content",
+          "timestamp": "2026-08-17T22:30:12-03:00",
+          "tree_id": "3041fe30815ce428bda138a8cb21bf416160a74f",
+          "url": "https://github.com/Rullst/Rullst/commit/35dc55663b40ab5b5e1efd7e79a1f823bdd4b735"
+        },
+        "date": 1787017243208,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1519,
+            "range": "± 204",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 399,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 786,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
