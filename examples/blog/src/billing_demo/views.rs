@@ -152,7 +152,7 @@ pub fn render_pricing_page(
                             "Select any of the 11 supported providers to trigger compiled session generation via " <code>"rullst-capital"</code> ":"
                         </p>
 
-                        <form method="GET" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+                        <form method="POST" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
                             <div>
                                 <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Payment Gateway:"</label>
                                 <select name="provider" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;">
@@ -295,7 +295,7 @@ fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <a href={format!("/checkout?provider={}&plan=pro_plan&email=demo@rullst.com", g.id)} class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
+                        <a href={format!("/checkout?provider={}&plan=pro_plan", g.id)} class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
                             "Test Checkout"
                         </a>
                         <a href={format!("#{}", config_id)} class="btn" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
@@ -365,6 +365,18 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 /// Renders the result of a simulated checkout creation if triggered.
 fn render_checkout_result(simulated: Option<(String, String)>) -> String {
     if let Some((provider, url)) = simulated {
+        let is_valid_url = url.starts_with("http://") || url.starts_with("https://");
+        let safe_url = rullst::html::escape_str(&url);
+        let action_btn = if is_valid_url {
+            html! {
+                <a href={&url} target="_blank" rel="noopener noreferrer" class="btn btn-emerald" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
+                    "Open Checkout at Provider ↗"
+                </a>
+            }
+        } else {
+            String::new()
+        };
+
         html! {
             <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -375,12 +387,10 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
                 </div>
                 <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0.25rem 0;">"Session Redirect URL:"</p>
                 <div class="code-box" style="margin-top: 0.35rem; color: #a7f3d0;">
-                    {url.clone()}
+                    {safe_url}
                 </div>
-                <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem;">
-                    <a href={url} target="_blank" class="btn btn-emerald" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
-                        "Open Checkout at Provider ↗"
-                    </a>
+                <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem; align-items: center;">
+                    { rullst::html::RawHtml(action_btn) }
                     <a href="/pricing" class="btn" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
                         "Clear Simulation"
                     </a>

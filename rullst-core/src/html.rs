@@ -35,6 +35,12 @@ impl HtmlEscape for &str {
     }
 }
 
+impl<'a> HtmlEscape for Cow<'a, str> {
+    fn escape_html(&self) -> Cow<'_, str> {
+        escape_str(self.as_ref())
+    }
+}
+
 #[cfg_attr(mutants, mutants::skip)]
 impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
     fn escape_html(&self) -> Cow<'_, str> {

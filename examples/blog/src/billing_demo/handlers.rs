@@ -61,8 +61,24 @@ pub async fn pricing_page() -> impl IntoResponse {
     Html(body)
 }
 
-/// Handler for interactive Checkout generation (`/checkout`).
+/// Handler for interactive Checkout generation (`/checkout` via GET).
 pub async fn checkout_handler(Query(params): Query<CheckoutParams>) -> impl IntoResponse {
+    handle_checkout_submission(params).await
+}
+
+/// Handler for interactive Checkout generation (`/checkout` via GET).
+pub async fn checkout_handler_get(Query(params): Query<CheckoutParams>) -> impl IntoResponse {
+    handle_checkout_submission(params).await
+}
+
+/// Handler for interactive Checkout generation (`/checkout` via POST).
+pub async fn checkout_handler_post(
+    axum::extract::Form(params): axum::extract::Form<CheckoutParams>,
+) -> impl IntoResponse {
+    handle_checkout_submission(params).await
+}
+
+async fn handle_checkout_submission(params: CheckoutParams) -> impl IntoResponse {
     let nav = render_showcase_nav("/pricing");
     let styles = render_shared_styles();
 

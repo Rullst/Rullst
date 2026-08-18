@@ -62,7 +62,7 @@ pub async fn nexus_telemetry_page(
             <div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <span style="color: #fbbf24; font-weight: 700;">sql.query</span>
-                    <span style="color: var(--text-muted); margin-left: 16px;">SELECT * FROM _rullst_migrations</span>
+                    <span style="color: var(--text-muted); margin-left: 16px;">ORM Query: _rullst_migrations</span>
                 </div>
                 <span style="color: #34d399; font-weight: 700; font-size: 12px;">340 µs</span>
             </div>

@@ -134,7 +134,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
                                 <input
                                     type="text"
                                     name="q"
-                                    value={&user_query}
+                                    value={rullst::html::escape_str(&user_query)}
                                     placeholder="Search by meaning: e.g. 'security permissions', 'database multi-tenant', 'edge IoT'"
                                     style="flex: 1; background: #05070c; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; color: #fff; font-size: 0.95rem;"
                                 />

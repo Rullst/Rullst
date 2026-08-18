@@ -42,11 +42,60 @@ Rullst is not just a tool; it is a commitment to **Emotional Productivity**. We 
 
 ---
 
+### ⚡ Quick Start: From Zero to Hero in 2 Minutes
+
+Never programmed in Rust before? No problem! Follow these simple steps to go from zero to a running web application:
+
+#### 1️⃣ Step 1: Install Rust & Cargo
+Rullst runs on Rust. If you don't have Rust installed yet, install it using the official toolchain installer:
+
+- **Linux & macOS**:
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  ```
+- **Windows**:
+  Download and run the installer from **[rustup.rs](https://rustup.rs)** or run in PowerShell:
+  ```powershell
+  winget install --id Rustlang.Rustup
+  ```
+
+> *Tip: Restart your terminal and verify the installation by running `cargo --version`.*
+
+---
+
+#### 2️⃣ Step 2: Create Your Web Project
+Open your terminal and create a new project:
+
+```bash
+cargo new my_app
+cd my_app
+```
+
+---
+
+#### 3️⃣ Step 3: Add Rullst to Your Project
+Add Rullst and the Tokio async runtime to your `Cargo.toml` dependencies with a single command:
+
+```bash
+cargo add rullst
+cargo add tokio --features full
+```
+
+---
+
+#### 4️⃣ Step 4: Add the Code (`src/main.rs`)
+Open `src/main.rs` in your favorite code editor (e.g. VS Code, Cursor) and replace its contents with the Hello World code below:
+
+---
+
 ### 💻 The Beauty of Rullst (Hello World)
+
+Build modern, type-safe full-stack web applications with zero client JS bundles, built-in OWASP security, and sub-millisecond cold starts:
 
 ```rust
 use rullst::{html, response::Html, routes, Server};
 
+// 1. Type-Safe Server-Side Rendered View with JSX-like compile-time syntax
 async fn home() -> Html<String> {
     Html(html! {
         <div class="h-screen bg-slate-900 text-emerald-400 flex items-center justify-center">
@@ -57,16 +106,40 @@ async fn home() -> Html<String> {
 
 #[tokio::main]
 async fn main() {
+    // 2. Declarative, zero-reflection route dispatching
     let app = routes![
         get("/" => home)
     ];
 
+    // 3. Launch high-throughput Tokio async HTTP server on port 3000
     Server::new(app)
         .run(3000)
         .await
         .unwrap();
 }
 ```
+
+#### 🔍 What makes this powerful:
+- **⚡ Zero-Bundle SSR (`html!`)**: Compile-time JSX-like syntax that generates blazing fast static strings with automatic XSS sanitization and zero virtual-DOM overhead.
+- **🛣️ Expressive Routing (`routes!`)**: Clean declarative macro mapping directly to Tokio/Axum static dispatch without runtime reflection.
+- **🛡️ Production-Ready Kernel (`Server`)**: Inherits automatic OWASP Secure Headers A+, double-submit CSRF protection, and microsecond telemetry out of the box.
+
+---
+
+#### 5️⃣ Step 5: Run Your Application! 🚀
+Back in your terminal, start the server:
+
+```bash
+cargo run
+```
+
+Open **`http://localhost:3000`** in your browser to see your high-performance web application running live! 🎉
+
+> 💡 **Pro-Tip (CLI Scaffolding)**: Want a complete MVC boilerplate with database migrations, JWT auth, and Docker setup? Use the official CLI generator:
+> ```bash
+> cargo install cargo-rullst
+> cargo rullst new my_app
+> ```
 
 ---
 

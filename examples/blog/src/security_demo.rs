@@ -87,7 +87,7 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                 };
             }
             "sqli" => {
-                let payload = "SELECT * FROM users WHERE username = 'admin' OR '1'='1'";
+                let payload = "SQLi Pattern: ' OR '1'='1' (Auth Bypass Signature)";
                 let _is_attack = RaspInspector::inspect_text(payload);
                 test_result_html = html! {
                     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;">
@@ -127,7 +127,7 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
                     <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid #eab308; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;">
                         <h4 style="color: #facc15; margin: 0 0 0.5rem 0;">"⏳ Login Jail & Tarpit Active!"</h4>
                         <div class="code-block">
-                            "Simulated Failed Logins: 3 consecutive failures from IP 192.168.1.100\nAction: [TARPIT ENGAGED] Applied exponential sleep delay (2000ms).\nNext failure will trigger 15-minute IP Jail ban."
+                            "Simulated Failed Logins: 3 consecutive failures from IP 203.0.113.100 (TEST-NET-3)\nAction: [TARPIT ENGAGED] Applied exponential sleep delay (2000ms).\nNext failure will trigger 15-minute IP Jail ban."
                         </div>
                     </div>
                 };

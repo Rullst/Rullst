@@ -323,11 +323,14 @@ pub async fn render_table_view(
             ""
         };
         let t = entry.table;
+        let safe_q = rullst_core::html::escape_str(q);
+        let safe_col = rullst_core::html::escape_str(col);
+        let safe_order = rullst_core::html::escape_str(next_order);
         let _ = write!(
             acc,
             "<th class=\"nexus-th\">\
-             <a href=\"/nexus/table/{t}?sort_by={col}&order={next_order}&q={q}\" \
-             hx-get=\"/nexus/table/{t}?sort_by={col}&order={next_order}&q={q}\" \
+             <a href=\"/nexus/table/{t}?sort_by={safe_col}&order={safe_order}&q={safe_q}\" \
+             hx-get=\"/nexus/table/{t}?sort_by={safe_col}&order={safe_order}&q={safe_q}\" \
              hx-target=\"#nexus-content\" hx-push-url=\"true\" style=\"color: inherit; text-decoration: none;\">\
              {lb}{arrow}</a></th>"
         );
@@ -381,19 +384,24 @@ pub async fn render_table_view(
         rullst_core::html::escape_str(q)
     );
 
-    let sort_param = sort_by.map(|s| format!("&sort_by={s}")).unwrap_or_default();
-    let order_param = order.map(|o| format!("&order={o}")).unwrap_or_default();
+    let safe_q = rullst_core::html::escape_str(q);
+    let sort_param = sort_by
+        .map(|s| format!("&sort_by={}", rullst_core::html::escape_str(s)))
+        .unwrap_or_default();
+    let order_param = order
+        .map(|o| format!("&order={}", rullst_core::html::escape_str(o)))
+        .unwrap_or_default();
 
     let _ = write!(
         out,
         "<div class=\"nexus-pagination\">\
          <div class=\"nexus-page-indicator\">Page {page}</div>\
          <div style=\"display: flex; gap: 8px;\">\
-         <a href=\"/nexus/table/{t}?page={prev_page}&q={q}{sort_param}{order_param}\" \
-         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={prev_page}&q={q}{sort_param}{order_param}\" \
+         <a href=\"/nexus/table/{t}?page={prev_page}&q={safe_q}{sort_param}{order_param}\" \
+         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={prev_page}&q={safe_q}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">&larr; Prev</a>\
-         <a href=\"/nexus/table/{t}?page={next_page}&q={q}{sort_param}{order_param}\" \
-         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={next_page}&q={q}{sort_param}{order_param}\" \
+         <a href=\"/nexus/table/{t}?page={next_page}&q={safe_q}{sort_param}{order_param}\" \
+         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={next_page}&q={safe_q}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">Next &rarr;</a>\
          </div></div>"
     );
