@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787015369908,
+  "lastUpdate": 1787017099398,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2128,6 +2128,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 57,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "35dc55663b40ab5b5e1efd7e79a1f823bdd4b735",
+          "message": "docs: update project setup instructions and reorganize README visual content",
+          "timestamp": "2026-08-17T22:30:12-03:00",
+          "tree_id": "3041fe30815ce428bda138a8cb21bf416160a74f",
+          "url": "https://github.com/Rullst/Rullst/commit/35dc55663b40ab5b5e1efd7e79a1f823bdd4b735"
+        },
+        "date": 1787017098851,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 70,
             "range": "± 1",
             "unit": "ns/iter"
           }
