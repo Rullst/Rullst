@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786997164776,
+  "lastUpdate": 1787015016852,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8479,6 +8479,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2278,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0bce5e48eda7e9718a15d5849c5b4f21774b5d21",
+          "message": "feat: implement CRUD table generation, telemetry utilities, and security CI/CD workflows",
+          "timestamp": "2026-08-17T22:01:24-03:00",
+          "tree_id": "0a7769009610f3c0fd5cb56c3684090b5c4cb5b6",
+          "url": "https://github.com/Rullst/Rullst/commit/0bce5e48eda7e9718a15d5849c5b4f21774b5d21"
+        },
+        "date": 1787015014988,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 584,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 777,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 527,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1735,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
