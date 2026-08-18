@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786997547578,
+  "lastUpdate": 1787015369908,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2099,6 +2099,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 71,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0bce5e48eda7e9718a15d5849c5b4f21774b5d21",
+          "message": "feat: implement CRUD table generation, telemetry utilities, and security CI/CD workflows",
+          "timestamp": "2026-08-17T22:01:24-03:00",
+          "tree_id": "0a7769009610f3c0fd5cb56c3684090b5c4cb5b6",
+          "url": "https://github.com/Rullst/Rullst/commit/0bce5e48eda7e9718a15d5849c5b4f21774b5d21"
+        },
+        "date": 1787015369101,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 57,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
