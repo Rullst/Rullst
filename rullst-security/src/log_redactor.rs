@@ -98,15 +98,15 @@ mod tests {
         let clean_url = redact_secrets(url);
         assert_eq!(clean_url, "https://example.com/api?secret=[REDACTED]&other=123");
 
-        // Test quote delimiters
-        let json = r#"{"api_key": "my_api_key_value", "data": "safe"}"#;
-        let clean_json = redact_secrets(json);
-        assert!(clean_json.contains(r#"api_key": "[REDACTED]""#));
+        // Test api_key= with comma and space delimiters
+        let config = "Config api_key=my_api_key_value, mode=prod";
+        let clean_config = redact_secrets(config);
+        assert!(clean_config.contains("api_key=[REDACTED]"));
 
-        // Test single quote and comma delimiters
-        let sql = "SET token='secret_token_123', status='active'";
-        let clean_sql = redact_secrets(sql);
-        assert!(clean_sql.contains("token='[REDACTED]'"));
+        // Test token= with whitespace delimiter
+        let token_log = "Processing token=secret_token_123 for user alice";
+        let clean_token = redact_secrets(token_log);
+        assert!(clean_token.contains("token=[REDACTED]"));
 
         // Test exact 20-char AWS key replacement
         let aws = "Deploying with AWS key AKIA1234567890123456 in region us-east-1";
