@@ -6,7 +6,7 @@ If you have a question or need help using `rullst-connect`, please check the fol
 
 1.  **Documentation:** Check the [README.md](README.md) and inline documentation via `cargo doc --open` or on docs.rs.
 2.  **Examples:** Look through the `examples/` directory in the repository to see how to use the library in different web frameworks (like Axum or Actix).
-3.  **Issues:** Search the [GitHub Issues](https://github.com/venelouis/rullst-connect/issues) to see if someone else has already asked the same question or reported a similar problem.
+3.  **Issues:** Search the [GitHub Issues](https://github.com/Rullst/Rullst/issues) to see if someone else has already asked the same question or reported a similar problem.
 
 If you can't find an answer, feel free to open a new issue labeled as a `question`.
 
@@ -30,4 +30,4 @@ We welcome feature requests! If you have an idea for how to improve `rullst-conn
 
 ## Security
 
-If you discover a security vulnerability, please refer to our [Security Policy](SECURITY.md) for instructions on how to report it securely.
+If you discover a security vulnerability, please refer to our [Security Policy](https://github.com/Rullst/Rullst/blob/main/SECURITY.md) for instructions on how to report it securely.

@@ -5,16 +5,24 @@
 //! - **Automatic Plain-Text Fallback** derivation
 //! - **In-Memory MailTrap & Fluent Assertions**
 //! - **Outbound DLP Secret Scanner** (AWS keys, passwords, bearer tokens)
-//! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Log**, **Memory**)
+//! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Postmark**, **AWS SES**, **Log**, **Memory**, **Failover**)
+//! - **Dynamic Multi-Tenancy Resolver** (`TenantMailResolver`)
+//! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
 
+pub mod attachment;
 pub mod drivers;
 pub mod facade;
 pub mod message;
+pub mod resolver;
+pub mod security;
 pub mod worker;
 
+pub use attachment::*;
 pub use drivers::*;
 pub use facade::*;
 pub use message::*;
+pub use resolver::*;
+pub use security::*;
 pub use worker::*;
 
 /// Backwards compatibility alias for `rullst_mail::mail::*`
@@ -274,6 +282,293 @@ mod tests {
         let msg = Message::new().to("test@rullst.dev").subject("Test");
         let res = driver.send(&msg).await;
         assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore)]
+    async fn test_postmark_driver() {
+        let driver = PostmarkDriver::new("dummy-token").with_message_stream("outbound");
+        assert_eq!(driver.server_token, "dummy-token");
+        assert_eq!(driver.message_stream.as_deref(), Some("outbound"));
+
+        let msg = Message::new()
+            .to("test@rullst.dev")
+            .subject("Hello Postmark")
+            .html("<p>Postmark Test</p>")
+            .unsubscribe_url("https://rullst.dev/unsub");
+        let res = driver.send(&msg).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore)]
+    async fn test_aws_ses_driver() {
+        let driver = AwsSesDriver::new("sa-east-1", "dummy-auth-token")
+            .with_endpoint("http://127.0.0.1:4566/v2/email/outbound-emails");
+        assert_eq!(driver.region, "sa-east-1");
+        assert_eq!(
+            driver.endpoint(),
+            "http://127.0.0.1:4566/v2/email/outbound-emails"
+        );
+
+        let default_driver = AwsSesDriver::new("us-east-1", "dummy-token");
+        assert_eq!(
+            default_driver.endpoint(),
+            "https://email.us-east-1.amazonaws.com/v2/email/outbound-emails"
+        );
+
+        let msg = Message::new()
+            .to("test@rullst.dev")
+            .subject("Hello SES")
+            .text("SES Plain Text")
+            .unsubscribe_email("unsub@rullst.dev");
+        let res = driver.send(&msg).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_failover_driver_success_primary() {
+        let (primary_driver, primary_store) = MemoryDriver::isolated();
+        let (fallback_driver, fallback_store) = MemoryDriver::isolated();
+
+        let failover = FailoverDriver::new(primary_driver)
+            .with_fallback(fallback_driver)
+            .with_threshold(2);
+
+        assert_eq!(failover.fallback_count(), 1);
+        assert_eq!(failover.failure_count(), 0);
+        assert!(!failover.is_tripped());
+
+        let msg = Message::new()
+            .to("user@example.com")
+            .subject("Failover Test");
+        let res = failover.send(&msg).await;
+        assert!(res.is_ok());
+
+        assert_eq!(primary_store.lock().unwrap().len(), 1);
+        assert_eq!(fallback_store.lock().unwrap().len(), 0);
+        assert_eq!(failover.failure_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_failover_driver_fallback_on_primary_failure() {
+        // Failing primary driver (bad resend key)
+        let primary = ResendDriver {
+            api_key: "invalid".to_string(),
+        };
+        let (fallback_driver, fallback_store) = MemoryDriver::isolated();
+
+        let failover = FailoverDriver::new(primary)
+            .with_fallback(fallback_driver)
+            .with_threshold(3);
+
+        let msg = Message::new()
+            .to("fallback-user@example.com")
+            .subject("Fallback Verification");
+        let res = failover.send(&msg).await;
+
+        assert!(res.is_ok());
+        assert_eq!(failover.failure_count(), 1);
+        assert_eq!(fallback_store.lock().unwrap().len(), 1);
+        assert_eq!(
+            fallback_store.lock().unwrap()[0].to,
+            "fallback-user@example.com"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_failover_driver_circuit_breaker_tripping() {
+        let failing_primary = ResendDriver {
+            api_key: "invalid".to_string(),
+        };
+        let (fallback_driver, fallback_store) = MemoryDriver::isolated();
+
+        let failover = FailoverDriver::new(failing_primary)
+            .with_fallback(fallback_driver)
+            .with_threshold(2)
+            .with_cooldown(std::time::Duration::from_secs(10));
+
+        let msg = Message::new()
+            .to("user@example.com")
+            .subject("Circuit Breaker");
+
+        // First failure -> count = 1, not tripped yet
+        let _ = failover.send(&msg).await;
+        assert_eq!(failover.failure_count(), 1);
+        assert!(!failover.is_tripped());
+
+        // Second failure -> count = 2, threshold reached -> tripped!
+        let _ = failover.send(&msg).await;
+        assert_eq!(failover.failure_count(), 2);
+        assert!(failover.is_tripped());
+
+        // Third dispatch -> skips primary directly because circuit is tripped
+        let res = failover.send(&msg).await;
+        assert!(res.is_ok());
+        assert_eq!(fallback_store.lock().unwrap().len(), 3);
+
+        // Manual reset
+        failover.reset_circuit();
+        assert!(!failover.is_tripped());
+        assert_eq!(failover.failure_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_failover_driver_all_fail() {
+        let failing_primary = ResendDriver {
+            api_key: "invalid".to_string(),
+        };
+        let failing_fallback = SendGridDriver {
+            api_key: "invalid".to_string(),
+        };
+
+        let failover = FailoverDriver::new(failing_primary).with_fallback(failing_fallback);
+
+        let msg = Message::new().to("user@example.com");
+        let res = failover.send(&msg).await;
+        assert!(res.is_err());
+        let err_msg = res.unwrap_err().to_string();
+        assert!(err_msg.contains("All mail drivers in failover chain failed"));
+    }
+
+    #[tokio::test]
+    async fn test_tenant_mail_resolver() {
+        let (tenant_a_driver, tenant_a_store) = MemoryDriver::isolated();
+        let (tenant_b_driver, tenant_b_store) = MemoryDriver::isolated();
+        let (default_driver, default_store) = MemoryDriver::isolated();
+
+        let resolver = TenantMailResolver::with_default(default_driver);
+        resolver.register("tenant_acme", tenant_a_driver);
+        resolver.register("tenant_globex", tenant_b_driver);
+
+        assert_eq!(resolver.tenant_count(), 2);
+        assert!(resolver.has_tenant("tenant_acme"));
+        assert!(resolver.has_tenant("tenant_globex"));
+        assert!(!resolver.has_tenant("tenant_unknown"));
+
+        // 1. Send for tenant A
+        let msg_a = Message::new().to("admin@acme.com").subject("Acme Invoice");
+        let res_a = resolver.send_for_tenant("tenant_acme", &msg_a).await;
+        assert!(res_a.is_ok());
+        assert_eq!(tenant_a_store.lock().unwrap().len(), 1);
+        assert_eq!(tenant_b_store.lock().unwrap().len(), 0);
+
+        // 2. Send for tenant B
+        let msg_b = Message::new()
+            .to("admin@globex.com")
+            .subject("Globex Alert");
+        let res_b = resolver.send_for_tenant("tenant_globex", &msg_b).await;
+        assert!(res_b.is_ok());
+        assert_eq!(tenant_a_store.lock().unwrap().len(), 1);
+        assert_eq!(tenant_b_store.lock().unwrap().len(), 1);
+
+        // 3. Send for unknown tenant -> routes to default driver
+        let msg_unknown = Message::new().to("user@other.com").subject("Default Route");
+        let res_unk = resolver
+            .send_for_tenant("tenant_unknown", &msg_unknown)
+            .await;
+        assert!(res_unk.is_ok());
+        assert_eq!(default_store.lock().unwrap().len(), 1);
+
+        // 4. Send via generic MailDriver trait implementation -> dispatches via default
+        let generic_msg = Message::new().to("system@rullst.dev").subject("Generic");
+        let res_gen = resolver.send(&generic_msg).await;
+        assert!(res_gen.is_ok());
+        assert_eq!(default_store.lock().unwrap().len(), 2);
+
+        // 5. Remove tenant
+        let removed = resolver.remove("tenant_acme");
+        assert!(removed.is_some());
+        assert_eq!(resolver.tenant_count(), 1);
+        assert!(!resolver.has_tenant("tenant_acme"));
+    }
+
+    #[tokio::test]
+    async fn test_attachments_and_inline_cid() {
+        MailTrap::clear();
+        let trap = MailTrap::driver();
+
+        let pdf_data = b"%PDF-1.4 test invoice content";
+        let logo_data = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR";
+
+        let msg = Message::new()
+            .to("billing@client.com")
+            .subject("Invoice Attached")
+            .html("<p>Please find attached.</p><img src=\"cid:brand_logo\" />")
+            .attach_bytes("invoice.pdf", pdf_data.to_vec(), "application/pdf")
+            .attach_cid("brand_logo", "logo.png", logo_data.to_vec(), "image/png");
+
+        assert_eq!(msg.attachments.len(), 2);
+        assert_eq!(msg.attachments[0].filename, "invoice.pdf");
+        assert!(!msg.attachments[0].is_inline());
+        assert_eq!(msg.attachments[1].cid.as_deref(), Some("brand_logo"));
+        assert!(msg.attachments[1].is_inline());
+
+        let res = trap.send(&msg).await;
+        assert!(res.is_ok());
+
+        MailTrap::assert_sent_to("billing@client.com")
+            .with_attachment_count(2)
+            .with_attachment_named("invoice.pdf")
+            .with_inline_cid("brand_logo");
+    }
+
+    #[tokio::test]
+    async fn test_scheduled_delivery_send_at() {
+        MailTrap::clear();
+        let trap = MailTrap::driver();
+
+        let target_time = chrono::Utc::now() + chrono::Duration::hours(24);
+        let msg = Message::new()
+            .to("future@example.com")
+            .subject("Scheduled Update")
+            .send_at(target_time);
+
+        assert_eq!(msg.send_at, Some(target_time));
+
+        let res = trap.send(&msg).await;
+        assert!(res.is_ok());
+
+        MailTrap::assert_sent_to("future@example.com").with_scheduled_at(target_time);
+
+        let in_msg = Message::new().send_in(std::time::Duration::from_secs(3600));
+        assert!(in_msg.send_at.is_some());
+    }
+
+    #[test]
+    fn test_security_homograph_and_dangerous_schemes() {
+        // Pure domain checks
+        assert!(!is_homograph_domain("paypal.com"));
+        assert!(!is_homograph_domain("google.com"));
+        assert!(!is_homograph_domain("rullst.dev"));
+
+        // Homograph attack: Cyrillic 'а' (\u{0430}) inside Latin "paypal.com"
+        let spoofed_paypal = "p\u{0430}ypal.com";
+        assert!(is_homograph_domain(spoofed_paypal));
+
+        // Dangerous URI schemes
+        assert!(is_dangerous_scheme("javascript:alert(1)"));
+        assert!(is_dangerous_scheme("data:text/html;base64,PHNjcmlwdD4="));
+        assert!(is_dangerous_scheme("vbscript:execute()"));
+        assert!(!is_dangerous_scheme("https://rullst.dev/verify"));
+        assert!(!is_dangerous_scheme("mailto:support@rullst.dev"));
+
+        // Validate security on Message
+        let safe_msg = Message::new()
+            .to("safe@example.com")
+            .html("<p>Welcome! Click <a href=\"https://rullst.dev/login\">here</a></p>");
+        assert!(safe_msg.validate_security().is_ok());
+
+        let bad_scheme_msg = Message::new()
+            .to("victim@example.com")
+            .html("<p><a href=\"javascript:evil()\">Claim Prize</a></p>");
+        assert!(bad_scheme_msg.validate_security().is_err());
+
+        let homograph_msg = Message::new().to("victim@example.com").html(format!(
+            "<a href=\"https://{}/login\">Verify</a>",
+            spoofed_paypal
+        ));
+        assert!(homograph_msg.validate_security().is_err());
     }
 }
 

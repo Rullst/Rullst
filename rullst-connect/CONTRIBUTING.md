@@ -25,8 +25,8 @@ First off, thank you for considering contributing to `rullst-connect`! It's peop
 
 ## Releasing
 
-The release checklist lives in [RELEASING.md](RELEASING.md). It covers `cargo-release`, tag-based publishing, and the manual GitHub Actions fallback.
+The release checklist lives in [RELEASE_GUIDE.md](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md). It covers `cargo-release`, tag-based publishing, and the manual GitHub Actions fallback.
 
 ## Code of Conduct
 
-By participating in this project, you are expected to uphold our [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating in this project, you are expected to uphold our [Code of Conduct](https://github.com/Rullst/Rullst/blob/main/CODE_OF_CONDUCT.md).

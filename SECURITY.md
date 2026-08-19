@@ -27,7 +27,7 @@ Please send an encrypted or direct disclosure report to the Rullst Core Security
 ### Coordinated Vulnerability Disclosure (CVD):
 * **Initial Response**: Within 24-48 hours of receipt.
 * **Triage & Patch**: High and Critical vulnerabilities are patched within 72 hours and released as a patch update (`v12.x.y`).
-* **Attribution**: We publicly credit security researchers in our [CHANGELOG.md](CHANGELOG.md) and release advisories unless anonymity is requested.
+* **Attribution**: We publicly credit security researchers in our [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md) and release advisories unless anonymity is requested.
 
 ---
 

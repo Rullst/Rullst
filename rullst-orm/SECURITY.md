@@ -22,9 +22,9 @@ We consider a security vulnerability to be any flaw or weakness in `rullst-orm` 
 Please do NOT report security vulnerabilities via public GitHub issues.
 
 If you believe you have found a security vulnerability in `rullst-orm`, please report it by emailing the maintainer directly at:
-[rullst@creio.eu](mailto:rullst@creio.eu)
+[officialrullst@gmail.com](mailto:officialrullst@gmail.com)
 
 Alternatively, you can report it via a Private GitHub Security Advisory at the following URL:
-[GitHub Security Advisories](https://github.com/Rullst/rullst-orm/security/advisories/new)
+[GitHub Security Advisories](https://github.com/Rullst/Rullst/security/advisories/new)
 
 We take all vulnerability reports seriously and follow a coordinated disclosure process. We will try to respond to your report within 48 hours, and we aim to resolve all critical vulnerabilities within 90 days.

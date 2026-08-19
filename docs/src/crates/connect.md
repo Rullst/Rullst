@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
 [![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect)
-[![Build](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/ci.yml?style=for-the-badge&logo=github)](https://github.com/Rullst/rullst-connect/actions/workflows/ci.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/rullst-connect?style=for-the-badge)](https://opensource.org/licenses/MIT)
 </div>
 
@@ -16,25 +16,25 @@ Our continuous pipeline guarantees absolute safety for production edge infrastru
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
-| **OSSF Scorecard** | [![Scorecard](https://img.shields.io/ossf-scorecard/github.com/Rullst/rullst-connect?style=flat-square&label=%20)](https://securityscorecards.dev/viewer/?uri=github.com/Rullst/rullst-connect) | Supply-chain security & best practices |
-| **Codecov** | [![Coverage](https://img.shields.io/codecov/c/github/Rullst/rullst-connect?style=flat-square&label=%20)](https://codecov.io/gh/Rullst/rullst-connect) | Strict code coverage enforcement |
+| **OSSF Scorecard** | [![Scorecard](https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=%20)](https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst) | Supply-chain security & best practices |
+| **Codecov** | [![Coverage](https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=%20)](https://codecov.io/gh/Rullst/Rullst) | Strict code coverage enforcement |
 | **OpenSSF** | [![OpenSSF Best Practices](https://img.shields.io/badge/%20-passing-success.svg?style=flat-square)](https://www.bestpractices.dev/projects/13360) | Open source security standards |
 | **SLSA Level 3** | [![SLSA 3](https://img.shields.io/badge/%20-Level_3-success.svg?style=flat-square)](https://slsa.dev/) | Supply-chain Levels for Software Artifacts |
-| **Continuous Fuzzing** | [![Fuzz Testing](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/fuzz.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/fuzz.yml) | Fuzzing against edge cases & panics |
+| **Continuous Fuzzing** | [![Fuzz Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Fuzzing against edge cases & panics |
 | **Property Testing** | [![Proptest](https://img.shields.io/badge/%20-passing-success.svg?style=flat-square)](https://crates.io/crates/proptest) | Validating complex logic against edge cases |
-| **Miri UB Detection** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/miri.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/miri.yml) | Detecting Undefined Behavior and memory leaks |
-| **Kani Verifier** | [![Kani](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/kani.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/kani.yml) | Automated reasoning and formal verification |
-| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/codeql.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/codeql.yml) | Advanced semantic code analysis |
-| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/cargo-deny.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
-| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/audit.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
-| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/bench.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/bench.yml) | Continuous performance regression testing |
-| **Cargo SemVer** | [![Semver Checks](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/semver.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
-| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/machete.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
-| **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/spellcheck.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
-| **Mutation Testing** | [![Mutants](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/mutants.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
-| **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/trufflehog.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
-| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/unsafe.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/unsafe.yml) | 100% memory safe. No unsafe code blocks |
-| **Panic Policy** | [![Panics](https://img.shields.io/github/actions/workflow/status/Rullst/rullst-connect/panics.yml?style=flat-square&label=%20)](https://github.com/Rullst/rullst-connect/actions/workflows/panics.yml) | Graceful error handling across the framework |
+| **Miri UB Detection** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Detecting Undefined Behavior and memory leaks |
+| **Kani Verifier** | [![Kani](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Automated reasoning and formal verification |
+| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
+| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
+| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
+| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Continuous performance regression testing |
+| **Cargo SemVer** | [![Semver Checks](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
+| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
+| **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
+| **Mutation Testing** | [![Mutants](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
+| **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
+| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | 100% memory safe. No unsafe code blocks |
+| **Panic Policy** | [![Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml) | Graceful error handling across the framework |
 
 ## ✨ Features
 
@@ -47,10 +47,9 @@ Our continuous pipeline guarantees absolute safety for production edge infrastru
 - 🛠️ **Testing**: Embedded Mock IdP router for seamless offline local E2E testing.
 
 > 📚 **Important Documents:**
-> - [CHANGELOG.md](CHANGELOG.md): See what's new.
-> - [ISSUES](https://github.com/Rullst/rullst-connect/issues): Any issue? Please report.
-> - [ROADMAP.md](ROADMAP.md): Discover our path.
-> - [AUDIT.md](AUDIT.md): Complete security, performance, and maintainability audit report.
+> - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
+> - [ISSUES](https://github.com/Rullst/Rullst/issues): Any issue? Please report.
+> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Complete security, performance, and maintainability audit report.
 
 ## 📦 Supported Providers
 
@@ -203,21 +202,12 @@ cargo release major --execute  # for vX.0.0 breaking changes
 
 This will automatically bump versions, tag the release, and push to GitHub, triggering the crates.io publish workflow.
 
-For the exact release checklist and what to do next time, see [RELEASING.md](RELEASING.md).
+For the exact release checklist and what to do next time, see [RELEASE_GUIDE.md](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md).
 
 ## 🤝 Contributing
 
 Feel free to open Issues and submit Pull Requests! Want to add a new provider? It's easy! Just implement the `Provider` trait.
 
-<!--
-## Contributors ✨
-Thanks!
-
-<a href="https://github.com/Rullst/rullst-connect/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Rullst/rullst-connect" />
-</a>
--->
-
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/main/LICENSE).

@@ -29,6 +29,26 @@ impl MailDriver for ResendDriver {
         if let Some(ref text) = message.body_text {
             body["text"] = serde_json::json!(text);
         }
+        if let Some(ref send_at) = message.send_at {
+            body["scheduled_at"] = serde_json::json!(send_at.to_rfc3339());
+        }
+        if !message.attachments.is_empty() {
+            let attachments_json: Vec<_> = message
+                .attachments
+                .iter()
+                .map(|att| {
+                    let mut obj = serde_json::json!({
+                        "filename": att.filename,
+                        "content": att.to_base64(),
+                    });
+                    if let Some(ref cid) = att.cid {
+                        obj["content_id"] = serde_json::json!(cid);
+                    }
+                    obj
+                })
+                .collect();
+            body["attachments"] = serde_json::json!(attachments_json);
+        }
         if let Some(unsub) = message.list_unsubscribe_header() {
             let mut headers_obj = serde_json::json!({
                 "List-Unsubscribe": unsub

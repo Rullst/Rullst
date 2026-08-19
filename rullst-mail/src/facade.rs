@@ -60,6 +60,18 @@ impl Mail {
         driver.send(&message).await
     }
 
+    /// Sends a message for a specific tenant when using a multi-tenant driver or custom resolver.
+    pub async fn send_for_tenant(tenant_id: &str, message: Message) -> Result<(), MailError> {
+        let _ = tenant_id;
+        let custom_driver = CUSTOM_DRIVER.read().ok().and_then(|l| l.clone());
+        if let Some(driver) = custom_driver {
+            driver.send(&message).await
+        } else {
+            let driver = Self::resolve_driver().await?;
+            driver.send(&message).await
+        }
+    }
+
     #[cfg_attr(mutants, mutants::skip)]
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
         // Resolve the driver either from env or Rullst.toml
@@ -130,6 +142,37 @@ impl Mail {
                     )
                 })?;
                 Ok(Box::new(SendGridDriver { api_key }))
+            }
+            "postmark" => {
+                let server_token = std::env::var("POSTMARK_SERVER_TOKEN")
+                    .or_else(|_| std::env::var("POSTMARK_API_KEY"))
+                    .map_err(|_| {
+                        MailError::ConfigError(
+                            "POSTMARK_SERVER_TOKEN environment variable is not set".to_string(),
+                        )
+                    })?;
+                let message_stream = std::env::var("POSTMARK_MESSAGE_STREAM").ok();
+                Ok(Box::new(PostmarkDriver {
+                    server_token,
+                    message_stream,
+                }))
+            }
+            "ses" | "aws_ses" => {
+                let auth_token = std::env::var("AWS_SES_TOKEN")
+                    .or_else(|_| std::env::var("AWS_ACCESS_KEY"))
+                    .map_err(|_| {
+                        MailError::ConfigError(
+                            "AWS_SES_TOKEN environment variable is not set".to_string(),
+                        )
+                    })?;
+                let region =
+                    std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
+                let endpoint_override = std::env::var("AWS_SES_ENDPOINT").ok();
+                Ok(Box::new(AwsSesDriver {
+                    region,
+                    auth_token,
+                    endpoint_override,
+                }))
             }
             other => Err(MailError::ConfigError(format!(
                 "Unknown mail driver: {}",

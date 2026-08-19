@@ -89,10 +89,10 @@ cargo rullst make:iot SensorGateway
 
 ## 🗺️ Roadmap
 
-All 6 phases complete. See the full [`ROADMAP.md`](ROADMAP.md).
+All 6 phases complete. See the full [`ROADMAP.md`](https://github.com/Rullst/Rullst/blob/main/rullst-iot/ROADMAP.md).
 
 ---
 
 ## 📄 License
 
-Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
+Licensed under the [MIT license](https://github.com/Rullst/Rullst/blob/main/LICENSE).

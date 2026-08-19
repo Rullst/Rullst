@@ -43,6 +43,28 @@ impl MailDriver for SendGridDriver {
             "content": content
         });
 
+        if let Some(ref send_at) = message.send_at {
+            body["send_at"] = serde_json::json!(send_at.timestamp());
+        }
+        if !message.attachments.is_empty() {
+            let attachments_json: Vec<_> = message
+                .attachments
+                .iter()
+                .map(|att| {
+                    let mut obj = serde_json::json!({
+                        "content": att.to_base64(),
+                        "filename": att.filename,
+                        "type": att.mime_type,
+                        "disposition": if att.is_inline() { "inline" } else { "attachment" }
+                    });
+                    if let Some(ref cid) = att.cid {
+                        obj["content_id"] = serde_json::json!(cid);
+                    }
+                    obj
+                })
+                .collect();
+            body["attachments"] = serde_json::json!(attachments_json);
+        }
         if let Some(unsub) = message.list_unsubscribe_header() {
             let mut headers_obj = serde_json::json!({
                 "List-Unsubscribe": unsub

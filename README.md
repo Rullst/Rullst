@@ -380,10 +380,19 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 
 Rullst is now a unified Monorepo! The framework's core (`rullst`), the database layer (`rullst-orm`), and the frontend connectivity (`rullst-connect`) are now engineered in lockstep under a single repository. This unified architecture ensures 100% compatibility across the stack, centralized security audits, and a seamless developer experience from backend to edge.
 
-**Explore the Ecosystem:**
-- 🦀 **[Rullst Core (Web Framework)](https://github.com/Rullst/Rullst)**
-- 💾 **[Rullst-ORM (Database Layer)](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**
-- 🔌 **[Rullst-Connect (Frontend Integration)](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**
+**Explore the Monorepo Ecosystem:**
+- 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core)**: Core HTTP server, routing engine, and OpenTelemetry kernel.
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record ORM, automated migrations, and multi-tenancy.
+- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, JWT, and RBAC authorization.
+- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: RASP deep inspection, Honeypot bot traps, XSS/CSP sanitization, and HMAC audit log.
+- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
+- 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics, Stripe/Alipay/InfinitePay webhooks, and NFS-e digital invoicing.
+- 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: Message queues, WebSockets sync, and OAuth2/OIDC social login.
+- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: High-throughput MQTT 5.0 client, sensor telemetry ingestion, and edge computing.
+- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email delivery engine with anti-phishing and DLP secret scanning.
+- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
+- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Auto-generated Admin CMS (`/nexus`) and SOC Threat Radar.
+- 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, AST IDOR scanner, and 1-Click deployer.
 
 ---
 

@@ -1,4 +1,7 @@
-// src/message.rs — Email Message struct, RFC 8058 headers, DLP sanitization, and plain text generator.
+use crate::attachment::Attachment;
+use crate::drivers::MailError;
+use crate::security::scan_content_security;
+use chrono::{DateTime, Utc};
 
 /// An email message structure to be sent via a mail driver.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -17,6 +20,10 @@ pub struct Message {
     pub unsubscribe_url: Option<String>,
     /// Optional RFC 8058 List-Unsubscribe email address.
     pub unsubscribe_email: Option<String>,
+    /// Optional scheduled delivery timestamp (UTC).
+    pub send_at: Option<DateTime<Utc>>,
+    /// File attachments and inline Content-ID (`CID`) media assets.
+    pub attachments: Vec<Attachment>,
 }
 
 impl Default for Message {
@@ -36,6 +43,8 @@ impl Message {
             from: None,
             unsubscribe_url: None,
             unsubscribe_email: None,
+            send_at: None,
+            attachments: Vec::new(),
         }
     }
 
@@ -73,6 +82,62 @@ impl Message {
         self
     }
 
+    /// Schedules delivery for a specific future UTC timestamp.
+    pub fn send_at(mut self, timestamp: DateTime<Utc>) -> Self {
+        self.send_at = Some(timestamp);
+        self
+    }
+
+    /// Schedules delivery after the specified duration from now.
+    pub fn send_in(mut self, duration: std::time::Duration) -> Self {
+        let Ok(chrono_dur) = chrono::Duration::from_std(duration) else {
+            return self;
+        };
+        self.send_at = Some(Utc::now() + chrono_dur);
+        self
+    }
+
+    /// Appends a raw pre-constructed `Attachment`.
+    pub fn attach(mut self, attachment: Attachment) -> Self {
+        self.attachments.push(attachment);
+        self
+    }
+
+    /// Appends an in-memory byte attachment.
+    pub fn attach_bytes(
+        mut self,
+        filename: impl Into<String>,
+        content: impl Into<Vec<u8>>,
+        mime_type: impl Into<String>,
+    ) -> Self {
+        self.attachments
+            .push(Attachment::new(filename, content, mime_type));
+        self
+    }
+
+    /// Appends an inline media asset with a designated Content-ID (`CID`).
+    pub fn attach_cid(
+        mut self,
+        cid: impl Into<String>,
+        filename: impl Into<String>,
+        content: impl Into<Vec<u8>>,
+        mime_type: impl Into<String>,
+    ) -> Self {
+        self.attachments
+            .push(Attachment::inline(cid, filename, content, mime_type));
+        self
+    }
+
+    /// Reads and attaches a local file from disk.
+    pub fn attach_file(
+        mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, std::io::Error> {
+        let attachment = Attachment::from_file(path)?;
+        self.attachments.push(attachment);
+        Ok(self)
+    }
+
     /// Sets the RFC 8058 One-Click List-Unsubscribe URL.
     pub fn unsubscribe_url(mut self, url: impl Into<String>) -> Self {
         self.unsubscribe_url = Some(url.into());
@@ -106,6 +171,17 @@ impl Message {
         }
         self
     }
+
+    /// Validates that the email content does not contain dangerous URI schemes or homograph URL spoofing.
+    pub fn validate_security(&self) -> Result<(), MailError> {
+        if let Some(ref html) = self.body_html {
+            scan_content_security(html)?;
+        }
+        if let Some(ref text) = self.body_text {
+            scan_content_security(text)?;
+        }
+        Ok(())
+    }
 }
 
 /// Converts HTML content into a clean, accessible plain-text representation for email clients.
@@ -135,9 +211,10 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
                     in_style_or_script = true;
                 } else if tag_lower.starts_with("/style") || tag_lower.starts_with("/script") {
                     in_style_or_script = false;
-                } else if tag_lower == "br" || tag_lower == "br/" || tag_lower == "br /" {
-                    result.push('\n');
-                } else if tag_lower == "p"
+                } else if tag_lower == "br"
+                    || tag_lower == "br/"
+                    || tag_lower == "br /"
+                    || tag_lower == "p"
                     || tag_lower == "/p"
                     || tag_lower == "div"
                     || tag_lower == "/div"

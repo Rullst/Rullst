@@ -190,4 +190,68 @@ impl MailAssertion {
         );
         self
     }
+
+    /// Asserts that the message has a specific number of attachments.
+    pub fn with_attachment_count(self, expected_count: usize) -> Self {
+        assert_eq!(
+            self.message.attachments.len(),
+            expected_count,
+            "Expected {} attachments, but found {}",
+            expected_count,
+            self.message.attachments.len()
+        );
+        self
+    }
+
+    /// Asserts that the message contains an attachment with the given filename.
+    pub fn with_attachment_named(self, filename: &str) -> Self {
+        let found = self
+            .message
+            .attachments
+            .iter()
+            .any(|a| a.filename == filename);
+        assert!(
+            found,
+            "Expected attachment named '{}', but found: {:?}",
+            filename,
+            self.message
+                .attachments
+                .iter()
+                .map(|a| &a.filename)
+                .collect::<Vec<_>>()
+        );
+        self
+    }
+
+    /// Asserts that the message contains an inline attachment with the given Content-ID (`CID`).
+    pub fn with_inline_cid(self, cid: &str) -> Self {
+        let found = self
+            .message
+            .attachments
+            .iter()
+            .any(|a| a.cid.as_deref() == Some(cid));
+        assert!(
+            found,
+            "Expected inline attachment with CID '{}', but found: {:?}",
+            cid,
+            self.message
+                .attachments
+                .iter()
+                .filter_map(|a| a.cid.as_deref())
+                .collect::<Vec<_>>()
+        );
+        self
+    }
+
+    /// Asserts that the message has the specified scheduled delivery timestamp.
+    pub fn with_scheduled_at(self, expected: chrono::DateTime<chrono::Utc>) -> Self {
+        assert_eq!(
+            self.message.send_at,
+            Some(expected),
+            "Expected send_at '{:?}', but got '{:?}'",
+            Some(expected),
+            self.message.send_at
+        );
+        self
+    }
 }

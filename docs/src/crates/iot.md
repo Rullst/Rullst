@@ -54,9 +54,9 @@
 
 | Workflow | Trigger | Purpose |
 | :--- | :--- | :--- |
-| [`no_std-build.yml`](../../../.github/workflows/no_std-build.yml) | Push to `rullst-iot/**` | Validates bare-metal compilation on Cortex-M & RISC-V targets |
-| [`iot-integration.yml`](../../../.github/workflows/iot-integration.yml) | Push to `rullst-iot/**` | Runs 18 unit tests + QEMU Cortex-M simulation |
-| [`pqc-compliance.yml`](../../../.github/workflows/pqc-compliance.yml) | Push to crypto files + weekly cron | NIST ML-KEM / Kyber & HSM audit, `cargo audit`, unsafe detection |
+| [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | Push to `rullst-iot/**` | Validates bare-metal compilation on Cortex-M & RISC-V targets |
+| [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | Push to `rullst-iot/**` | Runs 18 unit tests + QEMU Cortex-M simulation |
+| [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | Push to crypto files + weekly cron | NIST ML-KEM / Kyber & HSM audit, `cargo audit`, unsafe detection |
 
 ---
 
@@ -86,7 +86,7 @@ cargo rullst make:iot SensorGateway
 
 ## 🗺️ Roadmap
 
-All 6 phases complete. See [`ROADMAP.md`](ROADMAP.md).
+All 6 phases complete. See [`ROADMAP.md`](https://github.com/Rullst/Rullst/blob/main/rullst-iot/ROADMAP.md).
 
 ## 📄 License
 

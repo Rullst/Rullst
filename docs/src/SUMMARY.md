@@ -62,6 +62,8 @@
 # Reference
 - [📜 Framework Spec](spec.md)
 - [🛡️ High-Assurance Security Architecture](security-architecture.md)
+- [🛡️ Threat Radar & SOC Master Guide](threat-radar-soc-guide.md)
+- [📡 Telemetry & Distributed Tracing](telemetry-guide.md)
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [🔓 Zero Lock-In & Axum/SQLx Interoperability](axum-sqlx-migration.md)

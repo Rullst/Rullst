@@ -87,7 +87,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes an Axum middleware [`verify_webhook`](src/webhook.rs) that cryptographically verifies HMAC signatures using constant-time comparisons (`subtle::ConstantTimeEq`), parsing payloads into unified [`WebhookEvent`](src/providers/mod.rs) structs.
+`rullst-capital` includes an Axum middleware [`verify_webhook`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs) that cryptographically verifies HMAC signatures using constant-time comparisons (`subtle::ConstantTimeEq`), parsing payloads into unified [`WebhookEvent`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/providers/mod.rs) structs.
 
 ```rust
 use axum::{Router, routing::post, Extension};
