@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787017079434,
+  "lastUpdate": 1787114186128,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3455,6 +3455,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1406,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3c2ce543d569f346d8b1b716328a3a5b7ae17168",
+          "message": "feat: add openapi generator, security modules, and comprehensive integration testing suite",
+          "timestamp": "2026-08-19T01:19:36-03:00",
+          "tree_id": "dd803315983702bd32fc91679b51564fe6879351",
+          "url": "https://github.com/Rullst/Rullst/commit/3c2ce543d569f346d8b1b716328a3a5b7ae17168"
+        },
+        "date": 1787114185392,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 618,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 526,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1178,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1111,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
