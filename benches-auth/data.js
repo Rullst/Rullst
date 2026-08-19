@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787114186128,
+  "lastUpdate": 1787178937264,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3503,6 +3503,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1111,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7dd283b2ac6c27f06718cb48dbcf49a5750d7b74",
+          "message": "feat: implement Nexus CRUD dashboard with auto-generated admin interface and core system scaffolding",
+          "timestamp": "2026-08-19T19:28:04-03:00",
+          "tree_id": "282e6522ef2a314beade8c89e4352e0023ef4f61",
+          "url": "https://github.com/Rullst/Rullst/commit/7dd283b2ac6c27f06718cb48dbcf49a5750d7b74"
+        },
+        "date": 1787178936512,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 607,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 528,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1158,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1105,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
