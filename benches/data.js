@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787178603418,
+  "lastUpdate": 1787181569689,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8695,6 +8695,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1724,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0f8d2e5d4eb0da69c42093f05c92ae2758ad571e",
+          "message": "feat: initialize project workspace with cargo packages for core infrastructure components",
+          "timestamp": "2026-08-19T20:17:34-03:00",
+          "tree_id": "6bbce0b67783e2b709d38a501cb144fc6049f240",
+          "url": "https://github.com/Rullst/Rullst/commit/0f8d2e5d4eb0da69c42093f05c92ae2758ad571e"
+        },
+        "date": 1787181568058,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 750,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 983,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 628,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2339,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
