@@ -24,8 +24,11 @@
 //! ```
 
 #[cfg(feature = "queue-redis")]
+/// Redis queue driver implementation.
 pub mod redis;
+/// SQLite queue driver implementation.
 pub mod sqlite;
+/// Background job worker executor.
 pub mod worker;
 
 #[cfg(test)]

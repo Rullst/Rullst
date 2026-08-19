@@ -43,11 +43,7 @@ pub fn set_max_query_limit(limit: usize) {
 
 pub fn get_max_query_limit() -> Option<usize> {
     let limit = MAX_QUERY_LIMIT.load(std::sync::atomic::Ordering::SeqCst);
-    if limit == 0 {
-        None
-    } else {
-        Some(limit)
-    }
+    if limit == 0 { None } else { Some(limit) }
 }
 
 pub fn set_query_timeout(secs: u64) {

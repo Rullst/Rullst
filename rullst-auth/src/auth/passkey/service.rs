@@ -6,10 +6,9 @@ use sha2::Digest;
 use super::cbor::{CborKey, CborValue, parse_cbor};
 use super::config::PasskeyConfig;
 use super::types::{
-    AllowCredential, AuthenticatorSelection, CreationChallengeResponse, Passkey,
-    PubKeyCredParam, PublicKeyCredential, PublicKeyCredentialCreationOptions,
-    PublicKeyCredentialRequestOptions, RegisterPublicKeyCredential, RelyingPartyInfo,
-    RequestChallengeResponse, UserInfo,
+    AllowCredential, AuthenticatorSelection, CreationChallengeResponse, Passkey, PubKeyCredParam,
+    PublicKeyCredential, PublicKeyCredentialCreationOptions, PublicKeyCredentialRequestOptions,
+    RegisterPublicKeyCredential, RelyingPartyInfo, RequestChallengeResponse, UserInfo,
 };
 
 #[cfg_attr(mutants, mutants::skip)]

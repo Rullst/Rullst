@@ -1,12 +1,12 @@
 //! Development middleware catching application panic unwinds.
 
+use crate::error_console::renderer::render_console_html;
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use crate::error_console::renderer::render_console_html;
 
 /// Middleware that catches panic unwinds in dev mode and presents the Self-Healing Console.
 #[cfg_attr(mutants, mutants::skip)]

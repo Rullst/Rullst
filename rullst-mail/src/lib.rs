@@ -12,17 +12,23 @@
 pub mod attachment;
 pub mod drivers;
 pub mod facade;
+pub mod factory;
 pub mod message;
 pub mod resolver;
 pub mod security;
+pub mod tracking;
+pub mod validator;
 pub mod worker;
 
 pub use attachment::*;
 pub use drivers::*;
 pub use facade::*;
+pub use factory::*;
 pub use message::*;
 pub use resolver::*;
 pub use security::*;
+pub use tracking::*;
+pub use validator::*;
 pub use worker::*;
 
 /// Backwards compatibility alias for `rullst_mail::mail::*`

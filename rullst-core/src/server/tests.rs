@@ -32,9 +32,8 @@ async fn test_server_resilience_attach() {
     let shield = crate::resilience::TrafficShield::new(
         crate::resilience::TrafficShieldConfig::new().with_db_probe(false),
     );
-    let limiter = crate::resilience::RateLimiter::new(
-        crate::resilience::RateLimitConfig::per_second(10.0),
-    );
+    let limiter =
+        crate::resilience::RateLimiter::new(crate::resilience::RateLimitConfig::per_second(10.0));
     let server = Server::new(router).shield(shield).rate_limit(limiter);
 
     assert!(server.shield.is_some());
@@ -95,8 +94,7 @@ async fn test_hot_swap_service_panic() {
 
 #[tokio::test]
 async fn test_hot_swap_service_poisoned_lock() {
-    let router =
-        axum::Router::new().route("/test", axum::routing::get(|| async { "recovered" }));
+    let router = axum::Router::new().route("/test", axum::routing::get(|| async { "recovered" }));
     let current_router = Arc::new(RwLock::new(router));
     // Poison the lock by panicking in a write guard thread
     let lock_clone = current_router.clone();

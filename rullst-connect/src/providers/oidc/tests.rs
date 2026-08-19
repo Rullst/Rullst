@@ -3,7 +3,7 @@ use crate::client::{HttpClient, HttpRequest, HttpResponse};
 use crate::error::ConnectError;
 use crate::provider::Provider;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 struct MockOidcClient {
@@ -628,9 +628,7 @@ async fn test_oidc_id_token_kid_not_found() {
         .await
         .unwrap_err();
 
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found"))
-    );
+    assert!(matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found")));
 }
 
 #[tokio::test]

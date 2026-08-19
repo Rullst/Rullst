@@ -1,5 +1,5 @@
 use super::request_builder::{RequestBuilder, ResponseWrapper};
-use super::reqwest_client::{parse_content_length, ReqwestClient};
+use super::reqwest_client::{ReqwestClient, parse_content_length};
 use super::traits::{HttpClient, HttpClientExt, HttpRequest, HttpResponse};
 use async_trait::async_trait;
 use serde_json::json;

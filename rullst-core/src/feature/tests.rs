@@ -2,13 +2,13 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::super::driver::FeatureDriver;
+    use super::super::env::EnvFeatureDriver;
     use super::super::manager::FeatureManager;
     use super::super::memory::MemoryFeatureDriver;
     use super::super::resolvers::{
         calculate_hash_bucket, parse_feature_string_value, parse_rollout, parse_variants,
         resolve_variant,
     };
-    use super::super::env::EnvFeatureDriver;
     use super::super::toml::TomlFeatureDriver;
 
     #[test]

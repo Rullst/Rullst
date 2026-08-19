@@ -1,5 +1,5 @@
-use super::driver::FeatureDriver;
 use super::db::DbFeatureDriver;
+use super::driver::FeatureDriver;
 use super::env::EnvFeatureDriver;
 use super::memory::MemoryFeatureDriver;
 use super::toml::TomlFeatureDriver;

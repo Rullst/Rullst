@@ -2,6 +2,7 @@
 
 #![allow(clippy::unwrap_used)]
 
+use super::types::*;
 use super::*;
 use crate::client::{HttpClient, HttpRequest, HttpResponse};
 use crate::provider::Provider;
@@ -103,10 +104,7 @@ struct MockAppleClient {
 
 #[async_trait]
 impl HttpClient for MockAppleClient {
-    async fn execute(
-        &self,
-        req: HttpRequest,
-    ) -> Result<HttpResponse, crate::error::ConnectError> {
+    async fn execute(&self, req: HttpRequest) -> Result<HttpResponse, crate::error::ConnectError> {
         if req.url.contains("token") {
             Ok(HttpResponse {
                 status: self.token_status,
@@ -215,9 +213,7 @@ async fn test_apple_missing_access_token() {
         .get_user_from_form(&form_data, None)
         .await
         .unwrap_err();
-    assert!(
-        matches!(err, crate::error::ConnectError::Token(msg) if msg.contains("access_token"))
-    );
+    assert!(matches!(err, crate::error::ConnectError::Token(msg) if msg.contains("access_token")));
 }
 
 #[tokio::test]

@@ -182,6 +182,56 @@ impl Message {
         }
         Ok(())
     }
+
+    /// Validates recipient deliverability syntax and blocks known disposable email providers.
+    pub fn validate_deliverability(&self) -> Result<(), crate::validator::DeliverabilityError> {
+        crate::validator::validate_email_deliverability(&self.to)
+    }
+
+    /// Checks whether the recipient address belongs to a disposable email provider.
+    pub fn is_disposable(&self) -> bool {
+        crate::validator::is_disposable_email(&self.to)
+    }
+
+    /// Injects a zero-cookie 1x1 tracking pixel into the HTML body.
+    pub fn with_open_tracking(
+        mut self,
+        base_tracker_url: &str,
+        secret: &[u8],
+        campaign_id: &str,
+    ) -> Self {
+        if let Some(ref html) = self.body_html {
+            let token = crate::tracking::TrackingEngine::generate_open_token(
+                secret,
+                &self.to,
+                campaign_id,
+                chrono::Utc::now().timestamp() as u64,
+            );
+            let pixel_url = format!(
+                "{}/track/open/{}",
+                base_tracker_url.trim_end_matches('/'),
+                token
+            );
+            self.body_html = Some(crate::tracking::TrackingEngine::inject_open_pixel(
+                html, &pixel_url,
+            ));
+        }
+        self
+    }
+
+    /// Rewrites all HTML links to route through the privacy-preserving click tracker.
+    pub fn with_click_tracking(mut self, base_tracker_url: &str, secret: &[u8]) -> Self {
+        if let Some(ref html) = self.body_html {
+            self.body_html = Some(crate::tracking::TrackingEngine::rewrite_links(
+                html,
+                base_tracker_url,
+                secret,
+                &self.to,
+                chrono::Utc::now().timestamp() as u64,
+            ));
+        }
+        self
+    }
 }
 
 /// Converts HTML content into a clean, accessible plain-text representation for email clients.

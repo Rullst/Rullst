@@ -351,9 +351,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             .soft_delete
             .as_ref()
             .expect("has_soft_deletes implies a soft_delete config");
-        let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") {
-            format!("{} = NULL", cfg.column)
-        } else if cfg.value.is_empty() {
+        let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
             format!("{} = NULL", cfg.column)
         } else {
             format!("{} = {}", cfg.column, cfg.value)

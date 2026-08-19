@@ -20,7 +20,8 @@ pub struct HotSwapService {
 
 impl HotSwapService {
     #[cfg_attr(mutants, mutants::skip)]
-    pub(crate) fn handle_oneshot_error() -> Result<axum::response::Response, std::convert::Infallible> {
+    pub(crate) fn handle_oneshot_error()
+    -> Result<axum::response::Response, std::convert::Infallible> {
         match axum::response::Response::builder()
             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
             .body(axum::body::Body::empty())

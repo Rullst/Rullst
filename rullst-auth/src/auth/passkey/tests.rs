@@ -92,8 +92,7 @@ fn test_finish_register_mismatches() {
         "type": "webauthn.create"
     })
     .to_string();
-    let client_data_b64 =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+    let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
     let mut cred = RegisterPublicKeyCredential {
         id: "id".into(),
@@ -134,8 +133,7 @@ fn test_finish_authenticate_mismatches() {
         "type": "webauthn.get"
     })
     .to_string();
-    let client_data_b64 =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
+    let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
     let mut cred = PublicKeyCredential {
         id: "id".into(),
@@ -265,20 +263,31 @@ fn test_finish_register_and_authenticate_complete_flow() {
     let auth = PasskeyAuth::new(&config).unwrap();
 
     let rng = ring::rand::SystemRandom::new();
-    let pkcs8_doc =
-        ring::signature::EcdsaKeyPair::generate_pkcs8(&ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING, &rng)
-            .unwrap();
-    let key_pair =
-        ring::signature::EcdsaKeyPair::from_pkcs8(&ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_doc.as_ref(), &rng)
-            .unwrap();
+    let pkcs8_doc = ring::signature::EcdsaKeyPair::generate_pkcs8(
+        &ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+        &rng,
+    )
+    .unwrap();
+    let key_pair = ring::signature::EcdsaKeyPair::from_pkcs8(
+        &ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+        pkcs8_doc.as_ref(),
+        &rng,
+    )
+    .unwrap();
 
     let pub_key_bytes = key_pair.public_key().as_ref();
     let x_coord = &pub_key_bytes[1..33];
     let y_coord = &pub_key_bytes[33..65];
 
     let mut cose_map = std::collections::HashMap::new();
-    cose_map.insert(CborKey::Integer(-2), CborValue::ByteString(x_coord.to_vec()));
-    cose_map.insert(CborKey::Integer(-3), CborValue::ByteString(y_coord.to_vec()));
+    cose_map.insert(
+        CborKey::Integer(-2),
+        CborValue::ByteString(x_coord.to_vec()),
+    );
+    cose_map.insert(
+        CborKey::Integer(-3),
+        CborValue::ByteString(y_coord.to_vec()),
+    );
     let cose_val = CborValue::Map(cose_map);
 
     fn encode_cbor(val: &CborValue) -> Vec<u8> {
@@ -343,8 +352,12 @@ fn test_finish_register_and_authenticate_complete_flow() {
                 }
                 for (k, v) in m {
                     match k {
-                        CborKey::Integer(i) => res.extend_from_slice(&encode_cbor(&CborValue::Integer(*i))),
-                        CborKey::TextString(s) => res.extend_from_slice(&encode_cbor(&CborValue::TextString(s.clone()))),
+                        CborKey::Integer(i) => {
+                            res.extend_from_slice(&encode_cbor(&CborValue::Integer(*i)))
+                        }
+                        CborKey::TextString(s) => {
+                            res.extend_from_slice(&encode_cbor(&CborValue::TextString(s.clone())))
+                        }
                     }
                     res.extend_from_slice(&encode_cbor(v));
                 }
@@ -369,7 +382,10 @@ fn test_finish_register_and_authenticate_complete_flow() {
     auth_data.extend_from_slice(&cose_bytes);
 
     let mut attestation_map = std::collections::HashMap::new();
-    attestation_map.insert(CborKey::TextString("authData".to_string()), CborValue::ByteString(auth_data.clone()));
+    attestation_map.insert(
+        CborKey::TextString("authData".to_string()),
+        CborValue::ByteString(auth_data.clone()),
+    );
     let attestation_val = CborValue::Map(attestation_map);
     let attestation_bytes = encode_cbor(&attestation_val);
 
@@ -378,15 +394,18 @@ fn test_finish_register_and_authenticate_complete_flow() {
         "challenge": reg_challenge,
         "origin": "http://localhost",
         "type": "webauthn.create"
-    }).to_string();
+    })
+    .to_string();
 
     let reg_cred = RegisterPublicKeyCredential {
         id: "cred_id".into(),
         raw_id: "raw_cred_id".into(),
         r#type: "public-key".into(),
         response: AuthenticatorAttestationResponse {
-            attestation_object: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(attestation_bytes),
-            client_data_json: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json),
+            attestation_object: base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(attestation_bytes),
+            client_data_json: base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(client_data_json),
         },
     };
 
@@ -399,7 +418,8 @@ fn test_finish_register_and_authenticate_complete_flow() {
         "challenge": auth_challenge,
         "origin": "http://localhost",
         "type": "webauthn.get"
-    }).to_string();
+    })
+    .to_string();
     let auth_client_data_bytes = auth_client_data_json.as_bytes();
 
     let mut auth_auth_data = Vec::new();
@@ -422,12 +442,16 @@ fn test_finish_register_and_authenticate_complete_flow() {
         raw_id: "raw_cred_id".into(),
         r#type: "public-key".into(),
         response: AuthenticatorAssertionResponse {
-            authenticator_data: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&auth_auth_data),
+            authenticator_data: base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(&auth_auth_data),
             signature: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(sig.as_ref()),
-            client_data_json: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(auth_client_data_json),
+            client_data_json: base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(auth_client_data_json),
         },
     };
 
-    let updated_passkey = auth.finish_authenticate(&auth_cred, auth_challenge, passkey).unwrap();
+    let updated_passkey = auth
+        .finish_authenticate(&auth_cred, auth_challenge, passkey)
+        .unwrap();
     assert_eq!(updated_passkey.sign_count, 5);
 }

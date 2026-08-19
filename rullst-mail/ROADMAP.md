@@ -42,7 +42,7 @@ flowchart TD
 - [x] **AWS SES REST & Postmark Drivers**: Native HTTP client implementations with zero C-binding dependencies (`AwsSesDriver`, `PostmarkDriver`).
 - [x] **Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: Precision future delivery scheduled natively via `rullst::queue` (Tokio + SQLite/Redis) or downstream provider scheduling APIs (e.g. Resend/SendGrid timestamps).
 - [x] **Zero-Copy Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: High-throughput attachment pipeline with Base64 encoding for Resend, SendGrid, and Postmark, plus Content-ID (`CID`) inline image embedding (`<img src="cid:logo">`).
-- [ ] **Async Pre-Flight MX DNS Validator & Disposable Email Filter**: Proactively verify domain MX records (`verify_mx(...)`) and filter disposable/temporary email services prior to queueing to protect sender quotas.
+- [x] **Pre-Flight Deliverability & Disposable Email Filter (`DisposableEmailFilter` / `.validate_deliverability()`)**: Proactively verify syntax and filter over 150 disposable/temporary email services (`mailinator.com`, `tempmail.com`, etc.) prior to queueing to protect sender quotas.
 - [ ] **Inbound Email Webhook & MIME Parser (`rullst-mail::inbound`)**: Processing incoming transactional replies (ticket comments, approval replies) with zero-copy multipart MIME parsing and SPF/DKIM verification.
 - [ ] **Payload Pre-Compression Engine (Brotli / Gzip / Zstd)**: Automatic compression of large HTML bodies before payload transmission to providers supporting gzip/br headers.
 
@@ -90,7 +90,7 @@ flowchart TD
 - [ ] **Anti-Phishing Invisible Watermarking & Recipient Leak Tracing**: Steganographic zero-width token injection unique per recipient, enabling irrefutable tracing if confidential internal emails are leaked.
 - [ ] **Strict TLS 1.3 / DANE / MTA-STS Delivery Enforcement**: Enforce opportunistic or strict TLS encryption, aborting SMTP handshakes on attempted plain-text downgrade attacks (STARTTLS stripping).
 - [ ] **Unified Webhook Ingestion & Auto-Suppression Shield (`rullst-mail::webhooks`)**: Universal webhook handler endpoint for Resend, SendGrid, Postmark, and AWS SES with persistent `SuppressionList` for hard bounces and spam complaints.
-- [ ] **Privacy-Preserving Open & Click Tracking**: Zero-cookie pixel tracking (`/track/open/:token`) and signed URL link re-writing (`/track/click/:token`) with constant-time HMAC tokens and IP anonymization (GDPR/LGPD compliant).
+- [x] **Privacy-Preserving Open & Click Tracking (`TrackingEngine`)**: Zero-cookie pixel tracking (`PIXEL_1X1_GIF` 43-byte static slice), signed HMAC-SHA256 tokens (`/track/open/:token`, `/track/click/:token`), and automated link rewriting with IP privacy preservation (GDPR/LGPD compliant).
 - [ ] **BIMI & Verified Brand Mark Embedder**: Validation and certificate embedding (SVG Tiny P/S format and VMC) for Gmail & Apple Mail verified blue checkmarks and logos.
 - [ ] **Native DKIM Signer (RSA & Ed25519)**: Native Rust cryptographic signing of headers and body hashes using `ring` / `rsa` for direct server-to-server SMTP deliverability without external mail relays.
 - [ ] **Deliverability & DNS Health Scanner (`cargo rullst audit:mail`)**: Static and runtime CLI validator checking DNS records for SPF (`v=spf1`), DKIM public keys, DMARC policies (`p=reject`), and BIMI visual brand indicators.
@@ -115,7 +115,7 @@ flowchart TD
         .with_scheduled_at(future_time)
         .with_unsubscribe_url("https://example.com/unsub");
     ```
-- [ ] **Transactional Test Fixtures & Mail Factory (`MailFactory`)**: High-speed randomized fixture generator for load testing and Studio mock rendering (`MailFactory::fake_welcome()`, `MailFactory::fake_invoice()`).
+- [x] **Transactional Test Fixtures & Mail Factory (`MailFactory`)**: Pre-built transactional fixtures (`fake_welcome`, `fake_password_reset`, `fake_otp`, `fake_invoice`, `fake_security_alert`) for local dev, load testing, and fixture generation.
 - [ ] **E2E Visual Diff Regression Testing (`cargo rullst test:mail`)**: Automated headless snapshot generator rendering emails across mobile (375px) and desktop (1200px) viewports with pixel-diff assertions in CI/CD.
 
 ---
@@ -139,20 +139,22 @@ flowchart TD
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Type-Safe Rust API** | ✅ | ✅ | ❌ (PHP) | ❌ (TypeScript/JS) | ❌ (Ruby) | ✅ **Zero-Panic Verified** |
 | **Async Background Queues** | ❌ (Manual) | ⚠️ (Requires Redis/Worker) | ⚠️ (Requires Redis/Queue) | ⚠️ (Requires BullMQ/Celery) | ⚠️ (Requires Sidekiq) | ✅ **Built-in (`rullst::queue`)** |
-| **Zero-Bundle SSR Templating** | ❌ | ⚠️ (Tera/Askama string templates) | ⚠️ (Blade runtime) | ❌ (Heavy Node.js / React) | ⚠️ (ERB runtime) | ✅ **Native `html!` Macro (0 KB JS)** |
-| **Zero-Cost CSS Inliner** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Node.js runtime parsing) | ⚠️ (Roadie gem) | ✅ **Native Rust AST Engine** |
+| **Zero-Bundle SSR Templating** | ❌ | ⚠️ (Tera/Askama string templates) | ⚠️ (Blade runtime) | ❌ (Heavy Node.js / React) | ⚠️ (ERB runtime) | ⏳ *(Not implemented yet - In Roadmap)* |
+| **Zero-Cost CSS Inliner** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Node.js runtime parsing) | ⚠️ (Roadie gem) | ⏳ *(Not implemented yet - In Roadmap)* |
 | **Multi-Driver Circuit Breaker** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native `FailoverDriver`** |
 | **Attachments & Inline CID Assets** | ⚠️ (Manual MIME) | ⚠️ (Manual MIME) | ✅ | ✅ | ✅ | ✅ **Fluent Zero-Copy API** |
 | **Delayed / Scheduled Delivery** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ **Native `.send_at()` / `.send_in()`** |
-| **DLP Outbound Secret Scanner** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native (`rullst-security`)** |
+| **DLP Outbound Secret Scanner** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native (`redact_email_secrets`)** |
 | **Homograph & Anti-Phishing Filter**| ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native IDN Scanner** |
-| **OpenTelemetry Distributed Traces**| ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Native OTLP Spans** |
-| **AI Smart Dunning Recovery** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native (`rullst-ai` + `capital`)** |
-| **Live Studio Inspector & MailTrap** | ❌ | ❌ | ⚠️ (External Mailpit/Mailtrap) | ⚠️ (Local dev server) | ⚠️ (LetterOpener gem) | ✅ **Built-in `/studio/mail` UI** |
+| **OpenTelemetry Distributed Traces**| ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ⏳ *(Not implemented yet - In Roadmap)* |
+| **AI Smart Dunning Recovery** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
+| **Live Studio Inspector & MailTrap** | ❌ | ❌ | ⚠️ (External Mailpit/Mailtrap) | ⚠️ (Local dev server) | ⚠️ (LetterOpener gem) | ⚠️ **`MailTrap` & `MemoryDriver`** *(Studio UI Not implemented yet)* |
 | **Dynamic Multi-Tenancy Resolver** | ❌ | ❌ (Manual) | ⚠️ (Custom MailManager) | ❌ (Manual) | ❌ (Manual) | ✅ **Native `TenantMailResolver`** |
-| **Unified Webhook & Auto-Suppression** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Manual webhook handler) | ⚠️ (Manual) | ✅ **Native `rullst-mail::webhooks`** |
-| **Zero-Cookie Privacy Tracking** | ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Built-in HMAC Engine** |
-| **Domain Warm-Up Scheduler** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native Queue Throttler** |
-| **Formal Panic-Freedom (Kani)** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Mathematical Proofs** |
-| **Brazilian SPED / NFS-e Receipts** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native `rullst-capital` DPS** |
+| **Unified Webhook & Auto-Suppression** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Manual webhook handler) | ⚠️ (Manual) | ⏳ *(Not implemented yet - In Roadmap)* |
+| **Zero-Cookie Privacy Tracking** | ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Built-in (`TrackingEngine`)** |
+| **Disposable Email & Deliverability Filter** | ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Built-in (`DisposableEmailFilter`)** |
+| **Transactional Mail Fixtures** | ❌ | ❌ | ⚠️ (Manual Factories) | ⚠️ (Manual) | ⚠️ (Manual) | ✅ **Native `MailFactory`** |
+| **Domain Warm-Up Scheduler** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
+| **Formal Panic-Freedom (Kani)** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
+| **Brazilian SPED / NFS-e Receipts** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
 | **RFC 8058 1-Click Unsubscribe** | ❌ (Manual) | ❌ (Manual) | ⚠️ (Manual Headers) | ⚠️ (Manual Headers) | ❌ (Manual) | ✅ **Automatic Engine Injection** |

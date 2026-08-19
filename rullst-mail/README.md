@@ -154,6 +154,69 @@ cargo rullst make:mail InvoiceReceipt --invoice
 
 ---
 
+### 6. Pre-Flight Deliverability & Disposable Email Filtering
+
+Prevent sender quota waste and fake user signups with built-in deliverability checks and blocked temporary domains:
+
+```rust
+use rullst_mail::{is_disposable_email, validate_email_deliverability, Message};
+
+// 1. Direct email address validation
+assert!(validate_email_deliverability("user@company.com").is_ok());
+assert!(is_disposable_email("spammer@mailinator.com"));
+
+// 2. Pre-flight check before dispatching
+let msg = Message::new()
+    .to("user@mailinator.com")
+    .subject("Welcome!");
+
+if msg.is_disposable() {
+    eprintln!("Blocked disposable email address!");
+}
+```
+
+---
+
+### 7. Zero-Cookie Privacy-Preserving Tracking Engine
+
+Generate HMAC-SHA256 signed tracking tokens and transparent 1x1 GIF pixels without third-party cookies (GDPR & LGPD compliant):
+
+```rust
+use rullst_mail::{TrackingEngine, PIXEL_1X1_GIF, Message};
+
+let secret = b"my-master-cryptographic-secret";
+
+// Fluent open & click tracking injection
+let tracked_msg = Message::new()
+    .to("user@example.com")
+    .subject("Monthly Newsletter")
+    .html("<p>Check out our <a href=\"https://rullst.dev/pricing\">pricing</a>.</p>")
+    .with_open_tracking("https://app.com", secret, "campaign_2026")
+    .with_click_tracking("https://app.com", secret);
+
+// Verifying tracking events in your web route handler
+let event = TrackingEngine::verify_open_token(secret, &token)?;
+println!("Email opened by {} for campaign {}", event.email, event.campaign_id);
+```
+
+---
+
+### 8. Transactional Test Fixtures with `MailFactory`
+
+Quickly generate standard transactional emails for local preview and testing:
+
+```rust
+use rullst_mail::MailFactory;
+
+let welcome_msg = MailFactory::fake_welcome("alice@example.com", "Alice", "My SaaS App");
+let reset_msg = MailFactory::fake_password_reset("bob@example.com", "https://app.com/reset?token=xyz", 15);
+let otp_msg = MailFactory::fake_otp("carol@example.com", "492015", 5);
+let invoice_msg = MailFactory::fake_invoice("david@example.com", "INV-2026-001", 9900, "USD");
+let alert_msg = MailFactory::fake_security_alert("eve@example.com", "Unrecognized Login", "198.51.100.1", "Chrome / macOS");
+```
+
+---
+
 ## ⚙️ Configuration (`Rullst.toml` or Environment Variables)
 
 ```toml
@@ -198,11 +261,16 @@ The answer depends on the use case. `rullst-mail` is designed as a **high-throug
 | **Transactional Emails (Password reset, 2FA, receipts)** | ✅ **Native, sub-millisecond, zero-markup** | ❌ Expensive add-on or restricted |
 | **Multi-Driver Delivery with Automatic Failover** | ✅ **Yes (`FailoverDriver` with Circuit Breaker)** | ❌ Vendor-locked to proprietary IP pools |
 | **Zero-Copy Attachments & Inline CID Assets** | ✅ **Yes (High-throughput pure Rust)** | ⚠️ Heavily capped file sizes |
+| **Zero-Cookie Privacy Tracking** | ✅ **Native (`TrackingEngine` HMAC)** | ⚠️ Third-party cookie dependency |
+| **Disposable Email & Deliverability Filter** | ✅ **Native (`DisposableEmailFilter`)** | ⚠️ Expensive external addons |
 | **Security: Anti-Phishing & Homograph URL Scanner** | ✅ **Native pre-flight IDN inspection** | ⚠️ Basic link scanning |
-| **Outbound DLP Secret Scanner (AWS tokens, keys)** | ✅ **Native (Prevents credential leaks)** | ❌ No credential leak prevention |
+| **Outbound DLP Secret Scanner (AWS tokens, keys)** | ✅ **Native (`redact_email_secrets`)** | ❌ No credential leak prevention |
 | **Dynamic B2B SaaS Multi-Tenancy** | ✅ **Yes (Dedicated credentials per tenant)** | ❌ Single-account flat tenancy |
 | **Scheduled Delivery (`.send_at()`, `.send_in()`)** | ✅ **Yes (Native UTC & relative delays)** | ✅ Yes |
+| **In-Memory MailTrap & Test Fixtures** | ✅ **Native (`MailTrap` & `MailFactory`)** | ⚠️ Manual sandbox configuration |
 | **Code-Driven Automated Sequences & Dunning** | ✅ **Yes (Tokio background queue integration)** | ✅ Yes |
+| **Live Studio Web Inspector (`/studio/mail`)** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Proprietary dashboard |
+| **AI Smart Dunning Revenue Recovery** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Rule-based workflows only |
 | **Drag-and-Drop No-Code Visual Builder** | ❌ *(Code/Template-first: HTML, Jinja2, Tailwind)* | ✅ **Yes (Visual WYSIWYG for marketers)** |
 | **No-Code Landing Pages & Commercial Sales CRM** | ❌ *(Built with `rullst-core` / `rullst-nexus`)* | ✅ **Yes (Integrated lead scoring CRM)** |
 

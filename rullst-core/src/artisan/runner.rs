@@ -1,10 +1,10 @@
 //! Command-line argument translator and Artisan CLI dispatcher.
 
+use crate::artisan::studio_server::start_studio_server;
 use rullst_orm::Seeder;
 use rullst_orm::schema::{Migration, run_artisan_with_args};
 use std::env;
 use std::fs;
-use crate::artisan::studio_server::start_studio_server;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub(crate) fn translate_artisan_args(args: &[String]) -> Option<Vec<String>> {

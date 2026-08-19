@@ -32,10 +32,7 @@ struct MockGoogleClient {
 
 #[async_trait]
 impl HttpClient for MockGoogleClient {
-    async fn execute(
-        &self,
-        req: HttpRequest,
-    ) -> Result<HttpResponse, crate::error::ConnectError> {
+    async fn execute(&self, req: HttpRequest) -> Result<HttpResponse, crate::error::ConnectError> {
         if req.url.contains("token") {
             Ok(HttpResponse {
                 status: self.token_status,
@@ -266,9 +263,7 @@ async fn test_google_id_token_kid_not_found() {
         .await
         .unwrap_err();
 
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found"))
-    );
+    assert!(matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found")));
 }
 
 #[tokio::test]

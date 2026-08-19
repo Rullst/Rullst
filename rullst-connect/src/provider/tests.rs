@@ -23,10 +23,7 @@ impl Provider for DummyProvider {
         self.get_user_from_token("dummy_access_token").await
     }
 
-    async fn get_user_from_token(
-        &self,
-        access_token: &str,
-    ) -> Result<ConnectUser, ConnectError> {
+    async fn get_user_from_token(&self, access_token: &str) -> Result<ConnectUser, ConnectError> {
         Ok(ConnectUser {
             id: "dummy_id".into(),
             name: "Dummy User".into(),
@@ -423,10 +420,7 @@ async fn test_exchange_and_get_user() {
         fn token_url(&self) -> String {
             "".into()
         }
-        async fn get_user(
-            &self,
-            _params: ExchangeParams<'_>,
-        ) -> Result<ConnectUser, ConnectError> {
+        async fn get_user(&self, _params: ExchangeParams<'_>) -> Result<ConnectUser, ConnectError> {
             Err(ConnectError::Provider(
                 "get_user not implemented for mock".into(),
             ))
@@ -517,10 +511,7 @@ async fn test_refresh_and_get_user() {
         fn token_url(&self) -> String {
             "".into()
         }
-        async fn get_user(
-            &self,
-            _params: ExchangeParams<'_>,
-        ) -> Result<ConnectUser, ConnectError> {
+        async fn get_user(&self, _params: ExchangeParams<'_>) -> Result<ConnectUser, ConnectError> {
             Err(ConnectError::Provider(
                 "get_user not implemented for mock".into(),
             ))
@@ -592,10 +583,7 @@ async fn test_exchange_and_get_user_fetch_user_fails() {
         fn token_url(&self) -> String {
             "".into()
         }
-        async fn get_user(
-            &self,
-            _params: ExchangeParams<'_>,
-        ) -> Result<ConnectUser, ConnectError> {
+        async fn get_user(&self, _params: ExchangeParams<'_>) -> Result<ConnectUser, ConnectError> {
             Err(ConnectError::Provider(
                 "get_user not implemented for mock".into(),
             ))

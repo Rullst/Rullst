@@ -1,4 +1,4 @@
-use super::validation::{validate_identifier, ALLOWED_OPERATORS};
+use super::validation::{ALLOWED_OPERATORS, validate_identifier};
 
 pub struct JoinClause {
     pub table: String,

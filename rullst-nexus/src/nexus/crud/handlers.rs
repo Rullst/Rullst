@@ -8,7 +8,9 @@ use axum::{
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::nexus::crud::query::{find_entry, sanitize_identifier, BatchActionForm, PaginationParams};
+use crate::nexus::crud::query::{
+    BatchActionForm, PaginationParams, find_entry, sanitize_identifier,
+};
 use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};

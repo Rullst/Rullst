@@ -5497,11 +5497,13 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "hmac 0.13.0",
  "lettre",
  "reqwest 0.13.4",
  "rullst-core",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tokio",
  "tracing",
 ]

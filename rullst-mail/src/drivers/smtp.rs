@@ -41,18 +41,19 @@ impl MailDriver for SmtpDriver {
             .subject(&message.subject);
 
         if let Some(unsub) = message.list_unsubscribe_header() {
-            if let Ok(header) =
-                lettre::message::header::HeaderName::new_from_ascii_str("List-Unsubscribe")
-            {
-                email_builder = email_builder.raw_header(header, unsub);
-            }
+            let header =
+                lettre::message::header::HeaderName::new_from_ascii_str("List-Unsubscribe");
+            email_builder =
+                email_builder.raw_header(lettre::message::header::HeaderValue::new(header, unsub));
             if message.unsubscribe_url.is_some() {
-                if let Ok(header) =
-                    lettre::message::header::HeaderName::new_from_ascii_str("List-Unsubscribe-Post")
-                {
-                    email_builder =
-                        email_builder.raw_header(header, "List-Unsubscribe=One-Click".to_string());
-                }
+                let header = lettre::message::header::HeaderName::new_from_ascii_str(
+                    "List-Unsubscribe-Post",
+                );
+                email_builder =
+                    email_builder.raw_header(lettre::message::header::HeaderValue::new(
+                        header,
+                        "List-Unsubscribe=One-Click".to_string(),
+                    ));
             }
         }
 

@@ -4,6 +4,7 @@ use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+#[allow(clippy::too_many_arguments)]
 pub fn generate_builder_struct(
     parsed: &ParsedModel,
     builder_name: &syn::Ident,

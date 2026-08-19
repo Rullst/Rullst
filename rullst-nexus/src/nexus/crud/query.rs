@@ -1,7 +1,7 @@
 //! Query building and parameter extraction for Nexus CRUD.
 
-use serde::Deserialize;
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
+use serde::Deserialize;
 
 /// Query parameters for table pagination, filtering, and sorting.
 #[derive(Deserialize)]

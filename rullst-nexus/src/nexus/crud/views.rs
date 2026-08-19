@@ -1,8 +1,8 @@
 //! HTML rendering components for Nexus CRUD views and forms.
 
-use std::fmt::Write as _;
 use crate::nexus::crud::query::{build_table_query, sanitize_identifier};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
+use std::fmt::Write as _;
 
 /// Renders a fallback HTML row for empty database tables or empty search results.
 pub fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {

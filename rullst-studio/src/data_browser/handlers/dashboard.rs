@@ -2,9 +2,7 @@
 
 use super::super::db::*;
 use super::super::layout::*;
-use axum::{
-    response::{Html, IntoResponse},
-};
+use axum::response::{Html, IntoResponse};
 use rullst_macros::html;
 use std::fmt::Write;
 
