@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787017243769,
+  "lastUpdate": 1787114359719,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1583,6 +1583,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 786,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3c2ce543d569f346d8b1b716328a3a5b7ae17168",
+          "message": "feat: add openapi generator, security modules, and comprehensive integration testing suite",
+          "timestamp": "2026-08-19T01:19:36-03:00",
+          "tree_id": "dd803315983702bd32fc91679b51564fe6879351",
+          "url": "https://github.com/Rullst/Rullst/commit/3c2ce543d569f346d8b1b716328a3a5b7ae17168"
+        },
+        "date": 1787114359003,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1317,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 286,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 585,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
