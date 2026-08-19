@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787016727384,
+  "lastUpdate": 1787113821253,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8587,6 +8587,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2313,
             "range": "± 63",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3c2ce543d569f346d8b1b716328a3a5b7ae17168",
+          "message": "feat: add openapi generator, security modules, and comprehensive integration testing suite",
+          "timestamp": "2026-08-19T01:19:36-03:00",
+          "tree_id": "dd803315983702bd32fc91679b51564fe6879351",
+          "url": "https://github.com/Rullst/Rullst/commit/3c2ce543d569f346d8b1b716328a3a5b7ae17168"
+        },
+        "date": 1787113819602,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 584,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 760,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 485,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1719,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
