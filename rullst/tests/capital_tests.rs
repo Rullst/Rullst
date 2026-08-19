@@ -1,5 +1,6 @@
 #![cfg(feature = "capital")]
 
+use std::string::ToString;
 use rullst::capital::{BillingProvider, StripeProvider, SubscriptionStatus};
 
 #[tokio::test]

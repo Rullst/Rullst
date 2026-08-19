@@ -928,7 +928,7 @@ mod tests {
     #[tokio::test]
     async fn test_is_ai_configured_and_security_handler() {
         let _ = is_ai_configured();
-        let html_res = studio_threat_radar_handler().await;
+        let html_res = studio_security_handler().await;
         assert!(html_res.0.contains("Threat Radar"));
     }
 }
