@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787113821253,
+  "lastUpdate": 1787178603418,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8641,6 +8641,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1719,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7dd283b2ac6c27f06718cb48dbcf49a5750d7b74",
+          "message": "feat: implement Nexus CRUD dashboard with auto-generated admin interface and core system scaffolding",
+          "timestamp": "2026-08-19T19:28:04-03:00",
+          "tree_id": "282e6522ef2a314beade8c89e4352e0023ef4f61",
+          "url": "https://github.com/Rullst/Rullst/commit/7dd283b2ac6c27f06718cb48dbcf49a5750d7b74"
+        },
+        "date": 1787178601499,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 578,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 769,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 518,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1724,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
