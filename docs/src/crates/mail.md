@@ -1,68 +1,96 @@
 # Rullst Mail ✉️
 
-`rullst-mail` is the transactional email delivery module for the Rullst Framework. It provides a robust, zero-panic abstraction over popular email delivery providers, ensuring your transactional emails reach their destination securely and reliably.
+`rullst-mail` is the high-performance transactional email and mailables engine for the Rullst Framework. It provides a robust, zero-panic abstraction over popular delivery providers with built-in RFC 8058 compliance, DLP secret sanitization, and in-memory test assertions.
 
 ## ✨ Features
 
-- **Zero-Panic Guarantees:** 100% safe Rust. No unexpected crashes when building or sending emails.
-- **Provider Agnostic:** Swap between AWS SES, Resend, SendGrid, Mailgun, and SMTP without changing your core application logic.
-- **Template Rendering:** Native integration with `tinytemplate` for lightning-fast HTML email compilation.
-- **Background Delivery:** Built-in integration with Rullst's background worker queues (Redis/Postgres) to prevent blocking your HTTP handlers.
-- **Dry Run Mode:** Safe testing environment that logs emails instead of sending them.
+- **🛡️ Zero-Panic Guarantees:** 100% safe Rust with typed `MailError` and formal verification via Kani proofs.
+- **⚡ Multiple Delivery Drivers:** Built-in support for **Log**, **Memory**, **SMTP**, **Resend**, and **SendGrid**.
+- **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
+- **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
+- **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
+- **🧪 In-Memory `MailTrap` & Fluent Assertions:** Zero-I/O test harness for lightning-fast tests with rich assertion helpers.
+- **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
+- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Instant boilerplate generation for Welcome, Password Reset, OTP, and Invoice mailables.
 
 ## 🚀 Quickstart
 
-Add `rullst-mail` to your project:
-
-```bash
-cargo add rullst-mail
-```
-
-### Sending an Email
-
-Initialize the mailer with your preferred driver (e.g., Resend), render an HTML template, and dispatch it to the background queue:
+### 1. Composing and Sending an Email
 
 ```rust
-use rullst_mail::{Mailer, driver::ResendDriver, Email};
-use serde::Serialize;
-
-#[derive(Serialize)]
-struct WelcomeContext {
-    name: String,
-    activation_link: String,
-}
+use rullst_mail::{Mail, Message};
 
 #[tokio::main]
-async fn main() {
-    // 1. Initialize Driver
-    let driver = ResendDriver::new("re_123456789");
-    let mailer = Mailer::new(driver);
-
-    // 2. Prepare Context
-    let context = WelcomeContext {
-        name: "Alice".to_string(),
-        activation_link: "https://myapp.com/activate/123".to_string(),
-    };
-
-    // 3. Compose Email
-    let email = Email::builder()
-        .from("noreply@myapp.com")
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let message = Message::new()
         .to("alice@example.com")
+        .from("noreply@rullst.dev")
         .subject("Welcome to Rullst!")
-        .template("welcome_email.html")
-        .context(context)
-        .build()
-        .expect("Failed to build email");
+        .html("<h1>Welcome, Alice!</h1><p>Thanks for joining our platform.</p>")
+        .unsubscribe_url("https://rullst.dev/unsub/alice")
+        .sanitize_secrets();
 
-    // 4. Send (Async)
-    mailer.send_async(email).await.expect("Failed to enqueue email");
+    // Sends asynchronously via background queue or active driver
+    Mail::send(message).await?;
+
+    Ok(())
 }
 ```
 
-## 🔐 Security Audit
+### 2. Fast Unit & Integration Testing with `MailTrap`
 
-`rullst-mail` strictly validates email addresses and template variables to prevent injection attacks (e.g., SMTP Header Injection). Network calls to providers are resilient, wrapped in timeout bounds, and properly propagate typed errors (`MailError`) upwards.
+```rust
+use rullst_mail::{Mail, MailTrap, Message};
 
-## 📚 Documentation
+#[tokio::test]
+async fn test_user_registration_email() {
+    // Intercept all outgoing emails in memory
+    Mail::set_driver(Box::new(MailTrap::driver()));
+    MailTrap::clear();
 
-For advanced usage, configuring AWS SES, and setting up the background worker queue for heavy dispatching, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+    // Trigger application flow
+    let msg = Message::new()
+        .to("alice@example.com")
+        .subject("Welcome to Rullst!")
+        .html("<p>Please verify your email address.</p>")
+        .unsubscribe_url("https://example.com/unsub/alice");
+
+    Mail::send_now(msg).await.unwrap();
+
+    // Fluent assertions
+    MailTrap::assert_sent_to("alice@example.com")
+        .with_subject("Welcome to Rullst!")
+        .with_body_contains("Please verify your email")
+        .with_unsubscribe_url("https://example.com/unsub/alice");
+}
+```
+
+### 3. Scaffolding Mailables with CLI
+
+```bash
+# Generate Welcome & Onboarding email
+cargo rullst make:mail WelcomeEmail --welcome
+
+# Generate Time-limited Password Reset email
+cargo rullst make:mail PasswordReset --reset
+
+# Generate Two-Factor OTP code email
+cargo rullst make:mail OtpVerification --otp
+
+# Generate SaaS Invoice receipt email
+cargo rullst make:mail InvoiceReceipt --invoice
+```
+
+## ⚙️ Configuration (`Rullst.toml` or Environment Variables)
+
+```toml
+[mail]
+driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid"
+```
+
+Environment variables:
+- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`).
+- `RESEND_API_KEY`: API key for Resend.
+- `SENDGRID_API_KEY`: API key for SendGrid.
+- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
+- `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).

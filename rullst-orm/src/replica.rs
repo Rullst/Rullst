@@ -52,6 +52,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_replica_pool_count_and_rotation() {
+        #[cfg(not(any(
+            feature = "strict-postgres",
+            feature = "strict-mysql",
+            feature = "strict-sqlite"
+        )))]
+        {
+            let _ = sqlx::any::install_default_drivers();
+        }
+
         #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
         {
             if let Ok(pool) = RullstPool::connect("sqlite::memory:").await {

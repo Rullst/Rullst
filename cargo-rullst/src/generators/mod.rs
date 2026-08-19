@@ -25,6 +25,7 @@ pub mod iot;
 pub mod island;
 pub mod k8s;
 pub mod live;
+pub mod mail;
 pub mod middleware;
 pub mod migration;
 pub mod model;

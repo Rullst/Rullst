@@ -57,7 +57,7 @@ flowchart TD
   - Automatic injection of Microsoft Outlook MSO conditional tables (`<!--[if mso]>`).
   - Vector Markup Language (VML) fallbacks for bulletproof rounded buttons.
   - Native Dark Mode support via `@media (prefers-color-scheme: dark)` and `[data-ogsc]` tags.
-- [ ] **Automatic Plain-Text Generator**: Deterministic HTML-to-Text conversion for accessibility and low-bandwidth mail clients.
+- [x] **Automatic Plain-Text Fallback Generator**: Deterministic HTML-to-Text conversion (`strip_html_to_plain_text`) for accessibility and low-bandwidth mail clients automatically derived when `html(...)` is called.
 
 ---
 
@@ -71,8 +71,8 @@ flowchart TD
 ---
 
 ### Phase 4: Enterprise Security, DLP & Compliance 🛡️
-- [ ] **Outbound DLP Email Interceptor**: Scans both email subject, HTML/plain-text bodies, and attachments using `rullst-security::log_redactor` to prevent accidental leaks of AWS keys (`AKIA...`), database passwords, private keys, or personal identifiable data (PII).
-- [ ] **RFC 8058 One-Click List-Unsubscribe**: Mandatory header generation (`List-Unsubscribe` & `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) to comply with Google & Yahoo deliverability requirements.
+- [x] **Outbound DLP Email Secret Interceptor**: Scans both email subject, HTML/plain-text bodies (`redact_email_secrets` & `.sanitize_secrets()`) to prevent accidental leaks of AWS keys (`AKIA...`), database passwords, private keys, API keys, and bearer tokens.
+- [x] **RFC 8058 One-Click List-Unsubscribe**: Mandatory header generation (`List-Unsubscribe` & `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) to comply with Google & Yahoo deliverability requirements.
 - [ ] **Native DKIM Signer (RSA & Ed25519)**: Native Rust cryptographic signing of headers and body hashes using `ring` / `rsa` for direct server-to-server SMTP deliverability without external mail relays.
 - [ ] **Deliverability & DNS Health Scanner (`cargo rullst audit:mail`)**: Static and runtime CLI validator checking DNS records for SPF (`v=spf1`), DKIM public keys, DMARC policies (`p=reject`), and BIMI visual brand indicators.
 
@@ -81,23 +81,25 @@ flowchart TD
 ### Phase 5: Developer Control Room — "Mail Radar" in Rullst Studio 📡
 - [ ] **Live HTML Email Previewer (`/studio/mail`)**: Interactive Studio tab rendering email templates in real-time with responsive viewport toggles (Mobile, Desktop, Tablet) and dummy test fixtures.
 - [ ] **Visual Mail Queue & Dead-Letter Inspector**: Real-time observability dashboard displaying pending, delivered, and failed email jobs, with one-click manual retry and payload inspection.
-- [ ] **In-Memory Mail Trap (`MailTrap`) for Local Development & E2E Testing**:
-  - Catches all outgoing emails locally during development (`RULLST_ENV=development`) with a built-in web viewer at `/studio/mail/inbox`.
-  - Seamless testing assertions:
+- [x] **In-Memory Mail Trap (`MailTrap` & `MemoryDriver`) for Local Development & E2E Testing**:
+  - Catches all outgoing emails in memory without network I/O.
+  - Expressive, fluent testing assertions:
     ```rust
     MailTrap::assert_sent_to("alice@example.com")
         .with_subject_contains("Welcome")
-        .with_attachment("invoice.pdf");
+        .with_body_contains("Verify Email")
+        .with_unsubscribe_url("https://example.com/unsub");
     ```
 
 ---
 
 ### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
 - [ ] **Dynamic Multi-Tenancy Resolver (`TenantMailResolver`)**: Automatically select SMTP credentials, custom domain sender addresses, or API keys based on the active `TenantContext` in multi-tenant B2B SaaS architectures.
-- [ ] **SaaS & Fiscal Scaffolding Blueprints (`cargo rullst make:mail`)**:
-  - `make:mail-welcome`: Onboarding and email verification template.
-  - `make:mail-password-reset`: Secure time-limited password reset with anti-phishing indicators.
-  - `make:mail-mfa-token`: High-visibility OTP token delivery.
+- [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
+  - `cargo rullst make:mail <Name> --welcome`: Onboarding and email verification template.
+  - `cargo rullst make:mail <Name> --reset`: Secure time-limited password reset.
+  - `cargo rullst make:mail <Name> --otp`: High-visibility OTP token delivery.
+  - `cargo rullst make:mail <Name> --invoice`: SaaS billing and payment receipt.
   - `make:mail-invoice`: Brazilian Receita Federal NFS-e DPS & international SaaS receipt templates.
   - `make:mail-dunning`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
 

@@ -17,6 +17,7 @@ use crate::generators::{
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     inspect::inspect_project,
     introspect::generate_models_from_db,
+    mail::create_new_mailable,
     middleware::create_new_middleware,
     migration::create_new_migration,
     model::create_new_model,
@@ -133,6 +134,24 @@ pub enum Commands {
     MakeIot {
         /// Name of the IoT edge device (e.g. TemperatureSensor, MqttGateway)
         name: String,
+    },
+    /// Scaffolds a strongly-typed Mailable email template in src/mail/
+    #[command(name = "make:mail")]
+    MakeMail {
+        /// Name of the Mailable struct (e.g. WelcomeEmail, PasswordReset, InvoiceReceipt)
+        name: String,
+        /// Optional: generate a Welcome & Onboarding email template
+        #[arg(long)]
+        welcome: bool,
+        /// Optional: generate a Password Reset email template
+        #[arg(long)]
+        reset: bool,
+        /// Optional: generate a 2FA OTP Token email template
+        #[arg(long)]
+        otp: bool,
+        /// Optional: generate a SaaS Invoice Receipt email template
+        #[arg(long)]
+        invoice: bool,
     },
     /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
     #[command(name = "foundry:init")]
@@ -356,6 +375,15 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         }
         Commands::MakeIot { name } => {
             crate::generators::iot::run_make_iot(name)?;
+        }
+        Commands::MakeMail {
+            name,
+            welcome,
+            reset,
+            otp,
+            invoice,
+        } => {
+            create_new_mailable(name, *welcome, *reset, *otp, *invoice)?;
         }
         Commands::FoundryInit => {
             scaffold_foundry_config()?;

@@ -1,4 +1,6 @@
-use crate::mail::{Mail, Message};
+// src/worker.rs — Background mail worker handler registration.
+
+use crate::{Mail, Message};
 use rullst_core::queue::Worker;
 use serde_json::Value;
 

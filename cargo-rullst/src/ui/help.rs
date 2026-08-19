@@ -63,6 +63,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold bare-metal IoT edge sensor node",
                 ),
                 (
+                    "cargo rullst make:mail <Name>",
+                    "Scaffold Mailable struct & email template",
+                ),
+                (
                     "cargo rullst generate:models",
                     "Reverse-engineer live DB to Models",
                 ),
