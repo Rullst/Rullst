@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787178955204,
+  "lastUpdate": 1787181949177,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2219,6 +2219,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 60,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0f8d2e5d4eb0da69c42093f05c92ae2758ad571e",
+          "message": "feat: initialize project workspace with cargo packages for core infrastructure components",
+          "timestamp": "2026-08-19T20:17:34-03:00",
+          "tree_id": "6bbce0b67783e2b709d38a501cb144fc6049f240",
+          "url": "https://github.com/Rullst/Rullst/commit/0f8d2e5d4eb0da69c42093f05c92ae2758ad571e"
+        },
+        "date": 1787181948442,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 77,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
