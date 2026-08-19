@@ -37,11 +37,16 @@ pub fn redact_secrets(input: &str) -> String {
             let start = idx + key.len();
             if result.is_char_boundary(start) {
                 let end = result[start..]
-                    .find(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == '&' || c == ',')
+                    .find(|c: char| {
+                        c.is_whitespace() || c == '"' || c == '\'' || c == '&' || c == ','
+                    })
                     .map(|i| start + i)
                     .unwrap_or(result.len());
 
-                if end > start && result.is_char_boundary(end) && &result[start..end] != "[REDACTED]" {
+                if end > start
+                    && result.is_char_boundary(end)
+                    && &result[start..end] != "[REDACTED]"
+                {
                     result.replace_range(start..end, "[REDACTED]");
                     redacted = true;
                 }
@@ -96,7 +101,10 @@ mod tests {
         // Test ampersand delimiter in query params
         let url = "https://example.com/api?secret=super_secret_value&other=123";
         let clean_url = redact_secrets(url);
-        assert_eq!(clean_url, "https://example.com/api?secret=[REDACTED]&other=123");
+        assert_eq!(
+            clean_url,
+            "https://example.com/api?secret=[REDACTED]&other=123"
+        );
 
         // Test api_key= with comma and space delimiters
         let config = "Config api_key=my_api_key_value, mode=prod";
@@ -111,7 +119,10 @@ mod tests {
         // Test exact 20-char AWS key replacement
         let aws = "Deploying with AWS key AKIA1234567890123456 in region us-east-1";
         let clean_aws = redact_secrets(aws);
-        assert_eq!(clean_aws, "Deploying with AWS key AKIA**************** in region us-east-1");
+        assert_eq!(
+            clean_aws,
+            "Deploying with AWS key AKIA**************** in region us-east-1"
+        );
 
         // Test empty string
         assert_eq!(redact_secrets(""), "");

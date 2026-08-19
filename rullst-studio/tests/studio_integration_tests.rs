@@ -72,7 +72,9 @@ async fn test_studio_features_endpoints() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&body);
     assert!(body_str.contains("Feature Flags") || body_str.contains("studio"));
 }
@@ -81,10 +83,7 @@ async fn test_studio_features_endpoints() {
 async fn test_studio_env_endpoints() {
     let app = Studio::new().into_router();
 
-    let req = Request::builder()
-        .uri("/env")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/env").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
@@ -93,10 +92,7 @@ async fn test_studio_env_endpoints() {
 async fn test_studio_er_diagram() {
     let app = Studio::new().into_router();
 
-    let req = Request::builder()
-        .uri("/er")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/er").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }

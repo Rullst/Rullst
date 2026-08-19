@@ -71,7 +71,10 @@ async fn test_nexus_ai_chat_query() {
     let req = Request::builder()
         .method("POST")
         .uri("/chat/query")
-        .header(axum::http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(
+            axum::http::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
         .header("X-CSRF-Token", csrf_token)
         .body(Body::from(form_body))
@@ -80,7 +83,9 @@ async fn test_nexus_ai_chat_query() {
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&body);
     assert!(!body_str.is_empty());
 }

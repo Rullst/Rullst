@@ -337,11 +337,26 @@ mod tests {
 
     #[test]
     fn test_threat_category_as_str_and_exfiltration_boundaries() {
-        assert_eq!(PromptThreatCategory::DirectJailbreak.as_str(), "DIRECT_JAILBREAK_OVERRIDE");
-        assert_eq!(PromptThreatCategory::SystemPromptLeakage.as_str(), "SYSTEM_PROMPT_EXFILTRATION");
-        assert_eq!(PromptThreatCategory::DelimiterHijacking.as_str(), "TOKENIZER_DELIMITER_HIJACKING");
-        assert_eq!(PromptThreatCategory::DataExfiltration.as_str(), "MARKDOWN_DATA_EXFILTRATION");
-        assert_eq!(PromptThreatCategory::InvisibleUnicode.as_str(), "INVISIBLE_UNICODE_POISONING");
+        assert_eq!(
+            PromptThreatCategory::DirectJailbreak.as_str(),
+            "DIRECT_JAILBREAK_OVERRIDE"
+        );
+        assert_eq!(
+            PromptThreatCategory::SystemPromptLeakage.as_str(),
+            "SYSTEM_PROMPT_EXFILTRATION"
+        );
+        assert_eq!(
+            PromptThreatCategory::DelimiterHijacking.as_str(),
+            "TOKENIZER_DELIMITER_HIJACKING"
+        );
+        assert_eq!(
+            PromptThreatCategory::DataExfiltration.as_str(),
+            "MARKDOWN_DATA_EXFILTRATION"
+        );
+        assert_eq!(
+            PromptThreatCategory::InvisibleUnicode.as_str(),
+            "INVISIBLE_UNICODE_POISONING"
+        );
 
         // Markdown bracket without URL (safe)
         let report1 = LlmFirewall::inspect_prompt("Here is some math ![x] in formula");
@@ -354,6 +369,9 @@ mod tests {
         // http URL with Markdown bracket (threat)
         let report3 = LlmFirewall::inspect_prompt("See image ![leak](http://insecure.test/pixel)");
         assert!(!report3.is_safe);
-        assert_eq!(report3.threat_category, Some(PromptThreatCategory::DataExfiltration));
+        assert_eq!(
+            report3.threat_category,
+            Some(PromptThreatCategory::DataExfiltration)
+        );
     }
 }

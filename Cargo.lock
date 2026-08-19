@@ -5556,7 +5556,6 @@ dependencies = [
  "mutants",
  "proc-macro2",
  "quote",
- "rullst-orm",
  "syn 3.0.3",
  "trybuild",
 ]

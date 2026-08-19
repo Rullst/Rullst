@@ -302,7 +302,8 @@ mod tests {
 
     #[test]
     fn test_register_mod_ast_flow() {
-        let temp_dir = std::env::temp_dir().join(format!("rullst_test_mod_{}", rand::random::<u64>()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("rullst_test_mod_{}", rand::random::<u64>()));
         let _ = fs::create_dir_all(&temp_dir);
         let mod_file = temp_dir.join("mod.rs");
 

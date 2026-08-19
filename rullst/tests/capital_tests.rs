@@ -1,7 +1,7 @@
 #![cfg(feature = "capital")]
 
-use std::string::ToString;
 use rullst::capital::{BillingProvider, StripeProvider, SubscriptionStatus};
+use std::string::ToString;
 
 #[tokio::test]
 async fn test_subscription_status_parsing() {

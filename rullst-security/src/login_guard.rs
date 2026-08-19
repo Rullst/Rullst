@@ -178,12 +178,18 @@ mod tests {
 
         let guard = LoginGuard::new();
         // Insert expired jail
-        guard.jails.insert("expired_user".to_string(), Instant::now() - Duration::from_secs(10));
+        guard.jails.insert(
+            "expired_user".to_string(),
+            Instant::now() - Duration::from_secs(10),
+        );
         assert!(!guard.is_jailed("expired_user"));
         assert!(guard.remaining_jail_time("expired_user").is_none());
 
         // Insert active jail
-        guard.jails.insert("active_user".to_string(), Instant::now() + Duration::from_secs(100));
+        guard.jails.insert(
+            "active_user".to_string(),
+            Instant::now() + Duration::from_secs(100),
+        );
         assert!(guard.is_jailed("active_user"));
         assert!(guard.remaining_jail_time("active_user").is_some());
     }

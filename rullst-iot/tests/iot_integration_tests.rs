@@ -36,8 +36,18 @@ fn test_ota_partition_manager() {
 #[test]
 fn test_digital_twin_and_power_governor() {
     let mut twin = DigitalTwin::new("sensor-edge-42");
-    twin.ingest(SensorTelemetry::new("sensor-edge-42", "temperature", 24.5, 1700000000));
-    twin.ingest(SensorTelemetry::new("sensor-edge-42", "humidity", 60.0, 1700000001));
+    twin.ingest(SensorTelemetry::new(
+        "sensor-edge-42",
+        "temperature",
+        24.5,
+        1700000000,
+    ));
+    twin.ingest(SensorTelemetry::new(
+        "sensor-edge-42",
+        "humidity",
+        60.0,
+        1700000001,
+    ));
 
     let latest_temp = twin.latest("temperature").unwrap();
     assert_eq!(latest_temp.value, 24.5);

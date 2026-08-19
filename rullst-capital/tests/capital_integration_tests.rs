@@ -32,13 +32,34 @@ fn test_revenue_metrics_and_dashboard() {
 
 #[test]
 fn test_subscription_status_parsing_and_conversion() {
-    assert_eq!(SubscriptionStatus::parse_status("active"), SubscriptionStatus::Active);
-    assert_eq!(SubscriptionStatus::parse_status("paid"), SubscriptionStatus::Active);
-    assert_eq!(SubscriptionStatus::parse_status("canceled"), SubscriptionStatus::Canceled);
-    assert_eq!(SubscriptionStatus::parse_status("past_due"), SubscriptionStatus::PastDue);
-    assert_eq!(SubscriptionStatus::parse_status("trialing"), SubscriptionStatus::Trialing);
-    assert_eq!(SubscriptionStatus::parse_status("paused"), SubscriptionStatus::Paused);
-    assert_eq!(SubscriptionStatus::parse_status("unknown"), SubscriptionStatus::Unpaid);
+    assert_eq!(
+        SubscriptionStatus::parse_status("active"),
+        SubscriptionStatus::Active
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("paid"),
+        SubscriptionStatus::Active
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("canceled"),
+        SubscriptionStatus::Canceled
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("past_due"),
+        SubscriptionStatus::PastDue
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("trialing"),
+        SubscriptionStatus::Trialing
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("paused"),
+        SubscriptionStatus::Paused
+    );
+    assert_eq!(
+        SubscriptionStatus::parse_status("unknown"),
+        SubscriptionStatus::Unpaid
+    );
 
     assert_eq!(SubscriptionStatus::Active.as_str(), "active");
     assert_eq!(SubscriptionStatus::Canceled.as_str(), "canceled");
@@ -95,13 +116,19 @@ async fn test_provider_initialization_and_portals() {
 
     let mp = MercadoPagoProvider::new("test_token".to_string(), "test_secret".to_string());
     assert_eq!(mp.name(), "mercadopago");
-    let portal_mp = mp.create_customer_portal("alice@example.com", "http://return").await.unwrap();
+    let portal_mp = mp
+        .create_customer_portal("alice@example.com", "http://return")
+        .await
+        .unwrap();
     assert!(portal_mp.contains("alice%40example.com"));
     assert!(mp.verify_signature(b"payload", "invalid_format").is_err());
 
     let ls = LemonSqueezyProvider::new("test_key".to_string(), "test_wh".to_string());
     assert_eq!(ls.name(), "lemonsqueezy");
-    let portal_ls = ls.create_customer_portal("bob@example.com", "http://return").await.unwrap();
+    let portal_ls = ls
+        .create_customer_portal("bob@example.com", "http://return")
+        .await
+        .unwrap();
     assert!(portal_ls.contains("bob%40example.com"));
 
     let uninteresting = serde_json::json!({
@@ -110,15 +137,24 @@ async fn test_provider_initialization_and_portals() {
     });
     let mut ls_headers = HashMap::new();
     ls_headers.insert("x-signature".to_string(), "invalid_hex".to_string());
-    assert!(ls.handle_webhook(&serde_json::to_vec(&uninteresting).unwrap(), &ls_headers).is_err());
+    assert!(
+        ls.handle_webhook(&serde_json::to_vec(&uninteresting).unwrap(), &ls_headers)
+            .is_err()
+    );
 
     let ip = InfinitePayProvider::new("test_ip".to_string(), "test_secret".to_string());
     assert_eq!(ip.name(), "infinitepay");
-    let portal_ip = ip.create_customer_portal("carol@example.com", "http://return").await.unwrap();
+    let portal_ip = ip
+        .create_customer_portal("carol@example.com", "http://return")
+        .await
+        .unwrap();
     assert!(portal_ip.contains("carol%40example.com"));
 
     let cb = CoinbaseCommerceProvider::new("test_cb".to_string(), "wh_secret".to_string());
     assert_eq!(cb.name(), "coinbase");
-    let portal_cb = cb.create_customer_portal("dan@example.com", "http://return").await.unwrap();
+    let portal_cb = cb
+        .create_customer_portal("dan@example.com", "http://return")
+        .await
+        .unwrap();
     assert!(portal_cb.contains("dan%40example.com"));
 }
