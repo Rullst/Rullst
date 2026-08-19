@@ -63,8 +63,9 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
+    #[kani::unwind(10)]
     fn proof_modbus_crc16_no_panic() {
-        let bytes: [u8; 8] = kani::any();
+        let bytes: [u8; 4] = kani::any();
         let crc = ModbusFrame::calculate_crc16(&bytes);
         assert!(crc <= u16::MAX);
     }

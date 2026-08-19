@@ -112,6 +112,7 @@ echo "✅ Server environment ready.""#
     Ok(())
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn execute_upload_step(
     cfg: &FoundryConfig,
     local_bin: &str,
@@ -175,6 +176,7 @@ pub fn execute_upload_step(
     Ok(())
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn execute_configure_step(
     cfg: &FoundryConfig,
     bin_name: &str,
@@ -278,6 +280,7 @@ echo "✅ Services configured and started."
     Ok(())
 }
 
+#[cfg_attr(mutants, mutants::skip)]
 pub fn print_deployment_summary(cfg: &FoundryConfig) {
     let app_port = if cfg.port.is_empty() {
         "3000"

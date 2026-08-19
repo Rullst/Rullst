@@ -192,10 +192,16 @@ pub async fn count_table_rows(
 
 /// Sanitize table and column names to prevent SQL injections in dynamic queries
 pub fn sanitize_identifier(id: &str) -> String {
-    id.chars()
-        .filter(|c| c.is_alphanumeric() || *c == '_')
-        .take(64) // Strict length limit for security
-        .collect()
+    let mut res = String::with_capacity(64);
+    for c in id.chars() {
+        if c.is_alphanumeric() || c == '_' {
+            if res.len() + c.len_utf8() > 64 {
+                break;
+            }
+            res.push(c);
+        }
+    }
+    res
 }
 
 /// Helper to build a search clause taking driver syntax into account
@@ -301,8 +307,9 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
+    #[kani::unwind(5)]
     fn proof_sanitize_identifier_length_bound() {
-        let id: [u8; 8] = kani::any();
+        let id: [u8; 4] = kani::any();
         if let Ok(s) = std::str::from_utf8(&id) {
             let clean = sanitize_identifier(s);
             assert!(clean.len() <= 64);

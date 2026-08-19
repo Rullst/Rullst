@@ -924,4 +924,11 @@ mod tests {
         let result = check_and_run_artisan(vec![], vec![]).await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_is_ai_configured_and_security_handler() {
+        let _ = is_ai_configured();
+        let html_res = studio_security_handler().await;
+        assert!(html_res.0.contains("Security Radar"));
+    }
 }

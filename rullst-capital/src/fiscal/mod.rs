@@ -133,6 +133,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn test_issue_nfse_direct_mock() {
         let emitter = FiscalEmitter {
             cnpj: "12345678000190".to_string(),

@@ -35,9 +35,8 @@ cargo publish -p cargo-rullst --dry-run
 
 Powershell:
 
-cargo clean &&
 cargo test --workspace --all-features &&
-cargo clippy --workspace --all-features --fix --allow-staged &&
+cargo clippy --workspace --all-features --fix --allow-dirty --allow-staged &&
 cargo fmt --all &&
 cargo publish -p rullst-macros --dry-run &&
 cargo publish -p rullst-orm-macros --dry-run --no-verify &&

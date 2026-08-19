@@ -289,3 +289,39 @@ pub fn middleware_to_snake_case(s: &str) -> String {
     }
     clean_result.trim_matches('_').to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_rullst_project() {
+        // Since we are running in the Rullst repo with a Cargo.toml containing "rullst", this should return true
+        assert!(is_rullst_project());
+    }
+
+    #[test]
+    fn test_register_mod_ast_flow() {
+        let temp_dir = std::env::temp_dir().join(format!("rullst_test_mod_{}", rand::random::<u64>()));
+        let _ = fs::create_dir_all(&temp_dir);
+        let mod_file = temp_dir.join("mod.rs");
+
+        // 1. Register in new non-existent file
+        register_mod_ast(&mod_file, "users").unwrap();
+        let content1 = fs::read_to_string(&mod_file).unwrap();
+        assert!(content1.contains("pub mod users;"));
+
+        // 2. Register same module again (idempotent, shouldn't duplicate)
+        register_mod_ast(&mod_file, "users").unwrap();
+        let content2 = fs::read_to_string(&mod_file).unwrap();
+        assert_eq!(content1, content2);
+
+        // 3. Register a second module
+        register_mod_ast(&mod_file, "posts").unwrap();
+        let content3 = fs::read_to_string(&mod_file).unwrap();
+        assert!(content3.contains("pub mod users;"));
+        assert!(content3.contains("pub mod posts;"));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+}

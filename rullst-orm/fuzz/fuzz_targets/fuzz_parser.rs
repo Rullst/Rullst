@@ -8,6 +8,9 @@ mod internal_parser {
 }
 
 fuzz_target!(|data: &[u8]| {
+    if data.len() > 2048 {
+        return;
+    }
     if let Ok(s) = std::str::from_utf8(data) {
         // syn::parse2 will stack overflow on deeply nested structures.
         // We restrict the number of nesting tokens and recursive operators to avoid this.

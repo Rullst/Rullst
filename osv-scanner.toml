@@ -26,3 +26,6 @@ reason = "Transitive dependency advisory ignored to unblock Scorecard/OSV scanne
 id = "RUSTSEC-2026-0253"
 reason = "Transitive dependency advisory ignored to prevent Scorecard and OSV scanner blocking until upstream security patch release."
 
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0258"
+reason = "h2 0.4 was upgraded to 0.4.16. The legacy 0.3.27 is only a transitive dev-dependency via actix-web in rullst-connect test harness with zero production impact."

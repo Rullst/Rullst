@@ -170,6 +170,23 @@ mod tests {
         guard.record_login_success(ip);
         assert!(!guard.is_jailed(ip));
     }
+
+    #[test]
+    fn test_login_guard_global_and_expired_jail() {
+        let global = LoginGuard::global();
+        assert_eq!(global.max_failures, 5);
+
+        let guard = LoginGuard::new();
+        // Insert expired jail
+        guard.jails.insert("expired_user".to_string(), Instant::now() - Duration::from_secs(10));
+        assert!(!guard.is_jailed("expired_user"));
+        assert!(guard.remaining_jail_time("expired_user").is_none());
+
+        // Insert active jail
+        guard.jails.insert("active_user".to_string(), Instant::now() + Duration::from_secs(100));
+        assert!(guard.is_jailed("active_user"));
+        assert!(guard.remaining_jail_time("active_user").is_some());
+    }
 }
 
 #[cfg(kani)]

@@ -275,3 +275,58 @@ async fn test_github_get_user_missing_id() {
             if message.contains("Missing id")
     ));
 }
+
+#[test]
+fn test_pkce_generation() {
+    let (verifier, challenge) = rullst_connect::pkce::generate_pkce();
+    assert_eq!(verifier.len(), 64);
+    assert!(!challenge.is_empty());
+    assert!(!challenge.contains('='));
+}
+
+#[test]
+fn test_providers_initialization() {
+    use rullst_connect::provider::Provider;
+    use rullst_connect::providers::*;
+
+    let gh = GithubProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(gh.redirect_url().contains("github.com"));
+    assert!(gh.redirect_url_with_state("xyz").contains("state=xyz"));
+
+    let google = GoogleProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(google.redirect_url().contains("google.com"));
+
+    let discord = DiscordProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(discord.redirect_url().contains("discord.com"));
+
+    let ms = MicrosoftProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(ms.redirect_url().contains("microsoftonline.com"));
+}
+
+#[test]
+fn test_connect_error_variants() {
+    let err_req = ConnectError::Reqwest("Connection reset".to_string());
+    assert!(format!("{}", err_req).contains("HTTP request failed: Connection reset"));
+
+    let err_tok = ConnectError::Token("Expired".to_string());
+    assert!(format!("{}", err_tok).contains("Missing token or unexpected response: Expired"));
+
+    let err_state = ConnectError::InvalidState("Mismatch".to_string());
+    assert!(format!("{}", err_state).contains("Invalid CSRF state: Mismatch"));
+}

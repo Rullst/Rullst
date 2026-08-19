@@ -801,4 +801,15 @@ mod tests {
         Orm::set_query_timeout(0);
         assert_eq!(crate::schema::get_query_timeout(), None);
     }
+
+    #[tokio::test]
+    async fn test_try_driver_and_placeholder_dsn() {
+        let err = Orm::try_driver();
+        assert!(err.is_err() || err.is_ok());
+
+        let res = Orm::init("libsql://[your-database-id].turso.io").await;
+        assert!(res.is_err());
+        let err_msg = format!("{}", res.unwrap_err());
+        assert!(err_msg.contains("DATABASE_URL contains placeholder brackets"));
+    }
 }

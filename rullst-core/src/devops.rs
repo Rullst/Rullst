@@ -89,12 +89,21 @@ mod tests {
     fn test_devops_agent_recommendations() {
         let agent = DevOpsAgent::new();
 
-        // Test high Tokio latency
+        // Test below/at boundary (no recommendations)
+        let recs_clean = agent.analyze_telemetry(10_000, 500 * 1024 * 1024, 17, 20);
+        assert_eq!(recs_clean.len(), 0);
+
+        // Test high Tokio latency (> 10_000)
         let recs = agent.analyze_telemetry(15_000, 100 * 1024 * 1024, 5, 20);
         assert_eq!(recs.len(), 1);
         assert_eq!(recs[0].metric_name, "tokio_tick_latency_us");
 
-        // Test saturated DB pool
+        // Test high memory (> 500 MB)
+        let recs_mem = agent.analyze_telemetry(500, 600 * 1024 * 1024, 5, 20);
+        assert_eq!(recs_mem.len(), 1);
+        assert_eq!(recs_mem[0].metric_name, "memory_rss_mb");
+
+        // Test saturated DB pool (> 85%)
         let recs_db = agent.analyze_telemetry(500, 100 * 1024 * 1024, 18, 20);
         assert_eq!(recs_db.len(), 1);
         assert_eq!(recs_db[0].metric_name, "db_pool_utilization");

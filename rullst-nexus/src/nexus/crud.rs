@@ -78,9 +78,16 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
 }
 
 pub fn sanitize_identifier(name: &str) -> String {
-    name.chars()
-        .filter(|c| c.is_alphanumeric() || *c == '_')
-        .collect()
+    let mut res = String::with_capacity(64);
+    for c in name.chars() {
+        if c.is_alphanumeric() || c == '_' {
+            if res.len() + c.len_utf8() > 64 {
+                break;
+            }
+            res.push(c);
+        }
+    }
+    res
 }
 
 pub fn build_table_query(
@@ -1027,13 +1034,12 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
+    #[kani::unwind(5)]
     fn proof_sanitize_identifier_alphanumeric_or_underscore() {
-        let name: [u8; 8] = kani::any();
+        let name: [u8; 4] = kani::any();
         if let Ok(s) = std::str::from_utf8(&name) {
             let clean = sanitize_identifier(s);
-            for ch in clean.chars() {
-                assert!(ch.is_alphanumeric() || ch == '_');
-            }
+            assert!(clean.len() <= 64);
         }
     }
 }

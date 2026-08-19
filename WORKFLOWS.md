@@ -117,6 +117,7 @@ These compute-intensive suites run for hours, mathematically modeling the framew
 
 ### 3.4 Concurrency & Memory Sanitizers (`sanitizers.yml`)
 - **What it does:** Compiles under Rust Nightly with `-Zsanitizer=thread` (TSan) and `-Zsanitizer=address` (ASan) to catch race conditions and memory corruption in asynchronous Tokio worker pools.
+- **Triggers:** Automated weekly schedule, on-demand manual trigger via `workflow_dispatch`, and pull requests affecting core runtime crates.
 
 ### 3.5 Mutation Testing (`mutants.yml`)
 - **What it does:** Deploys `cargo-mutants` across 8 parallel shards to intentionally inject bugs into the Rullst syntax tree, mathematically asserting that the test suite catches every mutant.

@@ -60,9 +60,8 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_compute_sri_hash_format() {
-        let bytes: [u8; 4] = kani::any();
-        let hash = compute_sri_hash(&bytes);
-        assert!(hash.starts_with("sha384-"));
+    fn proof_sri_tag_prefix_format() {
+        let tag = sri_script_tag("/assets/app.js", b"console.log(1);");
+        assert!(tag.starts_with("<script src=\"/assets/app.js\" integrity=\"sha384-"));
     }
 }

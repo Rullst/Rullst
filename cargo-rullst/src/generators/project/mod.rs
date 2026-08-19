@@ -199,3 +199,27 @@ CMD ["/app/{project_name}"]
     println!("{}", "  ✅ Dockerfile generated.".green());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_has_binary_validation() {
+        assert!(!has_binary("invalid;binary"));
+        assert!(!has_binary("binary with space"));
+        assert!(!has_binary("cmd|pipe"));
+        assert!(!has_binary("non_existent_binary_xyz_12345"));
+        assert!(has_binary("cargo"));
+    }
+
+    #[test]
+    fn test_generate_secure_app_key() {
+        let key1 = generate_secure_app_key();
+        let key2 = generate_secure_app_key();
+        assert_eq!(key1.len(), 32);
+        assert_eq!(key2.len(), 32);
+        assert_ne!(key1, key2);
+        assert!(key1.chars().all(|c| c.is_ascii_alphanumeric()));
+    }
+}

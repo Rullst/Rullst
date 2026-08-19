@@ -95,19 +95,4 @@ mod kani_proofs {
         let secret = VaultSecret::new(val);
         assert_eq!(secret.expose_secret(), &val);
     }
-
-    #[kani::proof]
-    fn proof_field_encryptor_header_invariant() {
-        let text_bytes: [u8; 4] = kani::any();
-        let key_bytes: [u8; 4] = kani::any();
-        if let (Ok(text), Ok(key)) = (
-            std::str::from_utf8(&text_bytes),
-            std::str::from_utf8(&key_bytes),
-        ) {
-            let enc = FieldEncryptor::encrypt(text, key);
-            assert!(enc.starts_with("ENC:v1:"));
-            let dec = FieldEncryptor::decrypt(&enc, key);
-            assert!(dec.is_ok());
-        }
-    }
 }

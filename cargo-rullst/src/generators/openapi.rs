@@ -183,3 +183,14 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_description_from_handler() {
+        assert_eq!(extract_description_from_handler("single_part"), None);
+        assert_eq!(extract_description_from_handler("crate::non_existent::action"), None);
+    }
+}

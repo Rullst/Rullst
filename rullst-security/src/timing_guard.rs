@@ -162,6 +162,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_synthetic_cpu_work_runs_safely() {
         let start = Instant::now();
         synthetic_argon2_cpu_work();

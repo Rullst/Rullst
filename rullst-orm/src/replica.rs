@@ -48,9 +48,24 @@ impl ReplicaPool {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_replica_pool_count() {
-        // Mock pool test structure
-        assert_eq!(1 + 1, 2);
+    use super::*;
+
+    #[tokio::test]
+    async fn test_replica_pool_count_and_rotation() {
+        let pool = RullstPool::connect("sqlite::memory:").await.unwrap();
+        let replica1 = RullstPool::connect("sqlite::memory:").await.unwrap();
+        let replica2 = RullstPool::connect("sqlite::memory:").await.unwrap();
+
+        let replica_pool = ReplicaPool::new(pool.clone(), vec![replica1, replica2]);
+        assert_eq!(replica_pool.replica_count(), 2);
+
+        // Test read round-robin
+        let _r1 = replica_pool.read();
+        let _r2 = replica_pool.read();
+        let _r3 = replica_pool.read();
+
+        let primary_only = ReplicaPool::primary_only(pool);
+        assert_eq!(primary_only.replica_count(), 0);
+        let _p_read = primary_only.read();
     }
 }
