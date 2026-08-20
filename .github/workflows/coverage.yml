@@ -38,7 +38,7 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
         run: |
-          cargo llvm-cov --no-report --no-clean -p rullst-orm \
+          cargo llvm-cov --no-report -p rullst-orm \
             --test matrix_postgres --test matrix_mysql \
             -- --test-threads=1
 
