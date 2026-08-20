@@ -4,8 +4,7 @@
 
 use super::*;
 use crate::artisan::runner::translate_artisan_args;
-use crate::artisan::studio_server::is_ai_configured;
-use crate::artisan::studio_views::studio_security_handler;
+use crate::artisan::studio_views::{is_ai_configured, studio_security_handler};
 
 #[test]
 fn test_translate_artisan_args_none() {

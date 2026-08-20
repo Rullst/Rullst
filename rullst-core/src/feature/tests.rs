@@ -1,4 +1,4 @@
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::driver::FeatureDriver;
 use super::env::EnvFeatureDriver;
 use super::manager::FeatureManager;

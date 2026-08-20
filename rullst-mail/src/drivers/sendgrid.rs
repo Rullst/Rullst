@@ -1,6 +1,6 @@
 // src/drivers/sendgrid.rs — SendGrid HTTP REST API driver with RFC 8058 headers.
 
-use crate::drivers::MailDriver;
+use super::traits::MailDriver;
 use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;

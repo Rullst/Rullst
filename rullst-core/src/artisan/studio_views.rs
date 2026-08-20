@@ -1,6 +1,12 @@
 //! HTML view templates for Studio Control Center dashboards.
 
-use crate::artisan::studio_server::is_ai_configured;
+pub(crate) fn is_ai_configured() -> bool {
+    let _ = dotenvy::dotenv();
+    std::env::var("GEMINI_API_KEY").is_ok()
+        || std::env::var("OPENAI_API_KEY").is_ok()
+        || std::env::var("ANTHROPIC_API_KEY").is_ok()
+        || std::env::var("DEEPSEEK_API_KEY").is_ok()
+}
 
 pub(crate) async fn studio_home_handler() -> axum::response::Html<String> {
     axum::response::Html(

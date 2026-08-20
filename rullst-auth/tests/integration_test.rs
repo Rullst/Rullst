@@ -3,6 +3,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use axum::http::HeaderMap;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use rand::Rng;
 use rullst_auth::{
     HasRole, decrypt_session, dummy_verify, encrypt_session, extract_session_cookie, hash_password,
     make_logout_cookie, needs_rehash, verify_password,
@@ -10,12 +12,16 @@ use rullst_auth::{
 
 #[test]
 fn test_argon2_password_hashing_and_verification() {
-    let password = "SuperSecretPassword#2026";
-    let hash = hash_password(password).unwrap();
+    let mut rng = rand::rng();
+    let mut random_bytes = [0u8; 16];
+    rng.fill_bytes(&mut random_bytes);
+    let password = format!("TestSecret_{}", STANDARD.encode(random_bytes));
+    let hash = hash_password(&password).unwrap();
 
     assert!(hash.starts_with("$argon2id$"));
-    assert!(verify_password(password, &hash));
-    assert!(!verify_password("WrongPassword123", &hash));
+    assert!(verify_password(&password, &hash));
+    let wrong_password = format!("Wrong_{}", STANDARD.encode(random_bytes));
+    assert!(!verify_password(&wrong_password, &hash));
 
     // Overly long password rejection (> 72 bytes)
     let long_pass = "A".repeat(80);
@@ -32,21 +38,24 @@ fn test_argon2_password_hashing_and_verification() {
 
 #[test]
 fn test_session_encryption_and_decryption() {
-    let key = b"my_super_secret_app_key_32bytes_long!";
+    let mut rng = rand::rng();
+    let mut key = [0u8; 32];
+    let mut bad_key = [0u8; 32];
+    rng.fill_bytes(&mut key);
+    rng.fill_bytes(&mut bad_key);
     let user_id = 42;
 
-    let token = encrypt_session(user_id, key).unwrap();
+    let token = encrypt_session(user_id, &key).unwrap();
     assert!(!token.is_empty());
 
-    let decrypted = decrypt_session(&token, key).unwrap();
+    let decrypted = decrypt_session(&token, &key).unwrap();
     assert_eq!(decrypted, user_id);
 
     // Wrong key should fail
-    let bad_key = b"wrong_key_1234567890123456789012!";
-    assert!(decrypt_session(&token, bad_key).is_err());
+    assert!(decrypt_session(&token, &bad_key).is_err());
 
     // Corrupted token should fail
-    assert!(decrypt_session("corrupted_base64_payload", key).is_err());
+    assert!(decrypt_session("corrupted_base64_payload", &key).is_err());
 }
 
 #[test]

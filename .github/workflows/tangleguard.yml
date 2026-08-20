@@ -26,5 +26,4 @@ jobs:
       - name: Run TangleGuard Architecture Validation
         uses: TangleGuard/github-action@ea05917ac6078d7a92ef8055853f423a44b9dd84 # v0.6
         with:
-          language: "rust"
           fail_on_findings: "true"

@@ -15,7 +15,6 @@ fn test_radar_snapshot_collection_and_prometheus_export() {
     let snapshot = RadarSnapshot::collect();
     assert!(snapshot.cpu_usage_percent >= 0.0);
     assert!(snapshot.memory_rss_mb >= 0.0);
-    assert!(snapshot.uptime_seconds >= 0);
 
     // Memory query helper
     let mem = get_process_memory_mb();

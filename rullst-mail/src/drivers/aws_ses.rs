@@ -1,6 +1,6 @@
 // src/drivers/aws_ses.rs — AWS Simple Email Service (SES) v2 HTTP REST API driver.
 
-use crate::drivers::MailDriver;
+use super::traits::MailDriver;
 use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;

@@ -1,8 +1,6 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::request_builder::RequestBuilder;
-
 /// The request structure passed to the HttpClient.
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -26,19 +24,4 @@ pub struct HttpResponse {
 #[async_trait]
 pub trait HttpClient: Send + Sync {
     async fn execute(&self, req: HttpRequest) -> Result<HttpResponse, crate::error::ConnectError>;
-}
-
-/// Extension trait to provide the fluent builder API (like reqwest).
-pub trait HttpClientExt {
-    fn get(&self, url: impl Into<String>) -> RequestBuilder<'_>;
-    fn post(&self, url: impl Into<String>) -> RequestBuilder<'_>;
-}
-
-impl HttpClientExt for dyn HttpClient + '_ {
-    fn get(&self, url: impl Into<String>) -> RequestBuilder<'_> {
-        RequestBuilder::new(self, "GET", url.into())
-    }
-    fn post(&self, url: impl Into<String>) -> RequestBuilder<'_> {
-        RequestBuilder::new(self, "POST", url.into())
-    }
 }

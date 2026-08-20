@@ -1,6 +1,6 @@
-use super::request_builder::{RequestBuilder, ResponseWrapper};
+use super::request_builder::{HttpClientExt, RequestBuilder, ResponseWrapper};
 use super::reqwest_client::{ReqwestClient, parse_content_length};
-use super::traits::{HttpClient, HttpClientExt, HttpRequest, HttpResponse};
+use super::traits::{HttpClient, HttpRequest, HttpResponse};
 use async_trait::async_trait;
 use serde_json::json;
 use std::sync::Arc;

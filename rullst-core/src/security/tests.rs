@@ -1,4 +1,4 @@
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::csrf::{extract_token_from_body, generate_csrf_token, is_csrf_exempt_path};
 use super::headers::headers_middleware;
 use super::pii::mask_pii;

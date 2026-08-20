@@ -117,3 +117,18 @@ impl ResponseWrapper {
         Ok(t)
     }
 }
+
+/// Extension trait to provide the fluent builder API (like reqwest).
+pub trait HttpClientExt {
+    fn get(&self, url: impl Into<String>) -> RequestBuilder<'_>;
+    fn post(&self, url: impl Into<String>) -> RequestBuilder<'_>;
+}
+
+impl HttpClientExt for dyn HttpClient + '_ {
+    fn get(&self, url: impl Into<String>) -> RequestBuilder<'_> {
+        RequestBuilder::new(self, "GET", url.into())
+    }
+    fn post(&self, url: impl Into<String>) -> RequestBuilder<'_> {
+        RequestBuilder::new(self, "POST", url.into())
+    }
+}
