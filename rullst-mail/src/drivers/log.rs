@@ -1,6 +1,7 @@
 // src/drivers/log.rs — Terminal output and disk file logger mail driver.
 
-use super::{MailDriver, MailError};
+use crate::drivers::MailDriver;
+use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;
 

@@ -1,10 +1,9 @@
 name: Benchmark Regression
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'  # Every Monday at 04:00 UTC (weekly regression audit)
 
 permissions: read-all
 

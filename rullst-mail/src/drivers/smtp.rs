@@ -1,6 +1,7 @@
 // src/drivers/smtp.rs — Native async SMTP driver with RFC 8058 support.
 
-use super::{MailDriver, MailError};
+use crate::drivers::MailDriver;
+use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;
 

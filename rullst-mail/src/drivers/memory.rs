@@ -1,6 +1,7 @@
 // src/drivers/memory.rs — In-memory test driver, MailTrap and assertion helper.
 
-use super::{MailDriver, MailError};
+use crate::drivers::MailDriver;
+use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};

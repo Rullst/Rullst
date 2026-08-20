@@ -1,6 +1,6 @@
 // src/security.rs — Outbound Phishing, Homograph URL Interceptor & Threat Scanner.
 
-use crate::drivers::MailError;
+use crate::error::MailError;
 
 /// Scans a URL string for internationalized domain name (IDN) homograph spoofing attacks.
 ///

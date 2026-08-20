@@ -11,7 +11,7 @@ fuzz_target!(|data: &[u8]| {
             description: s.to_string(),
             required: data.len() % 2 == 0,
         };
-        let mut registry = ToolRegistry::new();
+        let registry = ToolRegistry::new();
         let _ = registry.export_openai_schema();
     }
 });

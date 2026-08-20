@@ -311,6 +311,7 @@ checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "num-traits",
+ "serde",
  "windows-link",
 ]
 
@@ -349,6 +350,12 @@ dependencies = [
  "bytes",
  "memchr",
 ]
+
+[[package]]
+name = "const-oid"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "core-foundation"
@@ -542,6 +549,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
 dependencies = [
  "block-buffer 0.12.1",
+ "const-oid",
  "crypto-common 0.2.2",
  "ctutils",
 ]
@@ -1885,6 +1893,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1901,12 +1910,16 @@ name = "rullst-mail"
 version = "12.0.0"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "chrono",
+ "hmac",
  "reqwest",
  "rullst-core",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

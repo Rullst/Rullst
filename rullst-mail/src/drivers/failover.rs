@@ -1,6 +1,7 @@
 // src/drivers/failover.rs — Resilient multi-driver failover with lightweight circuit breaker.
 
-use super::{MailDriver, MailError};
+use crate::drivers::MailDriver;
+use crate::error::MailError;
 use crate::message::Message;
 use async_trait::async_trait;
 use std::sync::atomic::{AtomicUsize, Ordering};

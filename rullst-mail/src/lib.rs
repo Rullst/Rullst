@@ -11,6 +11,7 @@
 
 pub mod attachment;
 pub mod drivers;
+pub mod error;
 pub mod facade;
 pub mod factory;
 pub mod message;
@@ -22,6 +23,7 @@ pub mod worker;
 
 pub use attachment::*;
 pub use drivers::*;
+pub use error::*;
 pub use facade::*;
 pub use factory::*;
 pub use message::*;

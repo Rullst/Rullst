@@ -75,7 +75,10 @@ impl TrackingEngine {
         let json_bytes = serde_json::to_vec(&event).unwrap_or_default();
         let payload_b64 = URL_SAFE_NO_PAD.encode(&json_bytes);
 
-        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC can take key of any size");
+        let mut mac = match HmacSha256::new_from_slice(secret) {
+            Ok(m) => m,
+            Err(_) => return String::new(),
+        };
         mac.update(payload_b64.as_bytes());
         let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
 
@@ -86,7 +89,8 @@ impl TrackingEngine {
     pub fn verify_open_token(secret: &[u8], token: &str) -> Result<OpenEvent, TrackingError> {
         let (payload_b64, sig_b64) = token.split_once('.').ok_or(TrackingError::InvalidFormat)?;
 
-        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC can take key of any size");
+        let mut mac =
+            HmacSha256::new_from_slice(secret).map_err(|_| TrackingError::InvalidSignature)?;
         mac.update(payload_b64.as_bytes());
         let expected_sig = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
 
@@ -135,7 +139,10 @@ impl TrackingEngine {
         let json_bytes = serde_json::to_vec(&event).unwrap_or_default();
         let payload_b64 = URL_SAFE_NO_PAD.encode(&json_bytes);
 
-        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC can take key of any size");
+        let mut mac = match HmacSha256::new_from_slice(secret) {
+            Ok(m) => m,
+            Err(_) => return String::new(),
+        };
         mac.update(payload_b64.as_bytes());
         let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
 
@@ -146,7 +153,8 @@ impl TrackingEngine {
     pub fn verify_click_token(secret: &[u8], token: &str) -> Result<ClickEvent, TrackingError> {
         let (payload_b64, sig_b64) = token.split_once('.').ok_or(TrackingError::InvalidFormat)?;
 
-        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC can take key of any size");
+        let mut mac =
+            HmacSha256::new_from_slice(secret).map_err(|_| TrackingError::InvalidSignature)?;
         mac.update(payload_b64.as_bytes());
         let expected_sig = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
 

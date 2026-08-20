@@ -5,7 +5,7 @@ authors = ["Rullst Core Team"]
 edition = "2024"
 publish = false
 autobins = false
-default-run = "rullst-blog"
+default-run = "rullst-blog-example"
 license = "MIT"
 description = "Example blog application built with the Rullst full-stack web framework."
 [dependencies]
@@ -35,7 +35,7 @@ chrono = { version = "0.4", features = ["serde"] }
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "rullst-blog"
+name = "rullst-blog-example"
 path = "src/main.rs"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

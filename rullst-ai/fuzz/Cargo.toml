@@ -26,3 +26,9 @@ name = "fuzz_rag"
 path = "fuzz_targets/fuzz_rag.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "fuzz_message_serde"
+path = "fuzz_targets/fuzz_message_serde.rs"
+test = false
+doc = false

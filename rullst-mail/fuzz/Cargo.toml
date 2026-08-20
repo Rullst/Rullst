@@ -19,3 +19,21 @@ name = "fuzz_mail"
 path = "fuzz_targets/fuzz_mail.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "fuzz_email_validator"
+path = "fuzz_targets/fuzz_email_validator.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_email_tracking"
+path = "fuzz_targets/fuzz_email_tracking.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_email_security"
+path = "fuzz_targets/fuzz_email_security.rs"
+test = false
+doc = false

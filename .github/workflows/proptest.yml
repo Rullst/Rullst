@@ -1,13 +1,9 @@
 name: Property Testing
 
 on:
-  push:
-    branches: [ main, dev ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (avoids GitHub Actions weekend congestion)
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (weekly scheduled invariant audit)
 
 permissions:
   contents: read

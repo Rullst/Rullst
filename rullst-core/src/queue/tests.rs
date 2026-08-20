@@ -27,7 +27,7 @@ mod formatting_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(not(miri))]
-pub mod tests {
+pub mod driver_tests {
     use super::super::*;
     use async_trait::async_trait;
 
@@ -533,7 +533,7 @@ pub mod tests {
 #[cfg(not(miri))]
 mod tests_additional {
     use super::super::*;
-    use super::tests::MockPendingCountDriver;
+    use super::driver_tests::MockPendingCountDriver;
 
     #[tokio::test]
     async fn test_queue_retry_failed_job() {

@@ -1,5 +1,5 @@
 use crate::attachment::Attachment;
-use crate::drivers::MailError;
+use crate::error::MailError;
 use crate::security::scan_content_security;
 use chrono::{DateTime, Utc};
 
