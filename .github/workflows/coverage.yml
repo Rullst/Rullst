@@ -31,25 +31,21 @@ jobs:
 
       - name: Run cargo-llvm-cov (all features — unit + integration)
         run: |
-          cargo llvm-cov --all-features --workspace \
-            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/|rullst-orm-macros/|benchmark/" \
-            --lcov --output-path lcov_main.info
+          cargo llvm-cov --no-report --all-features --workspace
 
       - name: Run cargo-llvm-cov (DB matrix tests — postgres & mysql via testcontainers)
         # Must run without strict-* features so the cfg gates are satisfied
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
         run: |
-          cargo llvm-cov -p rullst-orm \
+          cargo llvm-cov --no-report --no-clean -p rullst-orm \
             --test matrix_postgres --test matrix_mysql \
-            --lcov --output-path lcov_db.info \
             -- --test-threads=1
 
-      - name: Merge coverage reports
+      - name: Generate merged coverage report
         run: |
           cargo llvm-cov report --lcov --output-path lcov.info \
-            --input-files lcov_main.info --input-files lcov_db.info 2>/dev/null \
-            || cat lcov_main.info lcov_db.info > lcov.info
+            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/|rullst-orm-macros/|benchmark/"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
