@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787181949177,
+  "lastUpdate": 1787189629910,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2249,6 +2249,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 77,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48",
+          "message": "feat: implement global security telemetry store for event tracking and monitoring",
+          "timestamp": "2026-08-19T22:26:21-03:00",
+          "tree_id": "6d02cff922faeff2c6930ea63e01d5e5d6a9d512",
+          "url": "https://github.com/Rullst/Rullst/commit/39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48"
+        },
+        "date": 1787189629269,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 47,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
