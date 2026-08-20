@@ -1,3 +1,11 @@
+// tests/iot_integration_tests.rs — Comprehensive unit and integration tests for Rullst IoT.
+
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
+use rullst_iot::hsm::{HsmChipType, HsmDevice};
+use rullst_iot::mesh::{MeshNode, MeshTopology, NodeStatus};
+use rullst_iot::pqc::PqcKeyPair;
+use rullst_iot::ui::IotDashboard;
 use rullst_iot::*;
 
 #[test]
@@ -77,4 +85,50 @@ fn test_gpio_and_ble_structures() {
     assert_eq!(service.service_uuid, "180F");
     assert_eq!(service.characteristics.len(), 1);
     assert_eq!(service.characteristics[0].value[0], 100);
+}
+
+#[test]
+fn test_hsm_device_and_signatures() {
+    let hsm = HsmDevice::new(HsmChipType::Atecc608A, "DEV-SEC-001");
+    let key = hsm.derive_key();
+    assert_eq!(key.len(), 32);
+
+    let sig = hsm.sign(b"telemetry_packet_bytes");
+    assert_eq!(sig.len(), 32);
+}
+
+#[test]
+fn test_pqc_keypair_encapsulation() {
+    let keypair = PqcKeyPair::from_seed(b"pqc_master_seed_edge");
+    assert_eq!(keypair.public_key.len(), 32);
+
+    let ciphertext = keypair.encapsulate(b"shared_session_secret");
+    assert_eq!(ciphertext.len(), 32);
+
+    let decrypted = keypair.decapsulate(&ciphertext);
+    assert_eq!(decrypted.len(), 32);
+}
+
+#[test]
+fn test_mesh_topology_routing() {
+    let mut mesh = MeshTopology::new();
+    mesh.register(MeshNode::new("node_weak", -90));
+    mesh.register(MeshNode::new("node_strong", -45));
+    let mut offline = MeshNode::new("node_offline", -20);
+    offline.status = NodeStatus::Offline;
+    mesh.register(offline);
+
+    let best = mesh.best_relay();
+    assert!(best.is_some());
+    assert_eq!(best.unwrap().node_id, "node_strong");
+}
+
+#[test]
+fn test_iot_micro_dashboard_rendering() {
+    let telemetry = SensorTelemetry::new("solar_node_1", "voltage", 3.3, 1700000000);
+    let card_html = IotDashboard::render_sensor_card(&telemetry);
+    assert!(card_html.contains("solar_node_1"));
+    assert!(card_html.contains("3.3"));
+    assert!(card_html.contains("voltage"));
+    assert!(card_html.contains("ONLINE"));
 }
