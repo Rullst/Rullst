@@ -102,10 +102,7 @@ async fn test_studio_with_horizon_queue() {
     let queue = rullst_core::Queue::sqlite(":memory:").await.unwrap();
     let app = Studio::new().with_horizon(queue).into_router();
 
-    let req = Request::builder()
-        .uri("/jobs")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/jobs").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_success() || res.status().is_redirection());
 }
@@ -118,14 +115,9 @@ async fn test_studio_with_openapi_playground() {
     #[openapi(paths(), components(schemas()))]
     struct ApiDoc;
 
-    let app = Studio::new()
-        .with_openapi(ApiDoc::openapi())
-        .into_router();
+    let app = Studio::new().with_openapi(ApiDoc::openapi()).into_router();
 
-    let req = Request::builder()
-        .uri("/api")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/api").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_success() || res.status().is_redirection());
 }
@@ -134,17 +126,10 @@ async fn test_studio_with_openapi_playground() {
 async fn test_studio_api_json_endpoints() {
     let app = Studio::new().into_router();
 
-    let endpoints = [
-        "/api/radar",
-        "/api/revenue",
-        "/api/traces",
-    ];
+    let endpoints = ["/api/radar", "/api/revenue", "/api/traces"];
 
     for ep in endpoints {
-        let req = Request::builder()
-            .uri(ep)
-            .body(Body::empty())
-            .unwrap();
+        let req = Request::builder().uri(ep).body(Body::empty()).unwrap();
         let res = app.clone().oneshot(req).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
 

@@ -6,6 +6,32 @@ This document details every automated workflow, target coverage by crate, execut
 
 ---
 
+## 🧠 Verification Paradigms & Core Technology Comparison
+
+To ensure mission-critical resilience, Rullst does not rely on a single verification vector. Instead, 5 distinct, complementary testing paradigms are employed simultaneously:
+
+| Mechanism | Primary Question | Verification Target | Engine / Tool |
+| :--- | :--- | :--- | :--- |
+| **Code Coverage** | *"Which code branches were executed?"* | **Quantity** of tested branches & lines | `cargo-llvm-cov` + Codecov |
+| **Mutation Testing** | *"Do our assertions actually catch bugs?"* | **Quality** and sensitivity of test assertions | `cargo-mutants` |
+| **Formal Verification** | *"Is there any input in the universe that breaks invariants?"* | **Mathematical Proof** of safety contracts | `kani-verifier` (SAT/SMT) |
+| **Undefined Behavior** | *"Are unsafe blocks and pointer aliasing 100% sound?"* | **Memory Safety** & Stacked Borrows | `cargo miri` (MIR Interpreter) |
+| **Fuzz Testing** | *"How does the system react to chaotic/malicious payloads?"* | **Parser Robustness** & Crash Resistance | `cargo-fuzz` / `libFuzzer` |
+| **Property Testing** | *"Do state invariants hold under thousands of random combinations?"* | **State Machine Integrity** | `proptest` (QuickCheck-style) |
+
+### 📐 The Multi-Layer Safety Pyramid
+
+```
+       ▲  [6. KANI] Formal Mathematical Model Checking (Zero Panics / Invariants)
+      ▲▲  [5. MIRI] Undefined Behavior & Strict Pointer Provenance
+     ▲▲▲  [4. MUTANTS] Test Assertion Mutation Quality & Sensitivity
+    ▲▲▲▲  [3. FUZZING & PROPTEST] Continuous Chaos Ingestion & Combinatorial Testing
+   ▲▲▲▲▲  [2. SANITIZERS (ASan/TSan)] Memory & Concurrency Data-Race Detection
+  ▲▲▲▲▲▲  [1. CODECOV] 90%+ Deterministic LLVM Multi-OS Code Coverage
+```
+
+---
+
 ## 🏛️ Comprehensive Test & Formal Verification Matrix
 
 | Crate | Unit & Integration | Kani (Model Checking) | Miri (UB & Memory) | Fuzzing (libFuzzer) | Property Testing (Proptest) | Concurrency Sanitizers (TSan/ASan) | Zero Panics (Clippy) |

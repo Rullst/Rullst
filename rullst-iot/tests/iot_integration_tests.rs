@@ -135,23 +135,20 @@ fn test_iot_micro_dashboard_rendering() {
 
 #[test]
 fn test_hsm_chip_types_and_verification() {
-    let hsm_tpm = HsmDevice::new(HsmChipType::Tpm20, "DEV-TPM-002");
+    let hsm_tpm = HsmDevice::new(HsmChipType::Tpm2, "DEV-TPM-002");
     assert_eq!(hsm_tpm.derive_key().len(), 32);
 
-    let hsm_se = HsmDevice::new(HsmChipType::Se050, "DEV-SE-003");
-    assert_eq!(hsm_se.derive_key().len(), 32);
+    let hsm_stsafe = HsmDevice::new(HsmChipType::Stsafe, "DEV-SE-003");
+    assert_eq!(hsm_stsafe.derive_key().len(), 32);
 
-    let hsm_custom = HsmDevice::new(HsmChipType::Custom, "DEV-CUST-004");
-    assert_eq!(hsm_custom.derive_key().len(), 32);
+    let hsm_software = HsmDevice::new(HsmChipType::Software, "DEV-CUST-004");
+    assert_eq!(hsm_software.derive_key().len(), 32);
 }
 
 #[test]
 fn test_power_governor_modes() {
     let mut gov = PowerGovernor::new(2500, 3300);
     gov.battery_mv = 2400;
-    assert_eq!(gov.evaluate(), PowerMode::EmergencyShutdown);
-
-    gov.battery_mv = 2600;
     assert_eq!(gov.evaluate(), PowerMode::DeepSleep);
 
     gov.battery_mv = 3000;

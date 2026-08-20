@@ -34,10 +34,11 @@ async fn test_edge_request_response_and_server() {
     );
     assert_eq!(res.body, b"edge response payload");
 
-    let server = EdgeServer::new(|_req| async move {
-        EdgeResponse::new(200).with_body(b"Hello Edge".to_vec())
-    })
-    .with_port(8080);
+    let server =
+        EdgeServer::new(
+            |_req| async move { EdgeResponse::new(200).with_body(b"Hello Edge".to_vec()) },
+        )
+        .with_port(8080);
 
     assert_eq!(server.port, 8080);
 }

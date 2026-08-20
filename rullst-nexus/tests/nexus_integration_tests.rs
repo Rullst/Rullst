@@ -80,7 +80,11 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_server_error() || res.status().is_redirection());
+    assert!(
+        res.status().is_success()
+            || res.status().is_server_error()
+            || res.status().is_redirection()
+    );
 
     // 2. PUT update record
     let update_body = "username=updated_user&is_active=false";
@@ -94,7 +98,11 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_server_error() || res.status().is_redirection());
+    assert!(
+        res.status().is_success()
+            || res.status().is_server_error()
+            || res.status().is_redirection()
+    );
 
     // 3. DELETE record
     let req = Request::builder()
@@ -106,7 +114,11 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_server_error() || res.status().is_redirection());
+    assert!(
+        res.status().is_success()
+            || res.status().is_server_error()
+            || res.status().is_redirection()
+    );
 
     // 4. Batch action
     let batch_body = "action=delete";
@@ -120,7 +132,12 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_server_error() || res.status().is_redirection() || res.status().is_client_error());
+    assert!(
+        res.status().is_success()
+            || res.status().is_server_error()
+            || res.status().is_redirection()
+            || res.status().is_client_error()
+    );
 }
 
 #[tokio::test]
