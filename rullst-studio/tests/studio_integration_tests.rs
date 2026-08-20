@@ -96,3 +96,82 @@ async fn test_studio_er_diagram() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn test_studio_with_horizon_queue() {
+    let queue = rullst_core::Queue::sqlite(":memory:").await.unwrap();
+    let app = Studio::new().with_horizon(queue).into_router();
+
+    let req = Request::builder()
+        .uri("/jobs")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection());
+}
+
+#[tokio::test]
+async fn test_studio_with_openapi_playground() {
+    use utoipa::OpenApi;
+
+    #[derive(OpenApi)]
+    #[openapi(paths(), components(schemas()))]
+    struct ApiDoc;
+
+    let app = Studio::new()
+        .with_openapi(ApiDoc::openapi())
+        .into_router();
+
+    let req = Request::builder()
+        .uri("/api")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection());
+}
+
+#[tokio::test]
+async fn test_studio_api_json_endpoints() {
+    let app = Studio::new().into_router();
+
+    let endpoints = [
+        "/api/radar",
+        "/api/revenue",
+        "/api/traces",
+    ];
+
+    for ep in endpoints {
+        let req = Request::builder()
+            .uri(ep)
+            .body(Body::empty())
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body_str = String::from_utf8_lossy(&body);
+        assert!(!body_str.is_empty());
+    }
+}
+
+#[tokio::test]
+async fn test_studio_logger_requests_flow() {
+    let app = Studio::new().into_router();
+
+    // 1. Perform an arbitrary request to trigger logger middleware
+    let req = Request::builder()
+        .uri("/studio")
+        .body(Body::empty())
+        .unwrap();
+    let _ = app.clone().oneshot(req).await.unwrap();
+
+    // 2. Query /requests
+    let req = Request::builder()
+        .uri("/requests")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}

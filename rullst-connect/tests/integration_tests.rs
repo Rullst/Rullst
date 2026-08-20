@@ -317,6 +317,421 @@ fn test_providers_initialization() {
         "http://localhost/callback".to_string(),
     );
     assert!(ms.redirect_url().contains("microsoftonline.com"));
+
+    let fb = FacebookProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(fb.redirect_url().contains("facebook.com"));
+
+    let li = LinkedinProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(li.redirect_url().contains("linkedin.com"));
+
+    let x = XProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    );
+    assert!(x.redirect_url().contains("twitter.com") || x.redirect_url().contains("x.com"));
+
+    let auth0 = Auth0Provider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+        "dev-domain.auth0.com".to_string(),
+    );
+    assert!(auth0.redirect_url().contains("dev-domain.auth0.com"));
+
+    let cognito = CognitoProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+        "https://auth.us-east-1.amazoncognito.com".to_string(),
+    );
+    assert!(cognito.redirect_url().contains("amazoncognito.com"));
+}
+
+#[tokio::test]
+async fn test_google_get_user_wiremock() {
+    use rullst_connect::providers::GoogleProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "google_access_token_123",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "refresh_token": "google_refresh_token_456"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/oauth2/v3/userinfo"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sub": "google-user-999",
+            "name": "Jane Google",
+            "email": "jane@gmail.com",
+            "email_verified": true,
+            "picture": "https://lh3.googleusercontent.com/a/avatar.jpg"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = GoogleProvider::new(
+        "test_client_id".to_string(),
+        secrecy::SecretString::from("test_client_secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "google_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "google-user-999");
+    assert_eq!(user.name, "Jane Google");
+    assert_eq!(user.email.as_deref(), Some("jane@gmail.com"));
+    assert_eq!(user.email_verified, Some(true));
+}
+
+#[tokio::test]
+async fn test_discord_get_user_wiremock() {
+    use rullst_connect::providers::DiscordProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/api/oauth2/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "discord_access_token_123",
+            "token_type": "Bearer",
+            "expires_in": 604800
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/users/@me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "80351110224678912",
+            "username": "Nelly",
+            "discriminator": "1337",
+            "email": "nelly@discord.com",
+            "verified": true,
+            "avatar": "8342729096ea3686c6015e5b5ff12d4e"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = DiscordProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "discord_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "80351110224678912");
+    assert_eq!(user.email.as_deref(), Some("nelly@discord.com"));
+}
+
+#[tokio::test]
+async fn test_facebook_get_user_wiremock() {
+    use rullst_connect::providers::FacebookProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/v19.0/oauth/access_token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "fb_access_token_123",
+            "token_type": "bearer",
+            "expires_in": 5184000
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/v19.0/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "10000123456789",
+            "name": "Mark Developer",
+            "email": "mark@example.com"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = FacebookProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "fb_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "10000123456789");
+    assert_eq!(user.name, "Mark Developer");
+}
+
+#[tokio::test]
+async fn test_microsoft_get_user_wiremock() {
+    use rullst_connect::providers::MicrosoftProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/common/oauth2/v2.0/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "ms_access_token_123",
+            "token_type": "Bearer",
+            "expires_in": 3600
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/v1.0/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "ms-user-guid-1234",
+            "displayName": "Satya Azure",
+            "mail": "satya@microsoft.com"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = MicrosoftProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "ms_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "ms-user-guid-1234");
+    assert_eq!(user.name, "Satya Azure");
+}
+
+#[tokio::test]
+async fn test_linkedin_get_user_wiremock() {
+    use rullst_connect::providers::LinkedinProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/oauth/v2/accessToken"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "li_access_token_123",
+            "expires_in": 5184000
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/v2/userinfo"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sub": "li-sub-123",
+            "name": "Reid Professional",
+            "email": "reid@linkedin.com",
+            "picture": "https://media.licdn.com/dms/image/profile.jpg"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = LinkedinProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "li_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "li-sub-123");
+    assert_eq!(user.name, "Reid Professional");
+}
+
+#[tokio::test]
+async fn test_x_get_user_wiremock() {
+    use rullst_connect::providers::XProvider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/2/oauth2/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "x_access_token_123",
+            "token_type": "bearer",
+            "expires_in": 7200
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/2/users/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "data": {
+                "id": "2244994945",
+                "name": "Twitter Dev",
+                "username": "TwitterDev"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = XProvider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "x_code",
+        code_verifier: Some("verifier_123"),
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "2244994945");
+    assert_eq!(user.name, "Twitter Dev");
+}
+
+#[tokio::test]
+async fn test_auth0_get_user_wiremock() {
+    use rullst_connect::providers::Auth0Provider;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/oauth/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "auth0_access_token_123",
+            "token_type": "Bearer",
+            "expires_in": 86400
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/userinfo"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sub": "auth0|607f1f77bcf86cd799439011",
+            "name": "Auth0 User",
+            "email": "user@auth0.com",
+            "email_verified": true
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let intercept_client = std::sync::Arc::new(WiremockInterceptClient::new(mock_server.uri()));
+    let provider = Auth0Provider::new(
+        "client_id".to_string(),
+        secrecy::SecretString::from("secret".to_string()),
+        "http://localhost/callback".to_string(),
+        "test-tenant.auth0.com".to_string(),
+    )
+    .with_http_client(intercept_client);
+
+    let params = rullst_connect::provider::ExchangeParams {
+        auth_code: "auth0_code",
+        ..Default::default()
+    };
+    let user = provider.get_user(params).await.unwrap();
+    assert_eq!(user.id, "auth0|607f1f77bcf86cd799439011");
+    assert_eq!(user.email.as_deref(), Some("user@auth0.com"));
+}
+
+#[cfg(feature = "axum")]
+#[tokio::test]
+async fn test_mock_idp_router_execution() {
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use rullst_connect::mock_idp::mock_router;
+    use tower::ServiceExt;
+
+    let app = mock_router();
+
+    // 1. Test GET /auth
+    let req = Request::builder()
+        .uri("/auth?client_id=cid&redirect_uri=http://localhost/cb&response_type=code&state=xyz")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::SEE_OTHER);
+
+    // 2. Test GET /.well-known/openid-configuration
+    let req = Request::builder()
+        .uri("/.well-known/openid-configuration")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 3. Test POST /token
+    let form = "client_id=cid&client_secret=sec&code=mock_code&grant_type=authorization_code&redirect_uri=http://localhost/cb";
+    let req = Request::builder()
+        .method("POST")
+        .uri("/token")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(Body::from(form))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 4. Test GET /userinfo
+    let req = Request::builder()
+        .uri("/userinfo")
+        .header("Authorization", "Bearer mock_token")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[test]
+fn test_connect_user_serialization() {
+    use rullst_connect::user::ConnectUser;
+    let user = ConnectUser {
+        id: "usr_123".to_string(),
+        name: "Test User".to_string(),
+        email: Some("test@example.com".to_string()),
+        email_verified: Some(true),
+        avatar_url: Some("https://example.com/avatar.png".to_string()),
+        raw_data: serde_json::json!({"provider_raw": true}),
+        access_token: secrecy::SecretString::from("tok_secret".to_string()),
+        refresh_token: Some(secrecy::SecretString::from("ref_secret".to_string())),
+        expires_in: Some(3600),
+    };
+
+    let serialized = serde_json::to_string(&user).unwrap();
+    assert!(serialized.contains("usr_123"));
+    assert!(serialized.contains("tok_secret"));
+
+    let deserialized: ConnectUser = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.id, "usr_123");
+    assert_eq!(deserialized.name, "Test User");
 }
 
 #[test]

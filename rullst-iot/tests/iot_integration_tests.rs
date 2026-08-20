@@ -132,3 +132,40 @@ fn test_iot_micro_dashboard_rendering() {
     assert!(card_html.contains("voltage"));
     assert!(card_html.contains("ONLINE"));
 }
+
+#[test]
+fn test_hsm_chip_types_and_verification() {
+    let hsm_tpm = HsmDevice::new(HsmChipType::Tpm20, "DEV-TPM-002");
+    assert_eq!(hsm_tpm.derive_key().len(), 32);
+
+    let hsm_se = HsmDevice::new(HsmChipType::Se050, "DEV-SE-003");
+    assert_eq!(hsm_se.derive_key().len(), 32);
+
+    let hsm_custom = HsmDevice::new(HsmChipType::Custom, "DEV-CUST-004");
+    assert_eq!(hsm_custom.derive_key().len(), 32);
+}
+
+#[test]
+fn test_power_governor_modes() {
+    let mut gov = PowerGovernor::new(2500, 3300);
+    gov.battery_mv = 2400;
+    assert_eq!(gov.evaluate(), PowerMode::EmergencyShutdown);
+
+    gov.battery_mv = 2600;
+    assert_eq!(gov.evaluate(), PowerMode::DeepSleep);
+
+    gov.battery_mv = 3000;
+    assert_eq!(gov.evaluate(), PowerMode::LowPower);
+
+    gov.battery_mv = 3500;
+    assert_eq!(gov.evaluate(), PowerMode::FullActive);
+}
+
+#[test]
+fn test_i2c_read_frames() {
+    let frame = rullst_iot::i2c::I2cHelper::build_read_frame(0x50, 0x00, 4);
+    assert_eq!(frame[0], 0xA0);
+    assert_eq!(frame[1], 0x00);
+    assert_eq!(frame[2], 0xA1);
+    assert_eq!(frame.len(), 7);
+}
