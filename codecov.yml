@@ -21,7 +21,10 @@ coverage:
 ignore:
   - "examples/**/*"
   - "cargo-rullst/**/*"
+  - "rullst-macros/**/*"
+  - "rullst-orm-macros/**/*"
   - "benches/**/*"
+  - "benchmark/**/*"
   - "target/**/*"
   - "docs/**/*"
   - "**/*_tests.rs"

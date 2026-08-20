@@ -32,7 +32,7 @@ jobs:
       - name: Run cargo-llvm-cov (all features — unit + integration)
         run: |
           cargo llvm-cov --all-features --workspace \
-            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/" \
+            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/|rullst-orm-macros/|benchmark/" \
             --lcov --output-path lcov_main.info
 
       - name: Run cargo-llvm-cov (DB matrix tests — postgres & mysql via testcontainers)
