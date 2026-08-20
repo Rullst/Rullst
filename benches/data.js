@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787181569689,
+  "lastUpdate": 1787189294179,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8748,6 +8748,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "waf_middleware_overhead",
             "value": 2339,
+            "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48",
+          "message": "feat: implement global security telemetry store for event tracking and monitoring",
+          "timestamp": "2026-08-19T22:26:21-03:00",
+          "tree_id": "6d02cff922faeff2c6930ea63e01d5e5d6a9d512",
+          "url": "https://github.com/Rullst/Rullst/commit/39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48"
+        },
+        "date": 1787189292765,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 433,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 623,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 430,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1153,
             "range": "± 36",
             "unit": "ns/iter"
           }
