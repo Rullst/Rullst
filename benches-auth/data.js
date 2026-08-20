@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787181928032,
+  "lastUpdate": 1787189613105,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3599,6 +3599,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1408,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48",
+          "message": "feat: implement global security telemetry store for event tracking and monitoring",
+          "timestamp": "2026-08-19T22:26:21-03:00",
+          "tree_id": "6d02cff922faeff2c6930ea63e01d5e5d6a9d512",
+          "url": "https://github.com/Rullst/Rullst/commit/39149ada8757cb3abb3d6bf7fc105c7f4a9dbc48"
+        },
+        "date": 1787189612322,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 480,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 431,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 957,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 808,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
