@@ -29,8 +29,7 @@ async fn test_memory_driver_and_failover() {
     assert_eq!(sent[0].subject, "Your weekly report");
 
     // Failover driver with memory backup
-    let failover = FailoverDriver::new(LogDriver)
-        .with_fallback(MemoryDriver::new());
+    let failover = FailoverDriver::new(LogDriver).with_fallback(MemoryDriver::new());
     assert!(failover.send(&msg).await.is_ok());
 }
 
@@ -79,7 +78,9 @@ fn test_security_scanner_and_homograph_detection() {
 
     // 2. Dangerous URI schemes
     assert!(is_dangerous_scheme("javascript:alert(1)"));
-    assert!(is_dangerous_scheme("data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="));
+    assert!(is_dangerous_scheme(
+        "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="
+    ));
     assert!(is_dangerous_scheme("file:///etc/passwd"));
     assert!(!is_dangerous_scheme("https://rullst.dev"));
     assert!(!is_dangerous_scheme("http://localhost:3000"));

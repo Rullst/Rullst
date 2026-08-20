@@ -28,7 +28,11 @@ impl AiProvider for MockProvider {
         if self.fail {
             Err(AiError::ApiError(format!("{} failed", self.name)))
         } else {
-            Ok(format!("{}: chatted {} messages", self.name, messages.len()))
+            Ok(format!(
+                "{}: chatted {} messages",
+                self.name,
+                messages.len()
+            ))
         }
     }
 

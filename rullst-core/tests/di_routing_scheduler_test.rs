@@ -25,7 +25,10 @@ fn test_di_container_registration_and_resolution() {
     // Unregistered resolution error
     let err = container.resolve::<UserService>();
     assert!(err.is_err());
-    assert!(err.unwrap_err().contains("not registered in the DI Container"));
+    assert!(
+        err.unwrap_err()
+            .contains("not registered in the DI Container")
+    );
 
     // Register instance
     container.register(UserService {
@@ -49,18 +52,16 @@ async fn test_scheduler_task_registration_and_helpers() {
     let fired = Arc::new(AtomicBool::new(false));
     let fired_clone = fired.clone();
 
-    let scheduler_res = Scheduler::new()
-        .task("* * * * *", move || {
-            let f = fired_clone.clone();
-            async move {
-                f.store(true, Ordering::SeqCst);
-            }
-        });
+    let scheduler_res = Scheduler::new().task("* * * * *", move || {
+        let f = fired_clone.clone();
+        async move {
+            f.store(true, Ordering::SeqCst);
+        }
+    });
 
     assert!(scheduler_res.is_ok());
 
     // Invalid cron should fail gracefully
-    let invalid_res = Scheduler::new()
-        .task("invalid_cron_syntax", || async {});
+    let invalid_res = Scheduler::new().task("invalid_cron_syntax", || async {});
     assert!(invalid_res.is_err());
 }

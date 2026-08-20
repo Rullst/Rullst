@@ -4,8 +4,8 @@
 
 use axum::http::HeaderMap;
 use rullst_auth::{
-    HasRole, decrypt_session, dummy_verify, encrypt_session, extract_session_cookie,
-    hash_password, make_logout_cookie, needs_rehash, verify_password,
+    HasRole, decrypt_session, dummy_verify, encrypt_session, extract_session_cookie, hash_password,
+    make_logout_cookie, needs_rehash, verify_password,
 };
 
 #[test]

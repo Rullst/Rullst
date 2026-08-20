@@ -11,9 +11,15 @@ async fn test_in_memory_cache_crud_and_ttl() {
     let driver = MemoryDriver::new();
 
     // 1. Put and Get
-    driver.put("session:1", "user_data", Some(60)).await.unwrap();
+    driver
+        .put("session:1", "user_data", Some(60))
+        .await
+        .unwrap();
     let val = driver.get("session:1").await.unwrap();
-    assert_eq!(val.map(|s| s.as_str().to_string()), Some("user_data".to_string()));
+    assert_eq!(
+        val.map(|s| s.as_str().to_string()),
+        Some("user_data".to_string())
+    );
 
     // 2. Has
     assert!(driver.has("session:1").await.unwrap());

@@ -11,11 +11,15 @@ fn test_rasp_sqli_detection() {
     // Classic SQLi
     assert!(RaspInspector::inspect_text("1' OR '1'='1"));
     assert!(RaspInspector::inspect_text("1; DROP TABLE users--"));
-    assert!(RaspInspector::inspect_text("UNION SELECT null, username, password FROM users"));
+    assert!(RaspInspector::inspect_text(
+        "UNION SELECT null, username, password FROM users"
+    ));
 
     // Benign queries
     assert!(!RaspInspector::inspect_text("john_doe_99"));
-    assert!(!RaspInspector::inspect_text("search query with normal words"));
+    assert!(!RaspInspector::inspect_text(
+        "search query with normal words"
+    ));
     assert!(!RaspInspector::inspect_text("12345"));
 }
 
@@ -28,7 +32,9 @@ fn test_rasp_xss_and_command_injection() {
 
     // Path traversal
     assert!(RaspInspector::inspect_text("../../../etc/shadow"));
-    assert!(RaspInspector::inspect_text("..\\..\\windows\\system32\\cmd.exe"));
+    assert!(RaspInspector::inspect_text(
+        "..\\..\\windows\\system32\\cmd.exe"
+    ));
     assert!(!RaspInspector::inspect_text("/static/images/logo.png"));
 }
 
