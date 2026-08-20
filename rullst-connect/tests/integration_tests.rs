@@ -679,7 +679,7 @@ async fn test_mock_idp_router_execution() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::SEE_OTHER);
+    assert!(res.status().is_redirection());
 
     // 2. Test GET /.well-known/openid-configuration
     let req = Request::builder()

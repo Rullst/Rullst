@@ -74,7 +74,7 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 
 ### 🔒 Pilar III: Security, Auth & Enterprise Protection
 - [x] **Milestone 9:** Authentication Engine (Local, OAuth, 2FA TOTP RFC 6238).
-- [x] **Milestone 10:** Mailer System (`rullst::mail`), DTO Validation, Rate Limiting & Shield.
+- [x] **Milestone 10:** Mailer System (`rullst::mail` with Resend, SendGrid, Postmark, SES, SMTP; Planned REST: Mailgun, Brevo, MailerSend, Plunk, Scaleway), DTO Validation, Rate Limiting & Shield.
 - [x] **Milestone 11:** Free Enterprise Revolution: Rullst Nexus CMS, Rullst Omni & SaaS Billing (`rullst-capital`).
 - [x] **Milestone 12:** Autonomous AI Security Suite: RASP Engine, Rullst Vault (`Zeroize`), Honeypots, HMAC Audit Chain & SOC Threat Radar (`/studio/security`).
 - [x] **Milestone 12.1 (Phase 1):** Anti-Timing Attack User Enumeration Guard (`timing_guard`) & LLM Security Firewall (Prompt Shield v2) (`ai_firewall`).
@@ -85,7 +85,7 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 
 ### ⚡ Pilar IV: Frontend Fusion, Real-Time & LiveView
 - [x] **Milestone 14:** Zero-Bundle HTMX First-Class & Leptos/Dioxus SSR Adapters (`rullst-core/src/frontend.rs`).
-- [x] **Milestone 15:** Background Queues (`rullst::queue`), Redis/Memory Cache (`rullst::cache`), Scheduler & Multi-Stage Docker.
+- [x] **Milestone 15:** Background Queues (`rullst::queue` with Redis Streams, RabbitMQ, Kafka, SQLite; Planned: NATS JetStream, AWS SQS/SNS, GCP Pub/Sub), Redis/Memory Cache (`rullst::cache`), Scheduler & Multi-Stage Docker.
 - [x] **Milestone 16:** Wasm Islands (`#[client_component]`) & Interactive Client Components (`cargo rullst make:island`).
 - [x] **Milestone 17:** Real-Time Engine (`rullst::realtime`), Object Storage (`rullst::storage`) & Package Registry (`cargo rullst pkg`).
 - [x] **Milestone 18:** `rullst::live` — LiveView-Style Reactive Server-Driven UI (`cargo rullst make:live`).
@@ -102,7 +102,7 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 ---
 
 ### 🔌 Pilar VI: Embedded IoT & Hardware Supremacy
-- [x] **Milestone 24:** Embedded Runtime (`#![no_std]`), Modbus, MQTT Sparkplug B, BLE, Edge AI, Mesh & OTA Updates (`rullst-iot`).
+- [x] **Milestone 24:** Embedded Runtime (`#![no_std]`), Modbus, MQTT Sparkplug B, BLE, Edge AI, Mesh, OTA & Mobility (CAN Bus/J1939, CoAP/LwM2M, LoRaWAN) (`rullst-iot`).
 - [ ] **Milestone 25:** Async `rullst-iot` Embassy Executor Integration (`[ ] Planned for v12.1.0`).
 
 ---

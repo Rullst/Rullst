@@ -133,6 +133,16 @@ flowchart TD
 
 ---
 
+### Phase 7: Expanded REST Email Gateways & Serverless Transports 🌐
+- [ ] **Mailgun REST API Driver (`MailgunDriver`)**: High-volume transactional REST client with native batch sending and EU/US region routing.
+- [ ] **Brevo (Sendinblue) REST API Driver (`BrevoDriver`)**: Direct transactional v3 API integration with dynamic contact attribution and template variable interpolation.
+- [ ] **MailerSend REST API Driver (`MailerSendDriver`)**: Modern developer-centric European transactional API with native activity webhooks.
+- [ ] **Plunk Open-Source REST Driver (`PlunkDriver`)**: Lightweight transactional email driver for self-hosted and cloud Plunk instances.
+- [ ] **Scaleway Transactional Email Driver (`ScalewayDriver`)**: European sovereign cloud transactional delivery with zero-trust API tokens.
+- [ ] **Serverless Edge Delivery Harness**: Zero-TCP HTTP/HTTPS fallback transports optimized for Cloudflare Workers, AWS Lambda, and Fastly Compute@Edge WASM runtimes.
+
+---
+
 ## 📊 Comprehensive Matrix of Competitive Advantages
 
 | Feature & Capability | `lettre` (Rust Crate) | `Loco.rs` (Rust MVC) | `Laravel` (PHP) | Node.js (`React Email` / `Resend`) | `Rails` (`ActionMailer`) | **`rullst-mail`** 🚀 |

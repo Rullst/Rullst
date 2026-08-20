@@ -47,3 +47,17 @@
 - [ ] **OPC-UA Protocol Driver (`rullst_iot::opcua`):** Industrial OPC-UA driver for SCADA/MES/ERP communication in manufacturing plants — mandatory standard in Industry 4.0 (ISA-95, IEC 62541).
 - [ ] **MQTT Sparkplug B Profile (`rullst_iot::sparkplug`):** IIoT-standard Sparkplug B profile over MQTT for interoperability with industrial platforms like Ignition, Unified Namespace, and AWS IoT.
 - [ ] **IEC 61508 / IEC 62443 Safety Mode (`rullst_iot::safety`):** Deterministic execution mode with watchdog timer, stack overflow detection, and memory protection for SIL 2/3 safety-critical system certification.
+
+---
+
+## 🚗 Phase 8: Automotive, Heavy Machinery & Mobility (`rullst_iot::can`)
+- [ ] **Native SocketCAN & CAN 2.0B / CAN FD Driver:** Controller Area Network bus communication for electric vehicles, trucks, tractors, drones, and heavy industrial machinery.
+- [ ] **J1939 Protocol Parser:** Commercial vehicle diagnostics and telemetry standard (engine RPM, oil temperature, fuel efficiency, axle load).
+- [ ] **OBD-II (ISO 15765-4) Diagnostic Layer:** Standardized vehicle diagnostic trouble code (DTC) reading and real-time PID streaming.
+
+---
+
+## 📡 Phase 9: Constrained & Mesh Low-Power Protocols (`rullst_iot::constrained`)
+- [ ] **CoAP (Constrained Application Protocol - RFC 7252):** RESTful binary communication over UDP/DTLS with Blockwise Transfer and Observe extensions for ultra-constrained 6LoWPAN / NB-IoT sensor nodes.
+- [ ] **LwM2M (Lightweight M2M) Client:** Standardized device management and firmware lifecycle protocol over CoAP.
+- [ ] **LoRaWAN Class A/C Parser:** Long-range, low-power telemetry frame decoder with adaptive data rate (ADR) support.

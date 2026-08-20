@@ -61,6 +61,13 @@ For our journey towards the **`v1.0.0`** release (Enterprise Level), we have pla
 - **Semantic Profile Normalization (NLP):** Using lightweight embedded natural language processing to automatically understand and map bizarre, undocumented JSON fields from obscure OAuth providers into the strictly typed `UniversalProfile` without needing explicit hardcoded mapping rules.
 - **Post-Quantum Cryptography (PQC) Readiness:** Future-proofing JWT verification and token exchange against quantum computer attacks by supporting NIST-approved post-quantum signature algorithms (e.g., CRYSTALS-Dilithium, SPHINCS+).
 
+## 📬 Phase 9: Cloud Message Queues & Distributed Event Streaming (`rullst_connect::queues`)
+
+- **NATS & JetStream Driver (`rullst_connect::nats`):** Ultra-lightweight, sub-millisecond cloud-native pub/sub and distributed event persistence engine.
+- **AWS SQS & SNS Native Client (`rullst_connect::sqs`):** Native AWS managed message queues and multi-subscriber topic fan-out.
+- **Google Cloud Pub/Sub Client (`rullst_connect::gcp_pubsub`):** Distributed event streaming across GCP microservices.
+- **Apache Pulsar Driver:** High-performance, multi-tenant distributed pub-sub messaging with geo-replication.
+
 ---
 
 Want to help implement any of these features? Feel free to open a PR!
