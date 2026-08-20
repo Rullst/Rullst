@@ -4,6 +4,8 @@ version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 publish = false
+autobins = false
+default-run = "rullst-blog"
 license = "MIT"
 description = "Example blog application built with the Rullst full-stack web framework."
 [dependencies]
@@ -31,6 +33,10 @@ chrono = { version = "0.4", features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "rullst-blog"
+path = "src/main.rs"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.123"

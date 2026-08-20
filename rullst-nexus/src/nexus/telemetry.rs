@@ -52,27 +52,9 @@ pub async fn nexus_telemetry_page(
 
     if recorded_spans.is_empty() {
         spans_html.push_str(
-            r#"<div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: #22d3ee; font-weight: 700;">http.request</span>
-                    <span style="color: var(--text-muted); margin-left: 16px;">GET /nexus/telemetry</span>
-                </div>
-                <span style="color: #34d399; font-weight: 700; font-size: 12px;">120 µs</span>
-            </div>
-            <div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: #fbbf24; font-weight: 700;">sql.query</span>
-                    <span style="color: var(--text-muted); margin-left: 16px;">ORM Query: _rullst_migrations</span>
-                </div>
-                <span style="color: #34d399; font-weight: 700; font-size: 12px;">340 µs</span>
-            </div>
-            <div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: #f59e0b; font-weight: 700;">security.waf_check</span>
-                    <span style="color: var(--text-muted); margin-left: 16px;">RASP Memory &amp; Injection Shield</span>
-                </div>
-                <span style="color: #34d399; font-weight: 700; font-size: 12px;">15 µs</span>
-            </div>"#
+            r#"<div style="background: var(--bg-800); padding: 24px 16px; border-radius: 8px; border: 1px dashed var(--border); text-align: center; color: var(--text-dim); font-size: 13px;">
+                No active telemetry spans recorded yet. Send HTTP requests or execute ORM queries to stream live microsecond traces.
+            </div>"#,
         );
     } else {
         for s in recorded_spans.iter().take(15) {

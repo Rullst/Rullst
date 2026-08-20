@@ -299,16 +299,7 @@ pub fn current_timestamp_str() -> String {
 }
 
 pub fn get_real_rss_memory_mb() -> f64 {
-    if let Ok(statm) = std::fs::read_to_string("/proc/self/statm") {
-        let parts: Vec<&str> = statm.split_whitespace().collect();
-        if parts.len() >= 2
-            && let Ok(pages) = parts[1].parse::<u64>()
-        {
-            let bytes = pages * 4096;
-            return (bytes as f64) / (1024.0 * 1024.0);
-        }
-    }
-    14.2
+    rullst_core::radar::get_process_memory_mb()
 }
 
 pub type SecurityTelemetry = SecurityStore;
