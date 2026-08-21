@@ -13,6 +13,34 @@ pub enum TaxRegime {
     RegimeNormal = 3,
 }
 
+/// Strongly-typed error domain for Rullst Fiscal & NFS-e operations.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+pub enum FiscalError {
+    /// XML construction or digital signing failure.
+    #[error("XML digital signing error: {0}")]
+    XmlSigning(String),
+
+    /// A1 Digital Certificate (.pfx/.p12) error or passphrase failure.
+    #[error("Certificate error: {0}")]
+    Certificate(String),
+
+    /// Network connection to Receita Federal failed.
+    #[error("Receita Federal network error: {0}")]
+    Network(String),
+
+    /// Receita Federal returned an API error.
+    #[error("Receita Federal API error (HTTP {status}): {body}")]
+    Api { status: u16, body: String },
+
+    /// Failed to parse the response from the tax authority.
+    #[error("Failed to parse fiscal response: {0}")]
+    ResponseParse(String),
+
+    /// General fiscal exception.
+    #[error("Fiscal error: {0}")]
+    General(String),
+}
+
 /// A1 Digital Certificate (.pfx / .p12) container for digital signatures and mTLS.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FiscalCertificate {
@@ -46,12 +74,12 @@ impl FiscalCertificate {
     }
 
     /// Decodes the underlying raw .pfx bytes.
-    pub fn raw_bytes(&self) -> Result<Vec<u8>, String> {
+    pub fn raw_bytes(&self) -> Result<Vec<u8>, FiscalError> {
         use base64::Engine;
         use base64::engine::general_purpose::STANDARD;
         STANDARD
             .decode(&self.raw_pfx_base64)
-            .map_err(|e| format!("Failed to decode certificate base64: {}", e))
+            .map_err(|e| FiscalError::Certificate(format!("Failed to decode certificate base64: {}", e)))
     }
 }
 

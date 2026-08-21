@@ -2,7 +2,7 @@ use chrono::Utc;
 use reqwest::Client;
 use serde_json::Value;
 
-use crate::fiscal::models::{FiscalCertificate, FiscalEmitter, FiscalResponse};
+use crate::fiscal::models::{FiscalCertificate, FiscalEmitter, FiscalError, FiscalResponse};
 
 /// Official National NFS-e execution environments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,7 +53,7 @@ impl NfseNationalClient {
     }
 
     /// Transmits a signed DPS XML directly to the Receita Federal national portal.
-    pub async fn transmit_dps(&self, signed_dps_xml: &str) -> Result<FiscalResponse, String> {
+    pub async fn transmit_dps(&self, signed_dps_xml: &str) -> Result<FiscalResponse, FiscalError> {
         let endpoint = format!("{}/dps", self.environment.endpoint());
 
         // In test mode or when running without external connection, produce a structured verified response
@@ -83,20 +83,21 @@ impl NfseNationalClient {
             .body(signed_dps_xml.to_string())
             .send()
             .await
-            .map_err(|e| format!("Network connection to Receita Federal failed: {}", e))?;
+            .map_err(|e| FiscalError::Network(format!("Network connection to Receita Federal failed: {}", e)))?;
 
         if !res.status().is_success() {
+            let status = res.status().as_u16();
             let err_body = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "Receita Federal API error (HTTP {}): {}",
-                err_body, err_body
-            ));
+            return Err(FiscalError::Api {
+                status,
+                body: err_body,
+            });
         }
 
         let body_str = res
             .text()
             .await
-            .map_err(|e| format!("Failed to read response: {}", e))?;
+            .map_err(|e| FiscalError::Network(format!("Failed to read response: {}", e)))?;
 
         parse_receita_response(&body_str, signed_dps_xml)
     }
@@ -106,7 +107,7 @@ impl NfseNationalClient {
 fn parse_receita_response(
     response_body: &str,
     original_xml: &str,
-) -> Result<FiscalResponse, String> {
+) -> Result<FiscalResponse, FiscalError> {
     if let Ok(json) = serde_json::from_str::<Value>(response_body) {
         let key = json["chaveAcesso"].as_str().unwrap_or("").to_string();
         let number = json["numeroNfse"].as_u64().unwrap_or(1);

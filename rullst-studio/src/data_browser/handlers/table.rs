@@ -36,10 +36,11 @@ pub async fn handle_table(
     let (col_names, primary_keys) = match fetch_table_schema(pool, driver, &clean_table).await {
         Ok(res) => res,
         Err(err) => {
+            let err_html = format!("Error loading schema: {}", err);
             if is_htmx {
-                return Html(err).into_response();
+                return Html(err_html).into_response();
             } else {
-                return Html(studio_layout(err, Some(&clean_table), &tables)).into_response();
+                return Html(studio_layout(err_html, Some(&clean_table), &tables)).into_response();
             }
         }
     };
@@ -156,7 +157,7 @@ pub(crate) async fn fetch_table_schema(
     pool: &rullst_orm::RullstPool,
     driver: &str,
     clean_table: &str,
-) -> Result<(Vec<String>, Vec<usize>), String> {
+) -> Result<(Vec<String>, Vec<usize>), rullst_orm::Error> {
     let columns_query = match driver {
         "postgres" => format!("
             SELECT CAST(c.column_name AS VARCHAR) as name,
@@ -177,14 +178,10 @@ pub(crate) async fn fetch_table_schema(
         _ => format!("PRAGMA table_info(\"{}\")", clean_table),
     };
 
-    let columns_rows = match QueryBuilder::<rullst_orm::RullstDatabase>::new(columns_query)
+    let columns_rows = QueryBuilder::<rullst_orm::RullstDatabase>::new(columns_query)
         .build()
         .fetch_all(pool)
-        .await
-    {
-        Ok(r) => r,
-        Err(e) => return Err(format!("Error loading schema: {}", e)),
-    };
+        .await?;
 
     let mut col_names = Vec::new();
     let mut primary_keys = Vec::new();

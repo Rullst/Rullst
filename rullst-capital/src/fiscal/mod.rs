@@ -6,7 +6,8 @@ pub mod signer;
 pub use client::{NfseEnvironment, NfseNationalClient};
 pub use dps::build_dps_xml;
 pub use models::{
-    FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalResponse, NfseDps, TaxRegime,
+    FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse, NfseDps,
+    TaxRegime,
 };
 pub use signer::{compute_sha256_digest, sign_dps_xml};
 
@@ -20,7 +21,7 @@ pub trait FiscalEngine: Send + Sync {
         customer: &FiscalCustomer,
         dps: &NfseDps,
         cert: &FiscalCertificate,
-    ) -> Result<FiscalResponse, String>;
+    ) -> Result<FiscalResponse, FiscalError>;
 }
 
 /// Issues a digital invoice (NFS-e Nacional) using the direct zero-cost Receita Federal engine.
@@ -30,7 +31,7 @@ pub async fn issue_nfse_direct(
     dps: &NfseDps,
     cert: &FiscalCertificate,
     environment: NfseEnvironment,
-) -> Result<FiscalResponse, String> {
+) -> Result<FiscalResponse, FiscalError> {
     let unsigned_xml = build_dps_xml(emitter, customer, dps);
     let signed_xml = sign_dps_xml(&unsigned_xml, cert)?;
 

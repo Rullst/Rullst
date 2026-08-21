@@ -12,10 +12,26 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
+/// Strongly-typed error domain for Rullst Dependency Injection.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+pub enum DiError {
+    /// The requested service type was not registered in the DI Container.
+    #[error("Dependency of type '{0}' is not registered in the DI Container")]
+    NotRegistered(&'static str),
+
+    /// Downcasting the registered service to the target type failed.
+    #[error("Failed to downcast dependency of type '{0}'")]
+    DowncastFailed(&'static str),
+
+    /// Injection constructor failed.
+    #[error("Dependency injection failed: {0}")]
+    InjectionFailed(String),
+}
+
 /// Trait implemented by types that can be automatically injected by Rullst DI.
 pub trait Injectable: Sized + Send + Sync + 'static {
     /// Factory constructor for the service instance.
-    fn inject(container: &Container) -> Result<Self, String>;
+    fn inject(container: &Container) -> Result<Self, DiError>;
 }
 
 /// Thread-safe Dependency Injection Container.
@@ -43,17 +59,15 @@ impl Container {
     }
 
     /// Resolves and retrieves a reference-counted service from the container.
-    pub fn resolve<T: Send + Sync + 'static>(&self) -> Result<Arc<T>, String> {
+    pub fn resolve<T: Send + Sync + 'static>(&self) -> Result<Arc<T>, DiError> {
         let type_id = TypeId::of::<T>();
         if let Some(service) = self.services.get(&type_id) {
             if let Ok(downcasted) = service.clone().downcast::<T>() {
                 return Ok(downcasted);
             }
+            return Err(DiError::DowncastFailed(std::any::type_name::<T>()));
         }
-        Err(format!(
-            "Dependency of type '{}' is not registered in the DI Container",
-            std::any::type_name::<T>()
-        ))
+        Err(DiError::NotRegistered(std::any::type_name::<T>()))
     }
 }
 
@@ -87,7 +101,7 @@ where
         if let Some(container) = parts.extensions.get::<Arc<Container>>() {
             match container.resolve::<T>() {
                 Ok(service) => Ok(Inject(service)),
-                Err(err) => Err((StatusCode::INTERNAL_SERVER_ERROR, err)),
+                Err(err) => Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())),
             }
         } else if let Some(service) = parts.extensions.get::<Arc<T>>() {
             Ok(Inject(service.clone()))

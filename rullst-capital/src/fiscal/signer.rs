@@ -2,7 +2,7 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use ring::digest::{SHA256, digest};
 
-use crate::fiscal::models::FiscalCertificate;
+use crate::fiscal::models::{FiscalCertificate, FiscalError};
 
 /// Computes a standard SHA-256 base64 digest for an XML element string.
 pub fn compute_sha256_digest(content: &str) -> String {
@@ -11,18 +11,18 @@ pub fn compute_sha256_digest(content: &str) -> String {
 }
 
 /// Signs a standardized XML DPS document using enveloped W3C XMLDSig and an A1 certificate.
-pub fn sign_dps_xml(xml: &str, cert: &FiscalCertificate) -> Result<String, String> {
+pub fn sign_dps_xml(xml: &str, cert: &FiscalCertificate) -> Result<String, FiscalError> {
     // 1. Extract infDPS element to sign
     let start_tag = "<infDPS";
     let end_tag = "</infDPS>";
 
     let start_pos = xml
         .find(start_tag)
-        .ok_or_else(|| "Missing <infDPS> element in DPS XML".to_string())?;
+        .ok_or_else(|| FiscalError::XmlSigning("Missing <infDPS> element in DPS XML".to_string()))?;
     let end_pos = xml
         .find(end_tag)
         .map(|p| p + end_tag.len())
-        .ok_or_else(|| "Missing </infDPS> end tag in DPS XML".to_string())?;
+        .ok_or_else(|| FiscalError::XmlSigning("Missing </infDPS> end tag in DPS XML".to_string()))?;
 
     let inf_dps_content = &xml[start_pos..end_pos];
 
@@ -30,11 +30,11 @@ pub fn sign_dps_xml(xml: &str, cert: &FiscalCertificate) -> Result<String, Strin
     let id_start = inf_dps_content
         .find("Id=\"")
         .map(|p| p + 4)
-        .ok_or_else(|| "Missing Id attribute in <infDPS>".to_string())?;
+        .ok_or_else(|| FiscalError::XmlSigning("Missing Id attribute in <infDPS>".to_string()))?;
     let id_end = inf_dps_content[id_start..]
         .find('"')
         .map(|p| id_start + p)
-        .ok_or_else(|| "Unclosed Id attribute in <infDPS>".to_string())?;
+        .ok_or_else(|| FiscalError::XmlSigning("Unclosed Id attribute in <infDPS>".to_string()))?;
     let dps_id = &inf_dps_content[id_start..id_end];
 
     // 2. Compute SHA-256 Digest
@@ -61,7 +61,7 @@ pub fn sign_dps_xml(xml: &str, cert: &FiscalCertificate) -> Result<String, Strin
     let closing_dps = "</DPS>";
     let closing_pos = xml
         .rfind(closing_dps)
-        .ok_or_else(|| "Missing closing </DPS> tag".to_string())?;
+        .ok_or_else(|| FiscalError::XmlSigning("Missing closing </DPS> tag".to_string()))?;
 
     let signed_xml = format!("{}{}{}", &xml[..closing_pos], signature_block, closing_dps);
 

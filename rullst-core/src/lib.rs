@@ -144,9 +144,13 @@ pub use htmx::{HtmxRequest, HtmxResponse, render_page};
 #[cfg(not(target_arch = "wasm32"))]
 pub use cache::Cache;
 #[cfg(not(target_arch = "wasm32"))]
+pub use di::{Container, DiError, Inject, Injectable};
+#[cfg(not(target_arch = "wasm32"))]
 pub use queue::{Queue, QueuedJobDetail, Worker};
 #[cfg(not(target_arch = "wasm32"))]
-pub use scheduler::Scheduler;
+pub use realtime::{BroadcastManager, Channel, RealtimeError, RealtimeMessage};
+#[cfg(not(target_arch = "wasm32"))]
+pub use scheduler::{Scheduler, SchedulerError};
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(not(target_arch = "wasm32"))]
@@ -164,7 +168,6 @@ pub use resilience::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(target_arch = "wasm32"))]
 pub use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
 pub use feature::{
@@ -176,8 +179,6 @@ pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, 
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use testing::{TestApp, TestRequestBuilder, TestResponse};
-
-// ─────────── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 
 // ─────────── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 

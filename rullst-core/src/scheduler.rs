@@ -22,6 +22,14 @@ use std::sync::Arc;
 
 // ─── Scheduled Task ─────────────────────────────────────────────────────────
 
+/// Strongly-typed error domain for Rullst Scheduler operations.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+pub enum SchedulerError {
+    /// Invalid cron expression syntax.
+    #[error("Invalid cron expression '{0}': {1}")]
+    InvalidCron(String, String),
+}
+
 /// The boxed async handler function type for scheduled tasks.
 pub type ScheduledHandler =
     Arc<Box<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>>;
@@ -84,7 +92,7 @@ impl Scheduler {
     ///     println!("Running at 2:30 AM every Monday");
     /// }).unwrap();
     /// ```
-    pub fn task<F, Fut>(mut self, cron_expr: &str, handler: F) -> Result<Self, String>
+    pub fn task<F, Fut>(mut self, cron_expr: &str, handler: F) -> Result<Self, SchedulerError>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -96,7 +104,7 @@ impl Scheduler {
 
         let schedule: cron::Schedule = full_expr
             .parse()
-            .map_err(|e| format!("Invalid cron expression '{}': {}", cron_expr, e))?;
+            .map_err(|e: cron::error::Error| SchedulerError::InvalidCron(cron_expr.to_string(), e.to_string()))?;
 
         let label = cron_expr.to_string();
         let boxed: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));
@@ -191,7 +199,7 @@ mod tests {
         let res = Scheduler::new().task("invalid cron", || async {});
         match res {
             Ok(_) => panic!("Expected task registration to fail for invalid cron"),
-            Err(e) => assert!(e.contains("Invalid cron expression")),
+            Err(e) => assert!(matches!(e, SchedulerError::InvalidCron(_, _))),
         }
     }
 

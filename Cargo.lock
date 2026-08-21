@@ -5323,6 +5323,7 @@ dependencies = [
  "rullst-core",
  "serde",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
 ]
 
@@ -5547,6 +5548,7 @@ dependencies = [
  "syn 2.0.119",
  "testcontainers",
  "testcontainers-modules",
+ "thiserror 2.0.19",
  "tokio",
  "tracing",
  "walkdir",

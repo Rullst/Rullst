@@ -10,48 +10,27 @@ pub mod tools;
 
 pub use tools::*;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 /// Errors that can occur when calling AI APIs or processing models.
 pub enum AiError {
     /// Error representing failed network HTTP requests.
-    RequestError(reqwest::Error),
+    #[error("Request error: {0}")]
+    RequestError(#[from] reqwest::Error),
     /// Error representing failed JSON parsing or serialization.
-    SerializationError(serde_json::Error),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
     /// Error returned by the AI provider API backend.
+    #[error("API error: {0}")]
     ApiError(String),
     /// Configuration errors such as missing API keys.
+    #[error("Configuration error: {0}")]
     ConfigError(String),
     /// Prompt blocked by the Rullst LLM Security Firewall (Prompt Shield v2).
+    #[error("Blocked by AI Firewall: {0}")]
     BlockedByFirewall(String),
     /// Generic or fallback error string.
+    #[error("Error: {0}")]
     Other(String),
-}
-
-impl std::fmt::Display for AiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AiError::RequestError(err) => write!(f, "Request error: {}", err),
-            AiError::SerializationError(err) => write!(f, "Serialization error: {}", err),
-            AiError::ApiError(err) => write!(f, "API error: {}", err),
-            AiError::ConfigError(err) => write!(f, "Configuration error: {}", err),
-            AiError::BlockedByFirewall(reason) => write!(f, "Blocked by AI Firewall: {}", reason),
-            AiError::Other(err) => write!(f, "Error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for AiError {}
-
-impl From<reqwest::Error> for AiError {
-    fn from(err: reqwest::Error) -> Self {
-        AiError::RequestError(err)
-    }
-}
-
-impl From<serde_json::Error> for AiError {
-    fn from(err: serde_json::Error) -> Self {
-        AiError::SerializationError(err)
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -116,50 +95,35 @@ impl FallbackProvider {
     }
 }
 
+macro_rules! try_fallback {
+    ($self:ident, $method:ident $(, $arg:expr)*) => {{
+        let mut last_err = None;
+        for provider in &$self.providers {
+            match provider.$method($($arg),*).await {
+                Ok(res) => return Ok(res),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+    }};
+}
+
 #[async_trait]
 impl AiProvider for FallbackProvider {
     async fn prompt(&self, text: &str) -> Result<String, AiError> {
-        let mut last_err = None;
-        for provider in &self.providers {
-            match provider.prompt(text).await {
-                Ok(res) => return Ok(res),
-                Err(e) => last_err = Some(e),
-            }
-        }
-        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+        try_fallback!(self, prompt, text)
     }
 
     async fn prompt_with_image(&self, text: &str, image_bytes: &[u8]) -> Result<String, AiError> {
-        let mut last_err = None;
-        for provider in &self.providers {
-            match provider.prompt_with_image(text, image_bytes).await {
-                Ok(res) => return Ok(res),
-                Err(e) => last_err = Some(e),
-            }
-        }
-        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+        try_fallback!(self, prompt_with_image, text, image_bytes)
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
-        let mut last_err = None;
-        for provider in &self.providers {
-            match provider.chat(messages).await {
-                Ok(res) => return Ok(res),
-                Err(e) => last_err = Some(e),
-            }
-        }
-        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+        try_fallback!(self, chat, messages)
     }
 
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
-        let mut last_err = None;
-        for provider in &self.providers {
-            match provider.embed(text).await {
-                Ok(res) => return Ok(res),
-                Err(e) => last_err = Some(e),
-            }
-        }
-        Err(last_err.unwrap_or(AiError::Other("No providers available".into())))
+        try_fallback!(self, embed, text)
     }
 }
 

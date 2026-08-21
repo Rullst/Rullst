@@ -91,17 +91,27 @@ pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
     None
 }
 
+static CACHED_APP_KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
+/// Caches the resolved key in memory using `OnceLock` to prevent repeated disk I/O.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
+    if let Some(cached) = CACHED_APP_KEY.get() {
+        return Ok(cached.clone());
+    }
+
     if let Ok(env_key) = std::env::var("APP_KEY") {
-        return Ok(env_key.into_bytes());
+        let key = env_key.into_bytes();
+        let _ = CACHED_APP_KEY.set(key.clone());
+        return Ok(key);
     }
 
     if let Ok(toml_content) = fs::read_to_string("Rullst.toml")
         && let Some(key) = parse_app_key_from_toml(&toml_content)
     {
+        let _ = CACHED_APP_KEY.set(key.clone());
         return Ok(key);
     }
 
@@ -121,6 +131,7 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
         && let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim())
         && key_bytes.len() == 32
     {
+        let _ = CACHED_APP_KEY.set(key_bytes.clone());
         return Ok(key_bytes);
     }
 
@@ -135,6 +146,7 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
 
     let _ = fs::write(dev_key_path, general_purpose::STANDARD.encode(&key_vec));
 
+    let _ = CACHED_APP_KEY.set(key_vec.clone());
     Ok(key_vec)
 }
 

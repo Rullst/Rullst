@@ -29,6 +29,10 @@ pub enum CapitalError {
     #[error("Subscription error: {0}")]
     SubscriptionError(String),
 
+    /// Digital invoice or tax authority operation error.
+    #[error("Fiscal error: {0}")]
+    FiscalError(#[from] crate::fiscal::models::FiscalError),
+
     /// General billing error.
     #[error("Billing error: {0}")]
     General(String),

@@ -48,6 +48,12 @@ impl From<serde_json::Error> for RullstError {
     }
 }
 
+impl From<crate::privacy::PrivacyError> for RullstError {
+    fn from(err: crate::privacy::PrivacyError) -> Self {
+        RullstError::Internal(err.to_string())
+    }
+}
+
 #[cfg(feature = "redis")]
 impl From<redis::RedisError> for RullstError {
     #[cfg_attr(test, mutants::skip)]

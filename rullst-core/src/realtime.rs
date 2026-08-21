@@ -23,6 +23,14 @@ pub struct Channel {
     sender: broadcast::Sender<RealtimeMessage>,
 }
 
+/// Strongly-typed error domain for Rullst Realtime and Broadcast operations.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+pub enum RealtimeError {
+    /// Broadcast transmission failed.
+    #[error("Broadcast send error: {0}")]
+    BroadcastError(String),
+}
+
 impl Channel {
     /// Creates a new realtime channel with specified message queue capacity.
     pub fn new(name: impl Into<String>, capacity: usize) -> Self {
@@ -34,7 +42,7 @@ impl Channel {
     }
 
     /// Broadcasts an event and payload to all subscribed clients.
-    pub fn broadcast(&self, event: &str, payload: &str) -> Result<usize, String> {
+    pub fn broadcast(&self, event: &str, payload: &str) -> Result<usize, RealtimeError> {
         let msg = RealtimeMessage {
             channel: self.name.clone(),
             event: event.to_string(),
@@ -42,7 +50,7 @@ impl Channel {
         };
         self.sender
             .send(msg)
-            .map_err(|e| format!("Broadcast send error: {}", e))
+            .map_err(|e| RealtimeError::BroadcastError(e.to_string()))
     }
 
     /// Subscribes to messages broadcasted on this channel.
@@ -73,7 +81,7 @@ impl BroadcastManager {
     }
 
     /// Publishes a message directly to a channel by name.
-    pub fn publish(&self, channel_name: &str, event: &str, payload: &str) -> Result<usize, String> {
+    pub fn publish(&self, channel_name: &str, event: &str, payload: &str) -> Result<usize, RealtimeError> {
         let ch = self.get_or_create(channel_name);
         ch.broadcast(event, payload)
     }

@@ -38,21 +38,55 @@ pub trait ComplianceModel {
     fn compliance_schema() -> PrivacyReport;
 }
 
-pub fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, String> {
+/// Strongly-typed error domain for Rullst ORM privacy and column encryption.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+pub enum PrivacyError {
+    /// The encryption key is missing or not exactly 32 bytes long.
+    #[error("RULLST_ENCRYPTION_KEY must be exactly 32 bytes long")]
+    InvalidKeyLength,
+
+    /// AES-GCM encryption failed.
+    #[error("Encryption failed: {0}")]
+    EncryptionFailed(String),
+
+    /// AES-GCM decryption failed.
+    #[error("Decryption failed: {0}")]
+    DecryptionFailed(String),
+
+    /// The payload is shorter than the 12-byte nonce requirement.
+    #[error("Invalid encrypted payload (too short)")]
+    PayloadTooShort,
+
+    /// Base64 decoding failed.
+    #[error("Base64 decode error: {0}")]
+    Base64Error(String),
+
+    /// Decrypted payload is not valid UTF-8.
+    #[error("UTF-8 decoding error: {0}")]
+    Utf8Error(String),
+
+    /// Missing environment variable key.
+    #[error("Environment variable error: {0}")]
+    EnvError(String),
+}
+
+pub fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, PrivacyError> {
     let key_bytes = key.as_bytes();
     if key_bytes.len() != 32 {
-        return Err("RULLST_ENCRYPTION_KEY must be exactly 32 bytes long".to_string());
+        return Err(PrivacyError::InvalidKeyLength);
     }
 
-    let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| e.to_string())?;
+    let cipher =
+        Aes256Gcm::new_from_slice(key_bytes).map_err(|e| PrivacyError::EncryptionFailed(e.to_string()))?;
 
     let mut nonce_bytes = [0u8; 12];
     rand::rng().fill(&mut nonce_bytes);
-    let nonce = Nonce::try_from(&nonce_bytes[..]).map_err(|e| e.to_string())?;
+    let nonce = Nonce::try_from(&nonce_bytes[..])
+        .map_err(|e| PrivacyError::EncryptionFailed(e.to_string()))?;
 
     let ciphertext = cipher
         .encrypt(&nonce, plaintext.as_bytes())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| PrivacyError::EncryptionFailed(e.to_string()))?;
 
     let mut payload = nonce_bytes.to_vec();
     payload.extend_from_slice(&ciphertext);
@@ -60,26 +94,30 @@ pub fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, String> {
     Ok(STANDARD.encode(payload))
 }
 
-pub fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, String> {
+pub fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, PrivacyError> {
     let key_bytes = key.as_bytes();
     if key_bytes.len() != 32 {
-        return Err("RULLST_ENCRYPTION_KEY must be exactly 32 bytes long".to_string());
+        return Err(PrivacyError::InvalidKeyLength);
     }
 
-    let payload = STANDARD.decode(encrypted).map_err(|e| e.to_string())?;
+    let payload = STANDARD
+        .decode(encrypted)
+        .map_err(|e| PrivacyError::Base64Error(e.to_string()))?;
     if payload.len() < 12 {
-        return Err("Invalid encrypted payload (too short)".to_string());
+        return Err(PrivacyError::PayloadTooShort);
     }
 
-    let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| e.to_string())?;
-    let nonce = Nonce::try_from(&payload[..12]).map_err(|e| e.to_string())?;
+    let cipher =
+        Aes256Gcm::new_from_slice(key_bytes).map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
+    let nonce = Nonce::try_from(&payload[..12])
+        .map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
     let ciphertext = &payload[12..];
 
     let plaintext = cipher
         .decrypt(&nonce, ciphertext)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
 
-    String::from_utf8(plaintext).map_err(|e| e.to_string())
+    String::from_utf8(plaintext).map_err(|e| PrivacyError::Utf8Error(e.to_string()))
 }
 
 #[cfg(not(any(
@@ -210,12 +248,12 @@ mod tests {
         let short_payload = STANDARD.encode([0u8; 11]);
         let result = decrypt_aes_gcm(&short_payload, key);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid encrypted payload (too short)");
+        assert_eq!(result.unwrap_err(), PrivacyError::PayloadTooShort);
 
         let exactly_12_payload = STANDARD.encode([0u8; 12]);
         let result = decrypt_aes_gcm(&exactly_12_payload, key);
         assert!(result.is_err());
-        assert_ne!(result.unwrap_err(), "Invalid encrypted payload (too short)");
+        assert_ne!(result.unwrap_err(), PrivacyError::PayloadTooShort);
     }
 
     #[test]
