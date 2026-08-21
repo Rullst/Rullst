@@ -137,6 +137,27 @@ mod tests {
         }
     }
 
+    struct ProUser;
+
+    #[async_trait]
+    impl Billable for ProUser {
+        fn email(&self) -> String {
+            "pro@example.com".to_string()
+        }
+        fn subscription_id(&self) -> Option<String> {
+            Some("sub_12345".to_string())
+        }
+        fn tier(&self) -> Option<String> {
+            Some("pro".to_string())
+        }
+        fn tier_limit(&self, feature: &str) -> Option<usize> {
+            match feature {
+                "api_calls" => Some(1000),
+                _ => None,
+            }
+        }
+    }
+
     #[tokio::test]
     async fn test_billable_defaults() {
         let u = TestUser;
@@ -145,6 +166,7 @@ mod tests {
         assert_eq!(u.tier(), None);
         assert_eq!(u.tier_limit("cpu"), None);
         assert!(!u.check_quota("cpu", 10));
+        assert!(!u.can_access("pro"));
 
         let res = u.subscribe("pro", "http://return").await;
         assert!(res.is_err());
@@ -154,5 +176,53 @@ mod tests {
                 "BillingProvider not initialized".to_string()
             )
         );
+
+        let res = u.billing_portal_url("http://return").await;
+        assert!(res.is_err());
+
+        let res = u.cancel_subscription().await;
+        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
+
+        let res = u.pause_subscription().await;
+        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
+
+        let res = u.report_usage("api_calls", 5).await;
+        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
+
+        let res = u.apply_coupon("DISCOUNT10").await;
+        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
+
+        let res = u.extend_trial(1700000000).await;
+        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_billable_custom_implementation() {
+        let pro = ProUser;
+        assert_eq!(pro.subscription_id().as_deref(), Some("sub_12345"));
+        assert_eq!(pro.tier().as_deref(), Some("pro"));
+        assert!(pro.can_access("pro"));
+        assert!(!pro.can_access("enterprise"));
+
+        assert_eq!(pro.tier_limit("api_calls"), Some(1000));
+        assert_eq!(pro.tier_limit("unknown"), None);
+        assert!(pro.check_quota("api_calls", 500));
+        assert!(!pro.check_quota("api_calls", 1500));
+        assert!(!pro.check_quota("unknown", 0));
+
+        let res = pro.cancel_subscription().await;
+        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
+
+        let res = pro.pause_subscription().await;
+        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
+
+        let res = pro.report_usage("api_calls", 10).await;
+        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
+
+        let res = pro.apply_coupon("DISCOUNT").await;
+        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
+
+        let res = pro.extend_trial(1700000000).await;
+        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
     }
 }

@@ -313,3 +313,65 @@ impl BillingProvider for RazorpayProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_razorpay_provider_methods() {
+        let provider = RazorpayProvider::new("mock_key_id", "mock_secret", "sec_rzp123");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session(
+                "user@razorpay.com",
+                "plan_sub_pro",
+                "https://app.com/success",
+            )
+            .await
+            .unwrap();
+        assert!(url.contains("razorpay.com/checkout"));
+        assert!(url.contains("plan_sub_pro"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer portal
+        let portal = provider
+            .create_customer_portal("user@razorpay.com", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("dashboard.razorpay.com/portal"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Subscription actions
+        assert!(provider.cancel_subscription("sub_rzp").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        assert!(provider.pause_subscription("sub_rzp").await.is_ok());
+        assert!(provider.pause_subscription("").await.is_err());
+
+        assert!(provider.report_usage("sub_rzp", "api", 10).await.is_ok());
+        assert!(provider.report_usage("", "api", 10).await.is_err());
+
+        assert!(provider.apply_coupon("sub_rzp", "DISCOUNT").await.is_ok());
+        assert!(provider.apply_coupon("", "DISCOUNT").await.is_err());
+        assert!(provider.apply_coupon("sub_rzp", "").await.is_err());
+
+        assert!(provider.extend_trial("sub_rzp", 1800000000).await.is_ok());
+        assert!(provider.extend_trial("", 1800000000).await.is_err());
+        assert!(provider.extend_trial("sub_rzp", -1).await.is_err());
+    }
+}

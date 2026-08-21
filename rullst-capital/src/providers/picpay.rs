@@ -226,3 +226,65 @@ impl BillingProvider for PicPayProvider {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_picpay_provider_methods() {
+        let provider = PicPayProvider::new("picpay_token", "sec_seller123");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session("user@picpay.com", "plan_mensal", "https://app.com/callback")
+            .await
+            .unwrap();
+        assert!(url.contains("picpay.com/checkout"));
+        assert!(url.contains("plan_mensal"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer portal
+        let portal = provider
+            .create_customer_portal("user@picpay.com", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("picpay.com/portal"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Cancel
+        assert!(provider.cancel_subscription("sub_pic").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        // 5. Unsupported operations
+        assert!(matches!(
+            provider.pause_subscription("sub").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.report_usage("sub", "api", 1).await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.apply_coupon("sub", "CODE").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.extend_trial("sub", 1800000000).await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+    }
+}

@@ -268,3 +268,65 @@ impl BillingProvider for PolarProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_polar_provider_methods() {
+        let provider = PolarProvider::new("mock_polar_key", "sec_polar123");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session(
+                "user@polar.sh",
+                "prod_polar_plan",
+                "https://app.com/success",
+            )
+            .await
+            .unwrap();
+        assert!(url.contains("polar.sh/checkout"));
+        assert!(url.contains("prod_polar_plan"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer portal
+        let portal = provider
+            .create_customer_portal("user@polar.sh", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("polar.sh/purchases"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Subscription actions
+        assert!(provider.cancel_subscription("sub_pol").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        assert!(provider.pause_subscription("sub_pol").await.is_ok());
+        assert!(provider.pause_subscription("").await.is_err());
+
+        assert!(provider.report_usage("sub_pol", "api", 10).await.is_ok());
+        assert!(provider.report_usage("", "api", 10).await.is_err());
+
+        assert!(provider.apply_coupon("sub_pol", "POLAR10").await.is_ok());
+        assert!(provider.apply_coupon("", "POLAR10").await.is_err());
+        assert!(provider.apply_coupon("sub_pol", "").await.is_err());
+
+        assert!(provider.extend_trial("sub_pol", 1800000000).await.is_ok());
+        assert!(provider.extend_trial("", 1800000000).await.is_err());
+        assert!(provider.extend_trial("sub_pol", -1).await.is_err());
+    }
+}

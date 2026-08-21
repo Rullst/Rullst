@@ -141,3 +141,53 @@ fn parse_receita_response(
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_fiscal_client_and_environments() {
+        assert_eq!(
+            NfseEnvironment::Homologation.endpoint(),
+            "https://hom-sefin.nfse.gov.br/ws/nfse"
+        );
+        assert_eq!(
+            NfseEnvironment::Production.endpoint(),
+            "https://sefin.nfse.gov.br/ws/nfse"
+        );
+
+        let emitter = FiscalEmitter {
+            cnpj: "12.345.678/0001-90".to_string(),
+            corporate_name: "Empresa Teste LTDA".to_string(),
+            trade_name: Some("Teste".to_string()),
+            municipal_registration: "12345".to_string(),
+            ibge_code: "3550308".to_string(),
+            simples_nacional: true,
+            cultural_promoter: false,
+        };
+
+        let cert = FiscalCertificate::from_pfx_base64("", "mock");
+        let client = NfseNationalClient::new(emitter, cert, NfseEnvironment::Homologation);
+
+        let dps_xml = "<DPS><infDPS>test</infDPS></DPS>";
+        let resp = client.transmit_dps(dps_xml).await.unwrap();
+
+        assert_eq!(resp.status, "Autorizada");
+        assert_eq!(resp.protocol, "PROT-MOCK-999888777");
+        assert!(resp.access_key.contains("3550308"));
+        assert_eq!(resp.authorized_xml, dps_xml);
+
+        // JSON response parsing test
+        let json_body = r#"{
+            "chaveAcesso": "35503081234567800019056000000000000000000000000001",
+            "numeroNfse": 42,
+            "protocolo": "PROT-RECEITA-12345",
+            "status": "Emitida com Sucesso"
+        }"#;
+        let parsed = parse_receita_response(json_body, dps_xml).unwrap();
+        assert_eq!(parsed.nfse_number, 42);
+        assert_eq!(parsed.protocol, "PROT-RECEITA-12345");
+        assert_eq!(parsed.status, "Emitida com Sucesso");
+    }
+}

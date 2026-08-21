@@ -314,3 +314,65 @@ impl BillingProvider for PaddleProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_paddle_provider_methods() {
+        let provider = PaddleProvider::new("mock_key", "sec_paddle123");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session(
+                "customer@paddle.com",
+                "pri_pro_plan",
+                "https://app.com/return",
+            )
+            .await
+            .unwrap();
+        assert!(url.contains("checkout.paddle.com"));
+        assert!(url.contains("pri_pro_plan"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer Portal
+        let portal = provider
+            .create_customer_portal("customer@paddle.com", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("paddle.com/portal"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Subscription actions
+        assert!(provider.cancel_subscription("sub_123").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        assert!(provider.pause_subscription("sub_123").await.is_ok());
+        assert!(provider.pause_subscription("").await.is_err());
+
+        assert!(provider.report_usage("sub_123", "api", 10).await.is_ok());
+        assert!(provider.report_usage("", "api", 10).await.is_err());
+
+        assert!(provider.apply_coupon("sub_123", "SAVE20").await.is_ok());
+        assert!(provider.apply_coupon("", "SAVE20").await.is_err());
+        assert!(provider.apply_coupon("sub_123", "").await.is_err());
+
+        assert!(provider.extend_trial("sub_123", 1800000000).await.is_ok());
+        assert!(provider.extend_trial("", 1800000000).await.is_err());
+        assert!(provider.extend_trial("sub_123", -1).await.is_err());
+    }
+}

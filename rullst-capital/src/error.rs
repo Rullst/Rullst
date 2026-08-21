@@ -49,3 +49,49 @@ impl From<&str> for CapitalError {
         CapitalError::General(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fiscal::models::FiscalError;
+
+    #[test]
+    fn test_capital_error_display_and_conversions() {
+        let e1 = CapitalError::AuthenticationFailed("bad token".to_string());
+        assert_eq!(e1.to_string(), "Authentication failed: bad token");
+
+        let e2 = CapitalError::ConfigurationError("missing key".to_string());
+        assert_eq!(e2.to_string(), "Configuration error: missing key");
+
+        let e3 = CapitalError::InvalidSignature("sig mismatch".to_string());
+        assert_eq!(e3.to_string(), "Invalid webhook signature: sig mismatch");
+
+        let e4 = CapitalError::PayloadParseError("bad json".to_string());
+        assert_eq!(e4.to_string(), "Failed to parse webhook payload: bad json");
+
+        let e5 = CapitalError::ProviderRequestFailed("500 internal".to_string());
+        assert_eq!(
+            e5.to_string(),
+            "Payment provider API request failed: 500 internal"
+        );
+
+        let e6 = CapitalError::UnsupportedOperation("pause not supported".to_string());
+        assert_eq!(
+            e6.to_string(),
+            "Operation not supported by provider: pause not supported"
+        );
+
+        let e7 = CapitalError::SubscriptionError("sub not found".to_string());
+        assert_eq!(e7.to_string(), "Subscription error: sub not found");
+
+        let f_err = FiscalError::XmlSigning("bad xml".to_string());
+        let e8: CapitalError = f_err.into();
+        assert!(e8.to_string().contains("Fiscal error: XML signing error"));
+
+        let e9: CapitalError = "from str".into();
+        assert_eq!(e9, CapitalError::General("from str".to_string()));
+
+        let e10: CapitalError = "from string".to_string().into();
+        assert_eq!(e10, CapitalError::General("from string".to_string()));
+    }
+}

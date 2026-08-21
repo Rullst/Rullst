@@ -45,3 +45,46 @@ impl From<&str> for SecurityError {
         SecurityError::General(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_security_error_display_and_conversions() {
+        assert_eq!(
+            SecurityError::Unauthorized("no token".to_string()).to_string(),
+            "Unauthorized: no token"
+        );
+        assert_eq!(
+            SecurityError::Forbidden("no admin".to_string()).to_string(),
+            "Forbidden: no admin"
+        );
+        assert_eq!(
+            SecurityError::VaultError("decrypt".to_string()).to_string(),
+            "Vault error: decrypt"
+        );
+        assert_eq!(
+            SecurityError::AuditChainError("tamper".to_string()).to_string(),
+            "Audit chain error: tamper"
+        );
+        assert_eq!(
+            SecurityError::SanitizationError("xss".to_string()).to_string(),
+            "Sanitization error: xss"
+        );
+        assert_eq!(
+            SecurityError::SchemaGuardError("invalid col".to_string()).to_string(),
+            "Schema guard violation: invalid col"
+        );
+        assert_eq!(
+            SecurityError::WafBlocked("sqli".to_string()).to_string(),
+            "Security WAF blocked request: sqli"
+        );
+
+        let e1: SecurityError = "sec error".into();
+        assert_eq!(e1, SecurityError::General("sec error".to_string()));
+
+        let e2: SecurityError = "str err".to_string().into();
+        assert_eq!(e2, SecurityError::General("str err".to_string()));
+    }
+}

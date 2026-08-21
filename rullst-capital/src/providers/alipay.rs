@@ -324,6 +324,50 @@ mod tests {
         assert!(url.contains("alipay.trade.page.pay"));
         assert!(url.contains("user%40alipay.com"));
         assert!(url.contains("pro_plan"));
+
+        // Validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // Customer portal
+        let portal = provider
+            .create_customer_portal("user@alipay.com", "https://myapp.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("custweb.alipay.com"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // Cancel
+        assert!(provider.cancel_subscription("sub_ali").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        // Unsupported operations
+        assert!(matches!(
+            provider.pause_subscription("sub").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.report_usage("sub", "api", 1).await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.apply_coupon("sub", "CODE").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            provider.extend_trial("sub", 1800000000).await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
     }
 
     #[test]

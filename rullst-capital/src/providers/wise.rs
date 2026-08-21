@@ -173,3 +173,59 @@ impl WiseProvider {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_wise_provider_payout_lifecycle() {
+        let provider = WiseProvider::new("mock_wise_token", "sec_wise123");
+
+        // 1. Send payout
+        let transfer_id = provider
+            .send_payout("beneficiary@wise.com", 15000, "USD", "Invoice 1234")
+            .await
+            .unwrap();
+        assert!(transfer_id.starts_with("wise_tr_"));
+
+        // 2. Validation errors
+        assert!(provider.send_payout("", 1000, "USD", "desc").await.is_err());
+        assert!(
+            provider
+                .send_payout("a@b.com", 0, "USD", "desc")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .send_payout("a@b.com", 1000, "", "desc")
+                .await
+                .is_err()
+        );
+
+        // 3. Status
+        let status = provider.get_payout_status("tr_123").await.unwrap();
+        assert_eq!(status, PayoutStatus::OutgoingPaymentSent);
+        assert!(provider.get_payout_status("").await.is_err());
+
+        // 4. Webhook payload parsing
+        let payload = r#"{
+            "data": {
+                "resource": {
+                    "id": 987654321,
+                    "recipient_email": "payee@wise.com",
+                    "amount": 250.75,
+                    "currency": "EUR"
+                },
+                "current_state": "outgoing_payment_sent"
+            }
+        }"#;
+        let event = provider.parse_webhook_payload(payload.as_bytes()).unwrap();
+        assert_eq!(event.transfer_id, "987654321");
+        assert_eq!(event.recipient_email, "payee@wise.com");
+        assert_eq!(event.amount_cents, 25075);
+        assert_eq!(event.currency, "EUR");
+        assert_eq!(event.status, PayoutStatus::OutgoingPaymentSent);
+    }
+}

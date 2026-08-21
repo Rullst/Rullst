@@ -57,3 +57,58 @@ impl From<&str> for AuthError {
         AuthError::General(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auth_error_display_and_conversions() {
+        assert_eq!(
+            AuthError::InvalidCredentials.to_string(),
+            "Invalid credentials"
+        );
+        assert_eq!(
+            AuthError::PasswordHashError("argon2".to_string()).to_string(),
+            "Password hashing failed: argon2"
+        );
+        assert_eq!(
+            AuthError::PasswordVerifyError("mismatch".to_string()).to_string(),
+            "Password verification failed: mismatch"
+        );
+        assert_eq!(
+            AuthError::SessionEncryptionError("key".to_string()).to_string(),
+            "Session encryption failed: key"
+        );
+        assert_eq!(
+            AuthError::SessionDecryptionError("corrupt".to_string()).to_string(),
+            "Session decryption failed: corrupt"
+        );
+        assert_eq!(
+            AuthError::SessionExpired.to_string(),
+            "Session token expired"
+        );
+        assert_eq!(
+            AuthError::MissingAppKey("not set".to_string()).to_string(),
+            "APP_KEY configuration error: not set"
+        );
+        assert_eq!(
+            AuthError::PasskeyError("invalid origin".to_string()).to_string(),
+            "Passkey error: invalid origin"
+        );
+        assert_eq!(
+            AuthError::CborParseError("eof".to_string()).to_string(),
+            "CBOR parse error: eof"
+        );
+        assert_eq!(
+            AuthError::Unauthorized("admin only".to_string()).to_string(),
+            "Unauthorized access: admin only"
+        );
+
+        let e1: AuthError = "general error".into();
+        assert_eq!(e1, AuthError::General("general error".to_string()));
+
+        let e2: AuthError = "string err".to_string().into();
+        assert_eq!(e2, AuthError::General("string err".to_string()));
+    }
+}

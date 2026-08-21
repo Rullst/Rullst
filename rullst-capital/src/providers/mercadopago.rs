@@ -339,3 +339,61 @@ impl BillingProvider for MercadoPagoProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_mercadopago_provider_methods() {
+        let provider = MercadoPagoProvider::new("mock_access_token", "sec_mp123");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session("user@mp.com", "plan_mp", "https://app.com/success")
+            .await
+            .unwrap();
+        assert!(url.contains("mercadopago.com/checkout/preferences"));
+        assert!(url.contains("plan_mp"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer portal
+        let portal = provider
+            .create_customer_portal("user@mp.com", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("mercadopago.com/subscriptions"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Subscription actions
+        assert!(provider.cancel_subscription("sub_mp").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        assert!(provider.pause_subscription("sub_mp").await.is_ok());
+        assert!(provider.pause_subscription("").await.is_err());
+
+        assert!(provider.report_usage("sub_mp", "usage", 5).await.is_ok());
+        assert!(provider.report_usage("", "usage", 5).await.is_err());
+
+        assert!(provider.apply_coupon("sub_mp", "CUPOM10").await.is_ok());
+        assert!(provider.apply_coupon("", "CUPOM10").await.is_err());
+        assert!(provider.apply_coupon("sub_mp", "").await.is_err());
+
+        assert!(provider.extend_trial("sub_mp", 1800000000).await.is_ok());
+        assert!(provider.extend_trial("", 1800000000).await.is_err());
+        assert!(provider.extend_trial("sub_mp", -1).await.is_err());
+    }
+}
