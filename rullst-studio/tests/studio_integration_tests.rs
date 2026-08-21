@@ -160,3 +160,69 @@ async fn test_studio_logger_requests_flow() {
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn test_studio_table_browser_and_schema_inspection() {
+    let _ = rullst_orm::Orm::init("sqlite::memory:").await;
+
+    if let Some(pool) = rullst_core::db::safe_pool() {
+        let _ = rullst_orm::_sqlx::query(
+            "CREATE TABLE IF NOT EXISTS studio_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                email TEXT NOT NULL
+            )"
+        ).execute(pool).await;
+
+        let _ = rullst_orm::_sqlx::query(
+            "INSERT INTO studio_users (username, email) VALUES ('alice', 'alice@rullst.dev'), ('bob', 'bob@rullst.dev')"
+        ).execute(pool).await;
+    }
+
+    let app = Studio::new().into_router();
+
+    // 1. Standard HTML table view
+    let req = Request::builder()
+        .uri("/tables/studio_users")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 2. Search query and pagination
+    let req = Request::builder()
+        .uri("/tables/studio_users?page=1&search=alice")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 3. HTMX partial request
+    let req = Request::builder()
+        .uri("/tables/studio_users")
+        .header("hx-request", "true")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 4. ER diagram generation with schema populated
+    let req = Request::builder()
+        .uri("/er")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_str = String::from_utf8_lossy(&body);
+    assert!(body_str.contains("erDiagram") || body_str.contains("studio_users"));
+
+    // 5. Feature Flags Toggling
+    let req = Request::builder()
+        .method("POST")
+        .uri("/features/toggle/dark_mode")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection());
+}

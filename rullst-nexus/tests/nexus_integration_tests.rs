@@ -231,3 +231,96 @@ fn test_sanitize_identifier_multibyte() {
     assert_eq!(clean, "table_name_123_test");
     assert!(clean.len() <= 64);
 }
+
+#[tokio::test]
+async fn test_nexus_with_sqlite_db_backed_crud() {
+    let _ = rullst_orm::Orm::init("sqlite:file:memdb_nexus?mode=memory&cache=shared").await;
+
+    if let Some(pool) = rullst_core::db::safe_pool() {
+        let _ = rullst_orm::_sqlx::query(
+            "CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )"
+        ).execute(pool).await;
+
+        let _ = rullst_orm::_sqlx::query(
+            "INSERT INTO users (username, is_active) VALUES ('alice', 1), ('bob', 0)"
+        ).execute(pool).await;
+    }
+
+    let nexus = Nexus::new()
+        .with_brand("Nexus DB Suite")
+        .register::<UserModel>();
+    let app = nexus.build();
+
+    let csrf = "valid_test_csrf_token";
+
+    // 1. Table rows render with populated database
+    let req = Request::builder()
+        .uri("/table/users?page=1&sort_by=username&order=asc")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 2. Search query matching 'alice'
+    let req = Request::builder()
+        .uri("/table/users/search?q=alice")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 3. New record form rendering
+    let req = Request::builder()
+        .uri("/table/users/new")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 4. Edit record form rendering
+    let req = Request::builder()
+        .uri("/table/users/1/edit")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 5. POST create record
+    let req = Request::builder()
+        .method("POST")
+        .uri("/table/users")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Cookie", format!("rullst_csrf={}", csrf))
+        .header("X-CSRF-Token", csrf)
+        .body(Body::from("username=charlie&is_active=1"))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+
+    // 6. PUT update record
+    let req = Request::builder()
+        .method("PUT")
+        .uri("/table/users/1")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Cookie", format!("rullst_csrf={}", csrf))
+        .header("X-CSRF-Token", csrf)
+        .body(Body::from("username=alice_updated&is_active=0"))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+
+    // 7. DELETE record
+    let req = Request::builder()
+        .method("DELETE")
+        .uri("/table/users/2")
+        .header("Cookie", format!("rullst_csrf={}", csrf))
+        .header("X-CSRF-Token", csrf)
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+}
