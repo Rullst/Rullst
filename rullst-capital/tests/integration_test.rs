@@ -52,7 +52,6 @@ fn test_fiscal_xml_builder_and_digest() {
 #[tokio::test]
 async fn test_all_12_payment_and_payout_providers() {
     use rullst_capital::providers::*;
-    use std::collections::HashMap;
 
     // 1. Stripe
     let stripe = StripeProvider::new("mock_stripe_key".to_string(), "mock_whsec".to_string());

@@ -212,7 +212,7 @@ fn test_siem_alerting_and_cef_formatting() {
 
 #[test]
 fn test_security_telemetry_store_all_methods() {
-    use rullst_security::{SecurityStore, SecurityTelemetry, get_real_rss_memory_mb};
+    use rullst_security::{SecurityStore, get_real_rss_memory_mb};
 
     let store = SecurityStore::global();
     store.inc_sanitizations();
