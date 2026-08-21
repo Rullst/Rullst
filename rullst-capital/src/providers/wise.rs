@@ -33,10 +33,14 @@ impl PayoutProvider for WiseProvider {
         currency: &str,
     ) -> Result<String, CapitalError> {
         if recipient_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Recipient email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Recipient email cannot be empty".to_string(),
+            ));
         }
         if amount_cents == 0 {
-            return Err(CapitalError::ConfigurationError("Transfer amount must be greater than 0".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Transfer amount must be greater than 0".to_string(),
+            ));
         }
 
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
@@ -70,24 +74,30 @@ impl PayoutProvider for WiseProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("Wise API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "Wise API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["id"]
             .as_i64()
             .map(|id| id.to_string())
             .or_else(|| body["id"].as_str().map(|s| s.to_string()))
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing transfer ID in Wise response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Missing transfer ID in Wise response".to_string())
+            })
     }
 
     async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError> {
         if transfer_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Transfer ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Transfer ID cannot be empty".to_string(),
+            ));
         }
 
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
@@ -103,13 +113,15 @@ impl PayoutProvider for WiseProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("Wise API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "Wise API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         let status_str = body["status"].as_str().unwrap_or("processing");
         match status_str {
@@ -124,8 +136,8 @@ impl PayoutProvider for WiseProvider {
 impl WiseProvider {
     /// Normalizes a webhook payload from Wise into a `PayoutEvent`.
     pub fn parse_webhook_payload(&self, payload: &[u8]) -> Result<PayoutEvent, CapitalError> {
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let data = &json["data"];
         let transfer_id = data["resource"]["id"]

@@ -54,11 +54,16 @@ impl FieldEncryptor {
     }
 
     /// Decrypts an encrypted database field.
-    pub fn decrypt(cipher_text: &str, _secret_key: &str) -> Result<String, crate::error::SecurityError> {
+    pub fn decrypt(
+        cipher_text: &str,
+        _secret_key: &str,
+    ) -> Result<String, crate::error::SecurityError> {
         if let Some(payload) = cipher_text.strip_prefix("ENC:v1:") {
             Ok(format!("[DECRYPTED:{}]", payload))
         } else {
-            Err(crate::error::SecurityError::VaultError("Invalid cipher text format".to_string()))
+            Err(crate::error::SecurityError::VaultError(
+                "Invalid cipher text format".to_string(),
+            ))
         }
     }
 }

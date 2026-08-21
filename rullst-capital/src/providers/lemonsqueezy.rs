@@ -21,18 +21,23 @@ impl LemonSqueezyProvider {
     }
 
     /// Verifies the `X-Signature` header signature using HMAC-SHA256 of the raw body.
-    pub fn verify_signature(&self, payload: &[u8], signature_hex: &str) -> Result<(), CapitalError> {
+    pub fn verify_signature(
+        &self,
+        payload: &[u8],
+        signature_hex: &str,
+    ) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
 
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
+        let sig_bytes = hex::decode(signature_hex)
+            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
 
-        hmac::verify(&key, payload, &sig_bytes)
-            .map_err(|_| CapitalError::InvalidSignature("LemonSqueezy signature verification failed".to_string()))?;
+        hmac::verify(&key, payload, &sig_bytes).map_err(|_| {
+            CapitalError::InvalidSignature("LemonSqueezy signature verification failed".to_string())
+        })?;
 
         Ok(())
     }
@@ -52,10 +57,14 @@ impl BillingProvider for LemonSqueezyProvider {
         redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
         if plan_id.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Plan ID cannot be empty".to_string(),
+            ));
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
@@ -107,18 +116,24 @@ impl BillingProvider for LemonSqueezyProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("LemonSqueezy API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "LemonSqueezy API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["data"]["attributes"]["url"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing checkout URL in LemonSqueezy response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError(
+                    "Missing checkout URL in LemonSqueezy response".to_string(),
+                )
+            })
     }
 
     fn handle_webhook(
@@ -133,16 +148,21 @@ impl BillingProvider for LemonSqueezyProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature("Missing X-Signature header".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Missing X-Signature header".to_string(),
+            ));
         }
 
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         if let Some(event_name) = json["meta"]["event_name"].as_str()
             && !event_name.starts_with("subscription_")
         {
-            return Err(CapitalError::PayloadParseError(format!("Uninteresting event name: {}", event_name)));
+            return Err(CapitalError::PayloadParseError(format!(
+                "Uninteresting event name: {}",
+                event_name
+            )));
         }
 
         let data = &json["data"];
@@ -184,7 +204,9 @@ impl BillingProvider for LemonSqueezyProvider {
         _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
 
         Ok(format!(
@@ -195,18 +217,26 @@ impl BillingProvider for LemonSqueezyProvider {
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .delete(format!("https://api.lemonsqueezy.com/v1/subscriptions/{}", subscription_id))
+                .delete(format!(
+                    "https://api.lemonsqueezy.com/v1/subscriptions/{}",
+                    subscription_id
+                ))
                 .bearer_auth(&self.api_key)
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -214,7 +244,9 @@ impl BillingProvider for LemonSqueezyProvider {
 
     async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
             let client = reqwest::Client::new();
@@ -230,14 +262,20 @@ impl BillingProvider for LemonSqueezyProvider {
                 }
             });
             let res = client
-                .patch(format!("https://api.lemonsqueezy.com/v1/subscriptions/{}", subscription_id))
+                .patch(format!(
+                    "https://api.lemonsqueezy.com/v1/subscriptions/{}",
+                    subscription_id
+                ))
                 .bearer_auth(&self.api_key)
                 .json(&payload)
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -250,10 +288,14 @@ impl BillingProvider for LemonSqueezyProvider {
         quantity: u64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if metric.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Metric name cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Metric name cannot be empty".to_string(),
+            ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
             let client = reqwest::Client::new();
@@ -267,25 +309,39 @@ impl BillingProvider for LemonSqueezyProvider {
                 }
             });
             let res = client
-                .post(format!("https://api.lemonsqueezy.com/v1/subscription-items/{}/usage-records", subscription_id))
+                .post(format!(
+                    "https://api.lemonsqueezy.com/v1/subscription-items/{}/usage-records",
+                    subscription_id
+                ))
                 .bearer_auth(&self.api_key)
                 .json(&payload)
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
     }
 
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError> {
+    async fn apply_coupon(
+        &self,
+        subscription_id: &str,
+        coupon_code: &str,
+    ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Coupon code cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Coupon code cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -296,10 +352,14 @@ impl BillingProvider for LemonSqueezyProvider {
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError("Trial end timestamp must be positive".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Trial end timestamp must be positive".to_string(),
+            ));
         }
         Ok(())
     }

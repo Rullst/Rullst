@@ -77,9 +77,9 @@ impl FiscalCertificate {
     pub fn raw_bytes(&self) -> Result<Vec<u8>, FiscalError> {
         use base64::Engine;
         use base64::engine::general_purpose::STANDARD;
-        STANDARD
-            .decode(&self.raw_pfx_base64)
-            .map_err(|e| FiscalError::Certificate(format!("Failed to decode certificate base64: {}", e)))
+        STANDARD.decode(&self.raw_pfx_base64).map_err(|e| {
+            FiscalError::Certificate(format!("Failed to decode certificate base64: {}", e))
+        })
     }
 }
 

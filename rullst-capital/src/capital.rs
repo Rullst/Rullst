@@ -209,12 +209,18 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing stripe-signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing stripe-signature header".to_string())
+        );
 
         headers.insert("stripe-signature".to_string(), "invalid_format".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(res2.unwrap_err(), CapitalError::InvalidSignature("Invalid Stripe-Signature header format".to_string()));
+        assert_eq!(
+            res2.unwrap_err(),
+            CapitalError::InvalidSignature("Invalid Stripe-Signature header format".to_string())
+        );
 
         headers.insert(
             "stripe-signature".to_string(),
@@ -229,7 +235,10 @@ mod tests {
         );
         let res4 = provider.handle_webhook(b"{}", &headers);
         assert!(res4.is_err());
-        assert_eq!(res4.unwrap_err(), CapitalError::InvalidSignature("Stripe signature verification failed".to_string()));
+        assert_eq!(
+            res4.unwrap_err(),
+            CapitalError::InvalidSignature("Stripe signature verification failed".to_string())
+        );
     }
 
     #[test]
@@ -247,7 +256,10 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing X-Signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing X-Signature header".to_string())
+        );
 
         headers.insert("x-signature".to_string(), "invalid".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
@@ -258,7 +270,9 @@ mod tests {
         assert!(res3.is_err());
         assert_eq!(
             res3.unwrap_err(),
-            CapitalError::InvalidSignature("LemonSqueezy signature verification failed".to_string())
+            CapitalError::InvalidSignature(
+                "LemonSqueezy signature verification failed".to_string()
+            )
         );
     }
 
@@ -270,7 +284,10 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing X-Signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing X-Signature header".to_string())
+        );
 
         headers.insert("x-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
@@ -289,12 +306,18 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing Polar-Signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing Polar-Signature header".to_string())
+        );
 
         headers.insert("polar-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(res2.unwrap_err(), CapitalError::InvalidSignature("Polar.sh signature verification failed".to_string()));
+        assert_eq!(
+            res2.unwrap_err(),
+            CapitalError::InvalidSignature("Polar.sh signature verification failed".to_string())
+        );
     }
 
     #[test]
@@ -305,14 +328,19 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing X-CC-Webhook-Signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing X-CC-Webhook-Signature header".to_string())
+        );
 
         headers.insert("x-cc-webhook-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
         assert_eq!(
             res2.unwrap_err(),
-            CapitalError::InvalidSignature("Coinbase Commerce signature verification failed".to_string())
+            CapitalError::InvalidSignature(
+                "Coinbase Commerce signature verification failed".to_string()
+            )
         );
     }
 
@@ -324,12 +352,18 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing x-seller-token header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing x-seller-token header".to_string())
+        );
 
         headers.insert("x-seller-token".to_string(), "wrong_token".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(res2.unwrap_err(), CapitalError::InvalidSignature("PicPay seller token verification failed".to_string()));
+        assert_eq!(
+            res2.unwrap_err(),
+            CapitalError::InvalidSignature("PicPay seller token verification failed".to_string())
+        );
     }
 
     #[test]
@@ -344,11 +378,17 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), CapitalError::InvalidSignature("Missing X-Razorpay-Signature header".to_string()));
+        assert_eq!(
+            res.unwrap_err(),
+            CapitalError::InvalidSignature("Missing X-Razorpay-Signature header".to_string())
+        );
 
         headers.insert("x-razorpay-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(res2.unwrap_err(), CapitalError::InvalidSignature("Razorpay signature verification failed".to_string()));
+        assert_eq!(
+            res2.unwrap_err(),
+            CapitalError::InvalidSignature("Razorpay signature verification failed".to_string())
+        );
     }
 }

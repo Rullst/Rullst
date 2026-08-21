@@ -158,10 +158,18 @@ pub trait BillingProvider: Send + Sync {
     ) -> Result<(), CapitalError>;
 
     /// Apply a coupon to an active subscription.
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError>;
+    async fn apply_coupon(
+        &self,
+        subscription_id: &str,
+        coupon_code: &str,
+    ) -> Result<(), CapitalError>;
 
     /// Extend a trial for a subscription by setting a new end timestamp.
-    async fn extend_trial(&self, subscription_id: &str, trial_ends_at: i64) -> Result<(), CapitalError>;
+    async fn extend_trial(
+        &self,
+        subscription_id: &str,
+        trial_ends_at: i64,
+    ) -> Result<(), CapitalError>;
 }
 
 /// The status of an outbound payout/disbursement.

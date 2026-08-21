@@ -61,7 +61,10 @@ impl RbacGuard {
                     },
                 );
             }
-            Err(SecurityError::Forbidden(format!("Access Denied: Required role '{}'", required_role)))
+            Err(SecurityError::Forbidden(format!(
+                "Access Denied: Required role '{}'",
+                required_role
+            )))
         }
     }
 
@@ -93,7 +96,9 @@ impl RbacGuard {
                     },
                 );
             }
-            Err(SecurityError::Forbidden("Access Denied: Insufficient permissions or ownership".to_string()))
+            Err(SecurityError::Forbidden(
+                "Access Denied: Insufficient permissions or ownership".to_string(),
+            ))
         }
     }
 }

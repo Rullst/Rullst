@@ -76,8 +76,8 @@ pub fn encrypt_aes_gcm(plaintext: &str, key: &str) -> Result<String, PrivacyErro
         return Err(PrivacyError::InvalidKeyLength);
     }
 
-    let cipher =
-        Aes256Gcm::new_from_slice(key_bytes).map_err(|e| PrivacyError::EncryptionFailed(e.to_string()))?;
+    let cipher = Aes256Gcm::new_from_slice(key_bytes)
+        .map_err(|e| PrivacyError::EncryptionFailed(e.to_string()))?;
 
     let mut nonce_bytes = [0u8; 12];
     rand::rng().fill(&mut nonce_bytes);
@@ -107,8 +107,8 @@ pub fn decrypt_aes_gcm(encrypted: &str, key: &str) -> Result<String, PrivacyErro
         return Err(PrivacyError::PayloadTooShort);
     }
 
-    let cipher =
-        Aes256Gcm::new_from_slice(key_bytes).map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
+    let cipher = Aes256Gcm::new_from_slice(key_bytes)
+        .map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
     let nonce = Nonce::try_from(&payload[..12])
         .map_err(|e| PrivacyError::DecryptionFailed(e.to_string()))?;
     let ciphertext = &payload[12..];

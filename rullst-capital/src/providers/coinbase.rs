@@ -22,19 +22,25 @@ impl CoinbaseCommerceProvider {
     }
 
     /// Verifies the `X-CC-Webhook-Signature` header HMAC-SHA256 signature.
-    pub fn verify_signature(&self, payload: &[u8], signature_hex: &str) -> Result<(), CapitalError> {
+    pub fn verify_signature(
+        &self,
+        payload: &[u8],
+        signature_hex: &str,
+    ) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
 
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
+        let sig_bytes = hex::decode(signature_hex)
+            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let tag = hmac::sign(&key, payload);
 
         if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature("Coinbase Commerce signature verification failed".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Coinbase Commerce signature verification failed".to_string(),
+            ));
         }
 
         Ok(())
@@ -55,10 +61,14 @@ impl BillingProvider for CoinbaseCommerceProvider {
         redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
         if plan_id.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Plan ID cannot be empty".to_string(),
+            ));
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
@@ -104,15 +114,18 @@ impl BillingProvider for CoinbaseCommerceProvider {
             )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["data"]["hosted_url"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing hosted_url in Coinbase Commerce response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError(
+                    "Missing hosted_url in Coinbase Commerce response".to_string(),
+                )
+            })
     }
 
     fn handle_webhook(
@@ -125,11 +138,13 @@ impl BillingProvider for CoinbaseCommerceProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature("Missing X-CC-Webhook-Signature header".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Missing X-CC-Webhook-Signature header".to_string(),
+            ));
         }
 
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let event = &json["event"];
         let data = &event["data"];
@@ -180,7 +195,9 @@ impl BillingProvider for CoinbaseCommerceProvider {
         _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
 
         Ok(format!(
@@ -191,13 +208,17 @@ impl BillingProvider for CoinbaseCommerceProvider {
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
 
     async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation("Coinbase Commerce does not support subscription pause".to_string()))
+        Err(CapitalError::UnsupportedOperation(
+            "Coinbase Commerce does not support subscription pause".to_string(),
+        ))
     }
 
     async fn report_usage(
@@ -206,11 +227,19 @@ impl BillingProvider for CoinbaseCommerceProvider {
         _metric: &str,
         _quantity: u64,
     ) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation("Coinbase Commerce does not support metered usage reporting".to_string()))
+        Err(CapitalError::UnsupportedOperation(
+            "Coinbase Commerce does not support metered usage reporting".to_string(),
+        ))
     }
 
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation("Coinbase Commerce does not support coupon application".to_string()))
+    async fn apply_coupon(
+        &self,
+        _subscription_id: &str,
+        _coupon_code: &str,
+    ) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation(
+            "Coinbase Commerce does not support coupon application".to_string(),
+        ))
     }
 
     async fn extend_trial(
@@ -218,6 +247,8 @@ impl BillingProvider for CoinbaseCommerceProvider {
         _subscription_id: &str,
         _trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        Err(CapitalError::UnsupportedOperation("Coinbase Commerce does not support trial extension".to_string()))
+        Err(CapitalError::UnsupportedOperation(
+            "Coinbase Commerce does not support trial extension".to_string(),
+        ))
     }
 }

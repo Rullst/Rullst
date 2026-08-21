@@ -197,7 +197,9 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
         .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
     if combined.len() < 12 {
-        return Err(AuthError::SessionDecryptionError("Invalid token length".to_string()));
+        return Err(AuthError::SessionDecryptionError(
+            "Invalid token length".to_string(),
+        ));
     }
 
     let nonce_bytes: [u8; 12] = combined[..12]
@@ -301,7 +303,9 @@ mod tests {
         let err = hash_password(&p_73).unwrap_err();
         assert_eq!(
             err,
-            AuthError::PasswordHashError("Password exceeds maximum length of 72 characters".to_string())
+            AuthError::PasswordHashError(
+                "Password exceeds maximum length of 72 characters".to_string()
+            )
         );
 
         // verify_password

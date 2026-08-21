@@ -81,7 +81,12 @@ impl BroadcastManager {
     }
 
     /// Publishes a message directly to a channel by name.
-    pub fn publish(&self, channel_name: &str, event: &str, payload: &str) -> Result<usize, RealtimeError> {
+    pub fn publish(
+        &self,
+        channel_name: &str,
+        event: &str,
+        payload: &str,
+    ) -> Result<usize, RealtimeError> {
         let ch = self.get_or_create(channel_name);
         ch.broadcast(event, payload)
     }

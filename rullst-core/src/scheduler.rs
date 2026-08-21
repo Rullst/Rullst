@@ -102,9 +102,9 @@ impl Scheduler {
         // and appending "*" (year).
         let full_expr = format!("0 {} *", cron_expr);
 
-        let schedule: cron::Schedule = full_expr
-            .parse()
-            .map_err(|e: cron::error::Error| SchedulerError::InvalidCron(cron_expr.to_string(), e.to_string()))?;
+        let schedule: cron::Schedule = full_expr.parse().map_err(|e: cron::error::Error| {
+            SchedulerError::InvalidCron(cron_expr.to_string(), e.to_string())
+        })?;
 
         let label = cron_expr.to_string();
         let boxed: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));

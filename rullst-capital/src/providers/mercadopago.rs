@@ -22,7 +22,11 @@ impl MercadoPagoProvider {
     }
 
     /// Verifies the `x-signature` header (`ts=...;v1=...`).
-    pub fn verify_signature(&self, payload: &[u8], signature_header: &str) -> Result<(), CapitalError> {
+    pub fn verify_signature(
+        &self,
+        payload: &[u8],
+        signature_header: &str,
+    ) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
@@ -42,11 +46,13 @@ impl MercadoPagoProvider {
         }
 
         if timestamp.is_empty() || signature_hex.is_empty() {
-            return Err(CapitalError::InvalidSignature("Invalid x-signature header format".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Invalid x-signature header format".to_string(),
+            ));
         }
 
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
+        let sig_bytes = hex::decode(signature_hex)
+            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -56,7 +62,9 @@ impl MercadoPagoProvider {
 
         let tag = ctx.sign();
         if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature("Mercado Pago signature verification failed".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Mercado Pago signature verification failed".to_string(),
+            ));
         }
 
         Ok(())
@@ -77,10 +85,14 @@ impl BillingProvider for MercadoPagoProvider {
         redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
         if plan_id.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Plan ID cannot be empty".to_string(),
+            ));
         }
 
         if self.access_token.is_empty() || self.access_token.starts_with("mock_") {
@@ -121,18 +133,24 @@ impl BillingProvider for MercadoPagoProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("Mercado Pago API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "Mercado Pago API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["init_point"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing init_point in Mercado Pago response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError(
+                    "Missing init_point in Mercado Pago response".to_string(),
+                )
+            })
     }
 
     fn handle_webhook(
@@ -145,11 +163,13 @@ impl BillingProvider for MercadoPagoProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature("Missing x-signature header".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Missing x-signature header".to_string(),
+            ));
         }
 
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let data = &json["data"];
         let subscription_id = data["id"]
@@ -202,7 +222,9 @@ impl BillingProvider for MercadoPagoProvider {
         _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
 
         Ok(format!(
@@ -213,19 +235,27 @@ impl BillingProvider for MercadoPagoProvider {
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .put(format!("https://api.mercadopago.com/preapproval/{}", subscription_id))
+                .put(format!(
+                    "https://api.mercadopago.com/preapproval/{}",
+                    subscription_id
+                ))
                 .bearer_auth(&self.access_token)
                 .json(&serde_json::json!({ "status": "cancelled" }))
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -233,19 +263,27 @@ impl BillingProvider for MercadoPagoProvider {
 
     async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .put(format!("https://api.mercadopago.com/preapproval/{}", subscription_id))
+                .put(format!(
+                    "https://api.mercadopago.com/preapproval/{}",
+                    subscription_id
+                ))
                 .bearer_auth(&self.access_token)
                 .json(&serde_json::json!({ "status": "paused" }))
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -258,17 +296,27 @@ impl BillingProvider for MercadoPagoProvider {
         _quantity: u64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
 
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError> {
+    async fn apply_coupon(
+        &self,
+        subscription_id: &str,
+        coupon_code: &str,
+    ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Coupon code cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Coupon code cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -279,10 +327,14 @@ impl BillingProvider for MercadoPagoProvider {
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError("Trial end timestamp must be positive".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Trial end timestamp must be positive".to_string(),
+            ));
         }
         Ok(())
     }

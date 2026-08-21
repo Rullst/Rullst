@@ -316,6 +316,9 @@ pub async fn simulate_provider_checkout(
             rullst_capital::url_encode(customer_email),
             rullst_capital::url_encode(plan_id)
         )),
-        _ => Err(rullst_capital::CapitalError::ConfigurationError(format!("Unknown provider: {}", provider_id))),
+        _ => Err(rullst_capital::CapitalError::ConfigurationError(format!(
+            "Unknown provider: {}",
+            provider_id
+        ))),
     }
 }

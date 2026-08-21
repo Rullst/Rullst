@@ -381,4 +381,3 @@ pub fn router() -> rullst::Router {
 pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
     Box::into_raw(Box::new(router()))
 }
-

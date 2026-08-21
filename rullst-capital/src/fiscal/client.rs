@@ -83,7 +83,12 @@ impl NfseNationalClient {
             .body(signed_dps_xml.to_string())
             .send()
             .await
-            .map_err(|e| FiscalError::Network(format!("Network connection to Receita Federal failed: {}", e)))?;
+            .map_err(|e| {
+                FiscalError::Network(format!(
+                    "Network connection to Receita Federal failed: {}",
+                    e
+                ))
+            })?;
 
         if !res.status().is_success() {
             let status = res.status().as_u16();

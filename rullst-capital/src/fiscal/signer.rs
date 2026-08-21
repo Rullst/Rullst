@@ -16,13 +16,15 @@ pub fn sign_dps_xml(xml: &str, cert: &FiscalCertificate) -> Result<String, Fisca
     let start_tag = "<infDPS";
     let end_tag = "</infDPS>";
 
-    let start_pos = xml
-        .find(start_tag)
-        .ok_or_else(|| FiscalError::XmlSigning("Missing <infDPS> element in DPS XML".to_string()))?;
+    let start_pos = xml.find(start_tag).ok_or_else(|| {
+        FiscalError::XmlSigning("Missing <infDPS> element in DPS XML".to_string())
+    })?;
     let end_pos = xml
         .find(end_tag)
         .map(|p| p + end_tag.len())
-        .ok_or_else(|| FiscalError::XmlSigning("Missing </infDPS> end tag in DPS XML".to_string()))?;
+        .ok_or_else(|| {
+            FiscalError::XmlSigning("Missing </infDPS> end tag in DPS XML".to_string())
+        })?;
 
     let inf_dps_content = &xml[start_pos..end_pos];
 

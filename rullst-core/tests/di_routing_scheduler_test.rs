@@ -25,10 +25,10 @@ fn test_di_container_registration_and_resolution() {
     // Unregistered resolution error
     let err = container.resolve::<UserService>();
     assert!(err.is_err());
-    assert!(
-        err.unwrap_err()
-            .contains("not registered in the DI Container")
-    );
+    assert!(matches!(
+        err.unwrap_err(),
+        rullst_core::di::DiError::NotRegistered(_)
+    ));
 
     // Register instance
     container.register(UserService {

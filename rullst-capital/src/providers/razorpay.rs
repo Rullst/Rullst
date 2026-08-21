@@ -24,19 +24,25 @@ impl RazorpayProvider {
     }
 
     /// Verifies the `X-Razorpay-Signature` header HMAC-SHA256 signature.
-    pub fn verify_signature(&self, payload: &[u8], signature_hex: &str) -> Result<(), CapitalError> {
+    pub fn verify_signature(
+        &self,
+        payload: &[u8],
+        signature_hex: &str,
+    ) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
 
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
+        let sig_bytes = hex::decode(signature_hex)
+            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let tag = hmac::sign(&key, payload);
 
         if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature("Razorpay signature verification failed".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Razorpay signature verification failed".to_string(),
+            ));
         }
 
         Ok(())
@@ -57,10 +63,14 @@ impl BillingProvider for RazorpayProvider {
         redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
         if plan_id.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Plan ID cannot be empty".to_string(),
+            ));
         }
 
         if self.key_id.is_empty() || self.key_id.starts_with("mock_") {
@@ -94,18 +104,24 @@ impl BillingProvider for RazorpayProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("Razorpay API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "Razorpay API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["short_url"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing short_url in Razorpay response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError(
+                    "Missing short_url in Razorpay response".to_string(),
+                )
+            })
     }
 
     fn handle_webhook(
@@ -118,11 +134,13 @@ impl BillingProvider for RazorpayProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature("Missing X-Razorpay-Signature header".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Missing X-Razorpay-Signature header".to_string(),
+            ));
         }
 
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let event = json["event"].as_str().unwrap_or("");
         let sub_data = &json["payload"]["subscription"]["entity"];
@@ -180,7 +198,9 @@ impl BillingProvider for RazorpayProvider {
         _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
 
         Ok(format!(
@@ -191,18 +211,26 @@ impl BillingProvider for RazorpayProvider {
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .post(format!("https://api.razorpay.com/v1/subscriptions/{}/cancel", subscription_id))
+                .post(format!(
+                    "https://api.razorpay.com/v1/subscriptions/{}/cancel",
+                    subscription_id
+                ))
                 .basic_auth(&self.key_id, Some(&self.key_secret))
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -210,18 +238,26 @@ impl BillingProvider for RazorpayProvider {
 
     async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .post(format!("https://api.razorpay.com/v1/subscriptions/{}/pause", subscription_id))
+                .post(format!(
+                    "https://api.razorpay.com/v1/subscriptions/{}/pause",
+                    subscription_id
+                ))
                 .basic_auth(&self.key_id, Some(&self.key_secret))
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -234,17 +270,27 @@ impl BillingProvider for RazorpayProvider {
         _quantity: u64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
 
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError> {
+    async fn apply_coupon(
+        &self,
+        subscription_id: &str,
+        coupon_code: &str,
+    ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Coupon code cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Coupon code cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -255,10 +301,14 @@ impl BillingProvider for RazorpayProvider {
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError("Trial end timestamp must be positive".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Trial end timestamp must be positive".to_string(),
+            ));
         }
         Ok(())
     }

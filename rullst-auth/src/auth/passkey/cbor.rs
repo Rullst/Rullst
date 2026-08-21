@@ -61,7 +61,12 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
                 &rest[8..],
             )
         }
-        _ => return Err(AuthError::CborParseError(format!("Unsupported CBOR info: {}", info))),
+        _ => {
+            return Err(AuthError::CborParseError(format!(
+                "Unsupported CBOR info: {}",
+                info
+            )));
+        }
     };
 
     match major {
@@ -69,7 +74,9 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
         1 => Ok((CborValue::Integer(-(val as i64) - 1), rest)),
         2 => {
             if rest.len() < val as usize {
-                return Err(AuthError::CborParseError("Unexpected EOF in byte string".to_string()));
+                return Err(AuthError::CborParseError(
+                    "Unexpected EOF in byte string".to_string(),
+                ));
             }
             Ok((
                 CborValue::ByteString(rest[..val as usize].to_vec()),
@@ -78,7 +85,9 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
         }
         3 => {
             if rest.len() < val as usize {
-                return Err(AuthError::CborParseError("Unexpected EOF in text string".to_string()));
+                return Err(AuthError::CborParseError(
+                    "Unexpected EOF in text string".to_string(),
+                ));
             }
             let s = String::from_utf8(rest[..val as usize].to_vec())
                 .map_err(|e| AuthError::CborParseError(format!("Invalid UTF-8: {}", e)))?;
@@ -103,13 +112,20 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
                 let key = match key_val {
                     CborValue::Integer(i) => CborKey::Integer(i),
                     CborValue::TextString(s) => CborKey::TextString(s),
-                    _ => return Err(AuthError::CborParseError("Invalid CBOR map key".to_string())),
+                    _ => {
+                        return Err(AuthError::CborParseError(
+                            "Invalid CBOR map key".to_string(),
+                        ));
+                    }
                 };
                 map.insert(key, val_val);
                 current = next2;
             }
             Ok((CborValue::Map(map), current))
         }
-        _ => Err(AuthError::CborParseError(format!("Unsupported CBOR major type: {}", major))),
+        _ => Err(AuthError::CborParseError(format!(
+            "Unsupported CBOR major type: {}",
+            major
+        ))),
     }
 }

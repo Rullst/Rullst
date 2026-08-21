@@ -22,7 +22,11 @@ impl PaddleProvider {
     }
 
     /// Verifies the `Paddle-Signature` header (`ts=1690000000;h1=abcd...`).
-    pub fn verify_signature(&self, payload: &[u8], signature_header: &str) -> Result<(), CapitalError> {
+    pub fn verify_signature(
+        &self,
+        payload: &[u8],
+        signature_header: &str,
+    ) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
@@ -42,11 +46,13 @@ impl PaddleProvider {
         }
 
         if timestamp.is_empty() || signature_hex.is_empty() {
-            return Err(CapitalError::InvalidSignature("Invalid Paddle-Signature header format".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Invalid Paddle-Signature header format".to_string(),
+            ));
         }
 
-        let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
+        let sig_bytes = hex::decode(signature_hex)
+            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -56,7 +62,9 @@ impl PaddleProvider {
 
         let tag = ctx.sign();
         if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature("Paddle signature verification failed".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Paddle signature verification failed".to_string(),
+            ));
         }
 
         Ok(())
@@ -77,10 +85,14 @@ impl BillingProvider for PaddleProvider {
         redirect_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
         if plan_id.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Plan ID cannot be empty".to_string(),
+            ));
         }
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
@@ -114,18 +126,24 @@ impl BillingProvider for PaddleProvider {
             .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!("Paddle API error: HTTP {}", res.status())));
+            return Err(CapitalError::ProviderRequestFailed(format!(
+                "Paddle API error: HTTP {}",
+                res.status()
+            )));
         }
 
-        let body: Value = res
-            .json()
-            .await
-            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
+        let body: Value = res.json().await.map_err(|e| {
+            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        })?;
 
         body["data"]["checkout"]["url"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| CapitalError::PayloadParseError("Missing checkout URL in Paddle response".to_string()))
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError(
+                    "Missing checkout URL in Paddle response".to_string(),
+                )
+            })
     }
 
     fn handle_webhook(
@@ -138,11 +156,13 @@ impl BillingProvider for PaddleProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature("Missing paddle-signature header".to_string()));
+            return Err(CapitalError::InvalidSignature(
+                "Missing paddle-signature header".to_string(),
+            ));
         }
 
-        let json: Value =
-            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
+        let json: Value = serde_json::from_slice(payload)
+            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let data = &json["data"];
         let subscription_id = data["id"].as_str().unwrap_or("").to_string();
@@ -179,7 +199,9 @@ impl BillingProvider for PaddleProvider {
         _return_url: &str,
     ) -> Result<String, CapitalError> {
         if customer_email.trim().is_empty() {
-            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+            return Err(CapitalError::ConfigurationError(
+                "Customer email cannot be empty".to_string(),
+            ));
         }
 
         Ok(format!(
@@ -190,18 +212,26 @@ impl BillingProvider for PaddleProvider {
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .post(format!("https://api.paddle.com/subscriptions/{}/cancel", subscription_id))
+                .post(format!(
+                    "https://api.paddle.com/subscriptions/{}/cancel",
+                    subscription_id
+                ))
                 .bearer_auth(&self.api_key)
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -209,18 +239,26 @@ impl BillingProvider for PaddleProvider {
 
     async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
             let client = reqwest::Client::new();
             let res = client
-                .post(format!("https://api.paddle.com/subscriptions/{}/pause", subscription_id))
+                .post(format!(
+                    "https://api.paddle.com/subscriptions/{}/pause",
+                    subscription_id
+                ))
                 .bearer_auth(&self.api_key)
                 .send()
                 .await
                 .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
             if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+                return Err(CapitalError::ProviderRequestFailed(format!(
+                    "HTTP {}",
+                    res.status()
+                )));
             }
         }
         Ok(())
@@ -233,17 +271,27 @@ impl BillingProvider for PaddleProvider {
         _quantity: u64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
 
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError> {
+    async fn apply_coupon(
+        &self,
+        subscription_id: &str,
+        coupon_code: &str,
+    ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Coupon code cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Coupon code cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -254,10 +302,14 @@ impl BillingProvider for PaddleProvider {
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
         if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Subscription ID cannot be empty".to_string(),
+            ));
         }
         if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError("Trial end timestamp must be positive".to_string()));
+            return Err(CapitalError::SubscriptionError(
+                "Trial end timestamp must be positive".to_string(),
+            ));
         }
         Ok(())
     }

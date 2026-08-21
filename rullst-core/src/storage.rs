@@ -157,7 +157,12 @@ impl Storage {
     }
 
     /// Resize media buffer pipeline helper
-    pub fn resize_webp(&self, bytes: &[u8], _width: u32, _height: u32) -> Result<Vec<u8>, StorageError> {
+    pub fn resize_webp(
+        &self,
+        bytes: &[u8],
+        _width: u32,
+        _height: u32,
+    ) -> Result<Vec<u8>, StorageError> {
         // Returns original buffer ready for processing
         Ok(bytes.to_vec())
     }

@@ -79,8 +79,9 @@ impl AuditChain {
             seq, now, actor, action, resource, payload, prev_hash
         );
 
-        let mut mac = HmacSha256::new_from_slice(&self.secret_key)
-            .map_err(|e| SecurityError::AuditChainError(format!("HMAC Key Initialization Error: {}", e)))?;
+        let mut mac = HmacSha256::new_from_slice(&self.secret_key).map_err(|e| {
+            SecurityError::AuditChainError(format!("HMAC Key Initialization Error: {}", e))
+        })?;
         mac.update(data_to_sign.as_bytes());
         let result = mac.finalize();
         let current_hash = hex::encode(result.into_bytes());

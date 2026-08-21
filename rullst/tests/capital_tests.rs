@@ -191,7 +191,10 @@ async fn test_stripe_signature_verification_failure() {
     );
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(err.to_string().contains("Invalid") || matches!(err, rullst::capital::CapitalError::InvalidSignature(_)));
+    assert!(
+        err.to_string().contains("Invalid")
+            || matches!(err, rullst::capital::CapitalError::InvalidSignature(_))
+    );
 }
 
 #[tokio::test]
@@ -203,7 +206,10 @@ async fn test_lemonsqueezy_signature_verification_failure() {
     headers.insert("x-signature".to_string(), "badhex".to_string());
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(err.to_string().contains("Invalid") || matches!(err, rullst::capital::CapitalError::InvalidSignature(_)));
+    assert!(
+        err.to_string().contains("Invalid")
+            || matches!(err, rullst::capital::CapitalError::InvalidSignature(_))
+    );
 }
 
 #[tokio::test]

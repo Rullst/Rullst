@@ -77,13 +77,13 @@ impl ToolRegistry {
 
     /// Execute a registered tool by name with arguments
     pub fn execute(&self, name: &str, payload: Value) -> Result<Value, crate::ai::AiError> {
-        let tool = self
-            .tools
-            .get(name)
-            .ok_or_else(|| crate::ai::AiError::Other(format!("Tool '{}' not found in registry", name)))?;
+        let tool = self.tools.get(name).ok_or_else(|| {
+            crate::ai::AiError::Other(format!("Tool '{}' not found in registry", name))
+        })?;
 
-        tool.execute(payload)
-            .map_err(|e| crate::ai::AiError::Other(format!("Execution error in tool '{}': {}", name, e)))
+        tool.execute(payload).map_err(|e| {
+            crate::ai::AiError::Other(format!("Execution error in tool '{}': {}", name, e))
+        })
     }
 
     pub fn len(&self) -> usize {
