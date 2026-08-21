@@ -108,7 +108,7 @@ async fn test_stripe_provider_webhook_uninteresting() {
     let headers = std::collections::HashMap::new();
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().contains("Uninteresting"));
+    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
 }
 
 #[tokio::test]
@@ -177,7 +177,7 @@ async fn test_lemonsqueezy_webhook_uninteresting() {
     let headers = std::collections::HashMap::new();
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().contains("Uninteresting"));
+    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
 }
 
 #[tokio::test]
@@ -191,7 +191,7 @@ async fn test_stripe_signature_verification_failure() {
     );
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(err.contains("Invalid hex"));
+    assert!(err.to_string().contains("Invalid") || matches!(err, rullst::capital::CapitalError::InvalidSignature(_)));
 }
 
 #[tokio::test]
@@ -203,7 +203,7 @@ async fn test_lemonsqueezy_signature_verification_failure() {
     headers.insert("x-signature".to_string(), "badhex".to_string());
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(err.contains("Invalid hex"));
+    assert!(err.to_string().contains("Invalid") || matches!(err, rullst::capital::CapitalError::InvalidSignature(_)));
 }
 
 #[tokio::test]

@@ -65,12 +65,15 @@ pub async fn home() -> impl IntoResponse {{
     }})
 }}
 
+pub fn router() -> Router {{
+    routes![
+        get("/" => home),
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = routes![
-        get("/" => home),
-    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
-    Box::into_raw(Box::new(router))
+    Box::into_raw(Box::new(router()))
 }}
 "##,
                 migrations_mod_declaration = migrations_mod_declaration,
@@ -152,13 +155,16 @@ pub async fn clicked() -> impl IntoResponse {{
     }})
 }}
 
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = routes![
+pub fn router() -> Router {{
+    routes![
         get("/" => home),
         post("/clicked" => clicked),
-    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
-    Box::into_raw(Box::new(router))
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    Box::into_raw(Box::new(router()))
 }}
 "##,
                 migrations_mod_declaration = migrations_mod_declaration,
@@ -238,8 +244,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(lib_path)
     }} else {{
-        let router_ptr = {project_name_safe}::rullst_router_init();
-        let router = unsafe {{ *Box::from_raw(router_ptr) }};
+        let router = {project_name_safe}::router();
         rullst::Server::new(router)
     }};
 

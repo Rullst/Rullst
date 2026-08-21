@@ -1,3 +1,4 @@
+use crate::error::SecurityError;
 use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -20,14 +21,14 @@ pub struct AuditRecord {
 }
 
 pub trait AuditLogger: Send + Sync {
-    fn log(&self, record: &AuditRecord) -> Result<(), String>;
+    fn log(&self, record: &AuditRecord) -> Result<(), SecurityError>;
 }
 
 #[derive(Default)]
 pub struct StdoutAuditLogger;
 
 impl AuditLogger for StdoutAuditLogger {
-    fn log(&self, record: &AuditRecord) -> Result<(), String> {
+    fn log(&self, record: &AuditRecord) -> Result<(), SecurityError> {
         println!(
             "[AUDIT LOG #{}] actor={} action={} resource={} hash={}",
             record.sequence_id, record.actor, record.action, record.resource, record.hash
@@ -59,7 +60,7 @@ impl AuditChain {
         action: &str,
         resource: &str,
         payload: &str,
-    ) -> Result<AuditRecord, String> {
+    ) -> Result<AuditRecord, SecurityError> {
         let mut last_hash_guard = self.last_hash.lock().await;
         let mut seq_guard = self.sequence_counter.lock().await;
 
@@ -79,7 +80,7 @@ impl AuditChain {
         );
 
         let mut mac = HmacSha256::new_from_slice(&self.secret_key)
-            .map_err(|e| format!("HMAC Key Initialization Error: {}", e))?;
+            .map_err(|e| SecurityError::AuditChainError(format!("HMAC Key Initialization Error: {}", e)))?;
         mac.update(data_to_sign.as_bytes());
         let result = mac.finalize();
         let current_hash = hex::encode(result.into_bytes());

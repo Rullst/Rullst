@@ -15,19 +15,19 @@ categories = ["database"]
 
 [dependencies]
 mutants = "0.0.4"
-rullst-orm-macros = { path = "../rullst-orm-macros", version = "12.0.0" }
-sqlx = { version = "0.9", features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json", "tls-rustls"] }
-tokio = { version = "1.23.1", features = ["full"] }
-async-trait = "0.1"
+rullst-orm-macros = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json", "tls-rustls"] }
+tokio = { workspace = true, features = ["full"] }
+async-trait = { workspace = true }
 futures = "0.3"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-redis = { version = "1", features = ["tokio-comp", "connection-manager"], optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+redis = { workspace = true, features = ["tokio-comp", "connection-manager"], optional = true }
 aes-gcm = "0.11.0"
-base64 = "0.23.0"
-rand = "0.10"
+base64 = { workspace = true }
+rand = { workspace = true }
 async-stream = "0.3.5"
-tracing = "0.1.44"
+tracing = { workspace = true }
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 
 walkdir = "2.5.0"
@@ -40,9 +40,9 @@ strict-mysql = []
 strict-sqlite = []
 
 [dev-dependencies]
-rand = "0.10"
-axum = "0.8"
-criterion = { version = "0.8.2", features = ["async_tokio"] }
+rand = { workspace = true }
+axum = { workspace = true }
+criterion = { workspace = true, features = ["async_tokio"] }
 testcontainers = "0.27.3"
 testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql"] }
 proptest = "1.11.0"

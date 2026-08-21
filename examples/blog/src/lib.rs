@@ -334,8 +334,7 @@ pub mod app {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
+pub fn router() -> rullst::Router {
     use app::*;
     use rullst::routes;
 
@@ -348,7 +347,7 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
         .register::<Post>()
         .build();
 
-    let router = routes![
+    routes![
         get("/" => index),
         post("/posts" => store),
         get("/posts/repository" => crate::repository_demo::repository_page),
@@ -374,7 +373,12 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
     .nest_axum("/studio", studio_router)
     .nest_axum("/nexus", nexus_router)
     .layer(axum::middleware::map_response(set_security_headers))
-    .layer(rullst::tenant_layer(config));
-
-    Box::into_raw(Box::new(router))
+    .layer(rullst::tenant_layer(config))
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
+    Box::into_raw(Box::new(router()))
+}
+

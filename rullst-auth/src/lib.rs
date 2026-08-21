@@ -1,3 +1,6 @@
+pub mod error;
+pub use error::*;
+
 pub mod auth;
 pub use auth::*;
 

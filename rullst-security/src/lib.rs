@@ -1,3 +1,6 @@
+pub mod error;
+pub use error::*;
+
 pub mod ai_firewall;
 pub mod audit;
 pub mod cswsh;

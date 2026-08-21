@@ -249,7 +249,7 @@ pub async fn simulate_provider_checkout(
     customer_email: &str,
     plan_id: &str,
     redirect_url: &str,
-) -> Result<String, String> {
+) -> Result<String, rullst_capital::CapitalError> {
     use rullst_capital::providers::*;
 
     match provider_id {
@@ -316,6 +316,6 @@ pub async fn simulate_provider_checkout(
             rullst_capital::url_encode(customer_email),
             rullst_capital::url_encode(plan_id)
         )),
-        _ => Err(format!("Unknown provider: {}", provider_id)),
+        _ => Err(rullst_capital::CapitalError::ConfigurationError(format!("Unknown provider: {}", provider_id))),
     }
 }

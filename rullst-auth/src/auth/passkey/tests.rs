@@ -106,7 +106,10 @@ fn test_finish_register_mismatches() {
 
     // Challenge mismatch
     let res = auth.finish_register(&cred, "wrong_challenge");
-    assert_eq!(res.unwrap_err(), "Challenge mismatch");
+    assert_eq!(
+        res.unwrap_err(),
+        crate::error::AuthError::PasskeyError("Challenge mismatch".to_string())
+    );
 
     // Origin mismatch
     let bad_origin_json = serde_json::json!({
@@ -119,7 +122,10 @@ fn test_finish_register_mismatches() {
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
 
     let res2 = auth.finish_register(&cred, "correct_challenge");
-    assert_eq!(res2.unwrap_err(), "Origin mismatch");
+    assert_eq!(
+        res2.unwrap_err(),
+        crate::error::AuthError::PasskeyError("Origin mismatch".to_string())
+    );
 }
 
 #[test]
@@ -154,7 +160,10 @@ fn test_finish_authenticate_mismatches() {
 
     // Challenge mismatch
     let res = auth.finish_authenticate(&cred, "wrong_challenge", pk.clone());
-    assert_eq!(res.unwrap_err(), "Challenge mismatch");
+    assert_eq!(
+        res.unwrap_err(),
+        crate::error::AuthError::PasskeyError("Challenge mismatch".to_string())
+    );
 
     // Origin mismatch
     let bad_origin_json = serde_json::json!({
@@ -167,7 +176,10 @@ fn test_finish_authenticate_mismatches() {
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
 
     let res2 = auth.finish_authenticate(&cred, "correct_challenge", pk);
-    assert_eq!(res2.unwrap_err(), "Origin mismatch");
+    assert_eq!(
+        res2.unwrap_err(),
+        crate::error::AuthError::PasskeyError("Origin mismatch".to_string())
+    );
 }
 
 #[test]

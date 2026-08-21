@@ -1,4 +1,5 @@
 use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use crate::error::CapitalError;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -20,7 +21,7 @@ impl PicPayProvider {
     }
 
     /// Verifies the `x-seller-token` header.
-    pub fn verify_token(&self, token_header: &str) -> Result<(), String> {
+    pub fn verify_token(&self, token_header: &str) -> Result<(), CapitalError> {
         if self.seller_token.is_empty() {
             return Ok(());
         }
@@ -32,7 +33,7 @@ impl PicPayProvider {
             .unwrap_u8()
             == 0
         {
-            return Err("PicPay seller token verification failed".to_string());
+            return Err(CapitalError::InvalidSignature("PicPay seller token verification failed".to_string()));
         }
 
         Ok(())
@@ -51,7 +52,14 @@ impl BillingProvider for PicPayProvider {
         customer_email: &str,
         plan_id: &str,
         redirect_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+        if plan_id.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+        }
+
         if self.picpay_token.is_empty() || self.picpay_token.starts_with("mock_") {
             return Ok(format!(
                 "https://app.picpay.com/checkout/mock_session?email={}&plan={}&return_url={}",
@@ -81,38 +89,38 @@ impl BillingProvider for PicPayProvider {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| format!("Network error: {}", e))?;
+            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(format!("PicPay API error: HTTP {}", res.status()));
+            return Err(CapitalError::ProviderRequestFailed(format!("PicPay API error: HTTP {}", res.status())));
         }
 
         let body: Value = res
             .json()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?;
+            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
 
         body["paymentUrl"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| "Missing paymentUrl in PicPay response".to_string())
+            .ok_or_else(|| CapitalError::PayloadParseError("Missing paymentUrl in PicPay response".to_string()))
     }
 
     fn handle_webhook(
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String> {
+    ) -> Result<WebhookEvent, CapitalError> {
         let seller_header = headers.get("x-seller-token");
 
         if let Some(token) = seller_header {
             self.verify_token(token)?;
         } else if !self.seller_token.is_empty() {
-            return Err("Missing x-seller-token header".to_string());
+            return Err(CapitalError::InvalidSignature("Missing x-seller-token header".to_string()));
         }
 
         let json: Value =
-            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
+            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         let subscription_id = json["referenceId"]
             .as_str()
@@ -147,19 +155,26 @@ impl BillingProvider for PicPayProvider {
         &self,
         customer_email: &str,
         _return_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+
         Ok(format!(
             "https://picpay.com/minha-conta?email={}",
             url_encode(customer_email)
         ))
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
+    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
         Ok(())
     }
 
-    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        Ok(())
+    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("PicPay does not support pause subscription".to_string()))
     }
 
     async fn report_usage(
@@ -167,19 +182,19 @@ impl BillingProvider for PicPayProvider {
         _subscription_id: &str,
         _metric: &str,
         _quantity: u64,
-    ) -> Result<(), String> {
-        Ok(())
+    ) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("PicPay does not support metered usage reporting".to_string()))
     }
 
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), String> {
-        Ok(())
+    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("PicPay does not support coupon applications via API".to_string()))
     }
 
     async fn extend_trial(
         &self,
         _subscription_id: &str,
         _trial_ends_at: i64,
-    ) -> Result<(), String> {
-        Ok(())
+    ) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("PicPay does not support trial period extension".to_string()))
     }
 }

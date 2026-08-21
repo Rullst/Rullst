@@ -276,24 +276,16 @@ pub fn build_rows_html(
 }
 
 pub fn resolve_driver_display_name() -> String {
-    if let Ok(env_str) = std::fs::read_to_string(".env") {
-        for line in env_str.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("DATABASE_URL=") {
-                let url = trimmed
-                    .trim_start_matches("DATABASE_URL=")
-                    .trim_matches('"')
-                    .trim_matches('\'');
-                if url.contains("turso") || url.starts_with("libsql") {
-                    return "TURSO / LIBSQL".to_string();
-                } else if url.starts_with("postgres") || url.starts_with("postgresql") {
-                    return "POSTGRESQL".to_string();
-                } else if url.starts_with("mysql") || url.starts_with("mariadb") {
-                    return "MYSQL / MARIADB".to_string();
-                } else if url.starts_with("sqlite") {
-                    return "SQLITE".to_string();
-                }
-            }
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        let url_lower = url.to_lowercase();
+        if url_lower.contains("turso") || url_lower.starts_with("libsql") {
+            return "TURSO / LIBSQL".to_string();
+        } else if url_lower.starts_with("postgres") || url_lower.starts_with("postgresql") {
+            return "POSTGRESQL".to_string();
+        } else if url_lower.starts_with("mysql") || url_lower.starts_with("mariadb") {
+            return "MYSQL / MARIADB".to_string();
+        } else if url_lower.starts_with("sqlite") {
+            return "SQLITE".to_string();
         }
     }
     rullst_core::db::safe_driver()

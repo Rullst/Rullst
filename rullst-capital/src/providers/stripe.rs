@@ -1,4 +1,5 @@
 use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
@@ -21,7 +22,7 @@ impl StripeProvider {
     }
 
     /// Verifies the `Stripe-Signature` header signature (`t=1492774577,v1=604956efe...`).
-    pub fn verify_signature(&self, payload: &[u8], signature_header: &str) -> Result<(), String> {
+    pub fn verify_signature(&self, payload: &[u8], signature_header: &str) -> Result<(), CapitalError> {
         if self.webhook_secret.is_empty() {
             return Ok(());
         }
@@ -41,11 +42,11 @@ impl StripeProvider {
         }
 
         if timestamp.is_empty() || signature_hex.is_empty() {
-            return Err("Invalid Stripe-Signature header format".to_string());
+            return Err(CapitalError::InvalidSignature("Invalid Stripe-Signature header format".to_string()));
         }
 
         let sig_bytes =
-            hex::decode(signature_hex).map_err(|e| format!("Invalid hex signature: {}", e))?;
+            hex::decode(signature_hex).map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -55,7 +56,7 @@ impl StripeProvider {
 
         let tag = ctx.sign();
         if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err("Stripe signature verification failed".to_string());
+            return Err(CapitalError::InvalidSignature("Stripe signature verification failed".to_string()));
         }
 
         Ok(())
@@ -74,7 +75,14 @@ impl BillingProvider for StripeProvider {
         customer_email: &str,
         plan_id: &str,
         redirect_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+        if plan_id.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+        }
+
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(format!(
                 "https://checkout.stripe.com/pay/mock_session?email={}&plan={}&redirect={}",
@@ -100,41 +108,41 @@ impl BillingProvider for StripeProvider {
             .body(body_str)
             .send()
             .await
-            .map_err(|e| format!("Network error: {}", e))?;
+            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
 
         if !res.status().is_success() {
-            return Err(format!("Stripe API error: HTTP {}", res.status()));
+            return Err(CapitalError::ProviderRequestFailed(format!("Stripe API error: HTTP {}", res.status())));
         }
 
         let body: Value = res
             .json()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?;
+            .map_err(|e| CapitalError::PayloadParseError(format!("Failed to parse response: {}", e)))?;
 
         body["url"]
             .as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| "Missing checkout URL in Stripe response".to_string())
+            .ok_or_else(|| CapitalError::PayloadParseError("Missing checkout URL in Stripe response".to_string()))
     }
 
     fn handle_webhook(
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String> {
+    ) -> Result<WebhookEvent, CapitalError> {
         if let Some(sig_header) = headers.get("stripe-signature") {
             self.verify_signature(payload, sig_header)?;
         } else if !self.webhook_secret.is_empty() {
-            return Err("Missing stripe-signature header".to_string());
+            return Err(CapitalError::InvalidSignature("Missing stripe-signature header".to_string()));
         }
 
         let json: Value =
-            serde_json::from_slice(payload).map_err(|e| format!("Invalid JSON payload: {}", e))?;
+            serde_json::from_slice(payload).map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
         if let Some(event_type) = json["type"].as_str()
             && !event_type.starts_with("customer.subscription.")
         {
-            return Err(format!("Uninteresting event: {}", event_type));
+            return Err(CapitalError::PayloadParseError(format!("Uninteresting event: {}", event_type)));
         }
 
         let data = &json["data"]["object"];
@@ -171,7 +179,11 @@ impl BillingProvider for StripeProvider {
         &self,
         customer_email: &str,
         return_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(format!(
                 "https://billing.stripe.com/p/session/mock_portal?email={}&return_url={}",
@@ -186,32 +198,127 @@ impl BillingProvider for StripeProvider {
         ))
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
+    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            let client = reqwest::Client::new();
+            let res = client
+                .delete(format!("https://api.stripe.com/v1/subscriptions/{}", subscription_id))
+                .bearer_auth(&self.api_key)
+                .send()
+                .await
+                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
+            if !res.status().is_success() {
+                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+            }
+        }
         Ok(())
     }
 
-    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), String> {
+    async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            let client = reqwest::Client::new();
+            let res = client
+                .post(format!("https://api.stripe.com/v1/subscriptions/{}", subscription_id))
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body("pause_collection[behavior]=void")
+                .send()
+                .await
+                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
+            if !res.status().is_success() {
+                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+            }
+        }
         Ok(())
     }
 
     async fn report_usage(
         &self,
-        _subscription_id: &str,
-        _metric: &str,
-        _quantity: u64,
-    ) -> Result<(), String> {
+        subscription_id: &str,
+        metric: &str,
+        quantity: u64,
+    ) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
+        if metric.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Metric name cannot be empty".to_string()));
+        }
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            let client = reqwest::Client::new();
+            let body = format!("quantity={}&action=increment", quantity);
+            let res = client
+                .post(format!("https://api.stripe.com/v1/subscription_items/{}/usage_records", subscription_id))
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(body)
+                .send()
+                .await
+                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
+            if !res.status().is_success() {
+                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+            }
+        }
         Ok(())
     }
 
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), String> {
+    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
+        if coupon_code.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Coupon code cannot be empty".to_string()));
+        }
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            let client = reqwest::Client::new();
+            let body = format!("coupon={}", coupon_code);
+            let res = client
+                .post(format!("https://api.stripe.com/v1/subscriptions/{}", subscription_id))
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(body)
+                .send()
+                .await
+                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
+            if !res.status().is_success() {
+                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+            }
+        }
         Ok(())
     }
 
     async fn extend_trial(
         &self,
-        _subscription_id: &str,
-        _trial_ends_at: i64,
-    ) -> Result<(), String> {
+        subscription_id: &str,
+        trial_ends_at: i64,
+    ) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
+        if trial_ends_at <= 0 {
+            return Err(CapitalError::SubscriptionError("Trial end timestamp must be positive".to_string()));
+        }
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            let client = reqwest::Client::new();
+            let body = format!("trial_end={}", trial_ends_at);
+            let res = client
+                .post(format!("https://api.stripe.com/v1/subscriptions/{}", subscription_id))
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(body)
+                .send()
+                .await
+                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
+            if !res.status().is_success() {
+                return Err(CapitalError::ProviderRequestFailed(format!("HTTP {}", res.status())));
+            }
+        }
         Ok(())
     }
 }

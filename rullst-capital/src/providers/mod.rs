@@ -113,6 +113,8 @@ pub struct WebhookEvent {
     pub ends_at: Option<i64>,
 }
 
+use crate::error::CapitalError;
+
 /// Dynamic trait to handle billing provider interactions.
 #[async_trait]
 pub trait BillingProvider: Send + Sync {
@@ -125,27 +127,27 @@ pub trait BillingProvider: Send + Sync {
         customer_email: &str,
         plan_id: &str,
         redirect_url: &str,
-    ) -> Result<String, String>;
+    ) -> Result<String, CapitalError>;
 
     /// Verify the signature and extract subscription data from webhook request.
     fn handle_webhook(
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String>;
+    ) -> Result<WebhookEvent, CapitalError>;
 
     /// Create a customer portal session URL.
     async fn create_customer_portal(
         &self,
         customer_email: &str,
         return_url: &str,
-    ) -> Result<String, String>;
+    ) -> Result<String, CapitalError>;
 
     /// Cancel a subscription immediately.
-    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), String>;
+    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError>;
 
     /// Pause a subscription.
-    async fn pause_subscription(&self, subscription_id: &str) -> Result<(), String>;
+    async fn pause_subscription(&self, subscription_id: &str) -> Result<(), CapitalError>;
 
     /// Report metered usage for a subscription.
     async fn report_usage(
@@ -153,13 +155,13 @@ pub trait BillingProvider: Send + Sync {
         subscription_id: &str,
         metric: &str,
         quantity: u64,
-    ) -> Result<(), String>;
+    ) -> Result<(), CapitalError>;
 
     /// Apply a coupon to an active subscription.
-    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), String>;
+    async fn apply_coupon(&self, subscription_id: &str, coupon_code: &str) -> Result<(), CapitalError>;
 
     /// Extend a trial for a subscription by setting a new end timestamp.
-    async fn extend_trial(&self, subscription_id: &str, trial_ends_at: i64) -> Result<(), String>;
+    async fn extend_trial(&self, subscription_id: &str, trial_ends_at: i64) -> Result<(), CapitalError>;
 }
 
 /// The status of an outbound payout/disbursement.
@@ -194,10 +196,10 @@ pub trait PayoutProvider: Send + Sync {
         recipient_email: &str,
         amount_cents: u64,
         currency: &str,
-    ) -> Result<String, String>;
+    ) -> Result<String, CapitalError>;
 
     /// Check transfer status.
-    async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, String>;
+    async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError>;
 }
 
 /// Helper to url-encode string values without external dependencies.

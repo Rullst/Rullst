@@ -1,4 +1,5 @@
 use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
@@ -51,7 +52,7 @@ impl AlipayProvider {
     }
 
     /// Verifies the webhook signature using constant-time comparison.
-    pub fn verify_signature(&self, payload: &[u8], signature: &str) -> Result<(), String> {
+    pub fn verify_signature(&self, payload: &[u8], signature: &str) -> Result<(), CapitalError> {
         if self.public_key.is_empty() {
             return Ok(());
         }
@@ -73,7 +74,7 @@ impl AlipayProvider {
             return Ok(());
         }
 
-        Err("Alipay signature verification failed".to_string())
+        Err(CapitalError::InvalidSignature("Alipay signature verification failed".to_string()))
     }
 }
 
@@ -89,7 +90,14 @@ impl BillingProvider for AlipayProvider {
         customer_email: &str,
         plan_id: &str,
         redirect_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+        if plan_id.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Plan ID cannot be empty".to_string()));
+        }
+
         if self.app_id.is_empty() || self.app_id.starts_with("mock_") {
             return Ok(format!(
                 "{}?app_id={}&method=alipay.trade.page.pay&email={}&plan={}&return_url={}",
@@ -131,7 +139,7 @@ impl BillingProvider for AlipayProvider {
         &self,
         payload: &[u8],
         headers: &HashMap<String, String>,
-    ) -> Result<WebhookEvent, String> {
+    ) -> Result<WebhookEvent, CapitalError> {
         let sig_header = headers
             .get("alipay-signature")
             .or_else(|| headers.get("x-alipay-signature"))
@@ -140,7 +148,7 @@ impl BillingProvider for AlipayProvider {
         if let Some(sig) = sig_header {
             self.verify_signature(payload, sig)?;
         } else if !self.public_key.is_empty() {
-            return Err("Missing Alipay signature header".to_string());
+            return Err(CapitalError::InvalidSignature("Missing Alipay signature header".to_string()));
         }
 
         // Support both JSON payloads and URL-encoded notification form posts
@@ -228,19 +236,26 @@ impl BillingProvider for AlipayProvider {
         &self,
         customer_email: &str,
         _return_url: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, CapitalError> {
+        if customer_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError("Customer email cannot be empty".to_string()));
+        }
+
         Ok(format!(
             "https://custweb.alipay.com/account/index.htm?email={}",
             url_encode(customer_email)
         ))
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), String> {
+    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
+        if subscription_id.trim().is_empty() {
+            return Err(CapitalError::SubscriptionError("Subscription ID cannot be empty".to_string()));
+        }
         Ok(())
     }
 
-    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), String> {
-        Ok(())
+    async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("Alipay does not support subscription pause".to_string()))
     }
 
     async fn report_usage(
@@ -248,20 +263,20 @@ impl BillingProvider for AlipayProvider {
         _subscription_id: &str,
         _metric: &str,
         _quantity: u64,
-    ) -> Result<(), String> {
-        Ok(())
+    ) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("Alipay does not support metered usage reporting".to_string()))
     }
 
-    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), String> {
-        Ok(())
+    async fn apply_coupon(&self, _subscription_id: &str, _coupon_code: &str) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("Alipay does not support coupon application".to_string()))
     }
 
     async fn extend_trial(
         &self,
         _subscription_id: &str,
         _trial_ends_at: i64,
-    ) -> Result<(), String> {
-        Ok(())
+    ) -> Result<(), CapitalError> {
+        Err(CapitalError::UnsupportedOperation("Alipay does not support trial extension".to_string()))
     }
 }
 

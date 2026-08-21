@@ -1,3 +1,4 @@
+use crate::error::AuthError;
 use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
@@ -17,16 +18,18 @@ use std::fs;
 pub mod passkey;
 
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
-pub fn hash_password(password: &str) -> Result<String, String> {
+pub fn hash_password(password: &str) -> Result<String, AuthError> {
     if password.len() > 72 {
-        return Err("Password exceeds maximum length of 72 characters".to_string());
+        return Err(AuthError::PasswordHashError(
+            "Password exceeds maximum length of 72 characters".to_string(),
+        ));
     }
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     argon2
         .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())
-        .map_err(|e| e.to_string())
+        .map_err(|e| AuthError::PasswordHashError(e.to_string()))
 }
 
 /// Verifies a plain-text password against a hashed Argon2 password.
@@ -91,7 +94,7 @@ pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
 #[cfg_attr(mutants, mutants::skip)]
-pub fn get_app_key() -> Result<Vec<u8>, String> {
+pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     if let Ok(env_key) = std::env::var("APP_KEY") {
         return Ok(env_key.into_bytes());
     }
@@ -108,7 +111,9 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
     if env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod") {
         let err_msg = "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret.".to_string();
         eprintln!("{}", err_msg);
-        return Err("Missing APP_KEY in production environment".to_string());
+        return Err(AuthError::MissingAppKey(
+            "Missing APP_KEY in production environment".to_string(),
+        ));
     }
 
     let dev_key_path = ".rullst_dev_key";
@@ -133,18 +138,19 @@ pub fn get_app_key() -> Result<Vec<u8>, String> {
     Ok(key_vec)
 }
 
-fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, String> {
+fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, AuthError> {
     let mut hasher = sha2::Sha256::new();
     hasher.update(app_key);
     let key_hash = hasher.finalize();
     let mut key_bytes = [0u8; 32];
     key_bytes.copy_from_slice(&key_hash);
-    Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| e.to_string())
+    Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.
 #[cfg_attr(mutants, mutants::skip)]
-pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
+pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, AuthError> {
     let cipher = derive_cipher(app_key)?;
 
     let mut nonce_bytes = [0u8; 12];
@@ -153,14 +159,14 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| e.to_string())?
+        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?
         .as_secs();
     let exp = now + (30 * 24 * 60 * 60); // 30 days
 
     let payload = format!("{}|{}", user_id, exp);
     let ciphertext = cipher
         .encrypt(&nonce, payload.as_bytes())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
 
     let mut combined = Vec::new();
     combined.extend_from_slice(&nonce_bytes);
@@ -171,43 +177,50 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, String> {
 
 /// Decrypts a secure base64-encoded string back into a user_id.
 #[cfg_attr(mutants, mutants::skip)]
-pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, String> {
+pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     let cipher = derive_cipher(app_key)?;
 
     let combined = general_purpose::URL_SAFE_NO_PAD
         .decode(token)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
     if combined.len() < 12 {
-        return Err("Invalid token length".to_string());
+        return Err(AuthError::SessionDecryptionError("Invalid token length".to_string()));
     }
 
     let nonce_bytes: [u8; 12] = combined[..12]
         .try_into()
-        .map_err(|_| "Invalid token length".to_string())?;
+        .map_err(|_| AuthError::SessionDecryptionError("Invalid token length".to_string()))?;
     let nonce = Nonce::from(nonce_bytes);
     let ciphertext = &combined[12..];
 
     let plaintext = cipher
         .decrypt(&nonce, ciphertext)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
-    let payload_str = String::from_utf8(plaintext).map_err(|e| e.to_string())?;
+    let payload_str = String::from_utf8(plaintext)
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
     if let Some((user_id_str, exp_str)) = payload_str.split_once('|') {
-        let exp = exp_str.parse::<u64>().map_err(|e| e.to_string())?;
+        let exp = exp_str
+            .parse::<u64>()
+            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| e.to_string())?
+            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?
             .as_secs();
 
         if now > exp {
-            return Err("Session expired".to_string());
+            return Err(AuthError::SessionExpired);
         }
-        user_id_str.parse::<i32>().map_err(|e| e.to_string())
+        user_id_str
+            .parse::<i32>()
+            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
     } else {
         // Fallback for legacy tokens
-        payload_str.parse::<i32>().map_err(|e| e.to_string())
+        payload_str
+            .parse::<i32>()
+            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
     }
 }
 
@@ -229,7 +242,7 @@ pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
 
 /// Generates the standard HTTP header string to set the encrypted session cookie on the client.
 #[cfg_attr(mutants, mutants::skip)]
-pub fn make_login_cookie(user_id: i32) -> Result<String, String> {
+pub fn make_login_cookie(user_id: i32) -> Result<String, AuthError> {
     let app_key = get_app_key()?;
     let encrypted = encrypt_session(user_id, &app_key)?;
     // Set a HttpOnly, Secure (if not local), SameSite=Lax cookie valid for 30 days
@@ -274,7 +287,10 @@ mod tests {
         // hash_password
         assert!(hash_password(&p_72).is_ok());
         let err = hash_password(&p_73).unwrap_err();
-        assert_eq!(err, "Password exceeds maximum length of 72 characters");
+        assert_eq!(
+            err,
+            AuthError::PasswordHashError("Password exceeds maximum length of 72 characters".to_string())
+        );
 
         // verify_password
         let hash = hash_password(&p_72).unwrap();
@@ -303,7 +319,10 @@ mod tests {
         let short_bytes = vec![0u8; 10];
         let short_token = general_purpose::URL_SAFE_NO_PAD.encode(&short_bytes);
         let err = decrypt_session(&short_token, &k).unwrap_err();
-        assert_eq!(err, "Invalid token length");
+        assert_eq!(
+            err,
+            AuthError::SessionDecryptionError("Invalid token length".to_string())
+        );
     }
 
     #[test]
@@ -320,7 +339,10 @@ mod tests {
         // Test exact length 12 boundary (kills < replaced with <=)
         let exact_12 = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 12]);
         let err_12 = decrypt_session(&exact_12, &k).unwrap_err();
-        assert_ne!(err_12, "Invalid token length");
+        assert_ne!(
+            err_12,
+            AuthError::SessionDecryptionError("Invalid token length".to_string())
+        );
 
         // Decrypt with valid base64 but invalid ciphertext (MAC mismatch)
         let bad_cipher = vec![0u8; 32];
@@ -341,7 +363,7 @@ mod tests {
         let expired_token = general_purpose::URL_SAFE_NO_PAD.encode(&combined);
         assert_eq!(
             decrypt_session(&expired_token, &k).unwrap_err(),
-            "Session expired"
+            AuthError::SessionExpired
         );
     }
 

@@ -1,3 +1,4 @@
+use crate::error::SecurityError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -39,7 +40,7 @@ impl UserContext {
 pub struct RbacGuard;
 
 impl RbacGuard {
-    pub fn authorize(ctx: &UserContext, required_role: &str) -> Result<(), String> {
+    pub fn authorize(ctx: &UserContext, required_role: &str) -> Result<(), SecurityError> {
         if ctx.has_role(required_role) || ctx.has_role("admin") {
             Ok(())
         } else {
@@ -60,7 +61,7 @@ impl RbacGuard {
                     },
                 );
             }
-            Err(format!("Access Denied: Required role '{}'", required_role))
+            Err(SecurityError::Forbidden(format!("Access Denied: Required role '{}'", required_role)))
         }
     }
 
@@ -68,7 +69,7 @@ impl RbacGuard {
         ctx: &UserContext,
         resource_owner_id: &str,
         required_role: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), SecurityError> {
         if ctx.is_owner_of(resource_owner_id)
             || ctx.has_role(required_role)
             || ctx.has_role("admin")
@@ -92,7 +93,7 @@ impl RbacGuard {
                     },
                 );
             }
-            Err("Access Denied: Insufficient permissions or ownership".to_string())
+            Err(SecurityError::Forbidden("Access Denied: Insufficient permissions or ownership".to_string()))
         }
     }
 }

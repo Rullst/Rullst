@@ -9,27 +9,27 @@ default-run = "rullst-blog-example"
 license = "MIT"
 description = "Example blog application built with the Rullst full-stack web framework."
 [dependencies]
-async-trait = "0.1.91"
-rullst = { path = "../../rullst", features = ["orm", "auth", "capital", "ai", "studio", "nexus", "mailer"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
+async-trait = { workspace = true }
+rullst = { workspace = true, features = ["orm", "auth", "capital", "ai", "studio", "nexus", "mailer"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "serde_json", "rullst-security", "rullst-auth", "rullst-capital", "rullst-ai", "rullst-studio", "rullst-nexus"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rullst-orm = { version = "12.0.0", path = "../../rullst-orm" }
-rullst-security = { version = "12.0.0", path = "../../rullst-security" }
-rullst-auth = { version = "12.0.0", path = "../../rullst-auth" }
-rullst-capital = { version = "12.0.0", path = "../../rullst-capital" }
-rullst-studio = { version = "12.0.0", path = "../../rullst-studio" }
-rullst-nexus = { version = "12.0.0", path = "../../rullst-nexus" }
-rullst-ai = { version = "12.0.0", path = "../../rullst-ai" }
-tracing = "0.1"
-tokio = { version = "1.52.3", features = ["full"] }
-sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio"] }
-axum = { version = "0.8.9", features = ["form", "ws"] }
-chrono = { version = "0.4", features = ["serde"] }
+rullst-orm = { workspace = true }
+rullst-security = { workspace = true }
+rullst-auth = { workspace = true }
+rullst-capital = { workspace = true }
+rullst-studio = { workspace = true }
+rullst-nexus = { workspace = true }
+rullst-ai = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
+axum = { workspace = true, features = ["form", "ws"] }
+chrono = { workspace = true, features = ["serde"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

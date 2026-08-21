@@ -6,7 +6,6 @@ use axum::{
     response::IntoResponse,
 };
 use serde::Deserialize;
-use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 
@@ -64,8 +63,6 @@ pub async fn handle_explain(
             return "Access denied: sensitive configuration files cannot be inspected.".to_string();
         }
     }
-
-    let _file_content = fs::read_to_string(&canonical).unwrap_or_default();
 
     "AI Engine offline. AI features are now available via the `rullst-ai` crate.".to_string()
 }

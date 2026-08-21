@@ -1010,10 +1010,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-traits",
  "serde",
- "wasm-bindgen",
  "windows-link",
 ]
 
@@ -3941,7 +3939,6 @@ dependencies = [
  "js-sys",
  "pin-project-lite",
  "thiserror 2.0.19",
- "tracing",
 ]
 
 [[package]]
@@ -5000,11 +4997,9 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "itoa",
- "num-bigint",
  "percent-encoding",
  "pin-project-lite",
  "ryu",
- "sha1_smol",
  "socket2 0.6.5",
  "tokio",
  "tokio-util",
@@ -5322,7 +5317,7 @@ name = "rullst-ai"
 version = "12.0.0"
 dependencies = [
  "async-trait",
- "base64 0.23.0",
+ "base64 0.22.1",
  "criterion",
  "reqwest 0.13.4",
  "rullst-core",
@@ -5350,6 +5345,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "subtle",
+ "thiserror 2.0.19",
  "tokio",
  "tower",
 ]
@@ -5395,6 +5391,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle",
+ "thiserror 2.0.19",
  "tokio",
 ]
 
@@ -5405,7 +5402,7 @@ dependencies = [
  "actix-web",
  "async-trait",
  "axum",
- "base64 0.23.0",
+ "base64 0.22.1",
  "criterion",
  "jsonwebtoken",
  "leptos_router",
@@ -5457,6 +5454,7 @@ dependencies = [
  "serde_urlencoded",
  "sqlx",
  "subtle",
+ "thiserror 2.0.19",
  "tokio",
  "toml",
  "tower",
@@ -5479,7 +5477,7 @@ version = "12.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -5535,7 +5533,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
- "base64 0.23.0",
+ "base64 0.22.1",
  "criterion",
  "futures",
  "mutants",
@@ -5583,6 +5581,7 @@ dependencies = [
  "sha1 0.11.0",
  "sha2 0.11.0",
  "subtle",
+ "thiserror 2.0.19",
  "tokio",
  "tower",
  "tracing",
@@ -6111,12 +6110,6 @@ dependencies = [
  "cpufeatures 0.3.0",
  "digest 0.11.3",
 ]
-
-[[package]]
-name = "sha1_smol"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sha2"
@@ -7332,10 +7325,8 @@ checksum = "adbc64cba7137545b8044cb1fe9814f7aacf3c6b5f9b45be8bb5db538befdb26"
 dependencies = [
  "js-sys",
  "opentelemetry",
- "smallvec",
  "tracing",
  "tracing-core",
- "tracing-log",
  "tracing-subscriber",
  "web-time",
 ]

@@ -243,9 +243,7 @@ pub fn server_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis async fn #name() -> #output_type {
             let res = rullst::client::rpc_call(#name_str).await;
             // Deserialize response if it's not unit type
-            // Note: For simplicity in this macro, we assume the output implements serde::Deserialize
-            // and we parse it from JSON.
-            serde_json::from_str(&res).unwrap_or_else(|_| panic!("Failed to parse RPC response from server"))
+            serde_json::from_str(&res).unwrap_or_default()
         }
     };
     expanded.into()

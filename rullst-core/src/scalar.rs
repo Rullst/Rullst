@@ -57,20 +57,20 @@ pub fn scalar_docs_router(openapi_url: &'static str) -> Router {
         .route(
             "/openapi.json",
             get(|| async move {
-                if let Ok(content) = std::fs::read_to_string("openapi.json") {
+                if let Ok(content) = tokio::fs::read_to_string("openapi.json").await {
                     if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
                         return Json(parsed).into_response();
                     }
                 }
                 Json(json!({
-                "openapi": "3.0.0",
-                "info": {
-                    "title": "Rullst Application API",
-                    "description": "Interactive API documentation powered by Rullst & Scalar UI.",
-                    "version": "1.0.0"
-                },
-                "paths": {}
-            })).into_response()
+                    "openapi": "3.0.0",
+                    "info": {
+                        "title": "Rullst Application API",
+                        "description": "Interactive API documentation powered by Rullst & Scalar UI.",
+                        "version": "1.0.0"
+                    },
+                    "paths": {}
+                })).into_response()
             }),
         )
 }

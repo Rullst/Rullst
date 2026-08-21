@@ -84,8 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         Server::new_hot(lib_path)
     } else {
-        let router_ptr = rullst_blog_example::rullst_router_init();
-        let router = unsafe { *Box::from_raw(router_ptr) };
+        let router = rullst_blog_example::router();
         Server::new(router)
     };
 

@@ -20,8 +20,7 @@ pub mod models;
 pub mod middlewares;
 pub mod pages;
 
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
+pub fn router() -> Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("SaaS Admin")
@@ -41,12 +40,16 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         post("/billing/webhook" => controllers::billing_controller::webhook_handler),
     ];
 
-    let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus);
-    Box::into_raw(Box::new(router))
+    .nest_axum("/nexus", nexus)
+}}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    Box::into_raw(Box::new(router()))
 }}
 "##,
             repo_decl = repo_decl
@@ -80,8 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router_ptr = {project_name_safe}::rullst_router_init();
-        let router = unsafe {{ *Box::from_raw(router_ptr) }};
+        let router = {project_name_safe}::router();
         rullst::Server::new(router)
     }};
 

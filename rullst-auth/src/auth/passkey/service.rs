@@ -1,3 +1,4 @@
+use crate::error::AuthError;
 use base64::Engine as _;
 use rand::distr::{Alphanumeric, SampleString};
 use ring::signature;
@@ -27,7 +28,7 @@ pub struct PasskeyAuth {
 
 impl PasskeyAuth {
     /// Instantiates the WebAuthn manager using the approved config builder.
-    pub fn new(config: &PasskeyConfig) -> Result<Self, String> {
+    pub fn new(config: &PasskeyConfig) -> Result<Self, AuthError> {
         Ok(Self {
             rp_name: config.rp_name.clone(),
             rp_id: config.rp_id.clone(),
@@ -43,7 +44,7 @@ impl PasskeyAuth {
         user_id: i32,
         username: &str,
         display_name: &str,
-    ) -> Result<(CreationChallengeResponse, String), String> {
+    ) -> Result<(CreationChallengeResponse, String), AuthError> {
         let challenge = generate_challenge();
 
         let mut id_bytes = [0u8; 16];
@@ -65,14 +66,14 @@ impl PasskeyAuth {
                 },
                 pub_key_cred_params: vec![PubKeyCredParam {
                     r#type: "public-key".to_string(),
-                    alg: -7, // ES256 (ECDSA P-256 w/ SHA-256)
+                    alg: -7, // ES256
                 }],
                 timeout: 60000,
                 authenticator_selection: AuthenticatorSelection {
-                    user_verification: "preferred".to_string(),
                     resident_key: "preferred".to_string(),
+                    user_verification: "preferred".to_string(),
                 },
-                attestation: "none".to_string(),
+                attestation: "direct".to_string(),
             },
         };
 
@@ -86,49 +87,49 @@ impl PasskeyAuth {
         &self,
         credential: &RegisterPublicKeyCredential,
         expected_challenge: &str,
-    ) -> Result<Passkey, String> {
+    ) -> Result<Passkey, AuthError> {
         let client_data_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.client_data_json)
-            .map_err(|e| format!("Failed to decode clientDataJSON: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to decode clientDataJSON: {}", e)))?;
 
         let client_data: serde_json::Value = serde_json::from_slice(&client_data_bytes)
-            .map_err(|e| format!("Failed to parse clientDataJSON: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to parse clientDataJSON: {}", e)))?;
 
         let challenge = client_data
             .get("challenge")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Challenge missing in clientDataJSON".to_string())?;
+            .ok_or_else(|| AuthError::PasskeyError("Challenge missing in clientDataJSON".to_string()))?;
 
         if challenge != expected_challenge {
-            return Err("Challenge mismatch".to_string());
+            return Err(AuthError::PasskeyError("Challenge mismatch".to_string()));
         }
 
         let origin = client_data
             .get("origin")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Origin missing in clientDataJSON".to_string())?;
+            .ok_or_else(|| AuthError::PasskeyError("Origin missing in clientDataJSON".to_string()))?;
 
         if origin != self.rp_origin {
-            return Err("Origin mismatch".to_string());
+            return Err(AuthError::PasskeyError("Origin mismatch".to_string()));
         }
 
         let attestation_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.attestation_object)
-            .map_err(|e| format!("Failed to decode attestationObject: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to decode attestationObject: {}", e)))?;
 
         let (cbor_obj, _) = parse_cbor(&attestation_bytes)?;
         let auth_data = match cbor_obj {
             CborValue::Map(mut map) => {
                 match map.remove(&CborKey::TextString("authData".to_string())) {
                     Some(CborValue::ByteString(bytes)) => bytes,
-                    _ => return Err("authData not found in attestationObject".to_string()),
+                    _ => return Err(AuthError::PasskeyError("authData not found in attestationObject".to_string())),
                 }
             }
-            _ => return Err("attestationObject is not a map".to_string()),
+            _ => return Err(AuthError::PasskeyError("attestationObject is not a map".to_string())),
         };
 
         if auth_data.len() < 55 {
-            return Err("authData too short".to_string());
+            return Err(AuthError::PasskeyError("authData too short".to_string()));
         }
 
         // Verify rpIdHash matches SHA-256 hash of rp_id
@@ -136,18 +137,18 @@ impl PasskeyAuth {
         rp_hasher.update(self.rp_id.as_bytes());
         let expected_rp_id_hash = rp_hasher.finalize();
         if auth_data[..32] != expected_rp_id_hash[..] {
-            return Err("rpIdHash mismatch in authData".to_string());
+            return Err(AuthError::PasskeyError("rpIdHash mismatch in authData".to_string()));
         }
 
         let flags = auth_data[32];
         let has_attested_credential_data = (flags & 0x40) != 0;
         if !has_attested_credential_data {
-            return Err("No attested credential data present in authData".to_string());
+            return Err(AuthError::PasskeyError("No attested credential data present in authData".to_string()));
         }
 
         let credential_id_len = u16::from_be_bytes([auth_data[53], auth_data[54]]) as usize;
         if auth_data.len() < 55 + credential_id_len {
-            return Err("authData too short for credential ID".to_string());
+            return Err(AuthError::PasskeyError("authData too short for credential ID".to_string()));
         }
         let credential_id = auth_data[55..55 + credential_id_len].to_vec();
         let cose_key_bytes = &auth_data[55 + credential_id_len..];
@@ -157,11 +158,11 @@ impl PasskeyAuth {
             CborValue::Map(mut map) => {
                 let x_bytes = match map.remove(&CborKey::Integer(-2)) {
                     Some(CborValue::ByteString(bytes)) => bytes,
-                    _ => return Err("X coordinate not found in public key".to_string()),
+                    _ => return Err(AuthError::PasskeyError("X coordinate not found in public key".to_string())),
                 };
                 let y_bytes = match map.remove(&CborKey::Integer(-3)) {
                     Some(CborValue::ByteString(bytes)) => bytes,
-                    _ => return Err("Y coordinate not found in public key".to_string()),
+                    _ => return Err(AuthError::PasskeyError("Y coordinate not found in public key".to_string())),
                 };
 
                 let mut key = vec![0x04];
@@ -169,7 +170,7 @@ impl PasskeyAuth {
                 key.extend_from_slice(&y_bytes);
                 key
             }
-            _ => return Err("credentialPublicKey is not a CBOR map".to_string()),
+            _ => return Err(AuthError::PasskeyError("credentialPublicKey is not a CBOR map".to_string())),
         };
 
         Ok(Passkey {
@@ -185,7 +186,7 @@ impl PasskeyAuth {
     pub fn start_authenticate(
         &self,
         allowed_credentials: &[Passkey],
-    ) -> Result<(RequestChallengeResponse, String), String> {
+    ) -> Result<(RequestChallengeResponse, String), AuthError> {
         let challenge = generate_challenge();
 
         let allow_credentials = allowed_credentials
@@ -217,38 +218,38 @@ impl PasskeyAuth {
         credential: &PublicKeyCredential,
         expected_challenge: &str,
         mut passkey: Passkey,
-    ) -> Result<Passkey, String> {
+    ) -> Result<Passkey, AuthError> {
         let client_data_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.client_data_json)
-            .map_err(|e| format!("Failed to decode clientDataJSON: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to decode clientDataJSON: {}", e)))?;
 
         let client_data: serde_json::Value = serde_json::from_slice(&client_data_bytes)
-            .map_err(|e| format!("Failed to parse clientDataJSON: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to parse clientDataJSON: {}", e)))?;
 
         let challenge = client_data
             .get("challenge")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Challenge missing in clientDataJSON".to_string())?;
+            .ok_or_else(|| AuthError::PasskeyError("Challenge missing in clientDataJSON".to_string()))?;
 
         if challenge != expected_challenge {
-            return Err("Challenge mismatch".to_string());
+            return Err(AuthError::PasskeyError("Challenge mismatch".to_string()));
         }
 
         let origin = client_data
             .get("origin")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Origin missing in clientDataJSON".to_string())?;
+            .ok_or_else(|| AuthError::PasskeyError("Origin missing in clientDataJSON".to_string()))?;
 
         if origin != self.rp_origin {
-            return Err("Origin mismatch".to_string());
+            return Err(AuthError::PasskeyError("Origin mismatch".to_string()));
         }
 
         let auth_data_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.authenticator_data)
-            .map_err(|e| format!("Failed to decode authenticatorData: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to decode authenticatorData: {}", e)))?;
 
         if auth_data_bytes.len() < 37 {
-            return Err("authenticatorData too short".to_string());
+            return Err(AuthError::PasskeyError("authenticatorData too short".to_string()));
         }
 
         // Verify rpIdHash matches SHA-256 hash of rp_id
@@ -256,12 +257,12 @@ impl PasskeyAuth {
         rp_hasher.update(self.rp_id.as_bytes());
         let expected_rp_id_hash = rp_hasher.finalize();
         if auth_data_bytes[..32] != expected_rp_id_hash[..] {
-            return Err("rpIdHash mismatch in authenticatorData".to_string());
+            return Err(AuthError::PasskeyError("rpIdHash mismatch in authenticatorData".to_string()));
         }
 
         let signature_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&credential.response.signature)
-            .map_err(|e| format!("Failed to decode signature: {}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("Failed to decode signature: {}", e)))?;
 
         let mut hasher = sha2::Sha256::new();
         hasher.update(&client_data_bytes);
@@ -277,7 +278,7 @@ impl PasskeyAuth {
         );
         peer_public_key
             .verify(&msg, &signature_bytes)
-            .map_err(|e| format!("ECDSA P-256 signature verification failed: {:?}", e))?;
+            .map_err(|e| AuthError::PasskeyError(format!("ECDSA P-256 signature verification failed: {:?}", e)))?;
 
         // Update sign count
         if auth_data_bytes.len() >= 37 {

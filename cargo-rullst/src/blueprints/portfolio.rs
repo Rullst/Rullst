@@ -26,8 +26,7 @@ pub mod models;
 {repo_mod_decl}pub mod controllers;
 pub mod pages;
 
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
+pub fn router() -> Router {{
     let nexus = rullst::nexus::Nexus::new()
         .with_auth("admin", "password")
         .with_brand("Portfolio CMS Admin")
@@ -37,11 +36,14 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         .register::<models::skill::Skill>()
         .build();
 
-    let router = routes![
+    routes![
         get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus);
+    ].nest_axum("/nexus", nexus)
+}}
 
-    Box::into_raw(Box::new(router))
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    Box::into_raw(Box::new(router()))
 }}
 "##,
             repo_mod_decl = repo_mod_decl
@@ -76,8 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router_ptr = {project_name_safe}::rullst_router_init();
-        let router = unsafe {{ *Box::from_raw(router_ptr) }};
+        let router = {project_name_safe}::router();
         rullst::Server::new(router)
     }};
 

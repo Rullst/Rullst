@@ -196,15 +196,15 @@ async fn test_all_12_payment_and_payout_providers() {
             .is_ok()
     );
     assert!(picpay.cancel_subscription("sub_pic").await.is_ok());
-    assert!(picpay.pause_subscription("sub_pic").await.is_ok());
+    assert!(picpay.pause_subscription("sub_pic").await.is_err());
     assert!(
         picpay
             .report_usage("sub_pic", "transacoes", 1)
             .await
-            .is_ok()
+            .is_err()
     );
-    assert!(picpay.apply_coupon("sub_pic", "PICPAY5").await.is_ok());
-    assert!(picpay.extend_trial("sub_pic", 1798761600).await.is_ok());
+    assert!(picpay.apply_coupon("sub_pic", "PICPAY5").await.is_err());
+    assert!(picpay.extend_trial("sub_pic", 1798761600).await.is_err());
     let pic_payload = br#"{"referenceId":"sub_pic_1","status":"paid","authorizationId":"auth_1"}"#;
     let _ = picpay.handle_webhook(pic_payload, &headers);
 
@@ -248,6 +248,7 @@ async fn test_all_12_payment_and_payout_providers() {
             .is_ok()
     );
     assert!(cb.cancel_subscription("charge_btc").await.is_ok());
+    assert!(cb.pause_subscription("charge_btc").await.is_err());
     let cb_payload = br#"{"event":{"id":"evt_1","type":"charge:confirmed","data":{"id":"ch_1","pricing":{"local":{"amount":"10.00"}}}}}"#;
     let _ = cb.handle_webhook(cb_payload, &headers);
 
@@ -270,6 +271,7 @@ async fn test_all_12_payment_and_payout_providers() {
             .is_ok()
     );
     assert!(alipay.cancel_subscription("sub_ali").await.is_ok());
+    assert!(alipay.pause_subscription("sub_ali").await.is_err());
     let ali_payload = br#"{"trade_status":"TRADE_SUCCESS","out_trade_no":"order_123"}"#;
     let _ = alipay.handle_webhook(ali_payload, &headers);
 

@@ -1,4 +1,5 @@
 use crate::capital::provider;
+use crate::error::CapitalError;
 use async_trait::async_trait;
 
 /// A trait applied to a domain struct (usually User) to grant it billing capabilities.
@@ -8,9 +9,9 @@ pub trait Billable {
     fn email(&self) -> String;
 
     /// Generates a checkout session URL for the user to subscribe to a specific plan.
-    async fn subscribe(&self, plan_id: &str, redirect_url: &str) -> Result<String, String> {
+    async fn subscribe(&self, plan_id: &str, redirect_url: &str) -> Result<String, CapitalError> {
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .create_checkout_session(&self.email(), plan_id, redirect_url)
             .await
     }
@@ -26,42 +27,42 @@ pub trait Billable {
     }
 
     /// Generate a customer billing portal URL.
-    async fn billing_portal_url(&self, return_url: &str) -> Result<String, String> {
+    async fn billing_portal_url(&self, return_url: &str) -> Result<String, CapitalError> {
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .create_customer_portal(&self.email(), return_url)
             .await
     }
 
     /// Cancels the active subscription.
-    async fn cancel_subscription(&self) -> Result<(), String> {
+    async fn cancel_subscription(&self) -> Result<(), CapitalError> {
         let sub_id = self
             .subscription_id()
-            .ok_or("No subscription ID available")?;
+            .ok_or_else(|| CapitalError::SubscriptionError("No subscription ID available".to_string()))?;
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .cancel_subscription(&sub_id)
             .await
     }
 
     /// Pauses the active subscription.
-    async fn pause_subscription(&self) -> Result<(), String> {
+    async fn pause_subscription(&self) -> Result<(), CapitalError> {
         let sub_id = self
             .subscription_id()
-            .ok_or("No subscription ID available")?;
+            .ok_or_else(|| CapitalError::SubscriptionError("No subscription ID available".to_string()))?;
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .pause_subscription(&sub_id)
             .await
     }
 
     /// Reports usage for metered billing.
-    async fn report_usage(&self, metric: &str, quantity: u64) -> Result<(), String> {
+    async fn report_usage(&self, metric: &str, quantity: u64) -> Result<(), CapitalError> {
         let sub_id = self
             .subscription_id()
-            .ok_or("No subscription ID available")?;
+            .ok_or_else(|| CapitalError::SubscriptionError("No subscription ID available".to_string()))?;
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .report_usage(&sub_id, metric, quantity)
             .await
     }
@@ -87,23 +88,23 @@ pub trait Billable {
     }
 
     /// Applies a coupon code to the active subscription.
-    async fn apply_coupon(&self, coupon_code: &str) -> Result<(), String> {
+    async fn apply_coupon(&self, coupon_code: &str) -> Result<(), CapitalError> {
         let sub_id = self
             .subscription_id()
-            .ok_or("No subscription ID available")?;
+            .ok_or_else(|| CapitalError::SubscriptionError("No subscription ID available".to_string()))?;
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .apply_coupon(&sub_id, coupon_code)
             .await
     }
 
     /// Extends a trial by setting a new expiration timestamp.
-    async fn extend_trial(&self, trial_ends_at: i64) -> Result<(), String> {
+    async fn extend_trial(&self, trial_ends_at: i64) -> Result<(), CapitalError> {
         let sub_id = self
             .subscription_id()
-            .ok_or("No subscription ID available")?;
+            .ok_or_else(|| CapitalError::SubscriptionError("No subscription ID available".to_string()))?;
         provider()
-            .ok_or("BillingProvider not initialized")?
+            .ok_or_else(|| CapitalError::ConfigurationError("BillingProvider not initialized".to_string()))?
             .extend_trial(&sub_id, trial_ends_at)
             .await
     }
@@ -133,6 +134,9 @@ mod tests {
 
         let res = u.subscribe("pro", "http://return").await;
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err(), "BillingProvider not initialized");
+        assert_eq!(
+            res.unwrap_err(),
+            crate::error::CapitalError::ConfigurationError("BillingProvider not initialized".to_string())
+        );
     }
 }

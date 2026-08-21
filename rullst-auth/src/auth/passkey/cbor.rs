@@ -1,3 +1,5 @@
+use crate::error::AuthError;
+
 // Custom lightweight CBOR parser for WebAuthn payload decoding
 #[derive(Debug, Clone)]
 #[allow(dead_code)] // Array variant retained for spec completeness; may be used by future attestation formats
@@ -16,9 +18,9 @@ pub enum CborKey {
 }
 
 #[cfg_attr(mutants, mutants::skip)]
-pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
+pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
     if bytes.is_empty() {
-        return Err("Unexpected EOF".to_string());
+        return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
     }
     let head = bytes[0];
     let major = head >> 5;
@@ -29,19 +31,19 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
         0..=23 => (info as u64, rest),
         24 => {
             if rest.is_empty() {
-                return Err("Unexpected EOF".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
             }
             (rest[0] as u64, &rest[1..])
         }
         25 => {
             if rest.len() < 2 {
-                return Err("Unexpected EOF".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
             }
             (u16::from_be_bytes([rest[0], rest[1]]) as u64, &rest[2..])
         }
         26 => {
             if rest.len() < 4 {
-                return Err("Unexpected EOF".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
             }
             (
                 u32::from_be_bytes([rest[0], rest[1], rest[2], rest[3]]) as u64,
@@ -50,7 +52,7 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
         }
         27 => {
             if rest.len() < 8 {
-                return Err("Unexpected EOF".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
             }
             (
                 u64::from_be_bytes([
@@ -59,7 +61,7 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
                 &rest[8..],
             )
         }
-        _ => return Err(format!("Unsupported CBOR info: {}", info)),
+        _ => return Err(AuthError::CborParseError(format!("Unsupported CBOR info: {}", info))),
     };
 
     match major {
@@ -67,7 +69,7 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
         1 => Ok((CborValue::Integer(-(val as i64) - 1), rest)),
         2 => {
             if rest.len() < val as usize {
-                return Err("Unexpected EOF in byte string".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF in byte string".to_string()));
             }
             Ok((
                 CborValue::ByteString(rest[..val as usize].to_vec()),
@@ -76,10 +78,10 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
         }
         3 => {
             if rest.len() < val as usize {
-                return Err("Unexpected EOF in text string".to_string());
+                return Err(AuthError::CborParseError("Unexpected EOF in text string".to_string()));
             }
             let s = String::from_utf8(rest[..val as usize].to_vec())
-                .map_err(|e| format!("Invalid UTF-8: {}", e))?;
+                .map_err(|e| AuthError::CborParseError(format!("Invalid UTF-8: {}", e)))?;
             Ok((CborValue::TextString(s), &rest[val as usize..]))
         }
         4 => {
@@ -101,13 +103,13 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), String> {
                 let key = match key_val {
                     CborValue::Integer(i) => CborKey::Integer(i),
                     CborValue::TextString(s) => CborKey::TextString(s),
-                    _ => return Err("Invalid CBOR map key".to_string()),
+                    _ => return Err(AuthError::CborParseError("Invalid CBOR map key".to_string())),
                 };
                 map.insert(key, val_val);
                 current = next2;
             }
             Ok((CborValue::Map(map), current))
         }
-        _ => Err(format!("Unsupported CBOR major type: {}", major)),
+        _ => Err(AuthError::CborParseError(format!("Unsupported CBOR major type: {}", major))),
     }
 }

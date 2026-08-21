@@ -18,9 +18,9 @@ default = ["std"]
 std = ["serde/std", "serde_json/std"]
 
 [dependencies]
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-sha2 = { version = "0.10", default-features = false }
+serde = { workspace = true, features = ["alloc"] }
+serde_json = { workspace = true, features = ["alloc"] }
+sha2 = { workspace = true }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }

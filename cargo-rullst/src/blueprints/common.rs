@@ -162,13 +162,15 @@ pub mod models;
 {repo_mod_decl}pub mod controllers;
 pub mod pages;
 
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
+pub fn router() -> Router {{
     {nexus_block}
 
-    let router = {routes_block};
+    {routes_block}
+}}
 
-    Box::into_raw(Box::new(router))
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    Box::into_raw(Box::new(router()))
 }}
 "##,
         repo_mod_decl = repo_mod_decl,

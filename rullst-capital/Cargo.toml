@@ -22,22 +22,23 @@ default = ["axum"]
 axum = ["dep:axum"]
 
 [dependencies]
-rullst-core = { version = "12.0.0", path = "../rullst-core" }
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
-async-trait = "0.1.89"
-ring = { version = "0.17.14", features = ["std"] }
-subtle = "2.6.1"
-hex = "0.4"
-base64 = "0.22.1"
-chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
-axum = { version = "0.8.9", optional = true }
-tokio = { version = "1.53.1", features = ["sync"] }
+rullst-core = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+ring = { workspace = true, features = ["std"] }
+subtle = { workspace = true }
+hex = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true, features = ["clock", "serde"] }
+thiserror = { workspace = true }
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
-tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
-criterion = { version = "0.8", features = ["async_tokio"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+criterion = { workspace = true, features = ["async_tokio"] }
 
 [[bench]]
 name = "capital_bench"
@@ -45,3 +46,4 @@ harness = false
 
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+
