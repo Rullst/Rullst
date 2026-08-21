@@ -242,12 +242,16 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1
-            )"
-        ).execute(pool).await;
+            )",
+        )
+        .execute(pool)
+        .await;
 
         let _ = rullst_orm::_sqlx::query(
-            "INSERT INTO users (username, is_active) VALUES ('alice', 1), ('bob', 0)"
-        ).execute(pool).await;
+            "INSERT INTO users (username, is_active) VALUES ('alice', 1), ('bob', 0)",
+        )
+        .execute(pool)
+        .await;
     }
 
     let nexus = Nexus::new()
@@ -299,7 +303,11 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::from("username=charlie&is_active=1"))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+    assert!(
+        res.status().is_success()
+            || res.status().is_redirection()
+            || res.status().is_server_error()
+    );
 
     // 6. PUT update record
     let req = Request::builder()
@@ -311,7 +319,11 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::from("username=alice_updated&is_active=0"))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+    assert!(
+        res.status().is_success()
+            || res.status().is_redirection()
+            || res.status().is_server_error()
+    );
 
     // 7. DELETE record
     let req = Request::builder()
@@ -322,5 +334,9 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_redirection() || res.status().is_server_error());
+    assert!(
+        res.status().is_success()
+            || res.status().is_redirection()
+            || res.status().is_server_error()
+    );
 }

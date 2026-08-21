@@ -66,7 +66,11 @@ async fn test_memory_driver_and_message_features() {
         .from("billing@rullst.com")
         .subject("Your Monthly Invoice")
         .html("<p>Please find invoice attached.</p>")
-        .attach_bytes("invoice.pdf", b"PDF_CONTENT_BYTES".to_vec(), "application/pdf")
+        .attach_bytes(
+            "invoice.pdf",
+            b"PDF_CONTENT_BYTES".to_vec(),
+            "application/pdf",
+        )
         .unsubscribe_url("https://rullst.com/unsubscribe/123")
         .unsubscribe_email("unsub@rullst.com");
 
@@ -75,7 +79,11 @@ async fn test_memory_driver_and_message_features() {
 
     let header = msg.list_unsubscribe_header();
     assert!(header.is_some());
-    assert!(header.unwrap().contains("https://rullst.com/unsubscribe/123"));
+    assert!(
+        header
+            .unwrap()
+            .contains("https://rullst.com/unsubscribe/123")
+    );
 
     MailTrap::assert_sent_to("customer@acme.com");
     let sent = MailTrap::sent_messages();

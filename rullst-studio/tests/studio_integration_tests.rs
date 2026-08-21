@@ -171,8 +171,10 @@ async fn test_studio_table_browser_and_schema_inspection() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
                 email TEXT NOT NULL
-            )"
-        ).execute(pool).await;
+            )",
+        )
+        .execute(pool)
+        .await;
 
         let _ = rullst_orm::_sqlx::query(
             "INSERT INTO studio_users (username, email) VALUES ('alice', 'alice@rullst.dev'), ('bob', 'bob@rullst.dev')"
@@ -207,13 +209,12 @@ async fn test_studio_table_browser_and_schema_inspection() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 4. ER diagram generation with schema populated
-    let req = Request::builder()
-        .uri("/er")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/er").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let body_str = String::from_utf8_lossy(&body);
     assert!(body_str.contains("erDiagram") || body_str.contains("studio_users"));
 
