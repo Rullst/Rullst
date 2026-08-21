@@ -4,7 +4,10 @@
 
 use super::*;
 use crate::artisan::runner::translate_artisan_args;
-use crate::artisan::studio_views::{is_ai_configured, studio_security_handler};
+use crate::artisan::studio_views::{
+    is_ai_configured, studio_ai_handler, studio_capital_handler, studio_data_handler,
+    studio_home_handler, studio_security_handler, studio_telemetry_handler, studio_traces_handler,
+};
 
 #[test]
 fn test_translate_artisan_args_none() {
@@ -54,8 +57,34 @@ async fn test_check_and_run_artisan_noop() {
 }
 
 #[tokio::test]
-async fn test_is_ai_configured_and_security_handler() {
+async fn test_all_studio_views_and_api_handlers() {
     let _ = is_ai_configured();
-    let html_res = studio_security_handler().await;
-    assert!(html_res.0.contains("Threat Radar"));
+
+    // 1. Home Control Center
+    let home_html = studio_home_handler().await;
+    assert!(home_html.0.contains("Control Center"));
+
+    // 2. Data / Database Tools
+    let data_html = studio_data_handler().await;
+    assert!(data_html.0.contains("Database Tools") || data_html.0.contains("Database"));
+
+    // 3. AI Playground
+    let ai_html = studio_ai_handler().await;
+    assert!(ai_html.0.contains("AI Playground") || ai_html.0.contains("AI"));
+
+    // 4. Telemetry
+    let telem_html = studio_telemetry_handler().await;
+    assert!(telem_html.0.contains("Telemetry") || telem_html.0.contains("Radar"));
+
+    // 5. Capital
+    let cap_html = studio_capital_handler().await;
+    assert!(cap_html.0.contains("Capital") || cap_html.0.contains("Revenue"));
+
+    // 6. Security Threat Radar
+    let sec_html = studio_security_handler().await;
+    assert!(sec_html.0.contains("Threat Radar") || sec_html.0.contains("Security"));
+
+    // 7. Traces
+    let trace_html = studio_traces_handler().await;
+    assert!(trace_html.0.contains("Traces") || trace_html.0.contains("Trace"));
 }

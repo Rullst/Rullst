@@ -26,11 +26,58 @@ impl NexusModel for UserModel {
     }
 }
 
+struct ComplexModel;
+impl NexusModel for ComplexModel {
+    fn nexus_table() -> &'static str {
+        "complex_records"
+    }
+    fn nexus_label() -> &'static str {
+        "Complex Records"
+    }
+    fn nexus_icon() -> &'static str {
+        "⚙️"
+    }
+    fn nexus_pk() -> &'static str {
+        "id"
+    }
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("description", "Description", FieldKind::Textarea),
+            FieldMeta::new("email", "Email Address", FieldKind::Email),
+            FieldMeta::new("website", "Website URL", FieldKind::Url),
+            FieldMeta::new("price", "Price", FieldKind::Number),
+            FieldMeta::new("secret", "Password", FieldKind::Password),
+            FieldMeta::new("created_date", "Date", FieldKind::Date),
+            FieldMeta::new("updated_time", "Timestamp", FieldKind::DateTime),
+            FieldMeta::new("is_published", "Published", FieldKind::Boolean),
+            FieldMeta::new("metadata", "JSON Metadata", FieldKind::Json),
+            FieldMeta::new(
+                "status",
+                "Status",
+                FieldKind::Enum {
+                    options: vec!["active", "pending", "archived"],
+                },
+            ),
+            FieldMeta::new(
+                "category_id",
+                "Category",
+                FieldKind::ForeignKey {
+                    table: "categories",
+                    label_col: "name",
+                },
+            ),
+        ]
+    }
+}
+
 #[tokio::test]
 async fn test_nexus_dashboard_and_views() {
     let nexus = Nexus::new()
         .with_brand("Enterprise Test")
-        .register::<UserModel>();
+        .register::<UserModel>()
+        .register::<ComplexModel>();
 
     let app = nexus.build();
 
@@ -43,6 +90,9 @@ async fn test_nexus_dashboard_and_views() {
         "/table/users/new",
         "/table/users/1/edit",
         "/table/users/search?q=alice",
+        "/table/complex_records",
+        "/table/complex_records/new",
+        "/table/complex_records/1/edit",
     ];
 
     for route in routes {
@@ -234,7 +284,7 @@ fn test_sanitize_identifier_multibyte() {
 
 #[tokio::test]
 async fn test_nexus_with_sqlite_db_backed_crud() {
-    let _ = rullst_orm::Orm::init("sqlite:file:memdb_nexus?mode=memory&cache=shared").await;
+    let _ = rullst_orm::Orm::init("sqlite:file:memdb_nexus_shared?mode=memory&cache=shared").await;
 
     if let Some(pool) = rullst_core::db::safe_pool() {
         let _ = rullst_orm::_sqlx::query(
@@ -256,7 +306,8 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
 
     let nexus = Nexus::new()
         .with_brand("Nexus DB Suite")
-        .register::<UserModel>();
+        .register::<UserModel>()
+        .register::<ComplexModel>();
     let app = nexus.build();
 
     let csrf = "valid_test_csrf_token";

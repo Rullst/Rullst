@@ -40,7 +40,7 @@ pub(crate) async fn start_studio_server() {
     }
 }
 
-async fn handle_run_migrations() -> impl axum::response::IntoResponse {
+pub(crate) async fn handle_run_migrations() -> impl axum::response::IntoResponse {
     let args = vec!["artisan".to_string(), "migrate".to_string()];
     match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
         Ok(_) => axum::Json(ApiResponse {
@@ -54,7 +54,7 @@ async fn handle_run_migrations() -> impl axum::response::IntoResponse {
     }
 }
 
-async fn handle_rollback_migrations() -> impl axum::response::IntoResponse {
+pub(crate) async fn handle_rollback_migrations() -> impl axum::response::IntoResponse {
     let args = vec!["artisan".to_string(), "migrate:rollback".to_string()];
     match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
         Ok(_) => axum::Json(ApiResponse {
@@ -68,7 +68,7 @@ async fn handle_rollback_migrations() -> impl axum::response::IntoResponse {
     }
 }
 
-async fn handle_run_seeders() -> impl axum::response::IntoResponse {
+pub(crate) async fn handle_run_seeders() -> impl axum::response::IntoResponse {
     let args = vec!["artisan".to_string(), "db:seed".to_string()];
     match rullst_orm::schema::run_artisan_with_args(&args, vec![], vec![]).await {
         Ok(_) => axum::Json(ApiResponse {

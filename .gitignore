@@ -53,3 +53,11 @@ studio_test_db_*
 *.sqlite-journal
 *.sqlite-shm
 *.sqlite-wal
+memdb_*
+**/memdb_*
+studio_shared_*
+**/studio_shared_*
+studio_mig_*
+**/studio_mig_*
+core_artisan_*
+**/core_artisan_*

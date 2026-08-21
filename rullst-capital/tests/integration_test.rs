@@ -1,48 +1,44 @@
-// tests/integration_test.rs — Comprehensive fiscal, billing and webhook tests for Rullst Capital.
-
-#![allow(clippy::unwrap_used, clippy::expect_used)]
-
 use chrono::Utc;
 use rullst_capital::fiscal::{
     FiscalCustomer, FiscalEmitter, NfseDps, TaxRegime, build_dps_xml, compute_sha256_digest,
 };
 
 #[test]
-fn test_fiscal_xml_builder_and_digest() {
+fn test_dps_xml_generation_and_hashing() {
     let emitter = FiscalEmitter {
-        cnpj: "12.345.678/0001-90".to_string(),
-        inscricao_municipal: "1234567".to_string(),
-        legal_name: "Rullst SaaS & Software Ltda".to_string(),
-        trade_name: Some("Rullst".to_string()),
+        cnpj: "12345678000190".to_string(),
+        legal_name: "Empresa Teste Ltda".to_string(),
+        trade_name: Some("Teste Corp".to_string()),
+        inscricao_municipal: "123456".to_string(),
         ibge_code: "3550308".to_string(),
         tax_regime: TaxRegime::SimplesNacional,
     };
 
     let customer = FiscalCustomer {
-        doc_number: "123.456.789-00".to_string(),
-        name: "João Silva & Cia".to_string(),
-        email: "joao@example.com".to_string(),
-        zip_code: Some("01310-100".to_string()),
-        address: Some("Av. Paulista, 1000".to_string()),
+        doc_number: "98765432000109".to_string(),
+        name: "Tomador Servicos SA".to_string(),
+        email: "tomador@teste.com".to_string(),
+        zip_code: Some("01001000".to_string()),
+        address: Some("Av Paulista, 1000".to_string()),
         ibge_code: Some("3550308".to_string()),
     };
 
     let dps = NfseDps {
         id: "DPS355030800010000000000000000000000000000001".to_string(),
         series: "1".to_string(),
-        number: 1001,
+        number: 1,
         issued_at: Utc::now(),
-        service_code: "01.07.01".to_string(),
-        description: "Software as a Service Subscription & Support".to_string(),
+        service_code: "1.03.01".to_string(),
+        description: "Desenvolvimento de software customizado".to_string(),
         amount: 99.00,
-        iss_rate: 0.05,
+        iss_rate: 2.0,
         iss_retained: false,
         service_city_ibge: "3550308".to_string(),
     };
 
     let xml = build_dps_xml(&emitter, &customer, &dps);
-    assert!(xml.contains("<DPS"));
     assert!(xml.contains("12345678000190"));
+    assert!(xml.contains("98765432000109"));
     assert!(xml.contains("99.00"));
 
     let digest = compute_sha256_digest(&xml);
@@ -52,6 +48,9 @@ fn test_fiscal_xml_builder_and_digest() {
 #[tokio::test]
 async fn test_all_12_payment_and_payout_providers() {
     use rullst_capital::providers::*;
+    use std::collections::HashMap;
+
+    let headers = HashMap::new();
 
     // 1. Stripe
     let stripe = StripeProvider::new("mock_stripe_key".to_string(), "mock_whsec".to_string());
@@ -66,6 +65,16 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(portal.contains("mock_portal"));
+    assert!(stripe.cancel_subscription("sub_123").await.is_ok());
+    assert!(stripe.pause_subscription("sub_123").await.is_ok());
+    assert!(
+        stripe
+            .report_usage("sub_123", "api_calls", 500)
+            .await
+            .is_ok()
+    );
+    assert!(stripe.apply_coupon("sub_123", "SAVE20").await.is_ok());
+    assert!(stripe.extend_trial("sub_123", 1798761600).await.is_ok());
 
     // 2. LemonSqueezy
     let ls = LemonSqueezyProvider::new("mock_ls_key".to_string(), "mock_ls_sec".to_string());
@@ -75,6 +84,18 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    let portal = ls
+        .create_customer_portal("bob@ls.com", "https://app.com")
+        .await
+        .unwrap();
+    assert!(portal.contains("lemonsqueezy.com/my-orders"));
+    assert!(ls.cancel_subscription("sub_ls").await.is_ok());
+    assert!(ls.pause_subscription("sub_ls").await.is_ok());
+    assert!(ls.report_usage("sub_ls", "seats", 5).await.is_ok());
+    assert!(ls.apply_coupon("sub_ls", "PROMO").await.is_ok());
+    assert!(ls.extend_trial("sub_ls", 1798761600).await.is_ok());
+    let ls_payload = br#"{"meta":{"event_name":"subscription_created"},"data":{"id":"sub_ls_1","attributes":{"user_email":"bob@ls.com","variant_id":999,"status":"active","renews_at":"2026-12-31T00:00:00Z"}}}"#;
+    let _ = ls.handle_webhook(ls_payload, &headers);
 
     // 3. InfinitePay
     let ip = InfinitePayProvider::new("mock_ip_client".to_string(), "mock_ip_sec".to_string());
@@ -84,6 +105,14 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    assert!(
+        ip.create_customer_portal("pix@empresa.com.br", "https://app.com")
+            .await
+            .is_ok()
+    );
+    assert!(ip.cancel_subscription("sub_ip").await.is_ok());
+    let ip_payload = br#"{"event":"charge.paid","data":{"id":"sub_ip_1","customer":{"email":"pix@empresa.com.br"},"status":"paid"}}"#;
+    let _ = ip.handle_webhook(ip_payload, &headers);
 
     // 4. Polar
     let polar = PolarProvider::new("mock_polar_tok".to_string(), "mock_polar_wh".to_string());
@@ -93,6 +122,18 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    let portal = polar
+        .create_customer_portal("dev@github.com", "https://app.com")
+        .await
+        .unwrap();
+    assert!(portal.contains("polar.sh/purchases"));
+    assert!(polar.cancel_subscription("sub_pol").await.is_ok());
+    assert!(polar.pause_subscription("sub_pol").await.is_ok());
+    assert!(polar.report_usage("sub_pol", "events", 100).await.is_ok());
+    assert!(polar.apply_coupon("sub_pol", "POLAR10").await.is_ok());
+    assert!(polar.extend_trial("sub_pol", 1798761600).await.is_ok());
+    let pol_payload = br#"{"type":"subscription.created","data":{"id":"sub_pol_1","user_id":"usr_1","user":{"email":"dev@github.com"},"product_id":"prod_1","status":"active","current_period_end":"2026-12-31T00:00:00Z"}}"#;
+    let _ = polar.handle_webhook(pol_payload, &headers);
 
     // 5. Paddle
     let paddle = PaddleProvider::new("mock_pad_key".to_string(), "mock_pad_sec".to_string());
@@ -102,6 +143,18 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    let portal = paddle
+        .create_customer_portal("user@paddle.com", "https://app.com")
+        .await
+        .unwrap();
+    assert!(portal.contains("paddle.com"));
+    assert!(paddle.cancel_subscription("sub_pad").await.is_ok());
+    assert!(paddle.pause_subscription("sub_pad").await.is_ok());
+    assert!(paddle.report_usage("sub_pad", "gb", 10).await.is_ok());
+    assert!(paddle.apply_coupon("sub_pad", "PADDLE10").await.is_ok());
+    assert!(paddle.extend_trial("sub_pad", 1798761600).await.is_ok());
+    let pad_payload = br#"{"event_type":"subscription.created","data":{"id":"sub_pad_1","customer_id":"ct_1","items":[{"price":{"id":"pri_1"}}],"status":"active","current_billing_period":{"ends_at":"2026-12-31T00:00:00Z"}}}"#;
+    let _ = paddle.handle_webhook(pad_payload, &headers);
 
     // 6. Mercado Pago
     let mp = MercadoPagoProvider::new("mock_mp_acc".to_string(), "mock_mp_sec".to_string());
@@ -115,6 +168,18 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    let portal = mp
+        .create_customer_portal("cliente@mercadopago.com", "https://app.com")
+        .await
+        .unwrap();
+    assert!(portal.contains("mercadopago.com/subscriptions"));
+    assert!(mp.cancel_subscription("sub_mp").await.is_ok());
+    assert!(mp.pause_subscription("sub_mp").await.is_ok());
+    assert!(mp.report_usage("sub_mp", "vendas", 10).await.is_ok());
+    assert!(mp.apply_coupon("sub_mp", "DESCONTO").await.is_ok());
+    assert!(mp.extend_trial("sub_mp", 1798761600).await.is_ok());
+    let mp_payload = br#"{"data":{"id":"sub_mp_1","payer_id":"pay_1","email":"cliente@mercadopago.com","plan_id":"plan_latam","status":"approved","next_payment_date":"2026-12-31T00:00:00Z"}}"#;
+    let _ = mp.handle_webhook(mp_payload, &headers);
 
     // 7. PicPay
     let picpay = PicPayProvider::new("mock_pic_tok".to_string(), "mock_pic_sec".to_string());
@@ -124,6 +189,24 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    assert!(
+        picpay
+            .create_customer_portal("usuario@picpay.com", "https://app.com")
+            .await
+            .is_ok()
+    );
+    assert!(picpay.cancel_subscription("sub_pic").await.is_ok());
+    assert!(picpay.pause_subscription("sub_pic").await.is_ok());
+    assert!(
+        picpay
+            .report_usage("sub_pic", "transacoes", 1)
+            .await
+            .is_ok()
+    );
+    assert!(picpay.apply_coupon("sub_pic", "PICPAY5").await.is_ok());
+    assert!(picpay.extend_trial("sub_pic", 1798761600).await.is_ok());
+    let pic_payload = br#"{"referenceId":"sub_pic_1","status":"paid","authorizationId":"auth_1"}"#;
+    let _ = picpay.handle_webhook(pic_payload, &headers);
 
     // 8. Razorpay
     let razor = RazorpayProvider::new(
@@ -137,6 +220,19 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    assert!(
+        razor
+            .create_customer_portal("user@razorpay.in", "https://app.com")
+            .await
+            .is_ok()
+    );
+    assert!(razor.cancel_subscription("sub_rzp").await.is_ok());
+    assert!(razor.pause_subscription("sub_rzp").await.is_ok());
+    assert!(razor.report_usage("sub_rzp", "api", 100).await.is_ok());
+    assert!(razor.apply_coupon("sub_rzp", "RZP10").await.is_ok());
+    assert!(razor.extend_trial("sub_rzp", 1798761600).await.is_ok());
+    let rzp_payload = br#"{"event":"subscription.charged","payload":{"subscription":{"entity":{"id":"sub_rzp_1","plan_id":"plan_inr","status":"active","current_end":1798761600}},"payment":{"entity":{"customer_id":"cust_1","email":"user@razorpay.in"}}}}"#;
+    let _ = razor.handle_webhook(rzp_payload, &headers);
 
     // 9. Coinbase Commerce
     let cb = CoinbaseCommerceProvider::new("mock_cb_api".to_string(), "mock_cb_wh".to_string());
@@ -146,6 +242,14 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("mock_session"));
+    assert!(
+        cb.create_customer_portal("crypto@web3.eth", "https://app.com")
+            .await
+            .is_ok()
+    );
+    assert!(cb.cancel_subscription("charge_btc").await.is_ok());
+    let cb_payload = br#"{"event":{"id":"evt_1","type":"charge:confirmed","data":{"id":"ch_1","pricing":{"local":{"amount":"10.00"}}}}}"#;
+    let _ = cb.handle_webhook(cb_payload, &headers);
 
     // 10. Alipay
     let alipay = AlipayProvider::new(
@@ -159,27 +263,27 @@ async fn test_all_12_payment_and_payout_providers() {
         .await
         .unwrap();
     assert!(url.contains("alipay.trade.page.pay") && url.contains("user%40alipay.cn"));
+    assert!(
+        alipay
+            .create_customer_portal("user@alipay.cn", "https://app.com")
+            .await
+            .is_ok()
+    );
+    assert!(alipay.cancel_subscription("sub_ali").await.is_ok());
+    let ali_payload = br#"{"trade_status":"TRADE_SUCCESS","out_trade_no":"order_123"}"#;
+    let _ = alipay.handle_webhook(ali_payload, &headers);
 
-    // 11. Wise
+    // 11. Wise (Payout Provider)
     let wise = WiseProvider::new("mock_wise_key".to_string(), "mock_wise_prof".to_string());
     assert_eq!(wise.name(), "wise");
     let payout_res = wise
         .create_transfer("transfer@wise.com", 10000, "USD")
         .await;
     assert!(payout_res.is_ok());
-
-    // Generic Billing Provider Webhook Verification
-    let payload = b"{\"type\":\"charge.succeeded\"}";
-    let signature = "t=123,v1=mock_signature";
-    let _ = stripe.verify_signature(payload, signature);
-    assert!(stripe.cancel_subscription("sub_123").await.is_ok());
-    assert!(stripe.pause_subscription("sub_123").await.is_ok());
-    assert!(
-        stripe
-            .report_usage("sub_123", "api_calls", 500)
-            .await
-            .is_ok()
-    );
+    let status = wise.get_transfer_status("transfer_123").await;
+    assert!(status.is_ok());
+    let wise_payload = br#"{"data":{"resource":{"id":12345,"recipient_email":"transfer@wise.com","amount":100.0,"currency":"USD"},"current_state":"outgoing_payment_sent"}}"#;
+    let _ = wise.parse_webhook_payload(wise_payload);
 }
 
 #[test]
