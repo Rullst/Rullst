@@ -1,3 +1,5 @@
+#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+
 use async_trait::async_trait;
 use rullst_orm::schema::migration::{Migration, run_artisan_with_args};
 use rullst_orm::{Error, Orm, Seeder};

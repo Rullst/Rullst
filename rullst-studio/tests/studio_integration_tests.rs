@@ -41,6 +41,7 @@ async fn test_studio_core_routes() {
 }
 
 #[tokio::test]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_studio_table_browser_and_schema_inspection() {
     let db_url = "sqlite:file:studio_shared_db?mode=memory&cache=shared";
     let _ = rullst_orm::Orm::init(db_url).await;

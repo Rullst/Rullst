@@ -113,23 +113,30 @@ async fn test_edge_server_run_integration() {
             .with_body(b"Hello from EdgeServer!".to_vec())
     };
 
-    let server = EdgeServer::new(handler).with_port(9998);
+    let port = 19998;
+    let server = EdgeServer::new(handler).with_port(port);
 
     // Spawn the server in the background
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         let _ = server.run().await;
     });
 
-    // Give it a tiny moment to bind
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-
-    // Perform real HTTP request using reqwest
+    // Retry connecting with backoff for robustness under heavy CI / test concurrency
     let client = reqwest::Client::new();
-    let res = client
-        .get("http://127.0.0.1:9998/test/integration")
-        .send()
-        .await
-        .expect("Failed to execute request");
+    let mut last_res = None;
+    for _ in 0..25 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        if let Ok(res) = client
+            .get(format!("http://127.0.0.1:{}/test/integration", port))
+            .send()
+            .await
+        {
+            last_res = Some(res);
+            break;
+        }
+    }
+
+    let res = last_res.expect("Failed to execute request to EdgeServer after retry window");
 
     assert_eq!(res.status().as_u16(), 200);
     assert_eq!(
@@ -138,4 +145,6 @@ async fn test_edge_server_run_integration() {
     );
     let body = res.text().await.unwrap();
     assert_eq!(body, "Hello from EdgeServer!");
+
+    handle.abort();
 }
