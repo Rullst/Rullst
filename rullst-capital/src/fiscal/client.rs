@@ -159,15 +159,14 @@ mod tests {
 
         let emitter = FiscalEmitter {
             cnpj: "12.345.678/0001-90".to_string(),
-            corporate_name: "Empresa Teste LTDA".to_string(),
+            inscricao_municipal: "12345".to_string(),
+            legal_name: "Empresa Teste LTDA".to_string(),
             trade_name: Some("Teste".to_string()),
-            municipal_registration: "12345".to_string(),
             ibge_code: "3550308".to_string(),
-            simples_nacional: true,
-            cultural_promoter: false,
+            tax_regime: crate::fiscal::models::TaxRegime::SimplesNacional,
         };
 
-        let cert = FiscalCertificate::from_pfx_base64("", "mock");
+        let cert = FiscalCertificate::from_base64("", "mock");
         let client = NfseNationalClient::new(emitter, cert, NfseEnvironment::Homologation);
 
         let dps_xml = "<DPS><infDPS>test</infDPS></DPS>";

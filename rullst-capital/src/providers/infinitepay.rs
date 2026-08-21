@@ -15,10 +15,10 @@ pub struct InfinitePayProvider {
 
 impl InfinitePayProvider {
     /// Creates a new `InfinitePayProvider` instance.
-    pub fn new(api_key: String, webhook_secret: String) -> Self {
+    pub fn new(api_key: impl Into<String>, webhook_secret: impl Into<String>) -> Self {
         Self {
-            api_key,
-            webhook_secret,
+            api_key: api_key.into(),
+            webhook_secret: webhook_secret.into(),
         }
     }
 
@@ -72,12 +72,16 @@ impl BillingProvider for InfinitePayProvider {
             ));
         }
 
-        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
+        if self.api_key.is_empty()
+            || self.api_key.starts_with("mock_")
+            || self.api_key.starts_with("handle_")
+        {
             return Ok(format!(
-                "https://checkout.infinitepay.io/pay/mock_session?email={}&plan={}&redirect={}",
+                "https://checkout.infinitepay.io/pay/mock_session?email={}&plan={}&redirect={}&handle={}",
                 url_encode(customer_email),
                 url_encode(plan_id),
-                url_encode(redirect_url)
+                url_encode(redirect_url),
+                url_encode(&self.api_key)
             ));
         }
 

@@ -14,10 +14,10 @@ pub struct MercadoPagoProvider {
 
 impl MercadoPagoProvider {
     /// Creates a new `MercadoPagoProvider` instance.
-    pub fn new(access_token: String, webhook_secret: String) -> Self {
+    pub fn new(access_token: impl Into<String>, webhook_secret: impl Into<String>) -> Self {
         Self {
-            access_token,
-            webhook_secret,
+            access_token: access_token.into(),
+            webhook_secret: webhook_secret.into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl BillingProvider for MercadoPagoProvider {
 
         if self.access_token.is_empty() || self.access_token.starts_with("mock_") {
             return Ok(format!(
-                "https://www.mercadopago.com/checkout/mock_session?email={}&plan={}&back_url={}",
+                "https://www.mercadopago.com/checkout/preferences/mock_session?email={}&plan={}&back_url={}",
                 url_encode(customer_email),
                 url_encode(plan_id),
                 url_encode(redirect_url)

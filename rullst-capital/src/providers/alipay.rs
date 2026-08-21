@@ -16,18 +16,22 @@ pub struct AlipayProvider {
 
 impl AlipayProvider {
     /// Creates a new `AlipayProvider` instance.
-    pub fn new(app_id: String, private_key: String, public_key: String) -> Self {
+    pub fn new(
+        app_id: impl Into<String>,
+        private_key: impl Into<String>,
+        public_key: impl Into<String>,
+    ) -> Self {
         Self {
-            app_id,
-            private_key,
-            public_key,
+            app_id: app_id.into(),
+            private_key: private_key.into(),
+            public_key: public_key.into(),
             gateway_url: "https://openapi.alipay.com/gateway.do".to_string(),
         }
     }
 
     /// Sets a custom gateway URL (e.g. Alipay sandbox `https://openapi-sandbox.dl.alipaydev.com/gateway.do`).
-    pub fn with_gateway_url(mut self, gateway_url: String) -> Self {
-        self.gateway_url = gateway_url;
+    pub fn with_gateway_url(mut self, gateway_url: impl Into<String>) -> Self {
+        self.gateway_url = gateway_url.into();
         self
     }
 

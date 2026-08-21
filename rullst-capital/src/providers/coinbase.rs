@@ -6,6 +6,9 @@ use serde_json::Value;
 use std::collections::HashMap;
 use subtle::ConstantTimeEq;
 
+/// Type alias for `CoinbaseCommerceProvider`.
+pub type CoinbaseProvider = CoinbaseCommerceProvider;
+
 /// Billing provider implementation for Coinbase Commerce (Global Web3 & Crypto: BTC, ETH, SOL, USDC).
 pub struct CoinbaseCommerceProvider {
     api_key: String,
@@ -14,10 +17,10 @@ pub struct CoinbaseCommerceProvider {
 
 impl CoinbaseCommerceProvider {
     /// Creates a new `CoinbaseCommerceProvider` instance.
-    pub fn new(api_key: String, webhook_secret: String) -> Self {
+    pub fn new(api_key: impl Into<String>, webhook_secret: impl Into<String>) -> Self {
         Self {
-            api_key,
-            webhook_secret,
+            api_key: api_key.into(),
+            webhook_secret: webhook_secret.into(),
         }
     }
 
@@ -73,7 +76,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
 
         if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(format!(
-                "https://commerce.coinbase.com/charges/mock_session?email={}&plan={}&redirect={}",
+                "https://commerce.coinbase.com/checkout/mock_session?email={}&plan={}&redirect={}",
                 url_encode(customer_email),
                 url_encode(plan_id),
                 url_encode(redirect_url)

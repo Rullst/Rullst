@@ -11,11 +11,43 @@ pub struct WiseProvider {
 
 impl WiseProvider {
     /// Creates a new `WiseProvider` instance.
-    pub fn new(api_token: String, profile_id: String) -> Self {
+    pub fn new(api_token: impl Into<String>, profile_id: impl Into<String>) -> Self {
         Self {
-            api_token,
-            profile_id,
+            api_token: api_token.into(),
+            profile_id: profile_id.into(),
         }
+    }
+
+    /// Sends a payout to an international recipient.
+    pub async fn send_payout(
+        &self,
+        recipient_email: &str,
+        amount_cents: u64,
+        currency: &str,
+        _reference: &str,
+    ) -> Result<String, CapitalError> {
+        if recipient_email.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError(
+                "Recipient email cannot be empty".to_string(),
+            ));
+        }
+        if amount_cents == 0 {
+            return Err(CapitalError::ConfigurationError(
+                "Transfer amount must be greater than 0".to_string(),
+            ));
+        }
+        if currency.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError(
+                "Currency cannot be empty".to_string(),
+            ));
+        }
+        self.create_transfer(recipient_email, amount_cents, currency)
+            .await
+    }
+
+    /// Retrieves payout status.
+    pub async fn get_payout_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError> {
+        self.get_transfer_status(transfer_id).await
     }
 }
 
@@ -42,10 +74,15 @@ impl PayoutProvider for WiseProvider {
                 "Transfer amount must be greater than 0".to_string(),
             ));
         }
+        if currency.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError(
+                "Currency cannot be empty".to_string(),
+            ));
+        }
 
         if self.api_token.is_empty() || self.api_token.starts_with("mock_") {
             return Ok(format!(
-                "transfer_mock_{}",
+                "wise_tr_mock_{}",
                 recipient_email.replace('@', "_")
             ));
         }

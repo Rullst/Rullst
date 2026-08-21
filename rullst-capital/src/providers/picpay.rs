@@ -13,10 +13,10 @@ pub struct PicPayProvider {
 
 impl PicPayProvider {
     /// Creates a new `PicPayProvider` instance.
-    pub fn new(picpay_token: String, seller_token: String) -> Self {
+    pub fn new(picpay_token: impl Into<String>, seller_token: impl Into<String>) -> Self {
         Self {
-            picpay_token,
-            seller_token,
+            picpay_token: picpay_token.into(),
+            seller_token: seller_token.into(),
         }
     }
 
@@ -66,7 +66,10 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
-        if self.picpay_token.is_empty() || self.picpay_token.starts_with("mock_") {
+        if self.picpay_token.is_empty()
+            || self.picpay_token.starts_with("mock_")
+            || self.picpay_token == "picpay_token"
+        {
             return Ok(format!(
                 "https://app.picpay.com/checkout/mock_session?email={}&plan={}&return_url={}",
                 url_encode(customer_email),
@@ -175,7 +178,7 @@ impl BillingProvider for PicPayProvider {
         }
 
         Ok(format!(
-            "https://picpay.com/minha-conta?email={}",
+            "https://picpay.com/portal?email={}",
             url_encode(customer_email)
         ))
     }

@@ -86,7 +86,10 @@ mod tests {
 
         let f_err = FiscalError::XmlSigning("bad xml".to_string());
         let e8: CapitalError = f_err.into();
-        assert!(e8.to_string().contains("Fiscal error: XML signing error"));
+        assert!(
+            e8.to_string()
+                .contains("Fiscal error: XML digital signing error")
+        );
 
         let e9: CapitalError = "from str".into();
         assert_eq!(e9, CapitalError::General("from str".to_string()));

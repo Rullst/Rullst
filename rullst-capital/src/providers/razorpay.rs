@@ -15,11 +15,15 @@ pub struct RazorpayProvider {
 
 impl RazorpayProvider {
     /// Creates a new `RazorpayProvider` instance.
-    pub fn new(key_id: String, key_secret: String, webhook_secret: String) -> Self {
+    pub fn new(
+        key_id: impl Into<String>,
+        key_secret: impl Into<String>,
+        webhook_secret: impl Into<String>,
+    ) -> Self {
         Self {
-            key_id,
-            key_secret,
-            webhook_secret,
+            key_id: key_id.into(),
+            key_secret: key_secret.into(),
+            webhook_secret: webhook_secret.into(),
         }
     }
 
@@ -75,7 +79,7 @@ impl BillingProvider for RazorpayProvider {
 
         if self.key_id.is_empty() || self.key_id.starts_with("mock_") {
             return Ok(format!(
-                "https://api.razorpay.com/v1/checkout/mock_session?email={}&plan={}&callback_url={}",
+                "https://razorpay.com/checkout/mock_session?email={}&plan={}&callback_url={}",
                 url_encode(customer_email),
                 url_encode(plan_id),
                 url_encode(redirect_url)

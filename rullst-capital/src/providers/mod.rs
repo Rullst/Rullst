@@ -16,7 +16,7 @@ pub mod stripe;
 pub mod wise;
 
 pub use alipay::AlipayProvider;
-pub use coinbase::CoinbaseCommerceProvider;
+pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
 pub use infinitepay::InfinitePayProvider;
 pub use lemonsqueezy::LemonSqueezyProvider;
 pub use mercadopago::MercadoPagoProvider;

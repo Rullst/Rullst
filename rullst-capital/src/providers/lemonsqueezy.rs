@@ -13,10 +13,10 @@ pub struct LemonSqueezyProvider {
 
 impl LemonSqueezyProvider {
     /// Creates a new `LemonSqueezyProvider` instance.
-    pub fn new(api_key: String, webhook_secret: String) -> Self {
+    pub fn new(api_key: impl Into<String>, webhook_secret: impl Into<String>) -> Self {
         Self {
-            api_key,
-            webhook_secret,
+            api_key: api_key.into(),
+            webhook_secret: webhook_secret.into(),
         }
     }
 

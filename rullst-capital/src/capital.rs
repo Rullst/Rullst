@@ -153,7 +153,7 @@ mod tests {
             .create_transfer("contractor@global.com", 250000, "USD")
             .await
             .unwrap();
-        assert_eq!(transfer_id, "transfer_mock_contractor_global.com");
+        assert_eq!(transfer_id, "wise_tr_mock_contractor_global.com");
 
         let status = provider.get_transfer_status(&transfer_id).await.unwrap();
         assert_eq!(status, PayoutStatus::OutgoingPaymentSent);
