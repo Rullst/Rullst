@@ -37,8 +37,10 @@ impl Seeder for DummySeeder {
 }
 
 #[tokio::test]
-async fn test_artisan_cli_and_migration_lifecycle() {
-    let _ = Orm::init("sqlite:file:memdb_migration_test?mode=memory&cache=shared").await;
+async fn test_migration_and_pool_suite() {
+    let _ = Orm::init("sqlite:file:migration_suite_db?mode=memory&cache=shared").await;
+
+    // --- Part 1: Artisan CLI & Migration Lifecycle ---
 
     // 1. CLI help (no args)
     let res = run_artisan_with_args(&["artisan".into()], vec![], vec![]).await;
@@ -120,6 +122,41 @@ async fn test_artisan_cli_and_migration_lifecycle() {
     )
     .await;
     assert!(res.is_ok());
+
+    // --- Part 2: Transaction Commit & Rollback ---
+    if let Ok(pool) = Orm::try_pool() {
+        let _ = sqlx::query(
+            "CREATE TABLE IF NOT EXISTS tx_items (id INTEGER PRIMARY KEY AUTOINCREMENT, val TEXT)",
+        )
+        .execute(pool)
+        .await;
+    }
+
+    // Transaction success
+    let res: Result<i32, Error> = Orm::transaction(|_| {
+        Box::pin(async {
+            let pool = Orm::pool();
+            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_ok')")
+                .execute(pool)
+                .await;
+            Ok::<i32, String>(42)
+        })
+    })
+    .await;
+    assert_eq!(res.unwrap(), 42);
+
+    // Transaction failure & rollback
+    let err_res: Result<i32, Error> = Orm::transaction(|_| {
+        Box::pin(async {
+            let pool = Orm::pool();
+            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_fail')")
+                .execute(pool)
+                .await;
+            Err::<i32, String>("intentional error".to_string())
+        })
+    })
+    .await;
+    assert!(err_res.is_err());
 }
 
 #[test]
@@ -143,45 +180,6 @@ fn test_pool_helpers_and_placeholders() {
     Orm::disable_query_log();
     Orm::set_max_query_limit(500);
     Orm::set_query_timeout(30);
-}
-
-#[tokio::test]
-async fn test_orm_transaction_rollback_and_commit() {
-    let _ = Orm::init("sqlite:file:memdb_tx_test?mode=memory&cache=shared").await;
-
-    if let Ok(pool) = Orm::try_pool() {
-        let _ = sqlx::query(
-            "CREATE TABLE IF NOT EXISTS tx_items (id INTEGER PRIMARY KEY AUTOINCREMENT, val TEXT)",
-        )
-        .execute(pool)
-        .await;
-    }
-
-    // 1. Transaction success
-    let res: Result<i32, Error> = Orm::transaction(|_| {
-        Box::pin(async {
-            let pool = Orm::pool();
-            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_ok')")
-                .execute(pool)
-                .await;
-            Ok::<i32, String>(42)
-        })
-    })
-    .await;
-    assert_eq!(res.unwrap(), 42);
-
-    // 2. Transaction failure & rollback
-    let err_res: Result<i32, Error> = Orm::transaction(|_| {
-        Box::pin(async {
-            let pool = Orm::pool();
-            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_fail')")
-                .execute(pool)
-                .await;
-            Err::<i32, String>("intentional error".to_string())
-        })
-    })
-    .await;
-    assert!(err_res.is_err());
 }
 
 #[test]

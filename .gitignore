@@ -61,3 +61,5 @@ studio_mig_*
 **/studio_mig_*
 core_artisan_*
 **/core_artisan_*
+migration_suite_*
+**/migration_suite_*

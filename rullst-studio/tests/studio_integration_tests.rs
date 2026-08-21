@@ -170,6 +170,20 @@ async fn test_studio_table_browser_and_schema_inspection() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_success() || res.status().is_redirection());
+
+    // 7. Migration Manager Handlers
+    use rullst_studio::migration_manager::*;
+    let html = render_migration_manager_html("<div>Tables</div>");
+    assert!(html.contains("Database Tools"));
+
+    let res = handle_run_migrations().await.into_response();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = handle_rollback_migrations().await.into_response();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = handle_run_seeders().await.into_response();
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]
@@ -186,25 +200,6 @@ async fn test_studio_ai_playground_and_providers() {
         system_context: Some("System ctx".to_string()),
     });
     let res = handle_ai_prompt(req).await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
-#[tokio::test]
-async fn test_studio_migration_manager_handlers() {
-    use rullst_studio::migration_manager::*;
-
-    let _ = rullst_orm::Orm::init("sqlite:file:studio_mig_mem?mode=memory&cache=shared").await;
-
-    let html = render_migration_manager_html("<div>Tables</div>");
-    assert!(html.contains("Database Tools"));
-
-    let res = handle_run_migrations().await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = handle_rollback_migrations().await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = handle_run_seeders().await.into_response();
     assert_eq!(res.status(), StatusCode::OK);
 }
 
