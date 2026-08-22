@@ -236,7 +236,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_picpay_provider_methods() {
-        let provider = PicPayProvider::new("picpay_token", "sec_seller123");
+        let provider = PicPayProvider::new("mock_token", "sec_seller123");
+        assert_eq!(provider.name(), "picpay");
 
         // 1. Checkout session
         let url = provider
@@ -289,5 +290,27 @@ mod tests {
             provider.extend_trial("sub", 1800000000).await,
             Err(CapitalError::UnsupportedOperation(_))
         ));
+
+        // 6. Seller token verification
+        assert!(provider.verify_token("sec_seller123").is_ok());
+        assert!(provider.verify_token("wrong_token").is_err());
+
+        let no_sec = PicPayProvider::new("t", "");
+        assert!(no_sec.verify_token("any_token").is_ok());
+
+        // 7. Handle webhook
+        let payload = br#"{"referenceId":"ref_pic_100","buyer":{"document":"12345678901","email":"user@picpay.com"},"status":"paid"}"#;
+        let mut headers = HashMap::new();
+        headers.insert("x-seller-token".to_string(), "sec_seller123".to_string());
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "ref_pic_100");
+        assert_eq!(event.customer_email, "user@picpay.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

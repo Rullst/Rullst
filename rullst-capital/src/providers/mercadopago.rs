@@ -347,6 +347,7 @@ mod tests {
     #[tokio::test]
     async fn test_mercadopago_provider_methods() {
         let provider = MercadoPagoProvider::new("mock_access_token", "sec_mp123");
+        assert_eq!(provider.name(), "mercadopago");
 
         // 1. Checkout session
         let url = provider
@@ -395,5 +396,56 @@ mod tests {
         assert!(provider.extend_trial("sub_mp", 1800000000).await.is_ok());
         assert!(provider.extend_trial("", 1800000000).await.is_err());
         assert!(provider.extend_trial("sub_mp", -1).await.is_err());
+
+        // 5. Signature verification
+        let secret = "sec_mp123";
+        let timestamp = "1690000000";
+        let payload = br#"{"type":"payment","data":{"id":"pay_mp_999","email":"user@mp.com","plan_id":"plan_mp_pro","status":"approved"}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let mut ctx = hmac::Context::with_key(&key);
+        ctx.update(timestamp.as_bytes());
+        ctx.update(b":");
+        ctx.update(payload);
+        let sig_hex = hex::encode(ctx.sign().as_ref());
+        let valid_header = format!("ts={},v1={}", timestamp, sig_hex);
+
+        assert!(provider.verify_signature(payload, &valid_header).is_ok());
+
+        // Signature error paths
+        let no_secret_provider = MercadoPagoProvider::new("token", "");
+        assert!(no_secret_provider.verify_signature(payload, "").is_ok());
+        assert!(
+            provider
+                .verify_signature(payload, "invalid_header")
+                .is_err()
+        );
+        assert!(
+            provider
+                .verify_signature(payload, "ts=123,v1=invalid_hex_!")
+                .is_err()
+        );
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "ts=123,v1=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 6. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("x-signature".to_string(), valid_header);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "pay_mp_999");
+        assert_eq!(event.customer_email, "user@mp.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

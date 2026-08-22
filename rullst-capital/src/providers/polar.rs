@@ -275,7 +275,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_polar_provider_methods() {
-        let provider = PolarProvider::new("mock_polar_key", "sec_polar123");
+        let provider = PolarProvider::new("mock_token", "sec_polar123");
+        assert_eq!(provider.name(), "polar");
 
         // 1. Checkout session
         let url = provider
@@ -328,5 +329,42 @@ mod tests {
         assert!(provider.extend_trial("sub_pol", 1800000000).await.is_ok());
         assert!(provider.extend_trial("", 1800000000).await.is_err());
         assert!(provider.extend_trial("sub_pol", -1).await.is_err());
+
+        // 5. Signature verification
+        let secret = "sec_polar123";
+        let payload = br#"{"data":{"id":"sub_polar_100","user_id":"u_1","user":{"email":"user@polar.sh"},"product_id":"prod_polar_plan","status":"active"}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let sig = hmac::sign(&key, payload);
+        let sig_hex = hex::encode(sig.as_ref());
+
+        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+
+        // Signature error paths
+        let no_sec = PolarProvider::new("t", "");
+        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 6. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("webhook-signature".to_string(), sig_hex);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "sub_polar_100");
+        assert_eq!(event.customer_email, "user@polar.sh");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

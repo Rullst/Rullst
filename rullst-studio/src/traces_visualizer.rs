@@ -88,3 +88,47 @@ pub async fn render_traces_page() -> Html<String> {
         rows_html = rows_html
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_render_traces_page() {
+        let collector = rullst_core::telemetry_spans::global_span_collector();
+
+        // Record spans of various kinds
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "SELECT * FROM users WHERE id = 1".to_string(),
+            kind: "sql".to_string(),
+            duration_us: 120,
+            timestamp: 1700000000,
+        });
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "gemini-2.5-flash generate".to_string(),
+            kind: "ai".to_string(),
+            duration_us: 850,
+            timestamp: 1700000000,
+        });
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "send_welcome_email".to_string(),
+            kind: "job".to_string(),
+            duration_us: 450,
+            timestamp: 1700000000,
+        });
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "GET /api/v1/health".to_string(),
+            kind: "http".to_string(),
+            duration_us: 95,
+            timestamp: 1700000000,
+        });
+
+        let html = render_traces_page().await.0;
+        assert!(html.contains("Distributed Tracing"));
+        assert!(html.contains("SQL QUERY"));
+        assert!(html.contains("AI GENERATION"));
+        assert!(html.contains("ASYNC JOB"));
+        assert!(html.contains("HTTP REQUEST"));
+        assert!(html.contains("SELECT * FROM users"));
+    }
+}

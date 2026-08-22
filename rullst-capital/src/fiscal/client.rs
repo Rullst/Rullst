@@ -188,5 +188,18 @@ mod tests {
         assert_eq!(parsed.nfse_number, 42);
         assert_eq!(parsed.protocol, "PROT-RECEITA-12345");
         assert_eq!(parsed.status, "Emitida com Sucesso");
+
+        // XML fallback parsing test
+        let raw_xml_response = "<retornoEnvioLote><sucesso>true</sucesso></retornoEnvioLote>";
+        let xml_parsed = parse_receita_response(raw_xml_response, dps_xml).unwrap();
+        assert_eq!(xml_parsed.status, "Autorizada");
+        assert_eq!(xml_parsed.protocol, "PROT-DIRECT-001");
+        assert_eq!(xml_parsed.authorized_xml, raw_xml_response);
+
+        // Incomplete JSON with fallback defaults
+        let minimal_json = "{}";
+        let min_parsed = parse_receita_response(minimal_json, dps_xml).unwrap();
+        assert_eq!(min_parsed.nfse_number, 1);
+        assert_eq!(min_parsed.status, "Autorizada");
     }
 }

@@ -196,3 +196,22 @@ pub async fn handle_ai_prompt(Json(payload): Json<PromptRequest>) -> impl IntoRe
         provider: provider_name.to_string(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_ai_playground_rendering_and_prompt_dispatch() {
+        let html = render_ai_playground_html();
+        assert!(html.contains("Rullst AI & RAG Playground"));
+        assert!(html.contains("Universal LLM Provider Support"));
+
+        let req = PromptRequest {
+            prompt: "Explain active record pattern".to_string(),
+            system_context: Some("You are a Rust expert".to_string()),
+        };
+
+        let _ = handle_ai_prompt(Json(req)).await;
+    }
+}

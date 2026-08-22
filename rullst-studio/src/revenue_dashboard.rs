@@ -182,11 +182,44 @@ mod tests {
         let page_resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(page_resp.status(), StatusCode::OK);
 
+        let legacy_req = Request::builder()
+            .uri("/studio/tools/revenue")
+            .body(Body::empty())
+            .unwrap();
+        let legacy_resp = app.clone().oneshot(legacy_req).await.unwrap();
+        assert_eq!(legacy_resp.status(), StatusCode::OK);
+
         let api_req = Request::builder()
             .uri("/api/revenue")
             .body(Body::empty())
             .unwrap();
         let api_resp = app.oneshot(api_req).await.unwrap();
         assert_eq!(api_resp.status(), StatusCode::OK);
+
+        // Record events in RevenueDashboardManager
+        let mgr = get_revenue_manager();
+        mgr.record_event(rullst_capital::WebhookEventRecord {
+            id: "evt_stripe_1".to_string(),
+            provider: "stripe".to_string(),
+            event_type: "customer.subscription.created".to_string(),
+            status: "processed".to_string(),
+            payload_snippet: "{}".to_string(),
+            timestamp: 1700000000,
+        });
+        mgr.record_event(rullst_capital::WebhookEventRecord {
+            id: "evt_lemon_2".to_string(),
+            provider: "lemonsqueezy".to_string(),
+            event_type: "order_created".to_string(),
+            status: "failed".to_string(),
+            payload_snippet: "{}".to_string(),
+            timestamp: 1700000000,
+        });
+
+        let html = render_revenue_dashboard_page();
+        assert!(html.contains("Rullst Capital Dashboard"));
+        assert!(html.contains("evt_stripe_1"));
+        assert!(html.contains("PROCESSED"));
+        assert!(html.contains("evt_lemon_2"));
+        assert!(html.contains("FAILED"));
     }
 }

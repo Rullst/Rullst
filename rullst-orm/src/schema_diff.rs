@@ -127,3 +127,36 @@ fn extract_type_name(ty: &syn::Type) -> (String, bool) {
     }
     ("Unknown".to_string(), false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_type_name() {
+        let ty_i32: syn::Type = syn::parse_str("i32").unwrap();
+        let (name, is_opt) = extract_type_name(&ty_i32);
+        assert_eq!(name, "i32");
+        assert!(!is_opt);
+
+        let ty_opt_string: syn::Type = syn::parse_str("Option<String>").unwrap();
+        let (name, is_opt) = extract_type_name(&ty_opt_string);
+        assert_eq!(name, "String");
+        assert!(is_opt);
+
+        let ty_opt_i64: syn::Type = syn::parse_str("Option<i64>").unwrap();
+        let (name, is_opt) = extract_type_name(&ty_opt_i64);
+        assert_eq!(name, "i64");
+        assert!(is_opt);
+
+        let ty_unknown: syn::Type = syn::parse_str("&[u8]").unwrap();
+        let (name, is_opt) = extract_type_name(&ty_unknown);
+        assert_eq!(name, "Unknown");
+        assert!(!is_opt);
+    }
+
+    #[test]
+    fn test_extract_tables_from_ast_call() {
+        let _ = extract_tables_from_ast();
+    }
+}

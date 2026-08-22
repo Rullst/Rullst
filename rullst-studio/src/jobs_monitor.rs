@@ -373,4 +373,28 @@ mod tests {
 
         assert_eq!(response.status(), 200);
     }
+
+    #[tokio::test]
+    async fn test_horizon_retry_and_purge_endpoints() {
+        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+        let app = router(queue);
+
+        // Test POST /retry/job_123
+        let retry_req = Request::builder()
+            .method("POST")
+            .uri("/retry/job_test_999")
+            .body(Body::empty())
+            .unwrap();
+        let retry_resp = app.clone().oneshot(retry_req).await.unwrap();
+        assert_eq!(retry_resp.status(), 200);
+
+        // Test POST /purge
+        let purge_req = Request::builder()
+            .method("POST")
+            .uri("/purge")
+            .body(Body::empty())
+            .unwrap();
+        let purge_resp = app.oneshot(purge_req).await.unwrap();
+        assert_eq!(purge_resp.status(), 200);
+    }
 }

@@ -123,3 +123,30 @@ async fn logger_stream(
 
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_logger_dashboard_and_state() {
+        let state = Arc::new(LoggerState::new());
+        let app = router(state.clone());
+
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let default_state = LoggerState::default();
+        let _ = default_state.tx.send(RequestLog {
+            method: "GET".to_string(),
+            uri: "/api/test".to_string(),
+            status: 200,
+            latency_ms: 12,
+            timestamp: "2026-08-22T00:00:00Z".to_string(),
+        });
+    }
+}

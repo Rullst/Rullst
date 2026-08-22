@@ -191,3 +191,31 @@ async fn render_er_diagram() -> Html<String> {
         diagram
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_er_diagram_endpoints() {
+        let app = router();
+
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let html = render_er_diagram().await.0;
+        assert!(html.contains("Visual ER Diagram"));
+        assert!(html.contains("class=\"mermaid\""));
+        assert!(html.contains("erDiagram"));
+
+        let sqlite_schema = get_sqlite_schema().await;
+        assert!(sqlite_schema.starts_with("erDiagram"));
+
+        let pg_schema = get_postgres_schema().await;
+        assert!(pg_schema.starts_with("erDiagram"));
+    }
+}

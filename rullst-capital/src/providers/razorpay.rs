@@ -325,6 +325,7 @@ mod tests {
     #[tokio::test]
     async fn test_razorpay_provider_methods() {
         let provider = RazorpayProvider::new("mock_key_id", "mock_secret", "sec_rzp123");
+        assert_eq!(provider.name(), "razorpay");
 
         // 1. Checkout session
         let url = provider
@@ -377,5 +378,52 @@ mod tests {
         assert!(provider.extend_trial("sub_rzp", 1800000000).await.is_ok());
         assert!(provider.extend_trial("", 1800000000).await.is_err());
         assert!(provider.extend_trial("sub_rzp", -1).await.is_err());
+
+        // 5. Signature verification
+        let secret = "sec_rzp123";
+        let payload = br#"{"event":"subscription.activated","payload":{"subscription":{"entity":{"id":"sub_rzp_123","customer_id":"cust_123","plan_id":"plan_pro","notes":{"customer_email":"rzp@test.com"},"current_end":1800000000}}}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let sig = hmac::sign(&key, payload);
+        let sig_hex = hex::encode(sig.as_ref());
+
+        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+
+        // Signature error paths
+        let no_sec = RazorpayProvider::new("k", "s", "");
+        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 6. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("x-razorpay-signature".to_string(), sig_hex);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "sub_rzp_123");
+        assert_eq!(event.customer_email, "rzp@test.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Cancelled event
+        let cancel_payload = br#"{"event":"subscription.cancelled","payload":{"subscription":{"entity":{"id":"sub_rzp_123"}}}}"#;
+        let cancel_sig = hex::encode(hmac::sign(&key, cancel_payload).as_ref());
+        let mut cancel_headers = HashMap::new();
+        cancel_headers.insert("x-razorpay-signature".to_string(), cancel_sig);
+        let cancel_event = provider
+            .handle_webhook(cancel_payload, &cancel_headers)
+            .unwrap();
+        assert_eq!(cancel_event.status, SubscriptionStatus::Canceled);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

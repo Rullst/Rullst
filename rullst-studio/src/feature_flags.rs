@@ -160,3 +160,34 @@ async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Respon
     // Redirect back to re-render page
     axum::response::Redirect::to("/studio/features").into_response()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_feature_flags_endpoints() {
+        let app = router();
+
+        // 1. GET /
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // 2. POST /toggle/my_flag
+        let toggle_req = Request::builder()
+            .method("POST")
+            .uri("/toggle/new_ai_copilot")
+            .body(Body::empty())
+            .unwrap();
+        let toggle_resp = app.oneshot(toggle_req).await.unwrap();
+        assert_eq!(toggle_resp.status(), StatusCode::SEE_OTHER);
+
+        // 3. Directly check render_feature_flags HTML
+        let html = render_feature_flags().await.0;
+        assert!(html.contains("Feature Flags Manager"));
+    }
+}

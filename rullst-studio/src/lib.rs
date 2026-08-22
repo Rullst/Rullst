@@ -73,3 +73,20 @@ impl Studio {
         router
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_studio_builder_and_routes() {
+        let studio = Studio::new();
+        let _router = studio.into_router();
+
+        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+        let openapi = OpenApi::default();
+
+        let full_studio = Studio::default().with_openapi(openapi).with_horizon(queue);
+        let _ = full_studio.into_router();
+    }
+}

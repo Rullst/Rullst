@@ -318,6 +318,16 @@ mod tests {
             "mock_app_id".to_string(),
             "mock_private_key".to_string(),
             "mock_public_key".to_string(),
+        )
+        .with_gateway_url("https://openapi-sandbox.dl.alipaydev.com/gateway.do");
+
+        assert_eq!(provider.name(), "alipay");
+        assert_eq!(provider.app_id(), "mock_app_id");
+        assert_eq!(provider.private_key(), "mock_private_key");
+        assert_eq!(provider.public_key(), "mock_public_key");
+        assert_eq!(
+            provider.gateway_url(),
+            "https://openapi-sandbox.dl.alipaydev.com/gateway.do"
         );
 
         let url = provider
@@ -376,11 +386,8 @@ mod tests {
 
     #[test]
     fn test_alipay_webhook_handling() {
-        let provider = AlipayProvider::new(
-            "mock_app".to_string(),
-            "mock_priv".to_string(),
-            "".to_string(), // Empty key skips strict signature check
-        );
+        let pub_key = "alipay_test_pubkey";
+        let provider = AlipayProvider::new("app_id", "priv_key", pub_key);
 
         let payload = r#"{
             "out_trade_no": "SUB_ALI_123",
@@ -390,7 +397,35 @@ mod tests {
             "subject": "Pro Tier"
         }"#;
 
-        let headers = HashMap::new();
+        let key = hmac::Key::new(hmac::HMAC_SHA256, pub_key.as_bytes());
+        let sig_tag = hmac::sign(&key, payload.as_bytes());
+        let sig_hex = hex::encode(sig_tag.as_ref());
+
+        // 1. Valid hex signature
+        assert!(
+            provider
+                .verify_signature(payload.as_bytes(), &sig_hex)
+                .is_ok()
+        );
+
+        // 2. Valid raw signature
+        assert!(
+            provider
+                .verify_signature(payload.as_bytes(), &sig_hex)
+                .is_ok()
+        );
+
+        // 3. Invalid signature
+        assert!(
+            provider
+                .verify_signature(payload.as_bytes(), "bad_sig")
+                .is_err()
+        );
+
+        // 4. Handle webhook with header
+        let mut headers = HashMap::new();
+        headers.insert("sign".to_string(), sig_hex);
+
         let event = provider
             .handle_webhook(payload.as_bytes(), &headers)
             .unwrap();
@@ -399,5 +434,34 @@ mod tests {
         assert_eq!(event.customer_id, "202608152200140001");
         assert_eq!(event.customer_email, "consumer@alipay.cn");
         assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // 5. TRADE_CLOSED event -> Canceled
+        let closed_payload = r#"{"out_trade_no":"SUB_CLOSED","trade_status":"TRADE_CLOSED"}"#;
+        let closed_sig = hex::encode(hmac::sign(&key, closed_payload.as_bytes()).as_ref());
+        let mut closed_headers = HashMap::new();
+        closed_headers.insert("sign".to_string(), closed_sig);
+        let closed_event = provider
+            .handle_webhook(closed_payload.as_bytes(), &closed_headers)
+            .unwrap();
+        assert_eq!(closed_event.status, SubscriptionStatus::Canceled);
+
+        // 6. WAIT_BUYER_PAY event -> PastDue
+        let wait_payload = r#"{"out_trade_no":"SUB_WAIT","trade_status":"WAIT_BUYER_PAY"}"#;
+        let wait_sig = hex::encode(hmac::sign(&key, wait_payload.as_bytes()).as_ref());
+        let mut wait_headers = HashMap::new();
+        wait_headers.insert("sign".to_string(), wait_sig);
+        let wait_event = provider
+            .handle_webhook(wait_payload.as_bytes(), &wait_headers)
+            .unwrap();
+        assert_eq!(wait_event.status, SubscriptionStatus::PastDue);
+
+        // 7. Error handling
+        let empty_headers = HashMap::new();
+        assert!(
+            provider
+                .handle_webhook(payload.as_bytes(), &empty_headers)
+                .is_err()
+        );
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

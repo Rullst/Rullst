@@ -377,3 +377,38 @@ async fn render_radar_dashboard() -> Html<String> {
         incidents_html = incidents_html
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_security_radar_endpoints_and_stats() {
+        let app = router();
+
+        // 1. GET / (HTML dashboard)
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // 2. GET /stats (JSON)
+        let stats_req = Request::builder()
+            .uri("/stats")
+            .body(Body::empty())
+            .unwrap();
+        let stats_resp = app.oneshot(stats_req).await.unwrap();
+        assert_eq!(stats_resp.status(), StatusCode::OK);
+
+        // 3. Direct function calls
+        let stats = get_radar_stats().await.0;
+        assert_eq!(stats.audit_chain_integrity, "VERIFIED_100_PERCENT");
+        assert_eq!(stats.threat_level, "PRODUCTION_GUARD_ACTIVE");
+
+        let html = render_radar_dashboard().await.0;
+        assert!(html.contains("Threat Radar"));
+        assert!(html.contains("Honeypot Traps"));
+    }
+}

@@ -261,4 +261,40 @@ mod tests {
         let secret = SecretString::new("my-secret-data");
         assert_eq!(secret.reveal_audited(), "my-secret-data");
     }
+
+    #[test]
+    fn test_privacy_error_and_key_validation() {
+        let short_key = "short_key";
+        assert_eq!(
+            encrypt_aes_gcm("data", short_key).unwrap_err(),
+            PrivacyError::InvalidKeyLength
+        );
+        assert_eq!(
+            decrypt_aes_gcm("data", short_key).unwrap_err(),
+            PrivacyError::InvalidKeyLength
+        );
+
+        let key = "01234567890123456789012345678901";
+        assert!(matches!(
+            decrypt_aes_gcm("invalid base64!@#", key).unwrap_err(),
+            PrivacyError::Base64Error(_)
+        ));
+
+        // Format and display of all PrivacyError variants
+        let err1 = PrivacyError::InvalidKeyLength;
+        assert_eq!(
+            err1.to_string(),
+            "RULLST_ENCRYPTION_KEY must be exactly 32 bytes long"
+        );
+        let err2 = PrivacyError::PayloadTooShort;
+        assert_eq!(err2.to_string(), "Invalid encrypted payload (too short)");
+        let err3 = PrivacyError::EncryptionFailed("err".to_string());
+        assert!(err3.to_string().contains("Encryption failed"));
+        let err4 = PrivacyError::DecryptionFailed("err".to_string());
+        assert!(err4.to_string().contains("Decryption failed"));
+        let err5 = PrivacyError::Utf8Error("err".to_string());
+        assert!(err5.to_string().contains("UTF-8"));
+        let err6 = PrivacyError::EnvError("err".to_string());
+        assert!(err6.to_string().contains("Environment variable"));
+    }
 }

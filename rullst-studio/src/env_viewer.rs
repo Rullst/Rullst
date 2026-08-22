@@ -76,3 +76,38 @@ async fn render_env_viewer() -> Html<String> {
         rows
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn test_env_viewer_endpoint_and_masking() {
+        // Set test environment variables to verify masking
+        // SAFETY: only setting test variables during unit tests
+        unsafe {
+            std::env::set_var("RULLST_TEST_SECRET_API_KEY", "super_secret_value_12345");
+            std::env::set_var("RULLST_TEST_AUTH_TOKEN", "tok12");
+            std::env::set_var("RULLST_TEST_PUBLIC_APP_NAME", "RullstFramework");
+        }
+
+        let app = router();
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let html = render_env_viewer().await.0;
+        assert!(html.contains("Environment Viewer"));
+        assert!(html.contains("RullstFramework"));
+        // Check that secret was masked
+        assert!(!html.contains("super_secret_value_12345"));
+        assert!(html.contains("supe••••••••"));
+        // Short token <= 6 chars masked completely
+        assert!(!html.contains("tok12"));
+        assert!(html.contains("••••••••"));
+    }
+}

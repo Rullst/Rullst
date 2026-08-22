@@ -322,6 +322,7 @@ mod tests {
     #[tokio::test]
     async fn test_paddle_provider_methods() {
         let provider = PaddleProvider::new("mock_key", "sec_paddle123");
+        assert_eq!(provider.name(), "paddle");
 
         // 1. Checkout session
         let url = provider
@@ -374,5 +375,55 @@ mod tests {
         assert!(provider.extend_trial("sub_123", 1800000000).await.is_ok());
         assert!(provider.extend_trial("", 1800000000).await.is_err());
         assert!(provider.extend_trial("sub_123", -1).await.is_err());
+
+        // 5. Signature verification
+        let secret = "sec_paddle123";
+        let timestamp = "1690000000";
+        let payload = br#"{"data":{"id":"sub_pad_100","customer_id":"ct_999","customer":{"email":"pad@test.com"},"items":[{"price":{"id":"pri_pro"}}],"status":"active","current_billing_period":{"ends_at":"2026-12-31T23:59:59Z"}}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let mut ctx = hmac::Context::with_key(&key);
+        ctx.update(timestamp.as_bytes());
+        ctx.update(b":");
+        ctx.update(payload);
+        let sig_hex = hex::encode(ctx.sign().as_ref());
+        let valid_header = format!("ts={};h1={}", timestamp, sig_hex);
+
+        assert!(provider.verify_signature(payload, &valid_header).is_ok());
+
+        // Signature error paths
+        let no_secret_provider = PaddleProvider::new("key", "");
+        assert!(no_secret_provider.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "bad_header").is_err());
+        assert!(
+            provider
+                .verify_signature(payload, "ts=123;h1=invalid_hex_!")
+                .is_err()
+        );
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "ts=123;h1=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 6. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("paddle-signature".to_string(), valid_header);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "sub_pad_100");
+        assert_eq!(event.customer_id, "ct_999");
+        assert_eq!(event.customer_email, "pad@test.com");
+        assert_eq!(event.plan_id, "pri_pro");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+        assert!(event.ends_at.is_some());
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

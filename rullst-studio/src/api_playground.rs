@@ -8,3 +8,14 @@ pub fn router(openapi: OpenApi) -> Router {
         .url("/api-docs/openapi.json", openapi)
         .into()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_api_playground_router() {
+        let openapi = OpenApi::default();
+        let _ = router(openapi);
+    }
+}

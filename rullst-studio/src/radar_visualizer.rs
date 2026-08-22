@@ -177,11 +177,39 @@ mod tests {
         let resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
+        let legacy_req = Request::builder()
+            .uri("/studio/tools/radar")
+            .body(Body::empty())
+            .unwrap();
+        let legacy_resp = app.clone().oneshot(legacy_req).await.unwrap();
+        assert_eq!(legacy_resp.status(), StatusCode::OK);
+
         let api_req = Request::builder()
             .uri("/api/radar")
             .body(Body::empty())
             .unwrap();
         let api_resp = app.oneshot(api_req).await.unwrap();
         assert_eq!(api_resp.status(), StatusCode::OK);
+
+        // Record spans and test HTML output
+        let collector = rullst_core::telemetry_spans::global_span_collector();
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "db.query".to_string(),
+            kind: "sql".to_string(),
+            duration_us: 200,
+            timestamp: 1700000000,
+        });
+        collector.record(rullst_core::telemetry_spans::TraceSpan {
+            name: "security.waf".to_string(),
+            kind: "security".to_string(),
+            duration_us: 15,
+            timestamp: 1700000000,
+        });
+
+        let html = render_radar_page();
+        assert!(html.contains("Telemetry & Rullst Radar"));
+        assert!(html.contains("Prometheus /metrics"));
+        assert!(html.contains("SQL QUERY"));
+        assert!(html.contains("SECURITY WAF"));
     }
 }

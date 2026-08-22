@@ -218,6 +218,7 @@ mod tests {
     #[tokio::test]
     async fn test_wise_provider_payout_lifecycle() {
         let provider = WiseProvider::new("mock_wise_token", "sec_wise123");
+        assert_eq!(provider.name(), "wise");
 
         // 1. Send payout
         let transfer_id = provider
@@ -264,5 +265,27 @@ mod tests {
         assert_eq!(event.amount_cents, 25075);
         assert_eq!(event.currency, "EUR");
         assert_eq!(event.status, PayoutStatus::OutgoingPaymentSent);
+
+        // Other states
+        let refunded_payload = r#"{"data":{"resource":{"id":1},"current_state":"funds_refunded"}}"#;
+        let refunded_event = provider
+            .parse_webhook_payload(refunded_payload.as_bytes())
+            .unwrap();
+        assert_eq!(refunded_event.status, PayoutStatus::FundsRefunded);
+
+        let cancelled_payload = r#"{"data":{"resource":{"id":2},"current_state":"cancelled"}}"#;
+        let cancelled_event = provider
+            .parse_webhook_payload(cancelled_payload.as_bytes())
+            .unwrap();
+        assert_eq!(cancelled_event.status, PayoutStatus::Cancelled);
+
+        let unknown_payload = r#"{"data":{"resource":{"id":3},"current_state":"other"}}"#;
+        let unknown_event = provider
+            .parse_webhook_payload(unknown_payload.as_bytes())
+            .unwrap();
+        assert_eq!(unknown_event.status, PayoutStatus::Processing);
+
+        // Webhook error paths
+        assert!(provider.parse_webhook_payload(b"invalid json").is_err());
     }
 }

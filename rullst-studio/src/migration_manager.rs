@@ -177,3 +177,23 @@ pub async fn handle_run_seeders() -> impl IntoResponse {
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_migration_manager_rendering_and_handlers() {
+        let html = render_migration_manager_html("<div id=\"tables\">Table List</div>");
+        assert!(html.contains("Database Tools & Migration Manager"));
+        assert!(html.contains("Run Migrations"));
+        assert!(html.contains("Rollback Last Batch"));
+        assert!(html.contains("Run Seeders"));
+        assert!(html.contains("Table List"));
+
+        // Trigger handlers (they invoke artisan CLI fallback cleanly)
+        let _ = handle_run_migrations().await;
+        let _ = handle_rollback_migrations().await;
+        let _ = handle_run_seeders().await;
+    }
+}

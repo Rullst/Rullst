@@ -141,3 +141,53 @@ async fn test_build_rows_html() {
     assert!(html.contains("text-slate-600 font-mono italic"));
     assert!(html.contains("text-slate-300"));
 }
+
+#[tokio::test]
+async fn test_studio_layout_and_telemetry_handlers() {
+    use super::handlers::*;
+    use super::layout::*;
+    use axum::http::HeaderMap;
+
+    // Test layout rendering
+    let sidebar_empty = render_sidebar_oob(&[], None);
+    assert!(sidebar_empty.contains("hidden"));
+
+    let sidebar = render_sidebar_oob(&["users".to_string(), "orders".to_string()], Some("users"));
+    assert!(sidebar.contains("Database Schema"));
+    assert!(sidebar.contains("users"));
+    assert!(sidebar.contains("orders"));
+
+    let full_page = studio_layout(
+        "<div>Main Content</div>".to_string(),
+        Some("users"),
+        &["users".to_string()],
+    );
+    assert!(full_page.contains("Main Content"));
+    assert!(full_page.contains("Rullst Studio"));
+
+    // Test handlers with and without HTMX headers
+    let mut htmx_headers = HeaderMap::new();
+    htmx_headers.insert("hx-request", "true".parse().unwrap());
+    let plain_headers = HeaderMap::new();
+
+    let _ = handle_studio_radar(htmx_headers.clone()).await;
+    let _ = handle_studio_radar(plain_headers.clone()).await;
+
+    let _ = handle_studio_capital(htmx_headers.clone()).await;
+    let _ = handle_studio_capital(plain_headers.clone()).await;
+
+    let _ = handle_studio_traces(htmx_headers.clone()).await;
+    let _ = handle_studio_traces(plain_headers.clone()).await;
+
+    let _ = handle_studio_tools_ai(htmx_headers.clone()).await;
+    let _ = handle_studio_tools_ai(plain_headers.clone()).await;
+
+    let _ = handle_studio_tools_migrations(htmx_headers.clone()).await;
+    let _ = handle_studio_tools_migrations(plain_headers.clone()).await;
+
+    let _ = handle_studio_tools_security(htmx_headers.clone()).await;
+    let _ = handle_studio_tools_security(plain_headers.clone()).await;
+
+    let _ = handle_dashboard(htmx_headers).await;
+    let _ = handle_dashboard(plain_headers).await;
+}

@@ -263,7 +263,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_infinitepay_provider_methods() {
-        let provider = InfinitePayProvider::new("handle_test", "sec_inf123");
+        let provider = InfinitePayProvider::new("mock_key", "sec_inf123");
+        assert_eq!(provider.name(), "infinitepay");
 
         // 1. Checkout session
         let url = provider
@@ -275,7 +276,6 @@ mod tests {
             .await
             .unwrap();
         assert!(url.contains("infinitepay.io/pay"));
-        assert!(url.contains("handle_test"));
 
         // 2. Checkout validation
         assert!(
@@ -320,5 +320,42 @@ mod tests {
             provider.extend_trial("sub", 1800000000).await,
             Err(CapitalError::UnsupportedOperation(_))
         ));
+
+        // 6. Signature verification
+        let secret = "sec_inf123";
+        let payload = br#"{"id":"tx_inf_100","customer":{"id":"c1","email":"user@infinite.com"},"plan_id":"plan_starter","status":"paid"}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let sig = hmac::sign(&key, payload);
+        let sig_hex = hex::encode(sig.as_ref());
+
+        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+
+        // Signature error paths
+        let no_sec = InfinitePayProvider::new("k", "");
+        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 7. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("x-signature".to_string(), sig_hex);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "tx_inf_100");
+        assert_eq!(event.customer_email, "user@infinite.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

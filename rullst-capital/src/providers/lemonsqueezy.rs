@@ -364,3 +364,100 @@ impl BillingProvider for LemonSqueezyProvider {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_lemonsqueezy_provider_methods() {
+        let provider = LemonSqueezyProvider::new("mock_key", "sec_lemon123");
+        assert_eq!(provider.name(), "lemonsqueezy");
+
+        // 1. Checkout session
+        let url = provider
+            .create_checkout_session("user@lemon.com", "variant_123", "https://app.com/success")
+            .await
+            .unwrap();
+        assert!(url.contains("lemonsqueezy.com/checkout"));
+        assert!(url.contains("variant_123"));
+
+        // 2. Checkout validation
+        assert!(
+            provider
+                .create_checkout_session("", "plan", "url")
+                .await
+                .is_err()
+        );
+        assert!(
+            provider
+                .create_checkout_session("email", "", "url")
+                .await
+                .is_err()
+        );
+
+        // 3. Customer portal
+        let portal = provider
+            .create_customer_portal("user@lemon.com", "https://app.com")
+            .await
+            .unwrap();
+        assert!(portal.contains("lemonsqueezy.com/my-orders"));
+        assert!(provider.create_customer_portal("", "url").await.is_err());
+
+        // 4. Subscription actions
+        assert!(provider.cancel_subscription("sub_lmn").await.is_ok());
+        assert!(provider.cancel_subscription("").await.is_err());
+
+        assert!(provider.pause_subscription("sub_lmn").await.is_ok());
+        assert!(provider.pause_subscription("").await.is_err());
+
+        assert!(provider.report_usage("sub_lmn", "api", 10).await.is_ok());
+        assert!(provider.report_usage("", "api", 10).await.is_err());
+
+        assert!(provider.apply_coupon("sub_lmn", "LEMON20").await.is_ok());
+        assert!(provider.apply_coupon("", "LEMON20").await.is_err());
+        assert!(provider.apply_coupon("sub_lmn", "").await.is_err());
+
+        assert!(provider.extend_trial("sub_lmn", 1800000000).await.is_ok());
+        assert!(provider.extend_trial("", 1800000000).await.is_err());
+        assert!(provider.extend_trial("sub_lmn", -1).await.is_err());
+
+        // 5. Signature verification
+        let secret = "sec_lemon123";
+        let payload = br#"{"data":{"id":"sub_lmn_100","attributes":{"customer_id":12,"user_email":"user@lemon.com","variant_id":123,"status":"active","renews_at":"2026-12-31T23:59:59Z"}}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let sig = hmac::sign(&key, payload);
+        let sig_hex = hex::encode(sig.as_ref());
+
+        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+
+        // Signature error paths
+        let no_sec = LemonSqueezyProvider::new("k", "");
+        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 6. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("x-signature".to_string(), sig_hex);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "sub_lmn_100");
+        assert_eq!(event.customer_id, "12");
+        assert_eq!(event.customer_email, "user@lemon.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
+    }
+}

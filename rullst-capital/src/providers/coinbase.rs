@@ -262,11 +262,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_coinbase_provider_methods() {
-        let provider = CoinbaseProvider::new("mock_key", "sec_coin123");
+        let provider = CoinbaseCommerceProvider::new("mock_key", "sec_coin123");
+        assert_eq!(provider.name(), "coinbase");
 
         // 1. Checkout session
         let url = provider
-            .create_checkout_session("crypto@user.com", "crypto_plan", "https://app.com/done")
+            .create_checkout_session("crypto@user.com", "crypto_plan", "https://app.com/success")
             .await
             .unwrap();
         assert!(url.contains("commerce.coinbase.com/checkout"));
@@ -315,5 +316,52 @@ mod tests {
             provider.extend_trial("sub", 1800000000).await,
             Err(CapitalError::UnsupportedOperation(_))
         ));
+
+        // 6. Signature verification
+        let secret = "sec_coin123";
+        let payload = br#"{"event":{"type":"charge:confirmed","data":{"id":"ch_123","metadata":{"customer_email":"crypto@user.com","plan_id":"crypto_plan"}}}}"#;
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
+        let sig = hmac::sign(&key, payload);
+        let sig_hex = hex::encode(sig.as_ref());
+
+        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+
+        // Signature error paths
+        let no_sec = CoinbaseCommerceProvider::new("k", "");
+        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
+        assert!(
+            provider
+                .verify_signature(
+                    payload,
+                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+                )
+                .is_err()
+        );
+
+        // 7. Handle webhook
+        let mut headers = HashMap::new();
+        headers.insert("x-cc-webhook-signature".to_string(), sig_hex);
+
+        let event = provider.handle_webhook(payload, &headers).unwrap();
+        assert_eq!(event.subscription_id, "ch_123");
+        assert_eq!(event.customer_email, "crypto@user.com");
+        assert_eq!(event.status, SubscriptionStatus::Active);
+
+        // Charge failed event
+        let failed_payload = br#"{"event":{"type":"charge:failed","data":{"id":"ch_fail"}}}"#;
+        let failed_sig = hex::encode(hmac::sign(&key, failed_payload).as_ref());
+        let mut failed_headers = HashMap::new();
+        failed_headers.insert("x-cc-webhook-signature".to_string(), failed_sig);
+        let failed_event = provider
+            .handle_webhook(failed_payload, &failed_headers)
+            .unwrap();
+        assert_eq!(failed_event.status, SubscriptionStatus::Unpaid);
+
+        // Webhook error paths
+        let empty_headers = HashMap::new();
+        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
+        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
     }
 }

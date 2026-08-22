@@ -411,4 +411,42 @@ mod tests {
             serde_json::Value::String("my-secret-val".to_string())
         );
     }
+
+    #[test]
+    fn test_compute_diff_and_audit_log_struct() {
+        let same_json = r#"{"name":"Alice","role":"admin"}"#;
+        assert_eq!(super::compute_diff(same_json, same_json), (None, None));
+
+        let old_json = r#"{"name":"Alice","password":"old_secret","age":30}"#;
+        let new_json = r#"{"name":"Alice","password":"new_secret","email":"alice@mail.com"}"#;
+
+        let (diff_old, diff_new) = super::compute_diff(old_json, new_json);
+        assert!(diff_old.is_some());
+        assert!(diff_new.is_some());
+
+        let old_str = diff_old.unwrap();
+        let new_str = diff_new.unwrap();
+
+        // Check that sensitive field was masked in diff
+        assert!(old_str.contains(r#""password":"***""#));
+        assert!(new_str.contains(r#""password":"***""#));
+        assert!(old_str.contains(r#""age":30"#));
+        assert!(new_str.contains(r#""email":"alice@mail.com""#));
+
+        // Test AuditLog struct clone and serde
+        let log = AuditLog {
+            id: 1,
+            model_type: "User".to_string(),
+            model_id: 42,
+            event: "update".to_string(),
+            old_values: Some(old_str),
+            new_values: Some(new_str),
+            created_at: Some("2026-08-22 00:00:00".to_string()),
+        };
+        let log_json = serde_json::to_string(&log).unwrap();
+        let deserialized: AuditLog = serde_json::from_str(&log_json).unwrap();
+        assert_eq!(deserialized.id, 1);
+        assert_eq!(deserialized.model_type, "User");
+        assert_eq!(deserialized.event, "update");
+    }
 }
