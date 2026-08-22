@@ -151,6 +151,12 @@ where
     }
 }
 
+/// Alias for DlpResponseLayer
+pub type DlpLayer = DlpResponseLayer;
+
+/// Alias for DlpResponseService
+pub type DlpService<S> = DlpResponseService<S>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,7 +226,7 @@ mod tests {
 
         let app = axum::Router::new()
             .route("/secret", get(handler))
-            .layer(DlpLayer);
+            .layer(DlpResponseLayer);
 
         let req = Request::builder()
             .uri("/secret")

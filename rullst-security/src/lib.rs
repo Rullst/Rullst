@@ -29,7 +29,7 @@ pub use ai_firewall::{
 pub use audit::{AuditChain, AuditLogger, AuditRecord, StdoutAuditLogger};
 pub use cswsh::cswsh_guard_middleware;
 pub use deception::{deception_trap_middleware, register_deception_trap};
-pub use dlp::{DlpResponseLayer, DlpResponseService, mask_response_payload};
+pub use dlp::{DlpLayer, DlpResponseLayer, DlpResponseService, DlpService, mask_response_payload};
 pub use headers::{SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
 pub use honey::{HoneypotLayer, HoneypotService, HoneypotState};
 pub use log_redactor::redact_secrets;
