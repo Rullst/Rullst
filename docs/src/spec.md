@@ -152,25 +152,23 @@ Rullst uses a functional approach for HTML rendering, relying on the `html!` mac
 ## 🚨 7. Error Handling
 
 Consistent error handling ensures safety and predictable API responses.
-* **Default Error Type:** The framework expects a standard error enum, typically `AppError`, located in `src/error.rs` or similar.
+* **Default Error Type:** The framework expects typed domain error enums (`AppError`, `CapitalError`, `OrmError`, `FiscalError`, etc.) deriving `thiserror::Error`.
 * **Implementation:** `AppError` must implement `axum::response::IntoResponse`.
-* **Controller Usage:** Controllers that can fail should return `Result<impl IntoResponse, AppError>`.
+* **Zero-Panic Rule:** Non-test code must never call `unwrap()`, `expect()`, or `panic!()`.
 * **HTTP Codes:** The `IntoResponse` implementation maps internal errors to appropriate HTTP status codes (e.g., `404 Not Found`, `500 Internal Server Error`).
 
 ---
 
 ## 🛡️ 8. Middlewares
 
-Middlewares intercept requests for authentication, logging, etc.
+Middlewares intercept requests for authentication, logging, security, etc.
 * **Location:** Middlewares are placed in `src/middlewares/`.
 * **Standard Signature:** Following Axum's `from_fn` pattern, a middleware function looks like:
   ```rust
   use axum::{extract::Request, middleware::Next, response::Response};
   
   pub async fn my_middleware(req: Request, next: Next) -> Response {
-      // Pre-request logic here
       let response = next.run(req).await;
-      // Post-request logic here
       response
   }
   ```
@@ -180,60 +178,23 @@ Middlewares intercept requests for authentication, logging, etc.
 
 ## 🛡️ 9. Architectural Guidelines for Backward Compatibility
 
-To guarantee stress-free and self-healing updates for Rullst users, all framework code must strictly adhere to the following backward compatibility rules:
+To guarantee stress-free updates for Rullst users, all framework code must adhere to these backward compatibility rules:
 
 ### 9.1. The Builder Pattern and `#[non_exhaustive]`
-Any public configuration struct or extensible enum exposed by the framework **must** use the `#[non_exhaustive]` attribute. This prevents developers from instantiating the struct directly, ensuring that adding new fields in future minor versions will not break user code.
-
+Any public configuration struct or extensible enum exposed by the framework **must** use the `#[non_exhaustive]` attribute. This prevents direct struct instantiation, ensuring that adding new fields in future minor versions will not break user code.
 * **Mandatory Usage:** All instantiation must be done via a constructor (`new()`) and the Builder Pattern (`with_...()`).
 
-```rust
-#[non_exhaustive]
-pub struct RullstConfig {
-    pub port: u16,
-}
-
-impl RullstConfig {
-    pub fn new(port: u16) -> Self {
-        Self { port }
-    }
-}
-```
-
 ### 9.2. Deprecation Lifecycle (`#[deprecated]`)
-The framework will never abruptly remove or rename a public function, struct, or method. If a breaking change to an API is required, the old API must be kept alive for at least one minor version using the `#[deprecated]` attribute.
-* **Mandatory Usage:** The `note` field must explicitly tell the user what to use instead, enabling `cargo fix` to potentially automate the migration.
-
-```rust
-#[deprecated(since = "0.2.0", note = "Please use `Router::new()` instead")]
-pub fn old_initializer() {
-    Router::new();
-}
-```
+The framework will never abruptly remove or rename a public function, struct, or method. If a breaking change is required, the old API must be kept alive for at least one minor version with `#[deprecated]`.
 
 ### 9.3. Sealed Traits
-If the framework exposes a Trait that is meant to be used by the user but **not implemented** by the user (e.g., core framework behavior), it must use the "Sealed Trait" pattern. This ensures that adding new methods to the trait in the future will not break downstream implementations.
-
-```rust
-mod private {
-    pub trait Sealed {}
-}
-
-pub trait RullstTrait: private::Sealed {
-    fn execute(&self);
-}
-```
+If the framework exposes a Trait that is meant to be used by the user but **not implemented** by the user, it must use the "Sealed Trait" pattern.
 
 ---
 
 ## 🏗️ 10. CLI Modular Architecture (`cargo-rullst`)
 
-> [!IMPORTANT]
-> The `cargo-rullst` CLI must **never** be allowed to grow into a monolithic `main.rs`. Once the file exceeds ~1000 lines, refactoring into the module structure below is **mandatory**. Mixing template strings, HTML, SQL schemas, spinner logic, and argument parsing in a single file is classified as a **critical architecture violation**.
-
-### 10.1. Required Module Structure
-
-The `cargo-rullst` source directory must be organized as follows:
+The `cargo-rullst` CLI must **never** be allowed to grow into a monolithic `main.rs`. Once the file exceeds ~1000 lines, refactoring into the module structure below is mandatory:
 
 ```text
 cargo-rullst/
@@ -241,145 +202,112 @@ cargo-rullst/
 │   ├── main.rs               # ≤ 80 lines: Entry point only. Dispatches to cli or ui.
 │   ├── cli.rs                # Clap structs, Commands enum, argument definitions.
 │   ├── ui/                   # Everything visual: banners, spinners, menus, boxes.
-│   │   ├── mod.rs
-│   │   ├── banner.rs         # ASCII art, version display, neon color palette.
-│   │   └── components.rs     # with_spinner(), prompt_select(), boxed_output().
 │   ├── generators/           # Scaffold logic: writes files to disk on user's project.
-│   │   ├── mod.rs
-│   │   ├── controller.rs     # create_new_controller()
-│   │   ├── model.rs          # create_new_model()
-│   │   ├── migration.rs      # create_new_migration(), regenerate_migrations_mod()
-│   │   ├── project.rs        # create_new_project() — main wizard
-│   │   ├── auth.rs           # scaffold_auth_system()
-│   │   ├── billing.rs        # scaffold_billing_system()
-│   │   ├── desktop.rs        # scaffold_omni_system() / run_omni_app()
-│   │   └── foundry.rs        # scaffold_foundry_config() / run_foundry_deploy()
-│   └── blueprints/           # Blueprint template definitions (NOT inline strings).
-│       ├── mod.rs
-│       ├── blank.rs          # Blank Starter template files
-│       ├── lms.rs            # LMS / Course Platform template files
-│       ├── saas.rs           # SaaS Starter template files
-│       └── blog.rs           # Blog / Content System template files
+│   └── blueprints/           # Blueprint template definitions.
 ```
 
-### 10.2. The `main.rs` Purity Rule
+### 10.1. The `main.rs` Purity Rule
+`main.rs` contains only:
+1. Crate-level attributes.
+2. Module declarations.
+3. `fn main()` dispatching to `cli` or `ui`. Zero business logic, zero file I/O.
 
-`main.rs` is the **maestro**, not a musician. It must contain only:
-1. Crate-level `#![allow(...)]` attributes.
-2. Module declarations (`pub mod cli; pub mod ui; pub mod generators; pub mod blueprints;`).
-3. The `fn main()` function itself — which reads arguments and dispatches.
-4. Zero business logic, zero template strings, zero file I/O.
-
-```rust
-// ✅ CORRECT main.rs pattern
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    trigger_background_update_check();
-    if std::env::args_trimmed().has_no_subcommand() {
-        ui::show_interactive_dashboard()?;
-    } else {
-        cli::parse_and_run()?;
-    }
-    Ok(())
-}
-```
-
-### 10.3. Template String Rules
-
-**Never** embed large multi-line HTML, Rust, or SQL strings directly inside scaffold generator functions. Instead:
-
-- **Option A (Preferred):** Use `include_str!()` to load `.rs.tmpl`, `.html`, or `.sql` files from a `templates/` directory compiled into the binary.
-- **Option B:** Define typed constants or functions inside the `blueprints/` module (e.g., `blueprints::lms::course_model_rs()`) that return `&'static str` or `String`. These can be updated independently without touching generator logic.
-- **Option C (Last Resort):** Use `r###"..."###` raw string literals (triple-hash delimiters) to prevent early termination when templates contain `"#` sequences (common in HTML attributes like `hx-target="#player-panel"`).
-
-> [!WARNING]
-> Using `r#"..."#` (single-hash) raw strings for HTML templates **will cause a compiler error** whenever the template contains `"#` (which is extremely common in HTML `id` attributes used with HTMX). Always use `r###"..."###` or move the template to the `blueprints/` module.
+### 10.2. Template String Rules
+Never embed multi-line templates inside generator functions. Use `include_str!()` or typed constants inside `blueprints/` with `r###"..."###` triple-hash raw string literals.
 
 ---
 
 ## 🎨 11. Rullst Blueprints Engine — Design Rules
 
-Blueprints are pre-configured project archetypes generated by the `cargo rullst new` wizard. They must follow strict rules to guarantee quality, safety, and ease of maintenance.
-
-### 11.1. Available Blueprints
-
 | Blueprint ID | Name | Description |
 |---|---|---|
 | `0` | 📝 Blank Starter | Minimal HTMX reactive counter. Clean baseline. |
-| `1` | 🎓 LMS / Course Platform | Courses + Lessons models, migrations with seed data, glassmorphic video player via HTMX. |
+| `1` | 🎓 LMS / Course Platform | Courses + Lessons models, migrations with seed data, glassmorphic video player. |
 | `2` | 🛍️ SaaS Starter | Auth system + Stripe pricing panels + user dashboard. |
 | `3` | 📰 Blog / Content System | Post model, auto-CMS via Nexus, glassmorphic press feed. |
-
-### 11.2. Blueprint Scaffolding Rules
-
-1. **Only during `new`:** Blueprint file injection (route wiring, `lib.rs`, `main.rs`) may **only** happen during `cargo rullst new`, when the project directory is freshly created and fully controlled. Never attempt to inject code into an existing user project.
-2. **Isolated file generation:** Each blueprint generates a fully self-contained set of files. No cross-file regex or AST manipulation is permitted.
-3. **Template sourcing:** All blueprint templates must live in `src/blueprints/<name>.rs` as typed functions, not inside `generators/project.rs`.
-4. **Additive, not destructive:** Blueprints append to or create new files. They never delete or overwrite files created by a previous step.
-
-### 11.3. Blueprint File Manifest
-
-Every blueprint module (e.g., `blueprints::lms`) must expose a `FileManifest` — a list of `(relative_path, content)` pairs — via a public function:
-
-```rust
-// src/blueprints/lms.rs
-pub fn file_manifest() -> Vec<(&'static str, String)> {
-    vec![
-        ("src/models/course.rs",    course_model()),
-        ("src/models/lesson.rs",    lesson_model()),
-        ("src/models/mod.rs",       "pub mod course;\npub mod lesson;\n".to_string()),
-        ("src/controllers/lms_controller.rs", lms_controller()),
-        ("src/pages/lms.rs",        lms_page()),
-        // ...migrations, etc.
-    ]
-}
-```
-
-The generator iterates over this manifest and writes each file — no HTML or Rust templates inline.
 
 ---
 
 ## 🔐 12. Environment Variables & Third-Party Secrets
 
-Any blueprint or scaffold that integrates a paid third-party service (Stripe, LemonSqueezy, Cloudinary, etc.) **must** generate a `.env` file with clear, commented placeholder values.
+Any scaffold integrating third-party services generates a `.env` with commented placeholder values, automatically protected via `.gitignore`. An accompanying `.env.example` is committed for onboarding.
 
-### 12.1. Required `.env` Template
+---
 
-```dotenv
-# ─────────────────────────────────────────────────────────────
-#  Rullst Application Environment Configuration
-#  Generated automatically by cargo rullst new
-# ─────────────────────────────────────────────────────────────
+## 💳 13. Multi-Provider Billing & National Fiscal Engine (`rullst-capital`)
 
-# ⚠️ SECURITY: This file must NEVER be committed to git.
-# It is automatically added to .gitignore by the Rullst CLI.
+`rullst-capital` provides unified subscription management, multi-gateway payments, contractor payouts, and zero-cost digital invoicing (NFS-e Nacional):
 
-# ── Database ──────────────────────────────────────────────────
-DATABASE_URL=sqlite://db.sqlite3
+### 13.1. Provider Architecture
+All billing integrations implement one or more decoupled asynchronous traits:
+* `PaymentProvider`: Checkout sessions, payment intent creation, customer portal URLs.
+* `SubscriptionProvider`: Recurring plan sync, cancellation, upgrade, status querying.
+* `PayoutProvider`: Multi-currency contractor payouts, recipient verification, transfer tracking.
 
-# ── Application ───────────────────────────────────────────────
-APP_KEY=GENERATE_A_RANDOM_32_CHAR_SECRET_HERE
-APP_ENV=development
+### 13.2. Supported Gateways & Mock Fallback Standard
+Supported gateways include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, PicPay, Razorpay, Polar, Paddle, Wise, Coinbase Commerce, and Alipay**.
+* **Mock Invariant:** All constructors (`new(impl Into<String>, ...)`) must seamlessly fall back to an offline deterministic mock sandbox when initialized with empty or `mock_*` credentials.
 
-# ── Stripe Billing (replace with your real keys from stripe.com/dashboard) ──
-# STRIPE_SECRET_KEY=sk_test_REPLACE_WITH_YOUR_SECRET_KEY
-# STRIPE_WEBHOOK_SECRET=whsec_REPLACE_WITH_YOUR_WEBHOOK_SECRET
-# STRIPE_PRICE_ID_MONTHLY=price_REPLACE_WITH_YOUR_PRICE_ID
-```
+### 13.3. Receita Federal NFS-e Nacional Engine (`FiscalEngine`)
+* **XML DPS Builder:** Constructs standard Declaracao de Prestacao de Servicos (DPS) XML according to the Receita Federal national standard with XML entity sanitization (`&amp;`, `&lt;`, `&gt;`).
+* **XMLDSig ICP-Brasil Signer:** Canonicalizes the `<infDPS>` element, computes SHA-256 digest, and signs with X.509 PKCS#12 (`.pfx`) certificates to produce enveloped W3C XMLDSig signatures.
+* **SEFIN Transmission Client:** Transmits DPS to national endpoints (`Homologation` and `Production`), parsing protocol tokens and authorized NFS-e numbers.
 
-### 12.2. `.gitignore` Auto-Protection Rules
+---
 
-The CLI **must** automatically append the following entries to `.gitignore` during project creation:
+## 🛡️ 14. Enterprise Security, RASP & Zero-Trust (`rullst-security`)
 
-```gitignore
-# Rullst: Environment & Secrets
-.env
-.env.*
-!.env.example
+`rullst-security` delivers defense-in-depth security layers designed to protect applications without requiring external proxy dependencies:
 
-# Rullst: Foundry Deployment Manifest (contains SSH keys and cloud credentials)
-Foundry.toml
-```
+### 14.1. Mandatory Middleware Layers
+* `SecureHeadersLayer`: Enforces OWASP A+ security headers (CSP with nonces, HSTS, X-Frame-Options, Permissions-Policy).
+* `WafMiddleware`: Deep-inspects inbound URI query strings and request bodies for SQL Injection (SQLi), Cross-Site Scripting (XSS), Path Traversal, and Command Injection.
+* `LoginJailLayer`: Tarpit rate-limiting middleware that exponentially delays brute-force authentication attacks on login routes.
+* `DlpInterceptor`: Data Loss Prevention engine that masks credit card numbers, CPF/CNPJ documents, and private API keys from outgoing HTTP responses and structured logs.
+* `HoneypotTrap`: Injects invisible honeypot form fields to immediately ban and record automated scraping bots.
 
-### 12.3. `.env.example` Companion File
+### 14.2. Cryptographic Security Standards
+* **Constant-Time Verification:** Webhook signatures and security tokens must use `subtle::ConstantTimeEq` or cryptographic HMAC verification to completely eliminate timing side-channel attacks.
+* **TOTP MFA (RFC-6238):** Hardware-token compatible multi-factor authentication with Base32 secret generation and QR codes.
+* **Subresource Integrity (SRI):** Automatic SHA-384 / SHA-512 SRI hash injection on external static script and style tags.
 
-Every project generated by `cargo rullst new` must also produce an `.env.example` file with all the same keys but with the placeholder values clearly documented. This file **is** committed to version control and serves as the public onboarding guide for new contributors.
+---
+
+## 🤖 15. AI Agent & LLM Orchestration (`rullst-ai`)
+
+`rullst-ai` provides a high-throughput, provider-agnostic LLM client for production AI workflows:
+
+### 15.1. Universal Provider Interface
+Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** via a unified `LlmClient` interface.
+
+### 15.2. Safety & Guardrails
+* **Prompt Injection Filter:** Real-time token heuristics detecting jailbreak and system-prompt leak attempts.
+* **PII Redaction:** Automatically scrubs personal identifiable information before outbound LLM transmission.
+* **Structured Outputs:** Native JSON schema enforcement for function calling and tool invocation.
+
+---
+
+## 📊 16. Studio Control Room & Nexus Admin CMS (`rullst-studio` & `rullst-nexus`)
+
+### 16.1. Rullst Studio (`/studio`)
+* Local developer control room running at `http://127.0.0.1:5555`.
+* **Telemetry Probes:** Direct, live telemetry inspection via `RadarSnapshot::collect()` and `SpanCollector`. Hardcoded mock data in Studio is strictly prohibited.
+* **Clean URLs:** Standardized clean paths without legacy subpaths (e.g. `/studio/radar`, `/studio/capital`, `/studio/security`, `/studio/traces`).
+* **Design System:** Unified dark glassmorphic `studio_layout` with live status pulse badges and zero client-side build steps.
+
+### 16.2. Rullst Nexus (`/nexus`)
+* Auto-generated administrative interface with dynamic entity CRUD, role-based access control, and an embedded AI Admin Assistant (`/nexus/chat`).
+
+---
+
+## 📡 17. Edge Sensor Protocols & Message Queues (`rullst-iot` & `rullst-connect`)
+
+* **`rullst-iot`**: High-performance MQTT 5.0 client with zero-copy binary packet parser for telemetry ingestion from industrial edge sensors.
+* **`rullst-connect`**: Unified asynchronous abstractions for AMQP (RabbitMQ), Redis Streams, Apache Kafka, WebSockets pub/sub, and Server-Sent Events (SSE).
+
+---
+
+## ✉️ 18. Transactional Mail Engine (`rullst-mail`)
+
+* **Multi-Transport Engine**: Native support for **Resend, SendGrid, Postmark, and SMTP** with seamless offline test mocks.
+* **Background Queue Integration**: Asynchronous, non-blocking email delivery integrated with Rullst background task workers.
