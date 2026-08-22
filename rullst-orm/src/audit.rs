@@ -53,8 +53,8 @@ pub async fn log_audit(
     let (old_values, new_values) =
         validate_and_prepare_payloads(model_type, event, old_values, new_values)?;
 
-    let pool = Orm::pool();
-    let driver = Orm::driver();
+    let pool = Orm::try_pool()?;
+    let driver = Orm::try_driver()?;
 
     if driver == "postgres" {
         sqlx::query(
@@ -185,8 +185,8 @@ pub async fn log_audit_diff(
 
 #[cfg_attr(test, mutants::skip)]
 pub async fn create_audit_table() -> Result<(), crate::Error> {
-    let pool = Orm::pool();
-    let driver = Orm::driver();
+    let pool = Orm::try_pool()?;
+    let driver = Orm::try_driver()?;
 
     let query = if driver == "postgres" {
         r#"

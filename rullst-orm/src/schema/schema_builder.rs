@@ -18,7 +18,7 @@ impl Schema {
         // surface as errors rather than producing malformed SQL.
         let columns_sql = blueprint.build()?;
 
-        let driver = crate::Orm::driver();
+        let driver = crate::Orm::try_driver().unwrap_or("sqlite");
         let escaped_table = match driver {
             "mysql" => format!("`{}`", table_name),
             _ => format!("\"{}\"", table_name),
@@ -40,7 +40,7 @@ impl Schema {
     #[mutants::skip]
     pub async fn drop_if_exists(table_name: &str) -> Result<(), Error> {
         validate_table_name(table_name)?;
-        let driver = crate::Orm::driver();
+        let driver = crate::Orm::try_driver().unwrap_or("sqlite");
         let escaped_table = match driver {
             "mysql" => format!("`{}`", table_name),
             _ => format!("\"{}\"", table_name),

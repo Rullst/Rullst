@@ -139,8 +139,8 @@ async fn migrations_table_exists(pool: &crate::RullstPool, driver: &str) -> Resu
 
 #[cfg_attr(test, mutants::skip)]
 async fn status_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
-    let pool = crate::Orm::pool();
-    let driver = crate::Orm::driver();
+    let pool = crate::Orm::try_pool()?;
+    let driver = crate::Orm::try_driver()?;
 
     let table_exists = migrations_table_exists(pool, driver).await?;
 
@@ -250,8 +250,8 @@ fn regenerate_migrations_mod() -> Result<(), Error> {
 
 #[cfg_attr(test, mutants::skip)]
 async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
-    let pool = crate::Orm::pool();
-    let driver = crate::Orm::driver();
+    let pool = crate::Orm::try_pool()?;
+    let driver = crate::Orm::try_driver()?;
 
     let query_str = match driver {
         "postgres" => {
@@ -319,8 +319,8 @@ async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error
 
 #[cfg_attr(test, mutants::skip)]
 async fn rollback_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error> {
-    let pool = crate::Orm::pool();
-    let driver = crate::Orm::driver();
+    let pool = crate::Orm::try_pool()?;
+    let driver = crate::Orm::try_driver()?;
 
     let table_exists = migrations_table_exists(pool, driver).await?;
 
