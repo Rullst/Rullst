@@ -212,5 +212,27 @@ mod tests {
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+
+        let body_bytes = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
+        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        assert!(body_str.contains("rullst_uptime_seconds"));
+        assert!(body_str.contains("rullst_memory_rss_bytes"));
+        assert!(body_str.contains("rullst_active_tokio_tasks"));
+    }
+
+    #[tokio::test]
+    async fn test_radar_snapshot_collect_and_api() {
+        init_radar();
+        let snapshot = RadarSnapshot::collect();
+        assert!(snapshot.memory_rss_mb > 0.0);
+        assert!(snapshot.timestamp > 0);
+
+        let default_snapshot = RadarSnapshot::default();
+        assert!(default_snapshot.timestamp > 0);
+
+        let resp = api_radar_handler().await.into_response();
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 }

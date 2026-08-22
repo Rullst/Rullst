@@ -205,6 +205,57 @@ mod tests {
         clean_headers.insert("user-agent", HeaderValue::from_static("Mozilla/5.0"));
         assert!(!RaspInspector::inspect_headers(&clean_headers));
     }
+
+    #[test]
+    fn test_rasp_ssrf_and_rce_detection() {
+        // SSRF
+        assert!(RaspInspector::inspect_uri(
+            "/proxy?url=http://169.254.169.254/latest/meta-data"
+        ));
+        assert!(RaspInspector::inspect_uri(
+            "/fetch?url=http://metadata.google.internal/computeMetadata"
+        ));
+
+        // RCE
+        assert!(RaspInspector::inspect_text("input; rm -rf /"));
+        assert!(RaspInspector::inspect_text("echo test | sh"));
+        assert!(RaspInspector::inspect_text(
+            "powershell -Command Invoke-WebRequest"
+        ));
+        assert!(RaspInspector::inspect_text("run /bin/bash script.sh"));
+    }
+
+    #[tokio::test]
+    async fn test_rasp_security_layer_middleware() {
+        use axum::routing::get;
+        use tower::ServiceExt;
+
+        async fn handler() -> impl IntoResponse {
+            (StatusCode::OK, "Protected Resource")
+        }
+
+        let app = axum::Router::new()
+            .route("/items", get(handler))
+            .layer(RaspSecurityLayer);
+
+        // Attack request -> Blocked with 403
+        let attack_req = Request::builder()
+            .uri("/items?q=UNION SELECT password FROM users")
+            .body(Body::empty())
+            .unwrap();
+
+        let attack_resp = app.clone().oneshot(attack_req).await.unwrap();
+        assert_eq!(attack_resp.status(), StatusCode::FORBIDDEN);
+
+        // Clean request -> 200 OK
+        let clean_req = Request::builder()
+            .uri("/items?page=1")
+            .body(Body::empty())
+            .unwrap();
+
+        let clean_resp = app.oneshot(clean_req).await.unwrap();
+        assert_eq!(clean_resp.status(), StatusCode::OK);
+    }
 }
 
 #[cfg(kani)]

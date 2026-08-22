@@ -183,6 +183,57 @@ mod tests {
         assert!(!was_modified);
         assert_eq!(masked, payload);
     }
+
+    #[test]
+    fn test_mask_aws_access_key() {
+        let payload = b"{\"aws_key\": \"AKIAIOSFODNN7EXAMPLE\"}";
+        let (masked, was_modified) = mask_response_payload(payload);
+        assert!(was_modified);
+        let masked_str = String::from_utf8(masked).unwrap();
+        assert!(masked_str.contains("AKIA****************"));
+        assert!(!masked_str.contains("AKIAIOSFODNN7EXAMPLE"));
+    }
+
+    #[test]
+    fn test_mask_mysql_and_redis_urls() {
+        let payload = b"mysql://root:my_secret_sql_pass@127.0.0.1:3306/db and redis://default:redis_auth_token@cache:6379";
+        let (masked, was_modified) = mask_response_payload(payload);
+        assert!(was_modified);
+        let masked_str = String::from_utf8(masked).unwrap();
+        assert!(masked_str.contains("mysql://root:*****@127.0.0.1:3306/db"));
+        assert!(masked_str.contains("redis://default:*****@cache:6379"));
+    }
+
+    #[tokio::test]
+    async fn test_dlp_layer_middleware() {
+        use axum::http::{Request, StatusCode};
+        use axum::response::IntoResponse;
+        use axum::routing::get;
+        use tower::ServiceExt;
+
+        async fn handler() -> impl IntoResponse {
+            (
+                StatusCode::OK,
+                "Config leaked: postgres://user:secret123@db:5432/main",
+            )
+        }
+
+        let app = axum::Router::new()
+            .route("/secret", get(handler))
+            .layer(DlpLayer);
+
+        let req = Request::builder()
+            .uri("/secret")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 10000).await.unwrap();
+        let body_str = String::from_utf8(body.to_vec()).unwrap();
+        assert!(body_str.contains("postgres://user:*****@db:5432/main"));
+        assert!(!body_str.contains("secret123"));
+    }
 }
 
 #[cfg(kani)]

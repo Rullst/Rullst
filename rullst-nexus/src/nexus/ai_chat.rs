@@ -296,3 +296,81 @@ pub async fn nexus_chat_query(
          </div>"
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nexus::types::{FieldKind, FieldMeta, RegistryEntry};
+
+    fn make_test_state() -> NexusState {
+        let entry = RegistryEntry {
+            table: "products",
+            label: "Products",
+            icon: "&#128196;",
+            pk: "id",
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number),
+                FieldMeta::new("title", "Title", FieldKind::Text),
+            ],
+        };
+
+        NexusState {
+            registry: Arc::new(vec![entry]),
+            brand: Arc::new("Admin Panel".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_detect_ai_provider_default() {
+        let (_has_prov, name) = detect_ai_provider();
+        assert!(!name.is_empty());
+    }
+
+    #[test]
+    fn test_generate_smart_nexus_ai_response() {
+        let state = make_test_state();
+
+        // 1. Setup guide
+        let resp_setup =
+            generate_smart_nexus_ai_response("How to configure OpenAI provider?", &state);
+        assert!(resp_setup.contains("Universal LLM Setup Guide"));
+        assert!(resp_setup.contains("GEMINI_API_KEY"));
+
+        // 2. Count query for specific table
+        let resp_count =
+            generate_smart_nexus_ai_response("How many products are registered?", &state);
+        assert!(resp_count.contains("SELECT COUNT(*) AS total_products FROM products;"));
+
+        // 3. Suggested query for specific table
+        let resp_query = generate_smart_nexus_ai_response("Show products", &state);
+        assert!(resp_query.contains("SELECT id, title FROM products"));
+
+        // 4. General count queries across all models
+        let resp_general_count = generate_smart_nexus_ai_response("Count total records", &state);
+        assert!(resp_general_count.contains("total_products"));
+
+        // 5. Help fallback
+        let resp_fallback = generate_smart_nexus_ai_response("What can you do?", &state);
+        assert!(resp_fallback.contains("Offline Nexus Intelligence Assistant"));
+    }
+
+    #[tokio::test]
+    async fn test_nexus_chat_handlers() {
+        let state = Arc::new(make_test_state());
+
+        // Test Chat Page GET
+        let headers = axum::http::HeaderMap::new();
+        let page_html = nexus_chat_page(State(state.clone()), headers).await.0;
+        assert!(page_html.contains("Nexus AI Assistant"));
+        assert!(page_html.contains("nexus-chat-form"));
+
+        // Test Chat Query POST
+        let form_req = axum::extract::Form(ChatRequest {
+            message: "Show products table".to_string(),
+        });
+        let query_html = nexus_chat_query(State(state), form_req).await.0;
+        assert!(query_html.contains("nexus-chat-user"));
+        assert!(query_html.contains("nexus-chat-assistant"));
+        assert!(query_html.contains("products"));
+    }
+}

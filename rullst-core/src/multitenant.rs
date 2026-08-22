@@ -267,4 +267,53 @@ mod tests {
             })
             .await;
     }
+
+    #[tokio::test]
+    async fn test_tenant_layer_header_and_query() {
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use axum::response::IntoResponse;
+        use axum::routing::get;
+        use tower::ServiceExt;
+
+        async fn handler() -> impl IntoResponse {
+            let tenant = current_tenant_id().unwrap_or_else(|| "none".to_string());
+            (StatusCode::OK, tenant)
+        }
+
+        // 1. Header strategy
+        let config_header = TenantConfig::new(TenantStrategy::Header);
+        let app_header = axum::Router::new()
+            .route("/test", get(handler))
+            .layer(tenant_layer(config_header));
+
+        let req = Request::builder()
+            .uri("/test")
+            .header("X-Tenant-ID", "acme-corp")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app_header.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 1000).await.unwrap();
+        assert_eq!(String::from_utf8(body.to_vec()).unwrap(), "acme-corp");
+
+        // 2. Query param strategy
+        let config_param = TenantConfig::new(TenantStrategy::Parameter);
+        let app_param = axum::Router::new()
+            .route("/test", get(handler))
+            .layer(tenant_layer(config_param));
+
+        let req_param = Request::builder()
+            .uri("/test?tenant_id=beta-inc")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp_param = app_param.oneshot(req_param).await.unwrap();
+        assert_eq!(resp_param.status(), StatusCode::OK);
+        let body_param = axum::body::to_bytes(resp_param.into_body(), 1000)
+            .await
+            .unwrap();
+        assert_eq!(String::from_utf8(body_param.to_vec()).unwrap(), "beta-inc");
+    }
 }

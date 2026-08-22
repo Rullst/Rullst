@@ -452,5 +452,76 @@ mod tests {
         assert_eq!(err.to_string(), "API error: test API");
         let err2 = AiError::ConfigError("test conf".into());
         assert_eq!(err2.to_string(), "Configuration error: test conf");
+        let err3 = AiError::BlockedByFirewall("SQL injection".into());
+        assert_eq!(err3.to_string(), "Blocked by AI Firewall: SQL injection");
+        let err4 = AiError::Other("Generic error".into());
+        assert_eq!(err4.to_string(), "Error: Generic error");
+    }
+
+    #[test]
+    fn test_message_constructors() {
+        let sys = Message::system("System prompt");
+        assert_eq!(sys.role, "system");
+        assert_eq!(sys.content, "System prompt");
+
+        let usr = Message::user("User question");
+        assert_eq!(usr.role, "user");
+        assert_eq!(usr.content, "User question");
+
+        let asst = Message::assistant("Assistant reply");
+        assert_eq!(asst.role, "assistant");
+        assert_eq!(asst.content, "Assistant reply");
+    }
+
+    struct MockAiProvider {
+        succeed: bool,
+        response: String,
+    }
+
+    #[async_trait]
+    impl AiProvider for MockAiProvider {
+        async fn prompt(&self, _text: &str) -> Result<String, AiError> {
+            if self.succeed {
+                Ok(self.response.clone())
+            } else {
+                Err(AiError::ApiError("Primary provider failed".into()))
+            }
+        }
+        async fn chat(&self, _messages: &[Message]) -> Result<String, AiError> {
+            if self.succeed {
+                Ok(self.response.clone())
+            } else {
+                Err(AiError::ApiError("Primary provider failed".into()))
+            }
+        }
+        async fn embed(&self, _text: &str) -> Result<Vec<f32>, AiError> {
+            if self.succeed {
+                Ok(vec![1.0, 0.5])
+            } else {
+                Err(AiError::ApiError("Primary provider failed".into()))
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fallback_provider() {
+        let p1 = Arc::new(MockAiProvider {
+            succeed: false,
+            response: "".to_string(),
+        });
+        let p2 = Arc::new(MockAiProvider {
+            succeed: true,
+            response: "Fallback success response".to_string(),
+        });
+
+        let fallback = FallbackProvider::new(vec![p1, p2]);
+        let res = fallback.prompt("Hello").await.unwrap();
+        assert_eq!(res, "Fallback success response");
+
+        let chat_res = fallback.chat(&[Message::user("Hello")]).await.unwrap();
+        assert_eq!(chat_res, "Fallback success response");
+
+        let embed_res = fallback.embed("Hello").await.unwrap();
+        assert_eq!(embed_res, vec![1.0, 0.5]);
     }
 }

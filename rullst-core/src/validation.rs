@@ -299,4 +299,23 @@ mod tests {
             _ => panic!("Expected ValidationError"),
         }
     }
+
+    #[tokio::test]
+    async fn test_extraction_error_responses() {
+        let err_htmx = ValidationError::ExtractionError {
+            message: "Malformed form data".to_string(),
+            is_htmx: true,
+        };
+        assert!(format!("{}", err_htmx).contains("Malformed form data"));
+
+        let resp_htmx = err_htmx.into_response();
+        assert_eq!(resp_htmx.status(), StatusCode::BAD_REQUEST);
+
+        let err_json = ValidationError::ExtractionError {
+            message: "Invalid JSON syntax".to_string(),
+            is_htmx: false,
+        };
+        let resp_json = err_json.into_response();
+        assert_eq!(resp_json.status(), StatusCode::BAD_REQUEST);
+    }
 }
