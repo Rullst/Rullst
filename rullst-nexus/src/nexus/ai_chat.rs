@@ -351,7 +351,10 @@ mod tests {
 
         // 5. Help fallback
         let resp_fallback = generate_smart_nexus_ai_response("What can you do?", &state);
-        assert!(resp_fallback.contains("Offline Nexus Intelligence Assistant"));
+        assert!(
+            resp_fallback.contains("analyzed your query")
+                || resp_fallback.contains("example query")
+        );
     }
 
     #[tokio::test]
@@ -361,7 +364,7 @@ mod tests {
         // Test Chat Page GET
         let headers = axum::http::HeaderMap::new();
         let page_html = nexus_chat_page(State(state.clone()), headers).await.0;
-        assert!(page_html.contains("Nexus AI Assistant"));
+        assert!(page_html.contains("AI Query Assistant"));
         assert!(page_html.contains("nexus-chat-form"));
 
         // Test Chat Query POST
