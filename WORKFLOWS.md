@@ -8,46 +8,51 @@ This document details every automated workflow, target coverage by crate, execut
 
 ## 🧠 Verification Paradigms & Core Technology Comparison
 
-To ensure mission-critical resilience, Rullst does not rely on a single verification vector. Instead, 5 distinct, complementary testing paradigms are employed simultaneously:
+To ensure mission-critical resilience, Rullst does not rely on a single verification vector. Instead, 8 distinct, complementary testing paradigms are employed simultaneously:
 
 | Mechanism | Primary Question | Verification Target | Engine / Tool |
 | :--- | :--- | :--- | :--- |
 | **Code Coverage** | *"Which code branches were executed?"* | **Quantity** of tested branches & lines | `cargo-llvm-cov` + Codecov |
-| **Mutation Testing** | *"Do our assertions actually catch bugs?"* | **Quality** and sensitivity of test assertions | `cargo-mutants` |
+| **Mutation Testing** | *"Do our assertions actually catch bugs?"* | **Quality** and sensitivity of test assertions | `cargo-mutants` (8 shards) |
 | **Formal Verification** | *"Is there any input in the universe that breaks invariants?"* | **Mathematical Proof** of safety contracts | `kani-verifier` (SAT/SMT) |
 | **Undefined Behavior** | *"Are unsafe blocks and pointer aliasing 100% sound?"* | **Memory Safety** & Stacked Borrows | `cargo miri` (MIR Interpreter) |
 | **Memory Safety Audit** | *"Are dependencies and code free of unsafe blocks?"* | **Zero-Unsafe Invariant** & Supply Chain Safety | `cargo-geiger` + `cargo rullst audit --geiger` |
-| **Fuzz Testing** | *"How does the system react to chaotic/malicious payloads?"* | **Parser Robustness** & Crash Resistance | `cargo-fuzz` / `libFuzzer` |
+| **Fuzz Testing & Corpus** | *"How does the system react to chaotic/malicious payloads?"* | **Parser Robustness** & Crash Resistance | `cargo-fuzz` / `libFuzzer` + `cmin` |
 | **Property Testing** | *"Do state invariants hold under thousands of random combinations?"* | **State Machine Integrity** | `proptest` (QuickCheck-style) |
+| **Supply Chain & Provenance** | *"Are build artifacts signed and dependencies free of CVEs?"* | **Cryptographic Attestation & SBOM** | `CycloneDX 1.5 JSON`, `Sigstore Cosign`, `SLSA 3` |
 
 ### 📐 The Multi-Layer Safety Pyramid
 
 ```
-       ▲  [6. KANI] Formal Mathematical Model Checking (Zero Panics / Invariants)
-      ▲▲  [5. MIRI] Undefined Behavior & Strict Pointer Provenance
-     ▲▲▲  [4. MUTANTS] Test Assertion Mutation Quality & Sensitivity
-    ▲▲▲▲  [3. FUZZING & PROPTEST] Continuous Chaos Ingestion & Combinatorial Testing
-   ▲▲▲▲▲  [2. SANITIZERS (ASan/TSan)] Memory & Concurrency Data-Race Detection
-  ▲▲▲▲▲▲  [1. CODECOV] 90%+ Deterministic LLVM Multi-OS Code Coverage
+         ▲  [8. SIGSTORE / SLSA 3] Cryptographic Provenance & CycloneDX 1.5 SBOM
+        ▲▲  [7. KANI] Formal Mathematical Model Checking (Zero Panics / Invariants)
+       ▲▲▲  [6. MIRI] Undefined Behavior & Strict Pointer Provenance
+      ▲▲▲▲  [5. MUTANTS] Test Assertion Mutation Quality & Sensitivity
+     ▲▲▲▲▲  [4. FUZZING & CORPUS SYNC] Continuous Chaos Ingestion & Compaction
+    ▲▲▲▲▲▲  [3. PROPTEST] 10,000+ Iteration Combinatorial Property Validation
+   ▲▲▲▲▲▲▲  [2. SANITIZERS (ASan/TSan)] Memory & Concurrency Data-Race Detection
+  ▲▲▲▲▲▲▲▲  [1. CODECOV] 90%+ Deterministic LLVM Multi-OS Code Coverage
 ```
 
 ---
 
 ## 🏛️ Comprehensive Test & Formal Verification Matrix
 
-| Crate | Unit & Integration | Kani (Model Checking) | Miri (UB & Memory) | Fuzzing (libFuzzer) | Property Testing (Proptest) | Concurrency Sanitizers (TSan/ASan) | Zero Panics (Clippy) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`rullst-core`** | ✅ | ✅ (PII & Circuit Breakers) | ✅ | ✅ (12 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-security`** | ✅ | ✅ (Vault & SRI Invariants) | ✅ | ✅ (5 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-auth`** | ✅ | ✅ (Cookie & Token Invariants) | ✅ | ✅ (2 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-orm`** | ✅ | ✅ (SQL Sanitization Bounds) | ✅ | ✅ (5 Targets) | ✅ (Query Builder AST) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-connect`** | ✅ | ✅ (OIDC / PKCE Verifier) | ✅ | ✅ (3 Targets) | ✅ (PKCE Fuzzing) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-iot`** | ✅ | ✅ (PQC Kyber & Modbus CRC) | ✅ | ✅ (3 Targets) | ✅ (Hardware State) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-ai`** | ✅ | ✅ (Tool Param Schema) | ✅ | ✅ (3 Targets) | ✅ (Prompt Invariants) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-capital`** | ✅ | ✅ (Invoice Total Bounds) | ✅ | ✅ (1 Target) | ✅ (Billing Invariants) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-nexus`** | ✅ | ✅ (Identifier Sanitation) | ✅ | ✅ (1 Target) | ✅ (CRUD Query Bounds) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-studio`** | ✅ | ✅ (Identifier Length Bounds) | ✅ | ✅ (1 Target) | ✅ (Filter Invariants) | ✅ (TSan + ASan) | ✅ |
-| **`rullst-mail`** | ✅ | ✅ (Message Builder Invariants) | ✅ | ✅ (4 Targets) | ✅ (Recipient Parsing) | ✅ (TSan + ASan) | ✅ |
+| Crate | Unit & Integration | Kani (Model Checking) | Miri (UB & Memory) | Fuzzing (libFuzzer) | Property Testing (Proptest) | Concurrency & Race-Freedom | AST Security & IDOR | Pure-Rustls Native |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`rullst-core`** | ✅ | ✅ (PII & Circuit Breakers) | ✅ | ✅ (12 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-security`** | ✅ | ✅ (Vault & SRI Invariants) | ✅ | ✅ (5 Targets) | ✅ (10,000 Iterations) | ✅ (High-Contention) | ✅ | ✅ |
+| **`rullst-auth`** | ✅ | ✅ (Cookie & Token Invariants) | ✅ | ✅ (2 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-orm`** | ✅ | ✅ (SQL Sanitization Bounds) | ✅ | ✅ (5 Targets) | ✅ (Query Builder AST) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-connect`** | ✅ | ✅ (OIDC / PKCE Verifier) | ✅ | ✅ (3 Targets) | ✅ (PKCE Fuzzing) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-iot`** | ✅ | ✅ (PQC Kyber & Modbus CRC) | ✅ | ✅ (3 Targets) | ✅ (Hardware State) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-ai`** | ✅ | ✅ (Tool Param Schema) | ✅ | ✅ (3 Targets) | ✅ (Prompt Invariants) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-capital`** | ✅ | ✅ (Invoice Total Bounds) | ✅ | ✅ (1 Target) | ✅ (Billing Invariants) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-nexus`** | ✅ | ✅ (Identifier Sanitation) | ✅ | ✅ (1 Target) | ✅ (CRUD Query Bounds) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-studio`** | ✅ | ✅ (Identifier Length Bounds) | ✅ | ✅ (1 Target) | ✅ (Filter Invariants) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-mail`** | ✅ | ✅ (Message Builder Invariants) | ✅ | ✅ (4 Targets) | ✅ (Recipient Parsing) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`cargo-rullst`** | ✅ | ✅ (Scaffold Validation) | ✅ | ✅ (AST Generator) | ✅ (Parser Invariants) | ✅ (Multi-Threaded) | ✅ | ✅ |
+| **`rullst`** | ✅ | ✅ (Umbrella Integration) | ✅ | ✅ (Full Stack) | ✅ (End-to-End AST) | ✅ (TSan + ASan) | ✅ | ✅ |
 
 ---
 
@@ -209,7 +214,7 @@ Google OSS-Fuzz requires that the build configuration conforms to their internal
 
 ## 📊 5. Complete CI/CD Workflows Classification Matrix
 
-To maintain ultra-fast feedback loops on daily pushes while retaining military-grade formal verification, the 28 GitHub Actions workflows in Rullst are organized into 4 distinct execution tiers:
+To maintain ultra-fast feedback loops on daily pushes while retaining military-grade formal verification, the 32 GitHub Actions workflows in Rullst are organized into 4 distinct execution tiers:
 
 | Workflow | File | Execution Mode | Trigger Events | Primary Responsibility | Typical Duration |
 | :--- | :--- | :--- | :--- | :--- | :--- |
