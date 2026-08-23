@@ -219,7 +219,7 @@ mod tests {
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
         assert!(body_str.contains("rullst_uptime_seconds"));
         assert!(body_str.contains("rullst_memory_rss_bytes"));
-        assert!(body_str.contains("rullst_active_tokio_tasks"));
+        assert!(body_str.contains("rullst_tokio_active_tasks"));
     }
 
     #[tokio::test]
