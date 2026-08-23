@@ -52,6 +52,21 @@ Constant-time response normalizer (`TimingGuardConfig`, `TimingScope`, `equalize
 ### 🤖 LLM Security Firewall & Prompt Shield v2 (`rullst-security::ai_firewall`)
 Zero-latency prompt inspector and middleware (`LlmFirewall`, `ai_firewall_middleware`) scrutinizing inputs for direct jailbreaks (`Ignore previous instructions`, `DAN mode`), system prompt leaking, tokenizer delimiter hijacking (`<|im_start|>`), Markdown exfiltration callbacks, and invisible zero-width unicode character poisoning.
 
+### 📋 CycloneDX 1.5 JSON SBOM Exporter (`cargo rullst audit --sbom`)
+Automated Software Bill of Materials generation (`sbom-cyclonedx.json`) exporting all 773+ components with package purl, versions, and SHA-256 hashes for enterprise regulatory audits (SOC 2, ISO 27001, FedRAMP).
+
+### 🌐 Local Network Surface Scanner (`cargo rullst audit --network`)
+High-speed port and interface binding scanner (inspired by *RustScan*) checking active listeners (3000, 5555, 8080, 5432, 6379, 1883, 9092) to prevent insecure bindings to `0.0.0.0`.
+
+### ⚓ DevSecOps Git Pre-Commit Hook (`cargo rullst hook:install`)
+Automated provisioner for `.git/hooks/pre-commit` enforcing `rustfmt`, strict Clippy (`-D warnings`), and static IDOR route validation before every commit.
+
+### 🩺 Toolchain & System Health Doctor (`cargo rullst doctor`)
+Unified diagnostics scanner verifying Rust MSRV (>= 1.96.0), linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`, `cargo-mutants`, `kani-verifier`, and Docker Engine with instant auto-fix suggestions.
+
+### 🔒 100% Pure-Rustls Native Transport
+Strict zero-OpenSSL C-bindings policy across all network and security crates, eliminating native C-library memory corruption vulnerabilities.
+
 ### 📊 Visual Threat Radar (SOC)
 Visual dashboard integrated into Rullst Studio (`http://localhost:5555/studio/security`) and Rullst Nexus (`http://localhost:3000/nexus/security`) displaying active threat attack vectors, live IP reputation scoring, log redaction counts, zero-trust mismatches, schema violations, MFA verifications, rate limit drops, SIEM dispatches, Anti-Timing protections, AI Firewall blocks, and AI incident reports.
 

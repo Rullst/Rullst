@@ -42,6 +42,12 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M29** | 🌐 Pilar VIII: Interactive Docs | Embedded Scalar API Playground at `/docs` (`cargo rullst make:scalar`) | `[x] Completed` | v12.0.0 |
 | **M30** | 🌐 Pilar VIII: Microservices | `rullst-grpc` (Tonic) & Protobuf Service Scaffolding (`cargo rullst make:grpc`) | `[x] Completed` | v12.0.0 |
 | **M31** | 🛰️ Pilar IX: Aerospace & Mobility | Aerospace, Autonomous Vehicles, Robotics & Defense (`rullst-orbit` & `rullst-auto`) | `[ ] Planned` | v13.0.0 |
+| **M32** | 💳 Pilar III: SaaS & Entitlements | Declarative Feature Gates & Entitlement Decorators (`#[rullst::gate]` & `GateGuard`) | `[ ] Planned` | v12.1.0 |
+| **M33** | 🎨 Pilar I: Typed SDK Generation | Multi-Target SDK Generator (`cargo rullst sdk:generate --target ts/react/dart/swift`) | `[ ] Planned` | v12.1.0 |
+| **M34** | 📊 Pilar V: Visual Trace Waterfall | Distributed OpenTelemetry Trace Waterfall Visualizer (`/studio/traces`) | `[ ] Planned` | v12.1.0 |
+| **M35** | 🤖 Pilar V: AI Data Copilot | Natural Language to SQL Studio Assistant (`/studio/data` NL query engine) | `[ ] Planned` | v12.1.0 |
+| **M36** | 🤖 Pilar I: Error Console Auto-Healing | 1-Click AI Auto-Fix in Dev Error Console (`/error-console/autofix`) | `[ ] Planned` | v12.1.0 |
+| **M37** | 🗄️ Pilar II: High-Throughput Edge | In-Memory & Local NVMe SQLite Read-Replicas with background sync | `[ ] Planned` | v13.0.0 |
 
 ---
 
@@ -131,9 +137,9 @@ We proceed maintaining **100% test coverage**, **Zero-Panics Policy**, and **SST
 
 | Version | Status | Key Milestones Included |
 | :--- | :---: | :--- |
-| **v12.0.0** | `[x] Released (Golden Master)` | **M1-M7, M9-M12, M14-M19, M24, M26-M30** (Full-Stack, Security RASP/Vault/SOC, K8s, Scalar, PaaS Deploy, LiveView, DI, gRPC) |
-| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **MFA TOTP Engine** |
-| **v13.0.0** | `[ ] Planned (Major Release)` | **M13** (Post-Quantum Crate), **M22** (Agentic DevOps), **M23** (Polymorphic Engine), **M31** (Aerospace & Mobility) |
+| **v12.0.0** | `[x] Released (Golden Master)` | **M1-M7, M9-M12, M14-M19, M24, M26-M30** (Full-Stack, Security RASP/Vault/SOC, K8s, Scalar, PaaS Deploy, LiveView, DI, gRPC, Pure-Rustls, CycloneDX SBOM, Network Audit) |
+| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **M32** (SaaS Entitlements), **M33** (Typed SDKs), **M34** (Studio Traces), **M35** (AI Studio NL-SQL), **M36** (Error Console Auto-Fix) |
+| **v13.0.0** | `[ ] Planned (Major Release)` | **M13** (Post-Quantum Crate), **M22** (Agentic DevOps), **M23** (Polymorphic Engine), **M31** (Aerospace & Mobility), **M37** (NVMe Edge Replicas) |
 
 ---
 

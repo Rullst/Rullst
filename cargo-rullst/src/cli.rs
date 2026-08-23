@@ -283,7 +283,7 @@ pub enum Commands {
         /// Target item to inspect (e.g. routes, models, schema, or file path)
         target: Option<String>,
     },
-    /// Runs AI-assisted security audit for secret leaks, CVEs, IDOR/BOLA routes, and compliance posture
+    /// Runs AI-assisted security audit for secret leaks, CVEs, IDOR/BOLA routes, unsafe code, SBOM and network posture
     Audit {
         /// Optional: Enable AI Sentinel analysis suggestions
         #[arg(long)]
@@ -294,7 +294,21 @@ pub enum Commands {
         /// Optional: Run static IDOR / BOLA vulnerability scanner on parameterized routes
         #[arg(long)]
         idor: bool,
+        /// Optional: Run Cargo Geiger dependency tree and AST unsafe memory safety analysis
+        #[arg(long)]
+        geiger: bool,
+        /// Optional: Export CycloneDX 1.5 JSON Software Bill of Materials (sbom-cyclonedx.json)
+        #[arg(long)]
+        sbom: bool,
+        /// Optional: Scan local network surface and interface bindings (inspired by RustScan)
+        #[arg(long)]
+        network: bool,
     },
+    /// Installs automated Git pre-commit quality and security hook in .git/hooks/pre-commit
+    #[command(name = "hook:install")]
+    HookInstall,
+    /// Runs full system diagnostics and toolchain health checks (Rust MSRV, Docker, linters, security tools)
+    Doctor,
     /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
     Eject {
         /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs
@@ -516,8 +530,24 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             ai,
             compliance,
             idor,
+            geiger,
+            sbom,
+            network,
         } => {
-            crate::generators::audit::run_security_audit(*ai, *compliance, *idor)?;
+            crate::generators::audit::run_security_audit(
+                *ai,
+                *compliance,
+                *idor,
+                *geiger,
+                *sbom,
+                *network,
+            )?;
+        }
+        Commands::HookInstall => {
+            crate::generators::hook::install_git_pre_commit_hook()?;
+        }
+        Commands::Doctor => {
+            crate::generators::doctor::run_doctor()?;
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;

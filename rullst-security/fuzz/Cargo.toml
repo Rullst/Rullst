@@ -50,3 +50,16 @@ name = "fuzz_log_redactor"
 path = "fuzz_targets/fuzz_log_redactor.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "fuzz_dlp"
+path = "fuzz_targets/fuzz_dlp.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_sanitizer"
+path = "fuzz_targets/fuzz_sanitizer.rs"
+test = false
+doc = false
+

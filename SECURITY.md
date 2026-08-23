@@ -56,7 +56,10 @@ Rullst is built with a **Zero-Trust Application Self-Protection** architecture e
 * **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Neutralizes accidental leakage of private keys, AWS access keys, and database connection strings before responses leave the server.
 * **RASP Deep Request Inspector (`rullst-security::rasp`)**: Runtime protection filtering URI, text payloads, and HTTP headers against SQLi, SSRF, RCE, and Log4j exploits.
 * **CLI IDOR / BOLA Static Scanner (`cargo rullst audit --idor`)**: Recursive AST scanner identifying unauthenticated entity access across parameterized routes (`/:id`, `/{id}`).
-* **Automated Compliance Exporter (`cargo rullst audit --compliance`)**: Automated generation of `SECURITY_COMPLIANCE.md` reports mapping codebase controls to OWASP Top 10, SOC2 Type II, and ISO 27001 requirements.
+* **Automated Compliance Exporter (`cargo rullst audit --compliance`)**: Automated generation of `SECURITY_COMPLIANCE.md` reports mapping codebase controls to OWASP Top 10, SOC2 Type II, ISO 27001, and Pure-Rustls requirements.
+* **CycloneDX SBOM Exporter (`cargo rullst audit --sbom`)**: Automated Software Bill of Materials generation in CycloneDX 1.5 JSON format with package SHA-256 hashes.
+* **Local Network Surface Scanner (`cargo rullst audit --network`)**: High-speed port and interface binding scanner (inspired by *RustScan*) preventing sensitive leaks to `0.0.0.0`.
+* **DevSecOps Git Pre-Commit Hook (`cargo rullst hook:install`)**: One-click local Git gatekeeper enforcing rustfmt, strict Clippy (`-D warnings`), and static security audits.
 
 ---
 
@@ -69,5 +72,6 @@ Every commit and pull request in the Rullst ecosystem undergoes rigorous automat
 | **Formal Verification** | State transitions, cryptographic ledgers | **Kani Verifier (100% proofs)** |
 | **Memory Safety & UB** | Strict provenance, alignment, concurrency | **Miri Interpreter (13 packages)** |
 | **Dynamic Sanitizers** | Data races (`TSan`), memory leaks (`ASan`) | **Nightly ThreadSanitizer & ASan** |
-| **Continuous Fuzzing** | Input parsers, macro decoders, network streams| **libFuzzer & Google OSS-Fuzz** |
-| **Supply Chain Audit** | Dependency CVEs, license compliance | **`cargo-audit`, `cargo-deny`, SLSA 3** |
+| **Continuous Fuzzing** | Input parsers, macro decoders, network streams| **libFuzzer, AFL.rs, Google OSS-Fuzz** |
+| **Supply Chain Audit** | Dependency CVEs, license compliance | **`cargo-audit`, `cargo-deny`, CycloneDX SBOM, SLSA 3** |
+| **TLS & Cryptography** | Zero C/OpenSSL memory corruption | **100% Pure-Rustls Native (`tls-rustls`)** |

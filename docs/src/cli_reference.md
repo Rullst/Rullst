@@ -206,6 +206,32 @@ Initializes your native application client (after using `make:omni`), launching 
 
 ---
 
+## 🛡️ 4. Security, Compliance & System Diagnostics
+
+### `cargo rullst audit`
+Executes deep automated security analysis across the codebase, configuration, routes, dependencies, and network bindings.
+* **Optional Flags:**
+  * `--ai`: Enables autonomous AI Sentinel analysis with risk assessment and proactive remediation advice.
+  * `--compliance`: Generates the `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC 2 Type II, ISO 27001, and 100% Pure-Rustls transport compliance.
+  * `--idor`: Recursively inspects parameterized routes (`/:id`, `/{id}`) to ensure mandatory `RbacGuard` or `UserContext` ownership validation.
+  * `--geiger`: Audits the dependency tree for `unsafe` code blocks, enforcing zero-unsafe invariants.
+  * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) with package SHA-256 checksums and license metadata.
+  * `--network`: Runs an ultra-fast port and network interface scanner (inspired by *RustScan*) to ensure services and debug ports are not inadvertently exposed to `0.0.0.0`.
+
+### `cargo rullst hook:install`
+Installs an automated pre-commit hook into `.git/hooks/pre-commit` that runs `cargo fmt -- --check`, `cargo clippy -D warnings`, and `cargo rullst audit --idor` before every commit.
+
+### `cargo rullst doctor`
+Runs comprehensive system and toolchain diagnostics, verifying Rust MSRV (>= 1.96.0), linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`, `cargo-mutants`, `kani-verifier`, and Docker Engine with instant actionable recommendations.
+
+### `cargo rullst inspect [target]`
+Expands macros and displays structural insights in the terminal:
+* `cargo rullst inspect route`: Lists all registered HTTP, WebSocket, and gRPC endpoints.
+* `cargo rullst inspect model`: Inspects ORM model columns, primary keys, and relationships.
+* `cargo rullst inspect schema`: Displays the synchronized database schema.
+
+---
+
 ## 🛠️ Quick CLI Cheat Sheet
 
 ```bash

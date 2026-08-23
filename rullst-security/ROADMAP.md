@@ -30,6 +30,8 @@
 - [x] **Subresource Integrity (SRI) & Asset Signer (`rullst-security::sri`)**: Automatic SHA-384 SRI hash generation and tag injection for static JS/CSS assets preventing CDN supply chain tampering.
 - [x] **SIEM & SOC Export Adapter (`rullst-security::siem`)**: Real-time alert streamer sending security events to Datadog, Splunk, Elastic, and Slack via CEF (Common Event Format) and Syslog.
 - [x] **CLI IDOR / BOLA Static Audit Scanner (`cargo rullst audit --idor`)**: Static scanner analyzing parameterized routes and verifying RbacGuard / UserContext ownership enforcement.
+- [x] **Cargo Geiger Memory Safety & Zero-Unsafe Scanner (`cargo rullst audit --geiger`)**: Static AST and dependency tree unsafe code auditor enforcing 100% memory safe Rust invariants.
+- [x] **Parser Fuzz Testing Suites (`rullst-security/tests/fuzz_robustness.rs` & `fuzz/`)**: Continuous chaos fuzzing against RASP, DLP, Schema Guard, and Sanitizers proving Zero-Panic resilience.
 - [x] **Automated Security Compliance Exporter (`cargo rullst audit --compliance`)**: Automated compliance auditor evaluating codebase adherence to OWASP Top 10, SOC2 Type II, HIPAA, and ISO 27001 control requirements and generating markdown reports.
 
 ---
@@ -37,6 +39,13 @@
 ## ⚡ Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12.0.0 / v12.1.0)
 - [x] **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time response padding for authentication, user lookup, and password-reset endpoints, eliminating timing side-channel attacks.
 - [x] **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Dedicated AI endpoint protection inspecting prompts for jailbreaks, system prompt leaking, indirect injection, and training data extraction.
+- [x] **Automated SBOM Exporter (`cargo rullst audit --sbom`)**: Automated Software Bill of Materials generation in CycloneDX 1.5 JSON format for enterprise compliance (SOC2/ISO 27001/FedRAMP).
+- [x] **Network Surface & Port Binding Scanner (`cargo rullst audit --network`)**: Ultra-fast local port scanner and interface binding auditor (inspired by RustScan) verifying zero sensitive leakages to 0.0.0.0.
+- [x] **High-Contention Concurrency & Race Condition Suite (`rullst-security/tests/concurrency_tests.rs`)**: Multi-threaded stress testing proving zero data races under concurrent brute force and rate limit surges.
+- [x] **DevSecOps Git Hook Engine (`cargo rullst hook:install`)**: One-click Git pre-commit hook installer ensuring zero-lint, zero-unsafe, and zero-IDOR commits.
+- [x] **Framework Toolchain & Security Doctor (`cargo rullst doctor`)**: Unified diagnostics scanner verifying MSRV, linters, cargo-audit, cargo-geiger, cargo-deny, and Kani.
+- [x] **100% Pure-Rustls Native Cryptography (`tls-rustls`)**: Strict zero-OpenSSL C-bindings mandate across all network and security crates guaranteeing memory safety.
+- [ ] **Supply-Chain Dependency Attestation (`cargo-vet` & `cargo-deny`)**: Cryptographic dependency verification and viral license prevention.
 - [ ] **Zero-Downtime Secret Rotation & JWKS Server (`rullst-security::key_rotation`)**: Automated cryptographic key rotation with transition grace periods and dynamic `/oauth/jwks.json` serving, meeting SOC2/PCI-DSS compliance.
 - [ ] **Passkeys & WebAuthn FIDO2 Engine (`rullst-security::webauthn`)**: Native passwordless biometrics (Touch ID, Face ID, Windows Hello) and hardware token (YubiKey) authentication.
 - [ ] **Multi-Tenant SaaS Data Isolation Guard (`rullst-security::tenant_guard`)**: Zero-trust multi-tenancy middleware guaranteeing database query isolation and preventing cross-tenant data leakage in multi-tenant DB schemas.

@@ -58,6 +58,7 @@ pub fn global_span_collector() -> &'static SpanCollector {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

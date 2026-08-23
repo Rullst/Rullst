@@ -16,6 +16,7 @@ To ensure mission-critical resilience, Rullst does not rely on a single verifica
 | **Mutation Testing** | *"Do our assertions actually catch bugs?"* | **Quality** and sensitivity of test assertions | `cargo-mutants` |
 | **Formal Verification** | *"Is there any input in the universe that breaks invariants?"* | **Mathematical Proof** of safety contracts | `kani-verifier` (SAT/SMT) |
 | **Undefined Behavior** | *"Are unsafe blocks and pointer aliasing 100% sound?"* | **Memory Safety** & Stacked Borrows | `cargo miri` (MIR Interpreter) |
+| **Memory Safety Audit** | *"Are dependencies and code free of unsafe blocks?"* | **Zero-Unsafe Invariant** & Supply Chain Safety | `cargo-geiger` + `cargo rullst audit --geiger` |
 | **Fuzz Testing** | *"How does the system react to chaotic/malicious payloads?"* | **Parser Robustness** & Crash Resistance | `cargo-fuzz` / `libFuzzer` |
 | **Property Testing** | *"Do state invariants hold under thousands of random combinations?"* | **State Machine Integrity** | `proptest` (QuickCheck-style) |
 
@@ -138,7 +139,7 @@ These compute-intensive suites run for hours, mathematically modeling the framew
 - **What it does:** Runs `cargo-fuzz` (LLVM libFuzzer) across **33 dedicated fuzz targets** for up to 6 hours (`-max_total_time=21000`):
   - **Core:** `mask_pii`, `html_escape`, `routing`, `validation_json`, `auth_crypto`, `auth_session`, `security_csrf`, `security_waf`, `htmx_headers`, `config_parser`, `multitenant_resolver`, `ws_payload`.
   - **ORM:** `fuzz_audit`, `fuzz_builder`, `fuzz_parser`, `fuzz_schema`, `fuzz_scout`.
-  - **Security:** `fuzz_rasp`, `fuzz_schema_guard`, `fuzz_vault`, `fuzz_totp`, `fuzz_log_redactor`.
+  - **Security:** `fuzz_rasp`, `fuzz_schema_guard`, `fuzz_vault`, `fuzz_totp`, `fuzz_log_redactor`, `fuzz_dlp`, `fuzz_sanitizer`.
   - **Connect:** `default_target`, `fuzz_token_response`, `fuzz_user_json`.
   - **Mail:** `fuzz_mail`, `fuzz_email_validator`, `fuzz_email_tracking`, `fuzz_email_security`.
   - **AI:** `fuzz_ai_tools`, `fuzz_rag`, `fuzz_message_serde`.
@@ -238,8 +239,58 @@ To maintain ultra-fast feedback loops on daily pushes while retaining military-g
 | **Formal Verification (Kani)** | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | ⏱️ **Manual / Scheduled** | Manual `workflow_dispatch`, Weekly (Sun 00:00 UTC) | AWS Kani model checker for mathematical proofs on crypto/bounds | ~15 min |
 | **Miri UB Interpreter** | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | ⏱️ **Manual / Scheduled** | Manual `workflow_dispatch`, Weekly (Sun 02:00 UTC) | Stacked Borrows memory model & unaligned memory access interpreter | ~12 min |
 | **Mutation Testing** | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | ⏱️ **Manual / Scheduled** | Manual `workflow_dispatch`, Weekly (Sun 04:00 UTC) | Cargo-mutants injecting AST mutants across 8 parallel shards | ~25 min |
+| **Wasm & Edge Matrix** | [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | ⚡ **Automatic** | `push`, `pull_request` | Validates `wasm32-unknown-unknown` and `wasm32-wasip1` targets | ~1 min |
+| **AI PR Sentinel Audit** | [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ai-sentinel-pr.yml) | ⚡ **Automatic** | `pull_request` | Automated PR security analysis, IDOR route audit, and SBOM generation | ~1 min |
+| **Unused Deps & Features** | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | 🔄 **Hybrid** | Weekly schedule (Tuesday), `dispatch` | Cargo-udeps compiler AST unused dependency & feature scanner | ~1.5 min |
+| **Fuzz Corpus Minimization** | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | 🔄 **Hybrid** | Weekly schedule (Sunday), `dispatch` | Automated `cargo fuzz cmin` seed corpus synchronization | ~5 min |
 | **GitHub Pages** | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | 🚀 **Release / Deploy** | `push` (main) | Compiles and deploys documentation website to GitHub Pages | ~1.5 min |
-| **Release & Publish** | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | 🚀 **Release / Deploy** | Tag push (`v*`), `dispatch` | Multi-arch binary builder, GitHub Releases, and Crates.io publisher | ~4 min |
+| **Release & Publish** | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | 🚀 **Release / Deploy** | Tag push (`v*`), `dispatch` | Multi-arch binary builder, Sigstore attestation, and Crates.io publisher | ~4 min |
+
+---
+
+## 🚀 6. Next-Generation Verification Roadmap (The 6 Pillars of Excellence)
+
+To ensure that Rullst remains at the forefront of software reliability, memory safety, and enterprise compliance, we maintain an active verification roadmap structured across **6 Pillars of World-Class Rust Verification**:
+
+### 🏛️ Pillar 1: Concurrency & Data-Races (Tokio / Asynchronous Invariants)
+- **`Loom` (Tokio Concurrency Permutation Engine):**
+  - Exhaustively tests atomic ordering (`Acquire`/`Release`/`SeqCst`) and race conditions in lock-free buffers, sliding-window rate limiters, and `LoginGuard` tarpits.
+- **`Shuttle` (Probabilistic Async Scheduling):**
+  - Simulates thousands of asynchronous request interleavings in memory without spawning physical network listeners.
+
+### 📦 Pillar 2: Supply Chain Governance & Cryptographic Provenance
+- **`CycloneDX 1.5 JSON SBOM` (`cargo rullst audit --sbom`):**
+  - Generates standardized Software Bill of Materials with SHA-256 package checksums and license compliance records for SOC 2, ISO 27001, and FedRAMP audits.
+- **`cargo-vet` (Mozilla Supply Chain Attestation):**
+  - Cryptographically verifies that every third-party crate in `Cargo.lock` has been audited and signed by trusted maintainers.
+- **`SLSA Level 3` + `Sigstore Cosign`:**
+  - Enforces cryptographic build provenance and binary signing on all release artifacts.
+
+### 🔬 Pillar 3: Static Analysis & Compilation Invariants (SAST)
+- **`cargo-careful`:**
+  - Executes test suites against an instrumented standard library (`std`) to catch undefined pointer arithmetic and slice aliasing bugs with minimal overhead.
+- **`assert_no_alloc` (Zero-Allocation Hot-Paths):**
+  - Verifies at test time that router path matching, SRI hash verifications, and RASP rule evaluations trigger 0 heap allocations.
+- **`cargo-semver-checks` & `cargo-llvm-cov`:**
+  - Guarantees 100% backward API compatibility and line-by-line LLVM coverage.
+
+### 🧬 Pillar 4: Mutation Testing & Test Suite Sensitivity
+- **`cargo-mutants` (8 Parallel Shards):**
+  - Injects AST mutations across all workspace crates to mathematically assert that test suites detect logic inversions and edge-case regressions.
+
+### ⚡ Pillar 5: Binary Optimization & Zero-Cost Telemetry
+- **`cargo-bloat` & `DHAT` Heap Profiling:**
+  - Audits generic monomorphization costs and memory footprints for edge/IoT deployments (`rullst-iot`).
+- **Profile-Guided Optimization (PGO + BOLT):**
+  - Automates release binary recompilation based on real CPU execution telemetry, boosting request throughput by +15% to +25%.
+
+### 🧪 Pillar 6: Chaos Engineering & Multi-Engine Fuzzing
+- **`fail-rs` (Chaos & Fault Injection):**
+  - Injects simulated network drops, socket timeouts, and database resets during transactions to validate circuit breaker recovery.
+- **Multi-Engine Differential Fuzzing (`libFuzzer` + `AFL.rs` + `honggfuzz`):**
+  - Continuous chaos testing with automated seed corpus harvesting across 33 dedicated fuzz targets.
+- **100% Pure-Rustls Mandate:**
+  - Strict zero-OpenSSL C-bindings policy across all network and cryptographic crates for total memory safety.
 
 ---
 *Rullst - Built for those who want to build securely and easily, but not suffer.*

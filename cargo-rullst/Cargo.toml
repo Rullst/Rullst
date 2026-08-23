@@ -32,7 +32,7 @@ path = "src/bin/sync_badges.rs"
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
-chrono = { workspace = true }
+chrono = { workspace = true, features = ["clock"] }
 dialoguer = "0.12.0"
 ratatui = "0.30.2"
 crossterm = "0.29.0"
@@ -50,7 +50,7 @@ reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
 rand = { workspace = true }
 quote = "1.0.47"
 proc-macro2 = "1.0.107"
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql", "any"] }
 
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }

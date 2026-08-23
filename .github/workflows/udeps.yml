@@ -1,0 +1,34 @@
+name: Unused Dependencies & Features (Cargo Udeps)
+
+on:
+  schedule:
+    - cron: '0 3 * * 2' # Weekly on Tuesday at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  udeps:
+    name: Detect Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nightly Rust
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+        with:
+          toolchain: nightly
+
+      - name: Install cargo-udeps
+        uses: taiki-e/install-action@5124032aeb482a0be7fbbf27d6dcfd0e657cb2e9 # v2
+        with:
+          tool: cargo-udeps
+
+      - name: Run cargo-udeps across workspace
+        run: cargo +nightly udeps --workspace --all-targets || true

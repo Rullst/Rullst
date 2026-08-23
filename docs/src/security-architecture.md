@@ -84,9 +84,13 @@ Zero-latency request inspector intercepting malicious attack vectors before cont
 
 ## 🚀 4. Security Roadmap & Future Innovations
 
-### Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12.1.0)
+### Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12.0.0 / v12.1.0)
 - [x] **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time padding for authentication and password-reset endpoints, eliminating timing side-channel attacks.
 - [x] **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Real-time inspection for AI endpoints detecting prompt leaks, jailbreaks, indirect injections, and training data extraction.
+- [x] **CycloneDX 1.5 JSON SBOM Exporter (`cargo rullst audit --sbom`)**: Automated Software Bill of Materials with SHA-256 package hashes for regulatory compliance (SOC 2, ISO 27001, FedRAMP).
+- [x] **Local Network Surface Scanner (`cargo rullst audit --network`)**: High-speed port & network interface scanner (inspired by *RustScan*) auditing local listeners and preventing `0.0.0.0` leakages.
+- [x] **DevSecOps Git Pre-Commit Hook (`cargo rullst hook:install`)**: One-click Git pre-commit hook installer enforcing rustfmt, strict Clippy (`-D warnings`), and static security audits.
+- [x] **100% Pure-Rustls Transport Security (`tls-rustls`)**: Strict zero-OpenSSL C-bindings mandate across all network and security crates.
 - [ ] **Zero-Downtime Secret Rotation & JWKS Server (`rullst-security::key_rotation`)**: Automated cryptographic key rotation with grace period validation and dynamic `/oauth/jwks.json` serving.
 - [ ] **Adaptive WAF Anomaly Engine (`rullst-security::adaptive_waf`)**: Per-IP risk scoring pipeline (0–100) dynamically escalating from stealth telemetry to Proof-of-Work challenges and TCP drops.
 - [ ] **Passkeys / WebAuthn FIDO2 Engine (`rullst-security::webauthn`)**: Native biometrics (Touch ID, Face ID, Windows Hello) and hardware token (YubiKey) authentication.

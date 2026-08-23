@@ -76,7 +76,10 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 - [x] **Milestone 9:** Authentication Engine (Local, OAuth, Passkeys & WebAuthn).
 - [x] **Milestone 10:** Mailer System (`rullst::mail`), DTO Validation, Rate Limiting & Shield.
 - [x] **Milestone 11:** Free Enterprise Revolution: Rullst Nexus CMS, Rullst Omni & SaaS Billing (`rullst-capital`).
-- [x] **Milestone 12:** Autonomous AI Security Suite: RASP Deep Inspector, Rullst Vault (`Zeroize`), Honeypots, HMAC Audit Chain, OWASP Secure Headers A+, Anti-Bruteforce Login Jail, Response DLP Interceptor, MFA TOTP, Zero-Trust Fingerprinting, CLI IDOR Scanner (`cargo rullst audit --idor`) & SOC Threat Radar (`/studio/security`).
+- [x] **Milestone 12:** Autonomous AI Security Suite: RASP Deep Inspector, Rullst Vault (`Zeroize`), Honeypots, HMAC Audit Chain, OWASP Secure Headers A+, Anti-Bruteforce Login Jail, Response DLP Interceptor, MFA TOTP, Zero-Trust Fingerprinting, CLI IDOR Scanner (`cargo rullst audit --idor`), Cargo Geiger Memory Safety Auditor (`cargo rullst audit --geiger`), Comprehensive Fuzz Testing Harnesses & SOC Threat Radar (`/studio/security`).
+- [ ] **Automated SBOM & Supply-Chain Governance:** CycloneDX / SPDX Software Bill of Materials Exporter (`cargo rullst audit --sbom`) & `cargo-vet` cryptographic dependency attestation (`[ ] Planned for v12.1.0`).
+- [ ] **Deterministic Concurrency Harness:** `Loom` & `Shuttle` permutation testing for atomic ordering, thread interleaving, and race-free async execution (`[ ] Planned for v12.1.0`).
+- [ ] **DevSecOps Git Hook Engine:** Automated pre-commit hook generator (`cargo rullst hook:install`) enforcing fmt, clippy, audit & geiger (`[ ] Planned for v12.1.0`).
 - [ ] **Milestone 13:** Post-Quantum Web Architecture (`rullst-quantum` / NIST PQC) (`[ ] Planned for v13.0.0`).
 
 ---

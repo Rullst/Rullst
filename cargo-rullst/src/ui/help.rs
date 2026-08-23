@@ -108,8 +108,8 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold 2FA TOTP authentication system",
                 ),
                 (
-                    "cargo rullst audit [--ai] [--compliance] [--idor]",
-                    "Run AI vulnerability, IDOR/BOLA & OWASP/SOC2 audit",
+                    "cargo rullst audit [--ai] [--compliance] [--idor] [--geiger]",
+                    "Run AI vulnerability, IDOR, Geiger unsafe & SOC2 audit",
                 ),
                 ("cargo rullst make:billing", "Scaffold Stripe billing"),
                 ("cargo rullst make:cors", "Add CORS middleware"),
