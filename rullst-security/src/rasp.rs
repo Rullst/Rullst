@@ -21,8 +21,12 @@ impl RaspInspector {
 
         // SQL Injection patterns
         if lower.contains("union select")
+            || lower.contains("union%20select")
+            || lower.contains("union+select")
             || lower.contains("' or '1'='1")
+            || lower.contains("%27%20or%20%271%27=%271")
             || lower.contains("; drop table")
+            || lower.contains(";%20drop%20table")
             || lower.contains("sleep(")
             || lower.contains("benchmark(")
             || lower.contains("extractvalue(")
@@ -34,6 +38,8 @@ impl RaspInspector {
         // Path Traversal patterns
         if lower.contains("../")
             || lower.contains("..\\")
+            || lower.contains("%2e%2e/")
+            || lower.contains("%2e%2e%2f")
             || lower.contains("/etc/passwd")
             || lower.contains("c:\\windows\\system32")
         {
@@ -240,7 +246,7 @@ mod tests {
 
         // Attack request -> Blocked with 403
         let attack_req = Request::builder()
-            .uri("/items?q=UNION SELECT password FROM users")
+            .uri("/items?q=UNION%20SELECT%20password%20FROM%20users")
             .body(Body::empty())
             .unwrap();
 
