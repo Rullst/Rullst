@@ -78,6 +78,10 @@ The Rullst framework is organized into decoupled, high-performance crates:
 - Official Framework Email: `officialrullst@gmail.com`.
 - Security vulnerabilities must be handled via coordinated private disclosure directly to the core team.
 
+### 3.10. Git Governance & Anti-Fluff Directives
+- **Conventional Commits Only**: All commit messages created by AI agents or human contributors must strictly follow the format: `<type>(<scope>): <summary>` (e.g. `feat(orm): add json filter support`, `fix(auth): offload password hashing to spawn_blocking`, `test(radar): add telemetry span assertions`).
+- **No Marketing Fluff or Hallucinated Summaries**: Prohibit AI-generated multi-paragraph essays in commit bodies. Commit messages must be concise, purely technical, and match the exact diff.
+
 ---
 
 ## 🧪 4. Testing, Verification & Release Workflow

@@ -55,7 +55,6 @@ opentelemetry_sdk = { workspace = true, optional = true, features = ["rt-tokio"]
 axum = { workspace = true, features = ["macros", "ws"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
 rullst-orm = { workspace = true, optional = true }
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio", "macros"] }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["fs", "trace", "cors"] }
 tower-layer = { workspace = true }
@@ -95,6 +94,7 @@ proptest = "1.11.0"
 insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"
 base64 = "0.23.0"
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
 
 [[bench]]
 name = "rullst_bench"

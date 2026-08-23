@@ -14,22 +14,26 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 - Use the provided **Feature Request** issue template.
 - Provide a clear and descriptive title for the issue to identify the suggestion.
 
-### Pull Requests
+### Pull Requests & Commit Guidelines
+- **Strict Conventional Commits**: All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+  - Format: `<type>(<scope>): <short imperative description>`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+  - Example: `fix(auth): offload password hashing to spawn_blocking`.
+- **Zero "Smoke/AI" Commit Fluff**: Never use AI-generated paragraphs, marketing buzzwords, or verbose descriptions in commit titles. Keep messages concise, technical, and accurate to the exact diff.
+- Run `cargo fmt` and `cargo clippy --workspace --all-features -- -D warnings` before committing.
 - Fill in the required Pull Request template.
-- Do not include issue numbers in the PR title.
-- Include screenshots and animated GIFs in your pull request whenever possible if your change affects UI or logs.
 - End files with a newline.
-- Run `cargo fmt` and `cargo clippy` before committing.
 
 ## Development Setup
 
 1. Fork the repo and create your branch from `dev`.
-2. Run `cargo build` to build the framework.
-3. Run `cargo test --workspace` to ensure all tests pass.
-4. Run `cargo fmt --all` to format your code.
-5. If you've added code that should be tested, add tests.
-6. If you've changed APIs, update the documentation.
-7. Ensure the test suite passes.
+2. Configure git hooks: `git config core.hooksPath .githooks`.
+3. Run `cargo build` to build the framework.
+4. Run `cargo test --workspace` to ensure all tests pass.
+5. Run `cargo fmt --all` to format your code.
+6. If you've added code that should be tested, add tests.
+7. If you've changed APIs, update the documentation.
+8. Ensure the full test suite passes.
 
 ## Branching Model
 - `main`: Contains the stable, production-ready code.

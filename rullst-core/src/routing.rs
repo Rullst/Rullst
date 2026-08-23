@@ -50,6 +50,45 @@ impl Router {
         self.inner
     }
 
+    /// Returns a reference to the inner [`axum::Router`].
+    pub fn as_axum(&self) -> &AxumRouter {
+        &self.inner
+    }
+
+    /// Returns a mutable reference to the inner [`axum::Router`].
+    pub fn as_axum_mut(&mut self) -> &mut AxumRouter {
+        &mut self.inner
+    }
+
+    /// Adds a fallback handler for requests that do not match any route.
+    pub fn fallback<H, T>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, ()>,
+        T: 'static,
+    {
+        Router {
+            inner: self.inner.fallback(handler),
+        }
+    }
+
+    /// Adds a fallback Tower service for requests that do not match any route.
+    pub fn fallback_service<S>(self, service: S) -> Self
+    where
+        S: tower_service::Service<
+                axum::extract::Request,
+                Response = axum::response::Response,
+                Error = std::convert::Infallible,
+            > + Clone
+            + Send
+            + Sync
+            + 'static,
+        S::Future: Send + 'static,
+    {
+        Router {
+            inner: self.inner.fallback_service(service),
+        }
+    }
+
     /// Nests another Rullst `Router` under a path prefix.
     /// All routes defined in `router` will be reachable under `path/...`.
     pub fn nest(self, path: &str, router: Router) -> Self {
@@ -97,6 +136,32 @@ impl Router {
         Router {
             inner: self.inner.layer(layer),
         }
+    }
+}
+
+impl From<AxumRouter> for Router {
+    fn from(inner: AxumRouter) -> Self {
+        Router { inner }
+    }
+}
+
+impl From<Router> for AxumRouter {
+    fn from(router: Router) -> Self {
+        router.inner
+    }
+}
+
+impl std::ops::Deref for Router {
+    type Target = AxumRouter;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl std::ops::DerefMut for Router {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
@@ -257,5 +322,49 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_router_from_into_conversions() {
+        let raw_axum = AxumRouter::new().route("/from-axum", axum::routing::get(mock_handler));
+        let mut rullst_router: Router = raw_axum.into();
+        let _ = rullst_router.as_axum();
+        let _ = rullst_router.as_axum_mut();
+
+        let converted_back: AxumRouter = rullst_router.into();
+        let response = converted_back
+            .oneshot(
+                Request::builder()
+                    .uri("/from-axum")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_router_fallback_and_deref() {
+        async fn custom_404() -> (StatusCode, &'static str) {
+            (StatusCode::NOT_FOUND, "custom not found")
+        }
+
+        let router = Router::new()
+            .route("/ok", get(mock_handler))
+            .fallback(custom_404);
+
+        let app: AxumRouter = router.into();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/nonexistent")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

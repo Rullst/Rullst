@@ -64,6 +64,29 @@ exit 0
 
     fs::write(&pre_commit_path, script_content)?;
 
+    let commit_msg_path = hooks_dir.join("commit-msg");
+    let commit_msg_script = r#"#!/bin/sh
+# Rullst Framework Conventional Commits Hook
+commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .{1,80}$'
+merge_regex='^Merge branch .*'
+
+commit_message=$(head -n 1 "$1")
+
+if echo "$commit_message" | grep -qE "$merge_regex"; then
+    exit 0
+fi
+
+if ! echo "$commit_message" | grep -qE "$commit_regex"; then
+    echo "❌ ERROR: Invalid commit message format."
+    echo "   Commit message must follow Conventional Commits: <type>(<scope>): <description>"
+    echo "   Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+    echo "   Example: fix(auth): use spawn_blocking for async password hashing"
+    exit 1
+fi
+"#;
+
+    fs::write(&commit_msg_path, commit_msg_script)?;
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -72,15 +95,21 @@ exit 0
             perms.set_mode(0o755);
             let _ = fs::set_permissions(&pre_commit_path, perms);
         }
+        if let Ok(metadata) = fs::metadata(&commit_msg_path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o755);
+            let _ = fs::set_permissions(&commit_msg_path, perms);
+        }
     }
 
     println!(
-        "  {} Git pre-commit hook installed successfully at '{}'",
+        "  {} Git hooks installed successfully at '{}' and '{}'",
         "[SUCCESS]".green().bold(),
-        pre_commit_path.display()
+        pre_commit_path.display(),
+        commit_msg_path.display()
     );
     println!(
-        "  {} The hook will automatically run 'cargo fmt', 'cargo clippy -D warnings', and 'cargo rullst audit --idor' on every 'git commit'.",
+        "  {} The hooks will enforce Conventional Commits, 'cargo fmt', 'cargo clippy -D warnings', and IDOR scans.",
         "[INFO]".blue()
     );
 

@@ -7,7 +7,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rand::Rng;
 use rullst_auth::{
     HasRole, decrypt_session, dummy_verify, encrypt_session, extract_session_cookie, hash_password,
-    make_logout_cookie, needs_rehash, verify_password,
+    hash_password_async, make_logout_cookie, needs_rehash, verify_password, verify_password_async,
 };
 
 #[test]
@@ -34,6 +34,16 @@ fn test_argon2_password_hashing_and_verification() {
 
     // Needs rehash check
     assert!(!needs_rehash(&hash));
+}
+
+#[tokio::test]
+async fn test_argon2_password_hashing_and_verification_async() {
+    let password = "AsyncSuperSecretPassword123!";
+    let hash = hash_password_async(password).await.unwrap();
+
+    assert!(hash.starts_with("$argon2id$"));
+    assert!(verify_password_async(password, &hash).await);
+    assert!(!verify_password_async("WrongPassword456!", &hash).await);
 }
 
 #[test]

@@ -45,15 +45,20 @@ async fn main() {
 
 ### Hashing Passwords (Argon2id)
 
+In async HTTP request handlers, prefer the non-blocking `_async` variants which offload CPU-bound Argon2id operations to Tokio's blocking thread pool (`spawn_blocking`):
+
 ```rust
-use rullst_auth::crypto;
+use rullst_auth::{hash_password_async, verify_password_async};
 
+// In async handlers / endpoints:
 let password = "super_secure_password";
-let hash = crypto::hash_password(password).expect("Hashing should not fail");
+let hash = hash_password_async(password).await.expect("Hashing should not fail");
 
-let is_valid = crypto::verify_password(password, &hash);
+let is_valid = verify_password_async(password, &hash).await;
 assert!(is_valid);
 ```
+
+For offline scripts or CLI tasks, synchronous functions (`hash_password`, `verify_password`) are also available.
 
 ## 🔐 Security Audit
 

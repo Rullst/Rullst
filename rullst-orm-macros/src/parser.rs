@@ -234,10 +234,19 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                                 if val.trim().is_empty() {
                                     return Err(syn::Error::new_spanned(
                                         attr,
-                                        "table name cannot be empty",
+                                        "table name cannot be empty (e.g. #[orm(table = \"users\")])",
                                     ));
                                 }
                                 table_name = val.to_string();
+                            }
+                            "tabel" | "tbl" | "tablename" => {
+                                return Err(syn::Error::new_spanned(
+                                    attr,
+                                    format!(
+                                        "Unknown model attribute `#[orm({} = ...)]`. Did you mean `#[orm(table = \"...\")]`?",
+                                        key
+                                    ),
+                                ));
                             }
                             "global_scope" => global_scope = val.to_string(),
                             "tenant_column" => tenant_column = val.to_string(),
@@ -381,6 +390,30 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                                     is_relation = true;
                                     rel_type = "morph_one".to_string();
                                     rel_model = val.to_string();
+                                }
+                                "hasmany" => {
+                                    return Err(syn::Error::new_spanned(
+                                        attr,
+                                        "Unknown attribute `#[orm(hasmany = ...)]`. Did you mean `#[orm(has_many = \"...\")]`?",
+                                    ));
+                                }
+                                "belongsto" => {
+                                    return Err(syn::Error::new_spanned(
+                                        attr,
+                                        "Unknown attribute `#[orm(belongsto = ...)]`. Did you mean `#[orm(belongs_to = \"...\")]`?",
+                                    ));
+                                }
+                                "hasone" => {
+                                    return Err(syn::Error::new_spanned(
+                                        attr,
+                                        "Unknown attribute `#[orm(hasone = ...)]`. Did you mean `#[orm(has_one = \"...\")]`?",
+                                    ));
+                                }
+                                "foreignkey" | "fk" => {
+                                    return Err(syn::Error::new_spanned(
+                                        attr,
+                                        "Unknown attribute `#[orm(foreignkey = ...)]`. Did you mean `#[orm(foreign_key = \"...\")]`?",
+                                    ));
                                 }
                                 "foreign_key" => foreign_key = val.to_string(),
                                 "related_key" => related_key = val.to_string(),

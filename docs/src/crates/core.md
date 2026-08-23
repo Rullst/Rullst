@@ -36,6 +36,29 @@ async fn main() {
 }
 ```
 
+### Axum First-Class Escape Hatches & Tower Interoperability
+
+Rullst does not lock developers in a "walled garden". `rullst::Router` provides seamless, bidirectional interoperability with `axum::Router` and `tower::Layer`:
+
+```rust
+use rullst::Router;
+use axum::routing::get;
+use tower_http::cors::CorsLayer;
+
+async fn handler() -> &'static str { "ok" }
+
+let mut router = Router::new()
+    .route("/hello", get(handler))
+    .fallback(|| async { (axum::http::StatusCode::NOT_FOUND, "not found") })
+    .layer(CorsLayer::permissive());
+
+// Direct conversion to raw axum::Router
+let axum_app: axum::Router = router.into();
+
+// Or wrap existing Axum routers seamlessly
+let rullst_app: Router = axum_app.into();
+```
+
 ## 🔐 Security Audit & Reliability
 
 `rullst-core` is the most audited crate in the framework. It undergoes continuous fuzzing against malformed routing requests and is structurally verified against memory leaks using Miri. All functions returning `Result` strictly avoid panicking on corrupted payloads.

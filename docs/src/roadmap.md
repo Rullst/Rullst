@@ -119,10 +119,11 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 
 ---
 
-### 🌐 Pilar VIII: API Supremacy, Scalar Docs, DI & gRPC
+### 🌐 Pilar VIII: API Supremacy, Scalar Docs, DI, gRPC & Architecture Transparency
 - [x] **Milestone 28:** Compile-Time Zero-Cost Dependency Injection Container (`rullst::di` & `Inject<T>`).
 - [x] **Milestone 29:** Embedded Interactive Scalar API Playground at `/docs` (`cargo rullst make:scalar`).
 - [x] **Milestone 30:** `rullst-grpc` (Tonic) & Protobuf Service Scaffolding (`cargo rullst make:grpc`).
+- [x] **Milestone 32:** Axum First-Class Escape Hatches (`Router::into_axum`, native `tower::Layer` interoperability) & Compiler-Driven Proc-Macro Diagnostics (`syn::Error::new_spanned` with precision spans and actionable `compile_error!`).
 
 ---
 

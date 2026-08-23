@@ -1,0 +1,25 @@
+#!/bin/sh
+# .githooks/commit-msg
+# Enforce strict Conventional Commits format for Rullst repository.
+
+commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .{1,80}$'
+merge_regex='^Merge branch .*'
+
+commit_message=$(head -n 1 "$1")
+
+if echo "$commit_message" | grep -qE "$merge_regex"; then
+    exit 0
+fi
+
+if ! echo "$commit_message" | grep -qE "$commit_regex"; then
+    echo "ERROR: Invalid commit message format."
+    echo ""
+    echo "Commit message must follow the Conventional Commits specification:"
+    echo "  <type>(<optional scope>): <description>"
+    echo ""
+    echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+    echo "Example: fix(auth): use spawn_blocking for async password hashing"
+    echo ""
+    echo "Your commit message was: \"$commit_message\""
+    exit 1
+fi

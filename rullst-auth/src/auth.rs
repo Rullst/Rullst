@@ -32,6 +32,15 @@ pub fn hash_password(password: &str) -> Result<String, AuthError> {
         .map_err(|e| AuthError::PasswordHashError(e.to_string()))
 }
 
+/// Asynchronously hashes a plain-text password using Argon2id offloaded to Tokio's blocking thread pool (`spawn_blocking`).
+/// This ensures the Tokio async runtime worker threads are not blocked by CPU-intensive password hashing.
+pub async fn hash_password_async(password: impl Into<String>) -> Result<String, AuthError> {
+    let password = password.into();
+    tokio::task::spawn_blocking(move || hash_password(&password))
+        .await
+        .map_err(|e| AuthError::PasswordHashError(format!("spawn_blocking error: {}", e)))?
+}
+
 /// Verifies a plain-text password against a hashed Argon2 password.
 pub fn verify_password(password: &str, hash: &str) -> bool {
     let parsed_hash_result = PasswordHash::new(hash);
@@ -48,6 +57,16 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     } else {
         false
     }
+}
+
+/// Asynchronously verifies a plain-text password against a hashed Argon2 password offloaded to Tokio's blocking thread pool (`spawn_blocking`).
+/// This prevents CPU-bound verification from stalling concurrent async HTTP request handling.
+pub async fn verify_password_async(password: impl Into<String>, hash: impl Into<String>) -> bool {
+    let password = password.into();
+    let hash = hash.into();
+    tokio::task::spawn_blocking(move || verify_password(&password, &hash))
+        .await
+        .unwrap_or(false)
 }
 
 /// Performs a dummy hash verification to equalize execution time and prevent timing attacks.

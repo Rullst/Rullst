@@ -42,6 +42,7 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M29** | 🌐 Pilar VIII: Interactive Docs | Embedded Scalar API Playground at `/docs` (`cargo rullst make:scalar`) | `[x] Completed` | v12.0.0 |
 | **M30** | 🌐 Pilar VIII: Microservices | `rullst-grpc` (Tonic) & Protobuf Scaffolding (`cargo rullst make:grpc`) | `[x] Completed` | v12.0.0 |
 | **M31** | 🛰️ Pilar IX: Aerospace & Mobility | Aerospace, Autonomous Vehicles, Robotics & Defense (`rullst-orbit` & `rullst-auto`) | `[ ] Planned` | v13.0.0 |
+| **M32** | 🌐 Pilar VIII: Architecture & DX | Axum/Tower Escape Hatches & Precision Proc-Macro Diagnostics (`syn::Error`) | `[ ] Planned` | v12.1.0 |
 
 ---
 
@@ -114,10 +115,11 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 
 ---
 
-### 🌐 Pilar VIII: API Supremacy, Scalar Docs, DI & gRPC
+### 🌐 Pilar VIII: API Supremacy, Scalar Docs, DI, gRPC & Architecture Transparency
 - [x] **Milestone 28:** Compile-Time Zero-Cost Dependency Injection Container (`rullst::di` & `Inject<T>`).
 - [x] **Milestone 29:** Embedded Interactive Scalar API Playground at `/docs` (`cargo rullst make:scalar`).
 - [x] **Milestone 30:** `rullst-grpc` (Tonic) & Protobuf Service Scaffolding (`cargo rullst make:grpc`).
+- [x] **Milestone 32:** Axum First-Class Escape Hatches (`Router::into_axum`, native `tower::Layer` interoperability) & Compiler-Driven Proc-Macro Diagnostics (`syn::Error::new_spanned` with precision spans and actionable `compile_error!`).
 
 ---
 
@@ -133,7 +135,7 @@ We proceed maintaining **100% test coverage**, **Zero-Panics Policy**, and **SST
 | Version | Status | Key Milestones Included |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Released (Golden Master)` | **M1-M7, M9-M12, M14-M19, M24, M26-M30** (Full-Stack, Security RASP/Vault/SOC/DLP/LoginJail/Headers/IDOR, K8s, Scalar, PaaS Deploy, LiveView, DI, gRPC) |
-| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **Multi-Tenant SaaS Isolation Guard (`tenant_guard`)**, **Cloud KMS Engine** |
+| **v12.1.0** | `[ ] Planned (Minor Release)` | **M8** (Intent Indexes), **M20** (Ledger Engine), **M21** (Omni Protocol), **M25** (Async IoT Embassy), **M32** (Axum Escape Hatches & Proc-Macro Spans), **Multi-Tenant SaaS Isolation Guard (`tenant_guard`)**, **Cloud KMS Engine** |
 | **v13.0.0** | `[ ] Planned (Major Release)` | **M13** (Post-Quantum PQC Crate), **M22** (Agentic DevOps), **M23** (Polymorphic Engine), **M31** (Aerospace & Mobility), **eBPF Kernel Threat Containment** |
 
 ---

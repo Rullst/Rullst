@@ -33,6 +33,7 @@ ring = { workspace = true, features = ["std"] }
 tower = { workspace = true }
 futures-util = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
