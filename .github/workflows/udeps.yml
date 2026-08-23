@@ -26,7 +26,7 @@ jobs:
           toolchain: nightly
 
       - name: Install cargo-udeps
-        uses: taiki-e/install-action@5124032aeb482a0be7fbbf27d6dcfd0e657cb2e9 # v2
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-udeps
 
