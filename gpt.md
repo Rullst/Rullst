@@ -195,3 +195,332 @@ O Core usa `#[non_exhaustive]` em várias configurações, mas muitos enums/conf
 ### 6.7. Static dispatch é uma preferência não concretizada
 
 AI usa `Arc<dyn AiProvider>`, Capital mantém providers globais em `Box<dyn ...>`, Connect retorna `Box<dyn Provider>` e Mail guarda transportes dinâmicos. Dispatch dinâmico pode ser legítimo em registries runtime, mas a SST e o AGENTS declaram static dispatch como preferência. A arquitetura deve esclarecer onde dinamismo é necessário e oferecer caminhos genéricos para casos estáticos, em vez de prometer uma propriedade que a superfície pública não cumpre.
+
+## 7. Achados críticos — P0
+
+Nesta seção, “crítico” significa que o item pode causar violação de segurança, integridade fiscal/financeira, perda de dados ou quebra do processo de release no uso anunciado. Alguns dependem da aplicação montar a API com entrada externa; a falha da implementação, porém, é confirmada diretamente no código.
+
+### P0-01 — A implementação de NFS-e não produz uma assinatura XMLDSig válida
+
+**Evidência:** `rullst-capital/src/fiscal/signer.rs:15-60`; `docs/src/spec.md:251-254`.
+
+O signer:
+
+- localiza `<infDPS>` por substring, sem canonicalização XML C14N;
+- calcula o digest do texto literal;
+- calcula `SHA-256(SignedInfo)` e usa esse hash como `SignatureValue`;
+- não carrega nem utiliza a chave privada do PKCS#12;
+- não executa RSA-SHA256;
+- injeta o PFX base64 inteiro no campo `X509Certificate`.
+
+Isso gera um XML com aparência de XMLDSig, mas sem assinatura criptográfica autenticável. A tendência é rejeição pela SEFIN; pior, código chamador pode acreditar que a etapa criptográfica foi concluída.
+
+O cliente amplia o risco:
+
+- `rullst-capital/src/fiscal/client.rs:37-50` cria um `reqwest::Client` sem configurar identidade/certificado mTLS;
+- `:60-75` retorna uma resposta mock “Autorizada” quando a senha é `mock` **ou o PFX está vazio**, mesmo se o ambiente selecionado for Production;
+- `:112-140` transforma qualquer corpo 2xx não JSON em “Autorizada”, com chave e protocolo inventados;
+- um JSON vazio `{}` também recebe defaults de autorização.
+
+**Impacto:** uma rejeição XML, HTML de proxy, resposta inesperada ou configuração incompleta pode ser registrada como nota autorizada. Isso é um risco fiscal e contábil real.
+
+**Correção necessária:** bloquear o modo Production até existir PKCS#12 real, extração segura do certificado/chave, C14N, digest das referências, RSA-SHA256, mTLS e parser estrito dos estados oficiais. Mock deve ser um tipo/ambiente explícito e nunca retornar um objeto indistinguível de uma autorização real.
+
+### P0-02 — `FieldEncryptor` destrói dados e não implementa criptografia
+
+**Evidência:** `rullst-security/src/vault.rs:42-68,83-89`.
+
+A documentação da API diz AES-256-GCM/ChaCha20-Poly1305. Na realidade:
+
+```text
+encrypt(plaintext, key) = "ENC:v1:" + SHA256(plaintext || key)
+decrypt(ciphertext, qualquer_chave) = "[DECRYPTED:<hash>]"
+```
+
+O texto original é irrecuperável e a chave é ignorada na “decriptação”. O teste só verifica se a string contém `DECRYPTED`, então ele consolida o comportamento falso em vez de provar round-trip.
+
+**Impacto:** qualquer aplicação que migre uma coluna por essa API perde o conteúdo original. Além disso, a garantia de confidencialidade anunciada é inexistente.
+
+**Correção necessária:** remover/deprecar imediatamente a API atual ou fazê-la retornar erro explícito. Reutilizar a implementação AES-GCM real de `rullst-orm/src/privacy.rs:73-117`, com envelope versionado, nonce aleatório, AAD, rotação de chave e teste obrigatório `decrypt(encrypt(x)) == x`.
+
+### P0-03 — As garantias criptográficas de IoT são stubs expostos como APIs
+
+**Evidência:**
+
+- `rullst-iot/src/ota.rs:50-54,84-87`: qualquer payload não vazio com qualquer assinatura de 64 bytes é aceito; o teste aprova `[0u8; 64]`;
+- `rullst-iot/src/hsm.rs:37-50`: a “chave HSM” é SHA-256 do serial e do nome público do chip; a “assinatura” é outro SHA-256;
+- `rullst-iot/src/pqc.rs:3-48`: ML-KEM/Kyber é explicitamente um stub de hashes; encapsular e decapsular nem sequer são operações inversas de um KEM;
+- `rullst-iot/src/mqtt.rs:1`: arquivo de uma linha, declarado como stub;
+- `rullst-iot/src/lib.rs:86-93`: `MqttDriver` apenas formata um valor como string.
+
+**Impacto:** se `verify_signature` for usado como gate de OTA, firmware arbitrário é aceito. HSM/PQC não fornecem autenticidade, sigilo ou resistência pós-quântica. Isso é especialmente grave porque README e workflows anunciam MQTT industrial, HSM e compliance ML-KEM (`README.md:66,70,382`).
+
+**Correção necessária:** colocar o crate inteiro atrás de uma feature `experimental`, renomear tipos para `Simulated...` e impedir uso de stubs no build de produção. OTA deve usar Ed25519 real, chave pública confiável, manifesto assinado, hash do firmware, anti-rollback e estado que só permita `commit` após verificação. HSM precisa de backends reais; PQC deve usar uma implementação ML-KEM auditada.
+
+### P0-04 — Nexus é um painel administrativo destrutivo aberto por padrão
+
+**Evidência:**
+
+- `rullst-nexus/src/nexus/mod.rs:34-40`: `Nexus::new()` define `auth: None`;
+- `:74-93`: dashboard, create, update, delete, batch, chat e páginas de segurança são montados antes de qualquer auth;
+- `:140-147`: sem `.with_auth`, o sistema apenas imprime um aviso e continua servindo tudo;
+- `rullst-nexus/src/nexus/crud/handlers.rs:258-312,365-387,423-462`: operações destrutivas não exigem `UserContext`, `RbacGuard` ou ownership;
+- `examples/blog/src/lib.rs:344-374` monta o painel sem autenticação;
+- blueprints Blog/LMS/Portfolio/ERP/SaaS geram `admin` / `password`, por exemplo `cargo-rullst/src/blueprints/saas/routes.rs:24-25,113-114`.
+
+**Impacto:** dependendo de onde o router é montado, um visitante pode ler e alterar toda a base. Nos blueprints, as credenciais são públicas e previsíveis. Isso viola diretamente a invariável de RBAC/ownership.
+
+**Correção necessária:** `Nexus::new()` deve ser fail-closed. A construção do router precisa falhar sem uma política autenticada, exceto em um modo local explicitamente tipado. Remover credenciais fixas dos templates; gerar segredo aleatório ou exigir configuração. Cada handler deve validar papel e ownership no servidor, inclusive batch actions e campos `readonly`/`hidden`.
+
+### P0-05 — O gerador de CORS cria aplicações vulneráveis por padrão
+
+**Evidência:** `cargo-rullst/src/generators/cors_jwt.rs:49-105`.
+
+O middleware gerado lê o header `Origin`, devolve exatamente essa origem em `Access-Control-Allow-Origin` e habilita `Access-Control-Allow-Credentials: true` para qualquer valor diferente de `*`. Não existe allowlist.
+
+**Impacto:** um site atacante escolhe sua própria origem, recebe autorização CORS credentialed e pode acessar respostas autenticadas se cookies/credenciais forem enviados. O problema é multiplicado porque está num scaffold: cada aplicação gerada herda a falha.
+
+**Correção necessária:** gerar uma allowlist explícita a partir de configuração, rejeitar origem ausente/desconhecida, emitir `Vary: Origin`, desabilitar credenciais por padrão e usar `tower-http::cors` ou uma implementação testada. O template também deve eliminar `unwrap()` em produção.
+
+### P0-06 — Storage permite escape do diretório e confirma operações inexistentes
+
+**Evidência:** `rullst-core/src/storage.rs:88-124,159-167`.
+
+O caminho principal `Storage::local().put/get()` faz `PathBuf::from(base).join(relative_path)` sem rejeitar `..`, prefixos Windows, caminhos absolutos, links simbólicos ou escape após canonicalização. Existe outro `LocalDriver` com validação, mas o facade público não o utiliza.
+
+Ao mesmo tempo:
+
+- upload S3/R2 retorna `Ok(())` sem enviar bytes;
+- download S3/R2 retorna `Ok(vec![])`;
+- `resize_webp` ignora as dimensões e devolve o arquivo original.
+
+**Impacto condicional:** se `relative_path` vier do usuário, há leitura/escrita fora do storage base. Nos backends cloud, a aplicação recebe confirmação de persistência que nunca ocorreu, gerando perda silenciosa.
+
+**Correção necessária:** unificar o facade com `LocalDriver`, validar componentes antes de I/O e comprovar que o caminho resolvido permanece sob o root. Backends não implementados devem retornar `Unsupported`, nunca sucesso. O resize também deve ser implementado ou removido.
+
+### P0-07 — O modo de produção é fail-open e inconsistente
+
+**Evidência:** `rullst-core/src/server/builder.rs:110-127,132-177,188-215,329-368`.
+
+O `Server`:
+
+- calcula desenvolvimento apenas com `APP_ENV != "production"`, de forma case-sensitive;
+- ignora `RULLST_ENV`, o alias `prod` e `[app].env` já carregado de `Rullst.toml`;
+- instala WAF/CSRF/headers apenas quando esse booleano é considerado produção;
+- monta console/autofix de desenvolvimento no caso contrário;
+- usa `dotenvy::from_filename_override(".env")`, permitindo que `.env` sobrescreva variáveis injetadas pelo ambiente;
+- engole falha de inicialização de banco e continua subindo o HTTP;
+- diante de `HOST` inválido, cai silenciosamente em `0.0.0.0`.
+
+Auth e CSRF usam uma lógica diferente e aceitam `RULLST_ENV`, `APP_ENV`, `prod` e case-insensitive (`rullst-auth/src/auth.rs:137-145`; `rullst-core/src/security/csrf.rs:13-16`). Uma mesma aplicação pode, portanto, considerar-se produção para cookies/chaves e desenvolvimento para a pilha do Server.
+
+**Impacto:** uma configuração aparentemente válida pode publicar console de desenvolvimento e remover toda a proteção automática. Erro de banco adiado pode virar panic em `Orm::pool()`.
+
+**Correção necessária:** criar um único enum `Environment` validado, derivado de uma precedência documentada, e passá-lo a todos os crates. Valor ausente/desconhecido deve falhar em deploy explicitamente produtivo. Configuração fornecida ao builder não pode ser ignorada. Erros de DB solicitada devem abortar o startup.
+
+### P0-08 — Integridade financeira de webhooks e billing não é segura por padrão
+
+**Evidência:**
+
+- vários providers retornam `Ok(())` quando `webhook_secret` está vazio, incluindo Stripe, Mercado Pago, Coinbase, Polar e Razorpay (`rullst-capital/src/providers/stripe.rs:30-32`, `mercadopago.rs:30-32`, `coinbase.rs:33-35`, `polar.rs:30-32`, `razorpay.rs:36-38`);
+- Stripe/Mercado Pago autenticam o timestamp recebido, mas não limitam sua idade (`stripe.rs:34-66`; `mercadopago.rs:34-66`), permitindo replay de mensagens capturadas;
+- `rullst-capital/src/providers/alipay.rs:58-82,126-145` chama o fluxo de RSA2, mas usa HMAC-SHA256 com a chave pública e não produz/valida RSA2;
+- o gerador de billing atribui novas assinaturas ao usuário fixo `1` e usa email fixo (`cargo-rullst/src/generators/billing.rs:168-203,214-279`);
+- segredo ausente vira o previsível `mock_secret` no mesmo template.
+
+**Impacto:** endpoints podem aceitar eventos forjados, repetir cobrança/eventos antigos ou atribuir assinatura ao tenant errado. Alipay tende a não interoperar com o protocolo real.
+
+**Correção necessária:** separar explicitamente verifier real e mock; endpoint público jamais pode aceitar segredo vazio. Adicionar freshness, idempotency store, associação customer→user/tenant obrigatória e testes de replay/cross-tenant. Implementar RSA2 com biblioteca apropriada ou remover o provider da lista de suporte.
+
+### P0-09 — O workflow de release está topologicamente quebrado
+
+**Evidência:** `.github/workflows/release.yml:69-113`; `rullst-core/Cargo.toml:34,42`.
+
+O workflow publica `rullst-core` antes de `rullst-macros`, `rullst-orm-macros` e `rullst-orm`, apesar de Core depender deles. Também omite `rullst-security` e `rullst-iot` do publish, package e hashes. Nexus/Studio dependem de Security, de modo que uma release fresca pode parar no meio depois de pacotes já publicados. O empacotamento/attestation só ocorre **depois** da publicação.
+
+Isso contradiz a ordem oficial do próprio `AGENTS.md` e do release guide.
+
+**Impacto:** a próxima release coordenada pode falhar, ficar parcial e irreversível no crates.io.
+
+**Correção necessária:** executar `cargo package` e todos os gates antes de publicar qualquer crate; calcular o DAG real; publicar macros, fundações, serviços, interfaces, umbrella e CLI nessa ordem; incluir Security/IoT e registrar idempotentemente quais versões já existem.
+
+## 8. Achados altos — P1
+
+### P1-01 — WebAuthn verifica parte do protocolo, mas omite invariantes essenciais
+
+**Evidência:** `rullst-auth/src/auth/passkey/service.rs:86-216,252-350`.
+
+Há pontos positivos: challenge, origin, `rpIdHash` e assinatura ECDSA da assertion são verificados. Isso não é um mock completo. Porém o fluxo de registro não valida:
+
+- `clientDataJSON.type == "webauthn.create"`;
+- flags User Presence/User Verification;
+- algoritmo, `kty`, curva e tamanhos das coordenadas COSE;
+- formato e assinatura da attestation;
+- contador inicial real.
+
+Na autenticação, não valida `type == "webauthn.get"`, flags UP/UV, vínculo entre `credential.raw_id` e a passkey recebida nem avanço monotônico do `sign_count`; apenas substitui o contador. A API também recebe o challenge esperado do chamador, sem demonstrar armazenamento one-time/expiração no próprio serviço.
+
+**Impacto:** reduz garantias contra credenciais clonadas, cerimônias do tipo errado e autenticação sem presença/verificação do usuário. A exploração final depende dos controllers, mas as omissões são confirmadas.
+
+**Recomendação:** usar uma implementação WebAuthn auditada ou completar toda a verificação normativa, com testes negativos por campo e persistência atômica de challenge/counter.
+
+### P1-02 — Chaves de sessão fracas ou vazias são aceitas em produção
+
+`rullst-auth/src/auth.rs:119-145` aceita imediatamente qualquer `APP_KEY` presente ou valor do TOML, inclusive string vazia ou curta. Só depois verifica se o ambiente é produção. A mensagem promete 32+ bytes, mas isso não é imposto. `derive_cipher` transforma o valor previsível em uma chave de 32 bytes via SHA-256 (`:172-190`), o que corrige tamanho, não entropia.
+
+Além disso:
+
+- `needs_rehash` (`:83-92`) olha apenas se o algoritmo é `argon2id`, ignorando memória/iterações/paralelismo/versão;
+- `decrypt_session` aceita tokens legados sem expiração (`:248-268`);
+- o crate anunciado como JWT não contém uma implementação JWT de sessão/aplicação; JWT aparece principalmente em Connect e no gerador do CLI.
+
+**Recomendação:** validar comprimento/entropia e proibir vazio; versionar o envelope; remover fallback não expirável após janela de migração; comparar parâmetros Argon2 reais; documentar honestamente se JWT é responsabilidade do CLI ou do Auth.
+
+### P1-03 — DLP e PII podem apagar, truncar ou tornar respostas protocolarmente inválidas
+
+`rullst-security/src/dlp.rs:152-169` bufferiza qualquer resposta até 2 MiB. Em overflow/erro, devolve body vazio mantendo status e headers. Após mascarar, preserva `Content-Length`, `Content-Encoding` e `ETag` antigos e trata binário como UTF-8 lossy. Streaming, SSE, gzip e downloads podem ser corrompidos.
+
+`rullst-core/src/security/pii.rs:12-50` tem problema semelhante; stream/overflow pode virar 500 e headers podem ficar incompatíveis com o novo corpo.
+
+**Recomendação:** aplicar transformação somente a content-types textuais e bodies bufferizáveis; remover/recalcular headers; fazer bypass seguro para streaming/compressão/binário; nunca trocar overflow por sucesso com body vazio.
+
+### P1-04 — CSRF e webhooks não têm composição utilizável em produção
+
+O Server aplica CSRF sobre o router inteiro (`rullst-core/src/server/builder.rs:356-368`) sem mecanismo de exceção declarativa. Blueprints colocam `/billing/webhook` sob essa mesma pilha (`cargo-rullst/src/blueprints/saas/routes.rs:40-45,129-134`). Um provedor externo não possui o cookie/token double-submit e tende a ser bloqueado.
+
+O próprio middleware só considera GET seguro (`rullst-core/src/security/csrf.rs:39-46`), então HEAD e OPTIONS também exigem token, quebrando semântica HTTP e preflight CORS.
+
+**Recomendação:** criar políticas por rota. Webhook deve ficar isento de CSRF somente quando protegido por assinatura obrigatória, freshness e idempotência. Tratar GET/HEAD/OPTIONS/TRACE conforme semântica segura aplicável.
+
+### P1-05 — WAF/RASP não fazem a inspeção profunda anunciada
+
+`rullst-core/src/security/waf.rs:81-148` inspeciona query, Referer, Cookie e User-Agent, mas nunca o JSON/form body. `rullst-security/src/rasp.rs:76-98,138-169` também não lê body. Como o corpo é o principal vetor de dados em POST/PUT/PATCH, “deep inspection” é uma descrição incorreta.
+
+Os detectores são heurísticos e baseados em substring/decodificação simples. Eles podem ser uma camada auxiliar, mas não devem ser apresentados como substituto de validação, bind SQL ou parser contextual.
+
+### P1-06 — A política de headers não corresponde à alegação “A+ com nonces”
+
+O CSP padrão contém `'unsafe-inline'` e `'unsafe-eval'` (`rullst-core/src/security/headers.rs:47-61`; `rullst-core/src/config.rs:68-70`). Isso reduz materialmente a proteção contra XSS e contradiz as alegações do README/SST. A implementação de nonce em `rullst-security/src/headers.rs:109-177` não entrega esse nonce ao request/renderizador, tornando difícil usá-lo nas views; quando `dynamic_csp=false`, não emite CSP.
+
+**Recomendação:** uma policy única, nonce acessível via extension/contexto de rendering, CSP sem `unsafe-eval`, migração gradual de estilos inline e testes de headers na aplicação realmente servida.
+
+### P1-07 — O middleware de webhook perde método, URI, extensões e body
+
+`rullst-capital/src/webhook.rs:25-53` consome a request original, cria outra com `Request::new`, copia somente headers e a extensão do evento, e encaminha body vazio. Método, URI, versão e demais extensões voltam aos defaults.
+
+**Impacto:** extractors downstream veem metadados falsos, não conseguem acessar o payload bruto e podem perder contexto de tenant/auth/tracing.
+
+**Recomendação:** separar `parts` e body da request original antes da leitura, preservar todas as parts e reconstruir com o body original ou com bytes compartilhados.
+
+### P1-08 — Inicialização global do ORM pode ficar irrecuperavelmente parcial
+
+`rullst-orm/src/pool.rs:215-253` publica `DB_POOL` e `DB_DRIVER` nos `OnceLock`s antes de terminar a conexão de todas as réplicas. Se uma réplica falha, a função retorna erro, mas a primária global fica inicializada; uma nova tentativa falha como “already initialized”.
+
+Os getters `Orm::pool()` e `driver()` usam `expect` (`:260-307`). Como o Server engole erro de inicialização (`rullst-core/src/server/builder.rs:152-177`), a aplicação pode subir degradada e quebrar mais tarde com panic.
+
+**Recomendação:** preparar todo o estado localmente e publicar uma única estrutura atômica só após sucesso; disponibilizar somente getters fallible no caminho de produção; propagar falha de DB explicitamente solicitada no startup.
+
+### P1-09 — O janitor do Login Guard limpa clones, não os mapas ativos
+
+`rullst-security/src/login_guard.rs:42-52` clona os `DashMap`s e a task de limpeza retém entradas nesses clones. Ela não remove entradas dos mapas usados pelo guard original.
+
+**Impacto:** a proteção anunciada contra crescimento de memória não funciona. Identidades únicas, especialmente se derivadas de headers forjáveis, podem fazer os mapas crescerem continuamente.
+
+**Recomendação:** guardar mapas em `Arc<DashMap<...>>`, compartilhar exatamente as mesmas instâncias com a task e adicionar limite de cardinalidade/eviction.
+
+### P1-10 — Rate limit “distribuído” é no-op e a identidade do cliente é forjável
+
+`rullst-security/src/rate_limit.rs:72-80` apenas troca um enum em `with_distributed`; `check()` continua usando o mesmo mapa global em memória. `rullst-security/src/rate_limit.rs:109-122` e `rullst-core/src/resilience.rs:306-329` confiam diretamente em `X-Forwarded-For`/`X-Real-IP`.
+
+Sem uma lista de proxies confiáveis, o cliente escolhe seu IP e contorna o limite. Sem `ConnectInfo`, clientes sem header podem cair no mesmo bucket `anonymous`. Diferentes instâncias/configurações ainda podem interferir por compartilhar mapa/chave.
+
+**Recomendação:** implementar backend distribuído real ou retornar `Unsupported`; usar peer address e somente aceitar forwarded headers de proxies confiáveis; namespacing por limiter e janela/eviction coerentes.
+
+### P1-11 — Há XSS e autorização somente visual no Nexus
+
+Achados confirmados:
+
+- resposta de LLM externo é inserida diretamente como HTML em `rullst-nexus/src/nexus/ai_chat.rs:264-296`;
+- PK textual do banco entra sem escape em atributos, URLs e `onclick` em `rullst-nexus/src/nexus/crud/views.rs:75-82,123-136`;
+- flags `readonly` e `hidden` só afetam a view; create/update aceitam os campos enviados manualmente (`crud/handlers.rs:156-165,286-297`);
+- batch delete ignora erro do banco e informa sucesso (`crud/handlers.rs:455-467`);
+- `page=0` pode causar underflow em `nexus/crud/query.rs:102-109`.
+
+**Recomendação:** renderizar conteúdo não confiável como texto/HTML sanitizado por allowlist; nunca construir JS inline com dados; aplicar política de campos e RBAC nos handlers; validar paginação e propagar erro do banco.
+
+### P1-12 — Studio mistura telemetria real, dados inventados e rotas quebradas
+
+Pontos positivos: `RadarSnapshot::collect()` e `SpanCollector` são consultados em páginas reais. Porém:
+
+- `rullst-core/src/radar.rs:91,129-140` usa fallback fixo de 24 MB, latência mínima artificial de 15 μs, CPU fixa em 0,5 e quantidade heurística de tasks;
+- `rullst-studio/src/security_radar.rs:41-74,183-186` hardcoda integridade “100%” e estado “PRODUCTION_GUARD_ACTIVE”;
+- o subrouter é aninhado em `/security/stats`, mas publica `/stats`, resultando em `/security/stats/stats`; o JS busca `/studio/security/stats` (`rullst-studio/src/lib.rs:52-64`; `security_radar.rs:35-39,326-330`);
+- eventos entram via `innerHTML` sem escape (`security_radar.rs:344-355`), criando XSS quando a rota for corrigida;
+- `env_viewer.rs:8-39` não reconhece `DATABASE_URL`/`REDIS_URL` como sensíveis e pode cortar UTF-8 em boundary inválido;
+- feature flags interpolam nomes sem escape e usam placeholder incorreto em SELECT PostgreSQL (`feature_flags.rs:43-65,118-156`).
+
+**Recomendação:** definir contrato de métrica com “indisponível” em vez de número falso; alinhar montagem e URLs; usar `textContent`; classificar segredos por deny/allowlist robusta; testar cada rota sob o mesmo prefixo usado pelos blueprints.
+
+### P1-13 — Geradores do CLI têm regressões funcionais concretas
+
+Além do CORS crítico, foram confirmados:
+
+- `--nix` e `--buildah` são enviados na ordem trocada (`cargo-rullst/src/cli.rs:341-348`; `generators/project/mod.rs:43-50`);
+- Island usa helpers que acrescentam `_controller`/`Controller`, gerando nomes errados, importa `rullst::view` inexistente e gera `unwrap()` (`generators/mod.rs:89-150`; `island.rs:17-18,59-87`);
+- Resource reutiliza os mesmos helpers e produz nomes/paths incoerentes (`resource.rs:27-106`);
+- `cargo rullst new ../dummy_test` usa o path literal também como package/import name, sem separar basename e destino (`project/wizard.rs:25-45`; `project/mod.rs:54-69`);
+- IDs dos blueprints foram deslocados pela inserção de Portfolio, contrariando o contrato estável 0/1/2/3 da SST (`project/wizard.rs:91-103`; `blueprints/mod.rs:29-43`);
+- o gerador Docs SSG previsto na SST não existe;
+- grandes templates continuam inline em vez de `include_str!`/blueprints testáveis.
+
+**Impacto:** comandos podem criar o artefato errado, código que não compila ou projetos incompatíveis com scripts/documentação anteriores.
+
+**Recomendação:** criar testes end-to-end que geram cada combinação em diretório temporário e executam `cargo check`; congelar IDs públicos; separar `destination_path`, `package_name`, `module_name` e `type_name` em tipos distintos.
+
+### P1-14 — AI não integra os guardrails anunciados e mocks são incompletos
+
+Os providers presentes são Anthropic, Gemini, Ollama e OpenAI (`rullst-ai/src/ai/providers/mod.rs:1-8`); DeepSeek não existe. O fluxo usa `AiProvider/AiClient` com `Arc<dyn AiProvider>`, não o `LlmClient` descrito. Não foi encontrado um pipeline automático que aplique prompt-injection filter e PII masking antes de cada request; providers enviam mensagens diretamente.
+
+OpenAI/Gemini possuem fallback em parte do chat para chave vazia/`mock_`, mas caminhos de vision/embedding ainda fazem HTTP (`rullst-ai/src/ai/providers/openai.rs:92-197`; `gemini.rs:124-164`). `structured_prompt` apenas adiciona instrução textual, remove fences e faz parse JSON, sem schema nativo (`rullst-ai/src/ai/mod.rs:238-249`).
+
+**Recomendação:** tornar guardrails uma etapa não contornável do client de alto nível; aplicar mock a todas as capacidades; adicionar DeepSeek ou reduzir claims; separar “JSON parseável” de structured output com schema.
+
+### P1-15 — Connect é sólido em OAuth, mas tem defaults/panics perigosos
+
+Constructors gerados em `rullst-connect/src/macros.rs:21-27` e providers como Google/Auth0/Cognito usam `assert!` para credenciais e redirect URL. Credencial vazia não ativa fallback determinístico, contrariando a política do repositório e podendo causar panic em produção.
+
+OIDC discovery aceita URL que apenas começa com `http://localhost`; um domínio como `localhost.evil` pode passar (`rullst-connect/src/providers/oidc/discovery.rs:43-65`). O metadata não amarra rigorosamente issuer/endpoints ao solicitado. JWKS permanece em cache sem TTL/refresh (`rullst-connect/src/provider/jwks.rs:14-47`), então rotação de chaves pode exigir restart.
+
+**Recomendação:** constructors fallible com `impl Into<String>`; URL parsing por host exato; validação de issuer/endpoints HTTPS; cache JWKS com TTL, refresh on unknown `kid` e stale-if-error.
+
+### P1-16 — Mail tem validações úteis, mas não as torna invariantes
+
+Drivers Resend/SendGrid/Postmark fazem request real mesmo com credenciais vazias/`mock_*`; o fallback Memory existe, porém não é selecionado automaticamente (`rullst-mail/src/drivers/*.rs`; `rullst-mail/src/facade.rs:131-174`). `send_for_tenant` ignora `tenant_id` em um caminho do facade. Validações de CRLF, segredos e deliverability existem, mas não são necessariamente chamadas antes do envio.
+
+Tracking compara HMAC como string comum, aceita segredo vazio e não expira timestamp (`rullst-mail/src/tracking.rs:89-101,153-165`).
+
+**Recomendação:** um único pipeline de envio deve validar segurança e selecionar transport real/mock de maneira tipada. Tracking deve exigir segredo forte, comparação constante e TTL.
+
+### P1-17 — Política zero-panic é violada em caminhos de produção
+
+Exemplos confirmados:
+
+- `rullst-core/src/client.rs:19-31`: `expect`/`unwrap` em todas as etapas do client WASM;
+- `rullst-core/src/server/builder.rs:52-61,222-232`: `panic!` deliberado para hot reload em release;
+- `rullst-orm/src/pool.rs:260-307`: getters públicos com `expect`;
+- `rullst-orm-macros/src/relationships.rs:119-139,348-356`: código gerado com panic/expect/unwrap;
+- `cargo-rullst/src/generators/auth/controllers.rs:118,170,183` e `island.rs:75-86`: aplicações geradas com unwrap/panic.
+
+O total bruto de ocorrências inclui muitos testes e não deve ser tratado como contagem de bugs. Esses exemplos, contudo, são caminhos não-test comprovados e contradizem a regra explícita da SST.
+
+### P1-18 — Contexto de tenant pode ser escolhido pelo próprio cliente
+
+`rullst-core/src/security/tenant_guard.rs:26-70` aceita `X-Tenant-ID`/`X-Organization-ID` e insere esse valor como contexto sem demonstrar vínculo com a identidade autenticada. Se repositories usam esse contexto para isolamento, um usuário pode trocar o header e selecionar outro tenant.
+
+**Recomendação:** derivar tenant de claims/sessão e validar membership/role; headers de tenant só podem ser aceitos de gateway interno confiável e assinados/autenticados.
+
+### P1-19 — CSWSH permite host com prefixo enganoso
+
+`rullst-security/src/cswsh.rs:29-45` aceita origin cujo host começa com `localhost` ou `127.0.0.1`. Assim, `localhost.evil.example` pode ser classificado como local.
+
+**Recomendação:** fazer parse de URL e comparar host exato/IP, esquema e porta contra allowlist normalizada.
