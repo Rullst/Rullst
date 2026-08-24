@@ -2,9 +2,16 @@
 
 use crate::generators::is_rullst_project;
 use crate::generators::migration::regenerate_migrations_mod;
+use crate::generators::model_to_snake_case;
 use colored::*;
 use std::fs;
 use std::path::Path;
+
+const BILLING_CONTROLLER_TEMPLATE: &str = include_str!("billing_controller.rs.template");
+
+pub(crate) fn render_billing_controller(foreign_key: &str) -> String {
+    BILLING_CONTROLLER_TEMPLATE.replace("__FOREIGN_KEY__", foreign_key)
+}
 
 pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
@@ -26,7 +33,15 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
             .bold()
     );
 
-    let foreign_key = format!("{}_id", model.to_lowercase());
+    let model_name = model_to_snake_case(model);
+    if model_name.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "billable model name cannot be empty",
+        )
+        .into());
+    }
+    let foreign_key = format!("{}_id", model_name);
 
     // 1. Create Subscriptions Migration
     let migrations_dir = Path::new("src/migrations");
@@ -37,7 +52,8 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
     let migration_template = format!(
-        r##"use rullst::db::schema::{{Schema, Migration}};
+        r##"use rullst::db::{{Orm, sqlx}};
+use rullst::db::schema::{{Schema, Migration}};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;
@@ -49,20 +65,40 @@ impl Migration for MigrationImpl {{
     }}
 
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
+        Schema::create("billing_customers", |table| {{
+            table.id();
+            table.integer("{foreign_key}").not_null();
+            table.string("email").not_null();
+            table.string("customer_id").nullable();
+            table.timestamps();
+        }}).await?;
         Schema::create("subscriptions", |table| {{
             table.id();
             table.integer("{foreign_key}").not_null();
             table.string("customer_id").not_null();
-            table.string("subscription_id").unique().not_null();
+            table.string("subscription_id").not_null();
             table.string("plan_id").not_null();
             table.string("status").not_null();
             table.integer("ends_at").nullable();
             table.timestamps();
-        }}).await
+        }}).await?;
+        let pool = Orm::pool()?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX billing_customers_email_unique ON billing_customers(email)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX subscriptions_subscription_id_unique ON subscriptions(subscription_id)",
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }}
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::drop_if_exists("subscriptions").await
+        Schema::drop_if_exists("subscriptions").await?;
+        Schema::drop_if_exists("billing_customers").await
     }}
 }}
 "##,
@@ -103,6 +139,25 @@ pub struct Subscription {{
     fs::write(&model_path, model_template)?;
     println!("{}", "  ✨ Created 'Subscription' model.".green());
 
+    let customer_model_path = models_dir.join("billing_customer.rs");
+    let customer_model_template = format!(
+        r##"use rullst::db::{{Orm, FromRow}};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "billing_customers")]
+pub struct BillingCustomer {{
+    pub id: i32,
+    pub {foreign_key}: i32,
+    pub email: String,
+    pub customer_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}}
+"##
+    );
+    fs::write(&customer_model_path, customer_model_template)?;
+    println!("{}", "  ✨ Created 'BillingCustomer' model.".green());
+
     let mod_models_path = models_dir.join("mod.rs");
     if !mod_models_path.exists() {
         fs::write(&mod_models_path, "")?;
@@ -110,8 +165,11 @@ pub struct Subscription {{
     let mut mod_models_content = fs::read_to_string(&mod_models_path)?;
     if !mod_models_content.contains("pub mod subscription;") {
         mod_models_content.push_str("pub mod subscription;\n");
-        fs::write(&mod_models_path, mod_models_content)?;
     }
+    if !mod_models_content.contains("pub mod billing_customer;") {
+        mod_models_content.push_str("pub mod billing_customer;\n");
+    }
+    fs::write(&mod_models_path, mod_models_content)?;
 
     // 3. Create Pricing View Page
     let pages_dir = Path::new("src/pages");
@@ -138,132 +196,7 @@ pub struct Subscription {{
     let controllers_dir = Path::new("src/controllers");
     fs::create_dir_all(controllers_dir)?;
     let controller_path = controllers_dir.join("billing_controller.rs");
-    let controller_template = r##"use rullst::server::{
-    Extension, Query,
-    Html, IntoResponse, Redirect, Response,
-    StatusCode,
-};
-use serde::Deserialize;
-use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
-use rullst::db::sqlx::{self, Row};
-use crate::pages::billing;
-
-#[derive(Deserialize)]
-pub struct CheckoutQuery {
-    pub plan: String,
-}
-
-/// Serves the premium pricing page.
-pub async fn pricing_view() -> impl IntoResponse {
-    billing::pricing_page()
-}
-
-/// Initiates a checkout redirect.
-pub async fn checkout_redirect(Query(query): Query<CheckoutQuery>) -> impl IntoResponse {
-    // Resolve Billing Provider using environment keys
-    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
-    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
-    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
-
-    let redirect_url = std::env::var("BILLING_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
-
-    let url_result = match provider_name.to_lowercase().as_str() {
-        "lemonsqueezy" => {
-            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
-            provider.create_checkout_session("user@example.com", &query.plan, &redirect_url).await
-        }
-        _ => {
-            let provider = StripeProvider::new(api_key, webhook_secret);
-            provider.create_checkout_session("user@example.com", &query.plan, &redirect_url).await
-        }
-    };
-
-    match url_result {
-        Ok(url) => Redirect::temporary(&url).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create checkout session: {}", e)).into_response(),
-    }
-}
-
-/// Redirects to the Customer Portal.
-pub async fn portal_redirect() -> impl IntoResponse {
-    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
-    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
-    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
-    let redirect_url = std::env::var("BILLING_REDIRECT_URL").unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
-
-    let url_result = match provider_name.to_lowercase().as_str() {
-        "lemonsqueezy" => {
-            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
-            provider.create_customer_portal("user@example.com", &redirect_url).await
-        }
-        _ => {
-            let provider = StripeProvider::new(api_key, webhook_secret);
-            provider.create_customer_portal("user@example.com", &redirect_url).await
-        }
-    };
-
-    match url_result {
-        Ok(url) => Redirect::temporary(&url).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create portal session: {}", e)).into_response(),
-    }
-}
-
-/// Handles only events inserted by rullst-capital's mandatory signature middleware.
-/// Mounting this handler without that middleware fails closed at extraction time.
-pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> impl IntoResponse {
-
-    let pool = match rullst::db::Orm::pool() {
-        Ok(pool) => pool,
-        Err(error) => {
-            eprintln!("Database is unavailable: {}", error);
-            return (StatusCode::SERVICE_UNAVAILABLE, "Database unavailable").into_response();
-        }
-    };
-    
-    let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
-        .bind(&event.subscription_id)
-        .fetch_optional(pool)
-        .await;
-
-    match existing {
-        Ok(Some(row)) => {
-            let id: i32 = row.get("id");
-            let update_res = rullst::db::sqlx::query("UPDATE subscriptions SET status = ?1, plan_id = ?2, ends_at = ?3, updated_at = datetime('now') WHERE id = ?4")
-                .bind(event.status.as_str())
-                .bind(&event.plan_id)
-                .bind(event.ends_at)
-                .bind(id)
-                .execute(pool)
-                .await;
-            if let Err(err) = update_res {
-                eprintln!("❌ Failed to update subscription: {}", err);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
-            }
-        }
-        Ok(None) => {
-            let insert_res = rullst::db::sqlx::query("INSERT INTO subscriptions (user_id, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))")
-                .bind(1)
-                .bind(&event.customer_id)
-                .bind(&event.subscription_id)
-                .bind(&event.plan_id)
-                .bind(event.status.as_str())
-                .bind(event.ends_at)
-                .execute(pool)
-                .await;
-            if let Err(err) = insert_res {
-                eprintln!("❌ Failed to insert subscription: {}", err);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
-            }
-        }
-        Err(err) => {
-            eprintln!("❌ Database query failed: {}", err);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response();
-        }
-    }
-
-    (StatusCode::OK, "Webhook processed successfully").into_response()
-}
-"##;
+    let controller_template = render_billing_controller(&foreign_key);
     fs::write(&controller_path, controller_template)?;
     println!(
         "{}",
@@ -308,7 +241,7 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> impl 
     println!("{}", "  👉 .route(\"/pricing\", rullst::server::get(controllers::billing_controller::pricing_view))".cyan());
     println!("{}", "  👉 .route(\"/billing/checkout\", rullst::server::get(controllers::billing_controller::checkout_redirect))".cyan());
     println!("{}", "  👉 .route(\"/billing/portal\", rullst::server::get(controllers::billing_controller::portal_redirect))".cyan());
-    println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler).route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))".cyan());
+    println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler).route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))".cyan());
     println!(
         "\n{}",
         "Configure your gateway credentials in environment variables or your .env file:".white()
@@ -316,6 +249,34 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> impl 
     println!("{}", "  💰 BILLING_PROVIDER=stripe".yellow());
     println!("{}", "  💰 BILLING_API_KEY=sk_test_...".yellow());
     println!("{}", "  💰 BILLING_WEBHOOK_SECRET=whsec_...".yellow());
+    println!(
+        "{}",
+        "  🔐 Protect checkout/portal with authentication middleware that inserts BillingIdentity (owner_id + email)."
+            .yellow()
+    );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_billing_binds_signed_events_to_authenticated_owners() {
+        let source = render_billing_controller("workspace_id");
+        syn::parse_file(&source).expect("billing controller must parse");
+        assert!(source.contains("workspace_id: identity.owner_id"));
+        assert!(source.contains("Extension(identity): Extension<BillingIdentity>"));
+        assert!(source.contains("rullst-capital's mandatory signature/replay middleware"));
+        assert!(source.contains("verify_billing_webhook"));
+        assert!(source.contains("initialize_billing_provider"));
+        assert!(source.contains("strong_webhook_secret"));
+        assert!(!source.contains(".bind(1)"));
+        assert!(!source.contains("user@example.com"));
+        assert!(!source.contains("mock_secret"));
+        assert!(!source.contains(".unwrap("));
+        assert!(!source.contains(".expect("));
+        assert!(!source.contains("panic!("));
+    }
 }

@@ -1,7 +1,7 @@
 # Rullst Blueprints Roadmap 🗺️
 ### *"The Ultimate High-Performance Blueprints Collection for Rullst"*
 
-This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide developers and agencies with complete, "production-ready" solutions that highlight the performance, security, and productivity advantages of the Rust + Rullst ecosystem.
+This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide reviewable application starting points with explicit production checklists and capability boundaries.
 
 ---
 
@@ -9,7 +9,7 @@ This document maps the expansion plan for the Rullst **Starter Blueprints** ecos
 Every blueprint added to the CLI must meet three fundamental principles:
 1. **Immediate Wow Factor:** Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.
 2. **Native Rust/Rullst Features:** Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).
-3. **Production-Ready:** Automatically generate `.env.example`, database configurations with concurrency locks, and a bulletproof `.gitignore`.
+3. **Production-minded defaults:** Generate `.env.example`, database configuration, and a conservative `.gitignore`; deployment readiness remains an application-level review.
 
 ---
 

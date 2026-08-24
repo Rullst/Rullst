@@ -202,7 +202,11 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::field_reassign_with_default
+)]
 mod tests {
     use super::*;
     use axum::{Router, body::Body, http::Request, routing::any};

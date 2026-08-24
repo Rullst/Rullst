@@ -1,4 +1,4 @@
-use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
+use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str, normalize_ip};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -32,19 +32,14 @@ pub fn dispatch_siem_alert(event_type: &str, details: &str, client_ip: &str) {
     let event = LiveSecurityEvent {
         event_type: event_type.to_string(),
         details: details.to_string(),
-        client_ip: client_ip.to_string(),
+        client_ip: normalize_ip(client_ip),
         timestamp_str: now,
-        verified_hmac: true,
+        verified_hmac: false,
     };
 
     SecurityStore::global().inc_siem_dispatches();
 
-    if let Ok(mut events) = SecurityStore::global().live_events.lock() {
-        events.insert(0, event);
-        if events.len() > 50 {
-            events.truncate(50);
-        }
-    }
+    SecurityStore::global().push_local_event(event);
 }
 
 #[cfg(test)]
@@ -57,8 +52,8 @@ mod tests {
             event_type: "HONEYPOT_TRAP_TRIGGERED".to_string(),
             details: "IP 10.0.0.1 accessed /.env".to_string(),
             client_ip: "10.0.0.1".to_string(),
-            timestamp_str: "Just now".to_string(),
-            verified_hmac: true,
+            timestamp_str: "2026-08-20T12:00:00.000Z".to_string(),
+            verified_hmac: false,
         };
 
         let cef = format_cef_event(&ev);

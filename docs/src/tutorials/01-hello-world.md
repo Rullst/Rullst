@@ -63,4 +63,4 @@ Open your browser at `http://localhost:3000` to view your rendered HTML page!
 ## 💡 Key Takeaways
 - The `rullst::html!` macro compiles HTML templates down to zero-cost string concatenation at compile time.
 - All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
-- Handlers return `Result<Response, AppError>` for a guaranteed zero-panic runtime.
+- Handlers return `Result<Response, AppError>` so expected failures are typed instead of converted into framework-originated panics.

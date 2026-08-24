@@ -7,7 +7,7 @@
 ## ✨ Features
 
 - **🛡️ Typed failures:** production delivery paths return `MailError`; malformed messages and provider configuration fail closed.
-- **⚡ 7 Production Delivery Drivers:**
+- **⚡ Delivery and Test Drivers:**
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
@@ -17,7 +17,7 @@
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`):** Primary driver dispatch with automatic fallback across secondary drivers, atomic failure threshold triggering, cooldown circuit breakers, and structured tracing warnings.
 - **🏢 Dynamic Multi-Tenancy Resolver (`TenantMailResolver`):** Isolate credentials, custom domains, and dedicated API keys per tenant/organization in B2B SaaS applications.
-- **📎 Zero-Copy Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline image embedding (`<img src="cid:logo">`) with Base64 encoding.
+- **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
 - **⏰ Precision Scheduled Delivery (`.send_at()`, `.send_in()`):** Deliver messages at exact UTC timestamps or relative durations.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
@@ -251,7 +251,7 @@ The answer depends on the use case. `rullst-mail` is designed as a **high-throug
 2. **Backend Notification & Dunning Workflows**:
    - Authentication ceremonies (account activation, password reset, 2FA/OTP tokens).
    - Real-time security alerts and system events.
-   - SaaS invoices, payment receipts (Pix, Credit Card via `rullst-capital`), and Brazilian NFS-e DPS tax receipts with zero-copy PDF/XML attachments.
+   - SaaS invoices and payment receipts. NFS-e output is limited to a clearly marked offline DPS preview until live fiscal issuance is validated.
    - **AI Smart Dunning**: Empathetic sales recovery and automated dunning sequences powered by `rullst-ai` and `rullst-capital`.
 3. **Local Testing Environments**: Eliminates paid email sandbox subscriptions by providing a zero-I/O in-memory `MailTrap` with visual inspection in Rullst Studio (`/studio/mail`).
 4. **B2B SaaS Multi-Tenancy**: Lets every tenant organization configure their own isolated custom domains, SMTP servers, or API keys (`TenantMailResolver`).
@@ -264,7 +264,7 @@ The answer depends on the use case. `rullst-mail` is designed as a **high-throug
 | :--- | :---: | :---: |
 | **Transactional Emails (Password reset, 2FA, receipts)** | ✅ **Native, sub-millisecond, zero-markup** | ❌ Expensive add-on or restricted |
 | **Multi-Driver Delivery with Automatic Failover** | ✅ **Yes (`FailoverDriver` with Circuit Breaker)** | ❌ Vendor-locked to proprietary IP pools |
-| **Zero-Copy Attachments & Inline CID Assets** | ✅ **Yes (High-throughput pure Rust)** | ⚠️ Heavily capped file sizes |
+| **Attachments & Inline CID Assets** | ✅ **Yes (transport may copy/encode)** | ⚠️ Heavily capped file sizes |
 | **Zero-Cookie Privacy Tracking** | ✅ **Native (`TrackingEngine` HMAC)** | ⚠️ Third-party cookie dependency |
 | **Disposable Email & Deliverability Filter** | ✅ **Native (`DisposableEmailFilter`)** | ⚠️ Expensive external addons |
 | **Security: Anti-Phishing & Homograph URL Scanner** | ✅ **Native pre-flight IDN inspection** | ⚠️ Basic link scanning |

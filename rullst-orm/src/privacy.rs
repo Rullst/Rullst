@@ -40,6 +40,7 @@ pub trait ComplianceModel {
 
 /// Strongly-typed error domain for Rullst ORM privacy and column encryption.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PrivacyError {
     /// The encryption key is missing or not exactly 32 bytes long.
     #[error("RULLST_ENCRYPTION_KEY must be exactly 32 bytes long")]

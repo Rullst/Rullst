@@ -100,8 +100,12 @@ impl App {
 }
 
 fn strip_ansi(s: &str) -> String {
-    let re = regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]").unwrap();
-    re.replace_all(s, "").to_string()
+    static ANSI_ESCAPE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
+        std::sync::OnceLock::new();
+    match ANSI_ESCAPE.get_or_init(|| regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]")) {
+        Ok(regex) => regex.replace_all(s, "").into_owned(),
+        Err(_) => s.to_owned(),
+    }
 }
 
 pub async fn run(

@@ -119,7 +119,7 @@ pub async fn run_artisan(
     run_artisan_with_args(&args, migrations, seeders).await
 }
 
-#[mutants::skip]
+#[cfg_attr(mutants, mutants::skip)]
 async fn migrations_table_exists(pool: &crate::RullstPool, driver: &str) -> Result<bool, Error> {
     match driver {
         "postgres" | "mysql" => {

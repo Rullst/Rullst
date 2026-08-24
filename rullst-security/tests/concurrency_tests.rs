@@ -87,10 +87,13 @@ async fn test_rate_limiter_high_contention() {
 
 #[tokio::test]
 async fn test_audit_chain_concurrent_tamper_proofing() {
-    let chain = Arc::new(AuditChain::new(
-        b"rullst-super-secret-hmac-key-256",
-        Arc::new(StdoutAuditLogger),
-    ));
+    let chain = Arc::new(
+        AuditChain::try_new(
+            b"rullst-super-secret-hmac-key-256",
+            Arc::new(StdoutAuditLogger),
+        )
+        .expect("strong audit key"),
+    );
     let mut set = JoinSet::new();
 
     for i in 0..50 {
@@ -120,6 +123,11 @@ async fn test_audit_chain_concurrent_tamper_proofing() {
     }
 
     assert_eq!(records.len(), 50);
+    records.sort_by_key(|record| record.sequence_id);
+    assert!(AuditChain::verify_sequence(
+        b"rullst-super-secret-hmac-key-256",
+        &records
+    ));
 }
 
 #[tokio::test]

@@ -1,3 +1,3 @@
 pub mod chain;
 
-pub use chain::{AuditChain, AuditLogger, AuditRecord, StdoutAuditLogger};
+pub use chain::{AuditChain, AuditLogger, AuditRecord, MIN_AUDIT_KEY_BYTES, StdoutAuditLogger};

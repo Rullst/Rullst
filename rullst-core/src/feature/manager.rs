@@ -1,3 +1,4 @@
+#[cfg(feature = "orm")]
 use super::db::DbFeatureDriver;
 use super::driver::FeatureDriver;
 use super::env::EnvFeatureDriver;
@@ -62,12 +63,17 @@ impl Default for FeatureManager {
     /// 1. `MemoryFeatureDriver` (programmatic/testing overrides)
     /// 2. `EnvFeatureDriver` (environment variable configuration)
     /// 3. `TomlFeatureDriver` (local TOML file configuration via `Rullst.toml`)
-    /// 4. `DbFeatureDriver` (database-backed flags, requires initialized database pool)
+    /// 4. `DbFeatureDriver` when the `orm` feature is enabled (database-backed
+    ///    flags, requires an initialized database pool)
     fn default() -> Self {
-        Self::new()
+        let manager = Self::new()
             .add_driver(Box::new(MemoryFeatureDriver::new()))
             .add_driver(Box::new(EnvFeatureDriver::new()))
-            .add_driver(Box::new(TomlFeatureDriver::new()))
-            .add_driver(Box::new(DbFeatureDriver::new()))
+            .add_driver(Box::new(TomlFeatureDriver::new()));
+
+        #[cfg(feature = "orm")]
+        let manager = manager.add_driver(Box::new(DbFeatureDriver::new()));
+
+        manager
     }
 }

@@ -1,6 +1,6 @@
 # Rullst Telemetry, Spans & Performance Observability Guide 📡
 
-This guide provides an in-depth, beginner-to-advanced, and production-ready reference for the **Telemetry, Distributed Tracing & Radar** architecture in **Rullst Nexus** (`/nexus/telemetry`) and **Rullst Studio** (`/studio/traces`, `/studio/radar`).
+This guide describes the **Telemetry, Distributed Tracing & Radar** architecture in **Rullst Nexus** (`/nexus/telemetry`) and **Rullst Studio** (`/studio/traces`, `/studio/radar`), including the deployment boundaries that must be validated by an application.
 
 ---
 
@@ -22,7 +22,9 @@ This guide provides an in-depth, beginner-to-advanced, and production-ready refe
 
 ## 1. Overview: Microsecond Observability & Zero-Overhead Telemetry
 
-Rullst is engineered to deliver enterprise-grade observability without impacting application throughput or memory footprint. 
+Rullst provides bounded in-process observability helpers. Collection, buffering,
+and export have runtime cost and must be benchmarked with the application's
+traffic; probes without a connected source are reported as unavailable.
 
 ### Key Design Principles:
 * **Microsecond Latency Tracking**: Execution spans (HTTP request routing, SQL queries, AI prompt streams, background queue jobs, and security RASP checks) are measured in **microseconds (µs)**.

@@ -1,4 +1,4 @@
-name: Kani Verifier
+name: Kani Verifier (manual informational)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -11,7 +11,7 @@ env:
 
 jobs:
   kani:
-    name: kani (${{ matrix.package }})
+    name: kani informational (${{ matrix.package }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -30,7 +30,7 @@ jobs:
           find . -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
           find $HOME/.cargo/registry/src/ -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
 
-      - name: Verify with Kani
+      - name: Verify with Kani (non-blocking research harnesses)
         working-directory: ${{ matrix.package }}
         continue-on-error: true
         timeout-minutes: 90

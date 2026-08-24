@@ -60,8 +60,8 @@ fn editor_or_admin(ctx: &UserContext) -> UserContext {
 #[tokio::test]
 async fn test_audit_chain_hmac_integrity() {
     let logger = Arc::new(StdoutAuditLogger);
-    let secret = b"super-secret-hmac-key";
-    let chain = AuditChain::new(secret, logger);
+    let secret = b"super-secret-hmac-key-at-least-32-bytes";
+    let chain = AuditChain::try_new(secret, logger).expect("strong audit key");
 
     let record1 = chain
         .record_event("admin", "UPDATE", "user_123", "{\"role\":\"manager\"}")
@@ -80,11 +80,24 @@ async fn test_audit_chain_hmac_integrity() {
     assert_eq!(record2.sequence_id, 2);
     assert_eq!(record2.previous_hash, record1.hash);
     assert!(AuditChain::verify_record(secret, &record2));
+    assert!(AuditChain::verify_sequence(
+        secret,
+        &[record1.clone(), record2.clone()]
+    ));
+    assert!(AuditChain::verify_record(secret, &record2));
+    assert!(!AuditChain::verify_sequence(
+        secret,
+        std::slice::from_ref(&record2)
+    ));
 
     // Tampered record test
     let mut tampered = record2.clone();
     tampered.payload = "{\"tampered\": true}".to_string();
     assert!(!AuditChain::verify_record(secret, &tampered));
+
+    let mut discontinuous = vec![record1, record2];
+    discontinuous[1].sequence_id = 3;
+    assert!(!AuditChain::verify_sequence(secret, &discontinuous));
 }
 
 #[tokio::test]
@@ -199,7 +212,7 @@ fn test_siem_alerting_and_cef_formatting() {
         details: "Blocked system override attempt".to_string(),
         client_ip: "203.0.113.195".to_string(),
         timestamp_str: "2026-08-20T12:00:00Z".to_string(),
-        verified_hmac: true,
+        verified_hmac: false,
     };
 
     let cef = format_cef_event(&event);
@@ -298,7 +311,7 @@ fn test_mfa_totp_rfc6238_generation_and_verification() {
     assert!(decoded.is_some());
 
     let uri = build_otpauth_uri("RullstApp", "alice@example.com", &secret);
-    assert!(uri.starts_with("otpauth://totp/RullstApp:alice@example.com?secret="));
+    assert!(uri.starts_with("otpauth://totp/RullstApp:alice%40example.com?secret="));
     assert!(uri.contains("&issuer=RullstApp"));
 
     let code = generate_totp_code(&secret).expect("valid code generation");
@@ -306,7 +319,8 @@ fn test_mfa_totp_rfc6238_generation_and_verification() {
     assert!(code.chars().all(|c| c.is_ascii_digit()));
 
     assert!(verify_totp_code(&secret, &code));
-    assert!(!verify_totp_code(&secret, "000000"));
+    let wrong_code = if code == "000000" { "000001" } else { "000000" };
+    assert!(!verify_totp_code(&secret, wrong_code));
 }
 
 #[test]

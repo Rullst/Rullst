@@ -16,7 +16,15 @@ pub fn derive_personal_data_impl(input: TokenStream) -> TokenStream {
         && let Fields::Named(fields_named) = data_struct.fields
     {
         for field in fields_named.named {
-            let field_name = field.ident.unwrap();
+            let Some(field_name) = field.ident.clone() else {
+                return TokenStream::from(
+                    syn::Error::new_spanned(
+                        &field,
+                        "PersonalData requires every named field to have an identifier",
+                    )
+                    .to_compile_error(),
+                );
+            };
 
             // Check if the field has the `#[privacy]` attribute
             let has_privacy = field

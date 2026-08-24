@@ -230,7 +230,8 @@ async fn test_oidc_discover_invalid_args() {
         mock_client.clone(),
     )
     .await
-    .expect("empty credentials select the offline provider");
+    .expect("empty credentials select the offline provider")
+    .with_http_client(mock_client.clone());
     assert_eq!(
         provider.credential_mode(),
         crate::configuration::CredentialMode::Mock
@@ -240,6 +241,10 @@ async fn test_oidc_discover_invalid_args() {
         .await
         .expect("offline OIDC user");
     assert_eq!(user.id, "mock-user");
+    assert!(
+        mock_client.captured_urls.lock().await.is_empty(),
+        "a custom client must not replace mock mode's network-free transport"
+    );
 
     let provider = OidcProvider::discover_with_client(
         "https://issuer",

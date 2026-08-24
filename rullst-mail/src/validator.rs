@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 
 /// Error returned when email deliverability validation fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DeliverabilityError {
     /// The email address format/syntax is invalid.
     InvalidSyntax(String),

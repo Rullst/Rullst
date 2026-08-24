@@ -17,13 +17,13 @@ The Rullst framework is organized into decoupled, high-performance crates:
 
 | Crate | Responsibilities |
 | :--- | :--- |
-| **`rullst-core`** | Server runtime, Tokio executor integration, `routes!` macro, `RadarSnapshot` telemetry & `SpanCollector`. |
+| **`rullst-core`** | Runtime-only-by-default server, Tokio integration, `routes!`, queues/realtime, `RadarSnapshot`, and `SpanCollector`; ORM/SQLite queue support is feature-gated. |
 | **`rullst-orm`** | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector. |
-| **`rullst-auth`** | JWT authentication, Argon2 password hashing, session management, OAuth2 integration. |
-| **`rullst-security`** | RASP deep inspection, OWASP Secure Headers A+, Login Jail tarpit, DLP interceptor, honeypot traps, WAF middleware. |
+| **`rullst-auth`** | Argon2 password hashing, encrypted session management, passkeys, RBAC helpers, and OAuth2/OIDC re-exports. |
+| **`rullst-security`** | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
-| **`rullst-capital`** | Multi-provider payment & payout engine, NFS-e digital invoicing, real-time SaaS MRR/ARR analytics. |
-| **`rullst-connect`** | Enterprise message queues (RabbitMQ, Redis Streams, Kafka), WebSockets sync, SSE event streams. |
+| **`rullst-capital`** | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, and an offline-only NFS-e preview; live fiscal authorization is roadmap work. |
+| **`rullst-connect`** | OAuth2/OIDC and social-login providers. Message queues and real-time transports currently live in Core; Kafka, RabbitMQ, and Redis Streams adapters are roadmap work. |
 | **`rullst-iot`** | `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader integration are roadmap work. |
 | **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery. |
 | **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |

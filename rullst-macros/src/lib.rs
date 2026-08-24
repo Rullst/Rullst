@@ -193,60 +193,108 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-/// Defines a Dual-Target route.
-/// Generates an HTML responder for browsers and a JSON responder for mobile applications natively.
+/// Legacy compatibility marker that preserves the annotated function unchanged.
+///
+/// Route registration is defined by the `routes!` macro in `rullst-core`. This attribute never
+/// implemented path registration or content negotiation and is retained for one compatibility
+/// cycle so existing code does not have its function signature rewritten unexpectedly.
+#[deprecated(
+    since = "12.0.0",
+    note = "use rullst::routes! for route registration; this legacy marker will be removed"
+)]
 #[proc_macro_attribute]
-pub fn route(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as syn::ItemFn);
-    let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let name = &sig.ident;
-    let body = &input_fn.block;
-
-    // A real implementation would parse the path and parameters,
-    // generate an Axum handler, and conditionally serialize to JSON or HTML
-    // based on the Accept header. Here we provide the foundational macro.
-    let expanded = quote::quote! {
-        #vis fn #name() -> String {
-            let result = { #body };
-            // Simulate the dual-target response wrapper
-            result
-        }
-    };
-    expanded.into()
+pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
+    if attr.is_empty() {
+        item
+    } else {
+        syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "#[route] does not register paths; use rullst::routes! instead",
+        )
+        .into_compile_error()
+        .into()
+    }
 }
 
-/// Defines a Server Function for transparent RPC.
-/// Functions annotated with `#[server_function]` can be called directly from Wasm frontend code,
-/// and the framework automatically generates the HTTP fetch bridge.
+/// Defines a dual-target server function.
+///
+/// The native expansion preserves the annotated function's attributes,
+/// visibility, complete signature, parameters, generics, `where` clause, and
+/// body. The Wasm expansion preserves the same public signature and delegates
+/// the request to Rullst's client bridge.
+///
+/// The current client bridge identifies an RPC by function name. Argument
+/// transport and server-side route registration are separate runtime concerns;
+/// this macro does not claim to implement either one.
 #[proc_macro_attribute]
-pub fn server_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as syn::ItemFn);
-    let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let name = &sig.ident;
-    let body = &input_fn.block;
-    let output_type = match &sig.output {
-        syn::ReturnType::Default => quote::quote!(()),
-        syn::ReturnType::Type(_, ty) => quote::quote!(#ty),
-    };
+pub fn server_function(attr: TokenStream, item: TokenStream) -> TokenStream {
+    if !attr.is_empty() {
+        return syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "#[server_function] does not accept attribute arguments",
+        )
+        .into_compile_error()
+        .into();
+    }
 
-    let name_str = name.to_string();
+    let input_fn = parse_macro_input!(item as syn::ItemFn);
+    match expand_server_function(input_fn) {
+        Ok(expanded) => expanded.into(),
+        Err(error) => error.into_compile_error().into(),
+    }
+}
+
+fn expand_server_function(input_fn: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {
+    if input_fn.sig.asyncness.is_none() {
+        return Err(syn::Error::new_spanned(
+            input_fn.sig.fn_token,
+            "#[server_function] requires an async function",
+        ));
+    }
+
+    if let Some(receiver) = input_fn
+        .sig
+        .inputs
+        .iter()
+        .find_map(|argument| match argument {
+            syn::FnArg::Receiver(receiver) => Some(receiver),
+            syn::FnArg::Typed(_) => None,
+        })
+    {
+        return Err(syn::Error::new_spanned(
+            receiver,
+            "#[server_function] supports free functions, not methods with a self receiver",
+        ));
+    }
+
+    let attributes = &input_fn.attrs;
+    let visibility = &input_fn.vis;
+    let signature = &input_fn.sig;
+    let body = &input_fn.block;
+    let name = signature.ident.to_string();
 
     let expanded = quote::quote! {
         #[cfg(not(target_arch = "wasm32"))]
-        #vis async fn #name() -> #output_type {
-            #body
-        }
+        #(#attributes)*
+        #visibility #signature #body
 
         #[cfg(target_arch = "wasm32")]
-        #vis async fn #name() -> #output_type {
-            let res = rullst::client::rpc_call(#name_str).await;
-            // Deserialize response if it's not unit type
-            serde_json::from_str(&res).unwrap_or_default()
+        #(#attributes)*
+        #[allow(unused_variables)]
+        #visibility #signature {
+            let response_body = match rullst::client::rpc_call(#name).await {
+                Ok(response_body) => response_body,
+                Err(_) => return ::core::default::Default::default(),
+            };
+
+            match serde_json::from_str(&response_body) {
+                Ok(value) => value,
+                Err(_) => ::core::default::Default::default(),
+            }
         }
     };
-    expanded.into()
+
+    Ok(expanded)
 }
 
 #[proc_macro_attribute]

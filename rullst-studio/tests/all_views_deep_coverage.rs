@@ -25,7 +25,11 @@ async fn test_studio_all_views_and_interactive_actions() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(toggle_req).await.unwrap();
-    assert!(res.status() == StatusCode::OK || res.status() == StatusCode::SEE_OTHER);
+    assert_eq!(
+        res.status(),
+        StatusCode::SERVICE_UNAVAILABLE,
+        "feature-flag mutation must fail closed without a configured database"
+    );
 
     // 2. Env viewer
     let req = Request::builder().uri("/env").body(Body::empty()).unwrap();

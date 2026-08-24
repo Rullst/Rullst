@@ -24,7 +24,7 @@ pub async fn nexus_security_page(
 
     let store = rullst_security::SecurityStore::global();
     let honeypots_count = store.honeypot_traps_count.load(Ordering::Relaxed);
-    let active_bans_count = store.banned_ips.len();
+    let active_bans_count = store.active_banned_count();
     let prompt_injections_count = store
         .prompt_injections_blocked_count
         .load(Ordering::Relaxed);

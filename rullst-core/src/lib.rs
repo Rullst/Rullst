@@ -13,7 +13,7 @@ pub mod config;
 pub mod db;
 pub mod edge;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 /// Artisan command-line migrations and seed execution helpers.
 pub mod artisan;
 #[cfg(not(target_arch = "wasm32"))]
@@ -94,7 +94,7 @@ pub mod validation;
 /// WebSocket live connection and messaging system.
 pub mod ws;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 #[macro_export]
 /// Standard migration and seeding bootstrap macro for Rullst.
 macro_rules! artisan {
@@ -119,7 +119,7 @@ pub use routing::Router;
 pub use server::{Server, ServerError};
 
 // Re-export rullst-orm for seamless database usage
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 pub use rullst_orm::{Orm, RullstModel};
 
 // Re-export Configuration types
@@ -146,11 +146,11 @@ pub use cache::Cache;
 #[cfg(not(target_arch = "wasm32"))]
 pub use di::{Container, DiError, Inject, Injectable};
 #[cfg(not(target_arch = "wasm32"))]
-pub use queue::{Queue, QueuedJobDetail, Worker};
+pub use queue::{Queue, QueuedJobDetail, Worker, WorkerHandle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use realtime::{BroadcastManager, Channel, RealtimeError, RealtimeMessage};
 #[cfg(not(target_arch = "wasm32"))]
-pub use scheduler::{Scheduler, SchedulerError};
+pub use scheduler::{Scheduler, SchedulerError, SchedulerFailurePolicy, SchedulerHandle};
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(not(target_arch = "wasm32"))]
@@ -163,17 +163,18 @@ pub use ws::{WebSocket, WsError};
 // Re-export Milestone 6 Resilience Features
 #[cfg(not(target_arch = "wasm32"))]
 pub use resilience::{
-    RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, backpressure_middleware,
-    rate_limit_middleware,
+    RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,
+    backpressure_middleware, rate_limit_middleware,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use async_trait::async_trait;
 #[cfg(not(target_arch = "wasm32"))]
 pub use feature::{
-    DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
-    TomlFeatureDriver,
+    EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
 };
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
+pub use feature::DbFeatureDriver;
 #[cfg(not(target_arch = "wasm32"))]
 pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, tenant_layer};
 

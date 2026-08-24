@@ -117,14 +117,22 @@ async fn render_feature_flags() -> Html<String> {
 }
 
 async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Response {
-    let Some(pool) = rullst_core::db::safe_pool() else {
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    toggle_feature_flag_with_pool(&name, rullst_core::db::safe_pool(), driver).await
+}
+
+async fn toggle_feature_flag_with_pool(
+    name: &str,
+    pool: Option<&rullst_core::db::RullstPool>,
+    driver: &str,
+) -> axum::response::Response {
+    let Some(pool) = pool else {
         return (
             axum::http::StatusCode::SERVICE_UNAVAILABLE,
             "Database is not configured",
         )
             .into_response();
     };
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
 
     let select_sql = if driver == "postgres" {
         "SELECT enabled FROM rullst_feature_flags WHERE name = $1"
@@ -132,7 +140,7 @@ async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Respon
         "SELECT enabled FROM rullst_feature_flags WHERE name = ?"
     };
     let row = match rullst_orm::_sqlx::query(select_sql)
-        .bind(&name)
+        .bind(name)
         .fetch_optional(pool)
         .await
     {
@@ -165,13 +173,13 @@ async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Respon
     let update = if driver == "sqlite" {
         rullst_orm::_sqlx::query(sql)
             .bind(if current_enabled { 0 } else { 1 })
-            .bind(&name)
+            .bind(name)
             .execute(pool)
             .await
     } else {
         rullst_orm::_sqlx::query(sql)
             .bind(!current_enabled)
-            .bind(&name)
+            .bind(name)
             .execute(pool)
             .await
     };
@@ -199,17 +207,22 @@ mod tests {
 
         // 1. GET /
         let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let resp = app.clone().oneshot(req).await.unwrap();
+        let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
 
-        // 2. POST /toggle/my_flag
-        let toggle_req = Request::builder()
-            .method("POST")
-            .uri("/toggle/new_ai_copilot")
-            .body(Body::empty())
-            .unwrap();
-        let toggle_resp = app.oneshot(toggle_req).await.unwrap();
-        assert_eq!(toggle_resp.status(), StatusCode::SEE_OTHER);
+        // 2. Mutations fail closed when Studio has no configured database. Invoke the extracted
+        // dependency boundary directly so this assertion cannot race another test's global pool.
+        let toggle_resp = toggle_feature_flag_with_pool("new_ai_copilot", None, "sqlite").await;
+        assert_eq!(toggle_resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert!(
+            !toggle_resp
+                .headers()
+                .contains_key(axum::http::header::LOCATION)
+        );
+        let body = axum::body::to_bytes(toggle_resp.into_body(), 1_024)
+            .await
+            .expect("bounded response body");
+        assert_eq!(&body[..], b"Database is not configured");
 
         // 3. Directly check render_feature_flags HTML
         let html = render_feature_flags().await.0;

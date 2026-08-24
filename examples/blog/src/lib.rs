@@ -320,15 +320,22 @@ pub mod app {
         let headers = response.headers_mut();
         headers.insert(
             "Content-Security-Policy",
-            "default-src 'self' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://*.githubusercontent.com; connect-src 'self' ws: wss:; frame-ancestors 'self';".parse().unwrap(),
+            axum::http::HeaderValue::from_static(
+                "default-src 'self' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://raw.githubusercontent.com data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://*.githubusercontent.com; connect-src 'self' ws: wss:; frame-ancestors 'self';",
+            ),
         );
         headers.insert(
             "Cross-Origin-Resource-Policy",
-            "cross-origin".parse().unwrap(),
+            axum::http::HeaderValue::from_static("cross-origin"),
         );
-        headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
-        headers.insert("X-Frame-Options", "SAMEORIGIN".parse().unwrap());
-        headers.insert("X-XSS-Protection", "1; mode=block".parse().unwrap());
+        headers.insert(
+            "X-Content-Type-Options",
+            axum::http::HeaderValue::from_static("nosniff"),
+        );
+        headers.insert(
+            "X-Frame-Options",
+            axum::http::HeaderValue::from_static("SAMEORIGIN"),
+        );
         response
     }
 }
@@ -340,6 +347,14 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
 
     let config =
         rullst::TenantConfig::new(rullst::TenantStrategy::Header).with_header_name("X-Tenant-ID");
+    // Local showcase fixture standing in for authenticated membership claims. Production
+    // applications must derive this extension from a verified session or token.
+    let demo_membership = rullst::security::TenantMembership::try_new([
+        "community",
+        "tenant-enterprise",
+        "tenant-startup",
+    ])?
+    .with_default("community")?;
 
     let studio_router = rullst_studio::Studio::new().into_router();
     let nexus_auth = rullst_nexus::NexusAuthPolicy::basic_from_env()?;
@@ -375,18 +390,18 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     .nest_axum("/studio", studio_router)
     .nest_axum("/nexus", nexus_router)
     .layer(axum::middleware::map_response(set_security_headers))
-    .layer(rullst::tenant_layer(config)))
+    .layer(rullst::tenant_layer(config))
+    .layer(axum::Extension(demo_membership)))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
-    let router = match router() {
-        Ok(router) => router,
+    match router() {
+        Ok(router) => Box::into_raw(Box::new(router)),
         Err(error) => {
             eprintln!("Nexus startup configuration error: {error}");
-            rullst::Router::new()
+            std::ptr::null_mut()
         }
-    };
-    Box::into_raw(Box::new(router))
+    }
 }

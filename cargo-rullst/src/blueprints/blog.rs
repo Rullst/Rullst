@@ -252,8 +252,14 @@ pub async fn index() -> impl IntoResponse {{
 
 pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
     let posts = {all_call};
-    let post = posts.into_iter().find(|p| p.slug == slug).unwrap();
-    Html(blog::detail_page(post))
+    let Some(post) = posts.into_iter().find(|post| post.slug == slug) else {{
+        return (
+            rullst::http::StatusCode::NOT_FOUND,
+            "Blog post not found",
+        )
+            .into_response();
+    }};
+    Html(blog::detail_page(post)).into_response()
 }}
 
 pub async fn robots_txt() -> impl IntoResponse {{

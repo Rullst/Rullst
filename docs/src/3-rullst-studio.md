@@ -1,27 +1,61 @@
-# Rullst Studio: Real-Time Monitoring & Control Room
+# Rullst Studio: local development control room
 
-**Rullst Studio** is your local development control room. It comes built-in with all Rullst application blueprints.
+Rullst Studio is a developer-facing Axum dashboard. It can run as a standalone
+server bound to `127.0.0.1` (port `5555` by default) or its router can be mounted
+explicitly by an application.
 
-While you develop your application on port `3000`, Rullst Studio automatically boots up on port `5555` (`http://localhost:5555`).
+Studio is not an authentication boundary. Keep it on a loopback or otherwise
+trusted interface, and do not expose it publicly without application-level
+authentication, authorization, TLS, and network policy.
 
-## ✨ Features & Visual Tooling Suite
+## Running Studio
 
-The Studio acts as a zero-overhead local observability dashboard. It connects to your Rullst application via WebSockets in the background to capture runtime telemetry without affecting your app's performance.
+The CLI can launch the local server:
 
-With Rullst Studio, you can:
-- **📡 Rullst Radar & Telemetry (`/studio/radar`):** Real-time kernel telemetry visualizer displaying Tokio runtime tick latency (in µs), active async tasks, process CPU, RSS memory consumption, live microsecond async spans, and a direct link to the Prometheus `/metrics` exporter.
-- **💳 Revenue Dashboard (`/studio/capital`):** Real-time SaaS MRR/ARR analytics, active subscriber count, churn rate calculator, and live Stripe / LemonSqueezy Webhook Audit Inspector.
-- **🛡️ Visual Threat Radar / SOC (`/studio/security`):** Real-time threat vectors, banned IP reputation scores, blocked honeypot hits (`rullst-honey`), and RASP incident reports.
-- **📊 Distributed Tracing Visualizer (`/studio/traces`):** Jaeger/Zipkin-style flamegraph inspector visualizing microsecond-level HTTP, SQL, and AI prompt spans.
-- **Monitor Traffic & SQL Auditing:** Real-time HTTP request streams and `rullst-orm` SQL query time inspections for hunting N+1 query bottlenecks.
-- **Debug Async Jobs & Queues:** Visualize worker queues and retry failing jobs.
+```bash
+cargo rullst studio
+```
 
-## How to Access
+The library entry point is also available:
 
-1. Run your Rullst project:
-   ```bash
-   cargo rullst dev
-   ```
-2. Open your browser at `http://localhost:5555`
+```rust,no_run
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    rullst_studio::run_studio(5555_u16).await
+}
+```
 
-> **Note:** Rullst Studio is designed exclusively for local development environments (`cargo rullst dev`). In production (compiled via `cargo build --release`), Studio's features are completely stripped away via conditional compilation (`cfg(debug_assertions)`), guaranteeing **Zero Overhead** for production servers.
+`Studio::new().into_router()` builds a router for explicit composition. Optional
+OpenAPI and queue views are enabled with `with_openapi` and `with_horizon`.
+
+## Current views
+
+- `/studio`: data browser and dashboard shell.
+- `/studio/radar`: runtime probes and recorded spans. Unsupported probes display
+  `Unavailable`; Studio does not synthesize a healthy value.
+- `/studio/security`: counters and events emitted by the in-process security
+  store. Audit-chain integrity displays `Unavailable` until a verifier is
+  connected.
+- `/studio/capital`: the in-process revenue view; it is not an accounting ledger.
+- `/studio/traces`: recorded application spans.
+- `/studio/migrations`, `/studio/ai`, `/studio/env`, `/studio/features`, and
+  `/studio/er`: development tools for their corresponding subsystems.
+
+Some panels poll HTTP JSON endpoints and the request logger uses SSE. The current
+crate does not promise a separate WebSocket telemetry transport or zero runtime
+overhead.
+
+## Telemetry contract
+
+Studio reads runtime state exposed by `RadarSnapshot`, `SpanCollector`, the
+security store, queues, and configured database connections. A counter means only
+that the corresponding instrumentation path emitted it; it is not proof that all
+traffic passed through that control. Missing sources must remain visibly
+unavailable.
+
+## Production boundary
+
+Studio is an optional crate and is not automatically removed merely because a
+binary is compiled with `--release`. Exclude it from production features or do
+not mount/start it. If an operator intentionally deploys Studio, protect it like
+any other privileged administrative interface.

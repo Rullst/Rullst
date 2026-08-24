@@ -46,6 +46,11 @@ jobs:
       - name: Run Clippy (strict)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
+      - name: Verify minimal Core and umbrella feature boundaries
+        run: |
+          cargo check -p rullst-core --all-targets --no-default-features
+          cargo check -p rullst --all-targets --no-default-features
+
       - name: Run all workspace tests
         run: cargo test --workspace --all-features
 

@@ -1,5 +1,9 @@
 # rullst-iot
 
+> **Vision preserved:** MQTT/CoAP/Sparkplug, real flash/boot lifecycle, HSM/PQC,
+> Embassy, hardware integration, and HIL testing remain itemized with status and
+> recommendation in the [capability ledger](../capability-ledger.md#iot-edge-and-cryptography-vision).
+
 `rullst-iot` contains `no_std`-compatible telemetry models, protocol frame
 helpers, edge state models, and a signed firmware verification gate.
 

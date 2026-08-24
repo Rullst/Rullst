@@ -1,5 +1,5 @@
 //! Payment Gateways Catalog and Configuration Metadata for Rullst Capital.
-//! Defines all 11 supported financial providers with environment status detection.
+//! Defines payment-adapter metadata with environment credential detection.
 
 /// Metadata model for a supported Payment / Payout Gateway.
 #[derive(Debug, Clone)]
@@ -22,7 +22,9 @@ pub struct GatewayInfo {
 }
 
 impl GatewayInfo {
-    /// Returns true if live API credentials for this gateway are configured in the environment.
+    /// Returns true when an expected credential variable exists.
+    ///
+    /// Presence does not validate the credential or prove that every adapter capability is live.
     pub fn is_configured(&self) -> bool {
         match self.id {
             "stripe" => std::env::var("STRIPE_SECRET_KEY").is_ok(),
@@ -40,12 +42,12 @@ impl GatewayInfo {
         }
     }
 
-    /// Returns the live or mock status label and CSS badge.
+    /// Returns a credential-presence or offline-demo status label and CSS badge.
     pub fn status_badge(&self) -> (&'static str, &'static str) {
         if self.is_configured() {
-            ("🟢 Live Connected", "status-live")
+            ("🔐 Credentials Detected (Unverified)", "status-live")
         } else {
-            ("🟡 Sandbox Mock Ready", "status-mock")
+            ("🟡 Offline Demo", "status-mock")
         }
     }
 }
@@ -64,7 +66,7 @@ pub fn all_gateways() -> Vec<GatewayInfo> {
             flag: "🇧🇷",
             fees: "Pix: 0.00% (Zero) | Card: 0.75% to 1.44%",
             payout_speed: "Instant (D+0 / D+1)",
-            tax_handling: "Direct SPED NFS-e Integration",
+            tax_handling: "Separate fiscal integration required; NFS-e live issuance is disabled",
             best_for: "Brazilian SaaS, optimized margins, zero-fee Pix, and credit card installments up to 12x.",
             env_example: "INFINITEPAY_API_KEY=\"inf_live_sec_...\"\nINFINITEPAY_WEBHOOK_SECRET=\"whsec_inf_...\"",
             rust_init_code: "use rullst_capital::{init_provider, InfinitePayProvider};\n\ninit_provider(Box::new(InfinitePayProvider::new(\n    std::env::var(\"INFINITEPAY_API_KEY\")?,\n    std::env::var(\"INFINITEPAY_WEBHOOK_SECRET\")?,\n)));",

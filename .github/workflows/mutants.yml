@@ -1,4 +1,4 @@
-name: Mutation Testing (cargo-mutants)
+name: Mutation Testing (manual informational)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -12,7 +12,7 @@ jobs:
   mutants:
     permissions:
       contents: read
-    name: cargo-mutants shard ${{ matrix.shard }}/8
+    name: cargo-mutants informational shard ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -35,7 +35,7 @@ jobs:
         # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
         # hard-fail — results are captured in the uploaded artifact for review.
         continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place || true
+        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
 
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.2.2

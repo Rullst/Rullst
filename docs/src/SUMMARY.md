@@ -61,7 +61,10 @@
 
 # Reference
 - [📜 Framework Spec](spec.md)
-- [🛡️ High-Assurance Security Architecture](security-architecture.md)
+- [🧭 Capability Status & Vision Decisions](capability-ledger.md)
+- [🔒 Hardening Status](hardening-status.md)
+- [🛡️ Security Architecture](security-architecture.md)
+- [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ Threat Radar & SOC Master Guide](threat-radar-soc-guide.md)
 - [📡 Telemetry & Distributed Tracing](telemetry-guide.md)
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)

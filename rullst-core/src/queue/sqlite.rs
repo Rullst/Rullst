@@ -2,7 +2,7 @@
 
 use super::{QueueDriver, QueueError, QueuedJob, QueuedJobDetail};
 use async_trait::async_trait;
-use serde_json::Value;
+use std::time::Duration;
 
 /// Queue driver backed by a SQLite database.
 ///
@@ -92,11 +92,12 @@ impl SqliteDriver {
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await
             .map_err(|e| QueueError::Driver(e.to_string()))?;
+        ensure_transition(result.rows_affected(), job_id, "retry_failed")?;
         Ok(())
     }
 
@@ -137,36 +138,100 @@ impl QueueDriver for SqliteDriver {
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
 
-        Ok(row.map(|(id, name, payload_str, attempts)| {
-            let payload = serde_json::from_str(&payload_str).unwrap_or(Value::Null);
-            QueuedJob {
-                id,
-                name,
-                payload,
-                attempts: attempts as u32,
+        let Some((id, name, payload_str, attempts)) = row else {
+            return Ok(None);
+        };
+
+        let payload = match serde_json::from_str(&payload_str) {
+            Ok(payload) => payload,
+            Err(error) => {
+                let message = format!("invalid JSON payload: {error}");
+                self.mark_failed(&id, &message)
+                    .await
+                    .map_err(|transition| QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_payload",
+                        message: format!("{message}; {transition}"),
+                    })?;
+                return Err(QueueError::Serialization(format!(
+                    "job '{id}' contains invalid JSON: {error}"
+                )));
             }
+        };
+        let attempts = match u32::try_from(attempts) {
+            Ok(attempts) => attempts,
+            Err(_) => {
+                let message = "job attempts counter is negative";
+                self.mark_failed(&id, message).await.map_err(|transition| {
+                    QueueError::StateTransition {
+                        job_id: id.clone(),
+                        operation: "reject_invalid_attempts",
+                        message: transition.to_string(),
+                    }
+                })?;
+                return Err(QueueError::Driver(format!("job '{id}' has {message}")));
+            }
+        };
+
+        Ok(Some(QueuedJob {
+            id,
+            name,
+            payload,
+            attempts,
         }))
     }
 
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
-        sqlx::query("DELETE FROM rullst_jobs WHERE id = ?")
+        let result = sqlx::query("DELETE FROM rullst_jobs WHERE id = ? AND status = 'processing'")
             .bind(job_id)
             .execute(&self.pool)
             .await
             .map_err(|e| QueueError::Driver(format!("Failed to mark job complete: {}", e)))?;
+        ensure_transition(result.rows_affected(), job_id, "mark_complete")?;
         Ok(())
     }
 
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError> {
-        sqlx::query(
-            "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?",
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
         )
         .bind(error)
         .bind(job_id)
         .execute(&self.pool)
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to mark job failed: {}", e)))?;
+        ensure_transition(result.rows_affected(), job_id, "mark_failed")?;
         Ok(())
+    }
+
+    async fn requeue(&self, job_id: &str, reason: &str) -> Result<(), QueueError> {
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'pending', error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
+        )
+        .bind(reason)
+        .bind(job_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| QueueError::StateTransition {
+            job_id: job_id.to_string(),
+            operation: "requeue",
+            message: error.to_string(),
+        })?;
+        ensure_transition(result.rows_affected(), job_id, "requeue")?;
+        Ok(())
+    }
+
+    async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
+        let stale_seconds = stale_after.as_secs().max(1);
+        let modifier = format!("-{stale_seconds} seconds");
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', updated_at = datetime('now') WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
+        )
+        .bind(modifier)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| QueueError::Driver(format!("Failed to recover stalled jobs: {error}")))?;
+        Ok(result.rows_affected())
     }
 
     async fn pending_count(&self) -> Result<u64, QueueError> {
@@ -188,5 +253,21 @@ impl QueueDriver for SqliteDriver {
 
     async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
         self.purge_completed_jobs().await
+    }
+}
+
+fn ensure_transition(
+    rows_affected: u64,
+    job_id: &str,
+    operation: &'static str,
+) -> Result<(), QueueError> {
+    if rows_affected == 1 {
+        Ok(())
+    } else {
+        Err(QueueError::StateTransition {
+            job_id: job_id.to_string(),
+            operation,
+            message: format!("expected one processing job, affected {rows_affected}"),
+        })
     }
 }

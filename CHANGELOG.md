@@ -6,12 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [12.0.0] - Unreleased 🚀
 
+> **Unreleased status:** entries below are a development inventory, not release,
+> certification, benchmark, or test evidence. The current capability contract is
+> `docs/src/spec.md`; CI artifacts tied to the eventual tag are authoritative for
+> tests and provenance. Absolute wording in older development notes must not be
+> interpreted as a guarantee. In particular, live NFS-e, MQTT/HSM/PQC, Alipay
+> RSA2, Connect message-broker adapters, S3/R2 storage, and database replication
+> remain fail-closed or roadmap capabilities as documented by the SST.
+
+### Security and contract hardening
+
+- Made Nexus fail closed without an explicit access policy and added server-side
+  role, field, batch, TLS-boundary, constant-time credential, and rate-limit
+  controls.
+- Replaced simulated Vault encryption with versioned authenticated AES-256-GCM.
+- Added Ed25519 OTA manifest verification and isolated IoT simulators behind an
+  explicit experimental feature; hardware and transport integrations remain
+  roadmap work.
+- Contained NFS-e to unmistakable offline fixtures and typed `Unsupported` errors
+  for homologation/production until official integration is independently
+  validated.
+- Hardened webhook secrets, signatures, freshness, replay protection, request
+  reconstruction, exact CSRF exemptions, trusted peer/tenant identity, and
+  production startup configuration.
+- Corrected Studio telemetry to display `Unavailable` for unconnected probes and
+  aligned README, audit, compliance, example, and roadmap language with actual
+  implementation boundaries.
+
 - **Enterprise Resilience, Memory Safety & Cryptographic Hardening (`rullst-core`, `rullst-security`, `rullst-capital`, `rullst-auth`, `rullst-mail`, `rullst-connect`, `rullst-orm`)**:
   - **Signed Firmware Gate & IoT Claim Containment (`rullst-iot`)**: Replaced permissive OTA signature stubs with strict Ed25519 verification over a target/version/counter/length/SHA-256 manifest, enforced commit-after-verification and monotonic anti-rollback state, and moved deterministic MQTT/HSM/PQC fixtures behind the explicit `experimental-simulators` feature with `Simulated*` names. Firmware flashing, bootloader control, persistent counters, real MQTT transport, HSM backends, and ML-KEM remain unimplemented.
   - **Graceful Shutdown & Zero-Downtime Deploys (`rullst-core::server::builder`)**: Implemented cross-platform termination signal handling (`SIGINT`, `SIGTERM`, `Ctrl+C`) via `shutdown_signal()` and `.with_graceful_shutdown()`, cleanly draining in-flight requests before process shutdown.
   - **Async Cancellation & Drop Safety (`rullst-core::resilience`)**: Implemented RAII `ActiveRequestGuard` for the backpressure middleware, ensuring `active_requests` counters are never leaked when client futures are dropped or timed out.
   - **Zero-Allocation RASP Request Inspector (`rullst-security::rasp`)**: Replaced per-header heap string allocations with zero-allocation ASCII case-insensitive pattern matching (`contains_ignore_ascii_case`) and static attack pattern tables.
-  - **Full-Spectrum DLP Secret Masking (`rullst-security::dlp`)**: Converted AWS key and database DSN redactor to iterative scanner masking 100% of secret occurrences in complex JSON responses.
+  - **Bounded DLP Secret Masking (`rullst-security::dlp`)**: Converted AWS-key and database-DSN redaction to iterative scanning for supported textual responses, with explicit content-type, encoding, streaming, and size boundaries.
   - **In-Memory Rate Limiting & Login Guard Leak Prevention (`rullst-security::rate_limit`, `rullst-security::login_guard`)**: Added periodic asynchronous background janitors pruning expired IP sliding windows and failed login records to prevent memory growth under IP spoofing.
   - **HTTP Connection Pool Reuse (`rullst-capital::providers`)**: Centralized `reqwest::Client` singleton across all 11 billing and payout providers (`stripe`, `mercadopago`, `paddle`, `lemonsqueezy`, etc.), enabling HTTP Keep-Alive and eliminating socket storms.
   - **DoS & OOM Payload Buffering Shields (`rullst-capital::webhook`, `rullst-core::server_middleware`)**: Enforced strict 2 MB payload limit on payment webhooks returning `StatusCode::PAYLOAD_TOO_LARGE` and 10 MB limit on HMR script injection.
@@ -30,24 +57,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - **Axum First-Class Escape Hatches & Macro Diagnostics (`rullst-core`, `rullst-orm-macros`, `rullst-macros` - Milestone 32)**: Implemented bidirectional `From`/`Into` conversions between `rullst::Router` and `axum::Router`, `Deref`/`DerefMut` passthrough, `.as_axum()` / `.as_axum_mut()`, custom Tower fallback handlers (`.fallback()`, `.fallback_service()`), and upgraded proc-macro error diagnostics with `syn::Error::new_spanned` providing precision compiler spans and actionable suggestion hints.
   - **Trybuild Proc-Macro Compiler UI Test Suite (`rullst-macros`, `rullst-orm-macros`)**: Added automated `trybuild` compiler UI test harness validating exact compile-time error spans and user-facing suggestion messages on malformed HTML tags and invalid struct/model attributes.
   - **W3C `Server-Timing` Header Middleware (`rullst-core::server`)**: Implemented `server_timing_middleware` injecting standard W3C `Server-Timing` headers into HTTP responses for instant sub-millisecond route latency inspection directly in browser DevTools.
-  - **Multi-Tenant Isolation Guard (`rullst-core::security::tenant_guard`)**: Added `tenant_guard_middleware` and `strict_tenant_guard_middleware` extracting multi-tenant boundaries (`X-Tenant-ID`, `X-Organization-ID`) into request extension context (`TenantContext`) to automate database scoping.
-  - **Distributed Redis Rate Limiter (`rullst-security::rate_limit`)**: Added `RateLimiter` builder supporting configurable in-memory and distributed backends (`RateLimitBackend::Memory`, `RateLimitBackend::Distributed`).
+  - **Multi-Tenant Isolation Guard (`rullst-core::security::tenant_guard`)**: Added membership-validated tenant selection. Headers/subdomains/parameters are untrusted selectors and are accepted only against a `TenantMembership` inserted by authentication middleware.
+  - **Rate Limiter Capability Boundary (`rullst-security::rate_limit`)**: Added the in-memory limiter and made unimplemented distributed backends return an explicit unsupported/configuration error instead of behaving as a no-op.
   - **CLI Auto-Repair (`cargo rullst doctor --fix`)**: Added `--fix` flag to `cargo rullst doctor` allowing automatic remediation of missing toolchain linters and dependencies.
   - **CI Continuous Benchmark Automation (`.github/workflows/bench.yml`)**: Added automated pull request benchmarks tracking sub-millisecond routing and HTML macro rendering throughput.
 
 - **Enterprise Security Sentinels, Toolchain Doctor & Concurrency Suite (`cargo-rullst` & `rullst-security`)**: Expanded developer tooling and runtime security verification across the 6 Pillars of Verification:
-  - **CycloneDX 1.5 JSON SBOM Exporter (`cargo rullst audit --sbom`)**: Automated Software Bill of Materials generation (`sbom-cyclonedx.json`) containing complete dependency components with versions, purl, and SHA-256 package hashes for regulatory compliance (SOC 2, ISO 27001, FedRAMP).
+  - **CycloneDX 1.5 JSON SBOM Exporter (`cargo rullst audit --sbom`)**: Generates dependency inventory artifacts with versions and package identifiers. An SBOM supports review but does not confer SOC 2, ISO 27001, or FedRAMP certification.
   - **Local Network Surface Scanner (`cargo rullst audit --network`)**: High-speed port and interface binding scanner (inspired by *RustScan*) inspecting local listeners (ports 3000, 5555, 8080, 5432, 3306, 6379, 1883, 9092) and preventing insecure `0.0.0.0` bindings.
   - **DevSecOps Git Pre-Commit Hook Installer (`cargo rullst hook:install`)**: Automated `.git/hooks/pre-commit` installer enforcing `cargo fmt -- --check`, strict Clippy (`-D warnings`), and static IDOR route audit on every commit.
   - **System & Security Toolchain Doctor (`cargo rullst doctor`)**: Unified diagnostics scanner verifying Rust MSRV (>= 1.96.0), `rustfmt`, `clippy`, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`, `cargo-mutants`, `kani-verifier`, and Docker Engine with instant auto-fix suggestions.
-  - **High-Contention Concurrency Test Suite (`rullst-security/tests/concurrency_tests.rs`)**: Multi-threaded stress testing proving zero data races and memory safety for `LoginGuard` tarpits, sliding-window rate limiters, HMAC `AuditChain`, and `HoneypotState` under heavy parallel load.
-  - **100% Pure-Rustls Native Certification**: Sealed formal compliance certification in `SECURITY_COMPLIANCE.md` and `SECURITY.md` confirming strict zero-OpenSSL C-bindings across all network and security crates.
+  - **High-Contention Concurrency Test Suite (`rullst-security/tests/concurrency_tests.rs`)**: Multi-threaded stress tests exercise `LoginGuard`, rate limiters, `AuditChain`, and honeypot state within bounded scenarios; they do not prove absence of every race.
+  - **Transport Inventory**: Documented Rustls-backed paths and deployment responsibilities. The repository makes no formal “100% Pure-Rustls” certification claim.
 - **Next-Gen CI/CD Automation & Verification Pipelines (`.github/workflows/`)**: Expanded the continuous testing infrastructure to 32 dedicated GitHub Action workflows:
   - **WebAssembly & Edge Matrix (`wasm-matrix.yml`)**: Continuous multi-target verification across `wasm32-unknown-unknown` and `wasm32-wasip1` for client Wasm Islands (`rullst-island`).
   - **Continuous Fuzzing Seed Corpus Synchronization (`corpus-sync.yml`)**: Weekly automated `cargo fuzz cmin` compacting and persisting seed discovery corpora across all 33 fuzzing targets.
   - **AI Security Sentinel & Automated PR Reviewer (`ai-sentinel-pr.yml`)**: Automated pull request security analysis running IDOR static route checks, compliance reviews, and CycloneDX SBOM validation.
   - **Unused Dependencies & Feature Flags Scanner (`udeps.yml`)**: Weekly `cargo-udeps` compilation AST analysis pruning dead optional features and bloated dependencies.
-  - **Cryptographic Release Attestation (`release.yml`)**: Integrated GitHub native `actions/attest-build-provenance` generating Sigstore SLSA Level 3 attestations on all release crates.
+  - **Cryptographic Release Attestation (`release.yml`)**: Integrated GitHub build-provenance attestations for release artifacts. The changelog does not claim a SLSA level without an independently evaluated build platform and release.
 
 - **Pre-Flight Deliverability, Disposable Email Filtering & Zero-Cookie Tracking (`rullst-mail`)**: Expanded `rullst-mail` with production-grade deliverability, privacy-preserving tracking, and transactional test fixtures:
   - **`DisposableEmailFilter` & Pre-Flight Deliverability (`rullst-mail::validator`)**: High-speed in-memory syntax validation (`validate_email_syntax`, `validate_email_deliverability`) and disposable domain filter blocking 150+ temporary email providers (`mailinator.com`, `tempmail.com`, `guerrillamail.com`, etc.) directly on `Message` (`.validate_deliverability()`, `.is_disposable()`).
@@ -95,13 +122,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - **4. Zero-Build Semantic CSS (Pico.css v2)**: Modern classless semantic HTML5 styling with automatic OS dark/light mode detection, **0 Node.js / 0 NPM build dependencies** and instant styling for native HTML tags (`/pico-demo`).
   - **5. File-Based Classic Templates (Jinja2 / Tera)**: External `.html` templates located in `templates/` with full layout inheritance (Django, Rails & Loco.rs pattern — `/templates-demo`).
 - **Comprehensive Framework Comparison Matrix (`README.md` & `docs/src/architecture-decisions.md`)**: Detailed breakdown contrasting Rullst's sovereign multi-engine architecture against Leptos (WASM/Signals), Dioxus (Virtual DOM), Loco.rs (Askama/Tera templates), and Topcoat Tokio (Transpiled micro-JS).
-- **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Constant-time execution normalizer (`TimingGuardConfig`, `TimingScope`, `equalize_response_time`, `timing_guard_middleware`) enforcing guaranteed response durations with randomized micro-jitter and synthetic Argon2 CPU instruction cycles on non-existent users, mathematically eliminating side-channel user enumeration on authentication and password-reset endpoints.
+- **Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`)**: Response-time equalization helpers with jitter and synthetic password work reduce observable user-enumeration differences. Applications must still use equivalent query/control flow and measure the deployed endpoint.
 - **LLM Security Firewall & Prompt Injection Shield v2 (`rullst-security::ai_firewall`)**: Zero-latency multi-vector prompt defense engine and middleware (`LlmFirewall`, `ai_firewall_middleware`) scrutinizing inputs across direct jailbreaks (`Ignore previous instructions`, `DAN mode`), system prompt exfiltration, tokenizer delimiter collisions (`<|im_start|>`, `[INST]`), Markdown image exfiltration beacons, and invisible zero-width unicode character poisoning.
 - **High-Assurance Security Architecture Guide (`docs/src/security-architecture.md`)**: Comprehensive architectural guide detailing Rullst's Defense-in-Depth model, complete OWASP Top 10 & API Security Top 10 matrix mapping, and core security subsystem deep-dives.
-- **"The Sovereign SaaS Blog & Publisher" Reference Showcase (`examples/blog`)**: Transformed `examples/blog` into a comprehensive, production-grade reference showcase demonstrating 100% real, non-mocked integration across all Rullst subsystems:
+- **"The Sovereign SaaS Blog & Publisher" Reference Showcase (`examples/blog`)**: Expanded the development integration showcase. External services remain deterministic offline fixtures, fiscal output is unsigned and unauthorized, and the example is not a production template.
   - **All 3 Front-End Paradigms**: Zero-Bundle HTMX SSR (`/`), LiveView Server-Driven UI with Tokio WebSockets (`/live-feed`, `/_live`), and Reactive Wasm Island (`/editor`, `/wasm-counter`).
   - **Hybrid ORM & Intent-Based Modeling**: Active Record multi-tenant auto-scoping via task-local storage (`apply_tenant_scope`) and Data Mapper / Repository pattern with parameterized SQLx domain aggregations (`/posts/repository`).
-  - **Capital SaaS Monetization & SPED Fiscal Engine**: Interactive pricing tiers with `Billable::check_quota` enforcement and real Brazilian Receita Federal NFS-e DPS XML generation with W3C XMLDSig digital signatures (`/pricing`).
+  - **Capital SaaS Monetization & Fiscal Preview**: Interactive pricing tiers with `Billable::check_quota` enforcement and an unsigned, unauthorized offline DPS fixture (`/pricing`). Live NFS-e and XMLDSig remain fail-closed roadmap work.
   - **Security & RASP Sandbox**: Live interactive threat inspection for SQL Injection, Path Traversal, Login Jail tarpit simulator, DLP secret masking, and Honeypot crawler traps (`/security-demo`, `/wp-admin`).
   - **AI RAG & Vector Semantic Search**: Article semantic similarity search using local Cosine Similarity matching over vector embeddings, protected by built-in Prompt Injection filters (`/ai-assistant`).
   - **Strategic Email Engine Architecture Roadmap (`rullst-mail/ROADMAP.md`)**: Formulated a comprehensive, 6-phase masterclass roadmap elevating `rullst-mail` to the sovereign standard in Rust:
@@ -115,7 +142,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `rullst-security::log_redactor`: Hardened `redact_secrets` with strict `is_char_boundary` validation and dynamic span adjustments, preventing character slicing panics on arbitrary malformed secret tokens (`fuzz_log_redactor`).
   - `rullst-orm`: Added defensive input length guards (`2048` bytes) in `fuzz_parser`, preventing memory exhaustion over multi-million iteration fuzzing runs.
 - **Enterprise Code Coverage (> 80%) & Monorepo Test Suite Expansion**:
-  - Added full end-to-end integration test suites across `rullst-studio` (`studio_integration_tests.rs`), `rullst-nexus` (`nexus_integration_tests.rs`), `rullst-capital` (`capital_integration_tests.rs`), `rullst-mail` (`mail_integration_tests.rs`), `rullst-iot` (`iot_integration_tests.rs`), and expanded `rullst-connect` (`integration_tests.rs`), achieving 100% passing test execution across the entire workspace.
+  - Added integration suites across Studio, Nexus, Capital, Mail, IoT, and Connect. Pass/fail status belongs to the exact CI run and is not frozen into this changelog.
 - **Supply-Chain & CI Workflow Hardening**:
   - `.github/workflows/scorecards.yml`: Set `publish_results: false` to resolve Fulcio/Sigstore 403 Forbidden token errors while preserving SARIF upload to GitHub Code Scanning.
   - `Cargo.lock` & Advisories: Upgraded `h2` to `v0.4.16` and synchronized `RUSTSEC-2026-0258` exemptions in `osv-scanner.toml`, `deny.toml`, `.github/workflows/audit.yml`, and `.github/workflows/security-audit.yml`.
@@ -134,8 +161,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Payment Gateways & Financial Infrastructure Guide (`docs/src/payment-gateways-guide.md`)**: Comprehensive architectural guide analyzing Direct Merchant vs Merchant of Record (MoR) vs Domestic Low-Fee vs Web3 Crypto vs International Payouts, complete fee comparison matrices, and step-by-step Rust configuration code.
 - **Monorepo Examples & Reference Apps Guide (`docs/src/examples.md`)**: Dedicated official book chapter detailing the role of the `examples/` directory in Rullst, contrasting monorepo showcases (`rullst-blog-example`) with interactive CLI scaffolding blueprints (`cargo rullst new ... --blueprint blog`).
 - **`examples/blog` Documentation (`examples/blog/README.md`)**: Complete architectural overview, local execution guide (`cargo run`), interactive route catalog (`/`, `/live-counter`, `/wasm-counter`), multi-tenant testing via `X-Tenant-ID` headers, and CI/CD integration details.
-- **Zero-Cost Native Digital Invoices (`rullst-capital::fiscal`)**: Native, direct digital invoice engine for Brazilian SaaS with **R$ 0.00 intermediary fees per invoice**. Signs XML documents in memory using company A1 Digital Certificates (`.pfx` via W3C XMLDSig RSA-SHA256) and transmits standardized Declarações de Prestação de Serviços (DPS v1.0.0) directly to the Receita Federal national portal via mTLS (`NfseNationalClient`, `issue_nfse_direct`), supporting both Sandbox/Homologação and Production.
-- **OWASP Secure Headers Suite (`rullst-security::headers`)**: Unified middleware layer (`SecureHeadersLayer`, `SecureHeadersConfig`) enforcing HSTS, dynamic CSP Nonce, Permissions-Policy, COOP, COEP, and CORP, granting an out-of-the-box A+ rating on security audits (`securityheaders.com`).
+- **Contained NFS-e Preview (`rullst-capital::fiscal`)**: Added deterministic offline DPS-shaped fixtures. The earlier direct-issuance/XMLDSig wording was not backed by a conforming implementation; homologation and production now return `Unsupported` until the official protocol is implemented and independently validated.
+- **Secure Headers Suite (`rullst-security::headers`)**: Unified middleware for HSTS, dynamic CSP nonces, Permissions-Policy, COOP, COEP, and CORP. Scanner grades depend on the deployed page and infrastructure; no A+ result is guaranteed.
 - **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: In-memory progressive async delay engine (`LoginGuard`) applying progressive delay (0s to 5s) and 15-minute temporary jail bans after 5 consecutive authentication failures.
 - **RASP Deep Request & Header Inspector (`rullst-security::rasp`)**: Enhanced runtime application self-protection with `inspect_text` and `inspect_headers` intercepting JNDI/Log4j, RCE, and advanced SQL injection vectors before handler dispatch.
 - **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Data Loss Prevention middleware (`DlpResponseLayer`, `mask_response_payload`) intercepting outgoing HTTP response streams to neutralize accidental leakage of private keys, AWS credentials, and database passwords.
@@ -145,16 +172,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Cross-Site WebSocket Hijacking Guard (`rullst-security::cswsh`)**: WebSocket upgrade handshake validator (`cswsh_guard_middleware`) verifying Origin and Host headers to prevent unauthorized cross-origin WebSocket streams.
 - **Sliding-Window Rate Limiter (`rullst-security::rate_limit`)**: In-memory sliding-window IP rate limiter (`rate_limit_middleware`, `is_rate_limited`) protecting sensitive login, password reset, and API endpoints from brute-force attacks.
 - **SIEM & SOC Alert Streamer (`rullst-security::siem`)**: Security incident alert exporter (`format_cef_event`, `dispatch_siem_alert`) formatting events into Common Event Format (CEF) or JSON webhooks for external SOC tools (Datadog, Splunk, Elastic, Slack).
-- **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**: Zero-leak log and payload sanitizer (`redact_secrets`) automatically masking Authorization Bearer tokens, passwords, AWS access keys, and API secrets prior to stdout/tracing log export.
+- **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**: Bounded best-effort sanitizer (`redact_secrets`) for recognized Authorization Bearer tokens, passwords, AWS access keys, and API-secret patterns. It is defense-in-depth, not a zero-leak guarantee.
 - **Subresource Integrity (SRI) Signer (`rullst-security::sri`)**: SHA-384 asset integrity calculator (`compute_sri_hash`, `sri_script_tag`, `sri_link_tag`) injecting subresource integrity attributes to prevent static asset supply chain tampering.
 - **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**: Cryptographic session binding (`generate_fingerprint`, `verify_fingerprint`) matching client `User-Agent`, IP subnets, and language headers to prevent stolen JWT session hijacking.
 - **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**: Middleware (`schema_guard_middleware`, `inspect_json_payload`) enforcing JSON payload size limits and maximum object nesting depth to block JSON bomb DoS attacks.
 - **Automated Security Compliance Exporter (`cargo rullst audit --compliance`)**: Automated compliance scanning CLI flag exporting a Markdown `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC2 Type II, and ISO 27001 control requirements.
-- **Threat Radar UI Expansion (Studio & Nexus)**: Integrated real-time metric cards for Login Jail bans, DLP leaks prevented, OWASP Headers A+, and IDOR route scans into `/studio/security` and `/nexus/security`.
-- **Enterprise-Grade Concurrency & Memory Sanitizers (`sanitizers.yml`)**: Added continuous Nightly ThreadSanitizer (`TSan`) detecting data races and AddressSanitizer (`ASan`) detecting memory leaks across all 11 workspace packages.
+- **Threat Radar UI Expansion (Studio & Nexus)**: Integrated counters emitted by installed security controls. Audit integrity and unavailable probes are no longer reported as healthy without a connected verifier/source.
+- **Scoped Concurrency & Memory Sanitizers (`sanitizers.yml`)**: Added Nightly ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`) jobs for their declared package/target matrix. Results apply only to the exercised paths and CI run.
 - **Cross-Platform Multi-OS CI Matrix (`ci.yml`)**: Expanded test suite to validate Ubuntu, macOS (Apple Silicon ARM64), and Windows MSVC runners.
 - **Automated End-to-End Smoke Verification (`e2e-smoke.yml`)**: Automated production binary boot of `examples/blog`, live SSR HTML status 200 checks, security header validation, CSRF metadata exemption, and form submission database persistence.
-- **100% Formal Verification & Kani Model Checking (`kani.yml`)**: Mathematical proofs implemented and automated across all 11 workspace crates (`rullst-core`, `rullst-security`, `rullst-auth`, `rullst-connect`, `rullst-iot`, `rullst-orm`, `rullst-ai`, `rullst-capital`, `rullst-nexus`, `rullst-studio`, `rullst-mail`).
+- **Scoped Kani Model Checking (`kani.yml`)**: Model checks cover the explicitly defined harnesses. They do not constitute mathematical verification of every path in every crate.
 - **30+ Production `libFuzzer` Targets & Google OSS-Fuzz Readiness (`fuzzing.yml` & `oss-fuzz/`)**: Added dedicated fuzz targets across all packages and complete Google OSS-Fuzz integration package (`project.yaml`, `Dockerfile`, `build.sh`) for 24/7 cloud cluster fuzzing.
 - **Miri Strict Provenance & Memory Safety Matrix (`miri.yml`)**: Expanded Miri interpreter coverage to 13 packages with randomized layouts.
 
@@ -194,11 +221,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - **Power Policy Helper (`rullst_iot::power`):** Calculates a recommended mode from supplied voltage values; it does not control sleep or power hardware.
   - **Digital Twin State Model (`rullst_iot::twin`):** In-memory telemetry snapshots and JSON serialization; no bidirectional network sync claim.
 - **CLI IoT Generator (`cargo rullst make:iot <DeviceName>`)**: Added `make:iot` subcommand in `cargo-rullst` to scaffold IoT edge device modules in seconds.
-- **Multi-Database Read Replica Load Balancer (`rullst::db::replica`)**: Added `ReplicaPool` in `rullst-orm` to automatically load-balance read queries across secondary database replicas with Round-Robin selection while routing writes to primary.
-- **RASP - Runtime Application Self-Protection (`rullst-security`)**: Introduced `RaspSecurityLayer` and `RaspInspector` in `rullst-security` for zero-latency middleware inspection blocking SQLi, Path Traversal, SSRF, and RCE.
+- **Database Replication Boundary (`rullst::db::replica`)**: Configuration types remain available, but unimplemented synchronization returns `Unsupported` instead of logging simulated success.
+- **RASP - Runtime Application Self-Protection (`rullst-security`)**: Introduced bounded heuristic inspection for common SQLi, traversal, SSRF, and RCE indicators; it is not a complete parser or authorization layer.
 - **Distributed Tracing Visualizer (`rullst::studio::traces`)**: Added microsecond telemetry span collector (`SpanCollector`) and flamegraph visualizer interface in Rullst Studio (`http://localhost:5555/studio/tools/traces`).
 - **Dylib Hot Reloading ABI Integrity Guard**: Integrated SHA-256 fingerprint verification during dynamic library hot-swapping in `rullst-core` dev mode.
-- **Framework Escape Hatches (`cargo rullst eject`)**: Added `cargo rullst eject [--force] [--output <path>]` command in `cargo-rullst` to expand framework abstractions into 100% pure Axum and Tokio Rust code.
+- **Framework Escape Hatches (`cargo rullst eject`)**: Added `cargo rullst eject [--force] [--output <path>]` as a migration starting point for standard Axum/Tokio code; generated output requires review and verification.
 - **Hybrid ORM Repository Pattern (`rullst-orm`)**: Added `Repository<T>` trait and `GenericRepository<T>` in `rullst-orm` to support Data Mapper / Repository pattern alongside Active Record models.
 - **Hybrid Frontend SSR Adapters (`rullst-core/src/frontend.rs`)**: Introduced `LeptosAdapter` and `DioxusAdapter` for seamless rich-client SSR integration alongside the default 0KB HTMX bundle mode.
 - **Native Real-Time Engine (`rullst::realtime`)**: Introduced `Channel`, `BroadcastManager` (pub/sub over `tokio::sync::broadcast`), and `PresenceTracker` in `rullst-core` for declarative WebSockets and SSE.
@@ -206,10 +233,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - **`rullst-honey`**: Deception security engine deploying synthetic honeypot routes (`/.env`, `/admin.php`, `/.git/config`) and invisible form fields to fingerprint and ban malicious bots in memory (`DashMap`) and WAF.
   - **`rullst-sanitizer`**: XSS/SVG HTML sanitization engine powered by `ammonia`, plus `CspSecurityLayer` middleware generating dynamic per-request CSP nonces and Clickjacking headers (`X-Frame-Options: DENY`).
   - **`rullst-rbac`**: Declarative Role-Based Access Control (`UserContext`, `RbacGuard`) natively preventing BOLA / IDOR attacks via `authorize_owner_or_role`.
-  - **`rullst-audit-log`**: HMAC-chained cryptographic tamper-proof audit log (`AuditChain`) preserving event integrity during database breaches.
+  - **`rullst-audit-log`**: Canonically encoded HMAC chain with sequence verification. It is tamper-evident when records and keys are protected, not tamper-proof.
 - **AI Vulnerability Auditor (`cargo rullst audit --ai`)**: Added CLI security scanner command in `cargo-rullst` to analyze `.env` secret leaks, dependency CVEs via `cargo audit`, and generate AI Sentinel remediation suggestions.
 - **Automated TypeScript SDK Sync (`cargo rullst dev --ts-sync`)**: Added `--ts-sync` flag to `cargo rullst dev` to automatically regenerate `sdk.ts` on file changes during development.
-- **Unified Object Storage & Media Pipeline (`rullst::storage`)**: Added multi-driver storage module in `rullst-core` with `LocalDriver` (path traversal protected), `S3`, and `Cloudflare R2` adapters, plus media resizing pipeline.
+- **Object Storage Boundary (`rullst::storage`)**: Added a contained local driver. Unimplemented S3/R2 and media operations fail with typed `Unsupported` errors rather than reporting success.
 - **Dynamic Package Manager CLI (`cargo rullst pkg`)**: Added `cargo rullst pkg add <name>` and `cargo rullst pkg list` to inspect and inject `RullstPackage` community dependencies.
 - **Visual Migration & Seeder Manager in Rullst Studio**: Added in-browser execution panel for `db:migrate`, `db:rollback`, and `db:seed` directly from `http://localhost:5555`.
 - **AI & RAG Playground in Rullst Studio**: Integrated interactive prompt test bench and RAG context builder UI inside Rullst Studio (`http://localhost:5555`).
@@ -285,7 +312,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - **Interactive Scaffolding AI Prompt**: `cargo rullst new` now prompts the developer whether they need Artificial Intelligence features (`rullst-ai`). Skipping this keeps the generated project leaner and compiles faster.
 - **Modular Workspace Architecture**: The core monolithic `rullst` crate has been split into independent sub-crates (`rullst-core`, `rullst-auth`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-nexus`, `rullst-studio`).
-- **Fully Optional Modules**: All sub-crates are now 100% optional features (`auth`, `ai`, `capital`, `mail`, `nexus`, `studio`) in the main `rullst` facade crate, granting developers ultimate control over binary size and compilation times.
+- **Optional Domain Modules**: `auth`, `ai`, `capital`, `mail`, `nexus`, and `studio` are optional facade features. `rullst-core` remains foundational, while ORM is enabled by default and can be disabled.
 
 ### Fixed
 - **CLI Database Migrations**: Fixed a bug where `cargo rullst dash` would block indefinitely on projects that didn't have a database, as it waited for a `db:migrate` command that didn't exist in the project.
@@ -401,7 +428,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Upgraded `cron` from `0.16.0` to `0.17.0`.
 
 ### Security
-- **Native Security Matrix (CI/CD)**: Upgraded the framework's CI/CD pipeline to Enterprise-grade "Secure by Design" status using hardcore Rust-native tooling.
+- **Native Security Matrix (CI/CD)**: Expanded the CI pipeline with Rust-native security tooling. Each job has a bounded scope and does not certify the framework or a deployment.
   - Added **cargo-deny** to ban unapproved licenses and vulnerable dependencies.
   - Added **OSSF Scorecards** to establish a public, enterprise security score.
   - Added **OWASP ZAP** DAST pipeline to proactively attack generated SaaS blueprints in real-time.
@@ -536,7 +563,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Security & Testing
 - **Rust 1.80+ Test Compatibility**: Patched `auth.rs` tests failing on newer Rust compilers by wrapping the newly deprecated and unsafe `std::env::set_var` within an explicit `unsafe` block for local testing environments.
 - **Test Coverage Expansion**: Added strict boundary condition tests for source code context extraction (`error_console.rs`) and session cookie parameter generation (`auth.rs`), resolving gaps in coverage.
-- **Security Validation**: Addressed and invalidated false-positive AI security audits regarding CLI command injection, hot-reloading `unsafe` blocks, and uptime scaffolding inserts, cementing Rullst's 100/100 pristine security baseline.
+- **Security Validation**: Reviewed reported CLI command-injection, hot-reload `unsafe`, and uptime-scaffold findings and recorded the resulting fixes or rationale. This was not a comprehensive security score.
 
 ### CLI & Tooling
 - **Docker Cache Bugfix**: Fixed an issue in `cargo rullst dockerize` and `--docker` scaffolding where Docker's `mtime` caching behavior would cause Cargo to skip compilation of `.rs` files after building dependencies, resulting in empty binaries that exited with code 0.
@@ -547,7 +574,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security & Stability
 
-- **Zero-Panic Policy Enforcement (P1)**: Replaced the single remaining `unwrap()` call inside the Nexus Basic Auth middleware (`nexus.rs:249`) with a `unwrap_or_else` fallback response builder, fully complying with the Zero-Panic production requirement across all runtime paths.
+- **Zero-Panic Policy Enforcement (P1)**: Replaced an `unwrap()` call inside the Nexus Basic Auth middleware with a fallible response path. Repository policy checks, rather than this isolated fix, define the reviewed scope.
 - **WASM Panic Elimination (P3)**: Fixed a panic vector in the `#[client_component]` proc-macro (`rullst-macros`). The generated WASM code now uses a `let Some(...) else { return String::new() }` pattern instead of `unwrap()` when accessing the DOM, making island components safe to use inside Web Worker contexts.
 - **Basic Auth Strip Hardening**: Replaced the manual `starts_with("Basic ") + &auth_str[6..]` byte-index slice in the Nexus middleware with `.strip_prefix("Basic ")`, eliminating any risk of a byte-boundary panic on malformed `Authorization` headers.
 - **ORM Alignment & Panic Safety**: Upgraded `rullst-orm` dependency version to `4.0.5` across the framework and scaffolding templates to resolve type-mismatch compile errors in derived macro implementations. Introduced panic-safe database guards `safe_pool()` and `safe_driver()` in `rullst::db` to cleanly query initialization status and handle offline database states without crashing the server.
@@ -570,7 +597,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Documentation
 
-- **`AUDIT.md`**: Added a comprehensive formal security and architecture audit report to the repository root. The document covers dependency security (`cargo audit`), code quality (`cargo clippy`), Zero-Panic policy compliance, `unsafe` block analysis, SQL injection prevention, CSRF, session encryption, HTTP headers, WebAuthn, rate limiting, backpressure, and hot-reload safety. All 9 findings identified have been resolved; only the advisory `RUSTSEC-2026-0173` (`proc-macro-error2` unmaintained) remains under monitoring as a compile-time-only concern with no associated CVE.
+- **`AUDIT.md`**: Added a security and architecture review. The checked-in document is now a reproduction guide rather than a PASS certificate; current advisory exceptions are maintained with owners and expiry in `docs/src/security-advisory-exceptions.md`.
 
 ## [2.0.3] - 2026-06-07 🛠️
 
@@ -618,7 +645,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Clippy Optimization**: Replaced a `useless_format` in the CLI's environment generator (`project.rs`) with a standard `.to_string()`.
 - **Zero-Panic Stability**: Eliminated all occurrences of `.unwrap()` and `.expect()` throughout the Rullst core (`edge.rs`, `server.rs`, `security.rs`, `resilience.rs`, `error_console.rs`), utilizing safe `match` patterns.
 - **Strict Linting Enforcement**: Injected `#![deny(clippy::unwrap_used)]` and `#![deny(clippy::expect_used)]` into `rullst/src/lib.rs` to enforce zero-panic code.
-- **100% Documentation Coverage Baseline**: Enabled `#![warn(missing_docs)]` across the main library, automatically seeding 282 missing documentation segments to mandate strictly documented APIs for future PRs.
+- **Documentation Coverage Baseline**: Enabled `#![warn(missing_docs)]` across the main library and seeded missing API documentation. The lint is a baseline, not proof that every document is complete or accurate.
 
 ## [2.0.1] - 2026-06-03 🐛
 
@@ -631,14 +658,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [2.0.0] - 2026-06-01 🚀
 
-### Security & Deep Audit 10/10 Certification
-- **100/100 Pristine Status**: Resolved all technical debt and performance bottlenecks flagged in the June 2026 Deep Audit.
+### Historical deep-audit milestone (superseded)
+- **Audit Follow-Up**: Addressed the findings tracked by that historical review. Scores and absolute certification language are intentionally not carried forward; current CI artifacts and the SST define the supported state.
 - **Studio SQL Security**: Hardened SQL identifier sanitization with strict 64-character length limits to prevent buffer exhaustion.
 - **HTML Macro Zero-Allocation**: The `html!` compile-time macro now pre-computes static AST sizes and injects `String::with_capacity(STATIC_SIZE)` for maximum memory efficiency.
 - **AI-Native Maintainability**: Created standard `AGENTS.md` and `.ai-rules` files to govern AI tooling workflows securely.
 - **Async I/O Optimization**: Refactored `RedisDriver::flush` cache pruning to utilize a single batched `DEL` roundtrip, eliminating event-loop blocking from sequential iterators.
 - **Complex View Engine Sanitization**: Added strict HTMX-safe validation and encoding checks for complex Javascript data types mapped to HTML strings.
-- **AWS S3 Disablement**: Completely deactivated the `storage-s3` feature and purged the AWS SDK dependencies from the framework. This decisively eliminates the `rustls` CVE vulnerabilities instead of suppressing them, guaranteeing a mathematically proven 100% vulnerability-free build.
+- **AWS S3 Disablement**: Deactivated the `storage-s3` feature and removed its AWS SDK dependency path. This narrows the dependency graph but does not prove the entire workspace vulnerability-free.
 
 ### Added (Milestone 11: Real-World Business Blueprints)
 - **ERP Pocket Starter Blueprint (ID 4)**:
@@ -684,7 +711,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Dependency Updates & Modernization
 - **Rullst-ORM v3.x Migration**: Migrated the core framework and project generation templates to `rullst-orm v3.x`, updating all occurrences of the renamed `EloquentModel` trait to `RullstModel`.
 - **Cargo Dependency Upgrades**: Upgraded various key dependencies across the workspace to their latest versions (including `toml`, `redis`, `aws-sdk-s3`, `uuid`, `dashmap`, `walkdir`, `colored`, `tokio`, `pulldown-cmark`, `axum`, and `tower-http`) to guarantee the framework is running on the latest stable and secure releases.
-- **Rng Stability & rand_core Resolution**: Resolved version conflicts between `rand_core` versions. Removed the direct explicit dependency on `rand_core` from the main framework cargo definition, leveraging `argon2`'s re-exported types inside `auth.rs` to allow smooth and crash-free password hashing and salt generation.
+- **Rng Stability & rand_core Resolution**: Resolved version conflicts between `rand_core` versions and removed the direct explicit dependency from the facade. Password hashing remains fallible and reports typed errors.
 
 ### Community Health
 - **Community Standards**: Added `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant).
@@ -694,7 +721,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [1.0.10] - 2026-05-29 🛡️
 
 ### Security & Quality Audits (10/10 Milestone)
-- **Deep Audit 10/10 Certification**: Passed all strict security, performance, and maintenance requirements outlined in the 2026 deep audit.
+- **Historical Audit Follow-Up**: Recorded the checks performed for that release. It is not a current certification; reproduce the present repository gates before relying on it.
 - **Dynamic Local Secret Persistence**: Removed the last static hardcoded `DEV_APP_KEY` from memory. In development, keys are now generated securely and persisted automatically to `.rullst_dev_key`, preventing any false-positive security scans.
 - **Massive Test Coverage Expansion**: Introduced comprehensive unit and integration test suites for `mail.rs`, `queue.rs`, `db.rs`, `live.rs`, `studio.rs`, `error_console.rs`, `edge.rs`, and `resilience.rs`, achieving flawless coverage.
 
@@ -740,7 +767,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - **Rullst Edge Runtime (`rullst::edge`)**: Introduced native support for compiling and running Rullst applications on WebAssembly edge infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstracting Tokio/WASI differences. Features an environment-agnostic task spawner `spawn` that maps to `tokio::spawn` natively and `wasm_bindgen_futures::spawn_local` on `wasm32`. Exposes portable, extensible `EdgeRequest` and `EdgeResponse` HTTP models, alongside an `EdgeServer` that emulates edge routing locally on native systems using Axum.
-- **Zero-Config SQLite Replication**: Added support for distributed SQLite synchronization configurations (e.g. Turso/libsql and Cloudflare D1 emulators). Exposes `ReplicationConfig` built with strict builder pattern standards, and `ReplicationManager` that boots a non-blocking background thread task to periodically synchronize the local replica with remote master nodes out-of-the-box.
+- **SQLite Replication Configuration Preview**: Added configuration types, but no real synchronization backend. The current manager returns `Unsupported` rather than reporting simulated success.
 - **Non-Intrusive Background Version Checker**: Implemented a background crates.io version updater in the `cargo-rullst` CLI that runs on a spawned thread and caches version status under the OS temporary directory (`rullst_version_cache.txt`). The network fetch is limited to at most once per day, ensuring 0ms impact on developer terminal execution speeds.
 - **Terminal Update Banner**: Visual, colored terminal banner rendered at CLI tool exit when a newer version is cached, prompting users to upgrade.
 - **Self-Healing CLI `upgrade` Codemods**: Refactored the `cargo rullst upgrade` command into a full autonomous refactoring pipeline: automatically updates `Cargo.toml` dependency tags to the latest release, runs search-and-replace codemods across `src/**/*.rs` to patch legacy APIs and enforce dependency shielding automatically, and runs validation compilation checks (`cargo check`) as a final quality gate.
@@ -748,7 +775,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Resilient Traffic Shielding & Adaptive Backpressure**: Introduced a router-level load shielding and backpressure system inside [`rullst/src/resilience.rs`](rullst/src/resilience.rs) that actively monitors thread-pool saturation (Tokio event loop lag) and database roundtrip latency (using low-frequency active query probes on the connection pool wrapped in safe `catch_unwind` guards to elegantly bypass panics if a DB is offline or unconfigured). The middleware automatically degrades traffic (returning `503 Service Unavailable` with `Retry-After: 5`) under critical CPU/DB/Active Request saturation, or gently throttles traffic under moderate load using lightweight 25ms delays to serialize requests naturally, preventing out-of-memory (OOM) crashes.
 - **Token-Bucket Rate Limiter**: Added a thread-safe, atomic rate limiting system powered by a concurrent Shared-Memory (`DashMap`) engine. Features a highly customizable `RateLimitConfig` constructed with the Builder Pattern for strict backward-compatibility, and includes convenient factory builders (`per_second`, `per_minute`, `per_hour`). Seamlessly handles proxy environments by resolving client identifiers through standard headers (`X-Forwarded-For`, `X-Real-IP`) and peer addresses (`ConnectInfo`).
 - **Edge-Optimized Assets & Pre-Compression (Brotli + Zstandard)**: Implemented an advanced high-performance pre-compression pipeline within the `cargo-rullst` CLI tool (`cargo rullst build [--debug]`) that recursively compiles the production binary and compresses all text-based static assets (HTML, CSS, JS, SVG, JSON, WASM, TXT, XML) in the `static/` directory using **Brotli (level 11)** and **Zstandard (level 19)** formats, saving `.br` and `.zst` files alongside their original sources. Upgraded the Rullst core library static asset serving (`ServeDir::new("static")`) inside `rullst/src/server.rs` to support pre-compressed Brotli served natively, and integrated a fast zero-overhead rewriting middleware `zstd_static_middleware` that intercepts client requests, checks for `Accept-Encoding: zstd`, rewrites the request URI to `.zst` zero-copy if the file is present, and overrides proper `Content-Encoding: zstd` and mime-specific `Content-Type` headers for blazing-fast edge-optimized transfers.
-- **Native WebAuthn (Passkeys & Biometrics First)**: Added a 100% pure-Rust WebAuthn signature verification and challenge-processing engine (`rullst::auth::passkey`) powered by `ring` and a zero-dependency recursive CBOR decoder, eliminating native OpenSSL requirements for developer cross-compiling ease. Upgraded `cargo rullst auth` CLI scaffolding to generate a complete, secure, passwordless biometrics registration and sign-in flow out-of-the-box. Scaffolds sequential database migrations for both `users` and `user_passkeys` tables, the corresponding `UserPasskey` Orm model, in-memory REST controllers mapping pending challenge states natively via thread-safe `Mutex<HashMap>`, and updated responsive templates in `src/pages/auth.rs` styled with emerald biometrics CTA buttons and lightweight client-side Vanilla JS binary buffer decoders. Inherits all backward-compatibility standards by exposing `PasskeyConfig` utilizing the `#[non_exhaustive]` attribute and fluent Builder pattern.
+- **Native WebAuthn Building Blocks (Passkeys & Biometrics)**: Added WebAuthn ceremony parsing and signature verification (`rullst::auth::passkey`) backed by `ring`, plus negative invariant tests and CLI scaffolding for registration/sign-in flows. Deployments must persist challenges and counters atomically, configure origins/RP IDs correctly, and complete their own security review; this entry is not a WebAuthn certification.
 - **Copy-to-Clipboard for Code Blocks**: All `<pre>` code blocks in the RullstPress documentation site now feature a floating "Copy" button (top-right corner). On click, the code is copied to the clipboard and the button changes to "✓ Copied!" with green feedback, reverting after 2 seconds. Includes a textarea-based fallback for older browsers without Clipboard API support.
 - **One-Click Install Snippet**: The home page now features a clickable `cargo add rullst` snippet that copies the command to the clipboard on click, with animated ✓ Copied! feedback.
 - **Crates.io Navigation Link**: Added a direct "Crates.io ↗" link in the home page hero and the navbar, pointing to https://crates.io/crates/rullst.

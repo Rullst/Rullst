@@ -1,0 +1,7 @@
+error: #[server_function] does not accept attribute arguments
+ --> tests/ui/server_function_arguments.rs:3:1
+  |
+3 | #[server_function(path = "/sum")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `server_function` (in Nightly builds, run with -Z macro-backtrace for more info)

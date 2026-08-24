@@ -7,9 +7,9 @@ use super::traits::{HttpClient, HttpRequest, HttpResponse};
 #[cfg(not(miri))]
 pub struct ReqwestClient {
     #[cfg(not(feature = "retry"))]
-    client: reqwest::Client,
+    client: Result<reqwest::Client, String>,
     #[cfg(feature = "retry")]
-    client: reqwest_middleware::ClientWithMiddleware,
+    client: Result<reqwest_middleware::ClientWithMiddleware, String>,
 }
 
 #[cfg(miri)]
@@ -23,21 +23,19 @@ impl ReqwestClient {
         }
         #[cfg(not(miri))]
         {
-            let reqwest_client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(10))
-                .pool_idle_timeout(std::time::Duration::from_secs(90))
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new());
+            let reqwest_client = build_reqwest_client();
 
             #[cfg(feature = "retry")]
             {
                 let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
                     .build_with_max_retries(3);
-                let client = reqwest_middleware::ClientBuilder::new(reqwest_client)
-                    .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
-                        retry_policy,
-                    ))
-                    .build();
+                let client = reqwest_client.map(|reqwest_client| {
+                    reqwest_middleware::ClientBuilder::new(reqwest_client)
+                        .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
+                            retry_policy,
+                        ))
+                        .build()
+                });
                 Self { client }
             }
 
@@ -57,19 +55,17 @@ impl ReqwestClient {
         }
         #[cfg(not(miri))]
         {
-            let reqwest_client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(10))
-                .pool_idle_timeout(std::time::Duration::from_secs(90))
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new());
+            let reqwest_client = build_reqwest_client();
 
             let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
                 .build_with_max_retries(max_retries.min(10));
-            let client = reqwest_middleware::ClientBuilder::new(reqwest_client)
-                .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
-                    retry_policy,
-                ))
-                .build();
+            let client = reqwest_client.map(|reqwest_client| {
+                reqwest_middleware::ClientBuilder::new(reqwest_client)
+                    .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
+                        retry_policy,
+                    ))
+                    .build()
+            });
             Self { client }
         }
     }
@@ -103,7 +99,13 @@ impl HttpClient for ReqwestClient {
 
             #[cfg(not(feature = "retry"))]
             let mut res = {
-                let mut builder = self.client.request(method, &req.url);
+                let client = self.client.as_ref().map_err(|reason| {
+                    crate::error::ConnectError::InvalidConfiguration {
+                        field: "http_client",
+                        reason: reason.clone(),
+                    }
+                })?;
+                let mut builder = client.request(method, &req.url);
 
                 builder = builder.headers(req.headers);
 
@@ -132,7 +134,13 @@ impl HttpClient for ReqwestClient {
 
             #[cfg(feature = "retry")]
             let mut res = {
-                let mut builder = self.client.request(method, &req.url);
+                let client = self.client.as_ref().map_err(|reason| {
+                    crate::error::ConnectError::InvalidConfiguration {
+                        field: "http_client",
+                        reason: reason.clone(),
+                    }
+                })?;
+                let mut builder = client.request(method, &req.url);
 
                 if !req.headers.is_empty() {
                     builder = builder.headers(req.headers);
@@ -205,6 +213,18 @@ impl HttpClient for ReqwestClient {
             Ok(HttpResponse { status, body })
         }
     }
+}
+
+#[cfg(not(miri))]
+fn build_reqwest_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        // Discovery and JWKS URLs are validated before dispatch. Following a redirect here
+        // would allow a validated public URL to pivot into an unvalidated private endpoint.
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(10))
+        .pool_idle_timeout(std::time::Duration::from_secs(90))
+        .build()
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(not(miri))]

@@ -1,8 +1,24 @@
 use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
 use dashmap::DashMap;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+const MONITORS_IDLE: u8 = 0;
+const MONITORS_RUNNING: u8 = 1;
+const MONITORS_SHUT_DOWN: u8 = 2;
+
+/// Failures that can occur while managing Traffic Shield monitors.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TrafficShieldError {
+    /// Monitoring was started outside an active Tokio runtime.
+    #[error("Traffic Shield monitors require an active Tokio runtime")]
+    RuntimeUnavailable,
+    /// Monitoring cannot be restarted after explicit shutdown.
+    #[error("Traffic Shield monitors have already been shut down")]
+    AlreadyShutDown,
+}
 
 /// Configures the limits and behavior of the Adaptive Backpressure & Resilient Traffic Shielding.
 #[non_exhaustive]
@@ -68,56 +84,130 @@ pub struct TrafficShield {
     event_loop_lag_ms: Arc<AtomicU64>,
     db_latency_ms: Arc<AtomicU64>,
     active_requests: Arc<AtomicUsize>,
+    monitors: Arc<TrafficShieldMonitors>,
+}
+
+struct TrafficShieldMonitors {
+    state: AtomicU8,
+    shutdown: Arc<tokio::sync::Notify>,
+    tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
+}
+
+impl TrafficShieldMonitors {
+    fn abort_tasks(&self) {
+        self.state.store(MONITORS_SHUT_DOWN, Ordering::Release);
+        self.shutdown.notify_waiters();
+        let mut tasks = match self.tasks.lock() {
+            Ok(tasks) => tasks,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        for task in tasks.drain(..) {
+            task.abort();
+        }
+    }
+}
+
+impl Drop for TrafficShieldMonitors {
+    fn drop(&mut self) {
+        self.abort_tasks();
+    }
 }
 
 impl TrafficShield {
-    /// Creates a new `TrafficShield`, starts background monitoring goroutines for event-loop lag
-    /// and (optionally) database latency, and returns the ready-to-use shield instance.
+    /// Creates a new inactive `TrafficShield`.
+    ///
+    /// Call [`TrafficShield::start`] from inside a Tokio runtime, attach the
+    /// shield to [`crate::Server`], or use [`backpressure_middleware`], which
+    /// starts it lazily on its first request. Keeping construction side-effect
+    /// free makes this API safe in synchronous setup code and tests.
     pub fn new(config: TrafficShieldConfig) -> Self {
-        let shield = Self {
+        Self {
             config,
             event_loop_lag_ms: Arc::new(AtomicU64::new(0)),
             db_latency_ms: Arc::new(AtomicU64::new(0)),
             active_requests: Arc::new(AtomicUsize::new(0)),
-        };
-
-        shield.spawn_monitors();
-        shield
+            monitors: Arc::new(TrafficShieldMonitors {
+                state: AtomicU8::new(MONITORS_IDLE),
+                shutdown: Arc::new(tokio::sync::Notify::new()),
+                tasks: Mutex::new(Vec::new()),
+            }),
+        }
     }
 
+    /// Starts event-loop and optional database monitoring.
+    ///
+    /// The operation is idempotent while running and returns a typed error when
+    /// called outside Tokio or after [`TrafficShield::shutdown`]. All monitor
+    /// tasks are cancelled on explicit shutdown or when the final shield clone
+    /// is dropped.
+    ///
+    /// # Errors
+    /// Returns [`TrafficShieldError::RuntimeUnavailable`] without spawning when
+    /// no Tokio runtime is active, or [`TrafficShieldError::AlreadyShutDown`]
+    /// after the lifecycle has ended.
     #[cfg_attr(mutants, mutants::skip)]
-    fn spawn_monitors(&self) {
+    pub fn start(&self) -> Result<(), TrafficShieldError> {
+        match self.monitors.state.load(Ordering::Acquire) {
+            MONITORS_RUNNING => return Ok(()),
+            MONITORS_SHUT_DOWN => return Err(TrafficShieldError::AlreadyShutDown),
+            _ => {}
+        }
+        let runtime = tokio::runtime::Handle::try_current()
+            .map_err(|_| TrafficShieldError::RuntimeUnavailable)?;
+
+        match self.monitors.state.compare_exchange(
+            MONITORS_IDLE,
+            MONITORS_RUNNING,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => {}
+            Err(MONITORS_RUNNING) => return Ok(()),
+            Err(_) => return Err(TrafficShieldError::AlreadyShutDown),
+        }
+
+        let mut tasks = match self.monitors.tasks.lock() {
+            Ok(tasks) => tasks,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if self.monitors.state.load(Ordering::Acquire) != MONITORS_RUNNING {
+            return Err(TrafficShieldError::AlreadyShutDown);
+        }
+
         let lag_ms = self.event_loop_lag_ms.clone();
-        // 1. Event Loop Lag Diagnostic Task
-        tokio::spawn(async move {
+        let lag_shutdown = Arc::clone(&self.monitors.shutdown);
+        tasks.push(runtime.spawn(async move {
             let interval = Duration::from_millis(100);
             loop {
                 let start = Instant::now();
-                tokio::time::sleep(interval).await;
+                tokio::select! {
+                    _ = tokio::time::sleep(interval) => {}
+                    _ = lag_shutdown.notified() => break,
+                }
                 let elapsed = start.elapsed();
-                let lag = if elapsed > interval {
-                    elapsed - interval
-                } else {
-                    Duration::from_millis(0)
-                };
-                lag_ms.store(lag.as_millis() as u64, Ordering::Relaxed);
+                let lag = elapsed.saturating_sub(interval);
+                lag_ms.store(duration_millis_u64(lag), Ordering::Relaxed);
             }
-        });
+        }));
 
-        // 2. Database Probe Diagnostic Task
+        #[cfg(feature = "orm")]
         if self.config.enable_db_probe {
             let db_lat_ms = self.db_latency_ms.clone();
-            tokio::spawn(async move {
+            let db_shutdown = Arc::clone(&self.monitors.shutdown);
+            tasks.push(runtime.spawn(async move {
                 let interval = Duration::from_millis(1000);
                 loop {
-                    tokio::time::sleep(interval).await;
+                    tokio::select! {
+                        _ = tokio::time::sleep(interval) => {}
+                        _ = db_shutdown.notified() => break,
+                    }
                     if let Some(pool) = crate::db::safe_pool() {
                         let start = Instant::now();
                         let res = sqlx::query("SELECT 1").execute(pool).await;
                         match res {
                             Ok(_) => {
                                 let latency = start.elapsed();
-                                db_lat_ms.store(latency.as_millis() as u64, Ordering::Relaxed);
+                                db_lat_ms.store(duration_millis_u64(latency), Ordering::Relaxed);
                             }
                             Err(_) => {
                                 db_lat_ms.store(9999, Ordering::Relaxed);
@@ -127,8 +217,21 @@ impl TrafficShield {
                         db_lat_ms.store(0, Ordering::Relaxed);
                     }
                 }
-            });
+            }));
         }
+
+        Ok(())
+    }
+
+    /// Stops all background monitors and prevents this shared shield lifecycle
+    /// from being restarted. Calling this method more than once is harmless.
+    pub fn shutdown(&self) {
+        self.monitors.abort_tasks();
+    }
+
+    /// Returns whether monitor tasks have been started and not shut down.
+    pub fn is_running(&self) -> bool {
+        self.monitors.state.load(Ordering::Acquire) == MONITORS_RUNNING
     }
 
     /// Returns the most recently measured Tokio event-loop lag as a `Duration`.
@@ -138,7 +241,8 @@ impl TrafficShield {
     }
 
     /// Returns the most recently measured database probe round-trip latency as a `Duration`.
-    /// Returns `Duration::ZERO` if `enable_db_probe` is `false` or the pool is uninitialized.
+    /// Returns `Duration::ZERO` if `enable_db_probe` is `false`, the `orm`
+    /// feature is disabled, or the pool is uninitialized.
     pub fn db_latency(&self) -> Duration {
         Duration::from_millis(self.db_latency_ms.load(Ordering::Relaxed))
     }
@@ -147,6 +251,10 @@ impl TrafficShield {
     pub fn active_requests(&self) -> usize {
         self.active_requests.load(Ordering::Relaxed)
     }
+}
+
+fn duration_millis_u64(duration: Duration) -> u64 {
+    u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
 struct ActiveRequestGuard<'a>(&'a AtomicUsize);
@@ -160,6 +268,15 @@ impl<'a> Drop for ActiveRequestGuard<'a> {
 /// Router-level protection middleware that tracks load timing and drops requests under critical saturation.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
+    if let Err(error) = shield.start() {
+        eprintln!("Traffic Shield is unavailable: {error}");
+        let mut response = Response::new(axum::body::Body::from(
+            "Traffic Shield monitoring is unavailable.",
+        ));
+        *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+        return response;
+    }
+
     let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
     let _guard = ActiveRequestGuard(&shield.active_requests);
 
@@ -352,6 +469,43 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     #[test]
+    fn traffic_shield_construction_is_runtime_independent() {
+        let shield = TrafficShield::new(TrafficShieldConfig::new().with_db_probe(false));
+
+        assert!(!shield.is_running());
+        assert_eq!(shield.start(), Err(TrafficShieldError::RuntimeUnavailable));
+        assert!(!shield.is_running());
+    }
+
+    #[tokio::test]
+    async fn traffic_shield_has_explicit_shared_shutdown() {
+        let shield = TrafficShield::new(TrafficShieldConfig::new().with_db_probe(false));
+        let clone = shield.clone();
+
+        shield.start().unwrap();
+        assert!(clone.is_running());
+        clone.shutdown();
+        assert!(!shield.is_running());
+        assert_eq!(shield.start(), Err(TrafficShieldError::AlreadyShutDown));
+    }
+
+    #[tokio::test]
+    async fn dropping_final_shield_aborts_monitor_tasks() {
+        let shield = TrafficShield::new(TrafficShieldConfig::new().with_db_probe(false));
+        let monitored_value = Arc::downgrade(&shield.event_loop_lag_ms);
+        shield.start().unwrap();
+        drop(shield);
+
+        tokio::time::timeout(Duration::from_millis(100), async {
+            while monitored_value.upgrade().is_some() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+    }
+
+    #[test]
     fn test_default_key_extractor() {
         let req1 = Request::builder()
             .header("x-forwarded-for", "192.168.1.1, 10.0.0.1")
@@ -372,7 +526,7 @@ mod tests {
         assert_eq!(default_key_extractor(&req3), "127.0.0.1");
 
         let req4 = Request::builder().body(axum::body::Body::empty()).unwrap();
-        assert_eq!(default_key_extractor(&req4), "anonymous");
+        assert_eq!(default_key_extractor(&req4), "missing-peer-address");
     }
 
     #[tokio::test]

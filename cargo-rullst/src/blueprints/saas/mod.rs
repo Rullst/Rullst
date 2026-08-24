@@ -25,159 +25,14 @@ pub fn file_manifest(
     manifest.extend(billing::get_billing_pages());
 
     // 1. Controllers
-    let auth_controller_code = r##"use rullst::server::{
-    Form,
-    IntoResponse, Redirect, Response,
-    HeaderMap,
-};
-use serde::Deserialize;
-use crate::models::user::User;
-use crate::pages::auth;
-use rullst::auth as rullst_auth;
+    let auth_controller_code =
+        crate::generators::auth::controllers::auth_controller_template().to_string();
+    manifest.push(("src/controllers/auth_controller.rs", auth_controller_code));
 
-#[derive(Deserialize)]
-pub struct RegisterDto {
-    pub name: String,
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Deserialize)]
-pub struct LoginDto {
-    pub email: String,
-    pub password: String,
-}
-
-fn get_csrf_token(headers: &HeaderMap) -> String {
-    headers.get(rullst::server::header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|cookie_str| {
-            for cookie in cookie_str.split(';') {
-                let trimmed = cookie.trim();
-                if trimmed.starts_with("rullst_csrf=") {
-                    return Some(trimmed["rullst_csrf=".len()..].to_string());
-                }
-            }
-            None
-        })
-        .unwrap_or_default()
-}
-
-pub async fn login_view(headers: HeaderMap) -> impl IntoResponse {
-    let token = get_csrf_token(&headers);
-    auth::login_page(&token, None)
-}
-
-pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> Response {
-    let token = get_csrf_token(&headers);
-    if payload.password.len() > 72 {
-        return auth::login_page(&token, Some("Password must be at most 72 characters")).into_response();
-    }
-    let users = match User::all().await {
-        Ok(u) => u,
-        Err(_) => return auth::login_page(&token, Some("Internal error")).into_response(),
-    };
-    let user = users.into_iter().find(|u| u.email == payload.email);
-    let Some(u) = user else {
-        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
-    };
-
-    let hash = u.password_hash.as_deref().unwrap_or("");
-    if !rullst_auth::verify_password(&payload.password, hash) {
-        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
-    }
-
-    match rullst_auth::make_login_cookie(u.id) {
-        Ok(cookie) => {
-            let mut res = Redirect::to("/dashboard").into_response();
-            res.headers_mut().append(
-                rullst::server::header::SET_COOKIE,
-                rullst::server::HeaderValue::from_str(&cookie).unwrap()
-            );
-            res
-        }
-        Err(_) => auth::login_page(&token, Some("Error starting session")).into_response(),
-    }
-}
-
-pub async fn register_view(headers: HeaderMap) -> impl IntoResponse {
-    let token = get_csrf_token(&headers);
-    auth::register_page(&token, None)
-}
-
-pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto>) -> Response {
-    let token = get_csrf_token(&headers);
-    if payload.password.len() < 6 {
-        return auth::register_page(&token, Some("Password must be at least 6 characters")).into_response();
-    }
-    if payload.password.len() > 72 {
-        return auth::register_page(&token, Some("Password must be at most 72 characters")).into_response();
-    }
-    if let Ok(users) = User::all().await {
-        if users.iter().any(|u| u.email == payload.email) {
-            return auth::register_page(&token, Some("Email already registered")).into_response();
-        }
-    }
-
-    let hash = match rullst_auth::hash_password(&payload.password) {
-        Ok(h) => h,
-        Err(_) => return auth::register_page(&token, Some("Error processing password")).into_response(),
-    };
-
-    let mut user = User {
-        id: 0,
-        name: payload.name,
-        email: payload.email,
-        password_hash: Some(hash),
-        oauth_provider: None,
-        oauth_id: None,
-        created_at: String::new(),
-        updated_at: String::new(),
-    };
-
-    match user.save().await {
-        Ok(_) => Redirect::to("/login").into_response(),
-        Err(_) => auth::register_page(&token, Some("Error saving user")).into_response(),
-    }
-}
-
-pub async fn logout() -> impl IntoResponse {
-    let mut res = Redirect::to("/login").into_response();
-    res.headers_mut().append(
-        rullst::server::header::SET_COOKIE,
-        rullst::server::HeaderValue::from_static("rullst_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
-    );
-    res
-}
-
-pub async fn dashboard() -> impl IntoResponse {
-    auth::dashboard_page()
-}
-"##;
-    manifest.push((
-        "src/controllers/auth_controller.rs",
-        auth_controller_code.to_string(),
-    ));
-
-    let billing_controller_code = r##"use rullst::capital::WebhookEvent;
-use rullst::server::{Extension, IntoResponse, Redirect, StatusCode};
-use crate::pages::billing;
-
-pub async fn pricing_view() -> impl IntoResponse {
-    billing::pricing_page()
-}
-
-pub async fn checkout_redirect() -> impl IntoResponse {
-    Redirect::to("/register")
-}
-
-pub async fn webhook_handler(Extension(_event): Extension<WebhookEvent>) -> impl IntoResponse {
-    StatusCode::OK
-}
-"##;
+    let billing_controller_code = crate::generators::billing::render_billing_controller("user_id");
     manifest.push((
         "src/controllers/billing_controller.rs",
-        billing_controller_code.to_string(),
+        billing_controller_code,
     ));
 
     let controllers_mod = "pub mod auth_controller;\npub mod billing_controller;\n";
@@ -189,6 +44,8 @@ pub async fn webhook_handler(Extension(_event): Extension<WebhookEvent>) -> impl
     Next,
     Response, Redirect, IntoResponse, StatusCode,
 };
+use crate::controllers::billing_controller::BillingIdentity;
+use crate::models::user::User;
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let headers = req.headers();
@@ -201,8 +58,21 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
             }
         };
         if let Ok(user_id) = rullst::auth::decrypt_session(&cookie, &app_key) {
-            req.extensions_mut().insert(user_id);
-            return next.run(req).await;
+            match User::find(user_id).await {
+                Ok(Some(user)) => {
+                    req.extensions_mut().insert(user_id);
+                    req.extensions_mut().insert(BillingIdentity {
+                        owner_id: user_id,
+                        email: user.email.trim().to_ascii_lowercase(),
+                    });
+                    return next.run(req).await;
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    eprintln!("Authentication user query failed: {error}");
+                    return StatusCode::SERVICE_UNAVAILABLE.into_response();
+                }
+            }
         }
     }
     Redirect::to("/login").into_response()
@@ -304,7 +174,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
     ))
 }
 
-pub fn dashboard_page() -> Html<String> {
+pub fn dashboard_page(_user_name: &str) -> Html<String> {
     Html(r#"<!DOCTYPE html><html lang="en" class="dark"><head>
          <meta charset="utf-8" />
          <title>Dashboard — Rullst SaaS</title>

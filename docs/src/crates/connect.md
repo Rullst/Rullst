@@ -1,5 +1,9 @@
 # Rullst Connect 🦀
 
+> **Vision preserved:** message brokers, additional queue transports, remote
+> storage, and media work are retained with explicit status and recommendations in
+> the [capability ledger](../capability-ledger.md#connect-real-time-queues-storage-and-data).
+
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
 [![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect)
@@ -9,17 +13,17 @@
 
 **Rullst Connect** is an elegant, async-first, and Developer Experience (DX) focused OAuth2 authentication library for Rust. It simplifies the integration of social logins into your Rust web applications, providing a standardized interface across multiple providers.
 
-## 🛡️ Enterprise-Grade Security
+## 🛡️ Security Engineering
 
-Rullst Connect is built and tested against the most rigorous standards in the industry.
-Our continuous pipeline guarantees absolute safety for production edge infrastructure:
+Rullst Connect uses layered tests and repository security checks. CI badges report the
+state of those checks for the referenced commit; they are not an absolute security guarantee.
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
 | **OSSF Scorecard** | [![Scorecard](https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=%20)](https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst) | Supply-chain security & best practices |
 | **Codecov** | [![Coverage](https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=%20)](https://codecov.io/gh/Rullst/Rullst) | Strict code coverage enforcement |
 | **OpenSSF** | [![OpenSSF Best Practices](https://img.shields.io/badge/%20-passing-success.svg?style=flat-square)](https://www.bestpractices.dev/projects/13360) | Open source security standards |
-| **SLSA Level 3** | [![SLSA 3](https://img.shields.io/badge/%20-Level_3-success.svg?style=flat-square)](https://slsa.dev/) | Supply-chain Levels for Software Artifacts |
+| **Release Provenance** | [![Release](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Continuous Fuzzing** | [![Fuzz Testing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Fuzzing against edge cases & panics |
 | **Property Testing** | [![Proptest](https://img.shields.io/badge/%20-passing-success.svg?style=flat-square)](https://crates.io/crates/proptest) | Validating complex logic against edge cases |
 | **Miri UB Detection** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Detecting Undefined Behavior and memory leaks |
@@ -33,7 +37,7 @@ Our continuous pipeline guarantees absolute safety for production edge infrastru
 | **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
 | **Mutation Testing** | [![Mutants](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
 | **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
-| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | 100% memory safe. No unsafe code blocks |
+| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | Audits unsafe usage within the workflow's declared scope |
 | **Panic Policy** | [![Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml) | Graceful error handling across the framework |
 
 ## ✨ Features
@@ -42,7 +46,7 @@ Our continuous pipeline guarantees absolute safety for production edge infrastru
 - 🧩 **Standardized**: All providers return a unified `ConnectUser` struct.
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
 - 🔌 **Framework Agnostic**: Works seamlessly with Rullst, Axum, Actix, Leptos, Dioxus, or any other framework.
-- 🔐 **Enterprise Security**: Built-in OIDC Discovery, JWKS validation, and automated CSRF `tower-sessions`.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Embedded Mock IdP router for seamless offline local E2E testing.
 
@@ -156,7 +160,7 @@ println!("Successfully refreshed token securely!");
 
 ### 🔒 PKCE Support (v9.0.0+)
 
-All providers natively support PKCE (Proof Key for Code Exchange) to mitigate authorization code interception attacks. Some providers like **X (Twitter) v2** strictly require it.
+Provider adapters expose PKCE (Proof Key for Code Exchange) where supported by the provider protocol. Some providers such as **X (Twitter) v2** require it; applications must preserve and validate the verifier/state for the complete authorization transaction.
 
 ```rust
 use rullst_connect::pkce::generate_pkce;

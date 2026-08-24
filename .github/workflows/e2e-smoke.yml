@@ -33,6 +33,8 @@ jobs:
           echo "APP_KEY=12345678901234567890123456789012" >> .env
           echo "APP_ENV=production" >> .env
           echo "DATABASE_URL=sqlite://blog.db" >> .env
+          echo "NEXUS_ADMIN_USERNAME=e2e-admin" >> .env
+          echo "NEXUS_ADMIN_PASSWORD=e2e-only-strong-password" >> .env
           touch blog.db
 
       - name: Compile Blog Example

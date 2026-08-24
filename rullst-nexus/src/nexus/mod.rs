@@ -267,12 +267,25 @@ mod tests {
             .with_auth("admin", test_pass);
 
         let router = nexus.try_build().expect("valid Nexus configuration");
+        let secure_request = |mut request: Request<axum::body::Body>| {
+            request.extensions_mut().insert(axum::extract::ConnectInfo(
+                "192.0.2.30:443"
+                    .parse::<std::net::SocketAddr>()
+                    .expect("valid test peer"),
+            ));
+            request
+                .extensions_mut()
+                .insert(NexusVerifiedTls::from_trusted_tls_termination());
+            request
+        };
 
         // 1. Request without authorization header -> 401 Unauthorized
-        let req = Request::builder()
-            .uri("/")
-            .body(axum::body::Body::empty())
-            .unwrap();
+        let req = secure_request(
+            Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        );
 
         let response = router.clone().oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -285,33 +298,38 @@ mod tests {
         );
 
         // 2. Request with incorrect credentials -> 401 Unauthorized
-        let req = Request::builder()
-            .uri("/")
-            .header(
-                axum::http::header::AUTHORIZATION,
-                format!(
-                    "Basic {}",
-                    base64::engine::general_purpose::STANDARD.encode("admin:wrong")
-                ),
-            )
-            .body(axum::body::Body::empty())
-            .unwrap();
+        let req = secure_request(
+            Request::builder()
+                .uri("/")
+                .header(
+                    axum::http::header::AUTHORIZATION,
+                    format!(
+                        "Basic {}",
+                        base64::engine::general_purpose::STANDARD.encode("admin:wrong")
+                    ),
+                )
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        );
 
         let response = router.clone().oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
         // 3. Request with correct credentials -> 200 OK
-        let req = Request::builder()
-            .uri("/")
-            .header(
-                axum::http::header::AUTHORIZATION,
-                format!(
-                    "Basic {}",
-                    base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
-                ),
-            )
-            .body(axum::body::Body::empty())
-            .unwrap();
+        let req = secure_request(
+            Request::builder()
+                .uri("/")
+                .header(
+                    axum::http::header::AUTHORIZATION,
+                    format!(
+                        "Basic {}",
+                        base64::engine::general_purpose::STANDARD
+                            .encode("admin:unique-test-secret-42")
+                    ),
+                )
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        );
 
         let response = router.oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);

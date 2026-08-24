@@ -2,14 +2,19 @@
 
 `rullst-core` encapsulates the foundational primitives, routing engines, state management, Cloud-Native health probes, Kernel-level telemetry, and configuration layers of the Rullst Framework. It acts as the beating heart that orchestrates HTTP handlers, middleware, and backend worker systems.
 
+Core is runtime-only by default. Enable `orm` for ORM bootstrap/artisan and
+database-backed feature flags, and `queue-sqlite` for the SQLite queue driver.
+The umbrella `rullst` crate enables both by default, while domain crates opt in
+only when they actually use them.
+
 ## ✨ Core Features & Subsystems
 
 - **Zero-Cost Routing:** Extends `axum` routing for sub-millisecond response times without sacrificing safety.
 - **Rullst Radar (`rullst::radar`):** Kernel-level telemetry collector tracking Tokio runtime tick latency, active async tasks, CPU utilization, and RSS memory consumption.
-- **Prometheus `/metrics` Exporter:** Zero-allocation text-based metric formatter served at `GET /metrics` for native Prometheus, Grafana, and Datadog scraping.
+- **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes Health Probes (`rullst::health`):** Cloud-Native Liveness (`GET /health`) and Readiness (`GET /ready`) probe endpoints.
 - **Interactive Scalar API Docs (`rullst::scalar`):** High-performance OpenAPI documentation UI mounted at `/docs` with CDN loading and static offline fallback.
-- **Unified Error Handling:** The `AppError` enum standardizes error propagation, guaranteeing a "Zero-Panic" runtime environment and Ignition Error Console integration.
+- **Unified Error Handling:** `AppError` standardizes fallible application paths and error-console integration. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 
 ---
 
@@ -61,4 +66,4 @@ let rullst_app: Router = axum_app.into();
 
 ## 🔐 Security Audit & Reliability
 
-`rullst-core` is the most audited crate in the framework. It undergoes continuous fuzzing against malformed routing requests and is structurally verified against memory leaks using Miri. All functions returning `Result` strictly avoid panicking on corrupted payloads.
+Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.

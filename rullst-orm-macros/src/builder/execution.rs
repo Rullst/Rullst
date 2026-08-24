@@ -23,10 +23,13 @@ pub fn generate_delete_all_logic(parsed: &ParsedModel) -> TokenStream {
             query_str.push_str(#table_name);
         };
     }
-    let cfg = parsed
-        .soft_delete
-        .as_ref()
-        .expect("has_soft_deletes implies soft_delete config");
+    let Some(cfg) = parsed.soft_delete.as_ref() else {
+        return syn::Error::new(
+            parsed.name.span(),
+            "internal ORM macro error: soft-delete configuration is missing",
+        )
+        .to_compile_error();
+    };
     let set_fragment = build_soft_delete_set_clause(cfg);
     let delval_token: TokenStream = if cfg.delval.trim().is_empty() {
         quote! {

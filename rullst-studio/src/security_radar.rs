@@ -38,9 +38,18 @@ pub fn router() -> Router {
         .route("/stats", get(get_radar_stats))
 }
 
+/// JSON telemetry endpoints merged into the main Studio router without replacing the unified
+/// `/studio/security` page supplied by the Studio layout.
+pub fn stats_router() -> Router {
+    Router::new()
+        .route("/security/stats", get(get_radar_stats))
+        .route("/studio/security/stats", get(get_radar_stats))
+}
+
 async fn get_radar_stats() -> Json<ThreatRadarStats> {
     let store = rullst_security::SecurityStore::global();
-    let events = store
+    let active_ip_bans = store.active_banned_count();
+    let events: Vec<rullst_security::LiveSecurityEvent> = store
         .live_events
         .lock()
         .map(|e| e.iter().take(20).cloned().collect())
@@ -48,7 +57,7 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
 
     Json(ThreatRadarStats {
         honeypot_traps_blocked: store.honeypot_traps_count.load(Ordering::Relaxed),
-        active_ip_bans: store.banned_ips.len(),
+        active_ip_bans,
         xss_sanitizations: store.sanitizations_count.load(Ordering::Relaxed),
         rbac_violations_prevented: store.rbac_denials_count.load(Ordering::Relaxed),
         log_redactions: store.log_redactions_count.load(Ordering::Relaxed),
@@ -71,7 +80,7 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         // Studio has no configured audit-chain source yet, so it reports absence instead of
         // inventing a successful integrity verification.
         audit_chain_integrity: None,
-        threat_level: if store.banned_ips.is_empty() && events.is_empty() {
+        threat_level: if active_ip_bans == 0 && events.is_empty() {
             "NO_ACTIVE_ALERTS".to_string()
         } else {
             "ACTIVITY_OBSERVED".to_string()
@@ -83,7 +92,7 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
 async fn render_radar_dashboard() -> Html<String> {
     let store = rullst_security::SecurityStore::global();
     let honeypot_count = store.honeypot_traps_count.load(Ordering::Relaxed);
-    let ip_bans_count = store.banned_ips.len();
+    let ip_bans_count = store.active_banned_count();
     let xss_count = store.sanitizations_count.load(Ordering::Relaxed);
     let log_redactions_count = store.log_redactions_count.load(Ordering::Relaxed);
     let zero_trust_mismatches_count = store.zero_trust_mismatches_count.load(Ordering::Relaxed);

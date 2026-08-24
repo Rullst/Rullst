@@ -1,6 +1,11 @@
-// cargo-rullst/src/generators/project/wizard.rs — Interactive project creation wizard (< 200 lines).
+// cargo-rullst/src/generators/project/wizard.rs — Interactive project creation wizard.
 
 use colored::*;
+
+use crate::blueprints::{
+    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
+    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
+};
 
 pub struct ProjectWizardOptions {
     pub name: String,
@@ -30,7 +35,7 @@ pub fn run_project_wizard(
             db_provider: "sqlite".to_string(),
             db_needed: true,
             hot_reload: false,
-            blueprint_selection: 0,
+            blueprint_selection: BLANK_BLUEPRINT_ID,
             wants_ai: false,
             wants_redis: false,
             turso,
@@ -59,7 +64,11 @@ pub fn run_project_wizard(
                     );
                     continue;
                 }
-                if val_trim.chars().next().unwrap().is_ascii_digit() {
+                if val_trim
+                    .chars()
+                    .next()
+                    .is_some_and(|first| first.is_ascii_digit())
+                {
                     println!(
                         "{}",
                         "❌ The project name cannot start with a number. Please try again.".red()
@@ -81,7 +90,7 @@ pub fn run_project_wizard(
     let mut db_provider = "Sqlite".to_string();
     let mut db_needed = true;
     let mut hot_reload = false;
-    let mut blueprint_selection = 0usize;
+    let mut blueprint_selection = BLANK_BLUEPRINT_ID;
 
     if name_arg.is_none() {
         let portfolio_title = format!(
@@ -90,10 +99,10 @@ pub fn run_project_wizard(
         );
         let blueprint_choices = vec![
             "Blank Starter (Minimal template with HTMX reactive counter)".to_string(),
-            portfolio_title,
             "LMS Platform (Courses, lessons, video player, HTMX integration)".to_string(),
             "SaaS App Starter (Authentication + Stripe payments billing template)".to_string(),
             "Blog / Press (Static site generator pre-wired with Nexus CMS)".to_string(),
+            portfolio_title,
             "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
         ];
         blueprint_selection = dialoguer::Select::with_theme(&theme)
@@ -102,7 +111,7 @@ pub fn run_project_wizard(
             .items(&blueprint_choices)
             .interact()?;
 
-        if blueprint_selection == 0 {
+        if blueprint_selection == BLANK_BLUEPRINT_ID {
             let build_options = &[
                 "Full-Stack Web App (SaaS, Portfolio, Blog, Etc)",
                 "Headless REST API",
@@ -169,7 +178,7 @@ pub fn run_project_wizard(
         };
     }
 
-    if !api && blueprint_selection >= 1 {
+    if !api && blueprint_selection != BLANK_BLUEPRINT_ID {
         let fe_options = &[
             "Zero-Bundle HTMX + Tailwind (Recommended — 0KB JS bundle, instant page loads & pure Rust html! macro)",
             "LiveView Server-Driven UI (rullst::live — Real-time WebSockets state sync, 0 JS)",

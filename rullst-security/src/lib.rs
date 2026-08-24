@@ -26,12 +26,15 @@ pub mod zero_trust;
 pub use ai_firewall::{
     LlmFirewall, PromptSafetyReport, PromptThreatCategory, ai_firewall_middleware,
 };
-pub use audit::{AuditChain, AuditLogger, AuditRecord, StdoutAuditLogger};
+pub use audit::{AuditChain, AuditLogger, AuditRecord, MIN_AUDIT_KEY_BYTES, StdoutAuditLogger};
 pub use cswsh::{CswsPolicy, CswsPolicyError, cswsh_guard_middleware};
 pub use deception::{deception_trap_middleware, register_deception_trap};
 pub use dlp::{DlpLayer, DlpResponseLayer, DlpResponseService, DlpService, mask_response_payload};
 pub use headers::{CspNonce, SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
-pub use honey::{HoneypotLayer, HoneypotService, HoneypotState};
+pub use honey::{
+    DEFAULT_HONEYPOT_BAN_TTL, DEFAULT_MAX_HONEYPOT_BANS, HoneypotLayer, HoneypotService,
+    HoneypotState, MAX_HONEYPOT_TRAP_PATHS,
+};
 pub use log_redactor::redact_secrets;
 pub use login_guard::LoginGuard;
 pub use mfa::{
@@ -48,7 +51,7 @@ pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
 pub use sri::{compute_sri_hash, sri_link_tag, sri_script_tag};
 pub use telemetry::{
     LiveSecurityEvent, SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
-    get_real_rss_memory_mb,
+    get_real_rss_memory_mb, normalize_ip,
 };
 pub use timing_guard::{
     TimingGuardConfig, TimingScope, equalize_response_time, synthetic_argon2_cpu_work,

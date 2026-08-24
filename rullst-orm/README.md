@@ -16,13 +16,13 @@
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
 <div align="center">
-  <h3>🛡️ Enterprise-Grade Security</h3>
-  <p>Rullst-ORM is built with a "Zero-Panic Policy" and tested against the most rigorous standards in the industry.<br>Our continuous pipeline guarantees absolute safety for production edge infrastructure:</p>
+  <h3>🛡️ Security Engineering</h3>
+  <p>Rullst ORM uses SQLx bindings, validated identifiers, typed errors, and layered CI checks. Workflow badges are scoped test results, not a guarantee for an application or deployment.</p>
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
 | **OSSF Scorecard** | <a href="https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=" alt="OSSF Scorecard" /></a> | Supply-chain security & best practices |
-| **SLSA Level 3** | <a href="https://github.com/slsa-framework/slsa-verifier"><img src="https://img.shields.io/badge/SLSA-Level%203-8A2BE2?style=flat-square&label=" alt="SLSA Level 3" /></a> | Tamper-evident build provenance & supply-chain security |
+| **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=" alt="Codecov" /></a> | Strict code coverage enforcement |
 | **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Dockerized PostgreSQL & MySQL integration tests |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
@@ -37,7 +37,7 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 | **Continuous Fuzzing** | <a href="https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?style=flat-square&label=" alt="Fuzzing" /></a> | Fuzzing against edge cases & panics |
 | **Mutation Testing** | <a href="https://github.com/Rullst/Rullst/actions/workflows/mutants.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=" alt="Mutants" /></a> | Mutation testing for test suite robustness |
 | **Continuous Benchmarks** | <a href="https://github.com/Rullst/Rullst/actions/workflows/bench.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=" alt="Benchmarks CI" /></a> | Continuous performance regression testing & live dashboard |
-| **Unsafe Policy** | <a href="https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=" alt="Unsafe Policy" /></a> | 100% memory safe. No unsafe code blocks |
+| **Unsafe Policy** | <a href="https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=" alt="Unsafe Policy" /></a> | Audits unsafe usage within the workflow's declared scope |
 | **Panic Policy** | <a href="https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?style=flat-square&label=" alt="Panic Policy" /></a> | Graceful error handling across the framework |
 
 
@@ -54,7 +54,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
 - **Built-in Multi-Tenancy**: Automatically scope all queries by tenant ID.
 - **Automated Audit Logs**: Track `old_values` and `new_values` history natively.
-- **Data Governance & Privacy**: Compile-time GDPR/LGPD compliance with at-rest encryption and log masking.
+- **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
 - **Scout Search**: Seamlessly sync models to full-text search engines.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Struct-Based Migrations**: Safely auto-generate additive SQL migrations (`make:migration:auto`) directly from your Rust struct definitions.
@@ -62,7 +62,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Type-Safe Partial Updates**: Virtual dirty checking with `.update_partial()` to intelligently modify only changed columns.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
 - **Strict Lazy Loading Prevention**: Enable a global toggle to instantly panic on N+1 queries during development.
-- **Enterprise Ready**: Read/write replica splitting, query chunking, and Redis caching built-in.
+- **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
 
 ---
 
@@ -133,7 +133,7 @@ We recently launched a brand-new **Interactive Documentation Hub**!
 
 ## 🛡️ Security
 
-Rullst ORM employs rigorous defenses against **SQL Injection**. All dynamic builder methods (like `.where_eq()`) automatically escape values using `sqlx` prepared statement bindings (`$1` or `?`). Raw queries (`.where_raw()`) actively force developers to provide an array of bindings directly in the function signature. Furthermore, all structural identifiers (table and column names) are validated strictly at runtime against a highly-optimized O(N) linear byte scan (zero regex overhead) to guarantee absolute SQL safety without sacrificing performance.
+Rullst ORM uses SQLx prepared-statement bindings for values accepted by its query builders. Structural identifiers are restricted to a bounded ASCII identifier grammar before interpolation. Raw SQL and application authorization remain the caller's responsibility; these controls reduce injection risk but are not an absolute safety guarantee.
 
 ## 📄 License
 This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/main/LICENSE).

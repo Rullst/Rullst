@@ -2,9 +2,11 @@
 
 use std::path::Path;
 
+use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_cargo_toml(
-    project_name_safe: &str,
+    package_name: &str,
     hot_reload: bool,
     db_needed: bool,
     db_provider: &str,
@@ -42,10 +44,10 @@ pub fn build_cargo_toml(
     }
 
     rullst_features.push("studio");
-    if blueprint_selection >= 1 || db_needed {
+    if blueprint_selection != BLANK_BLUEPRINT_ID || db_needed {
         rullst_features.push("nexus");
     }
-    if blueprint_selection == 2 || blueprint_selection == 3 {
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         rullst_features.push("auth");
         rullst_features.push("capital");
     }
@@ -64,7 +66,7 @@ pub fn build_cargo_toml(
     if hot_reload {
         cargo_toml.push_str(&format!(
             r#"[package]
-name = "{project_name_safe}"
+name = "{package_name}"
 version = "0.1.0"
 edition = "2021"
 
@@ -77,7 +79,7 @@ crate-type = ["cdylib", "rlib"]
     } else {
         cargo_toml.push_str(&format!(
             r#"[package]
-name = "{project_name_safe}"
+name = "{package_name}"
 version = "0.1.0"
 edition = "2021"
 
@@ -90,6 +92,7 @@ edition = "2021"
     cargo_toml.push_str(&rullst_line);
     cargo_toml.push('\n');
     cargo_toml.push_str("serde = { version = \"1.0\", features = [\"derive\"] }\n");
+    cargo_toml.push_str("serde_json = \"1.0\"\n");
     cargo_toml.push_str("tokio = { version = \"1.0\", features = [\"full\"] }\n");
     cargo_toml.push_str("tracing = \"0.1\"\n");
     cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
@@ -126,7 +129,7 @@ edition = "2021"
         ));
     }
 
-    if blueprint_selection == 3 {
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         let sibling_auth = current_dir.join("rullst-auth");
         let auth_dep = if sibling_auth.exists() {
             let absolute_path = sibling_auth
@@ -192,6 +195,10 @@ edition = "2021"
 
     cargo_toml.push_str(
         r#"
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Document", "Element", "EventTarget", "Window"] }
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
 
@@ -200,4 +207,63 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
     );
 
     Ok(cargo_toml)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blueprints::{BLOG_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+
+    fn isolated_root() -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("rullst-manifest-{}", rand::random::<u64>()))
+    }
+
+    #[test]
+    fn package_name_is_distinct_from_the_rust_module_name() {
+        let manifest = build_cargo_toml(
+            "dummy-test",
+            false,
+            false,
+            "Sqlite",
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("Cargo manifest");
+        assert!(manifest.contains("name = \"dummy-test\""));
+    }
+
+    #[test]
+    fn stable_saas_id_alone_enables_auth_and_capital() {
+        let saas = build_cargo_toml(
+            "saas",
+            false,
+            true,
+            "Sqlite",
+            false,
+            false,
+            SAAS_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("SaaS manifest");
+        let blog = build_cargo_toml(
+            "blog",
+            false,
+            true,
+            "Sqlite",
+            false,
+            false,
+            BLOG_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("Blog manifest");
+        assert!(saas.contains("\"auth\""));
+        assert!(saas.contains("\"capital\""));
+        assert!(!blog.contains("\"auth\""));
+        assert!(!blog.contains("\"capital\""));
+    }
 }

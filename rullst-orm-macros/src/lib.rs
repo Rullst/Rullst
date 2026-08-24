@@ -1,6 +1,3 @@
-#![allow(clippy::expect_used)]
-#![allow(clippy::unwrap_used)]
-
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -132,6 +129,21 @@ mod tests {
         (parsed, builder.to_string(), models.to_string())
     }
 
+    fn assert_generated_runtime_is_zero_panic(label: &str, generated: &str) {
+        for forbidden in [
+            ". unwrap (",
+            ". expect (",
+            "panic !",
+            "todo !",
+            "unimplemented !",
+        ] {
+            assert!(
+                !generated.contains(forbidden),
+                "{label} emitted forbidden runtime code `{forbidden}`: {generated}"
+            );
+        }
+    }
+
     #[test]
     fn test_basic_model() {
         let input: DeriveInput = parse_quote! {
@@ -173,6 +185,53 @@ mod tests {
         };
         let (parsed, _, _) = run_macro_generator(&input);
         assert!(!parsed.relations.is_empty());
+    }
+
+    #[test]
+    fn generated_runtime_code_has_no_panicking_calls() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(Orm)]
+            #[orm(soft_delete(field = "deleted_at", value = "null", delval = "now()"))]
+            pub struct Post {
+                pub id: i32,
+                pub title: String,
+                pub deleted_at: Option<String>,
+                #[orm(has_many = "Comment", foreign_key = "post_id", local_key = "id")]
+                comments: Option<Vec<Comment>>,
+            }
+        };
+        let (_, builder, models) = run_macro_generator(&input);
+
+        assert_generated_runtime_is_zero_panic("ORM builder", &builder);
+        assert_generated_runtime_is_zero_panic("ORM model", &models);
+    }
+
+    #[test]
+    fn inconsistent_soft_delete_state_emits_compile_error() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(Orm)]
+            pub struct Post {
+                pub id: i32,
+                pub deleted_at: Option<String>,
+            }
+        };
+        let mut parsed = parser::parse(&input).unwrap();
+        assert!(parsed.has_soft_deletes);
+        parsed.soft_delete = None;
+        let rels = relationships::generate(&parsed);
+
+        let builder = builder::generate(
+            &parsed,
+            &rels.flags,
+            &rels.inits,
+            &rels.methods,
+            &rels.eager_loads,
+        )
+        .to_string();
+        let models = models::generate(&parsed, &rels.model_methods).to_string();
+
+        assert!(builder.contains("compile_error"));
+        assert!(models.contains("compile_error"));
     }
 
     #[test]

@@ -10,6 +10,6 @@ Rullst was forged with this exact mindset: simplicity, intelligence, security an
 
 1. **Simple yet Complete:**  We solve the hardest development problems out-of-the-box securely (routing, auth, ORM, background jobs, hot-reloading), without sacrificing simplicity or completeness. You shouldn't have to piece together 15 different micro-libraries just to build a secure SaaS.
 
-2. **Built for Humans and AIs:** Rullst is AI-powered and architected to be highly legible and free of runtime "magic". By heavily utilizing static dispatch and compile-time guarantees, the codebase is transparent. This empowers both human developers and AI coding agents to collaborate and build production-ready systems rapidly, even without deep prior framework knowledge.
+2. **Built for Humans and AIs:** Rullst is architected to be legible and explicit, with static dispatch and compile-time generation where practical. This helps human developers and coding agents collaborate on systems whose production boundaries can be reviewed and tested.
 
 Rullst is not just a tool; it is a commitment to **Intelligence, Security and Emotional Productivity**. We take care of the boilerplate and the security pitfalls so you can focus on what matters the most: creating value.

@@ -1,6 +1,6 @@
 # Rullst Security 🛡️⚡
 
-`rullst-security` is the dedicated, high-performance security suite for the **Rullst Framework**. Built with a strict **Zero-Panic Policy**, zero-latency in-memory tracking, and high-assurance cryptographic primitives, it shields web applications against modern threat vectors without compromising request throughput.
+`rullst-security` is the dedicated security suite for the **Rullst Framework**. It uses bounded in-memory state, established cryptographic primitives, and defense-in-depth middleware. Its WAF/RASP rules are heuristic controls and must be combined with secure application design, authentication, authorization, TLS, monitoring, and timely dependency updates.
 
 ---
 
@@ -9,8 +9,8 @@
 ### 🍯 1. Rullst Honey (`rullst::security::honey`)
 *Deception Security & Botnet Mitigation Engine*
 - **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
-- **Zero-Latency In-Memory Ban List:** Uses `DashMap` for sub-millisecond IP lookup before request execution.
-- **WAF Integration:** Automatically tags and syncs malicious IPs with the global `Rullst Shield`.
+- **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit.
+- **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
 
 ### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
 *XSS Prevention & Dynamic CSP Nonces*
@@ -24,9 +24,9 @@
 - **BOLA / IDOR Prevention:** Provides `RbacGuard::authorize_owner_or_role` to enforce resource ownership boundaries dynamically.
 
 ### 📜 4. Rullst Audit Log (`rullst::security::audit`)
-*HMAC Cryptographic Tamper-Proof Trail*
-- **Cryptographic Event Chaining:** Formats each log as `hash_n = HMAC_SHA256(seq:time:actor:action:resource:payload:hash_{n-1})`.
-- **Breach-Resistant Verification:** Allows offline audit verification (`verify_record`) to detect database tampering during security incidents.
+*HMAC-SHA256 Tamper-Evident Trail*
+- **Canonical Event Chaining:** Signs a versioned, domain-separated, length-prefixed encoding of the sequence, timestamp, event fields, and predecessor hash.
+- **Offline Integrity Checks:** `verify_record` checks one record's HMAC; `verify_sequence` additionally validates genesis, monotonic sequence IDs, and predecessor continuity.
 - **Extensible Sinks:** Provides `AuditLogger` trait for database ORM logging or Cloud-Native stdout/JSON sinks.
 
 ---
@@ -96,17 +96,17 @@ use std::sync::Arc;
 use rullst_security::{AuditChain, StdoutAuditLogger};
 
 #[tokio::main]
-async fn main() {
-    let secret = b"my-master-hmac-secret-key";
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let secret = b"my-master-hmac-secret-key-32-bytes";
     let logger = Arc::new(StdoutAuditLogger::default());
-    let chain = AuditChain::new(secret, logger);
+    let chain = AuditChain::try_new(secret, logger)?;
 
     let record = chain
         .record_event("admin_user", "UPDATE_ROLE", "user_456", "{\"role\":\"admin\"}")
-        .await
-        .unwrap();
+        .await?;
 
     assert!(AuditChain::verify_record(secret, &record));
+    Ok(())
 }
 ```
 

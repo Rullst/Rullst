@@ -1,9 +1,16 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 static GLOBAL_SECURITY_STORE: OnceLock<SecurityStore> = OnceLock::new();
+
+const MAX_LIVE_EVENTS: usize = 50;
+const MAX_TELEMETRY_BANS: usize = 10_000;
+const MAX_HONEYPOT_ROUTES: usize = 1_024;
+const DEFAULT_HONEYPOT_BAN_TTL: Duration = Duration::from_secs(15 * 60);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LiveSecurityEvent {
@@ -19,6 +26,7 @@ pub struct BannedIpRecord {
     pub ip: String,
     pub reason: String,
     pub timestamp_str: String,
+    pub expires_at_unix_secs: u64,
 }
 
 pub struct SecurityStore {
@@ -99,78 +107,81 @@ impl SecurityStore {
     }
 
     pub fn record_honeypot_trap(&self, ip: &str, path: &str) {
+        self.record_honeypot_trap_with_ttl(ip, path, DEFAULT_HONEYPOT_BAN_TTL);
+    }
+
+    pub fn record_honeypot_trap_with_ttl(&self, ip: &str, path: &str, ban_ttl: Duration) {
+        self.record_honeypot_event(ip, path, Some(ban_ttl));
+    }
+
+    /// Records a trap hit without claiming that the peer was added to an enforcement ban list.
+    pub fn record_honeypot_observation(&self, ip: &str, path: &str) {
+        self.record_honeypot_event(ip, path, None);
+    }
+
+    fn record_honeypot_event(&self, ip: &str, path: &str, ban_ttl: Option<Duration>) {
         self.inc_honeypot_traps();
         let now_str = current_timestamp_str();
+        let now = unix_timestamp_secs();
+        let normalized_ip = normalize_ip(ip);
+        self.prune_expired_bans_at(now);
 
-        self.banned_ips.insert(
-            ip.to_string(),
-            BannedIpRecord {
-                ip: ip.to_string(),
-                reason: format!("Triggered honeypot route {}", path),
-                timestamp_str: now_str.clone(),
-            },
-        );
-
-        self.honeypot_route_hits
-            .entry(path.to_string())
-            .or_insert_with(|| AtomicU64::new(0))
-            .fetch_add(1, Ordering::Relaxed);
-
-        if let Ok(mut events) = self.live_events.lock() {
-            events.insert(
-                0,
-                LiveSecurityEvent {
-                    event_type: "HONEYPOT_TRAP_TRIGGERED".to_string(),
-                    details: format!("IP {} accessed trap route {}", ip, path),
-                    client_ip: ip.to_string(),
-                    timestamp_str: now_str,
-                    verified_hmac: true,
+        if let Some(ban_ttl) = ban_ttl
+            && normalized_ip != "unknown"
+            && (self.banned_ips.len() < MAX_TELEMETRY_BANS
+                || self.banned_ips.contains_key(&normalized_ip))
+        {
+            self.banned_ips.insert(
+                normalized_ip.clone(),
+                BannedIpRecord {
+                    ip: normalized_ip.clone(),
+                    reason: format!("Triggered honeypot route {path}"),
+                    timestamp_str: now_str.clone(),
+                    expires_at_unix_secs: now.saturating_add(ban_ttl.as_secs()),
                 },
             );
-            if events.len() > 50 {
-                events.truncate(50);
-            }
         }
+
+        if self.honeypot_route_hits.contains_key(path)
+            || self.honeypot_route_hits.len() < MAX_HONEYPOT_ROUTES
+        {
+            self.honeypot_route_hits
+                .entry(path.to_string())
+                .or_insert_with(|| AtomicU64::new(0))
+                .fetch_add(1, Ordering::Relaxed);
+        }
+
+        self.push_live_event(LiveSecurityEvent {
+            event_type: "HONEYPOT_TRAP_TRIGGERED".to_string(),
+            details: format!("Peer {normalized_ip} accessed trap route {path}"),
+            client_ip: normalized_ip,
+            timestamp_str: now_str,
+            verified_hmac: false,
+        });
     }
 
     pub fn record_sanitization(&self, details: &str) {
         self.inc_sanitizations();
-        if let Ok(mut events) = self.live_events.lock() {
-            events.insert(
-                0,
-                LiveSecurityEvent {
-                    event_type: "XSS_PAYLOAD_NEUTRALIZED".to_string(),
-                    details: details.to_string(),
-                    client_ip: "Local".to_string(),
-                    timestamp_str: current_timestamp_str(),
-                    verified_hmac: true,
-                },
-            );
-            if events.len() > 50 {
-                events.truncate(50);
-            }
-        }
+        self.push_live_event(LiveSecurityEvent {
+            event_type: "XSS_PAYLOAD_NEUTRALIZED".to_string(),
+            details: details.to_string(),
+            client_ip: "unknown".to_string(),
+            timestamp_str: current_timestamp_str(),
+            verified_hmac: false,
+        });
     }
 
     pub fn record_prompt_injection_blocked(&self, ip: &str, prompt_snippet: &str) {
         self.prompt_injections_blocked_count
             .fetch_add(1, Ordering::Relaxed);
         self.prompts_inspected_count.fetch_add(1, Ordering::Relaxed);
-        if let Ok(mut events) = self.live_events.lock() {
-            events.insert(
-                0,
-                LiveSecurityEvent {
-                    event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
-                    details: format!("Blocked malicious prompt snippet: {}", prompt_snippet),
-                    client_ip: ip.to_string(),
-                    timestamp_str: current_timestamp_str(),
-                    verified_hmac: true,
-                },
-            );
-            if events.len() > 50 {
-                events.truncate(50);
-            }
-        }
+        self.push_live_event(LiveSecurityEvent {
+            event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
+            details: format!("Blocked malicious prompt snippet: {prompt_snippet}"),
+            client_ip: normalize_ip(ip),
+            timestamp_str: current_timestamp_str(),
+            verified_hmac: false,
+        });
     }
 
     pub fn record_prompt_inspected(&self) {
@@ -184,19 +195,43 @@ impl SecurityStore {
 
     pub fn record_rbac_denial(&self, actor: &str, resource: &str) {
         self.inc_rbac_denials();
+        self.push_live_event(LiveSecurityEvent {
+            event_type: "RBAC_ACCESS_DENIED".to_string(),
+            details: format!("User {actor} denied access to {resource}"),
+            client_ip: "unknown".to_string(),
+            timestamp_str: current_timestamp_str(),
+            verified_hmac: false,
+        });
+    }
+
+    /// Removes expired display records and returns the current active-ban count.
+    pub fn active_banned_count(&self) -> usize {
+        self.prune_expired_bans();
+        self.banned_ips.len()
+    }
+
+    /// Removes expired honeypot ban records from telemetry dashboards.
+    pub fn prune_expired_bans(&self) {
+        self.prune_expired_bans_at(unix_timestamp_secs());
+    }
+
+    fn prune_expired_bans_at(&self, now: u64) {
+        self.banned_ips
+            .retain(|_, record| record.expires_at_unix_secs > now);
+    }
+
+    /// Stores an unsigned local event. `verified_hmac` is forced to false because callers cannot
+    /// truthfully promote an in-memory event to cryptographically verified telemetry.
+    pub fn push_local_event(&self, mut event: LiveSecurityEvent) {
+        event.verified_hmac = false;
+        self.push_live_event(event);
+    }
+
+    fn push_live_event(&self, event: LiveSecurityEvent) {
         if let Ok(mut events) = self.live_events.lock() {
-            events.insert(
-                0,
-                LiveSecurityEvent {
-                    event_type: "RBAC_ACCESS_DENIED".to_string(),
-                    details: format!("User {} denied access to {}", actor, resource),
-                    client_ip: "127.0.0.1".to_string(),
-                    timestamp_str: current_timestamp_str(),
-                    verified_hmac: true,
-                },
-            );
-            if events.len() > 50 {
-                events.truncate(50);
+            events.insert(0, event);
+            if events.len() > MAX_LIVE_EVENTS {
+                events.truncate(MAX_LIVE_EVENTS);
             }
         }
     }
@@ -262,6 +297,7 @@ impl SecurityStore {
     }
 
     pub fn snapshot(&self) -> TelemetrySnapshot {
+        self.prune_expired_bans();
         TelemetrySnapshot {
             sanitizations: self.sanitizations_count.load(Ordering::Relaxed),
             honeypot_traps: self.honeypot_traps_count.load(Ordering::Relaxed),
@@ -286,16 +322,22 @@ impl SecurityStore {
 }
 
 pub fn current_timestamp_str() -> String {
-    let now = std::time::SystemTime::now()
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+fn unix_timestamp_secs() -> u64 {
+    std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
-        .as_secs();
-    let sec = now % 60;
-    if sec == 0 {
-        "Just now".to_string()
-    } else {
-        format!("{}s ago", sec)
-    }
+        .as_secs()
+}
+
+/// Returns a canonical IP string only when the value is a syntactically valid address.
+pub fn normalize_ip(value: &str) -> String {
+    value
+        .parse::<IpAddr>()
+        .map(|ip| ip.to_string())
+        .unwrap_or_else(|_| "unknown".to_string())
 }
 
 pub fn get_real_rss_memory_mb() -> Option<f64> {
@@ -324,4 +366,43 @@ pub struct TelemetrySnapshot {
     pub idor_warnings: u64,
     pub timing_guard_protected: u64,
     pub prompt_injections_blocked: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn timestamps_are_absolute_rfc3339_values() {
+        let timestamp = current_timestamp_str();
+        assert!(chrono::DateTime::parse_from_rfc3339(&timestamp).is_ok());
+        assert!(!timestamp.ends_with("s ago"));
+        assert_ne!(timestamp, "Just now");
+    }
+
+    #[test]
+    fn local_events_cannot_claim_hmac_verification_or_fake_ips() {
+        let store = SecurityStore::new();
+        store.push_local_event(LiveSecurityEvent {
+            event_type: "TEST".to_string(),
+            details: "local event".to_string(),
+            client_ip: normalize_ip("attacker-controlled"),
+            timestamp_str: current_timestamp_str(),
+            verified_hmac: true,
+        });
+
+        let events = store.live_events.lock().expect("telemetry lock");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].client_ip, "unknown");
+        assert!(!events[0].verified_hmac);
+    }
+
+    #[test]
+    fn invalid_honeypot_identity_is_not_reported_as_an_active_ban() {
+        let store = SecurityStore::new();
+        store.record_honeypot_trap("not-a-peer-ip", "/.env");
+        store.record_honeypot_observation("192.0.2.80", "/.git/config");
+
+        assert_eq!(store.active_banned_count(), 0);
+    }
 }

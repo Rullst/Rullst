@@ -2,7 +2,7 @@
 
 This document explains:
 1. How Rullst optimizes AI context tracking and **reduces LLM token consumption by up to 70%** during AI-assisted development.
-2. How to connect Rullst to **ANY local LLM engine** (Ollama, LM Studio, llama.cpp, vLLM, LocalAI, Jan.ai) for 100% offline, zero-cost AI execution.
+2. How to connect Rullst to supported OpenAI-compatible or Ollama-style local endpoints without requiring a cloud LLM.
 
 ---
 
@@ -36,7 +36,9 @@ Rullst was architected from the ground up to be **AI-Native**, explicitly optimi
 
 Is Ollama the only way to run local AI in Rullst? **No!**
 
-`rullst-ai` and `rullst-security` are completely **provider-agnostic**. They support any local or cloud LLM runner that exposes an HTTP API (such as the standard OpenAI REST API or Ollama protocol).
+`rullst-ai` supports its implemented cloud providers plus compatible Ollama or
+OpenAI-style endpoints. An arbitrary HTTP API is not automatically compatible;
+verify request/streaming semantics and model capabilities.
 
 ### Supported Local AI Engines
 
@@ -98,4 +100,4 @@ DEEPSEEK_API_KEY="sk-YourDeepSeekKey"
 ## 🎯 4. Summary
 
 - **Token Economy:** Rullst's explicit compile-time typing, HTMX SSR, and macro architecture reduce AI prompt context overhead and save tokens.
-- **Local AI Flexibility:** You are not locked into Ollama or cloud APIs. Connect Rullst to LM Studio, `llama.cpp`, vLLM, or LocalAI for 100% free, offline, private AI development.
+- **Local AI flexibility:** Compatible local endpoints can keep model inference on infrastructure you control. Cost, privacy, and network isolation depend on that infrastructure and configuration.

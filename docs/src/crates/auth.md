@@ -1,69 +1,66 @@
-# Rullst Auth 🛡️
+# Rullst Auth
 
-`rullst-auth` is the official, enterprise-grade authentication and authorization module for the Rullst Framework. It adheres to the framework's strict **Zero-Panic Policy** and is designed to handle the most complex parts of user identity and session management securely.
+`rullst-auth` provides Argon2id password hashing, versioned AES-GCM cookie sessions,
+role-based authorization middleware, and WebAuthn/passkey ceremony verification.
 
-## ✨ Features
+The crate does not currently issue application JWTs. OAuth2/OIDC providers are available by
+enabling the `oauth` feature, which re-exports `rullst-connect`.
 
-- **Zero-Panic Guarantees:** 100% safe Rust. No unexpected crashes during token decoding or cryptography.
-- **Session Management:** Secure, signed, encrypted, and HTTP-only cookie management built-in.
-- **JWT Support:** Issue, sign, and verify JSON Web Tokens (JWT) for stateless API authentication.
-- **OAuth2 / OIDC Integration:** Ready-to-use providers for Google, GitHub, Apple, and generic OpenID Connect workflows.
-- **Role-Based Access Control (RBAC):** Elegant middleware for controller-level permissions and capability matrices.
-- **Password Hashing:** Native integration with Argon2id for secure credential storage.
-- **WebAuthn / Passkeys:** Future-proof, passwordless authentication support.
+## Passwords
 
-## 🚀 Quickstart
+Use the asynchronous functions inside HTTP handlers so Argon2 work runs on Tokio's blocking pool:
 
-Add `rullst-auth` to your project:
+```rust,no_run
+use rullst_auth::{AuthError, hash_password_async, verify_password_async};
 
-```bash
-cargo add rullst-auth
-```
-
-### Enabling the Middleware
-
-In your Rullst application, enable the authentication layer by providing a `SessionStore` (e.g., Redis or PostgreSQL):
-
-```rust
-use rullst::{Router, routing::get};
-use rullst_auth::{AuthLayer, SessionStore};
-use rullst_orm::Orm;
-
-#[tokio::main]
-async fn main() {
-    let pool = Orm::pool();
-    let session_store = SessionStore::postgres(pool);
-
-    let app = Router::new()
-        .route("/dashboard", get(dashboard_handler))
-        // Protect routes below this layer
-        .layer(AuthLayer::new(session_store));
-        
-    // ... start server ...
+async fn verify_login(password: String) -> Result<bool, AuthError> {
+    let hash = hash_password_async(password.clone()).await?;
+    Ok(verify_password_async(password, hash).await)
 }
 ```
 
-### Hashing Passwords (Argon2id)
+Passwords longer than 72 bytes are rejected. `needs_rehash` compares the algorithm, version,
+memory, iteration, and parallelism parameters.
 
-In async HTTP request handlers, prefer the non-blocking `_async` variants which offload CPU-bound Argon2id operations to Tokio's blocking thread pool (`spawn_blocking`):
+## Encrypted sessions
 
-```rust
-use rullst_auth::{hash_password_async, verify_password_async};
+`make_login_cookie` and `decrypt_session` use a versioned AES-256-GCM envelope with
+authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
+must not be a documented placeholder, and must satisfy the entropy check.
 
-// In async handlers / endpoints:
-let password = "super_secure_password";
-let hash = hash_password_async(password).await.expect("Hashing should not fail");
+```rust,no_run
+use rullst_auth::{AuthError, decrypt_session, get_app_key, make_login_cookie};
 
-let is_valid = verify_password_async(password, &hash).await;
-assert!(is_valid);
+fn round_trip(user_id: i32) -> Result<i32, AuthError> {
+    let cookie = make_login_cookie(user_id)?;
+    let token = cookie
+        .split(';')
+        .next()
+        .and_then(|part| part.split_once('='))
+        .map(|(_, value)| value)
+        .ok_or_else(|| AuthError::General("session cookie is malformed".to_string()))?;
+    decrypt_session(token, &get_app_key()?)
+}
 ```
 
-For offline scripts or CLI tasks, synchronous functions (`hash_password`, `verify_password`) are also available.
+## WebAuthn/passkeys
 
-## 🔐 Security Audit
+`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
+client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
+credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
+accepted. Applications must persist the returned counter atomically with the credential record.
 
-`rullst-auth` relies on high-quality cryptographic primitives (e.g., `argon2`, `rsa`, `hkdf`). It is continuously fuzzed and verified against side-channel timing attacks. All cryptographic operations return a typed `AuthError` on failure rather than panicking.
+## RBAC
 
-## 📚 Documentation
+Implement `HasRole` for the authenticated user type and install
+`RequireRoleLayer::<User>::new("Admin")`. Authentication middleware must insert that user into
+Axum request extensions before the role layer executes.
 
-For advanced usage, including JWT custom claims, OAuth2 workflows, and RBAC matrix configuration, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+## OAuth2/OIDC
+
+Enable `oauth` for the `rullst_auth::connect` re-export. Provider configuration, discovery,
+JWKS rotation, and deterministic offline fixtures are implemented by `rullst-connect`.
+
+Security-sensitive functions return typed errors or a false verification result. The repository's
+zero-panic CI checks production library paths; this policy is not an absolute guarantee about all
+dependencies or host failures.

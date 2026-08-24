@@ -18,7 +18,7 @@ In Active Record, your database models inherit both data properties and database
 * **Pros:**
   * **Extreme Velocity:** 50% less boilerplate code. You don't need to write separate repository interfaces or DTO mappers for standard CRUD operations.
   * **Intuitive API:** Expressive methods like `User::find(1)`, `user.update()`, `User::where("status", "active")`.
-  * **Ideal for 90% of Projects:** Perfect for SaaS platforms, REST APIs, e-commerce stores, blogs, and rapid prototyping.
+  * **Typical fit:** CRUD-oriented SaaS, REST APIs, commerce applications, blogs, and prototypes.
 * **Cons:**
   * Couples domain entities directly with database table schemas.
 * **When to Pick:** Recommended for almost all new projects, startups, MVPs, and standard business applications.
@@ -52,7 +52,9 @@ Enables both Active Record traits and Repository pattern traits in your codebase
 
 ### ❓ "If I choose Active Record now, will I be locked in when my app grows?"
 
-**No! Rullst guarantees zero architectural lock-in.**
+The two patterns can coexist, so adopting Active Record does not prevent adding
+repositories later. Migration cost still depends on how application code is
+coupled to model methods and database semantics.
 
 If you start your project with **Active Record**, you write fast, clean CRUD code today. Two years from now, if your startup grows and you need to introduce a complex financial ledger requiring the Repository pattern:
 1. You **do NOT need to rewrite** your existing Active Record models.
@@ -63,11 +65,11 @@ If you start your project with **Active Record**, you write fast, clean CRUD cod
 
 | Feature | Active Record | Data Mapper / Repository | Hybrid Architecture |
 | :--- | :--- | :--- | :--- |
-| **Development Velocity** | ⚡ **Fastest (50% less code)** | 🐢 Slower (More boilerplate) | ⚡ Moderate |
-| **Code Uniformity** | 🎯 **100% Consistent** | 🎯 **100% Consistent** | ⚠️ Can become mixed |
+| **Development Velocity** | ⚡ Low boilerplate for CRUD | 🐢 More explicit layers | ⚡ Moderate |
+| **Code Uniformity** | 🎯 Consistent model-centric style | 🎯 Consistent repository-centric style | ⚠️ Can become mixed |
 | **Learning Curve** | 🟢 Very Easy | 🔴 Steeper (DDD concepts) | 🟡 Moderate |
-| **Decoupling from SQL** | 🟡 Moderate | 🟢 **100% Decoupled** | 🟢 Flexible per module |
-| **Future Upgrade Path** | 🟢 Easily add Repositories later | 🟢 Already Enterprise | 🟢 Already Both |
+| **Decoupling from SQL** | 🟡 Moderate | 🟢 Higher at domain boundaries | 🟢 Flexible per module |
+| **Future Upgrade Path** | 🟢 Repositories can be added | 🟢 Repository boundary present | 🟢 Both styles available |
 
 ---
 
@@ -77,11 +79,11 @@ Rullst allows you to choose your rendering strategy based on user experience goa
 
 | Frontend Engine | JS Bundle Size | SSR Strategy | Interactivity Model | Framework Reference Pattern | Target Use Cases |
 | :--- | :---: | :--- | :--- | :--- | :--- |
-| **1. Zero-Bundle HTMX + Tailwind** *(Default)* | **0 KB** | HTML5 Server-Driven | HTMX Attributes + `html!` | **HTMX Standard** | Web Apps, SaaS, Dashboards, E-commerce |
-| **2. LiveView Server-Driven UI** | **0 KB** | Server-Side State Machine | Persistent Tokio WebSockets | **Phoenix & Dioxus Live** | Real-time Feeds, Chat, Interactive Collaboration |
+| **1. HTMX + Tailwind** *(Default)* | No project-local application bundle; HTMX is still a client dependency | HTML5 Server-Driven | HTMX Attributes + `html!` | **HTMX Standard** | Web Apps, SaaS, Dashboards, E-commerce |
+| **2. LiveView Server-Driven UI** | Small client transport required | Server-Side State Machine | Persistent Tokio WebSockets | **Phoenix & Dioxus Live** | Real-time Feeds, Chat, Interactive Collaboration |
 | **3. Reactive Wasm Islands** | **Pontual** | Client WebAssembly VM | Fine-Grained Signals | **Leptos & Yew WASM** | Canvas, Markdown Editors, Offline Rich UIs |
-| **4. Zero-Build Semantic CSS (Pico.css)** | **0 KB** | Pure Semantic HTML (`<button>`, `<article>`) | Automatic OS Dark/Light Mode | **Pico.css v2** | Backend Tools, Dashboards, Minimalist UIs (0 Node.js / 0 NPM) |
-| **5. File-Based Classic Templates (Tera)** | **0 KB** | File Templates (`templates/*.html`) | Server-Rendered HTML | **Loco.rs, Rails & Django** | Traditional MVC monoliths with external HTML |
+| **4. Zero-Build Semantic CSS (Pico.css)** | External CSS dependency | Pure Semantic HTML (`<button>`, `<article>`) | Automatic OS Dark/Light Mode | **Pico.css v2** | Backend Tools, Dashboards, Minimalist UIs |
+| **5. File-Based Classic Templates (Tera)** | No required application JS | File Templates (`templates/*.html`) | Server-Rendered HTML | **Loco.rs, Rails & Django** | Traditional MVC monoliths with external HTML |
 
 ---
 
@@ -89,10 +91,10 @@ Rullst allows you to choose your rendering strategy based on user experience goa
 Rullst renders semantic HTML5 on the server at compile time using the `rullst::html!` macro and streams tiny, targeted HTML swaps over the wire via HTMX.
 
 * **Pros:**
-  * **Sub-10ms Page Loads:** No heavy JavaScript bundles to parse or execute on the client.
-  * **Maximum SEO & Accessibility:** Clean semantic HTML rendered instantly.
-  * **Simpler Maintenance:** 100% of business logic stays on the server in type-safe Rust.
-* **When to Pick:** Recommended for 90% of web applications, SaaS platforms, portals, and e-commerce stores.
+  * **Small client surface:** No project-local SPA bundle is required.
+  * **SEO and accessibility foundation:** Semantic server-rendered HTML is available, while final accessibility still depends on the application markup.
+  * **Server-oriented maintenance:** Business logic can remain in type-safe Rust while HTMX coordinates browser interactions.
+* **When to Pick:** Useful for server-oriented applications, SaaS platforms, portals, and e-commerce interfaces.
 
 ---
 
@@ -221,50 +223,67 @@ Uses thread-safe in-memory caching (`rullst::cache::memory` via DashMap) and Tok
 
 ---
 
-## 🛡️ Built-in Zero-Config Pillars: Security & Telemetry
+## 🛡️ Default scaffold pillars: security and telemetry
 
 You might wonder: *Why doesn't `cargo rullst new` ask whether to include Security (`rullst-security`) or Telemetry (`rullst::radar`)?*
 
-### The DX Principle: "Security & Observability by Default"
+### The DX principle: secure defaults with explicit installation
 
-Rullst adheres to a strict Developer Experience (DX) philosophy: **Essential protection and real-time observability must never be opt-in choices.**
+The official scaffolds include the security and telemetry dependencies needed by
+their generated application. A dependency alone does not protect an endpoint:
+the application must mount the relevant layers, configure trust boundaries, and
+exercise the final stack in integration tests.
 
-1. **`rullst-security` (RASP, Vault, Honeypots, Threat Radar):** 
-   * **Why Built-in:** Every Rullst app automatically inherits Runtime Application Self-Protection (RASP), zero-trust field encryption (`Zeroize`), honeypot traps, and threat analysis. Leaving security as a CLI prompt risks developers accidentally creating vulnerable applications.
-   * **Zero Overhead:** Security checks run as compiled, zero-cost static middleware with `< 50KB` RAM footprint.
+1. **`rullst-security` (RASP, Vault, Honeypots, Threat Radar):**
+   * **Why scaffolded:** Generated projects have the building blocks for a
+     defense-in-depth stack instead of silently omitting them.
+   * **Runtime boundary:** Inspection and buffering consume resources. Measure
+     the selected layers under representative payloads and traffic; no fixed
+     memory or latency bound is claimed.
 
-2. **`rullst::radar` (Kernel Telemetry & Prometheus `/metrics`):**
-   * **Why Built-in:** Real-time RSS memory tracking, Tokio event loop tick latency measurement, and `/metrics` exporters are automatically initialized in every Rullst app. This ensures instant observability without setting up third-party agents.
+2. **`rullst::radar` (process telemetry and Prometheus `/metrics`):**
+   * **Why scaffolded:** Generated applications can expose runtime counters and
+     process probes without inventing values. Unsupported probes are reported as
+     unavailable and exporters still require explicit startup/configuration.
 
-By keeping Security and Telemetry **built-in by default**, the CLI avoids "survey fatigue" (asking 15+ questions) and limits prompts strictly to structural choices that impact external infrastructure or cloud costs (Database Engine, ORM Pattern, Frontend Framework, AI Module, Redis).
+This keeps project creation concise while preserving an explicit runtime policy.
 
 ---
 
 ## 🛡️ Part 5: Engineering Invariants & Architectural Rigor
 
-To establish a predictable, enterprise-grade foundation, the entire Rullst crate architecture adheres to 5 non-negotiable engineering invariants:
+The repository uses the following engineering policies. They define review and
+CI expectations; they are not certifications about every dependency or deployment.
 
 ### 1. Multi-Crate Decoupled Facade Pattern
 Rullst is not a monolithic single crate. The umbrella `rullst` crate acts as a facade re-exporting specialized, decoupled micro-crates (`rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`, `rullst-mail`, `rullst-ai`, etc.):
-* **Feature-Gated Bloat Mitigation:** Heavy sub-systems (like SQL engines or email transports) are optional via Cargo features (`default = ["orm"]`). When building lightweight REST proxies or microservices, users can disable default features (`default-features = false`) to eliminate unnecessary dependencies and achieve sub-second compile times.
+* **Feature-Gated Dependency Control:** Heavy subsystems such as ORM and email
+  transports are feature-gated (`default = ["orm"]`). Consumers can disable
+  defaults to narrow the dependency graph; compile time remains host/project dependent.
 
-### 2. Zero-Panic Guarantees in Production Paths
-* Production code (`src/`) strictly prohibits `panic!()`, `unwrap()`, or `expect()`.
+### 2. Zero-panic policy in production paths
+* Reviewed production paths prohibit `panic!()`, `unwrap()`, and `expect()` and
+  CI checks that declared scope.
 * All operations return typed domain error enums (`AppError`, `OrmError`, `AuthError`, `CapitalError`, `FiscalError`) deriving `thiserror::Error`, allowing graceful error propagation and structured JSON/HTMX error responses.
-* `unwrap()` is strictly confined to unit test suites (`#[test]` / `tests/`) where assertion failures are expected.
+* Test code may use `unwrap()` for concise assertions. The policy reduces
+  framework-originated panics; it cannot guarantee that a process or dependency
+  will never terminate unexpectedly.
 
 ### 3. Tokio Runtime Concurrency Shielding
 * Asynchronous HTTP handlers running on Tokio's multi-threaded runtime must never be starved by CPU-intensive synchronous operations.
-* Intensive cryptographic tasks (such as Argon2id password hashing in `rullst-auth` or XMLDSig envelope canonicalization in `rullst-capital`) are automatically offloaded to Tokio's dedicated blocking pool (`tokio::task::spawn_blocking`), protecting event loop responsiveness under high concurrent load.
+* CPU-intensive work such as Argon2id password hashing must be moved to Tokio's
+  blocking pool by the application-facing async API. Live XMLDSig/NFS-e is not
+  implemented and is therefore not an example of this guarantee.
 
 ### 4. No "Walled Gardens": First-Class Axum & Tower Escape Hatches
 * Rullst explicitly avoids hiding the underlying server engine behind opaque proprietary wrappers.
 * `rullst::Router` implements seamless, bidirectional conversion traits with `axum::Router` (`From<axum::Router>`, `.into_axum()`, `.as_axum()`, `.as_axum_mut()`, `Deref`/`DerefMut`).
 * Any third-party middleware from the Tokio/Tower ecosystem (`tower_http::cors::CorsLayer`, `tower::limit::RateLimitLayer`, `utoipa-swagger-ui`) can be attached directly without impedance.
 
-### 5. 100% Pure-Rustls Cryptographic Stack
-* The framework enforces a strict zero-OpenSSL C-bindings policy.
-* Network and cryptographic crates use `aws-lc-rs` and `rustls` for memory-safe, cross-platform compilation without requiring external system C libraries (`libssl-dev`).
+### 5. TLS dependency inventory
+* First-party HTTP clients prefer Rustls-backed transports.
+* Optional or transitive dependencies are audited from `Cargo.lock`; Rullst does
+  not claim a universal zero-C or pure-Rustls certification for every feature.
 
 ---
 

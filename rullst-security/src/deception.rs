@@ -1,11 +1,12 @@
 use crate::telemetry::SecurityStore;
 use axum::{
-    extract::Request,
+    extract::{ConnectInfo, Request},
     http::StatusCode,
     middleware::Next,
     response::{Html, IntoResponse, Response},
 };
 use dashmap::DashSet;
+use std::net::SocketAddr;
 use std::sync::OnceLock;
 
 static DECEPTION_ROUTES: OnceLock<DashSet<String>> = OnceLock::new();
@@ -50,17 +51,12 @@ pub async fn deception_trap_middleware(req: Request, next: Next) -> Response {
 
     if global_deception_routes().contains(&path) {
         let client_ip = req
-            .headers()
-            .get("X-Forwarded-For")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("127.0.0.1")
-            .split(',')
-            .next()
-            .unwrap_or("127.0.0.1")
-            .trim()
-            .to_string();
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|connection| connection.0.ip().to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
-        SecurityStore::global().record_honeypot_trap(&client_ip, &path);
+        SecurityStore::global().record_honeypot_observation(&client_ip, &path);
         SecurityStore::global().inc_deception_hits();
 
         return (

@@ -1,6 +1,6 @@
 # Tutorial 35: Sub-Microsecond Tuning & High-Availability Operations ⚡
 
-Optimize your Rullst application for bare-metal performance, sub-microsecond latencies, and zero-panic high availability.
+Measure and optimize your Rullst application for throughput, latency, and resilient failure handling. No universal latency or availability result is implied.
 
 ---
 
@@ -55,4 +55,4 @@ cargo miri test -p rullst-core
 
 ## 💡 Key Takeaways
 - Sub-microsecond routing (~974 ns) and SSR (~1.07 µs).
-- Fast linkers (`mold`, `lld`) deliver sub-second incremental compilation during development.
+- Fast linkers (`mold`, `lld`) can reduce incremental link time; measure results on the target project and host.

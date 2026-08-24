@@ -1,6 +1,9 @@
 use crate::Orm;
 use serde::{Deserialize, Serialize};
 
+mod diff;
+pub use diff::compute_diff;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuditLog {
     pub id: i32,
@@ -81,78 +84,6 @@ pub async fn log_audit(
     }
 
     Ok(())
-}
-
-fn is_sensitive(key: &str) -> bool {
-    let k = key.to_ascii_lowercase();
-    k.contains("password")
-        || k.contains("token")
-        || k.contains("secret")
-        || k.contains("senha")
-        || k.contains("api_key")
-        || k.contains("cvv")
-        || k.contains("ssn")
-        || k.contains("credit_card")
-        || k.contains("auth_code")
-}
-
-fn mask_if_sensitive(key: &str, value: serde_json::Value) -> serde_json::Value {
-    if is_sensitive(key) {
-        serde_json::Value::String("***".to_string())
-    } else {
-        value
-    }
-}
-
-#[cfg_attr(test, mutants::skip)]
-pub fn compute_diff(old_json: &str, new_json: &str) -> (Option<String>, Option<String>) {
-    if old_json == new_json {
-        return (None, None);
-    }
-
-    let old_val: serde_json::Value =
-        serde_json::from_str(old_json).unwrap_or(serde_json::Value::Null);
-    let new_val: serde_json::Value =
-        serde_json::from_str(new_json).unwrap_or(serde_json::Value::Null);
-
-    let mut diff_old = serde_json::Map::new();
-    let mut diff_new = serde_json::Map::new();
-
-    if let (serde_json::Value::Object(old_obj), serde_json::Value::Object(new_obj)) =
-        (old_val, new_val)
-    {
-        for (k, v) in &old_obj {
-            if let Some(new_v) = new_obj.get(k) {
-                #[allow(clippy::collapsible_if)]
-                if v != new_v {
-                    let masked_v = mask_if_sensitive(k, v.clone());
-                    let masked_new_v = mask_if_sensitive(k, new_v.clone());
-                    diff_new.insert(k.clone(), masked_new_v);
-                    diff_old.insert(k.clone(), masked_v);
-                }
-            } else {
-                let masked_v = mask_if_sensitive(k, v.clone());
-                diff_new.insert(k.clone(), serde_json::Value::Null);
-                diff_old.insert(k.clone(), masked_v);
-            }
-        }
-        for (k, new_v) in &new_obj {
-            if !old_obj.contains_key(k) {
-                let masked_new_v = mask_if_sensitive(k, new_v.clone());
-                diff_old.insert(k.clone(), serde_json::Value::Null);
-                diff_new.insert(k.clone(), masked_new_v);
-            }
-        }
-    }
-
-    if diff_old.is_empty() && diff_new.is_empty() {
-        return (None, None); // Nothing changed
-    }
-
-    let final_old = serde_json::to_string(&diff_old).ok();
-    let final_new = serde_json::to_string(&diff_new).ok();
-
-    (final_old, final_new)
 }
 
 #[cfg_attr(test, mutants::skip)]
@@ -294,18 +225,18 @@ mod tests {
     #[test]
     fn test_compute_diff_invalid_json() {
         let (old_diff, new_diff) = super::compute_diff("not json", "{invalid}");
-        assert!(old_diff.is_none());
-        assert!(new_diff.is_none());
+        assert!(old_diff.is_some_and(|value| value.contains("invalid_json")));
+        assert!(new_diff.is_some_and(|value| value.contains("invalid_json")));
 
         // One valid, one invalid
         let (old_diff2, new_diff2) = super::compute_diff(r#"{"a":1}"#, "invalid");
-        assert!(old_diff2.is_none());
-        assert!(new_diff2.is_none());
+        assert_eq!(old_diff2.as_deref(), Some(r#"{"a":1}"#));
+        assert!(new_diff2.is_some_and(|value| value.contains("invalid_json")));
 
         // Arrays or primitive values instead of JSON Objects
         let (old_diff3, new_diff3) = super::compute_diff("[1, 2]", "[1, 2, 3]");
-        assert!(old_diff3.is_none());
-        assert!(new_diff3.is_none());
+        assert_eq!(old_diff3.as_deref(), Some("[1,2]"));
+        assert_eq!(new_diff3.as_deref(), Some("[1,2,3]"));
 
         // Empty objects
         let (old_diff4, new_diff4) = super::compute_diff("{}", "{}");
@@ -402,10 +333,10 @@ mod tests {
     #[test]
     fn test_mask_if_sensitive() {
         let val = serde_json::Value::String("my-secret-val".to_string());
-        let masked = super::mask_if_sensitive("password", val.clone());
+        let masked = super::diff::mask_if_sensitive("password", val.clone());
         assert_eq!(masked, serde_json::Value::String("***".to_string()));
 
-        let unmasked = super::mask_if_sensitive("username", val);
+        let unmasked = super::diff::mask_if_sensitive("username", val);
         assert_eq!(
             unmasked,
             serde_json::Value::String("my-secret-val".to_string())

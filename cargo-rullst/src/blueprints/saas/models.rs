@@ -19,6 +19,15 @@ pub struct User {
     pub updated_at: String,
 }
 
+impl User {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst_orm::Error> {
+        Self::query()
+            .where_eq("email", email.to_owned())
+            .first()
+            .await
+    }
+}
+
 impl NexusModel for User {
     fn nexus_table() -> &'static str { "users" }
     fn nexus_label() -> &'static str { "Users" }
@@ -88,13 +97,33 @@ impl Subscription {
 "##;
     manifest.push(("src/models/subscription.rs", subscription_model.to_string()));
 
+    let billing_customer_model = r##"use rullst::db::{Orm, FromRow};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "billing_customers")]
+pub struct BillingCustomer {
+    pub id: i32,
+    pub user_id: i32,
+    pub email: String,
+    pub customer_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+"##;
+    manifest.push((
+        "src/models/billing_customer.rs",
+        billing_customer_model.to_string(),
+    ));
+
     let models_mod = r##"pub mod user;
 pub mod subscription;
+pub mod billing_customer;
 "##;
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
     // Migrations
-    let m1 = r##"use rullst_orm::schema::{Schema, Migration};
+    let m1 = r##"use rullst::db::{Orm, sqlx};
+use rullst_orm::schema::{Schema, Migration};
 use rullst_orm::async_trait;
 
 pub struct MigrationImpl;
@@ -114,7 +143,11 @@ impl Migration for MigrationImpl {
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
-        }).await
+        }).await?;
+        sqlx::query("CREATE UNIQUE INDEX users_email_unique ON users(email)")
+            .execute(Orm::pool()?)
+            .await?;
+        Ok(())
     }
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
@@ -127,7 +160,8 @@ impl Migration for MigrationImpl {
         m1.to_string(),
     ));
 
-    let m3 = r##"use rullst::db::schema::{Schema, Migration};
+    let m3 = r##"use rullst::db::{Orm, sqlx};
+use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;
@@ -139,6 +173,13 @@ impl Migration for MigrationImpl {
     }
 
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::create("billing_customers", |table| {
+            table.id();
+            table.integer("user_id").not_null();
+            table.string("email").not_null();
+            table.string("customer_id").nullable();
+            table.timestamps();
+        }).await?;
         Schema::create("subscriptions", |table| {
             table.id();
             table.integer("user_id").not_null();
@@ -148,11 +189,24 @@ impl Migration for MigrationImpl {
             table.string("status").not_null();
             table.integer("ends_at").nullable();
             table.timestamps();
-        }).await
+        }).await?;
+        let pool = Orm::pool()?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX billing_customers_email_unique ON billing_customers(email)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX subscriptions_subscription_id_unique ON subscriptions(subscription_id)",
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::drop_if_exists("subscriptions").await
+        Schema::drop_if_exists("subscriptions").await?;
+        Schema::drop_if_exists("billing_customers").await
     }
 }
 "##;

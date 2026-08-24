@@ -100,4 +100,6 @@ pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
 
 ## Summary
 
-Rullst is designed to offer **high productivity without lock-in**. You retain 100% control of your Rust code at all times.
+Rullst is designed to preserve access to standard Axum and SQLx APIs. Some
+generated and framework-specific code still requires an explicit migration when
+removing Rullst dependencies.

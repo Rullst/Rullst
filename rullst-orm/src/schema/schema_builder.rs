@@ -37,7 +37,7 @@ impl Schema {
         Ok(())
     }
 
-    #[mutants::skip]
+    #[cfg_attr(mutants, mutants::skip)]
     pub async fn drop_if_exists(table_name: &str) -> Result<(), Error> {
         validate_table_name(table_name)?;
         let driver = crate::Orm::driver()?;

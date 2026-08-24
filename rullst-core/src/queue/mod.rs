@@ -3,7 +3,8 @@
 //! Provides a unified API for dispatching and processing background jobs.
 //!
 //! ## Drivers
-//! - **SQLite** (default): Uses an auto-created `rullst_jobs` table. Zero config.
+//! - **SQLite** (`queue-sqlite`, enabled by default): Uses an auto-created
+//!   `rullst_jobs` table. Zero config.
 //! - **Redis** (optional): Requires the `queue-redis` feature flag.
 //!
 //! ## Quick Start
@@ -20,24 +21,29 @@
 //!     println!("Sending email to: {}", payload["to"]);
 //!     Ok(())
 //! });
-//! worker.run();
+//! let worker_handle = worker.run()?;
+//! # let _ = worker_handle;
 //! ```
 
 #[cfg(feature = "queue-redis")]
 /// Redis queue driver implementation.
 pub mod redis;
+#[cfg(feature = "queue-sqlite")]
 /// SQLite queue driver implementation.
 pub mod sqlite;
 /// Background job worker executor.
 pub mod worker;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "queue-sqlite"))]
 mod tests;
+#[cfg(test)]
+mod worker_tests;
 
 #[cfg(feature = "queue-redis")]
 pub use redis::redis_driver::RedisDriver;
+#[cfg(feature = "queue-sqlite")]
 pub use sqlite::SqliteDriver;
-pub use worker::{JobHandler, Worker};
+pub use worker::{JobHandler, Worker, WorkerHandle};
 
 use async_trait::async_trait;
 use serde_json::Value;
@@ -47,32 +53,58 @@ use uuid::Uuid;
 // ─── Error Types ────────────────────────────────────────────────────────────
 
 /// Errors that can occur during queue operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum QueueError {
     /// The underlying database or connection failed.
+    #[error("Queue driver error: {0}")]
     Driver(String),
     /// Serialization/deserialization of job payloads failed.
+    #[error("Queue serialization error: {0}")]
     Serialization(String),
     /// A job handler was not found for the given job name.
+    #[error("No handler registered for job: {0}")]
     HandlerNotFound(String),
     /// The job execution itself failed.
+    #[error("Job execution failed: {0}")]
     JobFailed(String),
+    /// The worker was started outside an active Tokio runtime.
+    #[error("the queue worker requires an active Tokio runtime")]
+    RuntimeUnavailable,
+    /// A worker option would make safe processing impossible.
+    #[error("invalid queue worker configuration: {0}")]
+    InvalidConfiguration(String),
+    /// Persisting a job state transition failed.
+    #[error("job '{job_id}' could not transition via '{operation}': {message}")]
+    StateTransition {
+        /// Job whose state could not be persisted.
+        job_id: String,
+        /// Attempted transition operation.
+        operation: &'static str,
+        /// Driver failure description.
+        message: String,
+    },
+    /// A handler exceeded the configured execution deadline.
+    #[error("job '{job_id}' exceeded its {timeout_ms}ms execution timeout")]
+    JobTimedOut {
+        /// Timed-out job identifier.
+        job_id: String,
+        /// Configured timeout in milliseconds.
+        timeout_ms: u64,
+    },
+    /// A handler panicked and was isolated by the worker.
+    #[error("job '{job_id}' handler panicked")]
+    JobPanicked {
+        /// Panicking job identifier.
+        job_id: String,
+    },
+    /// An internal worker task terminated unexpectedly.
+    #[error("queue worker task failed: {0}")]
+    WorkerTask(String),
+    /// A custom queue backend does not implement an optional lifecycle action.
+    #[error("queue operation is unsupported: {0}")]
+    Unsupported(String),
 }
-
-impl std::fmt::Display for QueueError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            QueueError::Driver(msg) => write!(f, "Queue driver error: {}", msg),
-            QueueError::Serialization(msg) => write!(f, "Queue serialization error: {}", msg),
-            QueueError::HandlerNotFound(name) => {
-                write!(f, "No handler registered for job: {}", name)
-            }
-            QueueError::JobFailed(msg) => write!(f, "Job execution failed: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for QueueError {}
 
 // ─── Queued Job ─────────────────────────────────────────────────────────────
 
@@ -126,6 +158,18 @@ pub trait QueueDriver: Send + Sync {
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError>;
     /// Mark a job as failed, recording the error message.
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError>;
+    /// Return an interrupted processing job to the pending state.
+    async fn requeue(&self, _job_id: &str, _reason: &str) -> Result<(), QueueError> {
+        Err(QueueError::Unsupported(
+            "this driver cannot requeue interrupted jobs".to_string(),
+        ))
+    }
+    /// Recover processing leases left behind by a crashed worker.
+    async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {
+        Err(QueueError::Unsupported(
+            "this driver cannot recover stalled jobs".to_string(),
+        ))
+    }
     /// Return the count of pending jobs.
     async fn pending_count(&self) -> Result<u64, QueueError>;
     /// List all recent jobs for monitoring
@@ -153,6 +197,7 @@ pub struct Queue {
 
 impl Queue {
     /// Create a queue backed by SQLite. The `rullst_jobs` table is auto-created.
+    #[cfg(feature = "queue-sqlite")]
     pub async fn sqlite(database_url: &str) -> Result<Self, QueueError> {
         let driver = SqliteDriver::new(database_url).await?;
         Ok(Self {

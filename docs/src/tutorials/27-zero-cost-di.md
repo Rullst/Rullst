@@ -53,5 +53,5 @@ pub async fn process_payment(
 ---
 
 ## 💡 Key Takeaways
-- Zero runtime overhead or dynamic dispatch (`dyn Trait`).
+- Static dispatch without a DI-container vtable; constructors and application logic still have their normal runtime cost.
 - Services are stored as type-safe `Arc<T>` singletons across worker threads.

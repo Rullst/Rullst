@@ -1,83 +1,102 @@
-# Rullst AI 🤖
+# Rullst AI
 
-`rullst-ai` is the official integration layer for Autonomous AI Agents within the Rullst Framework. It provides typed bindings, tool definitions, and system prompts optimized for interacting with OpenAI, Anthropic, and Google DeepMind agentic systems.
+> **Vision preserved:** capability-typed schema support, local-model boundaries,
+> and autonomous-agent ideas remain itemized with an implementation opinion in the
+> [capability ledger](../capability-ledger.md#ai-and-mail).
 
-## ✨ Features
+`rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
+PII masking, deterministic offline fixtures, JSON mode, and explicit JSON Schema output.
 
-- **Agent Framework Integration:** First-class abstractions to integrate conversational AI, autonomous task executors, and coding agents directly into your Rullst SaaS backend.
-- **MCP (Model Context Protocol) Ready:** Natively supports structured tool discovery so AI agents can query your `rullst-orm` database securely.
-- **Streaming Responses:** Built-in adapters to stream LLM responses (Server-Sent Events or WebSockets) directly through Rullst's asynchronous `axum` engine.
-- **RAG Bindings:** Utility traits to quickly connect Vector Databases (Qdrant, Pinecone) with your ORM models for Retrieval-Augmented Generation.
+## Provider capabilities
 
-## 🚀 Quickstart
+| Provider | Chat | Vision | Embeddings | JSON mode | Native JSON Schema |
+|---|---:|---:|---:|---:|---:|
+| OpenAI | yes | yes | yes | yes | yes |
+| Gemini | yes | yes | yes | yes | yes |
+| Anthropic | yes | yes | no | prompt-constrained | no |
+| DeepSeek | yes | no | no | yes | `deepseek-v4-flash` |
+| Ollama | yes | model-dependent | yes | yes | local API only |
 
-Add `rullst-ai` to your project:
+Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
+switch to an unrelated endpoint or represent a fixture as a live-provider result.
 
-```bash
-cargo add rullst-ai
-```
+## Guarded client
 
-### Basic Completion Endpoint
+```rust,no_run
+use rullst_ai::{AiClient, AiError, providers::openai::OpenAiProvider};
 
-```rust
-use rullst::{Router, routing::post};
-use rullst_core::http::Json;
-use rullst_ai::{providers::OpenAiClient, ChatRequest, ChatResponse};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct Prompt {
-    message: String,
-}
-
-async fn chat_handler(Json(payload): Json<Prompt>) -> Json<ChatResponse> {
-    let client = OpenAiClient::from_env();
-    
-    let request = ChatRequest::builder()
-        .system("You are a helpful assistant.")
-        .user(&payload.message)
-        .build();
-
-    let response = client.complete(request).await.expect("AI request failed");
-    Json(response)
-}
-
-#[tokio::main]
-async fn main() {
-    let app = Router::new().route("/api/chat", post(chat_handler));
-    // ... start server ...
+async fn answer(api_key: String, user_text: &str) -> Result<String, AiError> {
+    let client = AiClient::new(OpenAiProvider::new(api_key));
+    client
+        .chat()
+        .system("Answer concisely.")
+        .user(user_text)
+        .send()
+        .await
 }
 ```
 
-## 🔐 AI Security Firewall & Prompt Shield v2
+`AiClient::prompt`, chat, vision, embedding, JSON, and structured-output calls run the same
+guardrail stage before provider dispatch. Built-in providers repeat the check on direct trait calls.
+Call custom `AiProvider` implementations through `AiClient` when the application needs the same
+mandatory boundary.
 
-`rullst-ai` works natively with `rullst-security::ai_firewall` to provide zero-latency prompt inspection and defense-in-depth:
+The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
+Markdown beacons, and selected invisible Unicode controls. Supported PII classes are masked before
+outbound transmission. This is a bounded heuristic control, not proof that arbitrary input or model
+output is safe; authorization, tool permissions, output encoding, and domain validation remain
+application responsibilities.
 
-```rust
-use rullst_security::{LlmFirewall, ai_firewall_middleware, PromptThreatCategory};
+## Offline mode
 
-// 1. Direct prompt inspection before dispatch
-let report = LlmFirewall::inspect_prompt(&payload.message);
-if !report.is_safe {
-    return Err(AiError::BlockedByFirewall(format!(
-        "Threat detected: {:?}",
-        report.threat_category
-    )));
-}
+OpenAI, Gemini, Anthropic, and DeepSeek use deterministic offline mode when their API key is empty
+or begins with `mock_`. Ollama uses an empty or `mock_*` host. Offline branches return before URL
+construction or HTTP dispatch and cover each capability that the provider implements. Unsupported
+capabilities remain typed errors in offline mode.
 
-// 2. Or attach AI Firewall middleware to route
-let app = Router::new()
-    .route("/api/chat", post(chat_handler))
-    .layer(axum::middleware::from_fn(ai_firewall_middleware));
+`AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
+`DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;
+it does not probe localhost implicitly.
+
+## JSON mode and structured output
+
+JSON mode requests a parseable JSON value and deserializes it in Rust:
+
+```rust,no_run
+# use rullst_ai::{AiClient, AiError, providers::openai::OpenAiProvider};
+# async fn example() -> Result<(), AiError> {
+let client = AiClient::new(OpenAiProvider::new("mock_local"));
+let value: serde_json::Value = client.json_prompt("Summarize this record").await?;
+# let _ = value;
+# Ok(())
+# }
 ```
 
-### Threat Vectors Neutralized:
-- **Direct Jailbreaks:** "Ignore previous instructions", "DAN mode", "Developer Mode".
-- **System Prompt Exfiltration:** "Repeat initial prompt", "Reveal base instructions".
-- **Delimiter Collisions:** `<|im_start|>`, `[INST]`, `<<SYS>>`.
-- **Markdown Data Leaks:** Malicious image callback beacons `![leak](https://evil.com/...)`.
-- **Invisible Unicode:** Strips and flags `\u{200B}` zero-width injection attacks.
+Native structured output requires an explicit schema and fails when the provider cannot enforce it:
 
-## 📚 Documentation
+```rust,no_run
+# use rullst_ai::{AiClient, AiError, StructuredOutputSchema, providers::openai::OpenAiProvider};
+# async fn example() -> Result<(), AiError> {
+let client = AiClient::new(OpenAiProvider::new("mock_local"));
+let schema = StructuredOutputSchema::new("answer", serde_json::json!({
+    "type": "object",
+    "properties": {"ok": {"type": "boolean"}},
+    "required": ["ok"],
+    "additionalProperties": false
+}))?;
+let value: serde_json::Value = client
+    .structured_prompt_with_schema("Evaluate the input", &schema)
+    .await?;
+# let _ = value;
+# Ok(())
+# }
+```
 
-For advanced usage, building custom AI tools, and setting up streaming endpoints, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+Provider-side schema enforcement and Rust deserialization do not replace application-specific
+semantic validation.
+
+## Current boundaries
+
+Streaming responses, durable chat memory, provider-native tool execution loops, external vector
+database adapters, and compile-time schema derivation remain roadmap work. The in-memory vector
+index and tool registry are utilities; they do not create an authorization boundary by themselves.

@@ -119,7 +119,10 @@ impl Auth0Provider {
         mut self,
         client: ::std::sync::Arc<dyn crate::client::HttpClient>,
     ) -> Self {
-        if !self.credential_mode.is_invalid() {
+        if matches!(
+            self.credential_mode,
+            crate::configuration::CredentialMode::Live
+        ) {
             self.http_client = client;
         }
         self

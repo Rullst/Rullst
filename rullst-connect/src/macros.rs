@@ -116,9 +116,10 @@ macro_rules! define_provider {
                 self
             }
 
-            /// Sets a custom HTTP client (e.g., for mocking, proxy, or non-reqwest backends).
+            /// Sets a custom HTTP client for live credentials (e.g., a proxy or test transport).
+            /// Mock and invalid credentials retain their network-free/fail-closed transport.
             pub fn with_http_client(mut self, client: ::std::sync::Arc<dyn $crate::client::HttpClient>) -> Self {
-                if !self.credential_mode.is_invalid() {
+                if matches!(self.credential_mode, $crate::configuration::CredentialMode::Live) {
                     self.http_client = client;
                 }
                 self
@@ -248,6 +249,21 @@ mod tests {
             provider.credential_mode(),
             crate::configuration::CredentialMode::Mock
         );
+    }
+
+    #[test]
+    fn test_mock_credentials_cannot_replace_the_offline_transport() {
+        let provider = DummyProvider::try_new(
+            "",
+            secrecy::SecretString::from("".to_string()),
+            "https://app.example/callback",
+        )
+        .expect("mock configuration should be valid");
+        let original = provider.http_client.clone();
+        let provider =
+            provider.with_http_client(std::sync::Arc::new(crate::client::ReqwestClient::new()));
+
+        assert!(std::sync::Arc::ptr_eq(&provider.http_client, &original));
     }
 
     #[test]

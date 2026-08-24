@@ -17,14 +17,17 @@ categories = ["web-programming::http-server", "asynchronous"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
+default = []
+orm = ["dep:rullst-orm", "dep:sqlx"]
+queue-sqlite = ["dep:sqlx"]
 studio = []
 redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
-strict-postgres = ["rullst-orm/strict-postgres"]
-strict-mysql = ["rullst-orm/strict-mysql"]
-strict-sqlite = ["rullst-orm/strict-sqlite"]
+strict-postgres = ["orm", "rullst-orm/strict-postgres"]
+strict-mysql = ["orm", "rullst-orm/strict-mysql"]
+strict-sqlite = ["orm", "rullst-orm/strict-sqlite"]
 
 [dependencies]
 serde = { workspace = true }
@@ -41,9 +44,9 @@ opentelemetry = { workspace = true, optional = true }
 opentelemetry-otlp = { workspace = true, optional = true, features = ["reqwest-client", "http-proto", "reqwest-rustls"] }
 opentelemetry_sdk = { workspace = true, optional = true, features = ["rt-tokio"] }
 axum = { workspace = true, features = ["macros", "ws"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
-rullst-orm = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "sync", "net", "signal"] }
+rullst-orm = { workspace = true, optional = true }
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio", "macros"], optional = true }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["fs", "trace", "cors"] }
 tower-layer = { workspace = true }

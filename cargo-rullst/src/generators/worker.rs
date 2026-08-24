@@ -1,9 +1,77 @@
 // src/generators/worker.rs — Background Worker generator.
 
-use crate::generators::is_rullst_project;
+use crate::generators::{is_rullst_project, is_valid_rust_identifier};
 use colored::*;
 use std::fs;
+use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
+
+const WORKER_START_HELPER: &str = r#"
+/// Registers every generated processor and starts the queue worker.
+///
+/// Keep the returned handle alive for as long as the application should
+/// continue processing jobs.
+pub fn start_workers(
+    mut worker: rullst::queue::Worker,
+) -> Result<rullst::queue::WorkerHandle, rullst::queue::QueueError> {
+    register_workers(&mut worker);
+    let handle = worker.run()?;
+    Ok(handle)
+}
+"#;
+
+/// Returns the lifecycle-safe worker startup helper emitted by this generator.
+///
+/// This is public so scaffold smoke tests can compile the exact generated API.
+#[doc(hidden)]
+pub fn worker_start_helper() -> &'static str {
+    WORKER_START_HELPER
+}
+
+/// Renders the exact job-handler module emitted by this generator.
+#[doc(hidden)]
+pub fn render_worker_source(job_name: &str) -> String {
+    format!(
+        r#"use rullst::queue::Worker;
+use serde_json::Value;
+
+/// Registers this worker's job processor.
+pub fn register(worker: &mut Worker) {{
+    worker.register("{job_name}", |payload: Value| async move {{
+        println!("🚀 [Worker] Processing '{job_name}' with payload: {{:?}}", payload);
+
+        // Add background task logic here (for example, email or image processing).
+
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+    }});
+}}
+"#
+    )
+}
+
+fn ensure_worker_dependencies(manifest: &str) -> Result<String, IoError> {
+    let has_serde_json = manifest.lines().any(|line| {
+        let declaration = line.split_once('#').map_or(line, |(value, _)| value).trim();
+        declaration
+            .split_once('=')
+            .is_some_and(|(key, _)| key.trim().trim_matches(['\'', '"']) == "serde_json")
+    });
+    if has_serde_json {
+        return Ok(manifest.to_string());
+    }
+    let Some(dependencies) = manifest.find("[dependencies]") else {
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            "Cargo.toml does not contain a [dependencies] table",
+        ));
+    };
+    let mut updated = manifest.to_string();
+    updated.insert_str(
+        dependencies + "[dependencies]".len(),
+        "\nserde_json = \"1\"",
+    );
+    Ok(updated)
+}
 
 pub fn worker_to_snake_case(s: &str) -> String {
     let mut base = s.to_string();
@@ -61,7 +129,21 @@ pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let snake_name = worker_to_snake_case(name);
+    if name.trim().is_empty() || !is_valid_rust_identifier(&snake_name) {
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "worker name must produce a valid non-keyword Rust module identifier",
+        )
+        .into());
+    }
     let job_name = snake_name.strip_suffix("_worker").unwrap_or(&snake_name);
+
+    let cargo_toml_path = Path::new("Cargo.toml");
+    let cargo_toml = fs::read_to_string(cargo_toml_path)?;
+    let updated_cargo_toml = ensure_worker_dependencies(&cargo_toml)?;
+    if updated_cargo_toml != cargo_toml {
+        fs::write(cargo_toml_path, updated_cargo_toml)?;
+    }
 
     println!(
         "{}",
@@ -107,6 +189,9 @@ pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
             );
         }
     }
+    if !mod_content.contains("pub fn start_workers") {
+        mod_content.push_str(worker_start_helper());
+    }
     fs::write(&mod_path, mod_content)?;
 
     let worker_path = workers_dir.join(format!("{}.rs", snake_name));
@@ -120,23 +205,7 @@ pub fn create_new_worker(name: &str) -> Result<(), Box<dyn std::error::Error>> {
             .yellow()
         );
     } else {
-        let template = format!(
-            r#"use rullst::queue::{{Worker, QueueError}};
-use serde_json::Value;
-
-/// Registra o processador de tarefas deste worker.
-pub fn register(worker: &mut Worker) {{
-    worker.register("{job_name}", |payload: Value| async move {{
-        println!("🚀 [Worker] Processando tarefa '{job_name}' com payload: {{:?}}", payload);
-        
-        // Escreva a lógica da sua tarefa em segundo plano aqui (ex: enviar e-mail, processar imagem)
-        
-        Ok(())
-    }});
-}}
-"#,
-            job_name = job_name
-        );
+        let template = render_worker_source(job_name);
         fs::write(&worker_path, template)?;
     }
 
@@ -188,12 +257,50 @@ pub fn register(worker: &mut Worker) {{
     );
     println!(
         "{}",
-        "     let mut worker = rullst::queue::Worker::new(&queue);".cyan()
+        "     let worker = rullst::queue::Worker::new(&queue);".cyan()
     );
-    println!("{}", "  2. Register your workers:".cyan());
-    println!("{}", "     workers::register_workers(&mut worker);".cyan());
-    println!("{}", "  3. Start the processing loop:".cyan());
-    println!("{}", "     worker.run();".cyan());
+    println!("{}", "  2. Register and start the processing loop:".cyan());
+    println!(
+        "{}",
+        "     let _worker_handle = workers::start_workers(worker)?; // Keep this handle alive for the application lifetime"
+            .cyan()
+    );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{WORKER_START_HELPER, ensure_worker_dependencies, render_worker_source};
+
+    #[test]
+    fn generated_startup_guidance_uses_the_fallible_worker_api() {
+        let guidance = "let _worker_handle = workers::start_workers(worker)?; // Keep this handle alive for the application lifetime";
+        assert!(guidance.contains("start_workers(worker)?"));
+        assert!(guidance.contains("_worker_handle"));
+        assert!(!guidance.contains("worker.run();"));
+        assert!(WORKER_START_HELPER.contains("worker.run()?"));
+        assert!(WORKER_START_HELPER.contains("Ok(handle)"));
+        assert!(!WORKER_START_HELPER.contains("worker.run();"));
+    }
+
+    #[test]
+    fn generated_handler_matches_the_fallible_queue_contract() {
+        let source = render_worker_source("send_email");
+        syn::parse_file(&source).expect("generated worker must parse");
+        assert!(source.contains("Box<dyn std::error::Error + Send + Sync>"));
+        assert!(!source.contains("worker.run("));
+        assert!(!source.contains(".unwrap("));
+        assert!(!source.contains(".expect("));
+        assert!(!source.contains("panic!("));
+    }
+
+    #[test]
+    fn worker_dependency_injection_is_idempotent() {
+        let original = "[package]\nname = \"demo\"\n\n[dependencies]\nrullst = \"12\"\n";
+        let updated = ensure_worker_dependencies(original).expect("worker dependency");
+        let repeated = ensure_worker_dependencies(&updated).expect("idempotent dependency");
+        assert_eq!(updated, repeated);
+        assert_eq!(updated.matches("serde_json =").count(), 1);
+    }
 }

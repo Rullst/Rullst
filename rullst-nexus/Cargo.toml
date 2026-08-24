@@ -24,7 +24,7 @@ strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
 strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 
 [dependencies]
-rullst-core = { workspace = true }
+rullst-core = { workspace = true, features = ["orm"] }
 rullst-orm = { workspace = true }
 rullst-auth = { workspace = true }
 rullst-security = { workspace = true }

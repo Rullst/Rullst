@@ -124,7 +124,12 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
 
     let bin_name = std::path::Path::new(&local_bin)
         .file_name()
-        .unwrap()
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "deployment binary path has no file name",
+            )
+        })?
         .to_string_lossy();
     deploy::execute_upload_step(&cfg, &local_bin, &ssh_base_args)?;
     deploy::execute_configure_step(&cfg, &bin_name, &ssh_base_args)?;

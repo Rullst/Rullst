@@ -12,13 +12,13 @@ impl<'a> RequestBuilder<'a> {
     pub fn new(
         client: &'a dyn HttpClient,
         method: impl Into<std::borrow::Cow<'static, str>>,
-        url: String,
+        url: impl Into<String>,
     ) -> Self {
         Self {
             client,
             req: HttpRequest {
                 method: method.into(),
-                url,
+                url: url.into(),
                 headers: reqwest::header::HeaderMap::new(),
                 form: None,
                 json: None,

@@ -14,23 +14,26 @@ keywords = ["framework", "web", "async", "tokio", "fullstack"]
 categories = ["web-programming::http-server", "asynchronous"]
 exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
 [features]
-default = ["orm"]
-orm = ["dep:rullst-orm"]
+default = ["orm", "queue-sqlite"]
+orm = ["dep:rullst-orm", "rullst-core/orm"]
+queue-sqlite = ["rullst-core/queue-sqlite"]
 nexus = ["dep:rullst-nexus"]
 studio = ["dep:rullst-studio", "rullst-core/studio"]
 auth = ["dep:rullst-auth"]
-mailer = ["mail-smtp", "dep:rullst-mail"]
+mailer = ["mail-smtp"]
 redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis", "rullst-core/queue-redis"]
 cache-redis = ["dep:redis", "rullst-core/cache-redis"]
-mail-smtp = ["dep:lettre"]
+mail-smtp = ["dep:rullst-mail", "rullst-mail/mail-smtp"]
 oauth = ["dep:rullst-connect"]
 ai = ["dep:rullst-ai"]
 capital = ["dep:rullst-capital"]
+security = ["dep:rullst-security"]
+iot = ["dep:rullst-iot"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
-strict-postgres = ["rullst-core/strict-postgres"]
-strict-mysql = ["rullst-core/strict-mysql"]
-strict-sqlite = ["rullst-core/strict-sqlite"]
+strict-postgres = ["orm", "rullst-core/strict-postgres"]
+strict-mysql = ["orm", "rullst-core/strict-mysql"]
+strict-sqlite = ["orm", "rullst-core/strict-sqlite"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
@@ -42,8 +45,8 @@ toml = { workspace = true }
 rullst-macros = { workspace = true }
 # Optional features dependencies
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
-lettre = { workspace = true, optional = true, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
 rullst-connect = { workspace = true, optional = true }
+rullst-iot = { workspace = true, optional = true }
 urlencoding = { workspace = true }
 subtle = { workspace = true }
 tracing-opentelemetry = { workspace = true, optional = true }
@@ -70,6 +73,7 @@ rullst-ai = { workspace = true, optional = true }
 rullst-nexus = { workspace = true, optional = true }
 rullst-capital = { workspace = true, optional = true }
 rullst-studio = { workspace = true, optional = true }
+rullst-security = { workspace = true, optional = true }
 
 tracing = { workspace = true }
 tracing-core = { workspace = true }
@@ -101,4 +105,4 @@ name = "rullst_bench"
 harness = false
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

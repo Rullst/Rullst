@@ -1,6 +1,6 @@
 # Tutorial 30: Framework Escape Hatch (`cargo rullst eject`) 🔓
 
-Eliminate framework lock-in by expanding all Rullst abstractions into 100% pure Axum, Tokio, and Hyper Rust code.
+Reduce framework lock-in by generating an inspectable Axum/Tokio starting point. Review the generated snapshot and run `cargo check`; not every optional subsystem can be mechanically ejected.
 
 ---
 
@@ -40,5 +40,5 @@ async fn main() {
 ---
 
 ## 💡 Key Takeaways
-- Zero vendor lock-in guarantee.
+- A migration aid that reduces framework coupling; generated output and remaining dependencies must be reviewed.
 - Ejected code compiles using standard Axum and Tokio dependencies with 0 custom framework code.

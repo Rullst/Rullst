@@ -1,7 +1,7 @@
 [advisories]
 # Do not fail CI for unmaintained crates (warn only)
 unmaintained = "none"
-# Ignore "Marvin Attack" vulnerability in the rsa crate pulled by jsonwebtoken (no patch available yet)
+# Temporary exception documented in ../docs/src/security-advisory-exceptions.md.
 ignore = ["RUSTSEC-2023-0071"]
 
 [bans]

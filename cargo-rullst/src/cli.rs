@@ -22,7 +22,7 @@ use crate::generators::{
     migration::create_new_migration,
     model::create_new_model,
     openapi::generate_openapi_spec,
-    project::create_new_project,
+    project::{ProjectScaffoldOptions, create_new_project_with_options},
     resource::create_new_resource,
     worker::create_new_worker,
 };
@@ -36,6 +36,18 @@ use crate::generators::{
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+#[derive(Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DocsCommand {
+    /// Compiles docs/**/*.md into docs/dist/
+    Build,
+    /// Builds, watches and serves docs/dist/ on loopback
+    Dev {
+        /// Local preview port
+        #[arg(long, default_value_t = 4173)]
+        port: u16,
+    },
 }
 
 #[derive(Subcommand)]
@@ -62,6 +74,11 @@ pub enum Commands {
         /// Optional: Scaffolds Turso/libSQL sidecar (sqld) for edge replication
         #[arg(long)]
         turso: bool,
+    },
+    /// Builds or previews the RullstPress documentation site
+    Docs {
+        #[command(subcommand)]
+        command: DocsCommand,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -338,16 +355,35 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             default,
             turso,
         } => {
-            create_new_project(
+            create_new_project_with_options(
                 name.as_deref(),
-                *api,
-                *docker,
-                *buildah,
-                *nix,
-                *default,
-                *turso,
+                ProjectScaffoldOptions {
+                    api: *api,
+                    docker: *docker,
+                    buildah: *buildah,
+                    nix: *nix,
+                    use_defaults: *default,
+                    turso: *turso,
+                },
             )?;
         }
+        Commands::Docs { command } => match command {
+            DocsCommand::Build => {
+                let report = crate::generators::docs::build_docs_site(std::path::Path::new("."))?;
+                println!(
+                    "RullstPress built {} Markdown page(s) and {} asset(s) in {}",
+                    report.markdown_pages,
+                    report.copied_assets,
+                    report.output_dir.display()
+                );
+            }
+            DocsCommand::Dev { port } => {
+                tokio::runtime::Runtime::new()?.block_on(crate::generators::docs::run_docs_dev(
+                    std::path::Path::new("."),
+                    *port,
+                ))?;
+            }
+        },
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
         }
@@ -594,4 +630,54 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_rullstpress_commands_from_the_sst() {
+        let build = Cli::try_parse_from(["rullst", "docs", "build"]).expect("docs build CLI");
+        assert!(matches!(
+            build.command,
+            Commands::Docs {
+                command: DocsCommand::Build
+            }
+        ));
+
+        let dev =
+            Cli::try_parse_from(["rullst", "docs", "dev", "--port", "4321"]).expect("docs dev CLI");
+        assert!(matches!(
+            dev.command,
+            Commands::Docs {
+                command: DocsCommand::Dev { port: 4321 }
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_nix_and_buildah_flags_without_swapping_them() {
+        let nix =
+            Cli::try_parse_from(["rullst", "new", "demo", "--default", "--nix"]).expect("Nix CLI");
+        assert!(matches!(
+            nix.command,
+            Commands::New {
+                nix: true,
+                buildah: false,
+                ..
+            }
+        ));
+
+        let buildah = Cli::try_parse_from(["rullst", "new", "demo", "--default", "--buildah"])
+            .expect("Buildah CLI");
+        assert!(matches!(
+            buildah.command,
+            Commands::New {
+                nix: false,
+                buildah: true,
+                ..
+            }
+        ));
+    }
 }

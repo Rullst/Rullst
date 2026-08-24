@@ -91,7 +91,12 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(3000);
-    let ws_port = port + 1;
+    let ws_port = port.checked_add(1).ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "PORT must be lower than 65535 so the HMR socket can use the next port",
+        )
+    })?;
 
     let ws_app = Router::new()
         .route("/_rullst_hmr", get(ws_handler))
@@ -128,8 +133,12 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let mut app_child = cmd.spawn()?;
 
     if is_dash {
-        let stdout = app_child.stdout.take().unwrap();
-        let stderr = app_child.stderr.take().unwrap();
+        let stdout = app_child.stdout.take().ok_or_else(|| {
+            std::io::Error::other("cargo stdout was not piped for the dashboard")
+        })?;
+        let stderr = app_child.stderr.take().ok_or_else(|| {
+            std::io::Error::other("cargo stderr was not piped for the dashboard")
+        })?;
         let tx1 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
@@ -150,20 +159,39 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
 
     let watcher_task = tokio::spawn(async move {
         let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
-        let mut watcher =
-            notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+        let mut watcher = match notify::recommended_watcher(
+            move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
                     let _ = notify_tx.blocking_send(event);
                 }
-            })
-            .unwrap();
+            },
+        ) {
+            Ok(watcher) => watcher,
+            Err(error) => {
+                let message = format!("❌ Failed to initialize the file watcher: {error}");
+                if is_dash {
+                    let _ = log_tx_watcher.send(LogMsg::System(message));
+                } else {
+                    eprintln!("{message}");
+                }
+                return;
+            }
+        };
 
-        watcher
-            .watch(Path::new("src"), RecursiveMode::Recursive)
-            .unwrap();
-        watcher
-            .watch(Path::new("Cargo.toml"), RecursiveMode::NonRecursive)
-            .unwrap();
+        for (path, mode) in [
+            (Path::new("src"), RecursiveMode::Recursive),
+            (Path::new("Cargo.toml"), RecursiveMode::NonRecursive),
+        ] {
+            if let Err(error) = watcher.watch(path, mode) {
+                let message = format!("❌ Failed to watch {}: {error}", path.display());
+                if is_dash {
+                    let _ = log_tx_watcher.send(LogMsg::System(message));
+                } else {
+                    eprintln!("{message}");
+                }
+                return;
+            }
+        }
 
         let m = "✨ Watching for file changes... (Press Ctrl+C to stop)"
             .green()

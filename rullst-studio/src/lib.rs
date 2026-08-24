@@ -60,7 +60,7 @@ impl Studio {
             .nest("/env", env_viewer::router())
             .nest("/features", feature_flags::router())
             .nest("/er", er_diagram::router())
-            .nest("/security", security_radar::router());
+            .merge(security_radar::stats_router());
 
         if let Some(openapi) = self.openapi {
             router = router.nest("/api", api_playground::router(openapi));
@@ -77,11 +77,35 @@ impl Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
 
     #[tokio::test]
     async fn test_studio_builder_and_routes() {
         let studio = Studio::new();
-        let _router = studio.into_router();
+        let router = studio.into_router();
+        let security_page = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/studio/security")
+                    .body(Body::empty())
+                    .expect("valid request"),
+            )
+            .await
+            .expect("security page response");
+        assert_eq!(security_page.status(), axum::http::StatusCode::OK);
+
+        let security_stats = router
+            .oneshot(
+                Request::builder()
+                    .uri("/studio/security/stats")
+                    .body(Body::empty())
+                    .expect("valid request"),
+            )
+            .await
+            .expect("security stats response");
+        assert_eq!(security_stats.status(), axum::http::StatusCode::OK);
 
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
         let openapi = OpenApi::default();

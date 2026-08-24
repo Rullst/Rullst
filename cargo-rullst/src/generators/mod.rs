@@ -5,6 +5,8 @@ use std::path::Path;
 
 pub mod ai_context;
 pub mod audit;
+mod audit_compliance;
+mod audit_evidence;
 pub mod auth;
 pub mod billing;
 pub mod build;
@@ -16,6 +18,7 @@ pub mod deploy;
 pub mod desktop;
 pub mod dev;
 pub mod diagram;
+pub mod docs;
 pub mod doctor;
 pub mod eject;
 pub mod foundry;
@@ -49,6 +52,11 @@ pub fn is_rullst_project() -> bool {
         Ok(content) => content.contains("rullst"),
         Err(_) => false,
     }
+}
+
+/// Returns whether a generated module/type token is a non-keyword Rust identifier.
+pub(crate) fn is_valid_rust_identifier(value: &str) -> bool {
+    !value.is_empty() && syn::parse_str::<syn::Ident>(value).is_ok()
 }
 
 /// AST-based module registration for registering new submodules in mod.rs or main.rs
@@ -327,5 +335,14 @@ mod tests {
         assert!(content3.contains("pub mod posts;"));
 
         let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn generated_identifiers_reject_keywords_and_syntax() {
+        assert!(is_valid_rust_identifier("billing_customer"));
+        assert!(is_valid_rust_identifier("BillingCustomer"));
+        assert!(!is_valid_rust_identifier("type"));
+        assert!(!is_valid_rust_identifier("bad-name"));
+        assert!(!is_valid_rust_identifier(""));
     }
 }

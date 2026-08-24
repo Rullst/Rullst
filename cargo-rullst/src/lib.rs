@@ -1,7 +1,13 @@
-#![allow(
-    clippy::needless_borrows_for_generic_args,
-    clippy::manual_strip,
-    clippy::collapsible_if
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::expect_used,
+        clippy::panic,
+        clippy::todo,
+        clippy::unimplemented,
+        clippy::unreachable,
+        clippy::unwrap_used
+    )
 )]
 
 pub mod blueprints;

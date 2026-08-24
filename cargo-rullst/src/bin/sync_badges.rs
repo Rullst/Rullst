@@ -1,4 +1,12 @@
 #![cfg_attr(mutants, mutants::skip)]
+#![deny(
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::unwrap_used
+)]
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -65,15 +73,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if badge_regex.is_match(&content) {
             let updated_content = badge_regex.replace_all(&content, &new_badge);
             fs::write(&readme_path, updated_content.as_ref())?;
-            println!(
-                "✅ Updated badges in {:?}",
-                readme_path.file_name().unwrap()
-            );
+            println!("✅ Updated badges in {}", readme_path.display());
             updated_count += 1;
         } else {
             println!(
-                "ℹ️ No status badge found or already up to date in {:?}",
-                readme_path.file_name().unwrap()
+                "ℹ️ No status badge found or already up to date in {}",
+                readme_path.display()
             );
         }
     }

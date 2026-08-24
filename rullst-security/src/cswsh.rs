@@ -146,7 +146,14 @@ pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use axum::http::Request as HttpRequest;
+    use axum::{Router, body::Body, http::Request as HttpRequest, middleware, routing::get};
+    use tower::ServiceExt;
+
+    fn guarded_app() -> Router {
+        Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn(cswsh_guard_middleware))
+    }
 
     #[tokio::test]
     async fn test_cswsh_valid_origin() {
@@ -167,6 +174,37 @@ mod tests {
         let malicious = NormalizedOrigin::parse("https://localhost.evil.example").unwrap();
         assert!(!malicious.matches_host("localhost"));
         assert!(!malicious.matches_host("127.0.0.1"));
+
+        let deceptive_ip = NormalizedOrigin::parse("http://127.0.0.1.evil.example").unwrap();
+        assert!(!deceptive_ip.matches_host("127.0.0.1"));
+    }
+
+    #[tokio::test]
+    async fn middleware_rejects_a_deceptive_localhost_origin() {
+        let request = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "localhost")
+            .header(header::ORIGIN, "https://localhost.evil.example")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = guarded_app().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn middleware_accepts_only_the_exact_same_host_by_default() {
+        let request = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "localhost:3000")
+            .header(header::ORIGIN, "http://localhost:3000")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = guarded_app().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[test]

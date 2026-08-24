@@ -21,6 +21,7 @@ pub mod middlewares;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    controllers::billing_controller::initialize_billing_provider()?;
     let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
@@ -37,14 +38,17 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         get("/register" => controllers::auth_controller::register_view),
         post("/register" => controllers::auth_controller::register_submit),
         get("/logout" => controllers::auth_controller::logout),
-        get("/billing/checkout" => controllers::billing_controller::checkout_redirect),
     ];
 
-    Ok(router.route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
-        .route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))
-    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    Ok(router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/billing/checkout", rullst::routing::get(controllers::billing_controller::checkout_redirect)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/billing/portal", rullst::routing::get(controllers::billing_controller::portal_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
+        .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus))
 }}
@@ -118,6 +122,7 @@ pub mod pages;
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
+    controllers::billing_controller::initialize_billing_provider()?;
 
     let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
@@ -135,14 +140,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/register" => controllers::auth_controller::register_view),
         post("/register" => controllers::auth_controller::register_submit),
         get("/logout" => controllers::auth_controller::logout),
-        get("/billing/checkout" => controllers::billing_controller::checkout_redirect),
     ];
 
-    let router = router.route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
-        .route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))
-    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/billing/checkout", rullst::routing::get(controllers::billing_controller::checkout_redirect)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/billing/portal", rullst::routing::get(controllers::billing_controller::portal_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
+        .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook)))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus);
 

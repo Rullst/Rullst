@@ -143,7 +143,12 @@ pub fn execute_upload_step(
     scp_args.push("StrictHostKeyChecking=accept-new".to_string());
     let bin_name = std::path::Path::new(local_bin)
         .file_name()
-        .unwrap()
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "deployment binary path has no file name",
+            )
+        })?
         .to_string_lossy();
     if bin_name.is_empty()
         || bin_name.starts_with('-')
@@ -151,13 +156,11 @@ pub fn execute_upload_step(
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
     {
-        println!(
-            "{}",
-            "❌ Error: Invalid binary name for deployment. Only ASCII alphanumeric characters, dots, underscores, and dashes are allowed."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "invalid deployment binary name: use only ASCII alphanumeric characters, dots, underscores, and dashes",
+        )
+        .into());
     }
     scp_args.push("--".to_string());
     scp_args.push(local_bin.to_string());

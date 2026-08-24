@@ -79,23 +79,23 @@ pub fn render_pricing_page(
                                     <span class="feature-tag tag-cap">"rullst-capital"</span>
                                 </h1>
                                 <p style="color: var(--text-muted); max-width: 800px; margin: 0;">
-                                    "Sovereign monetization in pure Rust: tier quotas with " <code>"Billable"</code> " trait, cryptographic HMAC webhook auditing, and built-in integration across 11 global payment providers (Brazil Pix, Stripe, Lemon Squeezy, Alipay China, Polar, Paddle, Razorpay, Web3 Crypto, and International Payouts)."
+                                    "Billing demonstrations in Rust: tier quotas with the " <code>"Billable"</code> " trait, verified webhook primitives, and an offline catalogue of payment-provider adapters. Capabilities vary by adapter and live credentials are never used by this page."
                                 </p>
                             </div>
                         </div>
 
                         <div class="hero-stats">
                             <span class="stat-badge live">
-                                "🟢 " <strong>{format!("{} / {} Gateways Ready", configured_count, total_count)}</strong>
+                                "🔐 " <strong>{format!("{} / {} Credential Sets Detected", configured_count, total_count)}</strong>
                             </span>
                             <span class="stat-badge">
-                                "⚡ Pix 0.00% Fee (InfinitePay Brazil)"
+                                "⚡ Pix adapter (verify current provider terms)"
                             </span>
                             <span class="stat-badge">
-                                "🇨🇳 Alipay Cross-Border (> 1.3B Users)"
+                                "🇨🇳 Alipay offline mock; live RSA2 is disabled"
                             </span>
                             <span class="stat-badge">
-                                "🧾 100% Tax Auto (Global MoR)"
+                                "🧾 Provider tax features vary by contract"
                             </span>
                         </div>
 
@@ -136,7 +136,7 @@ pub fn render_pricing_page(
                                     <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.25rem; line-height: 1.7;">
                                         <li>"Unlimited Stories & Multi-tenant"</li>
                                         <li>"Full Studio & Nexus CMS Control Room"</li>
-                                        <li>"Automated SPED NFS-e / DPS Invoicing"</li>
+                                        <li>"Offline DPS XML preview (not an issued NFS-e)"</li>
                                     </ul>
                                 </div>
                                 <a href="#checkout-simulator" class="btn btn-emerald" style="width: 100%; text-align: center; margin-top: 1rem;">"Enterprise Contract"</a>
@@ -146,10 +146,10 @@ pub fn render_pricing_page(
 
                     <div id="checkout-simulator" class="card checkout-box">
                         <h2 class="card-title" style="margin-bottom: 0.5rem; color: #38bdf8;">
-                            "🚀 Real-Time Checkout Session Simulator"
+                            "🧪 Offline Checkout Fixture Explorer"
                         </h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
-                            "Select any of the 11 supported providers to trigger compiled session generation via " <code>"rullst-capital"</code> ":"
+                            "Select an adapter to exercise deterministic mock behavior through " <code>"rullst-capital"</code> ". This page does not contact a live payment service:"
                         </p>
 
                         <form method="POST" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
@@ -159,7 +159,7 @@ pub fn render_pricing_page(
                                     <option value="infinitepay">"🇧🇷 InfinitePay (Pix 0% & Brazil Domestic Cards)"</option>
                                     <option value="alipay">"🇨🇳 Alipay (支付宝 / Alipay+ China & Asia)"</option>
                                     <option value="stripe">"🌐 Stripe (Global Cards, Apple/Google Pay)"</option>
-                                    <option value="lemonsqueezy">"🍋 Lemon Squeezy (MoR Global Tax 100%)"</option>
+                                    <option value="lemonsqueezy">"🍋 Lemon Squeezy (MoR adapter)"</option>
                                     <option value="polar">"⚡ Polar.sh (Open Source & Developer MoR)"</option>
                                     <option value="paddle">"🛡️ Paddle (Enterprise Global B2B MoR)"</option>
                                     <option value="mercadopago">"🌎 Mercado Pago (Latin America Regional)"</option>
@@ -197,10 +197,10 @@ pub fn render_pricing_page(
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                             <div>
                                 <h2 class="card-title" style="margin: 0;">
-                                    "💳 11 Connected Gateways in Rullst Capital"
+                                    "💳 Payment Adapter Catalogue in Rullst Capital"
                                 </h2>
                                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.35rem;">
-                                    "Zero-panic architecture with strong typing, constant-time HMAC signature verification, and automated sandbox fallbacks."
+                                    "Strongly typed adapters with explicit offline credentials. Live capability and webhook requirements are documented and tested per provider."
                                 </p>
                             </div>
                             <div>
@@ -229,9 +229,9 @@ pub fn render_pricing_page(
                     </div>
 
                     <div class="card" style="margin-top: 2rem;">
-                        <h2 class="card-title">"🇧🇷 Fiscal Engine: Real SPED DPS XML & XMLDSig Signature"</h2>
+                        <h2 class="card-title">"🇧🇷 Fiscal Module: Contained Offline DPS Preview"</h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem;">
-                            "Rullst Capital generates standardized Declarações de Prestação de Serviços (DPS v1.0.0) XML according to Brazilian Receita Federal standards with W3C XMLDSig digital signatures in pure Rust."
+                            "This fixture demonstrates escaped DPS XML construction only. It is not signed, transmitted, homologated, or authorized. Homologation and production fail closed until the complete official integration is independently verified."
                         </p>
                         <div class="code-box" style="margin-top: 1rem;">
                             { xml_snippet }
@@ -370,7 +370,7 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
         let action_btn = if is_valid_url {
             html! {
                 <a href={&url} target="_blank" rel="noopener noreferrer" class="btn btn-emerald" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
-                    "Open Checkout at Provider ↗"
+                    "Inspect Mock URL ↗"
                 </a>
             }
         } else {
@@ -381,11 +381,11 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
             <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <span style="font-weight: 700; color: #34d399; font-size: 0.95rem;">
-                        "✅ Checkout Session Generated Successfully for: " <strong>{provider.to_uppercase()}</strong>
+                        "🧪 Offline Adapter Result for: " <strong>{provider.to_uppercase()}</strong>
                     </span>
-                    <span class="stat-badge live">"Status: 200 OK"</span>
+                    <span class="stat-badge live">"OFFLINE FIXTURE"</span>
                 </div>
-                <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0.25rem 0;">"Session Redirect URL:"</p>
+                <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0.25rem 0;">"Adapter output (no live request was made):"</p>
                 <div class="code-box" style="margin-top: 0.35rem; color: #a7f3d0;">
                     {safe_url}
                 </div>

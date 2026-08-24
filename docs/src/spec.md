@@ -43,6 +43,11 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 ## ⚡ 3. Core API Specifications
 
+`rullst-core` is runtime-only by default. Database integration is selected with
+the independent `orm` and `queue-sqlite` features. Crates such as Studio and
+Nexus must request the features they use explicitly; the `rullst` application
+umbrella enables both in its default feature set.
+
 ### 3.1. Server & Routing (`rullst::routing`)
 
 * **Routing Macro:** central routing declared via the `routes!` macro, wrapping Axum routing handlers.
@@ -236,7 +241,7 @@ Any scaffold integrating third-party services generates a `.env` with commented 
 
 ## 💳 13. Multi-Provider Billing & National Fiscal Engine (`rullst-capital`)
 
-`rullst-capital` provides unified subscription management, multi-gateway payments, contractor payouts, and zero-cost digital invoicing (NFS-e Nacional):
+`rullst-capital` provides unified subscription management, multi-gateway payments, contractor payouts, and a contained offline preview of NFS-e Nacional data structures. Live fiscal authorization is roadmap work and must fail closed.
 
 ### 13.1. Provider Architecture
 All billing integrations implement one or more decoupled asynchronous traits:
@@ -245,13 +250,13 @@ All billing integrations implement one or more decoupled asynchronous traits:
 * `PayoutProvider`: Multi-currency contractor payouts, recipient verification, transfer tracking.
 
 ### 13.2. Supported Gateways & Mock Fallback Standard
-Supported gateways include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, PicPay, Razorpay, Polar, Paddle, Wise, Coinbase Commerce, and Alipay**.
+Provider adapters include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, PicPay, Razorpay, Polar, Paddle, Wise, Coinbase Commerce, and Alipay**. Each adapter documents its implemented live capabilities; an adapter's presence is not a claim that every payment, subscription, payout, portal, or webhook operation is available.
 * **Mock Invariant:** All constructors (`new(impl Into<String>, ...)`) must seamlessly fall back to an offline deterministic mock sandbox when initialized with empty or `mock_*` credentials.
 
-### 13.3. Receita Federal NFS-e Nacional Engine (`FiscalEngine`)
-* **XML DPS Builder:** Constructs standard Declaracao de Prestacao de Servicos (DPS) XML according to the Receita Federal national standard with XML entity sanitization (`&amp;`, `&lt;`, `&gt;`).
-* **XMLDSig ICP-Brasil Signer:** Canonicalizes the `<infDPS>` element, computes SHA-256 digest, and signs with X.509 PKCS#12 (`.pfx`) certificates to produce enveloped W3C XMLDSig signatures.
-* **SEFIN Transmission Client:** Transmits DPS to national endpoints (`Homologation` and `Production`), parsing protocol tokens and authorized NFS-e numbers.
+### 13.3. NFS-e Nacional Contained Preview (`FiscalEngine`)
+* **Offline DPS Fixture:** Builds escaped DPS-shaped XML for deterministic local tests. It is not validated against official XSDs and is not an authorized invoice.
+* **Explicit Mock Result:** Only `NfseEnvironment::Mock` executes and returns `FiscalResponseKind::OfflineMock` with a non-authorized identifier.
+* **Fail-Closed Live Modes:** `Homologation` and `Production` return a typed `Unsupported` error until PKCS#12 handling, XML C14N/XMLDSig, XSD validation, mTLS, strict response parsing, and official end-to-end homologation are implemented and independently verified.
 
 ---
 
@@ -260,7 +265,7 @@ Supported gateways include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, Pic
 `rullst-security` delivers defense-in-depth security layers designed to protect applications without requiring external proxy dependencies:
 
 ### 14.1. Mandatory Middleware Layers
-* `SecureHeadersLayer`: Enforces OWASP A+ security headers (CSP with nonces, HSTS, X-Frame-Options, Permissions-Policy).
+* `SecureHeadersLayer`: Applies a strict security-header baseline with per-response CSP nonces, HSTS, frame restrictions, and Permissions-Policy. External scanners remain environment-dependent; the framework does not guarantee a particular third-party score.
 * `WafMiddleware`: Deep-inspects inbound URI query strings and request bodies for SQL Injection (SQLi), Cross-Site Scripting (XSS), Path Traversal, and Command Injection.
 * `LoginJailLayer`: Tarpit rate-limiting middleware that exponentially delays brute-force authentication attacks on login routes.
 * `DlpInterceptor`: Data Loss Prevention engine that masks credit card numbers, CPF/CNPJ documents, and private API keys from outgoing HTTP responses and structured logs.
@@ -275,15 +280,15 @@ Supported gateways include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, Pic
 
 ## 🤖 15. AI Agent & LLM Orchestration (`rullst-ai`)
 
-`rullst-ai` provides a high-throughput, provider-agnostic LLM client for production AI workflows:
+`rullst-ai` provides a provider-agnostic client with explicit provider capability boundaries and deterministic offline fixtures:
 
 ### 15.1. Universal Provider Interface
-Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** via a unified `LlmClient` interface.
+Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** through the guarded `AiClient` application interface and the lower-level `AiProvider` trait.
 
 ### 15.2. Safety & Guardrails
 * **Prompt Injection Filter:** Real-time token heuristics detecting jailbreak and system-prompt leak attempts.
 * **PII Redaction:** Automatically scrubs personal identifiable information before outbound LLM transmission.
-* **Structured Outputs:** Native JSON schema enforcement for function calling and tool invocation.
+* **Structured Outputs:** Separates parseable JSON mode from explicit JSON Schema output. Native schema requests fail with `UnsupportedCapability` when a provider cannot enforce them.
 
 ---
 
@@ -296,14 +301,14 @@ Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** via a
 * **Design System:** Unified dark glassmorphic `studio_layout` with live status pulse badges and zero client-side build steps.
 
 ### 16.2. Rullst Nexus (`/nexus`)
-* Auto-generated administrative interface with dynamic entity CRUD, role-based access control, and an embedded AI Admin Assistant (`/nexus/chat`).
+* Auto-generated administrative interface with dynamic entity CRUD and an embedded AI Admin Assistant (`/nexus/chat`). Nexus is fail-closed without an explicit authenticated access policy, applies an administrator role gate to every route, and enforces hidden/read-only field policy in handlers as well as views.
 
 ---
 
 ## 📡 17. Edge Sensor Protocols & Message Queues (`rullst-iot` & `rullst-connect`)
 
 * **`rullst-iot`**: `no_std` telemetry models, protocol frame helpers, and strict Ed25519-signed firmware manifest verification. MQTT transport, hardware HSM backends, firmware flashing/bootloader control, and post-quantum cryptography remain roadmap work; deterministic `Simulated*` fixtures require the explicit `experimental-simulators` feature and carry no security or protocol guarantee.
-* **`rullst-connect`**: Unified asynchronous abstractions for AMQP (RabbitMQ), Redis Streams, Apache Kafka, WebSockets pub/sub, and Server-Sent Events (SSE).
+* **`rullst-connect`**: OAuth2/OIDC and social-login provider adapters with strict redirect/discovery validation, deterministic offline credentials, and rotating JWKS caches. Queue transports and application WebSockets/SSE currently live in `rullst-core`; Kafka, RabbitMQ, and Redis Streams adapters in Connect remain roadmap work.
 
 ---
 

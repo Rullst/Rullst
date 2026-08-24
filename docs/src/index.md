@@ -2,7 +2,7 @@
 
 Rullst is an extremely fast, modular, and friendly Full-Stack web framework for Rust. It includes everything you need to take your application from scratch to production without headaches.
 
-> "Pragmatic, Built for Developer Happiness, and Production-Ready."
+> "Pragmatic, built for developer happiness, and production-minded."
 
 ## Documentation Hub
 

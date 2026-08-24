@@ -1,54 +1,56 @@
-# Rullst Nexus ⚙️
+# Rullst Nexus
 
-`rullst-nexus` is the auto-generated, dark-mode Content Management System (CMS) and Admin Panel for the Rullst Framework. It dynamically inspects your Rust structs and database schema to build a full-featured admin interface instantly.
+`rullst-nexus` is Rullst's authenticated administrative CMS for registered `rullst-orm`
+models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
+telemetry, and the optional AI assistant.
 
-## ✨ Features
+## Secure mounting
 
-- **Zero-Config Admin Panel:** Generates complete CRUD (Create, Read, Update, Delete) interfaces directly from your `rullst-orm` models.
-- **Wasm Islands:** Uses Rust-based WebAssembly for hyper-fast, SPA-like interactions without writing a single line of JavaScript.
-- **Rich Media Support:** Built-in drag-and-drop file uploads, Markdown editors, and image previews for `Text` and `Blob` columns.
-- **Relational Awareness:** Automatically understands and provides dropdowns or multi-selects for `HasMany` and `BelongsTo` relationships.
-- **Role-Based Protection:** Native integration with `rullst-auth` ensures only authenticated Administrators can access the Nexus dashboard.
+Nexus is fail-closed: `try_build()` returns an error until an explicit access policy is selected.
+The built-in Basic Auth policy rejects weak/example credentials, compares both credential fields in
+constant time, limits failures by verified socket peer, and locks peers after repeated failures.
 
-## 🚀 Quickstart
-
-Add `rullst-nexus` to your project:
-
-```bash
-cargo add rullst-nexus
-```
-
-### Exposing Nexus
-
-You can easily mount Nexus onto an existing Router. By default, it inspects the global `Orm` pool to map all registered tables.
+Basic credentials are only encoding, not encryption. The middleware therefore accepts them only on
+an HTTPS request or when trusted deployment middleware inserts `NexusVerifiedTls`. This marker is a
+security assertion: never create it solely because an untrusted request supplied
+`X-Forwarded-Proto` or another forwarding header.
 
 ```rust
-use rullst::{Router, Server};
-use rullst_nexus::NexusLayer;
-use rullst_orm::Orm;
-use rullst_auth::{AuthLayer, SessionStore};
+use axum::{Extension, Router};
+use rullst_core::Server;
+use rullst_nexus::{
+    Nexus, NexusAuthPolicy, NexusVerifiedTls,
+};
 
 #[tokio::main]
-async fn main() {
-    let pool = Orm::pool();
-    let session_store = SessionStore::postgres(pool.clone());
-    
-    let admin_app = Router::new()
-        // Ensure only admins can access Nexus
-        .layer(AuthLayer::new(session_store).require_role("admin"))
-        // Mount Nexus
-        .nest("/admin", NexusLayer::new(pool).into_router());
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let policy = NexusAuthPolicy::basic_from_env()?;
+    let nexus = Nexus::new()
+        // .register::<User>()
+        .with_auth_policy(policy)
+        .try_build()?;
 
-    Server::new().route("/", admin_app).run().await;
+    // This example assumes a trusted reverse proxy has already terminated and required TLS.
+    // Insert the marker only at that trusted boundary.
+    let app = Router::new()
+        .nest("/nexus", nexus)
+        .layer(Extension(NexusVerifiedTls::from_trusted_tls_termination()));
+
+    Server::new(app).run(3000).await?;
+    Ok(())
 }
 ```
 
-Now, navigate to `http://localhost:3000/admin` to manage your application data!
+Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`; the password must contain
+at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth
+guard requires so a forged forwarding header cannot choose the rate-limit identity.
 
-## 🔐 Security Audit
+For local development only, debug builds can explicitly select
+`NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
+loopback socket peer and is rejected in release builds.
 
-`rullst-nexus` generates UI forms dynamically. To protect against CSRF (Cross-Site Request Forgery) and XSS (Cross-Site Scripting), it utilizes automatic CSRF token injection in forms and strictly escapes all user-generated content rendered in the Admin Panel tables. Modifying database records through Nexus passes through the same `rullst-orm` validations as your public API.
+## Security boundaries
 
-## 📚 Documentation
-
-For advanced usage, customizing the Admin Panel's CSS, and overriding default form widgets, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+Nexus includes CSRF protection and escapes untrusted values rendered into admin pages. Applications
+must still place the complete production server behind TLS, install Rullst's secure headers and WAF,
+and apply authorization/ownership policy to any custom routes mounted next to Nexus.

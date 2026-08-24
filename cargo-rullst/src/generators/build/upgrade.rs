@@ -128,31 +128,19 @@ fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Err
     if cargo_path.exists() {
         let mut cargo_content = std::fs::read_to_string(cargo_path)?;
 
-        static RE_RULLST: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_rullst = RE_RULLST
-            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#).unwrap());
+        let re_rullst = regex::Regex::new(r#"(?m)^(\s*rullst\s*=\s*)"[^"]+""#)?;
         cargo_content = re_rullst
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"{}"#, &caps[1], latest_version)
-            })
+            .replace_all(&cargo_content, format!(r#"${{1}}"{}""#, latest_version))
             .into_owned();
 
-        static RE_MACROS: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_macros = RE_MACROS
-            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#).unwrap());
+        let re_macros = regex::Regex::new(r#"(?m)^(\s*rullst-macros\s*=\s*)"[^"]+""#)?;
         cargo_content = re_macros
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"{}"#, &caps[1], latest_version)
-            })
+            .replace_all(&cargo_content, format!(r#"${{1}}"{}""#, latest_version))
             .into_owned();
 
-        static RE_ELOQUENT: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re_eloquent = RE_ELOQUENT
-            .get_or_init(|| regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#).unwrap());
+        let re_eloquent = regex::Regex::new(r#"(?m)^(\s*rullst-orm\s*=\s*)"[^"]+""#)?;
         cargo_content = re_eloquent
-            .replace_all(&cargo_content, |caps: &regex::Captures| {
-                format!(r#"{}"{}"#, &caps[1], "6.1.1")
-            })
+            .replace_all(&cargo_content, r#"${1}"6.1.1""#)
             .into_owned();
 
         std::fs::write(cargo_path, cargo_content)?;
@@ -166,37 +154,33 @@ fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
         "\n🔧 Executing self-healing codemod AST & regex rules over project files...".yellow()
     );
 
-    static COMPILED_RULES: std::sync::OnceLock<Vec<(regex::Regex, &'static str, &'static str)>> =
-        std::sync::OnceLock::new();
-    let compiled_rules = COMPILED_RULES.get_or_init(|| {
-        vec![
+    let compiled_rules = vec![
             (
-                regex::Regex::new(r#"\bold_initializer\s*\(\s*\)"#).unwrap(),
+                regex::Regex::new(r#"\bold_initializer\s*\(\s*\)"#)?,
                 "Router::new()",
                 "Legacy old_initializer() -> Router::new()",
             ),
             (
-                regex::Regex::new(r#"\brullst::routing::old_initializer\b"#).unwrap(),
+                regex::Regex::new(r#"\brullst::routing::old_initializer\b"#)?,
                 "rullst::routing::Router::new",
                 "Legacy router initialization path",
             ),
             (
-                regex::Regex::new(r#"\buse\s+sqlx::"#).unwrap(),
+                regex::Regex::new(r#"\buse\s+sqlx::"#)?,
                 "use rullst::db::sqlx::",
                 "Enforce Dependency Shielding for sqlx",
             ),
             (
-                regex::Regex::new(r#"\buse\s+axum::"#).unwrap(),
+                regex::Regex::new(r#"\buse\s+axum::"#)?,
                 "use rullst::server::",
                 "Enforce Dependency Shielding for axum",
             ),
             (
-                regex::Regex::new(r#"\buse\s+tokio::"#).unwrap(),
+                regex::Regex::new(r#"\buse\s+tokio::"#)?,
                 "use rullst::runtime::",
                 "Enforce Dependency Shielding for tokio",
             ),
-        ]
-    });
+        ];
 
     let mut applied_count = 0;
     if Path::new("src").exists() {
@@ -207,7 +191,7 @@ fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
                 let mut file_content = std::fs::read_to_string(path)?;
                 let mut modified = false;
 
-                for (re, replacement, desc) in compiled_rules {
+                for (re, replacement, desc) in &compiled_rules {
                     if re.is_match(&file_content) {
                         file_content = re.replace_all(&file_content, *replacement).into_owned();
                         println!(

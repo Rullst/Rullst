@@ -277,6 +277,18 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
     let has_soft_deletes = parsed.has_soft_deletes;
+    let soft_delete_config = if has_soft_deletes {
+        let Some(config) = parsed.soft_delete.as_ref() else {
+            return syn::Error::new(
+                name.span(),
+                "internal ORM macro error: soft-delete configuration is missing",
+            )
+            .to_compile_error();
+        };
+        Some(config)
+    } else {
+        None
+    };
 
     let hook_before_delete = if !parsed.before_delete.is_empty() {
         let method = syn::Ident::new(&parsed.before_delete, name.span());
@@ -315,11 +327,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let delete_logic = if has_soft_deletes {
-        let cfg = parsed
-            .soft_delete
-            .as_ref()
-            .expect("has_soft_deletes implies a soft_delete config");
+    let delete_logic = if let Some(cfg) = soft_delete_config {
         let delval_expr = if cfg.delval.trim().is_empty() {
             "CURRENT_TIMESTAMP".to_string()
         } else {
@@ -346,11 +354,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         }
     };
 
-    let restore_logic = if has_soft_deletes {
-        let cfg = parsed
-            .soft_delete
-            .as_ref()
-            .expect("has_soft_deletes implies a soft_delete config");
+    let restore_logic = if let Some(cfg) = soft_delete_config {
         let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
             format!("{} = NULL", cfg.column)
         } else {

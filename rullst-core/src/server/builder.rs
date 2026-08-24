@@ -1,8 +1,9 @@
 use crate::Router;
-use crate::scheduler::Scheduler;
+use crate::scheduler::{Scheduler, SchedulerHandle};
 use crate::server::dylib_loader::load_dylib_router;
 use crate::server::hotswap::HotSwapService;
 use crate::server::server_middleware::zstd_static_middleware;
+#[cfg(feature = "orm")]
 use rullst_orm::Orm;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -19,6 +20,14 @@ pub enum ServerError {
     /// A configured database could not be initialized.
     #[error("database initialization failed: {0}")]
     Database(String),
+
+    /// A configured background scheduler could not be started or stopped.
+    #[error("scheduler lifecycle failed: {0}")]
+    Scheduler(#[from] crate::scheduler::SchedulerError),
+
+    /// Traffic Shield monitoring could not be started safely.
+    #[error("traffic shield lifecycle failed: {0}")]
+    TrafficShield(#[from] crate::resilience::TrafficShieldError),
 
     /// The requested listen address is invalid.
     #[error("invalid server listen address `{host}:{port}`")]
@@ -45,20 +54,21 @@ pub enum ServerError {
 #[non_exhaustive]
 /// The central application server builder for Rullst.
 ///
-/// Configures and boots the Axum HTTP server, ORM connection pool, task scheduler,
-/// hot-reload DLL watcher, traffic shield, and rate limiter in a single fluent chain.
+/// Configures and boots the Axum HTTP server, optional ORM connection pool,
+/// task scheduler, hot-reload DLL watcher, traffic shield, and rate limiter in
+/// a single fluent chain.
 ///
 /// # Example
 /// ```rust,ignore
 /// use rullst::{Server, routes, routing::get};
 ///
 /// #[tokio::main]
-/// async fn main() {
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     Server::new(routes![get("/" => || async { "OK" })])
 ///         .with_db("sqlite://app.db")
 ///         .run(3000)
-///         .await
-///         .unwrap();
+///         .await?;
+///     Ok(())
 /// }
 /// ```
 pub struct Server {
@@ -98,7 +108,11 @@ impl Server {
         }
     }
 
-    /// Set a database URL to automatically initialize the Orm connection pool at startup
+    /// Sets a database URL to initialize the ORM connection pool at startup.
+    ///
+    /// This requires the `orm` feature. When Core is compiled without `orm`,
+    /// configuring a database remains a valid builder operation but [`Self::run`]
+    /// fails closed with [`ServerError::Database`].
     pub fn with_db<S: Into<String>>(mut self, db_url: S) -> Self {
         self.db_url = Some(db_url.into());
         self
@@ -139,20 +153,34 @@ impl Server {
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(mut self, port: u16) -> Result<(), ServerError> {
         let dotenv = Self::load_dotenv_values().await?;
+        #[cfg(feature = "orm")]
         let _ = crate::artisan::check_and_run_artisan(vec![], vec![]).await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
 
         self.init_database(&app_config, &dotenv).await?;
-        self.start_scheduler();
-
         let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
+        let scheduler_handle = self.start_scheduler()?;
+        let shield_lifecycle = self.start_traffic_shield()?;
 
-        if let Some(lib_path) = self.hot_reload_lib.take() {
+        let server_result = if let Some(lib_path) = self.hot_reload_lib.take() {
             self.run_hot_reload(lib_path, addr, environment).await
         } else {
             self.run_static(app_config, addr, environment).await
+        };
+
+        if let Some(shield) = shield_lifecycle {
+            shield.shutdown();
+        }
+        let scheduler_result = match scheduler_handle {
+            Some(handle) => handle.shutdown().await.map_err(ServerError::from),
+            None => Ok(()),
+        };
+
+        match server_result {
+            Err(error) => Err(error),
+            Ok(()) => scheduler_result,
         }
     }
 
@@ -185,6 +213,7 @@ impl Server {
         Ok(app_config)
     }
 
+    #[cfg(feature = "orm")]
     #[cfg_attr(mutants, mutants::skip)]
     async fn init_database(
         &mut self,
@@ -216,11 +245,45 @@ impl Server {
         Ok(())
     }
 
+    #[cfg(not(feature = "orm"))]
     #[cfg_attr(mutants, mutants::skip)]
-    fn start_scheduler(&mut self) {
-        if let Some(scheduler) = self.scheduler.take() {
-            scheduler.start();
+    async fn init_database(
+        &mut self,
+        app_config: &crate::config::RullstConfig,
+        dotenv: &HashMap<String, String>,
+    ) -> Result<(), ServerError> {
+        let database_requested = self.db_url.is_some()
+            || app_config.database.url.is_some()
+            || dotenv.contains_key("DATABASE_URL")
+            || read_optional_environment_variable("DATABASE_URL")?.is_some();
+
+        if database_requested {
+            return Err(ServerError::Database(
+                "rullst-core was compiled without the `orm` feature".to_string(),
+            ));
         }
+
+        Ok(())
+    }
+
+    #[cfg_attr(mutants, mutants::skip)]
+    fn start_scheduler(&mut self) -> Result<Option<SchedulerHandle>, ServerError> {
+        self.scheduler
+            .take()
+            .map(Scheduler::start)
+            .transpose()
+            .map_err(ServerError::from)
+    }
+
+    #[cfg_attr(mutants, mutants::skip)]
+    fn start_traffic_shield(
+        &self,
+    ) -> Result<Option<crate::resilience::TrafficShield>, ServerError> {
+        let Some(shield) = self.shield.clone() else {
+            return Ok(None);
+        };
+        shield.start().map_err(ServerError::from)?;
+        Ok(Some(shield))
     }
 
     #[cfg_attr(mutants, mutants::skip)]

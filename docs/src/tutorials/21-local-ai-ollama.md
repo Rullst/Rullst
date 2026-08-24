@@ -1,6 +1,6 @@
 # Tutorial 21: Air-Gapped Local AI with Ollama 🤖
 
-Learn how to configure 100% offline, local LLM integration (via Ollama) for autonomous security classification and self-healing error consoles without cloud API costs or data leaks.
+Learn how to configure a local Ollama endpoint so prompts need not be sent to a cloud LLM. Network isolation and data-flow guarantees still depend on the host and deployment configuration.
 
 ---
 

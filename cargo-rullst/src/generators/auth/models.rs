@@ -15,7 +15,8 @@ pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Err
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
     let migration_template = format!(
-        r##"use rullst::db::schema::{{Schema, Migration}};
+        r##"use rullst::db::{{Orm, sqlx}};
+use rullst::db::schema::{{Schema, Migration}};
 use rullst::db::async_trait;
 
 pub struct MigrationImpl;
@@ -35,7 +36,11 @@ impl Migration for MigrationImpl {{
             table.string("oauth_provider").nullable();
             table.string("oauth_id").nullable();
             table.timestamps();
-        }}).await
+        }}).await?;
+        sqlx::query("CREATE UNIQUE INDEX users_email_unique ON users(email)")
+            .execute(Orm::pool()?)
+            .await?;
+        Ok(())
     }}
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
@@ -67,6 +72,15 @@ pub struct User {
     pub oauth_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+impl User {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst_orm::Error> {
+        Self::query()
+            .where_eq("email", email.to_owned())
+            .first()
+            .await
+    }
 }
 "##;
     fs::write(&model_path, model_template)?;

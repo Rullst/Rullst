@@ -1,4 +1,4 @@
-name: Miri UB Detection
+name: Miri UB Detection (manual informational)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -11,7 +11,7 @@ env:
 
 jobs:
   miri:
-    name: Miri Check (${{ matrix.package }})
+    name: Miri informational (${{ matrix.package }})
     runs-on: ubuntu-latest
     timeout-minutes: 60  # Miri can run indefinitely on heavy async crates; cap each job
     strategy:
@@ -27,7 +27,7 @@ jobs:
           toolchain: nightly
           components: miri
 
-      - name: Run Miri (No Isolation)
+      - name: Run Miri (non-blocking, no isolation)
         working-directory: ${{ matrix.package }}
         continue-on-error: true
         env:

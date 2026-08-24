@@ -4,13 +4,13 @@ version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
-description = "Authentication and authorization engine (JWT, Argon2, Sessions, RBAC) for Rullst."
+description = "Authentication and authorization engine with Argon2, encrypted sessions, WebAuthn, and RBAC."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Rullst/Rullst"
 homepage = "https://rullst.github.io"
 documentation = "https://docs.rs/rullst-auth"
-keywords = ["auth", "jwt", "argon2", "session", "rbac"]
+keywords = ["auth", "webauthn", "argon2", "session", "rbac"]
 categories = ["authentication", "web-programming"]
 
 [features]

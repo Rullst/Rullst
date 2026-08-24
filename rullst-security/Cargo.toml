@@ -36,6 +36,8 @@ subtle = { workspace = true }
 zeroize = { version = "1.8", features = ["derive"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
+chrono = { workspace = true, features = ["clock"] }
+urlencoding = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

@@ -15,6 +15,7 @@ pub enum TaxRegime {
 
 /// Strongly-typed error domain for Rullst Fiscal & NFS-e operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FiscalError {
     /// XML construction or digital signing failure.
     #[error("XML digital signing error: {0}")]

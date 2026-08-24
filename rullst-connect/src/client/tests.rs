@@ -318,6 +318,39 @@ async fn test_reqwest_client_execute() {
 }
 
 #[tokio::test]
+#[cfg(not(miri))]
+async fn default_client_does_not_follow_redirects() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/redirect"))
+        .respond_with(
+            ResponseTemplate::new(302)
+                .insert_header("Location", format!("{}/target", mock_server.uri())),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = ReqwestClient::new();
+    let response = client
+        .execute(HttpRequest {
+            method: "GET".into(),
+            url: format!("{}/redirect", mock_server.uri()),
+            headers: reqwest::header::HeaderMap::new(),
+            form: None,
+            json: None,
+            basic_auth: None,
+            bearer_auth: None,
+        })
+        .await
+        .expect("redirect response");
+
+    assert_eq!(response.status, 302);
+}
+
+#[tokio::test]
 #[cfg(all(not(miri), feature = "retry"))]
 async fn test_reqwest_client_execute_retry() {
     use std::sync::atomic::{AtomicUsize, Ordering};

@@ -24,7 +24,7 @@ resolver = "2"
 [workspace.dependencies]
 # Internal workspace crates
 rullst = { version = "12.0.0", path = "rullst" }
-rullst-core = { version = "12.0.0", path = "rullst-core" }
+rullst-core = { version = "12.0.0", path = "rullst-core", default-features = false }
 rullst-orm = { version = "12.0.0", path = "rullst-orm" }
 rullst-orm-macros = { version = "12.0.0", path = "rullst-orm-macros" }
 rullst-macros = { version = "12.0.0", path = "rullst-macros" }

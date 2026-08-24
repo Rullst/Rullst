@@ -1,0 +1,149 @@
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rullst::server::{IntoResponse, Next, Request, Response, StatusCode, header};
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::fmt;
+
+const MIN_SECRET_BYTES: usize = 32;
+
+#[derive(Debug)]
+pub enum JwtConfigError {
+    Missing(&'static str),
+    WeakSecret,
+    InvalidTimestamp,
+    Encode(String),
+}
+
+impl fmt::Display for JwtConfigError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Missing(name) => write!(formatter, "{name} must be configured"),
+            Self::WeakSecret => formatter.write_str(
+                "JWT_SECRET must contain at least 32 bytes and 12 distinct characters",
+            ),
+            Self::InvalidTimestamp => formatter.write_str("system time cannot be represented"),
+            Self::Encode(error) => write!(formatter, "JWT encoding failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for JwtConfigError {}
+
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct JwtConfig {
+    secret: String,
+    issuer: String,
+    audience: String,
+}
+
+impl JwtConfig {
+    pub fn from_env() -> Result<Self, JwtConfigError> {
+        let secret = std::env::var("JWT_SECRET")
+            .map_err(|_| JwtConfigError::Missing("JWT_SECRET"))?;
+        let issuer = std::env::var("JWT_ISSUER")
+            .map_err(|_| JwtConfigError::Missing("JWT_ISSUER"))?
+            .trim()
+            .to_owned();
+        let audience = std::env::var("JWT_AUDIENCE")
+            .map_err(|_| JwtConfigError::Missing("JWT_AUDIENCE"))?
+            .trim()
+            .to_owned();
+
+        let distinct = secret.bytes().collect::<HashSet<_>>().len();
+        let is_mock = secret
+            .get(..5)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("mock_"));
+        if secret.as_bytes().len() < MIN_SECRET_BYTES
+            || distinct < 12
+            || is_mock
+        {
+            return Err(JwtConfigError::WeakSecret);
+        }
+        if issuer.trim().is_empty() {
+            return Err(JwtConfigError::Missing("JWT_ISSUER"));
+        }
+        if audience.trim().is_empty() {
+            return Err(JwtConfigError::Missing("JWT_AUDIENCE"));
+        }
+
+        Ok(Self {
+            secret,
+            issuer,
+            audience,
+        })
+    }
+
+    fn validation(&self) -> Validation {
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.set_audience(&[self.audience.as_str()]);
+        validation.set_issuer(&[self.issuer.as_str()]);
+        validation.set_required_spec_claims(&["exp", "iat", "iss", "aud", "sub"]);
+        validation.validate_exp = true;
+        validation.leeway = 30;
+        validation
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub iss: String,
+    pub aud: String,
+    pub iat: u64,
+    pub exp: u64,
+}
+
+pub async fn jwt_middleware(mut request: Request, next: Next) -> Response {
+    let Some(token) = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .filter(|token| !token.is_empty())
+    else {
+        return (StatusCode::UNAUTHORIZED, "Missing or invalid bearer token").into_response();
+    };
+
+    let config = match JwtConfig::from_env() {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("JWT configuration error: {error}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(config.secret.as_bytes()),
+        &config.validation(),
+    ) {
+        Ok(token_data) => {
+            request.extensions_mut().insert(token_data.claims);
+            next.run(request).await
+        }
+        Err(_) => (StatusCode::UNAUTHORIZED, "Invalid or expired token").into_response(),
+    }
+}
+
+pub fn generate_token(user_id: impl Into<String>) -> Result<String, JwtConfigError> {
+    let config = JwtConfig::from_env()?;
+    let now = chrono::Utc::now().timestamp();
+    let issued_at = u64::try_from(now).map_err(|_| JwtConfigError::InvalidTimestamp)?;
+    let expires_at = issued_at
+        .checked_add(24 * 60 * 60)
+        .ok_or(JwtConfigError::InvalidTimestamp)?;
+    let claims = Claims {
+        sub: user_id.into(),
+        iss: config.issuer.clone(),
+        aud: config.audience.clone(),
+        iat: issued_at,
+        exp: expires_at,
+    };
+
+    encode(
+        &Header::new(Algorithm::HS256),
+        &claims,
+        &EncodingKey::from_secret(config.secret.as_bytes()),
+    )
+    .map_err(|error| JwtConfigError::Encode(error.to_string()))
+}

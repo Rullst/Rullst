@@ -29,7 +29,8 @@ fn test_mfa_secret_generation_and_totp_verification() {
     // Verify current code
     assert!(verify_totp_code(&secret, &code));
     // Verify completely wrong code
-    assert!(!verify_totp_code(&secret, "999999"));
+    let wrong_code = if code == "999999" { "999998" } else { "999999" };
+    assert!(!verify_totp_code(&secret, wrong_code));
 
     // Otpauth URI
     let uri = build_otpauth_uri("alice@example.com", "RullstApp", &secret);

@@ -1,5 +1,6 @@
 /// Strongly-typed error domain for Rullst Capital and SaaS billing operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CapitalError {
     /// Authentication with payment provider failed.
     #[error("Authentication failed: {0}")]

@@ -4,9 +4,9 @@
 
 ## ✨ Features
 
-- **Zero-Cost Abstractions:** Extends `axum` routing for sub-millisecond response times without sacrificing safety.
-- **Rullst Studio Integration:** Embedded live-monitoring and tracing spans to observe application behavior in real-time.
-- **Unified Error Handling:** The `AppError` enum standardizes error propagation, guaranteeing a "Zero-Panic" runtime environment and consistent API responses.
+- **Typed Axum Integration:** Wraps Axum routing while retaining access to the underlying router and middleware ecosystem.
+- **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
+- **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
 
@@ -20,29 +20,35 @@ If you are developing a plugin or advanced middleware for the Rullst ecosystem, 
 cargo add rullst-core
 ```
 
-### Accessing Global State
+Core is runtime-only by default. Add just the database capabilities the
+application needs:
+
+```toml
+[dependencies]
+rullst-core = { version = "12", features = ["orm", "queue-sqlite"] }
+```
+
+Enable `orm`, `queue-sqlite`, `queue-redis`, or `telemetry` only when that
+integration is required. The primary `rullst` crate keeps `orm` and
+`queue-sqlite` in its default feature set for application compatibility.
+
+### Minimal HTTP Server
 
 ```rust
-use rullst_core::{State, AppError};
-use rullst_core::http::Json;
-use serde::Serialize;
+use rullst_core::{Router, Server};
+use rullst_core::routing::get;
 
-#[derive(Serialize)]
-struct Status {
-    healthy: bool,
-}
-
-pub async fn health_check(state: State<MyGlobalState>) -> Result<Json<Status>, AppError> {
-    // Safely access global configuration without unwrap()
-    let is_db_ready = state.db.is_ready().await?;
-    
-    Ok(Json(Status { healthy: is_db_ready }))
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let app = Router::new().route("/health", get(|| async { "ok" }));
+    Server::new(app).run(3000).await?;
+    Ok(())
 }
 ```
 
 ## 🔐 Security Audit
 
-`rullst-core` is the most audited crate in the framework. It undergoes continuous fuzzing against malformed routing requests and is structurally verified against memory leaks using Miri. All functions returning `Result` strictly avoid panicking on corrupted payloads.
+Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs within their declared scopes. Consult the exact workflow run and commit for evidence; these tools do not prove the absence of every panic, leak, or vulnerability.
 
 ## 📚 Documentation
 

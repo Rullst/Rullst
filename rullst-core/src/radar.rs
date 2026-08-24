@@ -208,20 +208,32 @@ pub fn render_prometheus_metrics(snapshot: &RadarSnapshot) -> String {
 rullst_uptime_seconds {}
 "###,
         snapshot.uptime_seconds
-    )
-    ;
+    );
 
     if let Some(memory) = snapshot.memory_rss_mb {
-        let _ = write!(metrics, "\n# HELP rullst_memory_rss_bytes Process RSS memory consumption in bytes.\n# TYPE rullst_memory_rss_bytes gauge\nrullst_memory_rss_bytes {}\n", (memory * 1024.0 * 1024.0) as u64);
+        let _ = write!(
+            metrics,
+            "\n# HELP rullst_memory_rss_bytes Process RSS memory consumption in bytes.\n# TYPE rullst_memory_rss_bytes gauge\nrullst_memory_rss_bytes {}\n",
+            (memory * 1024.0 * 1024.0) as u64
+        );
     }
     if let Some(cpu) = snapshot.cpu_usage_percent {
-        let _ = write!(metrics, "\n# HELP rullst_cpu_usage_percent Process CPU utilization percentage.\n# TYPE rullst_cpu_usage_percent gauge\nrullst_cpu_usage_percent {cpu:.2}\n");
+        let _ = write!(
+            metrics,
+            "\n# HELP rullst_cpu_usage_percent Process CPU utilization percentage.\n# TYPE rullst_cpu_usage_percent gauge\nrullst_cpu_usage_percent {cpu:.2}\n"
+        );
     }
     if let Some(tasks) = snapshot.active_tokio_tasks {
-        let _ = write!(metrics, "\n# HELP rullst_tokio_active_tasks Total active Tokio tasks count.\n# TYPE rullst_tokio_active_tasks gauge\nrullst_tokio_active_tasks {tasks}\n");
+        let _ = write!(
+            metrics,
+            "\n# HELP rullst_tokio_active_tasks Total active Tokio tasks count.\n# TYPE rullst_tokio_active_tasks gauge\nrullst_tokio_active_tasks {tasks}\n"
+        );
     }
     if let Some(latency) = snapshot.tokio_latency_micros {
-        let _ = write!(metrics, "\n# HELP rullst_tokio_latency_microseconds Observed Tokio scheduler yield latency in microseconds.\n# TYPE rullst_tokio_latency_microseconds gauge\nrullst_tokio_latency_microseconds {latency}\n");
+        let _ = write!(
+            metrics,
+            "\n# HELP rullst_tokio_latency_microseconds Observed Tokio scheduler yield latency in microseconds.\n# TYPE rullst_tokio_latency_microseconds gauge\nrullst_tokio_latency_microseconds {latency}\n"
+        );
     }
     metrics
 }

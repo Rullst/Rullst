@@ -1,3 +1,7 @@
+mod rate_limit;
+#[cfg(test)]
+mod tests;
+
 use axum::{
     body::Body,
     extract::{ConnectInfo, Request},
@@ -6,7 +10,12 @@ use axum::{
     response::Response,
 };
 use base64::Engine;
-use std::{fmt, net::SocketAddr};
+use rate_limit::{AuthGuardStatus, BasicAuthRateLimiter};
+pub use rate_limit::{
+    NEXUS_BASIC_AUTH_FAILURE_WINDOW, NEXUS_BASIC_AUTH_LOCKOUT, NEXUS_BASIC_AUTH_MAX_FAILURES,
+    NEXUS_BASIC_AUTH_MAX_PEERS,
+};
+use std::{fmt, net::SocketAddr, sync::Arc, time::Duration};
 use subtle::ConstantTimeEq;
 
 pub(crate) const NEXUS_ADMIN_ROLE: &str = "NexusAdmin";
@@ -99,6 +108,7 @@ impl std::error::Error for NexusBuildError {}
 pub struct NexusBasicAuth {
     pub(crate) username: String,
     pub(crate) password: String,
+    rate_limiter: Arc<BasicAuthRateLimiter>,
 }
 
 impl NexusBasicAuth {
@@ -112,7 +122,31 @@ impl NexusBasicAuth {
         validate_username(&username)?;
         validate_password(&password)?;
 
-        Ok(Self { username, password })
+        Ok(Self {
+            username,
+            password,
+            rate_limiter: Arc::new(BasicAuthRateLimiter::default()),
+        })
+    }
+}
+
+/// Capability inserted into requests only after direct TLS or a trusted TLS terminator has been
+/// verified by the application.
+///
+/// Basic credentials are cleartext at the HTTP layer. Nexus therefore refuses Basic Auth unless
+/// the request URI is HTTPS or this marker is present. Applications behind a reverse proxy must
+/// insert this extension only from middleware that trusts the socket peer and verifies the
+/// terminator's transport metadata; never derive it from an arbitrary forwarded header.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy)]
+pub struct NexusVerifiedTls {
+    _private: (),
+}
+
+impl NexusVerifiedTls {
+    /// Asserts that a trusted listener or reverse proxy already authenticated the TLS transport.
+    pub const fn from_trusted_tls_termination() -> Self {
+        Self { _private: () }
     }
 }
 
@@ -201,11 +235,36 @@ pub(crate) async fn basic_auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
+    if !has_verified_tls(&request) {
+        return plaintext_basic_auth_response();
+    }
+
+    let Some(peer_ip) = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|connection| connection.0.ip())
+    else {
+        return status_response(StatusCode::SERVICE_UNAVAILABLE);
+    };
+
+    match credentials.rate_limiter.status(peer_ip) {
+        AuthGuardStatus::Allowed => {}
+        AuthGuardStatus::Locked(remaining) => return lockout_response(remaining),
+        AuthGuardStatus::Unavailable => return status_response(StatusCode::SERVICE_UNAVAILABLE),
+    }
+
     if has_valid_basic_credentials(&request, &credentials) {
+        if !credentials.rate_limiter.record_success(peer_ip) {
+            return status_response(StatusCode::SERVICE_UNAVAILABLE);
+        }
         request.extensions_mut().insert(NexusPrincipal);
         next.run(request).await
     } else {
-        unauthorized_response()
+        match credentials.rate_limiter.record_failure(peer_ip) {
+            AuthGuardStatus::Allowed => unauthorized_response(),
+            AuthGuardStatus::Locked(remaining) => lockout_response(remaining),
+            AuthGuardStatus::Unavailable => status_response(StatusCode::SERVICE_UNAVAILABLE),
+        }
     }
 }
 
@@ -228,7 +287,9 @@ fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) 
         .headers()
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Basic "))
+        .and_then(|value| value.split_once(' '))
+        .filter(|(scheme, _)| scheme.eq_ignore_ascii_case("basic"))
+        .map(|(_, encoded)| encoded)
     else {
         return false;
     };
@@ -245,6 +306,11 @@ fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) 
 
     constant_time_equal(username.as_bytes(), credentials.username.as_bytes())
         & constant_time_equal(password.as_bytes(), credentials.password.as_bytes())
+}
+
+fn has_verified_tls(request: &Request) -> bool {
+    request.uri().scheme_str() == Some("https")
+        || request.extensions().get::<NexusVerifiedTls>().is_some()
 }
 
 fn constant_time_equal(candidate: &[u8], expected: &[u8]) -> bool {
@@ -321,75 +387,27 @@ fn unauthorized_response() -> Response {
     response
 }
 
+fn plaintext_basic_auth_response() -> Response {
+    let mut response = status_response(StatusCode::UPGRADE_REQUIRED);
+    response.headers_mut().insert(
+        header::UPGRADE,
+        HeaderValue::from_static("TLS/1.2, HTTP/1.1"),
+    );
+    response
+}
+
+fn lockout_response(remaining: Duration) -> Response {
+    let mut response = status_response(StatusCode::TOO_MANY_REQUESTS);
+    let retry_after = remaining.as_secs().max(1).to_string();
+    if let Ok(value) = HeaderValue::from_str(&retry_after) {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
+    rullst_security::SecurityStore::global().inc_rate_limit_blocks();
+    response
+}
+
 fn status_response(status: StatusCode) -> Response {
     let mut response = Response::new(Body::empty());
     *response.status_mut() = status;
     response
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::http::Request;
-
-    #[test]
-    fn basic_auth_debug_output_redacts_password() {
-        let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-            .expect("test credentials should be valid");
-        let output = format!("{credentials:?}");
-
-        assert!(output.contains("ops"));
-        assert!(!output.contains("unique-test-secret-42"));
-    }
-
-    #[test]
-    fn basic_auth_rejects_weak_and_placeholder_credentials() {
-        assert_eq!(
-            NexusBasicAuth::new("ops", "too-short").expect_err("short password must fail"),
-            NexusBuildError::WeakPassword {
-                minimum: MIN_NEXUS_PASSWORD_LENGTH
-            }
-        );
-        assert_eq!(
-            NexusBasicAuth::new("ops", "change_me_before_deploying")
-                .expect_err("placeholder password must fail"),
-            NexusBuildError::PlaceholderPassword
-        );
-        assert_eq!(
-            NexusBasicAuth::new("your_username", "unique-test-secret-42")
-                .expect_err("placeholder username must fail"),
-            NexusBuildError::PlaceholderUsername
-        );
-    }
-
-    #[test]
-    fn basic_credentials_require_both_exact_values() {
-        let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-            .expect("test credentials should be valid");
-        let valid_header =
-            base64::engine::general_purpose::STANDARD.encode("ops:unique-test-secret-42");
-        let wrong_user =
-            base64::engine::general_purpose::STANDARD.encode("bad:unique-test-secret-42");
-        let wrong_password = base64::engine::general_purpose::STANDARD.encode("ops:wrong-value");
-
-        let valid = Request::builder()
-            .header(header::AUTHORIZATION, format!("Basic {valid_header}"))
-            .body(Body::empty())
-            .expect("valid request");
-        let invalid_user = Request::builder()
-            .header(header::AUTHORIZATION, format!("Basic {wrong_user}"))
-            .body(Body::empty())
-            .expect("valid request");
-        let invalid_password = Request::builder()
-            .header(header::AUTHORIZATION, format!("Basic {wrong_password}"))
-            .body(Body::empty())
-            .expect("valid request");
-
-        assert!(has_valid_basic_credentials(&valid, &credentials));
-        assert!(!has_valid_basic_credentials(&invalid_user, &credentials));
-        assert!(!has_valid_basic_credentials(
-            &invalid_password,
-            &credentials
-        ));
-    }
 }

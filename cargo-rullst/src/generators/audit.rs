@@ -2,6 +2,11 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
+use crate::generators::audit_compliance::{
+    ComplianceEvidence, EvidenceStatus, write_compliance_report,
+};
+pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
+
 /// Recursively scans Rust source files for parameterized route paths lacking RBAC / Ownership enforcement.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     let mut warnings = Vec::new();
@@ -102,192 +107,6 @@ pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
     (count, warnings)
 }
 
-/// Generates a standardized CycloneDX 1.5 JSON Software Bill of Materials (SBOM) from Cargo.lock.
-pub fn generate_cyclonedx_sbom(
-    lock_path: &Path,
-) -> Result<(usize, String), Box<dyn std::error::Error>> {
-    let mut components = Vec::new();
-    let mut project_name = "rullst-app".to_string();
-    let mut project_version = "0.1.0".to_string();
-
-    if let Ok(cargo_toml) = fs::read_to_string("Cargo.toml") {
-        for line in cargo_toml.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("name = ") {
-                project_name = trimmed
-                    .replace("name = ", "")
-                    .replace(['"', '\''], "")
-                    .trim()
-                    .to_string();
-            } else if trimmed.starts_with("version = ") {
-                project_version = trimmed
-                    .replace("version = ", "")
-                    .replace(['"', '\''], "")
-                    .trim()
-                    .to_string();
-            }
-        }
-    }
-
-    if lock_path.exists() {
-        let lock_content = fs::read_to_string(lock_path)?;
-        let mut cur_name = String::new();
-        let mut cur_version = String::new();
-        let mut cur_checksum = String::new();
-
-        for line in lock_content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("[[package]]") {
-                if !cur_name.is_empty() && !cur_version.is_empty() {
-                    let mut comp = serde_json::json!({
-                        "type": "library",
-                        "name": cur_name,
-                        "version": cur_version,
-                        "purl": format!("pkg:cargo/{}@{}", cur_name, cur_version),
-                    });
-                    if !cur_checksum.is_empty() {
-                        comp["hashes"] = serde_json::json!([
-                            {
-                                "alg": "SHA-256",
-                                "content": cur_checksum
-                            }
-                        ]);
-                    }
-                    components.push(comp);
-                }
-                cur_name.clear();
-                cur_version.clear();
-                cur_checksum.clear();
-            } else if trimmed.starts_with("name = ") {
-                cur_name = trimmed
-                    .replace("name = ", "")
-                    .replace('"', "")
-                    .trim()
-                    .to_string();
-            } else if trimmed.starts_with("version = ") {
-                cur_version = trimmed
-                    .replace("version = ", "")
-                    .replace('"', "")
-                    .trim()
-                    .to_string();
-            } else if trimmed.starts_with("checksum = ") {
-                cur_checksum = trimmed
-                    .replace("checksum = ", "")
-                    .replace('"', "")
-                    .trim()
-                    .to_string();
-            }
-        }
-
-        if !cur_name.is_empty() && !cur_version.is_empty() {
-            let mut comp = serde_json::json!({
-                "type": "library",
-                "name": cur_name,
-                "version": cur_version,
-                "purl": format!("pkg:cargo/{}@{}", cur_name, cur_version),
-            });
-            if !cur_checksum.is_empty() {
-                comp["hashes"] = serde_json::json!([
-                    {
-                        "alg": "SHA-256",
-                        "content": cur_checksum
-                    }
-                ]);
-            }
-            components.push(comp);
-        }
-    }
-
-    let count = components.len();
-    let sbom_json = serde_json::json!({
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
-        "serialNumber": format!("urn:uuid:{}", rand::random::<u128>()),
-        "version": 1,
-        "metadata": {
-            "timestamp": chrono::Utc::now().to_rfc3339(),
-            "tools": [
-                {
-                    "vendor": "Rullst Core Team",
-                    "name": "cargo-rullst",
-                    "version": "12.0.0"
-                }
-            ],
-            "component": {
-                "type": "application",
-                "name": project_name,
-                "version": project_version,
-                "description": "Rullst Mission-Critical Application"
-            }
-        },
-        "components": components
-    });
-
-    let formatted = serde_json::to_string_pretty(&sbom_json)?;
-    fs::write("sbom-cyclonedx.json", &formatted)?;
-
-    Ok((count, "sbom-cyclonedx.json".to_string()))
-}
-
-/// Scans local network surface for exposed ports and interface bindings (inspired by RustScan).
-pub fn scan_local_network_surface() -> (usize, Vec<String>) {
-    use std::net::{SocketAddr, TcpStream};
-    use std::time::Duration;
-
-    let ports_to_check = [
-        (3000, "Rullst Web Server / SSR"),
-        (5555, "Rullst Studio Control Room"),
-        (8000, "REST API Backend"),
-        (8080, "Alternative Web Service"),
-        (5432, "PostgreSQL Database"),
-        (3306, "MySQL Database"),
-        (6379, "Redis Cache / Queue"),
-        (1883, "MQTT IoT Broker"),
-        (9092, "Kafka Message Stream"),
-    ];
-
-    let mut open_services = Vec::new();
-    let timeout = Duration::from_millis(60);
-
-    for (port, desc) in ports_to_check {
-        let addr: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
-        if TcpStream::connect_timeout(&addr, timeout).is_ok() {
-            open_services.push(format!("Port {} ({}): OPEN on 127.0.0.1", port, desc));
-        }
-    }
-
-    // Also inspect codebase for unsafe 0.0.0.0 bindings
-    let mut binding_warnings = Vec::new();
-    fn check_bindings(dir: &Path, warnings: &mut Vec<String>) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    check_bindings(&path, warnings);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        if content.contains("\"0.0.0.0:")
-                            && (content.contains("5555") || content.contains("studio"))
-                        {
-                            warnings.push(format!("File '{}': Rullst Studio or internal control room bound to '0.0.0.0' (should be '127.0.0.1' for security)", path.display()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if Path::new("src").exists() {
-        check_bindings(Path::new("src"), &mut binding_warnings);
-    }
-
-    let total_issues = binding_warnings.len();
-    let mut all_reports = open_services;
-    all_reports.extend(binding_warnings);
-
-    (total_issues, all_reports)
-}
-
 pub fn run_security_audit(
     ai_mode: bool,
     compliance_mode: bool,
@@ -304,34 +123,48 @@ pub fn run_security_audit(
     );
 
     let mut issues_found = 0;
+    let mut weak_secret_findings = 0usize;
+    let mut secret_scan_completed = false;
+    let mut secret_scan_error = None;
 
     // 1. Audit .env for plain-text secret leaks
     let env_path = Path::new(".env");
     if env_path.exists() {
-        if let Ok(content) = fs::read_to_string(env_path) {
-            for line in content.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with('#') || trimmed.is_empty() {
-                    continue;
-                }
-                if let Some((key, val)) = trimmed.split_once('=') {
-                    let k = key.trim();
-                    let v = val.trim();
-                    if (k.contains("SECRET") || k.contains("KEY") || k.contains("PASSWORD"))
-                        && !v.is_empty()
-                        && v != "\"\""
-                        && v != "''"
-                    {
-                        if v.len() < 16 {
+        match fs::read_to_string(env_path) {
+            Ok(content) => {
+                secret_scan_completed = true;
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with('#') || trimmed.is_empty() {
+                        continue;
+                    }
+                    if let Some((key, val)) = trimmed.split_once('=') {
+                        let k = key.trim();
+                        let v = val.trim();
+                        if (k.contains("SECRET") || k.contains("KEY") || k.contains("PASSWORD"))
+                            && !v.is_empty()
+                            && v != "\"\""
+                            && v != "''"
+                            && v.len() < 16
+                        {
                             println!(
                                 "  {} Weak or short secret detected for key '{}' in .env",
                                 "[WARNING]".yellow().bold(),
                                 k
                             );
                             issues_found += 1;
+                            weak_secret_findings = weak_secret_findings.saturating_add(1);
                         }
                     }
                 }
+            }
+            Err(error) => {
+                println!(
+                    "  {} Could not read .env for the bounded secret scan: {}",
+                    "[ERROR]".red().bold(),
+                    error
+                );
+                secret_scan_error = Some(error.to_string());
             }
         }
     } else {
@@ -343,30 +176,44 @@ pub fn run_security_audit(
         "  {} Checking dependency vulnerabilities...",
         "[AUDIT]".magenta()
     );
-    let audit_status = std::process::Command::new("cargo")
+    let audit_tool = std::process::Command::new("cargo")
         .arg("audit")
         .arg("--version")
         .output();
-
-    if audit_status.is_ok() {
-        let output = std::process::Command::new("cargo").arg("audit").output();
-        if let Ok(out) = output {
-            if !out.status.success() {
-                println!(
-                    "  {} Potential cargo vulnerabilities detected!",
-                    "[ALERT]".red().bold()
-                );
-                issues_found += 1;
-            } else {
-                println!("  {} All cargo dependencies are secure.", "[OK]".green());
+    let dependency_audit = match audit_tool {
+        Ok(tool) if tool.status.success() => {
+            match std::process::Command::new("cargo").arg("audit").output() {
+                Ok(out) if out.status.success() => {
+                    println!(
+                        "  {} No advisories reported by cargo-audit.",
+                        "[OK]".green()
+                    );
+                    EvidenceStatus::NoFindings
+                }
+                Ok(out) => {
+                    println!(
+                        "  {} cargo-audit did not complete successfully; inspect its output directly.",
+                        "[ERROR]".red().bold()
+                    );
+                    issues_found += 1;
+                    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                    EvidenceStatus::Error(if stderr.is_empty() {
+                        format!("cargo-audit exited with status {}", out.status)
+                    } else {
+                        stderr
+                    })
+                }
+                Err(error) => EvidenceStatus::Error(error.to_string()),
             }
         }
-    } else {
-        println!(
-            "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
-            "[NOTE]".yellow()
-        );
-    }
+        Ok(_) | Err(_) => {
+            println!(
+                "  {} cargo-audit not installed. Run 'cargo install cargo-audit' for deep dependency scanning.",
+                "[NOTE]".yellow()
+            );
+            EvidenceStatus::NotChecked("cargo-audit is unavailable")
+        }
+    };
 
     // 3. Memory Safety & Unsafe Code (Cargo Geiger)
     println!(
@@ -376,7 +223,7 @@ pub fn run_security_audit(
     let (unsafe_count, unsafe_warnings) = scan_unsafe_code(Path::new("src"));
     if unsafe_count == 0 {
         println!(
-            "  {} Zero unsafe blocks detected in project source (100% Safe Rust).",
+            "  {} The bounded project-source heuristic found no unsafe syntax.",
             "[OK]".green()
         );
     } else {
@@ -415,7 +262,7 @@ pub fn run_security_audit(
         );
         if idor_count == 0 {
             println!(
-                "  {} All parameterized endpoints enforce RBAC/Ownership guards.",
+                "  {} The bounded route heuristic found no missing ownership guards.",
                 "[OK]".green()
             );
         } else {
@@ -427,6 +274,7 @@ pub fn run_security_audit(
     }
 
     // 5. SBOM Generation
+    let mut sbom_evidence = EvidenceStatus::NotChecked("SBOM generation was not requested");
     if sbom_mode {
         println!(
             "  {} Generating CycloneDX 1.5 Software Bill of Materials (SBOM)...",
@@ -440,6 +288,7 @@ pub fn run_security_audit(
                     count,
                     file_name
                 );
+                sbom_evidence = EvidenceStatus::Generated(count);
             }
             Err(e) => {
                 println!(
@@ -447,11 +296,13 @@ pub fn run_security_audit(
                     "[ERROR]".red().bold(),
                     e
                 );
+                sbom_evidence = EvidenceStatus::Error(e.to_string());
             }
         }
     }
 
     // 6. Network Surface Scanner (RustScan-inspired)
+    let mut network_evidence = EvidenceStatus::NotChecked("network surface scan was not requested");
     if network_mode {
         println!(
             "  {} Scanning local network surface & interface bindings (RustScan mode)...",
@@ -473,6 +324,7 @@ pub fn run_security_audit(
             }
         }
         issues_found += net_issues;
+        network_evidence = EvidenceStatus::Observed(net_reports.len());
     }
 
     if ai_mode {
@@ -482,7 +334,7 @@ pub fn run_security_audit(
         );
         if issues_found == 0 {
             println!(
-                "  ✅ Project security posture is strong. No high-risk secret leaks, unsafe blocks, IDOR issues, or CVEs found."
+                "  ✅ Completed bounded checks reported no findings; skipped or unavailable checks remain outside this result."
             );
         } else {
             println!(
@@ -495,52 +347,41 @@ pub fn run_security_audit(
     if compliance_mode {
         println!(
             "\n📊 {}",
-            "Generating SECURITY_COMPLIANCE.md report..."
+            "Generating evidence-based SECURITY_COMPLIANCE.md report..."
                 .bright_green()
                 .bold()
         );
-        let mut report = String::new();
-        report.push_str("# Rullst Security & Compliance Assessment 🛡️\n\n");
-        report.push_str("> Generated automatically by `cargo rullst audit --compliance`.\n\n");
-        report.push_str("## 🎯 Compliance Posture Summary\n\n");
-        report.push_str("| Control Standard | Evaluation Status | Description |\n");
-        report.push_str("| :--- | :--- | :--- |\n");
-        report.push_str("| **OWASP A01:2021 (Access Control & IDOR)** | ✅ PASS | RBAC Guards and UserContext checks enforced |\n");
-        report.push_str("| **OWASP A02:2021 (Cryptographic Failures)** | ✅ PASS | Rullst Vault AES-256 / Zeroize memory cleaning active |\n");
-        report.push_str("| **OWASP A03:2021 (Injection)** | ✅ PASS | SQLx Parameterization & RASP Inspector active |\n");
-        report.push_str("| **OWASP A05:2021 (Security Misconfiguration)** | ✅ PASS | OWASP Secure Headers Layer (A+ Rating) active |\n");
-        report.push_str("| **OWASP A07:2021 (Identification & Auth)** | ✅ PASS | Anti-Bruteforce Login Jail & MFA RFC 6238 active |\n");
-        report.push_str(&format!(
-            "| **Memory Safety (Zero-Unsafe / Cargo Geiger)** | {} | {} unsafe blocks detected in project source |\n",
-            if unsafe_count == 0 { "✅ PASS" } else { "⚠️ REVIEW" },
-            unsafe_count
-        ));
-        report.push_str("| **TLS & Cryptography (100% Rustls Native)** | ✅ PASS | Pure-Rustls enforced / Zero OpenSSL C-Bindings (SOC 2 & FedRAMP Ready) |\n");
-        report.push_str("| **Software Bill of Materials (SBOM)** | ✅ PASS | CycloneDX 1.5 JSON Component Inventory verified |\n");
-        report.push_str("| **SOC 2 Type II (Logical Access Controls)** | ✅ PASS | Double-Submit Cookie CSRF & Honeypot traps enabled |\n");
-        report.push_str("| **ISO/IEC 27001 (A.12.4 Logging & Monitoring)** | ✅ PASS | Tamper-proof HMAC SHA-256 Audit Chain verified |\n\n");
-        report.push_str("## 🔒 Active Framework Controls\n");
-        report.push_str("- [x] **RASP Deep Payload Inspector (`rullst-security::rasp`)**\n");
-        report.push_str(
-            "- [x] **Anti-Bruteforce Tarpit & Login Jail (`rullst-security::login_guard`)**\n",
-        );
-        report.push_str("- [x] **OWASP Secure Headers Suite (`rullst-security::headers`)**\n");
-        report.push_str("- [x] **HTTP Response DLP Interceptor (`rullst-security::dlp`)**\n");
-        report.push_str(
-            "- [x] **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**\n",
-        );
-        report.push_str(
-            "- [x] **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**\n",
-        );
-        report.push_str("- [x] **Subresource Integrity Signer (`rullst-security::sri`)**\n");
-        report.push_str(
-            "- [x] **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**\n",
-        );
-        report.push_str("- [x] **Pure-Rustls Cryptographic Transport (`tls-rustls`)**\n");
-
-        fs::write("SECURITY_COMPLIANCE.md", &report)?;
+        let evidence = ComplianceEvidence {
+            secret_scan: if let Some(error) = secret_scan_error {
+                EvidenceStatus::Error(error)
+            } else if !secret_scan_completed {
+                EvidenceStatus::NotChecked("no .env file was available to inspect")
+            } else if weak_secret_findings == 0 {
+                EvidenceStatus::NoFindings
+            } else {
+                EvidenceStatus::Findings(weak_secret_findings)
+            },
+            dependency_audit,
+            unsafe_scan: if !Path::new("src").is_dir() {
+                EvidenceStatus::NotChecked("no src directory was available to inspect")
+            } else if unsafe_count == 0 {
+                EvidenceStatus::NoFindings
+            } else {
+                EvidenceStatus::Findings(unsafe_count)
+            },
+            idor_scan: if !Path::new("src").is_dir() {
+                EvidenceStatus::NotChecked("no src directory was available to inspect")
+            } else if idor_count == 0 {
+                EvidenceStatus::NoFindings
+            } else {
+                EvidenceStatus::Findings(idor_count)
+            },
+            sbom: sbom_evidence,
+            network_scan: network_evidence,
+        };
+        write_compliance_report(Path::new("SECURITY_COMPLIANCE.md"), &evidence)?;
         println!(
-            "  {} Report written to SECURITY_COMPLIANCE.md",
+            "  {} Evidence report written to SECURITY_COMPLIANCE.md",
             "[SUCCESS]".green().bold()
         );
     }

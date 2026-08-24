@@ -2,6 +2,7 @@ use crate::telemetry::SecurityStore;
 use hmac::{Hmac, KeyInit, Mac};
 use sha1::Sha1;
 use std::time::{SystemTime, UNIX_EPOCH};
+use subtle::ConstantTimeEq;
 
 type HmacSha1 = Hmac<Sha1>;
 
@@ -48,11 +49,8 @@ pub fn decode_base32(b32: &str) -> Option<Vec<u8>> {
 /// Computes an RFC 6238 6-digit TOTP code for a secret at a specific counter step.
 pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
     let mut mac = match HmacSha1::new_from_slice(secret_bytes) {
-        Ok(m) => m,
-        Err(_) => match HmacSha1::new_from_slice(b"mfa_fallback_key") {
-            Ok(m) => m,
-            Err(_) => return 0,
-        },
+        Ok(mac) => mac,
+        Err(_) => return 0,
     };
     mac.update(&counter.to_be_bytes());
     let result = mac.finalize().into_bytes();
@@ -80,10 +78,10 @@ pub fn generate_totp_code(base32_secret: &str) -> Option<String> {
 
 /// Verifies a 6-digit TOTP code with time drift window tolerance (+-1 window).
 pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
-    let Some(secret_bytes) = decode_base32(base32_secret) else {
+    if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
         return false;
-    };
-    let Ok(provided_code) = code.trim().parse::<u32>() else {
+    }
+    let Some(secret_bytes) = decode_base32(base32_secret) else {
         return false;
     };
 
@@ -93,11 +91,15 @@ pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
         .as_secs();
     let current_counter = now / 30;
 
-    // Check current, prev (-1), and next (+1) 30s windows
-    for delta in -1..=1 {
-        let target_counter = (current_counter as i64 + delta) as u64;
+    let counters = [
+        current_counter.checked_sub(1),
+        Some(current_counter),
+        current_counter.checked_add(1),
+    ];
+    for target_counter in counters.into_iter().flatten() {
         let generated = generate_totp_at_counter(&secret_bytes, target_counter);
-        if generated == provided_code {
+        let expected = format!("{generated:06}");
+        if bool::from(expected.as_bytes().ct_eq(code.as_bytes())) {
             SecurityStore::global().inc_mfa_verifications();
             return true;
         }
@@ -108,11 +110,12 @@ pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
 
 /// Builds an `otpauth://` URI string suitable for generating QR codes in authenticator apps.
 pub fn build_otpauth_uri(issuer: &str, account_name: &str, base32_secret: &str) -> String {
-    let clean_issuer = rullst_core::html::escape_str(issuer);
-    let clean_account = rullst_core::html::escape_str(account_name);
+    let encoded_issuer = urlencoding::encode(issuer);
+    let encoded_account = urlencoding::encode(account_name);
+    let encoded_secret = urlencoding::encode(base32_secret);
     format!(
         "otpauth://totp/{}:{}?secret={}&issuer={}&algorithm=SHA1&digits=6&period=30",
-        clean_issuer, clean_account, base32_secret, clean_issuer
+        encoded_issuer, encoded_account, encoded_secret, encoded_issuer
     )
 }
 
@@ -133,14 +136,32 @@ mod tests {
         let code = generate_totp_code(&secret).expect("TOTP generation failed");
         assert_eq!(code.len(), 6);
         assert!(verify_totp_code(&secret, &code));
-        assert!(!verify_totp_code(&secret, "000000"));
+        let wrong_code = if code == "000000" { "000001" } else { "000000" };
+        assert!(!verify_totp_code(&secret, wrong_code));
     }
 
     #[test]
     fn test_otpauth_uri_builder() {
-        let uri = build_otpauth_uri("RullstApp", "user@example.com", "JBSWY3DPEHPK3PXP");
-        assert!(
-            uri.starts_with("otpauth://totp/RullstApp:user@example.com?secret=JBSWY3DPEHPK3PXP")
+        let uri = build_otpauth_uri(
+            "Rullst & Co",
+            "user+ops@example.com/admin",
+            "JBSWY3DPEHPK3PXP",
         );
+        assert!(
+            uri.starts_with(
+                "otpauth://totp/Rullst%20%26%20Co:user%2Bops%40example.com%2Fadmin?secret=JBSWY3DPEHPK3PXP"
+            )
+        );
+        assert!(uri.contains("issuer=Rullst%20%26%20Co"));
+        assert!(!uri.contains("&amp;"));
+    }
+
+    #[test]
+    fn totp_requires_exactly_six_ascii_digits() {
+        let secret = generate_mfa_secret();
+        assert!(!verify_totp_code(&secret, "12345"));
+        assert!(!verify_totp_code(&secret, "0123456"));
+        assert!(!verify_totp_code(&secret, " 12345"));
+        assert!(!verify_totp_code(&secret, "１２３４５６"));
     }
 }

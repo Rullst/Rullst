@@ -6,10 +6,141 @@ pub mod wizard;
 
 use colored::*;
 use std::fs;
-use std::path::Path;
+use std::io::{Error as IoError, ErrorKind};
+use std::path::{Path, PathBuf};
+
+use crate::blueprints::BLANK_BLUEPRINT_ID;
 
 pub use env_config::{generate_buildah_script, generate_nix_files};
 pub use wizard::{ProjectWizardOptions, run_project_wizard};
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ProjectScaffoldOptions {
+    pub api: bool,
+    pub docker: bool,
+    pub buildah: bool,
+    pub nix: bool,
+    pub use_defaults: bool,
+    pub turso: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectIdentity {
+    destination_path: PathBuf,
+    package_name: String,
+    module_name: String,
+}
+
+impl ProjectIdentity {
+    pub fn from_destination(destination: impl AsRef<str>) -> Result<Self, IoError> {
+        let raw = destination.as_ref().trim();
+        let trimmed = raw.trim_end_matches(['/', '\\']);
+        let package_name = trimmed
+            .rsplit(['/', '\\'])
+            .next()
+            .filter(|name| !name.is_empty() && *name != "." && *name != "..")
+            .ok_or_else(|| IoError::new(ErrorKind::InvalidInput, "invalid project destination"))?;
+
+        let mut chars = package_name.chars();
+        let valid_first = chars
+            .next()
+            .is_some_and(|first| first.is_ascii_alphabetic());
+        let valid_rest = chars.all(|character| {
+            character.is_ascii_alphanumeric() || character == '-' || character == '_'
+        });
+        if !valid_first || !valid_rest {
+            return Err(IoError::new(
+                ErrorKind::InvalidInput,
+                "project package name must start with an ASCII letter and contain only letters, numbers, '-' or '_'",
+            ));
+        }
+        let module_name = package_name.replace('-', "_");
+        if is_rust_keyword(&module_name) {
+            return Err(IoError::new(
+                ErrorKind::InvalidInput,
+                "project package name normalizes to a reserved Rust keyword",
+            ));
+        }
+
+        Ok(Self {
+            destination_path: PathBuf::from(raw),
+            package_name: package_name.to_string(),
+            module_name,
+        })
+    }
+
+    pub fn destination_path(&self) -> &Path {
+        &self.destination_path
+    }
+
+    pub fn package_name(&self) -> &str {
+        &self.package_name
+    }
+
+    pub fn module_name(&self) -> &str {
+        &self.module_name
+    }
+}
+
+fn is_rust_keyword(value: &str) -> bool {
+    matches!(
+        value,
+        "abstract"
+            | "as"
+            | "async"
+            | "await"
+            | "become"
+            | "box"
+            | "break"
+            | "const"
+            | "continue"
+            | "crate"
+            | "do"
+            | "dyn"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "final"
+            | "fn"
+            | "for"
+            | "gen"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "macro"
+            | "macro_rules"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "override"
+            | "priv"
+            | "pub"
+            | "raw"
+            | "ref"
+            | "return"
+            | "self"
+            | "Self"
+            | "static"
+            | "struct"
+            | "super"
+            | "trait"
+            | "true"
+            | "try"
+            | "type"
+            | "typeof"
+            | "unsafe"
+            | "unsized"
+            | "use"
+            | "virtual"
+            | "where"
+            | "while"
+            | "yield"
+    )
+}
 
 pub fn has_binary(name: &str) -> bool {
     if name
@@ -40,20 +171,16 @@ fn generate_secure_app_key() -> String {
     key
 }
 
-pub fn create_new_project(
+pub fn create_new_project_with_options(
     name_arg: Option<&str>,
-    api_arg: bool,
-    docker: bool,
-    nix: bool,
-    buildah: bool,
-    use_defaults: bool,
-    turso: bool,
+    options: ProjectScaffoldOptions,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let wizard_opts = run_project_wizard(name_arg, api_arg, use_defaults, turso)?;
+    let wizard_opts =
+        run_project_wizard(name_arg, options.api, options.use_defaults, options.turso)?;
 
-    let name = wizard_opts.name.clone();
-    let project_name = name.clone();
-    let project_name_safe = name.replace('-', "_");
+    let identity = ProjectIdentity::from_destination(&wizard_opts.name)?;
+    let project_name = identity.package_name();
+    let project_name_safe = identity.module_name();
     let api = wizard_opts.api;
     let mut db_needed = wizard_opts.db_needed;
     let db_provider = wizard_opts.db_provider.clone();
@@ -62,24 +189,24 @@ pub fn create_new_project(
     let wants_ai = wizard_opts.wants_ai;
     let wants_redis = wizard_opts.wants_redis;
 
-    if blueprint_selection != 0 {
+    if blueprint_selection != BLANK_BLUEPRINT_ID {
         db_needed = true;
     }
 
-    let path = Path::new(&name);
+    let path = identity.destination_path();
     if path.exists() {
-        println!(
-            "{}",
-            format!("❌ Directory '{}' already exists.", name).red()
-        );
-        return Ok(());
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            format!("directory '{}' already exists", path.display()),
+        )
+        .into());
     }
 
     fs::create_dir_all(path)?;
     let current_dir = std::env::current_dir()?;
 
     let cargo_toml_content = cargo_toml::build_cargo_toml(
-        &project_name_safe,
+        project_name,
         hot_reload,
         db_needed,
         &db_provider,
@@ -96,7 +223,7 @@ pub fn create_new_project(
         path,
         db_needed,
         &db_provider,
-        turso,
+        options.turso,
         blueprint_selection,
         &app_key,
     )?;
@@ -105,8 +232,8 @@ pub fn create_new_project(
     crate::blueprints::apply(
         blueprint_selection,
         path,
-        &project_name,
-        &project_name_safe,
+        project_name,
+        project_name_safe,
         api,
         hot_reload,
         db_needed,
@@ -114,11 +241,11 @@ pub fn create_new_project(
         &wizard_opts.frontend_engine,
     )?;
 
-    if docker {
-        generate_docker_files(path, &project_name, Some(&db_provider), Some(wants_redis))?;
+    if options.docker || options.buildah {
+        generate_docker_files(path, project_name, Some(&db_provider), Some(wants_redis))?;
     }
 
-    if nix {
+    if options.nix {
         env_config::generate_nix_files(path)?;
     }
 
@@ -149,18 +276,18 @@ pub fn create_new_project(
         }
     }
 
-    if buildah {
-        env_config::generate_buildah_script(path, &project_name).ok();
+    if options.buildah {
+        env_config::generate_buildah_script(path, project_name)?;
     }
 
     println!(
         "{}",
-        format!("✨ Project '{}' created successfully!", name)
+        format!("✨ Project '{}' created successfully!", project_name)
             .green()
             .bold()
     );
     println!("{}", "How to run:".magenta());
-    println!("{}", format!("  cd {}", name).cyan());
+    println!("{}", format!("  cd {path:?}").cyan());
     println!("{}", "  Then, choose your experience:".white().dimmed());
     println!(
         "{}",
@@ -171,6 +298,33 @@ pub fn create_new_project(
     println!("{}", "    cargo rullst dev   (standard output)".white());
 
     Ok(())
+}
+
+#[deprecated(
+    since = "12.0.0",
+    note = "use create_new_project_with_options to avoid positional flag mixups"
+)]
+#[allow(clippy::too_many_arguments)]
+pub fn create_new_project(
+    name_arg: Option<&str>,
+    api: bool,
+    docker: bool,
+    nix: bool,
+    buildah: bool,
+    use_defaults: bool,
+    turso: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    create_new_project_with_options(
+        name_arg,
+        ProjectScaffoldOptions {
+            api,
+            docker,
+            buildah,
+            nix,
+            use_defaults,
+            turso,
+        },
+    )
 }
 
 pub fn generate_docker_files(
@@ -221,5 +375,31 @@ mod tests {
         assert_eq!(key2.len(), 32);
         assert_ne!(key1, key2);
         assert!(key1.chars().all(|c| c.is_ascii_alphanumeric()));
+    }
+
+    #[test]
+    fn project_identity_separates_destination_package_and_module() {
+        let unix = ProjectIdentity::from_destination("../dummy_test").unwrap();
+        assert_eq!(unix.destination_path(), Path::new("../dummy_test"));
+        assert_eq!(unix.package_name(), "dummy_test");
+        assert_eq!(unix.module_name(), "dummy_test");
+
+        let hyphenated = ProjectIdentity::from_destination("../dummy-test").unwrap();
+        assert_eq!(hyphenated.destination_path(), Path::new("../dummy-test"));
+        assert_eq!(hyphenated.package_name(), "dummy-test");
+        assert_eq!(hyphenated.module_name(), "dummy_test");
+
+        let windows = ProjectIdentity::from_destination(r"..\dummy_test").unwrap();
+        assert_eq!(windows.destination_path(), Path::new(r"..\dummy_test"));
+        assert_eq!(windows.package_name(), "dummy_test");
+        assert_eq!(windows.module_name(), "dummy_test");
+    }
+
+    #[test]
+    fn project_identity_rejects_invalid_package_basename() {
+        assert!(ProjectIdentity::from_destination("../123-app").is_err());
+        assert!(ProjectIdentity::from_destination("../bad name").is_err());
+        assert!(ProjectIdentity::from_destination("../").is_err());
+        assert!(ProjectIdentity::from_destination("../crate").is_err());
     }
 }

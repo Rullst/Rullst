@@ -140,8 +140,12 @@ impl OidcProvider {
         self
     }
 
+    /// Configures a custom HTTP client for live credentials.
+    /// Mock credentials retain their deterministic network-free transport.
     pub fn with_http_client(mut self, client: Arc<dyn HttpClient>) -> Self {
-        self.http_client = client;
+        if matches!(self.credential_mode, CredentialMode::Live) {
+            self.http_client = client;
+        }
         self
     }
 

@@ -85,6 +85,27 @@ jobs:
       - name: Compile ORM feature in isolation
         run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
 
+  minimal-feature-boundaries:
+    name: Core and umbrella minimal feature boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Test runtime-only Core without ORM or SQLite queue
+        run: cargo test -p rullst-core --no-default-features
+
+      - name: Compile independent Core database features
+        run: |
+          cargo check -p rullst-core --all-targets --no-default-features --features orm
+          cargo check -p rullst-core --all-targets --no-default-features --features queue-sqlite
+
+      - name: Compile the minimal application umbrella
+        run: cargo check -p rullst --all-targets --no-default-features
+
   msrv:
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest

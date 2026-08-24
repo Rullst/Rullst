@@ -30,6 +30,7 @@ mod formatting_tests {
 pub mod driver_tests {
     use super::super::*;
     use async_trait::async_trait;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_sqlite_queue_push_pop() {
@@ -124,6 +125,55 @@ pub mod driver_tests {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
         let result = driver.pop().await.unwrap();
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn invalid_json_is_an_error_and_the_job_is_failed() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver.push("invalid", "test", "{not-json").await.unwrap();
+
+        let result = driver.pop().await;
+        assert!(matches!(result, Err(QueueError::Serialization(_))));
+        let (status, error): (String, String) =
+            sqlx::query_as("SELECT status, error FROM rullst_jobs WHERE id = 'invalid'")
+                .fetch_one(&driver.pool)
+                .await
+                .unwrap();
+        assert_eq!(status, "failed");
+        assert!(error.contains("invalid JSON payload"));
+    }
+
+    #[tokio::test]
+    async fn stale_processing_jobs_are_recovered() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver.push("stale", "test", "{}").await.unwrap();
+        let _ = driver.pop().await.unwrap().unwrap();
+        sqlx::query("UPDATE rullst_jobs SET updated_at = '2000-01-01 00:00:00' WHERE id = 'stale'")
+            .execute(&driver.pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            driver
+                .recover_stalled(Duration::from_secs(1))
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(driver.pending_count().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn missing_state_transition_is_not_reported_as_success() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+
+        assert!(matches!(
+            driver.mark_complete("missing").await,
+            Err(QueueError::StateTransition {
+                operation: "mark_complete",
+                ..
+            })
+        ));
     }
 
     #[tokio::test]

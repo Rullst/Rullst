@@ -41,7 +41,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_rullst.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -61,7 +61,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_orm.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -81,7 +81,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_core.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -101,7 +101,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_auth.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -121,7 +121,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_connect.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -141,7 +141,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_security.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -161,7 +161,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_ai.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -181,7 +181,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_capital.txt
           fail-on-alert: true
-          alert-threshold: '300%'
+          alert-threshold: '20%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}

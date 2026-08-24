@@ -9,8 +9,6 @@ use serde::Deserialize;
 use rullst_capital::billable::Billable;
 use rullst_capital::fiscal::dps::build_dps_xml;
 use rullst_capital::fiscal::models::{FiscalCustomer, FiscalEmitter, NfseDps, TaxRegime};
-use rullst_capital::fiscal::signer::sign_dps_xml;
-use rullst_capital::models::FiscalCertificate;
 
 use super::gateways::simulate_provider_checkout;
 use super::views::render_pricing_page;
@@ -107,7 +105,7 @@ async fn handle_checkout_submission(params: CheckoutParams) -> impl IntoResponse
     Html(body)
 }
 
-/// Helper to generate real `Billable` quota check and SPED DPS XML signature.
+/// Generates a real quota result and a clearly labelled offline DPS preview.
 fn compute_demo_data() -> (bool, String) {
     let free_user = Subscriber {
         email_address: "author@community.dev".to_string(),
@@ -147,18 +145,12 @@ fn compute_demo_data() -> (bool, String) {
         service_city_ibge: "3550308".to_string(),
     };
 
-    let cert = FiscalCertificate::from_base64("MIIKggIBAzCCCl8GCSqGSIb3DQEHA", "mock_pass");
     let unsigned_xml = build_dps_xml(&emitter, &customer, &dps);
-    let signed_xml = sign_dps_xml(&unsigned_xml, &cert).unwrap_or_else(|_| unsigned_xml.clone());
+    let mut preview: String = unsigned_xml.chars().take(250).collect();
+    if unsigned_xml.chars().count() > 250 {
+        preview.push_str("...");
+    }
+    preview.push_str(" [OFFLINE DPS PREVIEW — NOT AUTHORIZED OR SIGNED]");
 
-    let xml_snippet = if signed_xml.len() > 250 {
-        format!(
-            "{}... [Valid XMLDSig Digital Signature Attached]",
-            &signed_xml[..250]
-        )
-    } else {
-        signed_xml
-    };
-
-    (free_can_post, xml_snippet)
+    (free_can_post, preview)
 }

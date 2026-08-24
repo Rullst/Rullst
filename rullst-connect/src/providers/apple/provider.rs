@@ -137,12 +137,16 @@ impl AppleProvider {
         self
     }
 
-    /// Configures a custom HTTP client (e.g. for mock testing or specialized connection pooling).
+    /// Configures a custom HTTP client for live credentials.
+    /// Mock and invalid credentials retain their network-free/fail-closed transport.
     pub fn with_http_client(
         mut self,
         client: ::std::sync::Arc<dyn crate::client::HttpClient>,
     ) -> Self {
-        if !self.credential_mode.is_invalid() {
+        if matches!(
+            self.credential_mode,
+            crate::configuration::CredentialMode::Live
+        ) {
             self.http_client = client;
         }
         self

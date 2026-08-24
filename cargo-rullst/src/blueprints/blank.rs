@@ -13,7 +13,13 @@ pub fn file_manifest(
 ) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
     let is_repo = common::is_repo_mode(orm_pattern);
-    let _ = (project_name_safe, api, hot_reload, frontend_engine);
+    let _ = (
+        project_name,
+        project_name_safe,
+        api,
+        hot_reload,
+        frontend_engine,
+    );
 
     let db_model_code = if db_needed {
         "use rullst::db::{Orm, FromRow};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
@@ -38,6 +44,11 @@ pub fn file_manifest(
     } else {
         ""
     };
+    let client_modules = if !api {
+        "pub mod islands;\npub mod rpc;\n"
+    } else {
+        ""
+    };
 
     if hot_reload {
         let lib_rs = if api {
@@ -45,7 +56,7 @@ pub fn file_manifest(
                 r##"use rullst::{{routes, Router, response::IntoResponse}};
 use serde::Serialize;
 
-{migrations_mod_declaration}
+{migrations_mod_declaration}{client_modules}
 
 {db_model_code}
 
@@ -77,6 +88,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
 }}
 "##,
                 migrations_mod_declaration = migrations_mod_declaration,
+                client_modules = client_modules,
                 db_model_code = db_model_code,
                 db_status_code = db_status_code
             )
@@ -86,7 +98,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
                 r##"{fe_imports}use rullst::{{routes, Router, response::{{Html, IntoResponse}}}};
 use rullst::htmx::{{HtmxRequest, render_page}};
 
-{migrations_mod_declaration}
+{migrations_mod_declaration}{client_modules}
 
 {db_model_code}
 
@@ -125,7 +137,7 @@ pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
 
                 <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"Wasm Island (Client Side)"</h2>
-                    <div data-island="counter" data-props="{{\"initial\": 0}}"></div>
+                    <div data-island="counter" data-props="{{\"props\": {{\"initial_value\": 0}}}}"></div>
                 </div>
             </div>
         </div>
@@ -168,6 +180,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
 }}
 "##,
                 migrations_mod_declaration = migrations_mod_declaration,
+                client_modules = client_modules,
                 db_model_code = db_model_code,
                 db_status_code = db_status_code
             )
@@ -179,16 +192,16 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
             let server_fn = r#"use rullst::server_function;
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct CounterResponse {
     pub new_value: i32,
     pub message: String,
 }
 
 #[server_function]
-pub async fn increment_counter(current: i32) -> CounterResponse {
+pub async fn increment_counter() -> CounterResponse {
     CounterResponse {
-        new_value: current + 1,
+        new_value: 1,
         message: format!("Successfully incremented on the server!"),
     }
 }
@@ -196,34 +209,7 @@ pub async fn increment_counter(current: i32) -> CounterResponse {
             .to_string();
             manifest.push(("src/rpc.rs", server_fn));
 
-            let island_counter = r#"use rullst::{island, view};
-use wasm_bindgen::prelude::*;
-use serde::{Serialize, Deserialize};
-use web_sys::HtmlElement;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct CounterProps {
-    pub initial: i32,
-}
-
-#[island]
-pub fn counter(props: CounterProps, container: HtmlElement) {
-    let doc = web_sys::window().unwrap().document().unwrap();
-    let btn = doc.create_element("button").unwrap();
-    btn.set_inner_html(&format!("Click to increment! Current: {}", props.initial));
-    
-    // In a real app, you would call your RPC server function here!
-    let closure = Closure::wrap(Box::new(move || {
-        web_sys::console::log_1(&"Calling server via RPC...".into());
-    }) as Box<dyn FnMut()>);
-    
-    btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref()).unwrap();
-    closure.forget();
-    
-    container.append_child(&btn).unwrap();
-}
-"#
-            .to_string();
+            let island_counter = crate::generators::island::render_island("Counter").2;
             manifest.push(("src/islands/mod.rs", "pub mod counter;\n".to_string()));
             manifest.push(("src/islands/counter.rs", island_counter));
         }
@@ -238,9 +224,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let server = if is_hot {{
         let lib_path = if cfg!(target_os = "windows") {{
-            "target/debug/{project_name}"
+            "target/debug/{project_name_safe}"
         }} else {{
-            "target/debug/lib{project_name}"
+            "target/debug/lib{project_name_safe}"
         }};
         rullst::Server::new_hot(lib_path)
     }} else {{
@@ -253,7 +239,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
-            project_name = project_name,
             project_name_safe = project_name_safe,
             migrations_mod_declaration = migrations_mod_declaration,
             artisan_call = artisan_call

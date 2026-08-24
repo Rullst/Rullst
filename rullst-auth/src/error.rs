@@ -1,5 +1,6 @@
 /// Strongly-typed error domain for Rullst Authentication & Session Management.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AuthError {
     /// Invalid login credentials (incorrect username, email, or password).
     #[error("Invalid credentials")]

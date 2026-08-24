@@ -14,7 +14,6 @@ keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
 [dependencies]
-mutants = "0.0.4"
 rullst-orm-macros = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json", "tls-rustls"] }
 tokio = { workspace = true, features = ["full"] }
@@ -41,6 +40,7 @@ strict-mysql = []
 strict-sqlite = []
 
 [dev-dependencies]
+mutants = "0.0.4"
 rand = { workspace = true }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }

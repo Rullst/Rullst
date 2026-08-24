@@ -8,7 +8,57 @@ use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 
 const CORS_MIDDLEWARE_TEMPLATE: &str = include_str!("cors_middleware.rs.template");
+const JWT_MIDDLEWARE_TEMPLATE: &str = include_str!("jwt_middleware.rs.template");
 const TOWER_HTTP_CORS_DEPENDENCY: &str = r#"tower-http = { version = "0.7", features = ["cors"] }"#;
+
+fn dependency_is_declared(cargo_toml: &str, dependency: &str) -> bool {
+    cargo_toml.lines().any(|line| {
+        let declaration = line.split_once('#').map_or(line, |(value, _)| value).trim();
+        declaration
+            .split_once('=')
+            .is_some_and(|(key, _)| key.trim().trim_matches(['\'', '"']) == dependency)
+    })
+}
+
+/// Adds the direct dependencies required by the exact generated JWT template.
+#[doc(hidden)]
+pub fn ensure_jwt_dependencies(cargo_toml: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let Some(dependencies_start) = cargo_toml.find("[dependencies]") else {
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            "Cargo.toml does not contain a [dependencies] table",
+        )
+        .into());
+    };
+    let mut missing = Vec::new();
+    if !dependency_is_declared(cargo_toml, "jsonwebtoken") {
+        missing.push(
+            "jsonwebtoken = { version = \"10\", default-features = false, features = [\"rust_crypto\"] }",
+        );
+    }
+    if !dependency_is_declared(cargo_toml, "chrono") {
+        missing.push("chrono = { version = \"0.4\", features = [\"serde\"] }");
+    }
+    if !dependency_is_declared(cargo_toml, "serde") {
+        missing.push("serde = { version = \"1\", features = [\"derive\"] }");
+    }
+    if missing.is_empty() {
+        return Ok(cargo_toml.to_string());
+    }
+
+    let mut updated = cargo_toml.to_string();
+    updated.insert_str(
+        dependencies_start + "[dependencies]".len(),
+        &format!("\n{}", missing.join("\n")),
+    );
+    Ok(updated)
+}
+
+/// Returns the exact JWT middleware source emitted by this generator.
+#[doc(hidden)]
+pub fn jwt_middleware_template() -> &'static str {
+    JWT_MIDDLEWARE_TEMPLATE
+}
 
 fn ensure_tower_http_cors_dependency(
     cargo_toml: &str,
@@ -252,28 +302,13 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", "🛠️ Generating JWT middleware...".cyan().bold());
 
-    // 1. Injetar jsonwebtoken e chrono no Cargo.toml do usuário
+    // Keep the generated middleware's direct dependencies explicit and version-aligned.
     let cargo_toml_path = Path::new("Cargo.toml");
     if cargo_toml_path.exists() {
-        let mut cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
-        let mut modified = false;
-        if !cargo_toml_content.contains("jsonwebtoken") {
-            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
-                cargo_toml_content.insert_str(pos + 14, "jsonwebtoken = \"9.3\"\n");
-                modified = true;
-            }
-        }
-        if !cargo_toml_content.contains("chrono") {
-            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
-                cargo_toml_content.insert_str(
-                    pos + 14,
-                    "chrono = { version = \"0.4\", features = [\"serde\"] }\n",
-                );
-                modified = true;
-            }
-        }
-        if modified {
-            fs::write(cargo_toml_path, cargo_toml_content)?;
+        let cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
+        let updated = ensure_jwt_dependencies(&cargo_toml_content)?;
+        if updated != cargo_toml_content {
+            fs::write(cargo_toml_path, updated)?;
             println!(
                 "{}",
                 "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml.".green()
@@ -308,77 +343,7 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        let template = r#"use rullst::server::{
-    Request,
-    Next,
-    Response, IntoResponse,
-    header, StatusCode,
-};
-use serde::{Deserialize, Serialize};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    pub sub: String, // Subject (id do usuário)
-    pub exp: usize,  // Timestamp de expiração
-}
-
-/// JWT Authentication Middleware.
-/// Extrai o cabeçalho 'Authorization: Bearer <token>', valida e injeta os claims nas extensões da requisição.
-pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
-    let auth_header = req.headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok());
-
-    let Some(auth_str) = auth_header else {
-        return (StatusCode::UNAUTHORIZED, "Missing Authorization Header").into_response();
-    };
-
-    if !auth_str.starts_with("Bearer ") {
-        return (StatusCode::UNAUTHORIZED, "Invalid Authorization Header Format").into_response();
-    }
-
-    let token = &auth_str["Bearer ".len()..];
-    let secret = match std::env::var("JWT_SECRET") {
-        Ok(s) => s,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "JWT_SECRET must be set").into_response(),
-    };
-
-    match decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
-    ) {
-        Ok(token_data) => {
-            // Insere os claims nas extensões da requisição para acesso nos controllers
-            req.extensions_mut().insert(token_data.claims);
-            next.run(req).await
-        }
-        Err(_) => (StatusCode::UNAUTHORIZED, "Invalid or Expired Token").into_response(),
-    }
-}
-
-/// Helper para gerar um novo token JWT com duração de 1 dia.
-pub fn generate_token(user_id: &str) -> Result<String, String> {
-    let secret = std::env::var("JWT_SECRET").map_err(|_| "JWT_SECRET must be set".to_string())?;
-    let expiration = chrono::Utc::now()
-        .checked_add_signed(chrono::Duration::days(1))
-        .expect("valid timestamp")
-        .timestamp() as usize;
-
-    let claims = Claims {
-        sub: user_id.to_string(),
-        exp: expiration,
-    };
-
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret.as_bytes()),
-    ).map_err(|e| e.to_string())
-}
-"#;
-        fs::write(&middleware_path, template)?;
+        fs::write(&middleware_path, jwt_middleware_template())?;
     }
 
     // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
@@ -480,5 +445,28 @@ rullst = "12.0.0"
         assert!(CORS_MIDDLEWARE_TEMPLATE.contains("CORS_ALLOWED_ORIGINS"));
         assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".allow_credentials(self.allow_credentials)"));
         assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".vary([header::ORIGIN])"));
+    }
+
+    #[test]
+    fn generated_jwt_validates_secret_issuer_and_audience() {
+        syn::parse_file(JWT_MIDDLEWARE_TEMPLATE).unwrap();
+        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("MIN_SECRET_BYTES"));
+        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("set_issuer"));
+        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("set_audience"));
+        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("JWT_ISSUER"));
+        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("JWT_AUDIENCE"));
+        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
+        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains(".expect("));
+        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains("panic!("));
+    }
+
+    #[test]
+    fn jwt_dependencies_are_current_and_idempotent() {
+        let original = "[package]\nname = \"demo\"\n\n[dependencies]\nrullst = \"12\"\n";
+        let updated = ensure_jwt_dependencies(original).unwrap();
+        let repeated = ensure_jwt_dependencies(&updated).unwrap();
+        assert_eq!(updated, repeated);
+        assert!(updated.contains("jsonwebtoken = { version = \"10\""));
+        assert!(!updated.contains("jsonwebtoken = \"9.3\""));
     }
 }

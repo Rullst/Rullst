@@ -1,7 +1,8 @@
 //! Rullst Database Extensions (`rullst::db`)
 //!
-//! Provides zero-config distributed SQLite replication configs and background synchronizers
-//! for edge-replicated databases (like Turso/libsql and Cloudflare D1).
+//! Provides configuration types for future distributed SQLite replication.
+//! Remote synchronization is explicitly unsupported in this release and fails
+//! closed instead of simulating a successful sync.
 
 /// Configuration for distributed SQLite replica database sync.
 #[non_exhaustive]
@@ -47,7 +48,7 @@ impl ReplicationConfig {
     }
 }
 
-/// Zero-Config distributed SQLite synchronization engine.
+/// Fail-closed facade reserved for a future SQLite replication backend.
 pub struct ReplicationManager;
 
 /// Failures reported by the replication facade.
@@ -78,22 +79,22 @@ impl ReplicationManager {
 }
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 pub use rullst_orm::{Orm, RullstModel, RullstPool, async_trait, schema};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 pub use sqlx;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 pub use sqlx::FromRow;
 
 /// Safely retrieves the database pool, returning `None` if uninitialized.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 #[cfg_attr(mutants, mutants::skip)]
 pub fn safe_pool() -> Option<&'static rullst_orm::RullstPool> {
     rullst_orm::Orm::try_pool().ok()
 }
 
 /// Safely retrieves the database driver name, returning `None` if uninitialized.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 #[cfg_attr(mutants, mutants::skip)]
 pub fn safe_driver() -> Option<&'static str> {
     rullst_orm::Orm::try_driver().ok()
@@ -126,7 +127,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
     fn test_safe_pool_uninitialized() {
         // Assuming Orm isn't initialized in this isolated test, safe_pool should safely return None
         let pool = safe_pool();
@@ -134,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
     fn test_safe_driver_uninitialized() {
         let driver = safe_driver();
         assert!(driver.is_none());

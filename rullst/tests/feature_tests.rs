@@ -1,9 +1,12 @@
 use rullst::feature::{
-    self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
-    TomlFeatureDriver,
+    self, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
 };
+#[cfg(feature = "orm")]
+use rullst::feature::DbFeatureDriver;
+#[cfg(feature = "orm")]
 use rullst_orm::Orm;
 use std::fs;
+#[cfg(feature = "orm")]
 use std::time::Duration;
 
 #[tokio::test]
@@ -155,6 +158,7 @@ invalid-split = "variant:not-a-number,variant2:50"
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[cfg(feature = "orm")]
 #[cfg_attr(
     any(miri, test),
     ignore = "Disabled in workspace tests due to sqlx AnyPool resolving to PgPool under --all-features"

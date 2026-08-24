@@ -1,116 +1,90 @@
-# Rullst Capital: SaaS Billing & Financial Engine 💳
+# Rullst Capital: billing and fiscal boundaries
 
-**Rullst Capital** (`rullst-capital`) is the native monetization, subscription orchestration, revenue analytics, and payment infrastructure layer for the Rullst Framework.
+> **Vision preserved:** capabilities removed from the usable-today contract are
+> still evaluated item by item in the [capability ledger](capability-ledger.md#capital-billing-and-fiscal-vision),
+> including whether each one is worth implementing and why.
 
-If you generated your project using the `SaaS` blueprint (`cargo rullst new my-saas --blueprint saas`) or ran `cargo rullst make:billing`, your application comes pre-wired with Capital, allowing you to charge users globally, accept Pix with zero fees in Brazil, support developer-first open-source backer tiers, or accept Web3 crypto payments from day one.
+`rullst-capital` provides billing abstractions, revenue metrics, payment-provider
+adapters, payout helpers, and verified webhook plumbing. Provider capabilities
+are not uniform: consult the adapter API and its tests before depending on a
+particular checkout, refund, payout, or webhook operation.
 
----
+## Payment providers
 
-## 🌟 Supported Payment Gateways
+Initialize only the provider required by the application and treat credentials
+as deployment secrets. Empty credentials are configuration errors for live
+operations. Credentials deliberately prefixed with `mock_` select deterministic
+offline behavior where that adapter documents support for it.
 
-Rullst Capital supports 11 major financial providers out of the box:
+Webhook endpoints must use the Capital verification middleware. For supported
+protocols it performs cryptographic verification, freshness checks, and bounded
+replay protection before the application receives a normalized event. A webhook
+route may receive a narrowly scoped CSRF exemption only when this verifier remains
+mandatory on that exact route.
 
-- 🌐 **Stripe**: Global direct merchant for cards, Apple Pay, Google Pay, and customer portals.
-- 🍋 **Lemon Squeezy**: Global Merchant of Record (MoR) with automated EU VAT and US state sales tax compliance.
-- 🇧🇷 **InfinitePay**: Brazil domestic gateway with **Pix at 0.00% fee**, instant D+0 settlement, and lowest credit card rates.
-- ⚡ **Polar.sh**: Developer-first Merchant of Record for open-source funding, software licenses, and micro-SaaS.
-- 🛡️ **Paddle**: Enterprise Merchant of Record for global B2B SaaS.
-- 🇨🇳 **Alipay (支付宝 / Alipay+)**: China and APAC cross-border payments with over 1.3 billion users and Alipay+ wallet integrations.
-- 🇮🇳 **Razorpay**: Dominant payment gateway across India and Southeast Asia for UPI, cards, and subscriptions.
-- 🌎 **Mercado Pago**: Broadest Latin American regional coverage (Argentina, Mexico, Chile, Colombia, Brazil).
-- ₿ **Coinbase Commerce**: Borderless Web3 crypto payments (Bitcoin, Ethereum, Solana, USDC/USDT).
-- 📱 **PicPay**: Consumer digital wallet and QR-code checkout in Brazil.
-- 💸 **Wise**: High-speed, low-fee international B2B payouts and contractor disbursements across 40+ currencies.
+```rust,no_run
+use axum::{routing::post, Router};
+use rullst_capital::verify_webhook;
 
-> 📚 **Looking for a deep dive into provider selection and fees?** Check out the comprehensive **[Payment Gateways Guide](payment-gateways-guide.md)**.
+async fn billing_webhook() {
+    // Read the verified event inserted by the middleware in real handlers.
+}
 
----
-
-## 🚀 Core Features
-
-- **Multi-Provider Support:** First-class, zero-panic support for 11 top global, regional, and Web3 payment providers. Switch providers effortlessly by changing configuration or initializing the corresponding `BillingProvider`.
-- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber statistics, and churn rate calculations built right into Rullst Studio.
-- **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
-- **Webhook Handling & Database Synchronization:** Secure, constant-time HMAC-verified webhook handlers that listen to subscription creations, renewals, upgrades, and cancellations, automatically synchronizing user state and access levels via `rullst-orm`.
-
----
-
-## ⚙️ Configuration
-
-In your `.env` file:
-
-```env
-# Choose provider: stripe | lemonsqueezy | infinitepay | polar | paddle | alipay | razorpay | mercadopago | coinbase | picpay
-BILLING_PROVIDER=infinitepay
-
-# Provider credentials
-BILLING_API_KEY=your_api_key_or_token
-BILLING_WEBHOOK_SECRET=your_webhook_signing_secret
+let router = Router::new()
+    .route("/webhooks/billing", post(billing_webhook))
+    .layer(axum::middleware::from_fn(verify_webhook));
 ```
 
----
+## NFS-e Nacional: contained offline preview
 
-## 💻 Code Example: Initializing in Rust
+The current fiscal module can construct an escaped DPS XML fixture. It does not
+claim a valid XMLDSig signature or an authorization from the Brazilian national
+NFS-e service.
 
-```rust
-use rullst_capital::{init_provider, InfinitePayProvider, StripeProvider, PolarProvider, RazorpayProvider};
+- `NfseEnvironment::Mock` returns `FiscalResponseKind::OfflineMock`, status
+  `MOCK_NOT_AUTHORIZED`, and `is_officially_authorized() == false`.
+- `NfseEnvironment::Homologation` and `NfseEnvironment::Production` fail closed
+  with `FiscalError::Unsupported`.
+- `sign_dps_xml` also fails closed; it never fabricates a `<Signature>` element.
 
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Example: InfinitePay (0% Pix Fee in Brazil)
-    init_provider(Box::new(InfinitePayProvider::new(
-        std::env::var("BILLING_API_KEY")?,
-        std::env::var("BILLING_WEBHOOK_SECRET")?,
-    )));
+```rust,no_run
+use rullst_capital::fiscal::{
+    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
+    FiscalResponseKind, NfseDps, NfseEnvironment,
+};
 
-    println!("💳 Rullst Capital initialized with InfinitePay");
+async fn offline_preview(
+    emitter: &FiscalEmitter,
+    customer: &FiscalCustomer,
+    dps: &NfseDps,
+) -> Result<(), rullst_capital::fiscal::FiscalError> {
+    let unused_certificate = FiscalCertificate::from_base64("", "");
+    let response = issue_nfse_direct(
+        emitter,
+        customer,
+        dps,
+        &unused_certificate,
+        NfseEnvironment::Mock,
+    )
+    .await?;
+
+    assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
+    assert!(!response.is_officially_authorized());
     Ok(())
 }
 ```
 
----
+Live issuance remains roadmap work until PKCS#12 private-key handling, XML
+C14N/XMLDSig, XSD validation, mTLS, strict response parsing, rejection handling,
+and official end-to-end homologation are independently verified. Do not account
+an offline fixture as an issued invoice.
 
-## 🧾 Zero-Cost Native Digital Invoices (NFS-e Padrão Nacional / SEFAZ)
+## Operational checklist
 
-Rullst Capital includes a **native, direct digital invoice engine** for Brazilian SaaS with **R$ 0.00 intermediary fees per invoice**. It signs XML documents in memory using your company's A1 Digital Certificate (`.pfx`) and transmits them directly to the Receita Federal national portal:
-
-```rust
-use rullst_capital::fiscal::{
-    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
-    NfseEnvironment, TaxRegime,
-};
-
-// 1. Configure the emitting SaaS company
-let emitter = FiscalEmitter {
-    cnpj: "12.345.678/0001-90".to_string(),
-    inscricao_municipal: "1234567".to_string(),
-    legal_name: "Minha Empresa SaaS Ltda".to_string(),
-    trade_name: Some("MeuSaaS".to_string()),
-    ibge_code: "3550308".to_string(), // São Paulo
-    tax_regime: TaxRegime::SimplesNacional,
-};
-
-// 2. Customer data
-let customer = FiscalCustomer {
-    doc_number: "123.456.789-00".to_string(),
-    name: "João Silva".to_string(),
-    email: "joao@cliente.com.br".to_string(),
-    zip_code: Some("01310-100".to_string()),
-    address: Some("Av Paulista, 1000".to_string()),
-    ibge_code: Some("3550308".to_string()),
-};
-
-// 3. Convert paid invoice to national DPS format
-let dps = invoice.to_dps("1.03.01", "3550308", 2.0); // 1.03.01 = SaaS & Hosting, 2.0% ISS
-
-// 4. Load A1 certificate (.pfx in base64 from vault)
-let cert = FiscalCertificate::from_base64(
-    &std::env::var("CERTIFICADO_A1_BASE64")?,
-    &std::env::var("CERTIFICADO_A1_SENHA")?,
-);
-
-// 5. Emit directly to Receita Federal with R$ 0.00 fee!
-let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Production).await?;
-println!("✅ NFS-e emitida com sucesso! Chave de Acesso: {}", response.access_key);
-```
-
+- Derive tenant identity from an authenticated context, not an arbitrary client
+  header.
+- Keep webhook secrets non-empty, rotate them, and retain replay state according
+  to the provider contract.
+- Reconcile provider events idempotently in the application database.
+- Treat Studio revenue panels as observability views, not an accounting ledger.
+- Verify every adapter capability in a sandbox before enabling live traffic.

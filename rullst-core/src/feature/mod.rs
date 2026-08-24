@@ -3,6 +3,7 @@
 //! Provides a composable driver pipeline for feature flag evaluation:
 //! memory overrides → env vars → TOML config → database.
 
+#[cfg(feature = "orm")]
 mod db;
 mod driver;
 mod env;
@@ -16,6 +17,7 @@ mod tests;
 
 // ─── Public Re-exports ──────────────────────────────────────────────────────
 
+#[cfg(feature = "orm")]
 pub use db::DbFeatureDriver;
 pub use driver::FeatureDriver;
 pub use env::EnvFeatureDriver;

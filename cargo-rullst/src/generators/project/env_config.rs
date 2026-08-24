@@ -1,5 +1,6 @@
-// cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, nix, and buildah configurations (< 250 lines).
+// cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
 
+use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::has_binary;
 use colored::*;
 use rand::distr::{Alphanumeric, SampleString};
@@ -83,7 +84,7 @@ url = "{db_url}"
 "#
         ));
     }
-    if blueprint_selection == 3 {
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         rullst_toml.push_str(
             r#"
 [security]
@@ -154,7 +155,7 @@ APP_ENV=development
         }
     }
 
-    if blueprint_selection != 0 {
+    if blueprint_selection != BLANK_BLUEPRINT_ID {
         let mut rng = rand::rng();
         let nexus_username = format!("nexus_{}", Alphanumeric.sample_string(&mut rng, 12));
         let nexus_password = Alphanumeric.sample_string(&mut rng, 32);
@@ -166,21 +167,23 @@ APP_ENV=development
         );
     }
 
-    if blueprint_selection == 2 || blueprint_selection == 3 {
-        let stripe_template = r#"
-# ── Stripe Billing ──
-# STRIPE_SECRET_KEY=sk_test_REPLACE_WITH_YOUR_SECRET_KEY
-# STRIPE_WEBHOOK_SECRET=whsec_REPLACE_WITH_YOUR_WEBHOOK_SECRET
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
+        let billing_template = r#"
+# ── Billing (required in production) ──
+BILLING_PROVIDER=stripe
+BILLING_API_KEY=
+BILLING_WEBHOOK_SECRET=
+BILLING_REDIRECT_URL=http://localhost:3000/dashboard
 "#;
-        env_content.push_str(stripe_template);
-        env_example_content.push_str(stripe_template);
+        env_content.push_str(billing_template);
+        env_example_content.push_str(billing_template);
     }
 
     fs::write(path.join(".env"), &env_content)?;
     fs::write(path.join(".env.example"), &env_example_content)?;
 
     if db_provider == "Sqlite" {
-        let _ = fs::write(path.join("rullst.db"), "");
+        fs::write(path.join("rullst.db"), "")?;
     }
 
     Ok(())
@@ -245,12 +248,21 @@ pub fn generate_buildah_script(
     project_path: &Path,
     project_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "{}",
-        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
-    );
+    if project_name.is_empty()
+        || !project_name.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
+        })
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Buildah image name contains unsupported characters",
+        )
+        .into());
+    }
     let buildah_script = format!(
         r#"#!/usr/bin/env bash
+set -euo pipefail
+
 echo "🦀 Building rootless OCI image for {}..."
 buildah bud -f Dockerfile -t {}:latest .
 echo "✅ Build complete!"
@@ -258,6 +270,57 @@ echo "✅ Build complete!"
         project_name, project_name
     );
     let script_path = project_path.join("build_buildah.sh");
-    fs::write(&script_path, buildah_script).ok();
+    fs::write(&script_path, buildah_script)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))?;
+    }
+    println!(
+        "{}",
+        "\n📦 Buildah script generated! To build an OCI image rootless:".cyan()
+    );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nix_and_buildah_generators_emit_distinct_artifacts() {
+        let root =
+            std::env::temp_dir().join(format!("rullst-container-flags-{}", rand::random::<u64>()));
+        fs::create_dir_all(&root).expect("temporary project");
+
+        generate_nix_files(&root).expect("Nix files");
+        assert!(root.join("flake.nix").is_file());
+        assert!(root.join(".envrc").is_file());
+        assert!(!root.join("build_buildah.sh").exists());
+
+        generate_buildah_script(&root, "demo-app").expect("Buildah script");
+        let script = fs::read_to_string(root.join("build_buildah.sh")).expect("Buildah source");
+        assert!(script.contains("buildah bud"));
+        assert!(script.contains("demo-app:latest"));
+
+        fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn buildah_write_failures_are_propagated() {
+        let missing_parent = std::env::temp_dir()
+            .join(format!("rullst-missing-buildah-{}", rand::random::<u64>()))
+            .join("project");
+        assert!(generate_buildah_script(&missing_parent, "demo").is_err());
+    }
+
+    #[test]
+    fn buildah_image_name_cannot_inject_shell_commands() {
+        let root =
+            std::env::temp_dir().join(format!("rullst-buildah-name-{}", rand::random::<u64>()));
+        fs::create_dir_all(&root).expect("temporary project");
+        assert!(generate_buildah_script(&root, "demo; touch compromised").is_err());
+        assert!(!root.join("build_buildah.sh").exists());
+        fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
 }

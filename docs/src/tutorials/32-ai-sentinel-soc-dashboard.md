@@ -57,4 +57,4 @@ Open Rullst Studio Visual Threat Radar at `http://localhost:5555/studio/security
 
 ## 💡 Key Takeaways
 - Deception traps ban automated scanning bots before they reach application logic.
-- 100% offline local AI security without external cloud dependencies.
+- local AI classification without a required cloud LLM when the deployment is configured and isolated accordingly.
