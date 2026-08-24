@@ -298,7 +298,7 @@ pub fn current_timestamp_str() -> String {
     }
 }
 
-pub fn get_real_rss_memory_mb() -> f64 {
+pub fn get_real_rss_memory_mb() -> Option<f64> {
     rullst_core::radar::get_process_memory_mb()
 }
 

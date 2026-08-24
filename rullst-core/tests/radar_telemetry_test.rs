@@ -7,26 +7,30 @@ use rullst_core::radar::{
 };
 use rullst_core::telemetry_spans::{SpanCollector, TraceSpan};
 
-#[test]
-fn test_radar_snapshot_collection_and_prometheus_export() {
+#[tokio::test]
+async fn test_radar_snapshot_collection_and_prometheus_export() {
     init_radar();
 
-    // Collect radar snapshot (synchronous)
-    let snapshot = RadarSnapshot::collect();
-    assert!(snapshot.cpu_usage_percent >= 0.0);
-    assert!(snapshot.memory_rss_mb >= 0.0);
+    let snapshot = RadarSnapshot::collect_async().await;
+    assert!(snapshot.cpu_usage_percent.is_none_or(|cpu| cpu >= 0.0));
+    assert!(snapshot.memory_rss_mb.is_none_or(|memory| memory >= 0.0));
+    assert!(snapshot.active_tokio_tasks.is_some());
+    assert!(snapshot.tokio_latency_micros.is_some());
 
     // Memory query helper
     let mem = get_process_memory_mb();
-    assert!(mem >= 0.0);
+    assert!(mem.is_none_or(|memory| memory >= 0.0));
 
     // Prometheus metric render output verification
     let prom = render_prometheus_metrics(&snapshot);
-    assert!(prom.contains("# HELP rullst_cpu_usage_percent"));
-    assert!(prom.contains("# TYPE rullst_cpu_usage_percent gauge"));
-    assert!(prom.contains("rullst_cpu_usage_percent"));
-    assert!(prom.contains("# HELP rullst_memory_rss_bytes"));
-    assert!(prom.contains("rullst_memory_rss_bytes"));
+    assert_eq!(
+        prom.contains("rullst_cpu_usage_percent"),
+        snapshot.cpu_usage_percent.is_some()
+    );
+    assert_eq!(
+        prom.contains("rullst_memory_rss_bytes"),
+        snapshot.memory_rss_mb.is_some()
+    );
     assert!(prom.contains("# HELP rullst_uptime_seconds"));
     assert!(prom.contains("rullst_uptime_seconds"));
     assert!(prom.contains("# HELP rullst_tokio_latency_microseconds"));

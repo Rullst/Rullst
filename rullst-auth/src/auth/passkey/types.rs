@@ -151,8 +151,9 @@ pub struct AuthenticatorAssertionResponse {
 pub struct Passkey {
     /// The credential ID returned by the authenticator, used to match credentials during authentication.
     pub credential_id: Vec<u8>,
-    /// The raw DER-encoded COSE public key extracted from the attestation object.
+    /// The validated uncompressed SEC1 P-256 public key extracted from the ES256 COSE key.
     pub public_key: Vec<u8>,
-    /// Monotonically increasing signature counter used to detect authenticator cloning.
+    /// Signature counter used to detect authenticator cloning. A zero value means the
+    /// authenticator does not implement counters; otherwise every assertion must advance it.
     pub sign_count: u32,
 }

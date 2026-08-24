@@ -7,7 +7,9 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 - [x] **The `Billable` Trait**: Add `#[derive(Billable)]` to your User model to instantly gain methods like `user.charge(50.00).await` or `user.subscribe("pro_plan").await`.
 
 ## Phase 2: Billing Operations
-- [x] **Secure Webhooks**: A ready-to-use Actix/Axum middleware that automatically parses and cryptographically verifies webhook signatures from Stripe/LemonSqueezy to prevent fraud.
+- [x] **Fail-closed Axum Webhooks**: Supported provider signatures reject empty secrets; timestamped protocols enforce freshness and middleware provides bounded TTL replay protection.
+- [ ] **Distributed Idempotency Store**: Persist accepted event keys across processes and deployments before billing side effects.
+- [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
 - [x] **Invoicing Generation**: Generate beautiful invoices (HTML/PDF) natively in Rust and email them directly to the customer when a payment succeeds.
 
 ## Phase 3: Advanced Subscription Management
@@ -35,3 +37,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 9: Multi-Currency (Localized Pricing)
 - [ ] **Dynamic Geolocation Checkout**: Automatically detect a user's country/IP and resolve the correct gateway Price ID (e.g., charging in BRL for Brazil and USD for the USA) natively through the `Billable` trait.
+
+## Phase 10: NFS-e Nacional
+- [x] **Contained Offline Fixture**: Deterministic `OfflineMock` response that is unambiguously not an authorization.
+- [ ] **Validated Live Issuance**: PKCS#12 private-key handling, XML C14N/XMLDSig, XSD validation, mTLS, strict response parsing and official homologation. Homologation and production remain fail-closed until complete.

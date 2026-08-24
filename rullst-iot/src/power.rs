@@ -1,13 +1,13 @@
-//! Ultra-Low-Power Deep Sleep & Solar Energy Governor (`rullst_iot::power`).
+//! Voltage-based power-mode recommendation helpers.
 
 /// Power governor operating modes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PowerMode {
-    /// Full execution, all peripherals active.
+    /// Recommendation for full execution.
     FullActive,
-    /// Reduced clock speed, non-essential peripherals off.
+    /// Recommendation for reduced power use.
     LowPower,
-    /// CPU halted, woken only by interrupt or timer.
+    /// Recommendation for platform-specific deep sleep.
     DeepSleep,
 }
 

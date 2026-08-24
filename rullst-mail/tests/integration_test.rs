@@ -8,6 +8,7 @@ use rullst_mail::drivers::{LogDriver, MailDriver};
 use rullst_mail::message::Message;
 use rullst_mail::security::{extract_urls, is_dangerous_scheme, is_homograph_domain};
 use rullst_mail::tracking::{TrackingEngine, TrackingError};
+use std::time::Duration;
 
 #[tokio::test]
 async fn test_memory_driver_and_failover() {
@@ -35,36 +36,57 @@ async fn test_memory_driver_and_failover() {
 
 #[test]
 fn test_email_tracking_tokens_and_pixel_injection() {
-    let secret = b"my_super_secret_hmac_tracking_key";
+    let secret = b"rullst-mail-integration-key-32-bytes-2026";
     let email = "user@test.org";
     let campaign = "launch_2026";
     let timestamp = 1700000000;
 
     // 1. Open tracking
-    let open_token = TrackingEngine::generate_open_token(secret, email, campaign, timestamp);
+    let open_token =
+        TrackingEngine::try_generate_open_token(secret, email, campaign, timestamp).unwrap();
     assert!(!open_token.is_empty());
 
-    let verified_open = TrackingEngine::verify_open_token(secret, &open_token).unwrap();
+    let verified_open = TrackingEngine::verify_open_token_at(
+        secret,
+        &open_token,
+        timestamp,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     assert_eq!(verified_open.email, email);
     assert_eq!(verified_open.campaign_id, campaign);
     assert_eq!(verified_open.timestamp, timestamp);
 
     // Invalid open token verification
     assert_eq!(
-        TrackingEngine::verify_open_token(b"wrong_secret", &open_token).unwrap_err(),
-        TrackingError::InvalidSignature
+        TrackingEngine::verify_open_token_at(
+            b"wrong_secret",
+            &open_token,
+            timestamp,
+            Duration::from_secs(60)
+        )
+        .unwrap_err(),
+        TrackingError::WeakSecret
     );
 
     // 2. Click tracking
     let target = "https://rullst.dev/docs";
-    let click_token = TrackingEngine::generate_click_token(secret, email, target, timestamp);
-    let verified_click = TrackingEngine::verify_click_token(secret, &click_token).unwrap();
+    let click_token =
+        TrackingEngine::try_generate_click_token(secret, email, target, timestamp).unwrap();
+    let verified_click = TrackingEngine::verify_click_token_at(
+        secret,
+        &click_token,
+        timestamp,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     assert_eq!(verified_click.email, email);
     assert_eq!(verified_click.target_url, target);
 
     // 3. Pixel injection
     let html = "<html><body><h1>Hello</h1></body></html>";
-    let tracked_html = TrackingEngine::inject_open_pixel(html, "https://rullst.dev/t/pixel.gif");
+    let tracked_html =
+        TrackingEngine::try_inject_open_pixel(html, "https://rullst.dev/t/pixel.gif").unwrap();
     assert!(tracked_html.contains("<img src=\"https://rullst.dev/t/pixel.gif\""));
     assert!(tracked_html.contains("</body>"));
 }

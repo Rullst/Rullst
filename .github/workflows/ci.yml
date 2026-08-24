@@ -36,10 +36,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy (Workspace)
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Run Clippy (Rullst optional features)
-        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis,mail-smtp -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: Run Tests (${{ matrix.os }})
@@ -70,6 +67,23 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
         run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
+
+  strict-database-features:
+    name: ORM ${{ matrix.feature }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: [strict-postgres, strict-mysql, strict-sqlite]
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Compile ORM feature in isolation
+        run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
 
   msrv:
     name: Check MSRV (Rust 1.96.0)

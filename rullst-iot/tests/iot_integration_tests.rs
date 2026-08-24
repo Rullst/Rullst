@@ -2,9 +2,12 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use rullst_iot::hsm::{HsmChipType, HsmDevice};
+use ed25519_dalek::{Signer, SigningKey};
+#[cfg(feature = "experimental-simulators")]
+use rullst_iot::hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
 use rullst_iot::mesh::{MeshNode, MeshTopology, NodeStatus};
-use rullst_iot::pqc::PqcKeyPair;
+#[cfg(feature = "experimental-simulators")]
+use rullst_iot::pqc::SimulatedPqcFixture;
 use rullst_iot::ui::IotDashboard;
 use rullst_iot::*;
 
@@ -29,16 +32,151 @@ fn test_modbus_frame_encoding() {
 
 #[test]
 fn test_ota_partition_manager() {
-    let mut ota = OtaManager::new("12.0.0");
+    let firmware = b"integration-test-firmware-v12.1.0";
+    let signing_key = SigningKey::from_bytes(&[42_u8; 32]);
+    let manifest =
+        OtaManifest::from_firmware("rullst-test-board", "12.1.0", 121, firmware).unwrap();
+    let signature = signing_key.sign(&manifest.signing_bytes().unwrap());
+    let mut ota = OtaManager::new_with_trusted_key(
+        "rullst-test-board",
+        "12.0.0",
+        120,
+        signing_key.verifying_key().to_bytes(),
+    )
+    .unwrap();
     assert_eq!(ota.current_partition, BootPartition::PartitionA);
     assert_eq!(ota.current_partition.opposite(), BootPartition::PartitionB);
 
-    let msg = ota.commit_update("12.1.0");
+    assert_eq!(
+        ota.commit_verified_update(),
+        Err(OtaError::NoVerifiedUpdate)
+    );
+    ota.verify_update(&manifest, firmware, &signature.to_bytes())
+        .unwrap();
+    let commit = ota.commit_verified_update().unwrap();
     assert_eq!(ota.current_partition, BootPartition::PartitionB);
-    assert!(msg.contains("12.1.0"));
+    assert_eq!(commit.version(), "12.1.0");
+    assert_eq!(ota.rollback_counter(), 121);
+    assert_eq!(
+        ota.verify_update(&manifest, firmware, &signature.to_bytes()),
+        Err(OtaError::RollbackDetected {
+            current: 121,
+            proposed: 121,
+        })
+    );
+}
 
-    assert!(ota.verify_signature(b"firmware_data", &[0u8; 64]));
-    assert!(!ota.verify_signature(b"", &[0u8; 64]));
+#[test]
+fn test_ota_rejects_signature_hash_target_and_rollback_failures() {
+    let firmware = b"firmware-image-A";
+    let signing_key = SigningKey::from_bytes(&[17_u8; 32]);
+    let public_key = signing_key.verifying_key().to_bytes();
+    let manifest = OtaManifest::from_firmware("board-a", "2.0.0", 11, firmware).unwrap();
+    let signature = signing_key
+        .sign(&manifest.signing_bytes().unwrap())
+        .to_bytes();
+    let mut manager = OtaManager::new_with_trusted_key("board-a", "1.0.0", 10, public_key).unwrap();
+
+    let mut invalid_signature = signature;
+    invalid_signature[0] ^= 1;
+    assert_eq!(
+        manager.verify_update(&manifest, firmware, &invalid_signature),
+        Err(OtaError::SignatureInvalid)
+    );
+    assert_eq!(
+        manager.verify_update(&manifest, firmware, &[0_u8; 63]),
+        Err(OtaError::InvalidSignatureEncoding)
+    );
+    assert_eq!(
+        manager.verify_update(&manifest, b"short", &signature),
+        Err(OtaError::FirmwareLengthMismatch {
+            expected: 16,
+            actual: 5,
+        })
+    );
+    assert_eq!(
+        manager.verify_update(&manifest, b"firmware-image-B", &signature),
+        Err(OtaError::FirmwareHashMismatch)
+    );
+
+    let changed_version = OtaManifest::from_firmware("board-a", "2.0.1", 11, firmware).unwrap();
+    assert_eq!(
+        manager.verify_update(&changed_version, firmware, &signature),
+        Err(OtaError::SignatureInvalid)
+    );
+
+    let wrong_target = OtaManifest::from_firmware("board-b", "2.0.0", 11, firmware).unwrap();
+    let wrong_target_signature = signing_key
+        .sign(&wrong_target.signing_bytes().unwrap())
+        .to_bytes();
+    assert_eq!(
+        manager.verify_update(&wrong_target, firmware, &wrong_target_signature),
+        Err(OtaError::TargetMismatch)
+    );
+
+    let rollback = OtaManifest::from_firmware("board-a", "0.9.0", 10, firmware).unwrap();
+    let rollback_signature = signing_key
+        .sign(&rollback.signing_bytes().unwrap())
+        .to_bytes();
+    assert_eq!(
+        manager.verify_update(&rollback, firmware, &rollback_signature),
+        Err(OtaError::RollbackDetected {
+            current: 10,
+            proposed: 10,
+        })
+    );
+    assert!(manager.pending_manifest().is_none());
+}
+
+#[test]
+#[allow(deprecated)]
+fn test_legacy_ota_apis_are_typed_and_fail_closed() {
+    assert!(matches!(
+        OtaManager::new("1.0.0"),
+        Err(OtaError::LegacyApiUnsupported {
+            replacement: "OtaManager::new_with_trusted_key",
+        })
+    ));
+    let signing_key = SigningKey::from_bytes(&[23_u8; 32]);
+    let mut manager = OtaManager::new_with_trusted_key(
+        "legacy-test-board",
+        "1.0.0",
+        1,
+        signing_key.verifying_key().to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(
+        manager.verify_signature(b"firmware", &[0_u8; 64]),
+        Err(OtaError::LegacyApiUnsupported {
+            replacement: "OtaManager::verify_update",
+        })
+    );
+    assert_eq!(
+        manager.commit_update("2.0.0"),
+        Err(OtaError::LegacyApiUnsupported {
+            replacement: "OtaManager::commit_verified_update",
+        })
+    );
+    assert_eq!(manager.current_partition, BootPartition::PartitionA);
+    assert_eq!(manager.firmware_version, "1.0.0");
+}
+
+#[test]
+fn test_ota_rejects_invalid_trust_configuration() {
+    let mut weak_identity_key = [0_u8; 32];
+    weak_identity_key[0] = 1;
+    assert_eq!(
+        OtaManager::new_with_trusted_key("board-a", "1.0.0", 1, weak_identity_key).err(),
+        Some(OtaError::InvalidTrustedKey)
+    );
+    assert_eq!(
+        OtaManifest::from_firmware("", "2.0.0", 2, b"firmware"),
+        Err(OtaError::EmptyTarget)
+    );
+    assert_eq!(
+        OtaManifest::from_firmware("board-a", "", 2, b"firmware"),
+        Err(OtaError::EmptyVersion)
+    );
 }
 
 #[test]
@@ -88,25 +226,27 @@ fn test_gpio_and_ble_structures() {
 }
 
 #[test]
-fn test_hsm_device_and_signatures() {
-    let hsm = HsmDevice::new(HsmChipType::Atecc608A, "DEV-SEC-001");
-    let key = hsm.derive_key();
-    assert_eq!(key.len(), 32);
+#[cfg(feature = "experimental-simulators")]
+fn test_simulated_hsm_fixture_digests() {
+    let hsm = SimulatedHsmDevice::new(SimulatedHsmProfile::Atecc608A, "DEV-SEC-001");
+    let fixture = hsm.derive_fixture_bytes();
+    assert_eq!(fixture.len(), 32);
 
-    let sig = hsm.sign(b"telemetry_packet_bytes");
-    assert_eq!(sig.len(), 32);
+    let digest = hsm.digest_fixture(b"telemetry_packet_bytes");
+    assert_eq!(digest.len(), 32);
 }
 
 #[test]
-fn test_pqc_keypair_encapsulation() {
-    let keypair = PqcKeyPair::from_seed(b"pqc_master_seed_edge");
-    assert_eq!(keypair.public_key.len(), 32);
+#[cfg(feature = "experimental-simulators")]
+fn test_simulated_pqc_fixture_derivations() {
+    let fixture = SimulatedPqcFixture::from_seed(b"pqc_fixture_seed_edge");
+    assert_eq!(fixture.public_fixture().len(), 32);
 
-    let ciphertext = keypair.encapsulate(b"shared_session_secret");
+    let ciphertext = fixture.derive_ciphertext_fixture(b"fixture_input");
     assert_eq!(ciphertext.len(), 32);
 
-    let decrypted = keypair.decapsulate(&ciphertext);
-    assert_eq!(decrypted.len(), 32);
+    let output = fixture.derive_output_fixture(&ciphertext);
+    assert_eq!(output.len(), 32);
 }
 
 #[test]
@@ -134,15 +274,16 @@ fn test_iot_micro_dashboard_rendering() {
 }
 
 #[test]
-fn test_hsm_chip_types_and_verification() {
-    let hsm_tpm = HsmDevice::new(HsmChipType::Tpm2, "DEV-TPM-002");
-    assert_eq!(hsm_tpm.derive_key().len(), 32);
+#[cfg(feature = "experimental-simulators")]
+fn test_simulated_hsm_profiles() {
+    let hsm_tpm = SimulatedHsmDevice::new(SimulatedHsmProfile::Tpm2, "DEV-TPM-002");
+    assert_eq!(hsm_tpm.derive_fixture_bytes().len(), 32);
 
-    let hsm_stsafe = HsmDevice::new(HsmChipType::Stsafe, "DEV-SE-003");
-    assert_eq!(hsm_stsafe.derive_key().len(), 32);
+    let hsm_stsafe = SimulatedHsmDevice::new(SimulatedHsmProfile::Stsafe, "DEV-SE-003");
+    assert_eq!(hsm_stsafe.derive_fixture_bytes().len(), 32);
 
-    let hsm_software = HsmDevice::new(HsmChipType::Software, "DEV-CUST-004");
-    assert_eq!(hsm_software.derive_key().len(), 32);
+    let hsm_software = SimulatedHsmDevice::new(SimulatedHsmProfile::Software, "DEV-CUST-004");
+    assert_eq!(hsm_software.derive_fixture_bytes().len(), 32);
 }
 
 #[test]

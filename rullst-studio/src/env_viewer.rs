@@ -5,26 +5,56 @@ pub fn router() -> Router {
     Router::new().route("/", get(render_env_viewer))
 }
 
+fn may_display_environment_value(key: &str) -> bool {
+    let normalized = key.to_ascii_uppercase();
+    let sensitive_markers = [
+        "SECRET",
+        "PASSWORD",
+        "PASSWD",
+        "TOKEN",
+        "KEY",
+        "API_KEY",
+        "PRIVATE_KEY",
+        "AUTH",
+        "CREDENTIAL",
+        "COOKIE",
+        "SESSION",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "DSN",
+    ];
+    if sensitive_markers
+        .iter()
+        .any(|marker| normalized.contains(marker))
+    {
+        return false;
+    }
+
+    normalized.contains("PUBLIC_")
+        || matches!(
+            normalized.as_str(),
+            "APP_ENV"
+                | "RULLST_ENV"
+                | "RUST_LOG"
+                | "RUST_BACKTRACE"
+                | "HOST"
+                | "PORT"
+                | "TZ"
+                | "LANG"
+        )
+        || normalized.starts_with("LC_")
+}
+
 async fn render_env_viewer() -> Html<String> {
     let mut vars: Vec<(String, String)> = std::env::vars().collect();
     vars.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut rows = String::new();
     for (key, val) in vars {
-        let is_sensitive = key.contains("SECRET")
-            || key.contains("PASSWORD")
-            || key.contains("TOKEN")
-            || key.contains("KEY")
-            || key.contains("AUTH");
-
-        let display_val = if is_sensitive {
-            if val.len() > 6 {
-                format!("{}••••••••", &val[0..4])
-            } else {
-                "••••••••".to_string()
-            }
-        } else {
+        let display_val = if may_display_environment_value(&key) {
             val
+        } else {
+            "[REDACTED]".to_string()
         };
 
         let val_html = rullst_core::html::escape_str(&display_val);
@@ -92,6 +122,8 @@ mod tests {
             std::env::set_var("RULLST_TEST_SECRET_API_KEY", "super_secret_value_12345");
             std::env::set_var("RULLST_TEST_AUTH_TOKEN", "tok12");
             std::env::set_var("RULLST_TEST_PUBLIC_APP_NAME", "RullstFramework");
+            std::env::set_var("DATABASE_URL", "postgres://admin:secret@db/app");
+            std::env::set_var("REDIS_URL", "redis://:secret@cache/0");
         }
 
         let app = router();
@@ -105,9 +137,9 @@ mod tests {
         assert!(html.contains("RullstFramework"));
         // Check that secret was masked
         assert!(!html.contains("super_secret_value_12345"));
-        assert!(html.contains("supe••••••••"));
-        // Short token <= 6 chars masked completely
+        assert!(html.contains("[REDACTED]"));
         assert!(!html.contains("tok12"));
-        assert!(html.contains("••••••••"));
+        assert!(!html.contains("postgres://admin:secret@db/app"));
+        assert!(!html.contains("redis://:secret@cache/0"));
     }
 }

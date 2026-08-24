@@ -3,13 +3,92 @@
 
 use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
 use axum::{
-    body::Body,
-    http::{Request, Response},
+    body::{Body, HttpBody},
+    http::{
+        HeaderMap, HeaderValue, Method, Request, Response, StatusCode,
+        header::{self, HeaderName},
+    },
 };
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
+
+const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
+
+fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
+    let value = headers.get(header::CONTENT_TYPE)?.to_str().ok()?;
+    let media_type = value.split(';').next()?.trim();
+
+    if media_type.eq_ignore_ascii_case("text/event-stream") {
+        return None;
+    }
+
+    let is_text = media_type
+        .get(..5)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("text/"));
+    let is_json = media_type.eq_ignore_ascii_case("application/json")
+        || media_type
+            .strip_suffix("+json")
+            .is_some_and(|prefix| prefix.starts_with("application/"));
+
+    (is_text || is_json).then_some(media_type)
+}
+
+fn has_identity_encoding(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_ENCODING)
+        .is_none_or(|value| value.as_bytes().eq_ignore_ascii_case(b"identity"))
+}
+
+/// Only fixed, in-memory bodies are inspected. Unknown-size bodies are likely streams and must
+/// pass through untouched because consuming a partial stream cannot be rolled back safely.
+fn is_safely_bufferable(headers: &HeaderMap, body: &Body) -> bool {
+    let hint = body.size_hint();
+    let Some(upper) = hint.upper() else {
+        return false;
+    };
+
+    if hint.lower() != upper || upper > MAX_BUFFERED_RESPONSE_BYTES {
+        return false;
+    }
+
+    match headers.get(header::CONTENT_LENGTH) {
+        Some(value) => value
+            .to_str()
+            .ok()
+            .and_then(|value| value.parse::<u64>().ok())
+            .is_some_and(|declared| declared == upper),
+        None => true,
+    }
+}
+
+fn remove_stale_representation_headers(headers: &mut HeaderMap, body_len: usize) {
+    headers.remove(header::ETAG);
+    headers.remove(header::CONTENT_RANGE);
+    headers.remove(header::ACCEPT_RANGES);
+    headers.remove(HeaderName::from_static("content-md5"));
+    headers.remove(HeaderName::from_static("digest"));
+    headers.remove(HeaderName::from_static("content-digest"));
+
+    headers.remove(header::CONTENT_LENGTH);
+    if let Ok(value) = HeaderValue::from_str(&body_len.to_string()) {
+        headers.insert(header::CONTENT_LENGTH, value);
+    }
+}
+
+fn body_collection_failure() -> Response<Body> {
+    let mut response = Response::new(Body::from("response inspection failed"));
+    *response.status_mut() = StatusCode::BAD_GATEWAY;
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/plain; charset=utf-8"),
+    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
+}
 
 /// Masks sensitive patterns from response payloads. Returns (sanitized_bytes, was_masked).
 pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
@@ -17,34 +96,35 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
         return (Vec::new(), false);
     }
 
-    let text = String::from_utf8_lossy(input);
-    let mut sanitized = text.to_string();
+    let Ok(text) = std::str::from_utf8(input) else {
+        return (input.to_vec(), false);
+    };
+    let mut sanitized = text.to_owned();
     let mut modified = false;
 
     // 1. Mask Private Keys (RSA / OpenSSH / Generic)
-    if sanitized.contains("-----BEGIN PRIVATE KEY-----")
-        || sanitized.contains("-----BEGIN RSA PRIVATE KEY-----")
-        || sanitized.contains("-----BEGIN OPENSSH PRIVATE KEY-----")
-    {
-        for prefix in &[
-            "-----BEGIN PRIVATE KEY-----",
+    for (begin, end_marker) in [
+        ("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"),
+        (
             "-----BEGIN RSA PRIVATE KEY-----",
+            "-----END RSA PRIVATE KEY-----",
+        ),
+        (
             "-----BEGIN OPENSSH PRIVATE KEY-----",
-        ] {
-            while let Some(start) = sanitized.find(prefix) {
-                let end = sanitized[start..]
-                    .find("-----END")
-                    .map(|e| {
-                        let sub = &sanitized[start + e..];
-                        sub.find("-----")
-                            .map(|e2| start + e + e2 + 5)
-                            .unwrap_or(sanitized.len())
-                    })
-                    .unwrap_or(sanitized.len());
-
-                sanitized.replace_range(start..end, "[DLP_BLOCKED_PRIVATE_KEY]");
-                modified = true;
-            }
+            "-----END OPENSSH PRIVATE KEY-----",
+        ),
+    ] {
+        let mut cursor = 0;
+        while let Some(offset) = sanitized[cursor..].find(begin) {
+            let start = cursor + offset;
+            let search_from = start + begin.len();
+            let Some(end_offset) = sanitized[search_from..].find(end_marker) else {
+                break;
+            };
+            let end = search_from + end_offset + end_marker.len();
+            sanitized.replace_range(start..end, "[DLP_BLOCKED_PRIVATE_KEY]");
+            modified = true;
+            cursor = start + "[DLP_BLOCKED_PRIVATE_KEY]".len();
         }
     }
 
@@ -52,12 +132,19 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
     let mut cursor = 0;
     while let Some(offset) = sanitized[cursor..].find("AKIA") {
         let start = cursor + offset;
-        let end = (start + 20).min(sanitized.len());
-        if !sanitized[start..end].starts_with("AKIA****************") {
-            sanitized.replace_range(start..end, "AKIA****************");
+        let remainder = &sanitized.as_bytes()[start..];
+        let is_access_key = remainder.len() >= 20
+            && remainder[..20]
+                .iter()
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit());
+
+        if is_access_key {
+            sanitized.replace_range(start..start + 20, "AKIA****************");
             modified = true;
+            cursor = start + 20;
+        } else {
+            cursor = start + 4;
         }
-        cursor = start + 20.min(sanitized.len().saturating_sub(start));
         if cursor >= sanitized.len() {
             break;
         }
@@ -103,9 +190,9 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
                     event_type: "DLP_SECRET_LEAK_PREVENTED".to_string(),
                     details: "Neutralized secret credentials/key from outgoing HTTP response"
                         .to_string(),
-                    client_ip: "127.0.0.1".to_string(),
+                    client_ip: "unknown".to_string(),
                     timestamp_str: current_timestamp_str(),
-                    verified_hmac: true,
+                    verified_hmac: false,
                 },
             );
             if events.len() > 50 {
@@ -151,21 +238,37 @@ where
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let mut inner = self.inner.clone();
+        let request_method = req.method().clone();
 
         Box::pin(async move {
             let res = inner.call(req).await?;
-            let (parts, body) = res.into_parts();
 
-            // Collect response body up to 2MB limit
-            let bytes = match axum::body::to_bytes(body, 2 * 1024 * 1024).await {
-                Ok(b) => b,
-                Err(_) => return Ok(Response::from_parts(parts, Body::empty())),
+            if request_method == Method::HEAD
+                || res.status().is_informational()
+                || matches!(
+                    res.status(),
+                    StatusCode::NO_CONTENT | StatusCode::NOT_MODIFIED
+                )
+                || textual_media_type(res.headers()).is_none()
+                || !has_identity_encoding(res.headers())
+                || !is_safely_bufferable(res.headers(), res.body())
+            {
+                return Ok(res);
+            }
+
+            let (mut parts, body) = res.into_parts();
+            let bytes = match axum::body::to_bytes(body, MAX_BUFFERED_RESPONSE_BYTES as usize).await
+            {
+                Ok(bytes) => bytes,
+                Err(_) => return Ok(body_collection_failure()),
             };
 
-            let (sanitized_bytes, _) = mask_response_payload(&bytes);
-            let new_body = Body::from(sanitized_bytes);
+            let (sanitized_bytes, was_modified) = mask_response_payload(&bytes);
+            if was_modified {
+                remove_stale_representation_headers(&mut parts.headers, sanitized_bytes.len());
+            }
 
-            Ok(Response::from_parts(parts, new_body))
+            Ok(Response::from_parts(parts, Body::from(sanitized_bytes)))
         })
     }
 }
@@ -210,6 +313,19 @@ mod tests {
     }
 
     #[test]
+    fn invalid_utf8_and_incomplete_pem_are_not_corrupted() {
+        let binary = b"\xff\xfeAKIAIOSFODNN7EXAMPLE";
+        let (masked, was_modified) = mask_response_payload(binary);
+        assert!(!was_modified);
+        assert_eq!(masked, binary);
+
+        let incomplete = b"prefix -----BEGIN PRIVATE KEY----- unfinished payload";
+        let (masked, was_modified) = mask_response_payload(incomplete);
+        assert!(!was_modified);
+        assert_eq!(masked, incomplete);
+    }
+
+    #[test]
     fn test_mask_aws_access_key() {
         let payload = b"{\"aws_key\": \"AKIAIOSFODNN7EXAMPLE\"}";
         let (masked, was_modified) = mask_response_payload(payload);
@@ -245,20 +361,60 @@ mod tests {
 
     #[tokio::test]
     async fn test_dlp_layer_middleware() {
-        use axum::http::{Request, StatusCode};
+        use axum::http::{Request, StatusCode, header};
         use axum::response::IntoResponse;
         use axum::routing::get;
         use tower::ServiceExt;
 
-        async fn handler() -> impl IntoResponse {
-            (
+        async fn secret_handler() -> impl IntoResponse {
+            let mut response = (
                 StatusCode::OK,
                 "Config leaked: postgres://user:secret123@db:5432/main",
             )
+                .into_response();
+            response
+                .headers_mut()
+                .insert(header::ETAG, HeaderValue::from_static("\"old-validator\""));
+            response
+        }
+
+        async fn binary_handler() -> Response<Body> {
+            let payload = b"\xffpostgres://user:secret123@db:5432/main".to_vec();
+            let mut response = Response::new(Body::from(payload));
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/octet-stream"),
+            );
+            response
+        }
+
+        async fn event_stream_handler() -> Response<Body> {
+            let mut response = Response::new(Body::from(
+                "data: postgres://user:secret123@db:5432/main\n\n",
+            ));
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/event-stream"),
+            );
+            response
+        }
+
+        async fn oversized_handler() -> Response<Body> {
+            let mut payload = vec![b'a'; MAX_BUFFERED_RESPONSE_BYTES as usize + 1];
+            payload.extend_from_slice(b"postgres://user:secret123@db:5432/main");
+            let mut response = Response::new(Body::from(payload));
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/plain; charset=utf-8"),
+            );
+            response
         }
 
         let app = axum::Router::new()
-            .route("/secret", get(handler))
+            .route("/secret", get(secret_handler))
+            .route("/binary", get(binary_handler))
+            .route("/events", get(event_stream_handler))
+            .route("/oversized", get(oversized_handler))
             .layer(DlpResponseLayer);
 
         let req = Request::builder()
@@ -266,12 +422,44 @@ mod tests {
             .body(Body::empty())
             .unwrap();
 
-        let resp = app.oneshot(req).await.unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
+        assert!(resp.headers().get(header::ETAG).is_none());
+        let declared_length = resp
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
         let body = axum::body::to_bytes(resp.into_body(), 10000).await.unwrap();
+        assert_eq!(declared_length, body.len());
         let body_str = String::from_utf8(body.to_vec()).unwrap();
         assert!(body_str.contains("postgres://user:*****@db:5432/main"));
         assert!(!body_str.contains("secret123"));
+
+        for (path, limit) in [
+            ("/binary", 10_000usize),
+            ("/events", 10_000usize),
+            ("/oversized", MAX_BUFFERED_RESPONSE_BYTES as usize + 10_000),
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let bytes = axum::body::to_bytes(response.into_body(), limit)
+                .await
+                .unwrap();
+            assert!(
+                bytes
+                    .windows(b"secret123".len())
+                    .any(|window| window == b"secret123"),
+                "{path} must bypass DLP without truncation"
+            );
+        }
     }
 }
 

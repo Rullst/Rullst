@@ -26,24 +26,32 @@ pub mod models;
 {repo_mod_decl}pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Router {{
+pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("Portfolio CMS Admin")
         .register::<models::profile::Profile>()
         .register::<models::project::Project>()
         .register::<models::experience::Experience>()
         .register::<models::skill::Skill>()
-        .build();
+        .try_build()?;
 
-    routes![
+    Ok(routes![
         get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus)
+    ].nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    Box::into_raw(Box::new(router()))
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("Nexus startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
 }}
 "##,
             repo_mod_decl = repo_mod_decl
@@ -67,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     }}
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (User: admin, Pass: password)");
+    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (credentials loaded from the environment)");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
     let server = if is_hot {{
@@ -78,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router();
+        let router = {project_name_safe}::router()?;
         rullst::Server::new(router)
     }};
 
@@ -109,21 +117,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
     println!("📊 Rullst Studio running on port 5555");
 
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("Portfolio CMS Admin")
         .register::<models::profile::Profile>()
         .register::<models::project::Project>()
         .register::<models::experience::Experience>()
         .register::<models::skill::Skill>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::portfolio_controller::index),
     ].nest_axum("/nexus", nexus);
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (User: admin, Pass: password)");
+    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (credentials loaded from the environment)");
     Server::new(router)
         .run(3000)
         .await?;
@@ -200,7 +209,7 @@ impl Migration for CreatePortfolioTables {
             table.timestamps();
         }).await?;
 
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
 
         rullst::db::sqlx::query(
             "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url, created_at, updated_at) VALUES 

@@ -159,7 +159,8 @@ pub async fn dashboard() -> impl IntoResponse {
         auth_controller_code.to_string(),
     ));
 
-    let billing_controller_code = r##"use rullst::server::{IntoResponse, Redirect, StatusCode};
+    let billing_controller_code = r##"use rullst::capital::WebhookEvent;
+use rullst::server::{Extension, IntoResponse, Redirect, StatusCode};
 use crate::pages::billing;
 
 pub async fn pricing_view() -> impl IntoResponse {
@@ -170,7 +171,7 @@ pub async fn checkout_redirect() -> impl IntoResponse {
     Redirect::to("/register")
 }
 
-pub async fn webhook_handler() -> impl IntoResponse {
+pub async fn webhook_handler(Extension(_event): Extension<WebhookEvent>) -> impl IntoResponse {
     StatusCode::OK
 }
 "##;

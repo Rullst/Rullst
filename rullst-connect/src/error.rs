@@ -2,7 +2,17 @@ use thiserror::Error;
 
 /// Official errors of the Rullst Connect library
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ConnectError {
+    #[error("Invalid provider configuration for '{field}': {reason}")]
+    InvalidConfiguration { field: &'static str, reason: String },
+
+    #[error("Offline provider fallback rejected the operation: {0}")]
+    Offline(String),
+
+    #[error("JWK with key ID '{0}' was not found after refreshing the provider key set")]
+    JwkNotFound(String),
+
     #[error("HTTP request failed: {0}")]
     Reqwest(String),
 
@@ -128,6 +138,12 @@ mod tests {
     #[test]
     fn test_error_debug_and_display() {
         let errors = vec![
+            ConnectError::InvalidConfiguration {
+                field: "redirect_url",
+                reason: "test".to_string(),
+            },
+            ConnectError::Offline("test".to_string()),
+            ConnectError::JwkNotFound("test".to_string()),
             ConnectError::Reqwest("test".to_string()),
             ConnectError::Json("test".to_string()),
             ConnectError::Base64("test".to_string()),

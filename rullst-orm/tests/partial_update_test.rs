@@ -16,7 +16,7 @@ async fn test_partial_updates() {
     let _ = rullst_orm::Orm::init("sqlite://partial_update.db?mode=rwc").await;
 
     // Create a table manually
-    let pool = rullst_orm::Orm::pool();
+    let pool = rullst_orm::Orm::pool().expect("ORM should be initialized");
     rullst_orm::_sqlx::query(
         "CREATE TABLE products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +87,7 @@ pub struct OptionalProduct {
 async fn test_partial_updates_optional() {
     let _ = std::fs::remove_file("partial_update_opt.db");
     let _ = rullst_orm::Orm::init("sqlite://partial_update_opt.db?mode=rwc").await;
-    let pool = rullst_orm::Orm::pool();
+    let pool = rullst_orm::Orm::pool().expect("ORM should be initialized");
     rullst_orm::_sqlx::query("CREATE TABLE optional_products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT)").execute(pool).await.unwrap();
 
     let mut p = OptionalProduct {

@@ -61,7 +61,7 @@ pub async fn ai_page(Query(query): Query<AiSearchQuery>) -> impl IntoResponse {
             ),
             (
                 "Hardware Telemetry & IoT Sensor Ingestion",
-                "Connecting industrial edge nodes via Modbus RTU and MQTT 5.0 with bare-metal no_std drivers.",
+                "Parsing Modbus RTU frames, modeling no_std telemetry, and gating firmware updates with signed Ed25519 manifests.",
                 dummy_embed("Hardware Telemetry IoT Sensor Ingestion performance"),
             ),
         ];

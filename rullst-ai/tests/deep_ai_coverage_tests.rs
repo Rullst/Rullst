@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rullst_ai::ai::providers::anthropic::AnthropicProvider;
+use rullst_ai::ai::providers::deepseek::DeepSeekProvider;
 use rullst_ai::ai::providers::gemini::GeminiProvider;
 use rullst_ai::ai::providers::ollama::OllamaProvider;
 use rullst_ai::ai::providers::openai::OpenAiProvider;
@@ -52,8 +53,13 @@ async fn test_ai_provider_offline_mock_fallbacks() {
     assert!(res.is_ok());
 
     // 4. Ollama
-    let ollama = OllamaProvider::new("http://mock-ollama:11434", "llama3");
+    let ollama = OllamaProvider::new("mock_ollama", "llama3");
     let res = ollama.prompt("Hello").await;
+    assert!(res.is_ok());
+
+    // 5. DeepSeek
+    let deepseek = DeepSeekProvider::new("mock_key");
+    let res = deepseek.prompt("Hello").await;
     assert!(res.is_ok());
 }
 

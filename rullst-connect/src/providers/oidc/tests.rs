@@ -196,9 +196,13 @@ async fn test_oidc_discover_invalid_args() {
     .await
     .err()
     .expect("expected error");
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("issuer_url must be HTTPS (or localhost)"))
-    );
+    assert!(matches!(
+        err,
+        crate::error::ConnectError::InvalidConfiguration {
+            field: "issuer_url",
+            ..
+        }
+    ));
 
     let err = OidcProvider::discover_with_client(
         "https://issuer",
@@ -210,11 +214,15 @@ async fn test_oidc_discover_invalid_args() {
     .await
     .err()
     .expect("expected error");
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("redirect_url must be HTTPS (or localhost)"))
-    );
+    assert!(matches!(
+        err,
+        crate::error::ConnectError::InvalidConfiguration {
+            field: "redirect_url",
+            ..
+        }
+    ));
 
-    let err = OidcProvider::discover_with_client(
+    let provider = OidcProvider::discover_with_client(
         "https://issuer",
         "".to_string(),
         "secret".to_string(),
@@ -222,13 +230,18 @@ async fn test_oidc_discover_invalid_args() {
         mock_client.clone(),
     )
     .await
-    .err()
-    .expect("expected error");
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("client_id cannot be empty"))
+    .expect("empty credentials select the offline provider");
+    assert_eq!(
+        provider.credential_mode(),
+        crate::configuration::CredentialMode::Mock
     );
+    let user = provider
+        .get_user(crate::provider::ExchangeParams::default())
+        .await
+        .expect("offline OIDC user");
+    assert_eq!(user.id, "mock-user");
 
-    let err = OidcProvider::discover_with_client(
+    let provider = OidcProvider::discover_with_client(
         "https://issuer",
         "id".to_string(),
         "".to_string(),
@@ -236,11 +249,90 @@ async fn test_oidc_discover_invalid_args() {
         mock_client.clone(),
     )
     .await
-    .err()
-    .expect("expected error");
-    assert!(
-        matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("client_secret cannot be empty"))
+    .expect("empty credentials select the offline provider");
+    assert_eq!(
+        provider.credential_mode(),
+        crate::configuration::CredentialMode::Mock
     );
+
+    let error = OidcProvider::discover_with_client(
+        "http://localhost.evil",
+        "id",
+        "secret",
+        "https://redirect.example/callback",
+        mock_client,
+    )
+    .await
+    .err()
+    .expect("lookalike localhost host must be rejected");
+    assert!(matches!(
+        error,
+        crate::error::ConnectError::InvalidConfiguration {
+            field: "issuer_url",
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn test_oidc_rejects_mismatched_issuer_and_insecure_endpoint() {
+    let mismatched = Arc::new(MockOidcClient {
+        config_body: json!({
+            "authorization_endpoint": "https://auth.com/authorize",
+            "token_endpoint": "https://auth.com/token",
+            "userinfo_endpoint": "https://auth.com/userinfo",
+            "jwks_uri": "https://auth.com/jwks",
+            "issuer": "https://attacker.example"
+        }),
+        jwks_body: json!({"keys": []}),
+        captured_urls: tokio::sync::Mutex::new(vec![]),
+    });
+    let error = OidcProvider::discover_with_client(
+        "https://issuer.example",
+        "client",
+        "secret",
+        "https://app.example/callback",
+        mismatched,
+    )
+    .await
+    .err()
+    .expect("issuer mismatch must fail");
+    assert!(matches!(
+        error,
+        ConnectError::InvalidConfiguration {
+            field: "issuer",
+            ..
+        }
+    ));
+
+    let insecure = Arc::new(MockOidcClient {
+        config_body: json!({
+            "authorization_endpoint": "https://auth.com/authorize",
+            "token_endpoint": "http://auth.com/token",
+            "userinfo_endpoint": "https://auth.com/userinfo",
+            "jwks_uri": "https://auth.com/jwks",
+            "issuer": "https://issuer.example"
+        }),
+        jwks_body: json!({"keys": []}),
+        captured_urls: tokio::sync::Mutex::new(vec![]),
+    });
+    let error = OidcProvider::discover_with_client(
+        "https://issuer.example",
+        "client",
+        "secret",
+        "https://app.example/callback",
+        insecure,
+    )
+    .await
+    .err()
+    .expect("insecure endpoint must fail");
+    assert!(matches!(
+        error,
+        ConnectError::InvalidConfiguration {
+            field: "token_endpoint",
+            ..
+        }
+    ));
 }
 
 #[tokio::test]
@@ -628,7 +720,10 @@ async fn test_oidc_id_token_kid_not_found() {
         .await
         .unwrap_err();
 
-    assert!(matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found")));
+    assert!(matches!(
+        err,
+        crate::error::ConnectError::JwkNotFound(ref kid) if kid == "non_existent_kid"
+    ));
 }
 
 #[tokio::test]

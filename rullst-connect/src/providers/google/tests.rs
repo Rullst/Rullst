@@ -23,6 +23,25 @@ fn test_google_redirect_url() {
     assert!(url.contains("redirect_uri=https%3A%2F%2Fredirect.url"));
 }
 
+#[tokio::test]
+async fn test_google_mock_credentials_never_require_a_network_client() {
+    let provider = GoogleProvider::try_new(
+        "mock_google_client",
+        secrecy::SecretString::from("mock_google_secret".to_string()),
+        "https://app.example/callback",
+    )
+    .expect("mock provider");
+    let user = provider
+        .get_user(crate::provider::ExchangeParams::default())
+        .await
+        .expect("offline user");
+    assert_eq!(user.id, "mock-user");
+    assert_eq!(
+        provider.credential_mode(),
+        crate::configuration::CredentialMode::Mock
+    );
+}
+
 struct MockGoogleClient {
     token_status: u16,
     token_body: serde_json::Value,
@@ -263,7 +282,10 @@ async fn test_google_id_token_kid_not_found() {
         .await
         .unwrap_err();
 
-    assert!(matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("not found")));
+    assert!(matches!(
+        err,
+        crate::error::ConnectError::JwkNotFound(ref kid) if kid == "non_existent_kid"
+    ));
 }
 
 #[tokio::test]

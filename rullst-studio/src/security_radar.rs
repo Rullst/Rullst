@@ -27,7 +27,7 @@ pub struct ThreatRadarStats {
     pub idor_warnings: u64,
     pub timing_guard_protected: u64,
     pub prompt_injections_blocked: u64,
-    pub audit_chain_integrity: String,
+    pub audit_chain_integrity: Option<String>,
     pub threat_level: String,
     pub live_events: Vec<rullst_security::LiveSecurityEvent>,
 }
@@ -68,8 +68,14 @@ async fn get_radar_stats() -> Json<ThreatRadarStats> {
         prompt_injections_blocked: store
             .prompt_injections_blocked_count
             .load(Ordering::Relaxed),
-        audit_chain_integrity: "VERIFIED_100_PERCENT".to_string(),
-        threat_level: "PRODUCTION_GUARD_ACTIVE".to_string(),
+        // Studio has no configured audit-chain source yet, so it reports absence instead of
+        // inventing a successful integrity verification.
+        audit_chain_integrity: None,
+        threat_level: if store.banned_ips.is_empty() && events.is_empty() {
+            "NO_ACTIVE_ALERTS".to_string()
+        } else {
+            "ACTIVITY_OBSERVED".to_string()
+        },
         live_events: events,
     })
 }
@@ -182,8 +188,8 @@ async fn render_radar_dashboard() -> Html<String> {
         </div>
         <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">HMAC Audit Integrity</span>
-            <div class="text-3xl font-extrabold text-emerald-400 mt-2" id="stat-audit">100%</div>
-            <p class="text-xs text-slate-500 mt-1">Cryptographic Hash Chain Verified</p>
+            <div class="text-3xl font-extrabold text-slate-400 mt-2" id="stat-audit">Unavailable</div>
+            <p class="text-xs text-slate-500 mt-1">No audit-chain verifier connected</p>
         </div>
     </div>
 
@@ -328,31 +334,41 @@ async fn render_radar_dashboard() -> Html<String> {
                 const res = await fetch('/studio/security/stats');
                 if (res.ok) {{
                     const data = await res.json();
-                    document.getElementById('stat-honeypot').innerText = data.honeypot_traps_blocked;
-                    document.getElementById('stat-ipbans').innerText = data.active_ip_bans;
-                    document.getElementById('stat-xss').innerText = data.xss_sanitizations;
-                    document.getElementById('stat-redactions').innerText = data.log_redactions;
-                    document.getElementById('stat-zerotrust').innerText = data.zero_trust_mismatches;
-                    document.getElementById('stat-schema').innerText = data.schema_violations;
-                    document.getElementById('stat-sri').innerText = data.sri_signed_assets;
-                    document.getElementById('stat-mfa').innerText = data.mfa_verifications;
-                    document.getElementById('stat-deception').innerText = data.deception_hits;
-                    document.getElementById('stat-cswsh').innerText = data.cswsh_blocks;
-                    document.getElementById('stat-ratelimit').innerText = data.rate_limit_blocks;
-                    document.getElementById('stat-siem').innerText = data.siem_dispatches;
+                    document.getElementById('stat-honeypot').textContent = data.honeypot_traps_blocked;
+                    document.getElementById('stat-ipbans').textContent = data.active_ip_bans;
+                    document.getElementById('stat-xss').textContent = data.xss_sanitizations;
+                    document.getElementById('stat-redactions').textContent = data.log_redactions;
+                    document.getElementById('stat-zerotrust').textContent = data.zero_trust_mismatches;
+                    document.getElementById('stat-schema').textContent = data.schema_violations;
+                    document.getElementById('stat-sri').textContent = data.sri_signed_assets;
+                    document.getElementById('stat-mfa').textContent = data.mfa_verifications;
+                    document.getElementById('stat-deception').textContent = data.deception_hits;
+                    document.getElementById('stat-cswsh').textContent = data.cswsh_blocks;
+                    document.getElementById('stat-ratelimit').textContent = data.rate_limit_blocks;
+                    document.getElementById('stat-siem').textContent = data.siem_dispatches;
+                    document.getElementById('stat-audit').textContent = data.audit_chain_integrity || 'Unavailable';
 
                     if (data.live_events && data.live_events.length > 0) {{
                         const stream = document.getElementById('incident-stream');
-                        stream.innerHTML = data.live_events.map(evt => {{
+                        const fragment = document.createDocumentFragment();
+                        data.live_events.forEach(evt => {{
                             const color = evt.event_type === 'HONEYPOT_TRAP_TRIGGERED' ? 'text-rose-400 border-rose-900/40' : 'text-cyan-400 border-cyan-900/40';
-                            return `<div class="p-3 bg-slate-950 border ${{color}} rounded-lg">
-                                <div class="flex justify-between font-bold">
-                                    <span>${{evt.event_type}}</span>
-                                    <span>${{evt.timestamp_str}}</span>
-                                </div>
-                                <p class="text-slate-300 mt-1">${{evt.details}}</p>
-                            </div>`;
-                        }}).join('');
+                            const card = document.createElement('div');
+                            card.className = 'p-3 bg-slate-950 border rounded-lg ' + color;
+                            const heading = document.createElement('div');
+                            heading.className = 'flex justify-between font-bold';
+                            const eventType = document.createElement('span');
+                            eventType.textContent = String(evt.event_type || 'SECURITY_EVENT');
+                            const timestamp = document.createElement('span');
+                            timestamp.textContent = String(evt.timestamp_str || '');
+                            heading.append(eventType, timestamp);
+                            const details = document.createElement('p');
+                            details.className = 'text-slate-300 mt-1';
+                            details.textContent = String(evt.details || '');
+                            card.append(heading, details);
+                            fragment.append(card);
+                        }});
+                        stream.replaceChildren(fragment);
                     }}
                 }}
             }} catch (e) {{}}
@@ -404,8 +420,11 @@ mod tests {
 
         // 3. Direct function calls
         let stats = get_radar_stats().await.0;
-        assert_eq!(stats.audit_chain_integrity, "VERIFIED_100_PERCENT");
-        assert_eq!(stats.threat_level, "PRODUCTION_GUARD_ACTIVE");
+        assert_eq!(stats.audit_chain_integrity, None);
+        assert!(matches!(
+            stats.threat_level.as_str(),
+            "NO_ACTIVE_ALERTS" | "ACTIVITY_OBSERVED"
+        ));
 
         let html = render_radar_dashboard().await.0;
         assert!(html.contains("Threat Radar"));

@@ -28,10 +28,13 @@ strict-sqlite = ["rullst-orm/strict-sqlite"]
 
 [dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
 toml = { workspace = true }
-dotenvy = { workspace = true }
 rullst-macros = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+serde_json = { workspace = true, features = ["std"] }
+dotenvy = { workspace = true }
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 tracing-opentelemetry = { workspace = true, optional = true }
 opentelemetry = { workspace = true, optional = true }
@@ -62,7 +65,13 @@ ring = { workspace = true, features = ["std"] }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-thiserror = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.123"
+wasm-bindgen-futures = "0.4.73"
+web-sys = { version = "0.3.100", features = ["Window", "Request", "RequestInit", "RequestMode", "Response", "console"] }
+js-sys = "0.3.103"
+console_error_panic_hook = "0.1.7"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_System_ProcessStatus", "Win32_System_Threading"] }
@@ -76,4 +85,3 @@ criterion = { workspace = true, features = ["async_tokio"] }
 [[bench]]
 name = "core_bench"
 harness = false
-

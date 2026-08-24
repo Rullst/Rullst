@@ -13,6 +13,18 @@ pub enum CapitalError {
     #[error("Invalid webhook signature: {0}")]
     InvalidSignature(String),
 
+    /// A signed webhook is outside the provider's accepted timestamp window.
+    #[error("Stale webhook: {0}")]
+    StaleWebhook(String),
+
+    /// A webhook payload was already accepted inside the replay-protection window.
+    #[error("Webhook replay detected: {0}")]
+    WebhookReplay(String),
+
+    /// A mock verifier was mounted on the production-safe webhook middleware.
+    #[error("Mock webhook mode is not allowed by this middleware: {0}")]
+    MockWebhookNotAllowed(String),
+
     /// Webhook payload parsing failed.
     #[error("Failed to parse webhook payload: {0}")]
     PayloadParseError(String),

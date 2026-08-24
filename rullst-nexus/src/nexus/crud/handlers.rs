@@ -15,6 +15,8 @@ use crate::nexus::crud::views::{render_record_form, render_table_rows, render_ta
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
 
+const MAX_BATCH_RECORDS: usize = 1_000;
+
 /// GET /nexus — Dashboard overview.
 pub async fn nexus_dashboard(
     State(state): State<Arc<NexusState>>,
@@ -155,7 +157,11 @@ pub async fn nexus_create_record(
 
     let mut keys = Vec::new();
     let mut values = Vec::new();
-    for f in &entry.fields {
+    for f in entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden && !field.readonly)
+    {
         if let Some(val) = data.get(f.name) {
             if f.name == entry.pk && val.trim().is_empty() {
                 continue;
@@ -172,7 +178,7 @@ pub async fn nexus_create_record(
                 "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
                  &#10060; No values provided to create {}\
                  </div>",
-                entry.label
+                rullst_core::html::escape_str(entry.label)
             ))
         ).into_response();
     }
@@ -225,7 +231,7 @@ pub async fn nexus_create_record(
                 "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
                  &#9989; New {} record created successfully!\
                  </div>",
-                entry.label
+                rullst_core::html::escape_str(entry.label)
             ))
         ).into_response()
     } else {
@@ -235,7 +241,7 @@ pub async fn nexus_create_record(
                 "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
                  &#10060; Failed to create {}: {}\
                  </div>",
-                entry.label,
+                rullst_core::html::escape_str(entry.label),
                 rullst_core::html::escape_str(&err_msg)
             ))
         ).into_response()
@@ -284,7 +290,9 @@ pub async fn nexus_update_record(
     let mut updates = Vec::new();
     let mut values = Vec::new();
     for f in &entry.fields {
-        if f.name != entry.pk
+        if !f.hidden
+            && !f.readonly
+            && f.name != entry.pk
             && let Some(val) = data.get(f.name)
         {
             let clean_field = sanitize_identifier(f.name);
@@ -295,6 +303,14 @@ pub async fn nexus_update_record(
             }
             values.push(val);
         }
+    }
+
+    if updates.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Html("<p class=\"nexus-error\">No writable fields were provided.</p>".to_string()),
+        )
+            .into_response();
     }
 
     let pk_placeholder = if driver == "postgres" {
@@ -325,8 +341,11 @@ pub async fn nexus_update_record(
 
     if let Some(pool) = rullst_core::db::safe_pool() {
         match query.execute(pool).await {
-            Ok(_) => {
-                success = true;
+            Ok(result) => {
+                success = result.rows_affected() > 0;
+                if !success {
+                    err_msg = "Record not found".to_string();
+                }
             }
             Err(e) => {
                 err_msg = e.to_string();
@@ -343,7 +362,7 @@ pub async fn nexus_update_record(
                 "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
                  &#9989; {} #{} updated successfully!\
                  </div>",
-                entry.label,
+                rullst_core::html::escape_str(entry.label),
                 rullst_core::html::escape_str(&id)
             ))
         ).into_response()
@@ -354,7 +373,7 @@ pub async fn nexus_update_record(
                 "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
                  &#10060; Failed to update {}: {}\
                  </div>",
-                entry.label,
+                rullst_core::html::escape_str(entry.label),
                 rullst_core::html::escape_str(&err_msg)
             ))
         ).into_response()
@@ -396,8 +415,11 @@ pub async fn nexus_delete_record(
             q = q.bind(&id);
         }
         match q.execute(pool).await {
-            Ok(_) => {
-                success = true;
+            Ok(result) => {
+                success = result.rows_affected() > 0;
+                if !success {
+                    err_msg = "Record not found".to_string();
+                }
             }
             Err(e) => {
                 err_msg = e.to_string();
@@ -428,6 +450,13 @@ pub async fn nexus_batch_action(
     if form.selected_ids.is_empty() {
         return axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response();
     }
+    if form.selected_ids.len() > MAX_BATCH_RECORDS {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Too many records selected for one batch operation",
+        )
+            .into_response();
+    }
 
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -452,16 +481,24 @@ pub async fn nexus_batch_action(
     }
     let placeholders_str = placeholders.join(",");
 
-    if form.action.as_str() == "delete" {
-        let sql = format!(
-            "DELETE FROM {} WHERE {} IN ({})",
-            clean_table, clean_pk, placeholders_str
-        );
-        let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-        for id in &form.selected_ids {
-            query = query.bind(id);
-        }
-        let _ = query.execute(pool).await;
+    if form.action != "delete" {
+        return (StatusCode::BAD_REQUEST, "Unsupported batch action").into_response();
+    }
+
+    let sql = format!(
+        "DELETE FROM {} WHERE {} IN ({})",
+        clean_table, clean_pk, placeholders_str
+    );
+    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
+    for id in &form.selected_ids {
+        query = query.bind(id);
+    }
+    if let Err(error) = query.execute(pool).await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Batch delete failed: {error}"),
+        )
+            .into_response();
     }
 
     axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response()

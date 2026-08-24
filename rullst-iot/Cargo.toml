@@ -4,20 +4,24 @@ version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
-description = "Embedded IoT and edge sensor ingestion engine for Rullst (#![no_std] compatible)."
+description = "no_std telemetry/frame helpers and signed firmware verification for Rullst."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Rullst/Rullst"
 homepage = "https://rullst.github.io"
 documentation = "https://docs.rs/rullst-iot"
-keywords = ["iot", "embedded", "no-std", "mqtt", "sensors"]
-categories = ["embedded", "no-std", "network-programming"]
+keywords = ["iot", "embedded", "firmware", "telemetry", "ed25519"]
+categories = ["embedded", "no-std", "cryptography"]
 
 [features]
 default = ["std"]
-std = ["serde/std", "serde_json/std"]
+std = ["ed25519-dalek/std", "serde/std", "serde_json/std"]
+# Deterministic fixtures only. This feature does not provide MQTT transport,
+# hardware-backed keys, signatures, or post-quantum cryptography.
+experimental-simulators = []
 
 [dependencies]
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["alloc"] }
 serde = { workspace = true, features = ["alloc"] }
 serde_json = { workspace = true, features = ["alloc"] }
 sha2 = { workspace = true }

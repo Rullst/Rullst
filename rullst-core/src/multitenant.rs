@@ -1,11 +1,14 @@
 use std::cell::RefCell;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 /// Strategy used to extract the active tenant ID from an incoming request.
 pub enum TenantStrategy {
-    /// Extract the tenant ID from the request host subdomain (e.g. `tenant.example.com`).
+    /// Select a tenant from the request host subdomain (e.g. `tenant.example.com`).
+    /// The selection is accepted only when authenticated membership allows it.
     Subdomain,
-    /// Extract the tenant ID from a custom HTTP header.
+    /// Select a tenant from a custom HTTP header. The header is an untrusted
+    /// hint and is accepted only when authenticated membership allows it.
     Header,
     /// Extract the tenant ID from query parameters.
     ///
@@ -17,6 +20,8 @@ pub enum TenantStrategy {
     /// - CDN/proxy cache headers
     ///
     /// For sensitive or regulated tenant IDs, prefer `TenantStrategy::Header` or `TenantStrategy::Subdomain`.
+    /// Every strategy still requires a trusted [`crate::security::TenantMembership`]
+    /// request extension from authentication middleware.
     Parameter,
 }
 
@@ -142,7 +147,7 @@ where
         + 'static,
     S::Future: Send + 'static,
     ReqBody: Send + 'static,
-    ResBody: Send + 'static,
+    ResBody: Default + Send + 'static,
 {
     type Response = axum::http::Response<ResBody>;
     type Error = S::Error;
@@ -157,12 +162,12 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: axum::http::Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, mut req: axum::http::Request<ReqBody>) -> Self::Future {
         let config = self.config.clone();
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
-            let tenant_id = match config.strategy {
+            let requested_tenant_id = match config.strategy {
                 TenantStrategy::Header => req
                     .headers()
                     .get(&config.header_name)
@@ -188,7 +193,22 @@ where
                 }
             };
 
-            let cell = RefCell::new(tenant_id);
+            let selected_context = req
+                .extensions()
+                .get::<crate::security::TenantMembership>()
+                .and_then(|membership| match requested_tenant_id.as_deref() {
+                    Some(requested) => membership.select(requested).ok(),
+                    None => membership.default_context(),
+                });
+
+            let Some(selected_context) = selected_context else {
+                let mut response = axum::http::Response::new(ResBody::default());
+                *response.status_mut() = axum::http::StatusCode::FORBIDDEN;
+                return Ok(response);
+            };
+            let tenant_id = selected_context.tenant_id.clone();
+            req.extensions_mut().insert(selected_context);
+            let cell = RefCell::new(Some(tenant_id));
             TENANT_CONTEXT
                 .scope(cell, async move { inner.call(req).await })
                 .await
@@ -285,7 +305,10 @@ mod tests {
         let config_header = TenantConfig::new(TenantStrategy::Header);
         let app_header = axum::Router::new()
             .route("/test", get(handler))
-            .layer(tenant_layer(config_header));
+            .layer(tenant_layer(config_header))
+            .layer(axum::Extension(
+                crate::security::TenantMembership::try_new(["acme-corp"]).unwrap(),
+            ));
 
         let req = Request::builder()
             .uri("/test")
@@ -302,7 +325,10 @@ mod tests {
         let config_param = TenantConfig::new(TenantStrategy::Parameter);
         let app_param = axum::Router::new()
             .route("/test", get(handler))
-            .layer(tenant_layer(config_param));
+            .layer(tenant_layer(config_param))
+            .layer(axum::Extension(
+                crate::security::TenantMembership::try_new(["beta-inc"]).unwrap(),
+            ));
 
         let req_param = Request::builder()
             .uri("/test?tenant_id=beta-inc")
@@ -315,5 +341,25 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(String::from_utf8(body_param.to_vec()).unwrap(), "beta-inc");
+
+        // A client cannot switch to a tenant absent from authenticated claims.
+        let config_rejected = TenantConfig::new(TenantStrategy::Header);
+        let rejected_app = axum::Router::new()
+            .route("/test", get(handler))
+            .layer(tenant_layer(config_rejected))
+            .layer(axum::Extension(
+                crate::security::TenantMembership::try_new(["acme-corp"]).unwrap(),
+            ));
+        let rejected = rejected_app
+            .oneshot(
+                Request::builder()
+                    .uri("/test")
+                    .header("X-Tenant-ID", "other-tenant")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(rejected.status(), StatusCode::FORBIDDEN);
     }
 }

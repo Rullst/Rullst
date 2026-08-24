@@ -1,9 +1,9 @@
-//! Cross-platform I2C Bus abstraction for embedded sensors.
+//! I2C transaction byte builder; no bus or register access is included.
 
 extern crate alloc;
 use alloc::vec::Vec;
 
-/// I2C Transaction Helper for reading and writing sensor registers.
+/// Helper for constructing transaction bytes for a platform I2C adapter.
 pub struct I2cHelper;
 
 impl I2cHelper {

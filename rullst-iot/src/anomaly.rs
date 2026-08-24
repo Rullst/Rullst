@@ -1,4 +1,4 @@
-//! On-device Edge AI & Sensor Anomaly Detection Engine (#![no_std] compatible).
+//! `no_std` statistical threshold classification for sensor readings.
 
 /// Classification result for sensor readings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

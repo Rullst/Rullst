@@ -47,7 +47,7 @@ To ensure mission-critical resilience, Rullst does not rely on a single verifica
 | **`rullst-auth`** | ✅ | ✅ (Cookie & Token Invariants) | ✅ | ✅ (2 Targets) | ✅ (10,000 Iterations) | ✅ (TSan + ASan) | ✅ | ✅ |
 | **`rullst-orm`** | ✅ | ✅ (SQL Sanitization Bounds) | ✅ | ✅ (5 Targets) | ✅ (Query Builder AST) | ✅ (TSan + ASan) | ✅ | ✅ |
 | **`rullst-connect`** | ✅ | ✅ (OIDC / PKCE Verifier) | ✅ | ✅ (3 Targets) | ✅ (PKCE Fuzzing) | ✅ (TSan + ASan) | ✅ | ✅ |
-| **`rullst-iot`** | ✅ | ✅ (PQC Kyber & Modbus CRC) | ✅ | ✅ (3 Targets) | ✅ (Hardware State) | ✅ (TSan + ASan) | ✅ | ✅ |
+| **`rullst-iot`** | ✅ | ✅ (Modbus CRC) | ✅ | ✅ (3 Targets) | ✅ (State Helpers) | ✅ (TSan + ASan) | ✅ | ✅ |
 | **`rullst-ai`** | ✅ | ✅ (Tool Param Schema) | ✅ | ✅ (3 Targets) | ✅ (Prompt Invariants) | ✅ (TSan + ASan) | ✅ | ✅ |
 | **`rullst-capital`** | ✅ | ✅ (Invoice Total Bounds) | ✅ | ✅ (1 Target) | ✅ (Billing Invariants) | ✅ (TSan + ASan) | ✅ | ✅ |
 | **`rullst-nexus`** | ✅ | ✅ (Identifier Sanitation) | ✅ | ✅ (1 Target) | ✅ (CRUD Query Bounds) | ✅ (TSan + ASan) | ✅ | ✅ |
@@ -89,10 +89,13 @@ These workflows act as our primary gatekeepers. They run in parallel on every Pu
   - `thumbv7em-none-eabihf` (STM32 Cortex-M4/M7 with hardware FPU)
   - `thumbv6m-none-eabi` (ARM Cortex-M0/M0+ low-power sensors)
   - `riscv32imac-unknown-none-elf` (ESP32-C3 RISC-V IoT controllers)
-- **Goal:** Guarantees zero runtime allocations and zero standard library dependencies for edge hardware.
+- **Goal:** Checks compilation without the standard library. Some APIs use `alloc`
+  and therefore require an allocator supplied by the target application.
 
-### 1.5 IoT Hardware Simulation (`iot-integration.yml`)
-- **What it does:** Executes unit and integration test suites across GPIO, I2C, Modbus RTU/TCP, BLE GATT profiles, Anomaly Detectors, OTA partition swappers, and Hardware Security Modules (HSM), backed by Cortex-M QEMU emulation.
+### 1.5 IoT Helper and OTA Verification (`iot-integration.yml`)
+- **What it does:** Runs host tests for telemetry/frame helpers and real Ed25519
+  OTA manifest verification, then checks a `no_std` Cortex-M build. Opt-in
+  `Simulated*` fixtures do not represent hardware, MQTT, HSM, or PQC conformance.
 
 ### 1.6 Zero-Panics Compiler Enforcement (`zero-panics.yml`)
 - **What it does:** Custom compiler linting forbidding `.unwrap()`, `.expect()`, `panic!()`, `todo!()`, and `unimplemented!()` in non-test paths of production crates. All failures must be gracefully degraded through typed `AppError` enums.
@@ -111,8 +114,10 @@ These workflows act as our primary gatekeepers. They run in parallel on every Pu
 
 ## 📆 2. Scheduled & Cryptographic Audits (Asynchronous)
 
-### 2.1 Post-Quantum & Cryptographic Compliance (`pqc-compliance.yml`)
-- **What it does:** Audits post-quantum key encapsulation (`PqcKeyPair` ML-KEM Kyber), Hardware Security Modules (`hsm.rs`), and in-memory zero-trust secrets (`vault.rs`).
+### 2.1 IoT Cryptography Containment (`pqc-compliance.yml`)
+- **What it does:** Tests signed OTA verification and checks that MQTT-, HSM-,
+  and PQC-shaped deterministic fixtures remain explicitly named and feature
+  gated. It does not certify ML-KEM, hardware modules, or post-quantum compliance.
 - **Dependency Audit:** Runs `cargo audit` with pre-compiled binaries to verify zero known CVEs across all cryptographic crates.
 - **Schedule:** Automated weekly Monday run at 03:00 UTC and on crypto file changes.
 
@@ -135,7 +140,7 @@ These compute-intensive suites run for hours, mathematically modeling the framew
 - **What it does:** Uses the AWS Kani Rust Verifier (powered by CBMC SAT solvers) to mathematically prove the absence of crashes, overflows, and state invariant violations in:
   - **`rullst-core`:** PII masking string length invariant & circuit breaker token bucket refill arithmetic.
   - **`rullst-security`:** Zero-trust `VaultSecret` memory exposure & `compute_sri_hash` formatting.
-  - **`rullst-iot`:** ML-KEM Kyber keypair encapsulation bounds & Modbus CRC16 panic-freedom.
+  - **`rullst-iot`:** Modbus CRC16 panic-freedom; no PQC proof is claimed.
   - **`rullst-auth`:** Session cookie serialization and logout expiration headers.
   - **`rullst-connect`:** OIDC state token formatting & PKCE code verifier hashing.
 
@@ -150,7 +155,7 @@ These compute-intensive suites run for hours, mathematically modeling the framew
   - **Connect:** `default_target`, `fuzz_token_response`, `fuzz_user_json`.
   - **Mail:** `fuzz_mail`, `fuzz_email_validator`, `fuzz_email_tracking`, `fuzz_email_security`.
   - **AI:** `fuzz_ai_tools`, `fuzz_rag`, `fuzz_message_serde`.
-  - **IoT:** `fuzz_kyber`, `fuzz_modbus`, `fuzz_sensor_packet`.
+  - **IoT:** `fuzz_ota`, `fuzz_modbus`, `fuzz_anomaly`.
 
 ### 3.4 Concurrency & Memory Sanitizers (`sanitizers.yml`)
 - **What it does:** Compiles under Rust Nightly with `-Zsanitizer=thread` (TSan) and `-Zsanitizer=address` (ASan) to catch race conditions and memory corruption in asynchronous Tokio worker pools.
@@ -167,7 +172,7 @@ These compute-intensive suites run for hours, mathematically modeling the framew
 **Yes, absolutely.** Google OSS-Fuzz is a free continuous fuzzing service provided by Google for critical open-source software.
 
 #### Criteria Evaluation:
-1. **Critical Infrastructure:** Rullst is a high-performance web runtime, cryptographic engine, and bare-metal IoT framework handling network traffic, database transactions, and IoT hardware protocols.
+1. **Security-Relevant Infrastructure:** Rullst handles web traffic, database transactions, cryptographic verification, and IoT data/frame processing; hardware and network protocol implementations must be evaluated separately when they are added.
 2. **Open Source & Permissive License:** Licensed under MIT on a public GitHub repository.
 3. **Existing libFuzzer Targets:** Rullst already contains **33+ production-ready `libFuzzer` targets** (`rullst/fuzz`, `rullst-orm/fuzz`, `rullst-security/fuzz`, `rullst-mail/fuzz`, `rullst-connect/fuzz`, `rullst-ai/fuzz`, `rullst-iot/fuzz`) integrated with `cargo-fuzz`.
 4. **Active Maintenance:** Zero-panic guarantees, high test coverage, and continuous triage.
@@ -225,14 +230,14 @@ To maintain ultra-fast feedback loops on daily pushes while retaining military-g
 | **Zero Panics Policy** | [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | ⚡ **Automatic** | `push`, `pull_request` | Forbids `.unwrap()`, `.expect()`, and `panic!()` in non-test paths | ~45s |
 | **Unsafe Policy** | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | ⚡ **Automatic** | `push`, `pull_request` | Enforces `#![forbid(unsafe_code)]` compliance across workspace | ~30s |
 | **E2E Smoke Tests** | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | ⚡ **Automatic** | `push`, `pull_request`, `dispatch` | Full-stack SSR, live server boot, and security header verification | ~1 min |
-| **IoT Edge Pipeline** | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | ⚡ **Automatic** | `push`, `pull_request` | MQTT 5.0 broker and industrial sensor ingestion telemetry | ~1 min |
+| **IoT Edge Pipeline** | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | ⚡ **Automatic** | `push`, `pull_request` | Telemetry helpers, signed OTA gate, and `no_std` compilation | ~1 min |
 | **Bare-Metal `no_std`** | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | ⚡ **Automatic** | `push`, `pull_request` | Embedded ARM Cortex-M4 (`thumbv7em`) compilation checks | ~45s |
 | **TruffleHog Scanner** | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | ⚡ **Automatic** | `push`, `pull_request` | Deep git commit secret and credential leak scanning | ~20s |
 | **Cargo Machete** | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | ⚡ **Automatic** | `push`, `pull_request` | Scans and rejects unused dependencies in all `Cargo.toml` files | ~25s |
 | **Spellcheck** | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | ⚡ **Automatic** | `push`, `pull_request` | Typo and documentation spelling checks | ~15s |
 | **Security Audit** | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | 🔄 **Hybrid** | `push` (main), Daily schedule, `dispatch` | RustSec CVE vulnerability scan across Cargo.lock | ~1 min |
 | **Cargo Audit** | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | 🔄 **Hybrid** | `push` (main), Daily schedule, `dispatch` | Automated advisory database synchronization and audits | ~1 min |
-| **PQC & HSM Compliance** | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | 🔄 **Hybrid** | `push`, `pull_request`, Weekly, `dispatch` | Post-Quantum (ML-KEM/ML-DSA) and crypto invariant verification | ~1 min |
+| **IoT Crypto Containment** | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | 🔄 **Hybrid** | `push`, `pull_request`, Weekly, `dispatch` | OTA signature tests and simulator-boundary checks; no PQC/HSM compliance claim | ~1 min |
 | **Code Coverage (LLVM)** | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | 🔄 **Hybrid** | `push` (main), `pull_request`, `dispatch` | LLVM source-based code coverage report and badge generator | ~2 min |
 | **CodeQL Analysis** | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | 🔄 **Hybrid** | `push` (main), `pull_request`, Weekly schedule | GitHub Advanced Security deep SAST static code analyzer | ~3 min |
 | **SemVer Check** | [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | 🔄 **Hybrid** | `push` (main), `pull_request`, `dispatch` | Cargo Semver checks for breaking API signature changes | ~1.5 min |

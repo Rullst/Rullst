@@ -77,21 +77,31 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out.push_str("function nexusToast(msg, kind) {\n");
     out.push_str("    let el = document.getElementById('nexus-toast');\n");
     out.push_str("    if (!el) return;\n");
-    out.push_str("    let icon = kind === 'success' ? '&#9989;' : kind === 'warning' ? '&#9888;&#65039;' : '&#10060;';\n");
-    out.push_str("    el.innerHTML = '<div class=\"nexus-toast nexus-toast-' + (kind || 'success') + '\">' + icon + ' ' + msg + '</div>';\n");
-    out.push_str("    setTimeout(function() { el.innerHTML = ''; }, 3500);\n");
+    out.push_str("    let icon = kind === 'success' ? '✅' : kind === 'warning' ? '⚠️' : '❌';\n");
+    out.push_str("    let toast = document.createElement('div');\n");
+    out.push_str(
+        "    let safeKind = ['success', 'warning', 'danger'].includes(kind) ? kind : 'success';\n",
+    );
+    out.push_str("    toast.className = 'nexus-toast nexus-toast-' + safeKind;\n");
+    out.push_str("    toast.textContent = icon + ' ' + String(msg);\n");
+    out.push_str("    el.replaceChildren(toast);\n");
+    out.push_str("    setTimeout(function() { el.replaceChildren(); }, 3500);\n");
     out.push_str("}\n");
-    out.push_str("function nexusDelete(table, id) {\n");
+    out.push_str("function nexusDelete(button) {\n");
+    out.push_str("    let table = button.dataset.nexusTable || '';\n");
+    out.push_str("    let id = button.dataset.nexusRecord || '';\n");
     out.push_str(
         "    if (!confirm('Are you sure you want to delete record #' + id + '?')) return;\n",
     );
-    out.push_str("    fetch('/nexus/table/' + table + '/' + id, {\n");
+    out.push_str(
+        "    fetch('/nexus/table/' + encodeURIComponent(table) + '/' + encodeURIComponent(id), {\n",
+    );
     out.push_str("        method: 'DELETE',\n");
     out.push_str("        credentials: 'same-origin',\n");
     out.push_str("        headers: { 'X-CSRF-Token': getCsrf() }\n");
     out.push_str("    }).then(function(res) {\n");
     out.push_str("        if (res.ok) {\n");
-    out.push_str("            let row = document.getElementById('row-' + id);\n");
+    out.push_str("            let row = button.closest('tr');\n");
     out.push_str("            if (row) row.remove();\n");
     out.push_str("            nexusToast('Record #' + id + ' deleted.', 'success');\n");
     out.push_str("        } else {\n");
@@ -101,9 +111,10 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
     out.push_str("    });\n");
     out.push_str("}\n");
-    out.push_str("function nexusSave(formId, actionUrl, btn) {\n");
-    out.push_str("    let form = document.getElementById(formId);\n");
+    out.push_str("function nexusSave(btn) {\n");
+    out.push_str("    let form = btn.closest('form');\n");
     out.push_str("    if (!form) return;\n");
+    out.push_str("    let actionUrl = form.dataset.nexusAction || '';\n");
     out.push_str("    let body = new URLSearchParams(new FormData(form)).toString();\n");
     out.push_str("    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }\n");
     out.push_str("    fetch(actionUrl, {\n");
@@ -129,6 +140,12 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out.push_str("        nexusToast('Network error: ' + err, 'danger');\n");
     out.push_str("    });\n");
     out.push_str("}\n");
+    out.push_str("document.addEventListener('click', function(event) {\n");
+    out.push_str("    let deleteButton = event.target.closest('[data-nexus-delete]');\n");
+    out.push_str("    if (deleteButton) { nexusDelete(deleteButton); return; }\n");
+    out.push_str("    let saveButton = event.target.closest('[data-nexus-save]');\n");
+    out.push_str("    if (saveButton) nexusSave(saveButton);\n");
+    out.push_str("});\n");
     out.push_str("</script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
     out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n");

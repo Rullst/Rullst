@@ -1,93 +1,54 @@
-# rullst-iot 🔌
+# rullst-iot
 
-`rullst-iot` is the Embedded IoT & Edge Hardware Supremacy crate of the Rullst Framework. A comprehensive **6-Phase** library providing a `#![no_std]` optional runtime (< 2MB RAM footprint) for Raspberry Pi, ESP32, STM32, and Arduino 32-bit.
+`rullst-iot` contains `no_std`-compatible telemetry models, protocol frame
+helpers, edge state models, and a signed firmware verification gate.
 
----
+## Current capabilities
 
-## 💻 Hardware Compatibility & Targets
-
-| Target Hardware | Architecture | Mode | Supported Protocols | Memory Footprint |
-| :--- | :--- | :--- | :--- | :--- |
-| **Raspberry Pi / Orange Pi** | ARM64 / ARMv7 | `std` | MQTT, CoAP, WebSockets, Modbus, BLE | < 2MB RAM |
-| **ESP32 (ESP32-S3/C3)** | Xtensa / RISC-V | `no_std` | MQTT, CoAP, BLE Telemetry, OTA | < 256KB RAM |
-| **STM32 (Cortex-M)** | ARM Cortex-M | `no_std` | Modbus RTU/TCP, CoAP, HSM | < 128KB RAM |
-| **Arduino 32-Bit (Due/Nano)** | ARM Cortex-M | `no_std` | BLE, Serial Modbus | < 64KB RAM |
-
----
-
-## 📦 Features & Modules
-
-### Phase 1 — Core Telemetry & Protocols
-- **`SensorTelemetry`**: Unified telemetry payload (temperature, vibration, pressure, etc.).
-- **`MqttDriver`**: MQTT / CoAP topic payload formatter.
-
-### Phase 2 — Hardware HAL & Industrial Protocols
-- **`GpioPin`**: Cross-platform GPIO digital pin control (`set_high()`, `set_low()`, `read()`).
-- **`I2cHelper`**: I2C sensor register transaction builder.
-- **`ModbusFrame`**: Modbus RTU/TCP frame builder with **CRC-16**.
-- **`GattService`** / **`GattCharacteristic`**: BLE GATT service generator.
-
-### Phase 3 — On-Device Edge AI & Micro-UI
-- **`AnomalyDetector`**: Statistical anomaly engine (`Normal` / `Warning` / `CriticalAnomaly`) for `no_std` targets.
-- **`IotDashboard`**: Ultra-lightweight HTMX HTML widget generator (< 50KB).
-
-### Phase 4 — Autonomous Swarm & OTA Updates
-- **`MeshTopology`** / **`MeshNode`**: Self-healing P2P mesh network with RSSI-based relay path resolution.
-- **`OtaManager`**: Zero-trust OTA firmware updates with dual A/B bootloader partition rollback.
-
-### Phase 5 — Hardware Security & Post-Quantum
-- **`HsmDevice`**: Hardware Security Element bindings (ATECC608A, TPM 2.0, STSAFE).
-- **`PqcKeyPair`**: Post-Quantum ML-KEM / Kyber key encapsulation for quantum-safe telemetry links.
-
-### Phase 6 — Ultra-Low-Power & Digital Twin
-- **`PowerGovernor`**: Deep Sleep power governor with solar harvester voltage monitoring.
-- **`DigitalTwin`**: Real-time bi-directional sync engine serializing physical/virtual device state as JSON.
-
-### Phase 7 — Industrial Standards & Certification *(Roadmap)*
-- **`rullst_iot::opcua`**: Industry 4.0 OPC-UA driver for SCADA/MES/ERP communication (ISA-95, IEC 62541).
-- **`rullst_iot::sparkplug`**: MQTT Sparkplug B profile for Unified Namespace / IIoT interoperability.
-- **`rullst_iot::safety`**: IEC 61508 / 62443 Safety Mode — deterministic execution with watchdog timer for SIL 2/3 certification.
-
----
-
-## 🔄 CI/CD Workflows
-
-| Workflow | Trigger | Purpose |
-| :--- | :--- | :--- |
-| [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | Push to `rullst-iot/**` | Validates bare-metal compilation on Cortex-M & RISC-V targets |
-| [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | Push to `rullst-iot/**` | Runs 18 unit tests + QEMU Cortex-M simulation |
-| [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | Push to crypto files + weekly cron | NIST ML-KEM / Kyber & HSM audit, `cargo audit`, unsafe detection |
-
----
-
-## 🚀 Quickstart
+- Telemetry and digital-twin in-memory models.
+- Modbus CRC/frame, I2C frame, BLE GATT data, anomaly, topology, and power-policy
+  helpers. These types do not operate hardware or network transports by
+  themselves.
+- Strict Ed25519 verification of a domain-separated OTA manifest that binds the
+  target, version, monotonic rollback counter, firmware size, and SHA-256 hash.
+- A fail-closed state machine that refuses partition selection until the exact
+  firmware and manifest signature have been verified.
 
 ```rust
-use rullst_iot::{SensorTelemetry, MqttDriver, AnomalyDetector, DigitalTwin};
+use rullst_iot::{OtaManager, OtaManifest};
 
-fn main() {
-    let telemetry = SensorTelemetry::new("esp32-farm-01", "temperature", 38.9, 1700000000);
-    println!("MQTT: {}", MqttDriver::format_mqtt_payload(&telemetry));
+# fn verify_update(
+#     firmware: &[u8],
+#     signature: &[u8],
+#     trusted_public_key: [u8; 32],
+# ) -> Result<(), rullst_iot::OtaError> {
+let manifest = OtaManifest::from_firmware("board-a", "2.0.0", 8, firmware)?;
+let mut manager =
+    OtaManager::new_with_trusted_key("board-a", "1.0.0", 7, trusted_public_key)?;
 
-    let detector = AnomalyDetector::new(25.0, 5.0);
-    println!("State: {:?}", detector.evaluate(38.9)); // => CriticalAnomaly
+manager.verify_update(&manifest, firmware, signature)?;
+let selection = manager.commit_verified_update()?;
 
-    let mut twin = DigitalTwin::new("esp32-farm-01");
-    twin.ingest(telemetry);
-    println!("Twin Sync: {}", twin.to_sync_payload());
-}
+// The application must flash/read-back the bank, persist the counter, and
+// configure the bootloader. The receipt does not claim those operations ran.
+let _target_bank = selection.target_partition();
+# Ok(())
+# }
 ```
 
-## 🛠️ CLI
+The trusted public key must be provisioned independently of the update channel.
+The monotonic counter supplied to `new_with_trusted_key` must come from durable,
+rollback-resistant platform storage.
 
-```bash
-cargo rullst make:iot SensorGateway
-```
+## Experimental fixtures
 
-## 🗺️ Roadmap
+Enabling `experimental-simulators` exposes only explicitly named deterministic
+fixtures:
 
-All 6 phases complete. See [`ROADMAP.md`](https://github.com/Rullst/Rullst/blob/main/rullst-iot/ROADMAP.md).
+- `SimulatedMqttPayloadFormatter` is not an MQTT encoder/client.
+- `SimulatedHsmDevice` does not use hardware or create signatures.
+- `SimulatedPqcFixture` does not implement ML-KEM/Kyber or confidentiality.
 
-## 📄 License
-
-MIT OR Apache-2.0.
+These types have no production aliases. MQTT transport, real HSM backends,
+post-quantum cryptography, firmware flashing, bootloader control, and persistent
+anti-rollback storage remain roadmap work.

@@ -18,7 +18,7 @@ async fn test_cte_graph_traversal() {
     Orm::init_with_options("sqlite:file:cte_test_db_2?mode=memory&cache=shared", 5, 30)
         .await
         .expect("Failed to init ORM in test");
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
 
     // 2. Create the table schema
     sqlx::query(

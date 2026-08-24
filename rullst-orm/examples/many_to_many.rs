@@ -82,19 +82,19 @@ async fn main() -> Result<(), rullst_orm::Error> {
     rullst_orm::_sqlx::query("INSERT INTO role_user (user_id, role_id) VALUES (?, ?)")
         .bind(user1.id)
         .bind(admin_role.id)
-        .execute(Orm::pool())
+        .execute(Orm::pool()?)
         .await?;
 
     rullst_orm::_sqlx::query("INSERT INTO role_user (user_id, role_id) VALUES (?, ?)")
         .bind(user1.id)
         .bind(editor_role.id)
-        .execute(Orm::pool())
+        .execute(Orm::pool()?)
         .await?;
 
     rullst_orm::_sqlx::query("INSERT INTO role_user (user_id, role_id) VALUES (?, ?)")
         .bind(user2.id)
         .bind(viewer_role.id)
-        .execute(Orm::pool())
+        .execute(Orm::pool()?)
         .await?;
 
     // Eager Load test

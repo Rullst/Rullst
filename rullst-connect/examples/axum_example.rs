@@ -1,5 +1,6 @@
 use axum::{
     Router,
+    http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
 };
@@ -22,12 +23,12 @@ async fn home() -> Html<&'static str> {
     Html("<h1>Rullst Connect Axum Example</h1><a href='/login'>Login with Google</a>")
 }
 
-async fn login() -> impl IntoResponse {
-    let provider = get_provider();
+async fn login() -> Result<impl IntoResponse, (StatusCode, String)> {
+    let provider = get_provider().map_err(internal_error)?;
     let url = provider.redirect_url_with_state("some_random_state_xyz");
 
     // Redirect to Google
-    axum::response::Redirect::to(&url)
+    Ok(axum::response::Redirect::to(&url))
 }
 
 // Notice how we magically extract the callback parameters using `AuthCallback` directly!
@@ -37,7 +38,10 @@ async fn callback(auth: AuthCallback) -> impl IntoResponse {
     }
 
     if let Some(code) = auth.code {
-        let provider = get_provider();
+        let provider = match get_provider() {
+            Ok(provider) => provider,
+            Err(error) => return Html(format!("<h1>Invalid provider: {error}</h1>")),
+        };
         let params = rullst_connect::provider::ExchangeParams {
             auth_code: &code,
             ..Default::default()
@@ -55,12 +59,16 @@ async fn callback(auth: AuthCallback) -> impl IntoResponse {
     }
 }
 
-fn get_provider() -> GoogleProvider {
-    GoogleProvider::new(
-        std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "your_client_id".to_string()),
+fn get_provider() -> Result<GoogleProvider, rullst_connect::ConnectError> {
+    GoogleProvider::try_new(
+        std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "mock_google_client_id".to_string()),
         std::env::var("GOOGLE_CLIENT_SECRET")
-            .unwrap_or_else(|_| "your_client_secret".to_string())
+            .unwrap_or_else(|_| "mock_google_client_secret".to_string())
             .into(),
         "http://localhost:3000/callback".to_string(),
     )
+}
+
+fn internal_error(error: rullst_connect::ConnectError) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
 }

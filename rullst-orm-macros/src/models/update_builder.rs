@@ -76,7 +76,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
 
                 #(#apply_to_model)*
 
-                let driver = rullst_orm::Orm::driver();
+                let driver = rullst_orm::Orm::driver()?;
                 let mut sql = format!("UPDATE {} SET {} WHERE id = ?", #table_name, sets.join(", "));
                 if driver == "postgres" {
                     sql = rullst_orm::replace_placeholders(&sql);

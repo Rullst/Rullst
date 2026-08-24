@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = std::fs::remove_file("test_audit.db");
     std::fs::File::create("test_audit.db").unwrap();
     Orm::init("sqlite:test_audit.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     sqlx::query(
         "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, status TEXT)",

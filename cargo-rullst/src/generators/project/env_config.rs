@@ -2,6 +2,7 @@
 
 use crate::generators::project::has_binary;
 use colored::*;
+use rand::distr::{Alphanumeric, SampleString};
 use std::fs;
 use std::path::Path;
 
@@ -68,6 +69,7 @@ rustflags = ["-C", "split-debuginfo=unpacked"]
 
     fs::write(cargo_dir.join("config.toml"), config_toml)?;
 
+    let mut rullst_toml = String::new();
     if db_needed {
         let db_url = match db_provider {
             "Postgres" => "postgres://user:password@localhost:5432/db",
@@ -75,11 +77,22 @@ rustflags = ["-C", "split-debuginfo=unpacked"]
             "Turso" => "libsql://[your-database-id].turso.io?authToken=[your-token]",
             _ => "sqlite://db.sqlite",
         };
-        let rullst_toml = format!(
+        rullst_toml.push_str(&format!(
             r#"[database]
 url = "{db_url}"
 "#
+        ));
+    }
+    if blueprint_selection == 3 {
+        rullst_toml.push_str(
+            r#"
+[security]
+# This exact path must also remain wrapped by rullst-capital signature verification.
+csrf_signed_webhook_paths = ["/billing/webhook"]
+"#,
         );
+    }
+    if !rullst_toml.is_empty() {
         fs::write(path.join("Rullst.toml"), rullst_toml)?;
     }
 
@@ -139,6 +152,18 @@ APP_ENV=development
             env_content.push_str(turso_env);
             env_example_content.push_str(turso_env);
         }
+    }
+
+    if blueprint_selection != 0 {
+        let mut rng = rand::rng();
+        let nexus_username = format!("nexus_{}", Alphanumeric.sample_string(&mut rng, 12));
+        let nexus_password = Alphanumeric.sample_string(&mut rng, 32);
+        env_content.push_str(&format!(
+            "\n# ── Nexus Admin (generated uniquely; rotate before deployment) ──\nNEXUS_ADMIN_USERNAME={nexus_username}\nNEXUS_ADMIN_PASSWORD={nexus_password}\n"
+        ));
+        env_example_content.push_str(
+            "\n# ── Nexus Admin (required; use unique values, password >= 16 chars) ──\nNEXUS_ADMIN_USERNAME=\nNEXUS_ADMIN_PASSWORD=\n",
+        );
     }
 
     if blueprint_selection == 2 || blueprint_selection == 3 {

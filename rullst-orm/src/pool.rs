@@ -6,6 +6,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{RullstPool, RullstPoolOptions};
 
+mod placeholders;
+pub use placeholders::replace_placeholders;
+
 #[cfg(not(any(
     feature = "strict-postgres",
     feature = "strict-mysql",
@@ -13,17 +16,36 @@ use crate::{RullstPool, RullstPoolOptions};
 )))]
 use sqlx::any::install_default_drivers;
 
-/// The global connection pool
-pub(crate) static DB_POOL: OnceLock<RullstPool> = OnceLock::new();
+/// Coherent global state published only after the primary and every configured
+/// replica have connected successfully.
+struct OrmState {
+    primary: RullstPool,
+    driver: &'static str,
+    replicas: Vec<RullstPool>,
+    replica_index: AtomicUsize,
+}
 
-/// The driver identifier (postgres, mysql, sqlite) to help macro syntax formatting
-pub(crate) static DB_DRIVER: OnceLock<String> = OnceLock::new();
+impl OrmState {
+    fn new(primary: RullstPool, driver: &'static str, replicas: Vec<RullstPool>) -> Self {
+        Self {
+            primary,
+            driver,
+            replicas,
+            replica_index: AtomicUsize::new(0),
+        }
+    }
 
-/// The replica connection pools for read operations
-static REPLICA_POOLS: OnceLock<Vec<RullstPool>> = OnceLock::new();
+    fn read_pool(&self) -> &RullstPool {
+        if self.replicas.is_empty() {
+            return &self.primary;
+        }
 
-/// Atomic index for replica round-robin selection
-static REPLICA_INDEX: AtomicUsize = AtomicUsize::new(0);
+        let index = self.replica_index.fetch_add(1, Ordering::Relaxed) % self.replicas.len();
+        &self.replicas[index]
+    }
+}
+
+static ORM_STATE: OnceLock<OrmState> = OnceLock::new();
 
 #[cfg(feature = "redis")]
 static REDIS_CLIENT: OnceLock<crate::_redis::Client> = OnceLock::new();
@@ -35,7 +57,7 @@ static PREVENT_LAZY_LOADING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
 /// Prevents relationships from being lazily loaded when accessed without being eager loaded.
-/// When enabled, attempting to lazily load a relation will throw a panic in development.
+/// When enabled, attempting to lazily load a relation returns a validation error.
 pub fn prevent_lazy_loading(prevent: bool) {
     PREVENT_LAZY_LOADING.store(prevent, std::sync::atomic::Ordering::Relaxed);
 }
@@ -43,21 +65,6 @@ pub fn prevent_lazy_loading(prevent: bool) {
 #[doc(hidden)]
 pub fn is_lazy_loading_prevented() -> bool {
     PREVENT_LAZY_LOADING.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-/// Helper to convert `?` placeholders to `$1`, `$2` etc. for Postgres.
-#[doc(hidden)]
-pub fn replace_placeholders(sql: &str) -> String {
-    let mut replaced = String::with_capacity(sql.len() + 10);
-    let mut last_idx = 0;
-    for (counter, (idx, _)) in (1..).zip(sql.match_indices('?')) {
-        replaced.push_str(&sql[last_idx..idx]);
-        use std::fmt::Write;
-        let _ = write!(replaced, "${}", counter);
-        last_idx = idx + 1;
-    }
-    replaced.push_str(&sql[last_idx..]);
-    replaced
 }
 
 /// Trait implementada automaticamente pelas macros para os modelos que usam `#[orm(rag_context)]`
@@ -69,8 +76,37 @@ pub trait RagContext {
 pub struct Orm;
 
 impl Orm {
+    fn driver_for_url(database_url: &str) -> &'static str {
+        if database_url.starts_with("postgres") {
+            "postgres"
+        } else if database_url.starts_with("mysql") {
+            "mysql"
+        } else {
+            "sqlite"
+        }
+    }
+
+    fn ensure_uninitialized() -> Result<(), crate::Error> {
+        if ORM_STATE.get().is_some() {
+            Err(crate::Error::AlreadyInitialized)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn publish(state: OrmState) -> Result<(), crate::Error> {
+        ORM_STATE
+            .set(state)
+            .map_err(|_| crate::Error::AlreadyInitialized)
+    }
+
+    fn state() -> Result<&'static OrmState, crate::Error> {
+        ORM_STATE.get().ok_or(crate::Error::NotInitialized)
+    }
+
     /// Initialize the global database connection pool using an agnostic URI
     pub async fn init(database_url: &str) -> Result<(), crate::Error> {
+        Self::ensure_uninitialized()?;
         // Reject unconfigured placeholder URLs before they reach the driver
         // (e.g. Turso template `libsql://[your-database-id].turso.io` whose
         //  brackets are misinterpreted as an IPv6 literal by URL parsers).
@@ -98,24 +134,11 @@ impl Orm {
             .connect(database_url)
             .await?;
 
-        if DB_POOL.set(pool).is_err() {
-            return Err(crate::Error::Internal(
-                "Orm has already been initialized".to_string(),
-            ));
-        }
-
-        let driver = if database_url.starts_with("postgres") {
-            "postgres"
-        } else if database_url.starts_with("mysql") {
-            "mysql"
-        } else {
-            "sqlite"
-        };
-
-        let _ = DB_DRIVER.set(driver.to_string());
-        let _ = REPLICA_POOLS.set(vec![]);
-
-        Ok(())
+        Self::publish(OrmState::new(
+            pool,
+            Self::driver_for_url(database_url),
+            Vec::new(),
+        ))
     }
 
     /// Initialize the global database connection pool with specific pool options
@@ -124,6 +147,7 @@ impl Orm {
         max_connections: u32,
         acquire_timeout_secs: u64,
     ) -> Result<(), crate::Error> {
+        Self::ensure_uninitialized()?;
         Self::validate_dsn(database_url);
 
         #[cfg(not(any(
@@ -141,24 +165,11 @@ impl Orm {
             .connect(database_url)
             .await?;
 
-        if DB_POOL.set(pool).is_err() {
-            return Err(crate::Error::Internal(
-                "Orm has already been initialized".to_string(),
-            ));
-        }
-
-        let driver = if database_url.starts_with("postgres") {
-            "postgres"
-        } else if database_url.starts_with("mysql") {
-            "mysql"
-        } else {
-            "sqlite"
-        };
-
-        let _ = DB_DRIVER.set(driver.to_string());
-        let _ = REPLICA_POOLS.set(vec![]);
-
-        Ok(())
+        Self::publish(OrmState::new(
+            pool,
+            Self::driver_for_url(database_url),
+            Vec::new(),
+        ))
     }
 
     #[cfg_attr(test, mutants::skip)]
@@ -216,7 +227,11 @@ impl Orm {
         primary_url: &str,
         replica_urls: Vec<&str>,
     ) -> Result<(), crate::Error> {
+        Self::ensure_uninitialized()?;
         Self::validate_dsn(primary_url);
+        for replica_url in &replica_urls {
+            Self::validate_dsn(replica_url);
+        }
         #[cfg(not(any(
             feature = "strict-postgres",
             feature = "strict-mysql",
@@ -231,89 +246,51 @@ impl Orm {
             .connect(primary_url)
             .await?;
 
-        if DB_POOL.set(pool).is_err() {
-            return Err(crate::Error::Internal(
-                "Orm has already been initialized".to_string(),
-            ));
-        }
-
-        let driver = if primary_url.starts_with("postgres") {
-            "postgres"
-        } else if primary_url.starts_with("mysql") {
-            "mysql"
-        } else {
-            "sqlite"
-        };
-
-        let _ = DB_DRIVER.set(driver.to_string());
-
-        // Initialize all replica pools concurrently — each connect() is independent I/O.
+        // Prepare every replica before publishing any global state. If one
+        // connection fails, `pool` and the successfully prepared replicas are
+        // dropped locally and initialization remains retryable.
         let replica_futures: Vec<_> = replica_urls.into_iter().map(RullstPool::connect).collect();
         let replicas = futures::future::try_join_all(replica_futures).await?;
-        let _ = REPLICA_POOLS.set(replicas);
 
-        Ok(())
+        Self::publish(OrmState::new(
+            pool,
+            Self::driver_for_url(primary_url),
+            replicas,
+        ))
     }
 
-    /// Retrieve the global database connection pool (strictly for writes)
-    #[allow(clippy::expect_used)]
-    pub fn pool() -> &'static RullstPool {
-        DB_POOL
-            .get()
-            .expect("Orm must be initialized before querying")
+    /// Retrieve the global database connection pool (strictly for writes).
+    pub fn pool() -> Result<&'static RullstPool, crate::Error> {
+        Self::try_pool()
     }
 
     /// Fallible variant of [`Orm::pool`]: returns `Err` instead of panicking
     /// when the ORM has not been initialized yet.
     pub fn try_pool() -> Result<&'static RullstPool, crate::Error> {
-        DB_POOL.get().ok_or_else(|| {
-            crate::Error::Internal(
-                "Orm is not initialized. Call Orm::init() before querying.".to_string(),
-            )
-        })
+        Ok(&Self::state()?.primary)
     }
 
     /// Retrieve the connection pool for read operations.
     /// Performs a round-robin load balancing over replicas if configured.
     #[cfg_attr(test, mutants::skip)]
-    pub fn read_pool() -> &'static RullstPool {
-        if let Some(replicas) = REPLICA_POOLS.get()
-            && !replicas.is_empty()
-        {
-            let idx = REPLICA_INDEX.fetch_add(1, Ordering::Relaxed) % replicas.len();
-            return &replicas[idx];
-        }
-        Self::pool()
+    pub fn read_pool() -> Result<&'static RullstPool, crate::Error> {
+        Self::try_read_pool()
     }
 
     /// Fallible variant of [`Orm::read_pool`].
     #[cfg_attr(test, mutants::skip)]
     pub fn try_read_pool() -> Result<&'static RullstPool, crate::Error> {
-        if let Some(replicas) = REPLICA_POOLS.get()
-            && !replicas.is_empty()
-        {
-            let idx = REPLICA_INDEX.fetch_add(1, Ordering::Relaxed) % replicas.len();
-            return Ok(&replicas[idx]);
-        }
-        Self::try_pool()
+        Ok(Self::state()?.read_pool())
     }
 
-    /// Retrieve the active driver string (panics if DB is not initialized yet).
-    #[allow(clippy::expect_used)]
-    pub fn driver() -> &'static str {
-        DB_DRIVER
-            .get()
-            .map(|s| s.as_str())
-            .expect("Orm must be initialized before querying")
+    /// Retrieve the active driver string.
+    pub fn driver() -> Result<&'static str, crate::Error> {
+        Self::try_driver()
     }
 
     /// Fallible variant of [`Orm::driver`].
     pub fn try_driver() -> Result<&'static str, crate::Error> {
-        DB_DRIVER.get().map(|s| s.as_str()).ok_or_else(|| {
-            crate::Error::Internal(
-                "Orm is not initialized. Call Orm::init() before querying.".to_string(),
-            )
-        })
+        Ok(Self::state()?.driver)
     }
 
     /// Create a raw SQL query builder.
@@ -322,7 +299,7 @@ impl Orm {
     }
 
     pub async fn begin_transaction() -> Result<crate::db::Transaction<'static>, crate::Error> {
-        let pool = Self::pool();
+        let pool = Self::pool()?;
         pool.begin().await.map_err(Into::into)
     }
 

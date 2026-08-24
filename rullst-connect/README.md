@@ -11,8 +11,8 @@
 
 ## 🛡️ Enterprise-Grade Security
 
-Rullst Connect is built and tested against the most rigorous standards in the industry.
-Our continuous pipeline guarantees absolute safety for production edge infrastructure:
+Rullst Connect uses layered tests and repository security checks. CI badges report the
+state of those checks for the referenced commit; they are not an absolute security guarantee.
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
@@ -42,9 +42,9 @@ Our continuous pipeline guarantees absolute safety for production edge infrastru
 - 🧩 **Standardized**: All providers return a unified `ConnectUser` struct.
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
 - 🔌 **Framework Agnostic**: Works seamlessly with Rullst, Axum, Actix, Leptos, Dioxus, or any other framework.
-- 🔐 **Enterprise Security**: Built-in OIDC Discovery, JWKS validation, and automated CSRF `tower-sessions`.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
-- 🛠️ **Testing**: Embedded Mock IdP router for seamless offline local E2E testing.
+- 🛠️ **Testing**: Typed, network-free provider fallbacks plus an explicitly mounted embedded Mock IdP for local tests.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -79,7 +79,7 @@ cargo add rullst-connect
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "11.0.0"
+rullst-connect = "12.0.0"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -91,12 +91,34 @@ Choose your provider and pass your credentials and callback URL:
 ```rust
 use rullst_connect::prelude::*;
 
-let github = GithubProvider::new(
-    "YOUR_CLIENT_ID".to_string(),
-    "YOUR_CLIENT_SECRET".to_string(),
-    "http://localhost:3000/auth/github/callback".to_string(),
-);
+let github = GithubProvider::try_new(
+    "YOUR_CLIENT_ID",
+    SecretString::from("YOUR_CLIENT_SECRET".to_string()),
+    "http://localhost:3000/auth/github/callback",
+)?;
 ```
+
+`try_new` validates the callback URL without panicking. HTTPS is required except for
+the exact loopback hosts `localhost`, `127.0.0.1`, and `::1`; names such as
+`localhost.evil` are rejected. The older infallible `new` constructor is deprecated and
+returns a disabled, fail-closed provider when configuration is invalid.
+
+### Credential modes and offline tests
+
+Every provider exposes `credential_mode() -> CredentialMode`. An empty credential or a
+value beginning with `mock_` selects `CredentialMode::Mock` and installs a transport that
+never accesses the network. Functional mock identities are available only in unit tests
+or when the Cargo feature `mock` is explicitly enabled; otherwise token operations return
+`ConnectError::Offline`. This prevents missing production secrets from silently becoming
+a working authentication bypass.
+
+```toml
+[dev-dependencies]
+rullst-connect = { version = "12.0.0", features = ["mock"] }
+```
+
+Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
+reserved `example.invalid` email domain.
 
 ### 2. Redirect the User
 Get the authorization URL and redirect your user:
@@ -175,8 +197,26 @@ let params = rullst_connect::provider::ExchangeParams {
     code_verifier: Some(&code_verifier),
     ..Default::default()
 };
-let user = provider.get_user(params).await.unwrap();
+let user = provider.get_user(params).await?;
 ```
+
+### Custom OIDC discovery
+
+```rust
+let provider = OidcProvider::discover(
+    "https://identity.example.com",
+    "client-id",
+    "client-secret",
+    "https://app.example.com/auth/callback",
+).await?;
+```
+
+Discovery requires the returned issuer to match the requested issuer. Discovered token,
+authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
+both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
+after their TTL and immediately when a token presents an unknown `kid`; stale keys are
+used after a refresh error only within a bounded age and only when the requested `kid`
+already exists in the cached set.
 
 ## 🧑‍💻 Full Example with Axum
 

@@ -12,7 +12,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     // Para testar corretamente com o Pool do SQLX, precisamos de um arquivo físico
     let _ = std::fs::File::create("test.db");
     Orm::init("sqlite://test.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     rullst_orm::_sqlx::query(
         "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)",

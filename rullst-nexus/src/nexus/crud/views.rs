@@ -66,7 +66,7 @@ pub async fn render_table_rows(
         return render_empty_state_html(visible_fields.len() + 1, entry.table, q);
     }
 
-    let t = entry.table;
+    let table_path = urlencoding::encode(entry.table);
     let pk = entry.pk;
 
     db_rows.into_iter().fold(
@@ -120,20 +120,23 @@ pub async fn render_table_rows(
                 cells
             });
 
-            let checkbox_cell = format!("<td class=\"nexus-td text-center\"><input type=\"checkbox\" name=\"selected_ids\" value=\"{row_id}\" class=\"nexus-batch-check\" /></td>");
+            let safe_row_id = rullst_core::html::escape_str(&row_id);
+            let row_path = urlencoding::encode(&row_id);
+            let checkbox_cell = format!("<td class=\"nexus-td text-center\"><input type=\"checkbox\" name=\"selected_ids\" value=\"{safe_row_id}\" class=\"nexus-batch-check\" /></td>");
 
             let _ = std::fmt::Write::write_fmt(&mut out, format_args!(
-                "<tr id=\"row-{row_id}\" class=\"nexus-tr\">\
+                "<tr data-nexus-row-id=\"{safe_row_id}\" class=\"nexus-tr\">\
                  {checkbox_cell}\
                  {cells}\
                  <td class=\"nexus-td nexus-td-actions\">\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
-                 hx-get=\"/nexus/table/{t}/{row_id}/edit\" \
+                 hx-get=\"/nexus/table/{table_path}/{row_path}/edit\" \
                  hx-target=\"#nexus-modal-body\" \
                  hx-on:htmx:after-request=\"document.getElementById(&apos;nexus-modal&apos;).showModal()\">&#9999;&#65039;</button>\
-                 <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" \
-                 onclick=\"nexusDelete(&apos;{t}&apos;, &apos;{row_id}&apos;)\">&#128465;&#65039;</button>\
+                 <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" data-nexus-delete=\"true\" \
+                 data-nexus-table=\"{}\" data-nexus-record=\"{safe_row_id}\">&#128465;&#65039;</button>\
                  </td></tr>"
+                , rullst_core::html::escape_str(entry.table)
             ));
             out
         }
@@ -182,7 +185,7 @@ pub async fn render_table_view(
     let t = entry.table;
     let lb = entry.label;
     let prev_page = if page > 1 { page - 1 } else { 1 };
-    let next_page = page + 1;
+    let next_page = page.saturating_add(1);
 
     let mut out = String::new();
     let _ = write!(
@@ -304,9 +307,15 @@ pub async fn render_record_form(
         None
     };
 
-    let fields_html = entry.fields.iter().fold(String::new(), |mut acc, f| {
+    let fields_html = entry
+        .fields
+        .iter()
+        .filter(|field| !field.hidden)
+        .fold(String::new(), |mut acc, f| {
         let fname = f.name;
         let flabel = f.label;
+        let safe_fname = rullst_core::html::escape_str(fname);
+        let safe_flabel = rullst_core::html::escape_str(flabel);
 
         let cur_val: String = if let Some(ref r) = row_data {
             match &f.kind {
@@ -335,33 +344,40 @@ pub async fn render_record_form(
             "".to_string()
         };
 
-        let readonly_attr = if f.readonly || (is_edit && fname == pk) {
+        let is_readonly = f.readonly || (is_edit && fname == pk);
+        let readonly_attr = if is_readonly {
             " readonly style=\"opacity: 0.6; cursor: not-allowed;\""
         } else {
             ""
+        };
+        let name_attr = if is_readonly {
+            String::new()
+        } else {
+            format!(" name=\"{safe_fname}\"")
         };
 
         let input_widget = match &f.kind {
             FieldKind::Textarea | FieldKind::Json => {
                 format!(
-                    "<textarea name=\"{fname}\" class=\"nexus-input\" rows=\"4\"{readonly_attr}>{}</textarea>",
+                    "<textarea{name_attr} class=\"nexus-input\" rows=\"4\"{readonly_attr}>{}</textarea>",
                     rullst_core::html::escape_str(&cur_val)
                 )
             }
             FieldKind::Boolean => {
                 let checked = if cur_val == "1" || cur_val == "true" { " checked" } else { "" };
                 format!(
-                    "<input type=\"hidden\" name=\"{fname}\" value=\"0\" />\
-                     <input type=\"checkbox\" name=\"{fname}\" value=\"1\"{checked}{readonly_attr} style=\"width: 20px; height: 20px; accent-color: var(--accent);\" />"
+                    "<input type=\"hidden\"{name_attr} value=\"0\" />\
+                     <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} style=\"width: 20px; height: 20px; accent-color: var(--accent);\" />"
                 )
             }
             FieldKind::Enum { options } => {
                 let opts = options.iter().fold(String::new(), |mut acc, &opt| {
                     let sel = if opt == cur_val { " selected" } else { "" };
-                    let _ = write!(acc, "<option value=\"{opt}\"{sel}>{opt}</option>");
+                    let safe_opt = rullst_core::html::escape_str(opt);
+                    let _ = write!(acc, "<option value=\"{safe_opt}\"{sel}>{safe_opt}</option>");
                     acc
                 });
-                format!("<select name=\"{fname}\" class=\"nexus-input\"{readonly_attr}>{opts}</select>")
+                format!("<select{name_attr} class=\"nexus-input\"{readonly_attr}>{opts}</select>")
             }
             _ => {
                 let input_type = match f.kind {
@@ -374,7 +390,7 @@ pub async fn render_record_form(
                     _ => "text",
                 };
                 format!(
-                    "<input type=\"{input_type}\" name=\"{fname}\" value=\"{}\" class=\"nexus-input\"{readonly_attr} />",
+                    "<input type=\"{input_type}\"{name_attr} value=\"{}\" class=\"nexus-input\"{readonly_attr} />",
                     rullst_core::html::escape_str(&cur_val)
                 )
             }
@@ -383,30 +399,30 @@ pub async fn render_record_form(
         let _ = write!(
             acc,
             "<div class=\"nexus-form-group\">\
-             <label class=\"nexus-label\">{flabel}</label>\
+             <label class=\"nexus-label\">{safe_flabel}</label>\
              {input_widget}\
              </div>"
         );
         acc
     });
 
+    let table_path = urlencoding::encode(t);
     let action_url = if let Some(id) = record_id {
-        format!("/nexus/table/{t}/{id}")
+        format!("/nexus/table/{table_path}/{}", urlencoding::encode(id))
     } else {
-        format!("/nexus/table/{t}")
+        format!("/nexus/table/{table_path}")
     };
-    let action_url_id = action_url.trim_start_matches('/').replace('/', "-");
-    let form_id = action_url_id.replace('-', "_");
+    let safe_action_url = rullst_core::html::escape_str(&action_url);
+    let safe_title = rullst_core::html::escape_str(&title);
 
     format!(
-        "<h3 class=\"nexus-modal-title\">{title}</h3>\
-         <form id=\"nexus-frm-{form_id}\" autocomplete=\"off\" onsubmit=\"return false;\">\
+        "<h3 class=\"nexus-modal-title\">{safe_title}</h3>\
+         <form id=\"nexus-record-form\" data-nexus-action=\"{safe_action_url}\" autocomplete=\"off\" onsubmit=\"return false;\">\
          <div class=\"nexus-fields-grid\">{fields_html}</div>\
          <div class=\"nexus-form-actions\">\
          <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" \
          onclick=\"document.getElementById(&apos;nexus-modal&apos;).close()\">Cancel</button>\
-         <button id=\"nexus-save-{form_id}\" type=\"button\" class=\"nexus-btn nexus-btn-primary\" \
-         onclick=\"nexusSave(&apos;nexus-frm-{form_id}&apos;, &apos;{action_url}&apos;, this)\">Save Record</button>\
+         <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" data-nexus-save=\"true\">Save Record</button>\
          </div></form>"
     )
 }

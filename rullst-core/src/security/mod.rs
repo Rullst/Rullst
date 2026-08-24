@@ -18,7 +18,10 @@ mod kani_proofs;
 // ─── Public Re-exports ──────────────────────────────────────────────────────
 
 pub use csrf::{csrf_middleware, generate_csrf_token};
-pub use headers::headers_middleware;
+pub use headers::{CspNonce, DEFAULT_CSP_TEMPLATE, headers_middleware, render_csp_policy};
 pub use pii::{mask_pii, pii_masking_middleware};
-pub use tenant_guard::{TenantContext, strict_tenant_guard_middleware, tenant_guard_middleware};
+pub use tenant_guard::{
+    TenantContext, TenantContextError, TenantMembership, strict_tenant_guard_middleware,
+    tenant_guard_middleware,
+};
 pub use waf::waf_middleware;

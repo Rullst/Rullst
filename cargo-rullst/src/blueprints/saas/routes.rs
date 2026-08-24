@@ -20,13 +20,14 @@ pub mod models;
 pub mod middlewares;
 pub mod pages;
 
-pub fn router() -> Router {{
+pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("SaaS Admin")
         .register::<models::user::User>()
         .register::<models::subscription::Subscription>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::billing_controller::pricing_view),
@@ -37,19 +38,27 @@ pub fn router() -> Router {{
         post("/register" => controllers::auth_controller::register_submit),
         get("/logout" => controllers::auth_controller::logout),
         get("/billing/checkout" => controllers::billing_controller::checkout_redirect),
-        post("/billing/webhook" => controllers::billing_controller::webhook_handler),
     ];
 
-    router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    Ok(router.route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
+        .route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))
+    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus)
+    .nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    Box::into_raw(Box::new(router()))
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("Nexus startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
 }}
 "##,
             repo_decl = repo_decl
@@ -83,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router();
+        let router = {project_name_safe}::router()?;
         rullst::Server::new(router)
     }};
 
@@ -110,12 +119,13 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("SaaS Admin")
         .register::<models::user::User>()
         .register::<models::subscription::Subscription>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::billing_controller::pricing_view),
@@ -126,10 +136,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         post("/register" => controllers::auth_controller::register_submit),
         get("/logout" => controllers::auth_controller::logout),
         get("/billing/checkout" => controllers::billing_controller::checkout_redirect),
-        post("/billing/webhook" => controllers::billing_controller::webhook_handler),
     ];
 
-    let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+    let router = router.route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
+        .route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))
+    .route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))

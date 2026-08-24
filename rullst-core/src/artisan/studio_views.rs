@@ -251,7 +251,7 @@ pub(crate) async fn studio_data_handler() -> axum::response::Html<String> {
             <a href="http://127.0.0.1:3000/nexus" target="_blank" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl transition shadow inline-flex items-center gap-1.5">
                 <span>⚙️ Open Rullst Nexus CMS (/nexus)</span>
             </a>
-            <span class="text-xs text-slate-400 font-mono pl-2">(Default login: <code class="text-sky-300">admin</code> / <code class="text-sky-300">password</code>)</span>
+            <span class="text-xs text-slate-400 font-mono pl-2">(Credentials are required through the Nexus environment configuration.)</span>
         </div>
     </div>
 

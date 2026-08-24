@@ -76,13 +76,13 @@ impl NexusModel for Subscription {
 }
 
 impl Subscription {
-    pub async fn find_by_subscription_id(subscription_id: &str) -> Option<Self> {
-        let pool = rullst::db::Orm::pool();
+    pub async fn find_by_subscription_id(subscription_id: &str) -> Result<Option<Self>, rullst_orm::error::RullstError> {
+        let pool = rullst::db::Orm::pool()?;
         rullst::db::sqlx::query_as("SELECT * FROM subscriptions WHERE subscription_id = $1")
             .bind(subscription_id)
             .fetch_optional(pool)
             .await
-            .unwrap_or(None)
+            .map_err(Into::into)
     }
 }
 "##;

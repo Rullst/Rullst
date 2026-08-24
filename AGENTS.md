@@ -24,7 +24,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
 | **`rullst-capital`** | Multi-provider payment & payout engine, NFS-e digital invoicing, real-time SaaS MRR/ARR analytics. |
 | **`rullst-connect`** | Enterprise message queues (RabbitMQ, Redis Streams, Kafka), WebSockets sync, SSE event streams. |
-| **`rullst-iot`** | High-throughput MQTT 5.0 broker client, industrial edge sensor ingestion, zero-copy packet parser. |
+| **`rullst-iot`** | `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader integration are roadmap work. |
 | **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery. |
 | **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |

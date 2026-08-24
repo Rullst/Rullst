@@ -26,7 +26,7 @@ pub fn run_make_iot(device_name: &str) -> Result<(), Box<dyn std::error::Error>>
         "// =========================================================================\n\
          // Rullst IoT Device Module — {dev_name}\n\
          // =========================================================================\n\n\
-         use rullst_iot::{{SensorTelemetry, MqttDriver}};\n\n\
+         use rullst_iot::SensorTelemetry;\n\n\
          pub struct {dev_struct} {{\n\
              pub device_id: String,\n\
          }}\n\n\

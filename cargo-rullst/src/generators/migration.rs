@@ -239,8 +239,8 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
                 let db_cols = db_schema.get(tname).unwrap();
                 for field in &ast_table.fields {
                     if !db_cols.contains(&field.name) {
-                        up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()).await?;\n", tname, field.name));
-                        down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()).await?;\n", tname, field.name));
+                        up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
+                        down_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));
                     }
                 }
             }
@@ -253,7 +253,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
                         continue;
                     }
                     if !ast_table.fields.iter().any(|f| &f.name == db_col) {
-                        up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()).await?;\n", db_tname, db_col));
+                        up_queries.push(format!("        // WARNING: Destructive operation detected. Uncomment to apply.\n        // rullst_orm::sqlx::query(\"ALTER TABLE {} DROP COLUMN {}\").execute(rullst_orm::Orm::pool()?).await?;\n", db_tname, db_col));
                     }
                 }
             } else {

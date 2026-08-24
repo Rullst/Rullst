@@ -1,10 +1,10 @@
-//! Autonomous Edge Swarm & Mesh Network Protocol (`rullst_iot::mesh`).
+//! In-memory mesh topology and RSSI-based relay selection helpers.
 
 extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-/// Status of a mesh network node.
+/// Recorded status of a topology node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeStatus {
     Online,
@@ -12,7 +12,7 @@ pub enum NodeStatus {
     Offline,
 }
 
-/// A single node in the IoT mesh network.
+/// A single node record. This type does not implement a mesh transport.
 #[derive(Clone, Debug)]
 pub struct MeshNode {
     pub node_id: String,

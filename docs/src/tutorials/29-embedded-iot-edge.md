@@ -1,38 +1,42 @@
-# Tutorial 29: Embedded Systems & Edge IoT (`rullst-iot`) 🔌
+# Tutorial 29: IoT data and frame helpers (`rullst-iot`)
 
-Develop software for bare-metal microcontrollers (STM32, ESP32, Raspberry Pi) with `#![no_std]` support and under 2MB RAM footprint.
+`rullst-iot` provides telemetry/state models and protocol frame builders that
+compile without `std`. Some APIs use `alloc`, so a bare-metal application must
+supply an allocator.
 
----
+The crate does not currently read hardware registers or provide MQTT, OPC-UA,
+Sparkplug B, HSM, or post-quantum implementations.
 
-## 🛠️ Step 1: Scaffold an IoT Edge Device
-
-```bash
-cargo rullst make:iot SensorGateway
-```
-
----
-
-## 💻 Step 2: Read Hardware Registers & Run Edge AI Anomaly Detection
+## Build a telemetry model and Modbus request
 
 ```rust
-use rullst_iot::gpio::GpioPin;
-use rullst_iot::anomaly::AnomalyDetector;
+use rullst_iot::{AnomalyDetector, ModbusFrame, SensorTelemetry};
 
-pub fn read_sensor_node() {
-    let mut pin = GpioPin::new(14);
-    pin.toggle();
+let telemetry = SensorTelemetry::new(
+    "sensor-01",
+    "temperature",
+    38.5,
+    1_700_000_000,
+);
+let detector = AnomalyDetector::new(25.0, 5.0);
+let state = detector.evaluate(telemetry.value);
 
-    let mut detector = AnomalyDetector::new();
-    let is_anomaly = detector.evaluate(98.6);
-
-    if is_anomaly {
-        println!("⚠️ Hardware anomaly detected on edge device!");
-    }
-}
+// This builds bytes for a request. Platform code must send them over a real
+// serial/TCP transport and handle timeouts, retries, and the response.
+let request = ModbusFrame::read_holding_registers(1, 0, 10);
+assert_eq!(request.len(), 8);
+let _ = state;
 ```
 
----
+## Signed firmware artifacts
 
-## 💡 Key Takeaways
-- `rullst-iot` supports Modbus, MQTT Sparkplug B, OPC-UA, BLE, and PQC encryption on `#![no_std]` targets.
-- Verified against STM32 Cortex-M4 and ESP32-C3 RISC-V silicon.
+Use `OtaManifest` and `OtaManager::new_with_trusted_key` to verify a firmware
+artifact before selecting an inactive partition. See the
+[crate guide](../crates/iot.md) for the trust, persistence, and bootloader
+requirements that remain the integrator's responsibility.
+
+## Experimental fixtures
+
+The opt-in `experimental-simulators` feature contains explicitly named
+`Simulated*` fixtures. They are deterministic test data generators, not hardware
+or protocol implementations.

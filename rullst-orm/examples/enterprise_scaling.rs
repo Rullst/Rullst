@@ -27,7 +27,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     .await?;
 
     // Create the users table on primary and both replicas (in a real-world scenario, replication is handled by the database engine)
-    let primary_pool = Orm::pool();
+    let primary_pool = Orm::pool()?;
     let r1_pool = rullst_orm::RullstPool::connect("sqlite://replica1.db").await?;
     let r2_pool = rullst_orm::RullstPool::connect("sqlite://replica2.db").await?;
 

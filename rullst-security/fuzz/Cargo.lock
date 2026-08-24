@@ -35,6 +35,7 @@ dependencies = [
  "ctr",
  "ghash",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -141,7 +142,7 @@ checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
 dependencies = [
  "axum-core",
  "axum-macros",
- "base64 0.22.1",
+ "base64",
  "bytes",
  "form_urlencoded",
  "futures-util",
@@ -205,12 +206,6 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-
-[[package]]
-name = "base64"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "bitflags"
@@ -1718,7 +1713,7 @@ version = "12.0.0"
 dependencies = [
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64",
  "chrono",
  "cron",
  "dashmap",
@@ -1734,6 +1729,7 @@ dependencies = [
  "serde_urlencoded",
  "sqlx",
  "subtle",
+ "thiserror",
  "tokio",
  "toml",
  "tower",
@@ -1746,6 +1742,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1764,7 +1761,7 @@ dependencies = [
  "aes-gcm",
  "async-stream",
  "async-trait",
- "base64 0.23.1",
+ "base64",
  "futures",
  "mutants",
  "rand 0.10.2",
@@ -1773,6 +1770,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "syn 2.0.119",
+ "thiserror",
  "tokio",
  "tracing",
  "walkdir",
@@ -1791,9 +1789,10 @@ dependencies = [
 name = "rullst-security"
 version = "12.0.0"
 dependencies = [
+ "aes-gcm",
  "ammonia",
  "axum",
- "base64 0.22.1",
+ "base64",
  "dashmap",
  "hex",
  "hmac",
@@ -1804,6 +1803,7 @@ dependencies = [
  "sha1 0.11.0",
  "sha2 0.11.0",
  "subtle",
+ "thiserror",
  "tokio",
  "tower",
  "tracing",
@@ -2083,7 +2083,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05b44e85bf579a8eeb4ceaa77a3a523baf2bf0e9bac7e40f405d537b5d2d5ccb"
 dependencies = [
- "base64 0.22.1",
+ "base64",
  "bytes",
  "cfg-if",
  "crc",
@@ -2185,7 +2185,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87a2bdd6e83f6b3ea525ca9fee568030508b58355a43d0b2c1674d5f79dcd65e"
 dependencies = [
  "atoi",
- "base64 0.22.1",
+ "base64",
  "bitflags",
  "byteorder",
  "crc",
@@ -2713,8 +2713,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf3923a6f5c4c6382e0b653c4117f48d631ea17f38ed86e2a828e6f7412f5239"
 dependencies = [
  "getrandom 0.4.3",
- "js-sys",
- "wasm-bindgen",
 ]
 
 [[package]]

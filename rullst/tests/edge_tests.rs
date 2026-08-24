@@ -1,4 +1,4 @@
-use rullst::db::{ReplicationConfig, ReplicationManager};
+use rullst::db::{ReplicationConfig, ReplicationError, ReplicationManager};
 use rullst::edge::{EdgeRequest, EdgeResponse, EdgeServer};
 use std::collections::HashMap;
 
@@ -89,16 +89,17 @@ fn test_replication_config_builder() {
     assert_eq!(config.sync_interval_secs, 5);
 }
 
-#[tokio::test]
-async fn test_replication_manager_mock_start() {
+#[test]
+fn test_replication_manager_rejects_unimplemented_backend() {
     let config = ReplicationConfig::new("local.db")
         .with_sync_url("libsql://replica.turso.io")
         .with_auth_token("token")
         .with_sync_interval(1);
 
-    // Just verify launching doesn't panic
-    ReplicationManager::start(config);
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    assert!(matches!(
+        ReplicationManager::start(config),
+        Err(ReplicationError::Unsupported { .. })
+    ));
 }
 
 #[tokio::test]

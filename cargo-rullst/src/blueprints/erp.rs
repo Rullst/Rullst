@@ -22,25 +22,33 @@ pub mod models;
 {repo_decl}pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Router {{
+pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
-        .build();
+        .try_build()?;
 
-    routes![
+    Ok(routes![
         get("/" => controllers::erp_controller::index),
         post("/products" => controllers::erp_controller::store_product),
         post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
-    ].nest_axum("/nexus", nexus)
+    ].nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    Box::into_raw(Box::new(router()))
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("Nexus startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
 }}
 "##,
             repo_decl = repo_decl
@@ -72,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router();
+        let router = {project_name_safe}::router()?;
         rullst::Server::new(router)
     }};
 
@@ -100,12 +108,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::erp_controller::index),
@@ -179,7 +188,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial products and orders
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
         
         rullst::db::sqlx::query(
             "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
@@ -446,7 +455,7 @@ fn render_header() -> String {
                     <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
                     <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
                 </div>
-                <span class="text-[10px] text-slate-500 mr-2">"(Login: admin / password)"</span>
+                <span class="text-[10px] text-slate-500 mr-2">"(Credentials: environment)"</span>
             </div>
         </header>
     }

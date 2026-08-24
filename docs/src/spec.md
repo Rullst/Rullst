@@ -302,7 +302,7 @@ Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** via a
 
 ## 📡 17. Edge Sensor Protocols & Message Queues (`rullst-iot` & `rullst-connect`)
 
-* **`rullst-iot`**: High-performance MQTT 5.0 client with zero-copy binary packet parser for telemetry ingestion from industrial edge sensors.
+* **`rullst-iot`**: `no_std` telemetry models, protocol frame helpers, and strict Ed25519-signed firmware manifest verification. MQTT transport, hardware HSM backends, firmware flashing/bootloader control, and post-quantum cryptography remain roadmap work; deterministic `Simulated*` fixtures require the explicit `experimental-simulators` feature and carry no security or protocol guarantee.
 * **`rullst-connect`**: Unified asynchronous abstractions for AMQP (RabbitMQ), Redis Streams, Apache Kafka, WebSockets pub/sub, and Server-Sent Events (SSE).
 
 ---

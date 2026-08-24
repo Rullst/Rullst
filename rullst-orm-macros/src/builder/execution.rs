@@ -30,7 +30,7 @@ pub fn generate_delete_all_logic(parsed: &ParsedModel) -> TokenStream {
     let set_fragment = build_soft_delete_set_clause(cfg);
     let delval_token: TokenStream = if cfg.delval.trim().is_empty() {
         quote! {
-            let delval = if rullst_orm::Orm::driver() == "postgres" {
+            let delval = if rullst_orm::Orm::driver()? == "postgres" {
                 "CURRENT_TIMESTAMP"
             } else {
                 "CURRENT_TIMESTAMP"

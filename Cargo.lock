@@ -259,6 +259,7 @@ dependencies = [
  "ctr 0.10.1",
  "ghash 0.6.0",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -949,6 +950,8 @@ dependencies = [
  "sqlx",
  "syn 3.0.3",
  "tokio",
+ "tower",
+ "tower-http 0.7.0",
  "walkdir",
  "zstd",
 ]
@@ -5337,7 +5340,9 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "criterion",
+ "dotenvy",
  "futures-util",
+ "p256",
  "rand 0.10.2",
  "ring",
  "rullst-connect",
@@ -5349,6 +5354,7 @@ dependencies = [
  "thiserror 2.0.19",
  "tokio",
  "tower",
+ "url",
 ]
 
 [[package]]
@@ -5436,10 +5442,12 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "console_error_panic_hook",
  "criterion",
  "cron",
  "dashmap",
  "dotenvy",
+ "js-sys",
  "libloading",
  "notify",
  "opentelemetry",
@@ -5469,6 +5477,9 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
  "windows-sys 0.61.2",
 ]
 
@@ -5476,6 +5487,7 @@ dependencies = [
 name = "rullst-iot"
 version = "12.0.0"
 dependencies = [
+ "ed25519-dalek",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -5513,8 +5525,10 @@ dependencies = [
 name = "rullst-nexus"
 version = "12.0.0"
 dependencies = [
+ "ammonia",
  "axum",
  "base64 0.22.1",
+ "dotenvy",
  "rullst-ai",
  "rullst-auth",
  "rullst-core",
@@ -5525,6 +5539,7 @@ dependencies = [
  "subtle",
  "tokio",
  "tower",
+ "urlencoding",
 ]
 
 [[package]]
@@ -5570,6 +5585,7 @@ dependencies = [
 name = "rullst-security"
 version = "12.0.0"
 dependencies = [
+ "aes-gcm 0.11.0",
  "ammonia",
  "axum",
  "base64 0.22.1",

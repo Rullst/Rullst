@@ -1,5 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{JsCast, prelude::*};
 
 /// Client-side utilities for Rullst Wasm Islands.
 /// This module is compiled when targeting `wasm32-unknown-unknown`.
@@ -14,21 +14,30 @@ pub fn rullst_client_init() {
 
 #[cfg(target_arch = "wasm32")]
 #[cfg_attr(mutants, mutants::skip)]
-pub async fn rpc_call(fn_name: &str) -> String {
+/// Calls a server RPC endpoint from a browser and returns its textual body.
+pub async fn rpc_call(fn_name: &str) -> Result<String, JsValue> {
     let url = format!("/api/rpc/{}", fn_name);
-    let window = web_sys::window().expect("no global `window` exists");
-    let mut opts = web_sys::RequestInit::new();
+    let window =
+        web_sys::window().ok_or_else(|| JsValue::from_str("browser Window unavailable"))?;
+    let opts = web_sys::RequestInit::new();
     opts.set_method("POST");
     opts.set_mode(web_sys::RequestMode::Cors);
-    let request = web_sys::Request::new_with_str_and_init(&url, &opts).unwrap();
-    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request))
-        .await
-        .unwrap();
-    let resp: web_sys::Response = resp_value.dyn_into().unwrap();
-    let text_val = wasm_bindgen_futures::JsFuture::from(resp.text().unwrap())
-        .await
-        .unwrap();
-    text_val.as_string().unwrap()
+    let request = web_sys::Request::new_with_str_and_init(&url, &opts)?;
+    let resp_value =
+        wasm_bindgen_futures::JsFuture::from(window.fetch_with_request(&request)).await?;
+    let resp: web_sys::Response = resp_value
+        .dyn_into()
+        .map_err(|_| JsValue::from_str("fetch returned a non-Response value"))?;
+    if !resp.ok() {
+        return Err(JsValue::from_str(&format!(
+            "RPC request failed with HTTP {}",
+            resp.status()
+        )));
+    }
+    let text_val = wasm_bindgen_futures::JsFuture::from(resp.text()?).await?;
+    text_val
+        .as_string()
+        .ok_or_else(|| JsValue::from_str("RPC response body was not text"))
 }
 
 #[cfg(test)]

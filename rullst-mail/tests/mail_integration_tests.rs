@@ -50,7 +50,7 @@ fn test_driver_constructors() {
     };
     assert_eq!(postmark.server_token, "pm_tok_123");
 
-    let ses = AwsSesDriver::new("us-east-1", "mock_ses_token");
+    let ses = AwsSesDriver::try_new("us-east-1", "mock_ses_token").unwrap();
     assert_eq!(ses.region, "us-east-1");
     assert_eq!(ses.auth_token, "mock_ses_token");
     assert!(ses.endpoint().contains("us-east-1.amazonaws.com"));

@@ -39,7 +39,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     println!("Posts table created successfully!");
 
     // 4. Verification
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     // Let's manually inspect the SQLite sqlite_schema table
     let tables: Vec<(String, String)> = rullst_orm::_sqlx::query_as(

@@ -1,143 +1,96 @@
-use chrono::Utc;
-use reqwest::Client;
-use serde_json::Value;
+use chrono::{DateTime, Utc};
+use ring::digest::{SHA256, digest};
 
-use crate::fiscal::models::{FiscalCertificate, FiscalEmitter, FiscalError, FiscalResponse};
+use crate::fiscal::models::{
+    FiscalCertificate, FiscalEmitter, FiscalError, FiscalResponse, FiscalResponseKind,
+};
 
-/// Official National NFS-e execution environments.
+/// NFS-e execution mode.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NfseEnvironment {
-    /// Homologation / Sandbox (Ambiente de Testes / Homologação da Receita Federal)
+    /// Deterministic offline fixture. No document is transmitted or authorized.
+    Mock,
+    /// Homologation is blocked until the integration passes official end-to-end validation.
     Homologation,
-    /// Production (Ambiente de Produção Nacional)
+    /// Production is blocked until the integration passes official end-to-end validation.
     Production,
 }
 
 impl NfseEnvironment {
-    /// Returns the official base endpoint URL for the environment.
+    /// Returns a deliberately non-network endpoint marker.
+    ///
+    /// Rullst does not expose unverified NFS-e URLs. Transmission through the client remains
+    /// fail-closed until the full official contract and mTLS setup are implemented.
     pub fn endpoint(&self) -> &'static str {
         match self {
-            Self::Homologation => "https://hom-sefin.nfse.gov.br/ws/nfse",
-            Self::Production => "https://sefin.nfse.gov.br/ws/nfse",
+            Self::Mock => "mock://offline-nfse",
+            Self::Homologation | Self::Production => "unsupported://nfse-national",
         }
     }
 }
 
-/// Official National NFS-e client for direct zero-cost tax transmission to the Receita Federal.
+/// Fail-closed National NFS-e client.
+///
+/// Only the explicit [`NfseEnvironment::Mock`] mode is currently executable. Homologation and
+/// production return [`FiscalError::Unsupported`] without performing network I/O.
 #[derive(Debug, Clone)]
 pub struct NfseNationalClient {
     pub emitter: FiscalEmitter,
     pub certificate: FiscalCertificate,
     pub environment: NfseEnvironment,
-    client: Client,
 }
 
 impl NfseNationalClient {
-    /// Creates a new national NFS-e client instance.
+    /// Creates a client with an explicit execution environment.
     pub fn new(
         emitter: FiscalEmitter,
         certificate: FiscalCertificate,
         environment: NfseEnvironment,
     ) -> Self {
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .unwrap_or_default();
-
         Self {
             emitter,
             certificate,
             environment,
-            client,
         }
     }
 
-    /// Transmits a signed DPS XML directly to the Receita Federal national portal.
-    pub async fn transmit_dps(&self, signed_dps_xml: &str) -> Result<FiscalResponse, FiscalError> {
-        let endpoint = format!("{}/dps", self.environment.endpoint());
-
-        // In test mode or when running without external connection, produce a structured verified response
-        if self.certificate.passphrase == "mock" || self.certificate.raw_pfx_base64.is_empty() {
-            let mock_key = format!(
-                "{}{:0>14}{:0>8}{:0>15}",
-                self.emitter.ibge_code,
-                self.emitter.clean_cnpj(),
-                "2608",
-                "000000000000001"
-            );
-            return Ok(FiscalResponse {
-                access_key: mock_key,
-                nfse_number: 1,
-                protocol: "PROT-MOCK-999888777".to_string(),
-                authorized_xml: signed_dps_xml.to_string(),
-                authorized_at: Utc::now(),
-                status: "Autorizada".to_string(),
-                errors: Vec::new(),
-            });
+    /// Processes a DPS according to the explicitly selected environment.
+    pub async fn transmit_dps(&self, dps_xml: &str) -> Result<FiscalResponse, FiscalError> {
+        match self.environment {
+            NfseEnvironment::Mock => self.mock_response(dps_xml),
+            NfseEnvironment::Homologation => Err(FiscalError::Unsupported(
+                "NFS-e homologation is disabled until XMLDSig, PKCS#12, mTLS, XSD validation and official response parsing are validated end to end"
+                    .to_string(),
+            )),
+            NfseEnvironment::Production => Err(FiscalError::Unsupported(
+                "NFS-e production is disabled until XMLDSig, PKCS#12, mTLS, XSD validation and official homologation are complete"
+                    .to_string(),
+            )),
         }
-
-        let res = self
-            .client
-            .post(&endpoint)
-            .header("Content-Type", "application/xml; charset=utf-8")
-            .body(signed_dps_xml.to_string())
-            .send()
-            .await
-            .map_err(|e| {
-                FiscalError::Network(format!(
-                    "Network connection to Receita Federal failed: {}",
-                    e
-                ))
-            })?;
-
-        if !res.status().is_success() {
-            let status = res.status().as_u16();
-            let err_body = res.text().await.unwrap_or_default();
-            return Err(FiscalError::Api {
-                status,
-                body: err_body,
-            });
-        }
-
-        let body_str = res
-            .text()
-            .await
-            .map_err(|e| FiscalError::Network(format!("Failed to read response: {}", e)))?;
-
-        parse_receita_response(&body_str, signed_dps_xml)
     }
-}
 
-/// Parses the official XML or JSON response from the National NFS-e portal.
-fn parse_receita_response(
-    response_body: &str,
-    original_xml: &str,
-) -> Result<FiscalResponse, FiscalError> {
-    if let Ok(json) = serde_json::from_str::<Value>(response_body) {
-        let key = json["chaveAcesso"].as_str().unwrap_or("").to_string();
-        let number = json["numeroNfse"].as_u64().unwrap_or(1);
-        let prot = json["protocolo"].as_str().unwrap_or("").to_string();
-        let status = json["status"].as_str().unwrap_or("Autorizada").to_string();
+    fn mock_response(&self, dps_xml: &str) -> Result<FiscalResponse, FiscalError> {
+        let payload_hash = hex::encode(digest(&SHA256, dps_xml.as_bytes()).as_ref());
+        let short_hash = payload_hash.get(..24).ok_or_else(|| {
+            FiscalError::General("Failed to construct deterministic mock identifier".to_string())
+        })?;
+        let authorized_at = DateTime::<Utc>::from_timestamp(0, 0).ok_or_else(|| {
+            FiscalError::General("Failed to construct deterministic mock timestamp".to_string())
+        })?;
 
         Ok(FiscalResponse {
-            access_key: key,
-            nfse_number: number,
-            protocol: prot,
-            authorized_xml: original_xml.to_string(),
-            authorized_at: Utc::now(),
-            status,
-            errors: Vec::new(),
-        })
-    } else {
-        // Fallback XML extraction
-        Ok(FiscalResponse {
-            access_key: "35503080001000000000000000000000000000000000000001".to_string(),
-            nfse_number: 1,
-            protocol: "PROT-DIRECT-001".to_string(),
-            authorized_xml: response_body.to_string(),
-            authorized_at: Utc::now(),
-            status: "Autorizada".to_string(),
-            errors: Vec::new(),
+            kind: FiscalResponseKind::OfflineMock,
+            access_key: format!("MOCK-NOT-AUTHORIZED-{short_hash}"),
+            nfse_number: 0,
+            protocol: format!("MOCK-ONLY-{short_hash}"),
+            authorized_xml: dps_xml.to_string(),
+            authorized_at,
+            status: "MOCK_NOT_AUTHORIZED".to_string(),
+            errors: vec![
+                "Offline mock fixture: no XMLDSig was produced and no tax authority authorized this document"
+                    .to_string(),
+            ],
         })
     }
 }
@@ -145,61 +98,65 @@ fn parse_receita_response(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fiscal::models::TaxRegime;
 
-    #[tokio::test]
-    async fn test_fiscal_client_and_environments() {
-        assert_eq!(
-            NfseEnvironment::Homologation.endpoint(),
-            "https://hom-sefin.nfse.gov.br/ws/nfse"
-        );
-        assert_eq!(
-            NfseEnvironment::Production.endpoint(),
-            "https://sefin.nfse.gov.br/ws/nfse"
-        );
-
-        let emitter = FiscalEmitter {
+    fn emitter() -> FiscalEmitter {
+        FiscalEmitter {
             cnpj: "12.345.678/0001-90".to_string(),
             inscricao_municipal: "12345".to_string(),
             legal_name: "Empresa Teste LTDA".to_string(),
             trade_name: Some("Teste".to_string()),
             ibge_code: "3550308".to_string(),
-            tax_regime: crate::fiscal::models::TaxRegime::SimplesNacional,
-        };
+            tax_regime: TaxRegime::SimplesNacional,
+        }
+    }
 
-        let cert = FiscalCertificate::from_base64("", "mock");
-        let client = NfseNationalClient::new(emitter, cert, NfseEnvironment::Homologation);
-
+    #[tokio::test]
+    async fn explicit_mock_is_distinguishable_and_deterministic() {
+        let cert = FiscalCertificate::from_base64("", "");
+        let client = NfseNationalClient::new(emitter(), cert, NfseEnvironment::Mock);
         let dps_xml = "<DPS><infDPS>test</infDPS></DPS>";
-        let resp = client.transmit_dps(dps_xml).await.unwrap();
 
-        assert_eq!(resp.status, "Autorizada");
-        assert_eq!(resp.protocol, "PROT-MOCK-999888777");
-        assert!(resp.access_key.contains("3550308"));
-        assert_eq!(resp.authorized_xml, dps_xml);
+        let first = client.transmit_dps(dps_xml).await.unwrap();
+        let second = client.transmit_dps(dps_xml).await.unwrap();
 
-        // JSON response parsing test
-        let json_body = r#"{
-            "chaveAcesso": "35503081234567800019056000000000000000000000000001",
-            "numeroNfse": 42,
-            "protocolo": "PROT-RECEITA-12345",
-            "status": "Emitida com Sucesso"
-        }"#;
-        let parsed = parse_receita_response(json_body, dps_xml).unwrap();
-        assert_eq!(parsed.nfse_number, 42);
-        assert_eq!(parsed.protocol, "PROT-RECEITA-12345");
-        assert_eq!(parsed.status, "Emitida com Sucesso");
+        assert_eq!(first.kind, FiscalResponseKind::OfflineMock);
+        assert!(!first.is_officially_authorized());
+        assert_eq!(first.status, "MOCK_NOT_AUTHORIZED");
+        assert_eq!(first.nfse_number, 0);
+        assert!(first.access_key.starts_with("MOCK-NOT-AUTHORIZED-"));
+        assert_eq!(first.protocol, second.protocol);
+        assert_eq!(first.authorized_at, second.authorized_at);
+    }
 
-        // XML fallback parsing test
-        let raw_xml_response = "<retornoEnvioLote><sucesso>true</sucesso></retornoEnvioLote>";
-        let xml_parsed = parse_receita_response(raw_xml_response, dps_xml).unwrap();
-        assert_eq!(xml_parsed.status, "Autorizada");
-        assert_eq!(xml_parsed.protocol, "PROT-DIRECT-001");
-        assert_eq!(xml_parsed.authorized_xml, raw_xml_response);
+    #[tokio::test]
+    async fn real_environments_fail_closed_even_with_mock_or_empty_certificate() {
+        for environment in [NfseEnvironment::Homologation, NfseEnvironment::Production] {
+            for certificate in [
+                FiscalCertificate::from_base64("", "mock"),
+                FiscalCertificate::from_base64("TU9DSw==", "mock"),
+            ] {
+                let client = NfseNationalClient::new(emitter(), certificate, environment);
+                assert!(matches!(
+                    client.transmit_dps("<DPS/>").await,
+                    Err(FiscalError::Unsupported(_))
+                ));
+            }
+        }
+    }
 
-        // Incomplete JSON with fallback defaults
-        let minimal_json = "{}";
-        let min_parsed = parse_receita_response(minimal_json, dps_xml).unwrap();
-        assert_eq!(min_parsed.nfse_number, 1);
-        assert_eq!(min_parsed.status, "Autorizada");
+    #[test]
+    fn endpoints_are_non_network_markers() {
+        assert_eq!(NfseEnvironment::Mock.endpoint(), "mock://offline-nfse");
+        assert!(
+            NfseEnvironment::Homologation
+                .endpoint()
+                .starts_with("unsupported://")
+        );
+        assert!(
+            NfseEnvironment::Production
+                .endpoint()
+                .starts_with("unsupported://")
+        );
     }
 }

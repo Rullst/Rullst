@@ -43,6 +43,8 @@ flowchart TD
 - [x] **Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: Precision future delivery scheduled natively via `rullst::queue` (Tokio + SQLite/Redis) or downstream provider scheduling APIs (e.g. Resend/SendGrid timestamps).
 - [x] **Zero-Copy Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: High-throughput attachment pipeline with Base64 encoding for Resend, SendGrid, and Postmark, plus Content-ID (`CID`) inline image embedding (`<img src="cid:logo">`).
 - [x] **Pre-Flight Deliverability & Disposable Email Filter (`DisposableEmailFilter` / `.validate_deliverability()`)**: Proactively verify syntax and filter over 150 disposable/temporary email services (`mailinator.com`, `tempmail.com`, etc.) prior to queueing to protect sender quotas.
+- [x] **Mandatory Dispatch Pipeline**: Facade, queue worker, tenant resolver, failover, and official drivers consistently enforce CRLF, deliverability, content-security, and DLP checks.
+- [x] **Deterministic Provider Mocks**: Empty and `mock_*` credentials select an explicit, inspectable offline transport without HTTP or SMTP I/O.
 - [ ] **Inbound Email Webhook & MIME Parser (`rullst-mail::inbound`)**: Processing incoming transactional replies (ticket comments, approval replies) with zero-copy multipart MIME parsing and SPF/DKIM verification.
 - [ ] **Payload Pre-Compression Engine (Brotli / Gzip / Zstd)**: Automatic compression of large HTML bodies before payload transmission to providers supporting gzip/br headers.
 
@@ -90,7 +92,7 @@ flowchart TD
 - [ ] **Anti-Phishing Invisible Watermarking & Recipient Leak Tracing**: Steganographic zero-width token injection unique per recipient, enabling irrefutable tracing if confidential internal emails are leaked.
 - [ ] **Strict TLS 1.3 / DANE / MTA-STS Delivery Enforcement**: Enforce opportunistic or strict TLS encryption, aborting SMTP handshakes on attempted plain-text downgrade attacks (STARTTLS stripping).
 - [ ] **Unified Webhook Ingestion & Auto-Suppression Shield (`rullst-mail::webhooks`)**: Universal webhook handler endpoint for Resend, SendGrid, Postmark, and AWS SES with persistent `SuppressionList` for hard bounces and spam complaints.
-- [x] **Privacy-Preserving Open & Click Tracking (`TrackingEngine`)**: Zero-cookie pixel tracking (`PIXEL_1X1_GIF` 43-byte static slice), signed HMAC-SHA256 tokens (`/track/open/:token`, `/track/click/:token`), and automated link rewriting with IP privacy preservation (GDPR/LGPD compliant).
+- [x] **Authenticated Open & Click Tracking (`TrackingEngine`)**: Versioned and purpose-bound HMAC-SHA256 tokens, strong-secret validation, constant-time verification, default TTL/future-skew checks, and optional bounded replay rejection through `TrackingVerifier`.
 - [ ] **BIMI & Verified Brand Mark Embedder**: Validation and certificate embedding (SVG Tiny P/S format and VMC) for Gmail & Apple Mail verified blue checkmarks and logos.
 - [ ] **Native DKIM Signer (RSA & Ed25519)**: Native Rust cryptographic signing of headers and body hashes using `ring` / `rsa` for direct server-to-server SMTP deliverability without external mail relays.
 - [ ] **Deliverability & DNS Health Scanner (`cargo rullst audit:mail`)**: Static and runtime CLI validator checking DNS records for SPF (`v=spf1`), DKIM public keys, DMARC policies (`p=reject`), and BIMI visual brand indicators.

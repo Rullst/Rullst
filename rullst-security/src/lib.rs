@@ -27,10 +27,10 @@ pub use ai_firewall::{
     LlmFirewall, PromptSafetyReport, PromptThreatCategory, ai_firewall_middleware,
 };
 pub use audit::{AuditChain, AuditLogger, AuditRecord, StdoutAuditLogger};
-pub use cswsh::cswsh_guard_middleware;
+pub use cswsh::{CswsPolicy, CswsPolicyError, cswsh_guard_middleware};
 pub use deception::{deception_trap_middleware, register_deception_trap};
 pub use dlp::{DlpLayer, DlpResponseLayer, DlpResponseService, DlpService, mask_response_payload};
-pub use headers::{SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
+pub use headers::{CspNonce, SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
 pub use honey::{HoneypotLayer, HoneypotService, HoneypotState};
 pub use log_redactor::redact_secrets;
 pub use login_guard::LoginGuard;
@@ -38,7 +38,9 @@ pub use mfa::{
     build_otpauth_uri, decode_base32, generate_mfa_secret, generate_totp_code, verify_totp_code,
 };
 pub use rasp::{RaspInspector, RaspSecurityLayer, RaspSecurityService};
-pub use rate_limit::{RateLimitBackend, RateLimiter, is_rate_limited, rate_limit_middleware};
+pub use rate_limit::{
+    RateLimitBackend, RateLimitError, RateLimiter, is_rate_limited, rate_limit_middleware,
+};
 pub use rbac::{RbacGuard, UserContext};
 pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
 pub use schema_guard::{inspect_json_payload, schema_guard_middleware};
@@ -52,5 +54,5 @@ pub use timing_guard::{
     TimingGuardConfig, TimingScope, equalize_response_time, synthetic_argon2_cpu_work,
     timing_guard_middleware,
 };
-pub use vault::{FieldEncryptor, VaultSecret};
+pub use vault::{FieldEncryptor, VaultError, VaultSecret};
 pub use zero_trust::{generate_fingerprint, verify_fingerprint};

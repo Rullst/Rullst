@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = std::fs::remove_file("test_soft_delete.db");
     std::fs::File::create("test_soft_delete.db").unwrap();
     Orm::init("sqlite:test_soft_delete.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     // Set up a table that mirrors the `is_deleted` column declared on
     // the model. SQLite (and MySQL/PostgreSQL) will accept the same

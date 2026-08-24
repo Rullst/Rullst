@@ -6,8 +6,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use dashmap::DashMap;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 static RATE_LIMIT_STORE: OnceLock<DashMap<String, (Instant, AtomicU64)>> = OnceLock::new();
@@ -37,16 +37,30 @@ pub enum RateLimitBackend {
     /// High-throughput in-memory sliding window using DashMap.
     #[default]
     Memory,
-    /// Distributed multi-instance sliding window using Redis or shared cache backend.
+    /// Reserved distributed mode. Construction currently returns
+    /// [`RateLimitError::DistributedBackendUnsupported`].
     Distributed,
+}
+
+/// Unsupported or invalid rate-limit backend configuration.
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RateLimitError {
+    /// No distributed backend is implemented in this release.
+    #[error("distributed rate limiting is not implemented; configure a real shared backend")]
+    DistributedBackendUnsupported,
 }
 
 /// Configurable builder for application rate limiters.
 #[derive(Debug, Clone)]
 pub struct RateLimiter {
+    /// Maximum accepted requests in one window.
     pub max_requests: u64,
+    /// Fixed rate-limit window duration.
     pub window: Duration,
+    /// Selected backend mode.
     pub backend: RateLimitBackend,
+    store: Arc<DashMap<String, (Instant, AtomicU64)>>,
 }
 
 impl Default for RateLimiter {
@@ -55,6 +69,7 @@ impl Default for RateLimiter {
             max_requests: 120,
             window: Duration::from_secs(60),
             backend: RateLimitBackend::Memory,
+            store: Arc::new(DashMap::new()),
         }
     }
 }
@@ -66,24 +81,52 @@ impl RateLimiter {
             max_requests,
             window,
             backend: RateLimitBackend::Memory,
+            store: Arc::new(DashMap::new()),
         }
     }
 
-    /// Configures the RateLimiter to use the distributed backend.
+    /// Legacy distributed selection. Requests fail closed because the backend
+    /// is not implemented; use [`Self::try_with_distributed`] to detect this at
+    /// startup.
+    #[deprecated(
+        since = "12.0.0",
+        note = "use try_with_distributed and handle the error"
+    )]
     pub fn with_distributed(mut self) -> Self {
         self.backend = RateLimitBackend::Distributed;
         self
     }
 
+    /// Attempts to configure a distributed backend.
+    pub fn try_with_distributed(self) -> Result<Self, RateLimitError> {
+        Err(RateLimitError::DistributedBackendUnsupported)
+    }
+
     /// Checks if a client IP or key has exceeded the rate limit.
     pub fn check(&self, key: &str) -> bool {
-        is_rate_limited(key, self.max_requests, self.window)
+        if self.backend == RateLimitBackend::Distributed {
+            return true;
+        }
+        is_rate_limited_in(&self.store, key, self.max_requests, self.window)
     }
 }
 
 /// In-memory sliding-window IP rate limiter checking request rates.
 pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Duration) -> bool {
-    let store = global_rate_limit_store();
+    is_rate_limited_in(
+        global_rate_limit_store(),
+        client_ip,
+        max_requests,
+        window_duration,
+    )
+}
+
+fn is_rate_limited_in(
+    store: &DashMap<String, (Instant, AtomicU64)>,
+    client_ip: &str,
+    max_requests: u64,
+    window_duration: Duration,
+) -> bool {
     let now = Instant::now();
 
     let mut entry = store
@@ -91,7 +134,7 @@ pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Dura
         .or_insert_with(|| (now, AtomicU64::new(0)));
 
     let (start_time, count) = entry.value_mut();
-    if now.duration_since(*start_time) > window_duration {
+    if now.saturating_duration_since(*start_time) > window_duration {
         *start_time = now;
         count.store(1, Ordering::Relaxed);
         false
@@ -108,18 +151,20 @@ pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Dura
 
 /// Axum middleware enforcing a sliding window rate limit (default 120 req / minute per IP).
 pub async fn rate_limit_middleware(req: Request, next: Next) -> Response {
-    let client_ip = req
-        .headers()
-        .get("X-Forwarded-For")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("127.0.0.1")
-        .split(',')
-        .next()
-        .unwrap_or("127.0.0.1")
-        .trim()
-        .to_string();
+    static LIMITER: OnceLock<RateLimiter> = OnceLock::new();
+    let Some(client_ip) = req
+        .extensions()
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|connect_info| connect_info.0.ip().to_string())
+    else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Peer address unavailable; rate limiter is not safely configured",
+        )
+            .into_response();
+    };
 
-    if is_rate_limited(&client_ip, 120, Duration::from_secs(60)) {
+    if LIMITER.get_or_init(RateLimiter::default).check(&client_ip) {
         return (
             StatusCode::TOO_MANY_REQUESTS,
             "Rate limit exceeded. Please try again later.",
@@ -147,13 +192,16 @@ mod tests {
 
     #[test]
     fn test_rate_limiter_builder() {
-        let limiter = RateLimiter::new(5, Duration::from_secs(1)).with_distributed();
+        let limiter = RateLimiter::new(5, Duration::from_secs(1));
         assert_eq!(limiter.max_requests, 5);
-        assert_eq!(limiter.backend, RateLimitBackend::Distributed);
         let key = "10.0.0.1";
         for _ in 0..5 {
             assert!(!limiter.check(key));
         }
         assert!(limiter.check(key));
+        assert!(matches!(
+            RateLimiter::new(5, Duration::from_secs(1)).try_with_distributed(),
+            Err(RateLimitError::DistributedBackendUnsupported)
+        ));
     }
 }

@@ -11,14 +11,14 @@ impl Migration for DummyMigration {
         "m20260820_000001_create_dummy_table"
     }
     async fn up(&self) -> Result<(), Error> {
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         sqlx::query("CREATE TABLE IF NOT EXISTS dummy_records (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(pool)
             .await?;
         Ok(())
     }
     async fn down(&self) -> Result<(), Error> {
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         sqlx::query("DROP TABLE IF EXISTS dummy_records")
             .execute(pool)
             .await?;
@@ -30,7 +30,7 @@ struct DummySeeder;
 #[async_trait]
 impl Seeder for DummySeeder {
     async fn run(&self) -> Result<(), Error> {
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         sqlx::query("INSERT INTO dummy_records (name) VALUES ('seed_entry')")
             .execute(pool)
             .await?;
@@ -137,7 +137,7 @@ async fn test_migration_and_pool_suite() {
     // Transaction success
     let res: Result<i32, Error> = Orm::transaction(|_| {
         Box::pin(async {
-            let pool = Orm::pool();
+            let pool = Orm::pool().map_err(|error| error.to_string())?;
             let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_ok')")
                 .execute(pool)
                 .await;
@@ -150,7 +150,7 @@ async fn test_migration_and_pool_suite() {
     // Transaction failure & rollback
     let err_res: Result<i32, Error> = Orm::transaction(|_| {
         Box::pin(async {
-            let pool = Orm::pool();
+            let pool = Orm::pool().map_err(|error| error.to_string())?;
             let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_fail')")
                 .execute(pool)
                 .await;

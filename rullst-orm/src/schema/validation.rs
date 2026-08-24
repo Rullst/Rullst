@@ -4,7 +4,7 @@ use crate::Error;
 pub const ALLOWED_OPERATORS: &[&str] = &["=", "!=", "<>", "<", ">", "<=", ">="];
 
 /// Validates a SQL identifier (column or table name) to prevent SQL injection.
-/// Allows alphanumeric characters, underscores, hyphens and a single dot
+/// Allows alphanumeric characters, underscores and a single dot
 /// for qualified names like `table.column`.
 pub fn validate_identifier(name: &str) -> Result<(), Error> {
     let bytes = name.as_bytes();
@@ -39,9 +39,9 @@ pub fn validate_identifier(name: &str) -> Result<(), Error> {
                     name
                 )));
             }
-        } else if !b.is_ascii_alphanumeric() && b != b'_' && b != b'-' {
+        } else if !b.is_ascii_alphanumeric() && b != b'_' {
             return Err(Error::Internal(format!(
-                "Invalid SQL identifier '{}': only alphanumeric characters, underscores, hyphens and dots are allowed",
+                "Invalid SQL identifier '{}': only alphanumeric characters, underscores and dots are allowed",
                 name
             )));
         }

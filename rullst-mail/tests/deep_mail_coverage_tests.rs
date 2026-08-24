@@ -5,6 +5,7 @@ use rullst_mail::tracking::{PIXEL_1X1_GIF, TrackingEngine};
 use rullst_mail::validator::{
     extract_domain, is_disposable_domain, validate_email_deliverability, validate_email_syntax,
 };
+use std::time::Duration;
 
 #[test]
 fn test_deliverability_and_disposable_domains() {
@@ -28,35 +29,55 @@ fn test_deliverability_and_disposable_domains() {
 
 #[test]
 fn test_tracking_engine_open_and_click_tokens() {
-    let secret = b"super_secret_hmac_key_123456789";
+    let secret = b"rullst-mail-integration-key-32-bytes-2026";
 
     // 1. Open tracking
-    let token = TrackingEngine::generate_open_token(
+    let timestamp = 1_724_450_000;
+    let token = TrackingEngine::try_generate_open_token(
         secret,
         "user@example.com",
         "newsletter_august",
-        1724450000,
-    );
-    let verified = TrackingEngine::verify_open_token(secret, &token).unwrap();
+        timestamp,
+    )
+    .unwrap();
+    let verified =
+        TrackingEngine::verify_open_token_at(secret, &token, timestamp, Duration::from_secs(60))
+            .unwrap();
     assert_eq!(verified.email, "user@example.com");
     assert_eq!(verified.campaign_id, "newsletter_august");
 
     // Invalid secret verification fails
-    assert!(TrackingEngine::verify_open_token(b"wrong_secret", &token).is_err());
+    assert!(
+        TrackingEngine::verify_open_token_at(
+            b"wrong_secret",
+            &token,
+            timestamp,
+            Duration::from_secs(60)
+        )
+        .is_err()
+    );
 
     // 2. Click tracking
-    let click_token = TrackingEngine::generate_click_token(
+    let click_token = TrackingEngine::try_generate_click_token(
         secret,
         "user@example.com",
         "https://example.com/checkout",
-        1724450000,
-    );
-    let verified_click = TrackingEngine::verify_click_token(secret, &click_token).unwrap();
+        timestamp,
+    )
+    .unwrap();
+    let verified_click = TrackingEngine::verify_click_token_at(
+        secret,
+        &click_token,
+        timestamp,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     assert_eq!(verified_click.target_url, "https://example.com/checkout");
 
     // 3. Pixel injection & verification
     let html = "<html><body><p>Hello</p></body></html>";
-    let injected = TrackingEngine::inject_open_pixel(html, "https://track.example.com/pixel.gif");
+    let injected =
+        TrackingEngine::try_inject_open_pixel(html, "https://track.example.com/pixel.gif").unwrap();
     assert!(injected.contains("https://track.example.com/pixel.gif"));
 
     assert_eq!(PIXEL_1X1_GIF.len(), 43);

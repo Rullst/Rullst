@@ -1,8 +1,11 @@
 // src/drivers/postmark.rs — Postmark HTTP REST API driver with RFC 8058 headers.
 
 use super::traits::MailDriver;
+use super::{DeliveryMode, credential_mode};
+use crate::drivers::mock::{record_offline_delivery, validate_credential};
 use crate::error::MailError;
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
 /// A Postmark HTTP REST API driver.
@@ -14,7 +17,20 @@ pub struct PostmarkDriver {
 }
 
 impl PostmarkDriver {
+    /// Creates a driver after validating the credential's structural safety.
+    pub fn try_new(server_token: impl Into<String>) -> Result<Self, MailError> {
+        let server_token = server_token.into();
+        validate_credential("Postmark server token", &server_token)?;
+        Ok(Self {
+            server_token,
+            message_stream: None,
+        })
+    }
+
     /// Creates a new `PostmarkDriver` with the given server API token.
+    ///
+    /// Prefer [`Self::try_new`]. Invalid configuration still fails closed in `send`.
+    #[deprecated(since = "12.0.0", note = "use PostmarkDriver::try_new")]
     pub fn new(server_token: impl Into<String>) -> Self {
         Self {
             server_token: server_token.into(),
@@ -27,11 +43,26 @@ impl PostmarkDriver {
         self.message_stream = Some(stream.into());
         self
     }
+
+    /// Returns whether delivery will use the provider or the offline mock fallback.
+    pub fn delivery_mode(&self) -> DeliveryMode {
+        credential_mode(&self.server_token)
+    }
 }
 
 #[async_trait]
 impl MailDriver for PostmarkDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        validate_credential("Postmark server token", &self.server_token)?;
+        if let Some(stream) = self.message_stream.as_deref() {
+            validate_credential("Postmark message stream", stream)?;
+        }
+        let prepared = DeliveryPipeline::prepare(message)?;
+        let message = prepared.message();
+        if self.delivery_mode() == DeliveryMode::OfflineMock {
+            return record_offline_delivery("postmark", message);
+        }
+
         static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
         let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
 

@@ -24,24 +24,32 @@ pub mod models;
 {repo_decl}pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Router {{
+pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("Blog Admin")
         .register::<models::post::Post>()
-        .build();
+        .try_build()?;
 
-    routes![
+    Ok(routes![
         get("/" => controllers::blog_controller::index),
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
-    ].nest_axum("/nexus", nexus)
+    ].nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    Box::into_raw(Box::new(router()))
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("Nexus startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
 }}
 "##,
             repo_decl = repo_decl
@@ -74,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router();
+        let router = {project_name_safe}::router()?;
         rullst::Server::new(router)
     }};
 
@@ -101,11 +109,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("Blog Admin")
         .register::<models::post::Post>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::blog_controller::index),
@@ -154,7 +163,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial blog posts
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
         rullst::db::sqlx::query(
             "INSERT INTO posts (id, title, slug, content, created_at, updated_at) VALUES 
              (1, 'Announcing Rullst: The Ultimate Rust Framework', 'announcing-rullst', 'We are thrilled to announce Rullst, a new full-stack framework combining Axum, HTMX, and SQLite/Postgres for lightning-fast applications.', datetime('now'), datetime('now')),
@@ -323,7 +332,7 @@ pub fn index_page(posts: Vec<Post>) -> String {
                         <div style="display: flex; gap: 1rem; align-items: flex-start;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a href="/nexus" style="background: rgba(5, 150, 105, 0.2); border: 1px solid rgba(5, 150, 105, 0.5); color: #10b981; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(credentials: environment)"</span>
                         </div>
                             <a href="http://localhost:5555" target="_blank" style="background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"📊 Rullst Studio"</a>
                         </div>

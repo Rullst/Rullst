@@ -1,10 +1,11 @@
-use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use super::{
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    verify_explicit_mock_signature,
+};
 use crate::error::CapitalError;
 use async_trait::async_trait;
-use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
-use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Alipay (支付宝 / Alipay+ China & APAC Cross-Border Payments).
 pub struct AlipayProvider {
@@ -55,32 +56,45 @@ impl AlipayProvider {
         &self.gateway_url
     }
 
-    /// Verifies the webhook signature using constant-time comparison.
-    pub fn verify_signature(&self, payload: &[u8], signature: &str) -> Result<(), CapitalError> {
-        if self.public_key.is_empty() {
-            return Ok(());
+    fn credential_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        let credentials = [
+            ("application ID", self.app_id.trim()),
+            ("private key", self.private_key.trim()),
+            ("public key", self.public_key.trim()),
+        ];
+        if let Some((name, _)) = credentials.iter().find(|(_, value)| value.is_empty()) {
+            return Err(CapitalError::ConfigurationError(format!(
+                "Alipay {name} cannot be empty"
+            )));
         }
 
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.public_key.as_bytes());
-        let tag = hmac::sign(&key, payload);
-
-        // If signature is provided as hex
-        if let Ok(sig_bytes) = hex::decode(signature)
-            && tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 1
-        {
-            return Ok(());
+        let mock_count = credentials
+            .iter()
+            .filter(|(_, value)| value.starts_with("mock_"))
+            .count();
+        match mock_count {
+            0 => Ok(WebhookVerificationMode::Real),
+            3 => Ok(WebhookVerificationMode::Mock),
+            _ => Err(CapitalError::ConfigurationError(
+                "Alipay credentials cannot mix real and mock values".to_string(),
+            )),
         }
+    }
 
-        // If signature is raw or base64, compare against signature bytes directly
-        let sig_raw = signature.as_bytes();
-        let tag_hex = hex::encode(tag.as_ref());
-        if tag_hex.as_bytes().ct_eq(sig_raw).unwrap_u8() == 1 {
-            return Ok(());
+    /// Verifies an explicit local mock signature.
+    ///
+    /// Live Alipay RSA2 verification is intentionally disabled until the provider is backed by
+    /// an interoperable RSA-SHA256 implementation and official contract tests.
+    pub fn verify_signature(&self, _payload: &[u8], signature: &str) -> Result<(), CapitalError> {
+        match self.credential_mode()? {
+            WebhookVerificationMode::Mock => {
+                verify_explicit_mock_signature(self.name(), &self.public_key, signature)
+            }
+            WebhookVerificationMode::Real => Err(CapitalError::UnsupportedOperation(
+                "Alipay RSA2 verification is not implemented; live webhooks are disabled"
+                    .to_string(),
+            )),
         }
-
-        Err(CapitalError::InvalidSignature(
-            "Alipay signature verification failed".to_string(),
-        ))
     }
 }
 
@@ -88,6 +102,10 @@ impl AlipayProvider {
 impl BillingProvider for AlipayProvider {
     fn name(&self) -> &'static str {
         "alipay"
+    }
+
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        self.credential_mode()
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -108,41 +126,19 @@ impl BillingProvider for AlipayProvider {
             ));
         }
 
-        if self.app_id.is_empty() || self.app_id.starts_with("mock_") {
-            return Ok(format!(
-                "{}?app_id={}&method=alipay.trade.page.pay&email={}&plan={}&return_url={}",
-                self.gateway_url,
-                url_encode(if self.app_id.is_empty() {
-                    "mock_alipay_app"
-                } else {
-                    &self.app_id
-                }),
+        match self.credential_mode()? {
+            WebhookVerificationMode::Mock => Ok(format!(
+                "https://mock.alipay.invalid/checkout?app_id={}&email={}&plan={}&return_url={}",
+                url_encode(&self.app_id),
                 url_encode(customer_email),
                 url_encode(plan_id),
                 url_encode(redirect_url)
-            ));
+            )),
+            WebhookVerificationMode::Real => Err(CapitalError::UnsupportedOperation(
+                "Alipay RSA2 checkout signing is not implemented; live checkout is disabled"
+                    .to_string(),
+            )),
         }
-
-        let out_trade_no = format!("RULLST_{}_{}", plan_id, chrono::Utc::now().timestamp());
-        let biz_content = serde_json::json!({
-            "out_trade_no": out_trade_no,
-            "product_code": "FAST_INSTANT_TRADE_PAY",
-            "total_amount": "29.00",
-            "subject": format!("Subscription Plan {}", plan_id),
-            "body": format!("SaaS Subscription for {}", customer_email),
-            "passback_params": url_encode(customer_email),
-        });
-
-        let checkout_url = format!(
-            "{}?app_id={}&method=alipay.trade.page.pay&format=JSON&charset=utf-8&sign_type=RSA2&version=1.0&return_url={}&notify_url={}&biz_content={}",
-            self.gateway_url,
-            url_encode(&self.app_id),
-            url_encode(redirect_url),
-            url_encode(redirect_url),
-            url_encode(&biz_content.to_string())
-        );
-
-        Ok(checkout_url)
     }
 
     fn handle_webhook(
@@ -150,28 +146,29 @@ impl BillingProvider for AlipayProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
+        if self.webhook_verification_mode()? == WebhookVerificationMode::Real {
+            return Err(CapitalError::UnsupportedOperation(
+                "Alipay RSA2 verification is not implemented; live webhooks are disabled"
+                    .to_string(),
+            ));
+        }
         let sig_header = headers
             .get("alipay-signature")
             .or_else(|| headers.get("x-alipay-signature"))
-            .or_else(|| headers.get("sign"));
-
-        if let Some(sig) = sig_header {
-            self.verify_signature(payload, sig)?;
-        } else if !self.public_key.is_empty() {
-            return Err(CapitalError::InvalidSignature(
-                "Missing Alipay signature header".to_string(),
-            ));
-        }
+            .or_else(|| headers.get("sign"))
+            .ok_or_else(|| {
+                CapitalError::InvalidSignature("Missing Alipay signature header".to_string())
+            })?;
+        self.verify_signature(payload, sig_header)?;
 
         // Support both JSON payloads and URL-encoded notification form posts
         let (out_trade_no, trade_no, trade_status, buyer_email, plan_id, gmt_close) =
             if let Ok(json) = serde_json::from_slice::<Value>(payload) {
                 let out_trade_no = json["out_trade_no"].as_str().unwrap_or("").to_string();
                 let trade_no = json["trade_no"].as_str().unwrap_or("").to_string();
-                let trade_status = json["trade_status"]
-                    .as_str()
-                    .unwrap_or("TRADE_SUCCESS")
-                    .to_string();
+                let trade_status = json["trade_status"].as_str().ok_or_else(|| {
+                    CapitalError::PayloadParseError("Missing Alipay trade_status field".to_string())
+                })?;
                 let buyer_email = json["buyer_email"]
                     .as_str()
                     .or_else(|| json["buyer_id"].as_str())
@@ -186,7 +183,7 @@ impl BillingProvider for AlipayProvider {
                 (
                     out_trade_no,
                     trade_no,
-                    trade_status,
+                    trade_status.to_string(),
                     buyer_email,
                     plan_id,
                     gmt_close,
@@ -203,10 +200,9 @@ impl BillingProvider for AlipayProvider {
 
                 let out_trade_no = params.get("out_trade_no").cloned().unwrap_or_default();
                 let trade_no = params.get("trade_no").cloned().unwrap_or_default();
-                let trade_status = params
-                    .get("trade_status")
-                    .cloned()
-                    .unwrap_or_else(|| "TRADE_SUCCESS".to_string());
+                let trade_status = params.get("trade_status").cloned().ok_or_else(|| {
+                    CapitalError::PayloadParseError("Missing Alipay trade_status field".to_string())
+                })?;
                 let buyer_email = params
                     .get("buyer_email")
                     .or_else(|| params.get("buyer_id"))
@@ -231,7 +227,7 @@ impl BillingProvider for AlipayProvider {
             "TRADE_SUCCESS" | "TRADE_FINISHED" => SubscriptionStatus::Active,
             "TRADE_CLOSED" => SubscriptionStatus::Canceled,
             "WAIT_BUYER_PAY" => SubscriptionStatus::PastDue,
-            _ => SubscriptionStatus::Active,
+            _ => SubscriptionStatus::Unpaid,
         };
 
         Ok(WebhookEvent {
@@ -255,10 +251,15 @@ impl BillingProvider for AlipayProvider {
             ));
         }
 
-        Ok(format!(
-            "https://custweb.alipay.com/account/index.htm?email={}",
-            url_encode(customer_email)
-        ))
+        match self.credential_mode()? {
+            WebhookVerificationMode::Mock => Ok(format!(
+                "https://mock.alipay.invalid/account?email={}",
+                url_encode(customer_email)
+            )),
+            WebhookVerificationMode::Real => Err(CapitalError::UnsupportedOperation(
+                "Live Alipay customer portal integration is not implemented".to_string(),
+            )),
+        }
     }
 
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), CapitalError> {
@@ -267,7 +268,12 @@ impl BillingProvider for AlipayProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
-        Ok(())
+        match self.credential_mode()? {
+            WebhookVerificationMode::Mock => Ok(()),
+            WebhookVerificationMode::Real => Err(CapitalError::UnsupportedOperation(
+                "Live Alipay cancellation is not implemented".to_string(),
+            )),
+        }
     }
 
     async fn pause_subscription(&self, _subscription_id: &str) -> Result<(), CapitalError> {
@@ -335,7 +341,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(url.contains("alipay.trade.page.pay"));
+        assert!(url.starts_with("https://mock.alipay.invalid/checkout?"));
         assert!(url.contains("user%40alipay.com"));
         assert!(url.contains("pro_plan"));
 
@@ -358,12 +364,23 @@ mod tests {
             .create_customer_portal("user@alipay.com", "https://myapp.com")
             .await
             .unwrap();
-        assert!(portal.contains("custweb.alipay.com"));
+        assert!(portal.contains("mock.alipay.invalid/account"));
         assert!(provider.create_customer_portal("", "url").await.is_err());
 
         // Cancel
         assert!(provider.cancel_subscription("sub_ali").await.is_ok());
         assert!(provider.cancel_subscription("").await.is_err());
+
+        let live = AlipayProvider::new("live_app", "live_private", "live_public");
+        assert!(matches!(
+            live.create_checkout_session("user@example.com", "plan", "https://example.com")
+                .await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            live.cancel_subscription("sub_live").await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
 
         // Unsupported operations
         assert!(matches!(
@@ -386,8 +403,7 @@ mod tests {
 
     #[test]
     fn test_alipay_webhook_handling() {
-        let pub_key = "alipay_test_pubkey";
-        let provider = AlipayProvider::new("app_id", "priv_key", pub_key);
+        let provider = AlipayProvider::new("mock_app_id", "mock_private_key", "mock_public_key");
 
         let payload = r#"{
             "out_trade_no": "SUB_ALI_123",
@@ -397,34 +413,23 @@ mod tests {
             "subject": "Pro Tier"
         }"#;
 
-        let key = hmac::Key::new(hmac::HMAC_SHA256, pub_key.as_bytes());
-        let sig_tag = hmac::sign(&key, payload.as_bytes());
-        let sig_hex = hex::encode(sig_tag.as_ref());
-
-        // 1. Valid hex signature
+        // 1. Explicit mock signature
         assert!(
             provider
-                .verify_signature(payload.as_bytes(), &sig_hex)
+                .verify_signature(payload.as_bytes(), "mock_public_key")
                 .is_ok()
         );
 
-        // 2. Valid raw signature
-        assert!(
-            provider
-                .verify_signature(payload.as_bytes(), &sig_hex)
-                .is_ok()
-        );
-
-        // 3. Invalid signature
+        // 2. Invalid mock signature
         assert!(
             provider
                 .verify_signature(payload.as_bytes(), "bad_sig")
                 .is_err()
         );
 
-        // 4. Handle webhook with header
+        // 3. Handle mock webhook with mandatory header
         let mut headers = HashMap::new();
-        headers.insert("sign".to_string(), sig_hex);
+        headers.insert("sign".to_string(), "mock_public_key".to_string());
 
         let event = provider
             .handle_webhook(payload.as_bytes(), &headers)
@@ -435,27 +440,25 @@ mod tests {
         assert_eq!(event.customer_email, "consumer@alipay.cn");
         assert_eq!(event.status, SubscriptionStatus::Active);
 
-        // 5. TRADE_CLOSED event -> Canceled
+        // 4. TRADE_CLOSED event -> Canceled
         let closed_payload = r#"{"out_trade_no":"SUB_CLOSED","trade_status":"TRADE_CLOSED"}"#;
-        let closed_sig = hex::encode(hmac::sign(&key, closed_payload.as_bytes()).as_ref());
         let mut closed_headers = HashMap::new();
-        closed_headers.insert("sign".to_string(), closed_sig);
+        closed_headers.insert("sign".to_string(), "mock_public_key".to_string());
         let closed_event = provider
             .handle_webhook(closed_payload.as_bytes(), &closed_headers)
             .unwrap();
         assert_eq!(closed_event.status, SubscriptionStatus::Canceled);
 
-        // 6. WAIT_BUYER_PAY event -> PastDue
+        // 5. WAIT_BUYER_PAY event -> PastDue
         let wait_payload = r#"{"out_trade_no":"SUB_WAIT","trade_status":"WAIT_BUYER_PAY"}"#;
-        let wait_sig = hex::encode(hmac::sign(&key, wait_payload.as_bytes()).as_ref());
         let mut wait_headers = HashMap::new();
-        wait_headers.insert("sign".to_string(), wait_sig);
+        wait_headers.insert("sign".to_string(), "mock_public_key".to_string());
         let wait_event = provider
             .handle_webhook(wait_payload.as_bytes(), &wait_headers)
             .unwrap();
         assert_eq!(wait_event.status, SubscriptionStatus::PastDue);
 
-        // 7. Error handling
+        // 6. Error handling
         let empty_headers = HashMap::new();
         assert!(
             provider
@@ -463,5 +466,21 @@ mod tests {
                 .is_err()
         );
         assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
+
+        let real = AlipayProvider::new("real_app", "real_private", "real_public");
+        assert!(matches!(
+            real.verify_signature(payload.as_bytes(), "any"),
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(matches!(
+            real.handle_webhook(payload.as_bytes(), &HashMap::new()),
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+
+        let empty = AlipayProvider::new("", "", "");
+        assert!(matches!(
+            empty.verify_signature(payload.as_bytes(), ""),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
 }

@@ -139,14 +139,12 @@ pub struct Subscription {{
     fs::create_dir_all(controllers_dir)?;
     let controller_path = controllers_dir.join("billing_controller.rs");
     let controller_template = r##"use rullst::server::{
-    Query, State,
+    Extension, Query,
     Html, IntoResponse, Redirect, Response,
-    HeaderMap, StatusCode,
-    body::Bytes,
+    StatusCode,
 };
 use serde::Deserialize;
-use std::collections::HashMap;
-use rullst::capital::{BillingProvider, StripeProvider, LemonSqueezyProvider};
+use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
 use rullst::db::sqlx::{self, Row};
 use crate::pages::billing;
 
@@ -210,41 +208,17 @@ pub async fn portal_redirect() -> impl IntoResponse {
     }
 }
 
-/// Handles incoming webhook events from the selected provider.
-pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) -> impl IntoResponse {
-    let provider_name = std::env::var("BILLING_PROVIDER").unwrap_or_else(|_| "stripe".to_string());
-    let api_key = std::env::var("BILLING_API_KEY").unwrap_or_else(|_| "mock_key".to_string());
-    let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_else(|_| "mock_secret".to_string());
+/// Handles only events inserted by rullst-capital's mandatory signature middleware.
+/// Mounting this handler without that middleware fails closed at extraction time.
+pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> impl IntoResponse {
 
-    let mut headers_map = HashMap::new();
-    for (k, v) in headers.iter() {
-        if let Ok(val_str) = v.to_str() {
-            headers_map.insert(k.as_str().to_string(), val_str.to_string());
-        }
-    }
-
-    let event_result = match provider_name.to_lowercase().as_str() {
-        "lemonsqueezy" => {
-            let provider = LemonSqueezyProvider::new(api_key, webhook_secret);
-            provider.handle_webhook(&body, &headers_map)
-        }
-        _ => {
-            let provider = StripeProvider::new(api_key, webhook_secret);
-            provider.handle_webhook(&body, &headers_map)
+    let pool = match rullst::db::Orm::pool() {
+        Ok(pool) => pool,
+        Err(error) => {
+            eprintln!("Database is unavailable: {}", error);
+            return (StatusCode::SERVICE_UNAVAILABLE, "Database unavailable").into_response();
         }
     };
-
-    let event = match event_result {
-        Ok(evt) => evt,
-        Err(e) => {
-            eprintln!("❌ Webhook verification/parsing error: {}", e);
-            return (StatusCode::BAD_REQUEST, "Invalid webhook signature or payload").into_response();
-        }
-    };
-
-    println!("🔔 Received Webhook for Subscription {} [{}] -> Status: {:?}", event.subscription_id, event.plan_id, event.status);
-
-    let pool = rullst::db::Orm::pool();
     
     let existing = rullst::db::sqlx::query("SELECT id FROM subscriptions WHERE subscription_id = ?1")
         .bind(&event.subscription_id)
@@ -334,7 +308,7 @@ pub async fn webhook_handler(headers: HeaderMap, body: rullst::server::Bytes) ->
     println!("{}", "  👉 .route(\"/pricing\", rullst::server::get(controllers::billing_controller::pricing_view))".cyan());
     println!("{}", "  👉 .route(\"/billing/checkout\", rullst::server::get(controllers::billing_controller::checkout_redirect))".cyan());
     println!("{}", "  👉 .route(\"/billing/portal\", rullst::server::get(controllers::billing_controller::portal_redirect))".cyan());
-    println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler))".cyan());
+    println!("{}", "  👉 .route(\"/billing/webhook\", rullst::server::post(controllers::billing_controller::webhook_handler).route_layer(rullst::server::from_fn(rullst::capital::verify_webhook)))".cyan());
     println!(
         "\n{}",
         "Configure your gateway credentials in environment variables or your .env file:".white()

@@ -264,7 +264,7 @@ pub async fn nexus_chat_query(
         let system_prompt = format!(
             "You are Nexus AI Assistant for a Rust web application built with Rullst Framework.\n\
              Database Schema:\n{}\n\
-             Answer the user's question concisely in HTML format (using <p>, <code>, <pre>, <ul>, <strong> tags).",
+             Answer the user's question concisely using only simple semantic HTML such as <p>, <code>, <pre>, <ul>, <li>, and <strong>.",
             schema_summary
         );
 
@@ -285,6 +285,10 @@ pub async fn nexus_chat_query(
         generate_smart_nexus_ai_response(&req.message, &state)
     };
 
+    // Provider output and schema-derived fallback output are both untrusted at this boundary.
+    // Ammonia's allowlist removes scripts, event handlers, dangerous URLs and unknown markup.
+    let safe_ai_response = ammonia::clean(&ai_response);
+
     Html(format!(
         "<div class=\"nexus-chat-bubble nexus-chat-user\">\
          <span class=\"nexus-chat-avatar\">&#128100;</span>\
@@ -292,7 +296,7 @@ pub async fn nexus_chat_query(
          </div>\
          <div class=\"nexus-chat-bubble nexus-chat-assistant\">\
          <span class=\"nexus-chat-avatar\">&#129302;</span>\
-         <div class=\"nexus-chat-text\">{ai_response}</div>\
+         <div class=\"nexus-chat-text\">{safe_ai_response}</div>\
          </div>"
     ))
 }

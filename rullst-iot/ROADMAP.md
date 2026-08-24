@@ -1,63 +1,37 @@
-# 🔌 rullst-iot Roadmap
+# rullst-iot roadmap
 
-> Dedicated development roadmap for the `rullst-iot` crate.
+This roadmap distinguishes data/frame helpers from network, hardware, and
+cryptographic implementations.
 
----
+## Available
 
-## 🏁 Phase 1: Core Telemetry & Protocol Drivers (Completed)
-- [x] **`no_std` Compatibility:** Core data models and serializers operable in `no_std` environments.
-- [x] **`SensorTelemetry` Data Structure:** Unified format for sensor metrics (temperature, vibration, pressure).
-- [x] **MQTT / CoAP Protocol Helpers:** Payload formatters for edge network telemetry.
-- [x] **CLI Scaffolding (`cargo rullst make:iot <DeviceName>`):** Single command generation for IoT node files.
+- [x] `no_std` telemetry models and deterministic state helpers.
+- [x] Modbus CRC/frame construction, I2C frame construction, BLE GATT data
+  structures, anomaly evaluation, power policy, and topology models.
+- [x] Strict Ed25519 verification over a domain-separated firmware manifest.
+- [x] Manifest binding for target, version, firmware length, SHA-256 digest, and
+  monotonic anti-rollback counter.
+- [x] Fail-closed OTA state transition: commit is rejected until verification.
+- [x] Negative tests and fuzz coverage for malformed/untrusted OTA input.
 
----
+## Required for an end-to-end OTA implementation
 
-## 📡 Phase 2: Edge Hardware Abstractions & Sensor HAL (Completed)
-- [x] **Native GPIO & I2C Helpers:** Standardized cross-platform GPIO pin toggling (`GpioPin`) and I2C bus reading wrappers (`I2cHelper`).
-- [x] **Modbus RTU / TCP Full Driver:** Direct industrial PLC communication driver with CRC-16 computation (`ModbusFrame`).
-- [x] **BLE Telemetry GATT Server:** Custom GATT service generator (`GattService`, `GattCharacteristic`) for Bluetooth Low Energy beacons.
+- [ ] Authenticated manifest transport and a stable wire format.
+- [ ] Streaming firmware hashing with bounded memory.
+- [ ] Platform flash writer, read-back validation, and power-loss-safe A/B state.
+- [ ] Durable monotonic counter storage and atomic bootloader selection.
+- [ ] Key rotation/revocation policy and recovery-key provisioning.
 
----
+## Protocol and hardware integrations
 
-## 🧠 Phase 3: On-Device Edge AI & Local Inference (Completed)
-- [x] **Micro-LLM & Sensor Anomaly Engine:** Embedded statistical anomaly detector (`AnomalyDetector`, `AnomalyState`) running locally without cloud internet dependencies.
-- [x] **Embedded Micro-Dashboard (`rullst::iot::ui`):** HTMX-powered lightweight local web UI widget generator (`IotDashboard`).
+- [ ] MQTT 5 client and broker interoperability tests.
+- [ ] CoAP/LwM2M and LoRaWAN transports.
+- [ ] Real GPIO, I2C, BLE, Modbus, and mesh hardware adapters.
+- [ ] Audited ATECC608A, TPM 2.0, and STSAFE backends.
+- [ ] Audited ML-KEM implementation with published test vectors.
+- [ ] OPC-UA, Sparkplug B, SocketCAN/CAN FD, J1939, and OBD-II support.
+- [ ] Independent IEC 61508/IEC 62443 assessment; no certification is currently
+  claimed.
 
----
-
-## 🌐 Phase 4: Autonomous Edge Swarm & Mesh Networks (Completed)
-- [x] **Zero-Config IoT Mesh Network (`rullst_iot::mesh`):** Self-healing P2P mesh network protocol (ESP-NOW / Thread / Zigbee) relaying telemetry between edge nodes when gateway link drops.
-- [x] **Zero-Trust Over-The-Air (OTA) Updates (`rullst_iot::ota`):** Cryptographically signed (Ed25519) delta firmware update manager with dual-bank (A/B) bootloader rollback protection.
-
----
-
-## 🛡️ Phase 5: Hardware Security & Cryptographic Enclaves (Completed)
-- [x] **Hardware Security Element Bindings (`rullst_iot::hsm`):** Silicon bindings for hardware security chips (ATECC608A, TPM 2.0, STSAFE) storing private keys in tamper-proof hardware.
-- [x] **Lightweight Post-Quantum Edge Encryption (`rullst_iot::pqc`):** Compacted NIST post-quantum (ML-KEM / Kyber) key exchange protecting low-power telemetry against quantum decryption.
-
----
-
-## ⚡ Phase 6: Ultra-Low-Power & Digital Twin Engine (Completed)
-- [x] **Deep Sleep & Power Governor (`rullst_iot::power`):** Dynamic power consumption governor managing Deep Sleep cycles, wake-on-interrupt triggers, and solar harvester voltage monitoring.
-- [x] **Digital Twin Real-Time Sync (`rullst_iot::twin`):** Bi-directional real-time sync between hardware physical state (sensors, actuators) and cloud Digital Twin representation in Rullst Studio and Nexus.
-
----
-
-## 🏭 Phase 7: Industrial Standards & Certification
-- [ ] **OPC-UA Protocol Driver (`rullst_iot::opcua`):** Industrial OPC-UA driver for SCADA/MES/ERP communication in manufacturing plants — mandatory standard in Industry 4.0 (ISA-95, IEC 62541).
-- [ ] **MQTT Sparkplug B Profile (`rullst_iot::sparkplug`):** IIoT-standard Sparkplug B profile over MQTT for interoperability with industrial platforms like Ignition, Unified Namespace, and AWS IoT.
-- [ ] **IEC 61508 / IEC 62443 Safety Mode (`rullst_iot::safety`):** Deterministic execution mode with watchdog timer, stack overflow detection, and memory protection for SIL 2/3 safety-critical system certification.
-
----
-
-## 🚗 Phase 8: Automotive, Heavy Machinery & Mobility (`rullst_iot::can`)
-- [ ] **Native SocketCAN & CAN 2.0B / CAN FD Driver:** Controller Area Network bus communication for electric vehicles, trucks, tractors, drones, and heavy industrial machinery.
-- [ ] **J1939 Protocol Parser:** Commercial vehicle diagnostics and telemetry standard (engine RPM, oil temperature, fuel efficiency, axle load).
-- [ ] **OBD-II (ISO 15765-4) Diagnostic Layer:** Standardized vehicle diagnostic trouble code (DTC) reading and real-time PID streaming.
-
----
-
-## 📡 Phase 9: Constrained & Mesh Low-Power Protocols (`rullst_iot::constrained`)
-- [ ] **CoAP (Constrained Application Protocol - RFC 7252):** RESTful binary communication over UDP/DTLS with Blockwise Transfer and Observe extensions for ultra-constrained 6LoWPAN / NB-IoT sensor nodes.
-- [ ] **LwM2M (Lightweight M2M) Client:** Standardized device management and firmware lifecycle protocol over CoAP.
-- [ ] **LoRaWAN Class A/C Parser:** Long-range, low-power telemetry frame decoder with adaptive data rate (ADR) support.
+The opt-in `experimental-simulators` feature is not progress toward compliance:
+its `Simulated*` types generate deterministic fixture bytes only.

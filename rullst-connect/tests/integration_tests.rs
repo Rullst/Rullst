@@ -1,4 +1,6 @@
 #![cfg(not(miri))]
+// This suite also exercises the deprecated infallible constructor for compatibility.
+#![allow(deprecated)]
 use async_trait::async_trait;
 use rullst_connect::client::{HttpClient, HttpRequest, HttpResponse};
 use rullst_connect::error::ConnectError;
@@ -20,6 +22,26 @@ impl WiremockInterceptClient {
             inner: rullst_connect::client::ReqwestClient::new(),
         }
     }
+}
+
+#[cfg(not(feature = "mock"))]
+#[tokio::test]
+async fn missing_credentials_are_network_free_and_fail_closed_without_mock_feature() {
+    use rullst_connect::configuration::CredentialMode;
+
+    let provider = GithubProvider::try_new(
+        "",
+        secrecy::SecretString::from("".to_string()),
+        "https://app.example/callback",
+    )
+    .expect("empty credentials select a typed offline mode");
+    assert_eq!(provider.credential_mode(), CredentialMode::Mock);
+
+    let error = provider
+        .get_user(rullst_connect::provider::ExchangeParams::default())
+        .await
+        .expect_err("mock identities require an explicit feature outside unit tests");
+    assert!(matches!(error, ConnectError::Offline(_)));
 }
 
 #[async_trait]

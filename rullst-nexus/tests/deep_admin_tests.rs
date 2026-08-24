@@ -3,6 +3,7 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use rullst_nexus::*;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
 struct CategoryModel;
@@ -34,9 +35,14 @@ impl NexusModel for CategoryModel {
 async fn test_nexus_admin_builder_and_extended_routes() {
     let admin = Nexus::new()
         .with_brand("Acme Admin Suite")
-        .register::<CategoryModel>();
+        .register::<CategoryModel>()
+        .with_local_access(LocalNexusAccess::loopback_only());
 
-    let app = admin.build();
+    let loopback = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3000);
+    let app = admin
+        .try_build()
+        .expect("debug-only loopback policy should build in tests")
+        .layer(axum::Extension(axum::extract::ConnectInfo(loopback)));
 
     // 1. Root / dashboard
     let req = Request::builder().uri("/").body(Body::empty()).unwrap();

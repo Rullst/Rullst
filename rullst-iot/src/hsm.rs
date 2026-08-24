@@ -1,53 +1,69 @@
-//! Hardware Security Element (HSM) Bindings (`rullst_iot::hsm`).
+//! Deterministic HSM-shaped fixtures for tests and demos.
 //!
-//! Production targets: ATECC608A, TPM 2.0, STSAFE.
+//! This module is available only with `experimental-simulators`. It does not
+//! communicate with hardware, protect keys, or create digital signatures.
 
 extern crate alloc;
+
 use alloc::format;
 use alloc::string::String;
-use alloc::vec::Vec;
 use sha2::{Digest, Sha256};
 
-/// Supported hardware security chip types.
+/// Label used to generate deterministic, non-secret hardware fixture data.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HsmChipType {
+pub enum SimulatedHsmProfile {
     Atecc608A,
     Tpm2,
     Stsafe,
-    /// Software HSM stub (for simulation / non-HSM targets).
     Software,
 }
 
-/// Hardware Security Module binding abstraction.
-pub struct HsmDevice {
-    pub chip: HsmChipType,
-    /// Simulated device serial number.
-    pub serial: String,
+/// Deterministic fixture generator; not a Hardware Security Module.
+#[non_exhaustive]
+pub struct SimulatedHsmDevice {
+    profile: SimulatedHsmProfile,
+    serial: String,
 }
 
-impl HsmDevice {
-    /// Creates a new HSM device handle.
-    pub fn new(chip: HsmChipType, serial: impl Into<String>) -> Self {
+impl SimulatedHsmDevice {
+    /// Creates an explicitly simulated device fixture.
+    #[must_use]
+    pub fn new(profile: SimulatedHsmProfile, serial: impl Into<String>) -> Self {
         Self {
-            chip,
+            profile,
             serial: serial.into(),
         }
     }
 
-    /// Derives a device-unique binding key using SHA-256 of serial + chip type.
-    pub fn derive_key(&self) -> Vec<u8> {
-        let mut hasher = Sha256::new();
-        hasher.update(self.serial.as_bytes());
-        hasher.update(format!("{:?}", self.chip).as_bytes());
-        hasher.finalize().to_vec()
+    #[must_use]
+    pub fn profile(&self) -> SimulatedHsmProfile {
+        self.profile
     }
 
-    /// Signs a payload using derived hardware key (stub: returns SHA-256 digest).
-    pub fn sign(&self, payload: &[u8]) -> Vec<u8> {
+    #[must_use]
+    pub fn serial(&self) -> &str {
+        &self.serial
+    }
+
+    /// Derives deterministic fixture bytes. They are public and not key material.
+    #[must_use]
+    pub fn derive_fixture_bytes(&self) -> [u8; 32] {
         let mut hasher = Sha256::new();
-        hasher.update(self.derive_key());
+        hasher.update(b"RULLST-SIMULATED-HSM-FIXTURE-V1\0");
+        hasher.update(self.serial.as_bytes());
+        hasher.update(format!("{:?}", self.profile).as_bytes());
+        hasher.finalize().into()
+    }
+
+    /// Produces a deterministic digest fixture. It is not a signature or MAC.
+    #[must_use]
+    pub fn digest_fixture(&self, payload: &[u8]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(b"RULLST-SIMULATED-HSM-DIGEST-V1\0");
+        hasher.update(self.derive_fixture_bytes());
         hasher.update(payload);
-        hasher.finalize().to_vec()
+        hasher.finalize().into()
     }
 }
 
@@ -56,16 +72,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hsm_key_derivation() {
-        let hsm = HsmDevice::new(HsmChipType::Software, "SN-ABC123");
-        let key = hsm.derive_key();
-        assert_eq!(key.len(), 32);
-    }
-
-    #[test]
-    fn test_hsm_sign() {
-        let hsm = HsmDevice::new(HsmChipType::Software, "SN-ABC123");
-        let signature = hsm.sign(b"telemetry_payload");
-        assert_eq!(signature.len(), 32);
+    fn simulated_hsm_fixtures_are_deterministic_and_explicit() {
+        let device = SimulatedHsmDevice::new(SimulatedHsmProfile::Software, "fixture-device-1");
+        assert_eq!(device.derive_fixture_bytes(), device.derive_fixture_bytes());
+        assert_ne!(
+            device.digest_fixture(b"payload-a"),
+            device.digest_fixture(b"payload-b")
+        );
     }
 }

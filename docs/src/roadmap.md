@@ -34,7 +34,7 @@ Our philosophy: **"Security, Developer Experience and Performance, Architected f
 | **M21** | 🤖 Pilar V: AI & Mobile | Omni-Frontend Protocol & Mobile Hyper-Media Bridge | `[ ] Planned` | v12.1.0 |
 | **M22** | 🤖 Pilar V: AI & DevOps | Agentic DevOps & Autonomous Infrastructure Provisioning (v12.0.0: `rullst-core::devops`) | `[ ] Planned` | v13.0.0 |
 | **M23** | 🤖 Pilar V: AI & Self-Evolving | Polymorphic Core Engine & Auto-Healing Runtime (v12.0.0: `rullst-orm::auto_healing`) | `[ ] Planned` | v13.0.0 |
-| **M24** | 🔌 Pilar VI: Embedded IoT | Embedded Runtime (`#![no_std]`), Modbus, MQTT Sparkplug B, BLE & Edge AI (`rullst-iot`) | `[x] Completed` | v12.0.0 |
+| **M24** | 🔌 Pilar VI: Embedded IoT | `no_std` telemetry/frame helpers and signed OTA manifest gate (`rullst-iot`) | `[~] Partial` | v12.0.0 |
 | **M25** | 🔌 Pilar VI: Embedded Async | Async `rullst-iot` (Embassy Executor integration, `no_std` async/await) | `[ ] Planned` | v12.1.0 |
 | **M26** | ☸️ Pilar VII: PaaS Deploy | One-Click PaaS Cloud Deploy (`cargo rullst deploy`) & VPS Caddy SSL | `[x] Completed` | v12.0.0 |
 | **M27** | ☸️ Pilar VII: Cloud-Native | Kubernetes Native Manifests (`cargo rullst make:k8s`) & Health Probes | `[x] Completed` | v12.0.0 |
@@ -107,8 +107,9 @@ Rullst is architected from the ground up to be the first **AI-Native Web Framewo
 
 ---
 
-### 🔌 Pilar VI: Embedded IoT & Hardware Supremacy
-- [x] **Milestone 24:** Embedded Runtime (`#![no_std]`), Modbus, MQTT Sparkplug B, BLE, Edge AI, Mesh, OTA & Mobility (CAN Bus/J1939, CoAP/LwM2M, LoRaWAN) (`rullst-iot`).
+### 🔌 Pilar VI: Embedded IoT helpers and integrations
+- [x] **Milestone 24 (foundation):** `no_std` telemetry/state models, protocol frame helpers, and strict Ed25519-signed OTA manifest verification (`rullst-iot`).
+- [ ] **Milestone 24 (integrations):** Real MQTT/CoAP/Sparkplug B, hardware adapters, firmware flashing/bootloader persistence, HSM, PQC, CAN/J1939, and LoRaWAN implementations with interoperability testing.
 - [ ] **Milestone 25:** Async `rullst-iot` Embassy Executor Integration (`[ ] Planned for v12.1.0`).
 
 ---

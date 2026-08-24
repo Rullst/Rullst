@@ -12,10 +12,10 @@ pub struct MockProvider {
 
 impl MockProvider {
     /// Creates a new `MockProvider` with a static user and login URL.
-    pub fn new(user: ConnectUser, url: String) -> Self {
+    pub fn new(user: ConnectUser, url: impl Into<String>) -> Self {
         Self {
             mocked_user: user,
-            mocked_url: url,
+            mocked_url: url.into(),
             expect_revoke_success: true,
         }
     }

@@ -9,6 +9,16 @@ use async_trait::async_trait;
 #[async_trait]
 impl Provider for AppleProvider {
     fn redirect_url(&self) -> String {
+        if self.credential_mode.is_invalid() {
+            return "about:blank".to_string();
+        }
+        if self.credential_mode.is_mock() {
+            return crate::configuration::mock_redirect_url(
+                "apple",
+                self.state.as_deref(),
+                self.pkce_challenge.as_deref(),
+            );
+        }
         let mut params = crate::provider::build_oauth_params(
             "https://appleid.apple.com/auth/authorize",
             &self.client_id,
@@ -26,6 +36,9 @@ impl Provider for AppleProvider {
         &self,
         params: crate::provider::ExchangeParams<'_>,
     ) -> Result<ConnectUser, crate::error::ConnectError> {
+        if self.credential_mode.is_mock() {
+            return self.mock_user("mock_access_token");
+        }
         let client_secret = self.generate_client_secret()?;
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
@@ -55,6 +68,9 @@ impl Provider for AppleProvider {
         &self,
         refresh_token: &str,
     ) -> Result<ConnectUser, crate::error::ConnectError> {
+        if self.credential_mode.is_mock() {
+            return self.mock_user("mock_access_token");
+        }
         let client_secret = self.generate_client_secret()?;
 
         let token_res = self

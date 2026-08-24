@@ -1,15 +1,21 @@
-use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use super::{
+    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, SubscriptionStatus, WebhookEvent,
+    WebhookVerificationMode, ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature,
+    webhook_mode_from_secret,
+};
 use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::time::Duration;
 use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Mercado Pago (LATAM Regional Subscriptions & Checkout).
 pub struct MercadoPagoProvider {
     access_token: String,
     webhook_secret: String,
+    webhook_tolerance: Duration,
 }
 
 impl MercadoPagoProvider {
@@ -18,7 +24,14 @@ impl MercadoPagoProvider {
         Self {
             access_token: access_token.into(),
             webhook_secret: webhook_secret.into(),
+            webhook_tolerance: DEFAULT_WEBHOOK_TOLERANCE,
         }
+    }
+
+    /// Overrides the default five-minute webhook timestamp acceptance window.
+    pub fn with_webhook_tolerance(mut self, tolerance: Duration) -> Self {
+        self.webhook_tolerance = tolerance;
+        self
     }
 
     /// Verifies the `x-signature` header (`ts=...;v1=...`).
@@ -27,8 +40,25 @@ impl MercadoPagoProvider {
         payload: &[u8],
         signature_header: &str,
     ) -> Result<(), CapitalError> {
-        if self.webhook_secret.is_empty() {
-            return Ok(());
+        self.verify_signature_at(payload, signature_header, chrono::Utc::now().timestamp())
+    }
+
+    /// Verifies a signature against an explicit clock value for deterministic tests.
+    pub fn verify_signature_at(
+        &self,
+        payload: &[u8],
+        signature_header: &str,
+        now_unix_seconds: i64,
+    ) -> Result<(), CapitalError> {
+        match self.webhook_verification_mode()? {
+            WebhookVerificationMode::Mock => {
+                return verify_explicit_mock_signature(
+                    self.name(),
+                    &self.webhook_secret,
+                    signature_header,
+                );
+            }
+            WebhookVerificationMode::Real => {}
         }
 
         let mut timestamp = "";
@@ -67,6 +97,14 @@ impl MercadoPagoProvider {
             ));
         }
 
+        ensure_fresh_timestamp(
+            self.name(),
+            timestamp,
+            now_unix_seconds,
+            self.webhook_tolerance,
+            true,
+        )?;
+
         Ok(())
     }
 }
@@ -75,6 +113,10 @@ impl MercadoPagoProvider {
 impl BillingProvider for MercadoPagoProvider {
     fn name(&self) -> &'static str {
         "mercadopago"
+    }
+
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        webhook_mode_from_secret(self.name(), &self.webhook_secret)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -158,15 +200,11 @@ impl BillingProvider for MercadoPagoProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        let sig_header = headers.get("x-signature");
-
-        if let Some(sig) = sig_header {
-            self.verify_signature(payload, sig)?;
-        } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature(
-                "Missing x-signature header".to_string(),
-            ));
-        }
+        let _ = self.webhook_verification_mode()?;
+        let sig_header = headers.get("x-signature").ok_or_else(|| {
+            CapitalError::InvalidSignature("Missing x-signature header".to_string())
+        })?;
+        self.verify_signature(payload, sig_header)?;
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -399,7 +437,8 @@ mod tests {
 
         // 5. Signature verification
         let secret = "sec_mp123";
-        let timestamp = "1690000000";
+        let now = chrono::Utc::now().timestamp();
+        let timestamp = now.to_string();
         let payload = br#"{"type":"payment","data":{"id":"pay_mp_999","email":"user@mp.com","plan_id":"plan_mp_pro","status":"approved"}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
@@ -410,11 +449,22 @@ mod tests {
         let sig_hex = hex::encode(ctx.sign().as_ref());
         let valid_header = format!("ts={},v1={}", timestamp, sig_hex);
 
-        assert!(provider.verify_signature(payload, &valid_header).is_ok());
+        assert!(
+            provider
+                .verify_signature_at(payload, &valid_header, now)
+                .is_ok()
+        );
+        assert!(matches!(
+            provider.verify_signature_at(payload, &valid_header, now + 301),
+            Err(CapitalError::StaleWebhook(_))
+        ));
 
         // Signature error paths
         let no_secret_provider = MercadoPagoProvider::new("token", "");
-        assert!(no_secret_provider.verify_signature(payload, "").is_ok());
+        assert!(matches!(
+            no_secret_provider.verify_signature(payload, ""),
+            Err(CapitalError::ConfigurationError(_))
+        ));
         assert!(
             provider
                 .verify_signature(payload, "invalid_header")

@@ -134,21 +134,11 @@ pub fn generate_sql_assembly_methods(
         }
 
         fn format_postgres(&self, sql: &str) -> String {
-            if rullst_orm::Orm::driver() == "postgres" {
-                use std::fmt::Write;
-                let mut pg_sql = String::with_capacity(sql.len() + 10);
-                let mut counter = 1;
-                let mut last_idx = 0;
-                for (idx, _) in sql.match_indices('?') {
-                    pg_sql.push_str(&sql[last_idx..idx]);
-                    write!(pg_sql, "${}", counter).unwrap();
-                    counter += 1;
-                    last_idx = idx + 1;
-                }
-                pg_sql.push_str(&sql[last_idx..]);
-                pg_sql
-            } else {
-                sql.to_string()
+            match rullst_orm::Orm::driver() {
+                Ok("postgres") => rullst_orm::replace_placeholders(sql),
+                // SQL assembly is non-executing and historically infallible.
+                // Execution still obtains a fallible pool before sending SQL.
+                Ok(_) | Err(_) => sql.to_string(),
             }
         }
 

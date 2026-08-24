@@ -59,7 +59,7 @@ fn pricing_navbar() -> String {
             <a href="/login" style="background: rgba(255,255,255,0.05); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; transition: all 0.2s;">"🔑 Login"</a>
             <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                 <a href="/nexus" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem; transition: all 0.2s;">"⚙️ Nexus CMS"</a>
-                <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                <span style="font-size: 0.7rem; color: #94a3b8;">"(credentials: environment)"</span>
             </div>
             <a href="http://localhost:5555" target="_blank" style="background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid #374151; font-size: 0.85rem; transition: all 0.2s;">"📊 Studio"</a>
         </div>

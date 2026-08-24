@@ -2,7 +2,8 @@
 
 Welcome to the official roadmap for `rullst-connect`! The library currently supports 11 robust core providers, dynamic token parsing, `get_user_from_token` extraction, CSRF protection (via `state`), and `scopes` customization.
 
-For our journey towards the **`v1.0.0`** release (Enterprise Level), we have planned the following major additions which are actively being worked on:
+The crate is currently version 12. The checked items below describe implemented OAuth/OIDC
+capabilities; unchecked messaging and enterprise identity sections remain roadmap work.
 
 ## ⏳ In Progress (Phases 3 & 4)
 
@@ -10,8 +11,10 @@ For our journey towards the **`v1.0.0`** release (Enterprise Level), we have pla
 - [x] **Native Framework Integration:** Create the optional `axum` and `actix` features, providing Extractors (like `AuthCallback`) so URL parsing of codes, states, and errors works magically.
 - [x] **Token Revocation (Logout):** Add the `revoke_token` method to the trait to allow direct logout on the supported providers' servers.
 - [x] **Mocking Tools (TDD):** A `MockProvider` to facilitate writing unit tests for end users of the library.
-- [x] **OIDC Support:** Automatic and ultra-fast `id_token` validation for Google and Apple using JWT (without extra HTTP calls).
+- [x] **OIDC Support:** Cryptographic `id_token` validation for Google, Apple, and custom OIDC providers using refreshed JWKS material.
 - [x] **Security Audit & PKCE:** Implement strict URL parsing, eliminate panics, and provide native `.with_pkce()` support across all providers.
+- [x] **Fail-Closed Provider Configuration:** Fallible constructors, exact loopback URL validation, and typed network-free credential modes.
+- [x] **Rotation-Aware JWKS Cache:** Per-provider TTL, refresh on an unknown `kid`, and bounded stale-if-error restricted to already-known keys.
 
 ## 🔮 Not So Distant Future
 
@@ -30,11 +33,11 @@ For our journey towards the **`v1.0.0`** release (Enterprise Level), we have pla
 - [x] **Strict Profile Normalization (`UniversalProfile`):** Expand on avatar standardization by guaranteeing a strictly typed and identical struct (`id`, `name`, `email`, `email_verified`, `avatar_url`) regardless of the underlying provider's payload quirks.
 - [x] **Secure State/Nonce Handling (`AuthSession`):** Native integrations (via `tower-sessions`) to automatically save and validate CSRF `state` and `nonce` securely, removing the burden from the developer.
 - [x] **Native Apple Secret Generation:** Handle "Sign In with Apple" painlessly by accepting a `.p8` key and Key ID to generate the required JWT `client_secret` on-the-fly.
-- [x] **Embedded Local Mock IdP:** An embedded, ultra-lightweight Axum router (`mock_idp`) that perfectly simulates OAuth endpoints, allowing development teams to run full E2E local tests completely offline.
+- [x] **Embedded Local Mock IdP:** An explicitly mounted Axum access-token/userinfo test router. It does not emit unsigned tokens or pretend to validate signatures.
 - [x] **Enterprise-Grade Observability:** Native integration with the `tracing` crate. Emit detailed spans during token exchanges and profile fetching to simplify debugging in production and distributed systems.
 - [x] **OIDC Auto-Discovery (`.well-known`):** Create a generic `OidcProvider::discover("url")` that automatically downloads the OpenID configuration and sets up endpoints internally in a single line of code.
 - [x] **Device Authorization Flow (RFC 8628):** Support for CLI and Smart TV logins where users enter a code on a secondary device, a critical feature for headless Rust applications.
-- [x] **Cryptographic OIDC Signature Validation (JWKS):** Automatically fetch provider Public Keys and cryptographically verify the RSA signature of the `id_token` JWT to guarantee zero spoofing and meet enterprise security standards.
+- [x] **Cryptographic OIDC Signature Validation (JWKS):** Fetch provider public keys and verify supported asymmetric `id_token` signatures, issuer, audience, expiry, and optional nonce. This is one control, not a guarantee against every identity attack.
 
 ## 🏢 Phase 6: Enterprise Identity & B2B SaaS (Scale & Compliance)
 

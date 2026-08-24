@@ -60,6 +60,8 @@ jobs:
             target: fuzz_token_response
           - dir: rullst-connect/fuzz
             target: fuzz_user_json
+          - dir: rullst-ai/fuzz
+            target: fuzz_message_serde
           # Rullst Security
           - dir: rullst-security/fuzz
             target: fuzz_rasp
@@ -71,6 +73,10 @@ jobs:
             target: fuzz_totp
           - dir: rullst-security/fuzz
             target: fuzz_log_redactor
+          - dir: rullst-security/fuzz
+            target: fuzz_dlp
+          - dir: rullst-security/fuzz
+            target: fuzz_sanitizer
           # Rullst IoT
           - dir: rullst-iot/fuzz
             target: fuzz_modbus
@@ -95,6 +101,12 @@ jobs:
           # Rullst Mail
           - dir: rullst-mail/fuzz
             target: fuzz_mail
+          - dir: rullst-mail/fuzz
+            target: fuzz_email_validator
+          - dir: rullst-mail/fuzz
+            target: fuzz_email_tracking
+          - dir: rullst-mail/fuzz
+            target: fuzz_email_security
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

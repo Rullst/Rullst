@@ -9,13 +9,6 @@ use axum::{
 use rand::distr::{Alphanumeric, SampleString};
 use subtle::ConstantTimeEq;
 
-#[cfg_attr(mutants, mutants::skip)]
-fn is_production() -> bool {
-    let env = std::env::var("RULLST_ENV")
-        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
-    env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod")
-}
-
 /// Generates a cryptographically secure 32-character random alphanumeric string.
 pub fn generate_csrf_token() -> String {
     Alphanumeric.sample_string(&mut rand::rng(), 32)
@@ -34,16 +27,41 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 }
 
 /// Middleware that enforces CSRF protection using the Double Submit Cookie pattern.
-/// GET requests generate a CSRF cookie if missing. Non-GET requests (POST, PUT, DELETE, PATCH)
-/// must match the `rullst_csrf` cookie token with either the `X-CSRF-Token` header or form `_token` field.
+/// GET requests generate a CSRF cookie if missing. HTTP safe methods pass through, while
+/// state-changing requests must match the `rullst_csrf` cookie token with either the
+/// `X-CSRF-Token` header or form `_token` field.
 pub async fn csrf_middleware(req: Request, next: Next) -> Response {
+    if is_signed_webhook_exemption(&req) {
+        return next.run(req).await;
+    }
+
     let method = req.method();
 
     if method == axum::http::Method::GET {
         handle_csrf_get(req, next).await
+    } else if method == axum::http::Method::HEAD
+        || method == axum::http::Method::OPTIONS
+        || method == axum::http::Method::TRACE
+    {
+        next.run(req).await
     } else {
         handle_csrf_state_modifying(req, next).await
     }
+}
+
+fn is_signed_webhook_exemption(req: &Request) -> bool {
+    if req.method() != axum::http::Method::POST {
+        return false;
+    }
+
+    let config = req
+        .extensions()
+        .get::<crate::config::SecurityConfig>()
+        .unwrap_or(&crate::config::RullstConfig::global().security);
+    config
+        .csrf_signed_webhook_paths
+        .iter()
+        .any(|path| path == req.uri().path())
 }
 
 pub(crate) fn is_csrf_exempt_path(path: &str) -> bool {
@@ -84,10 +102,20 @@ async fn handle_csrf_get(req: Request, next: Next) -> Response {
             .get::<crate::config::SecurityConfig>()
             .map(|cfg| cfg.csrf_same_site.clone())
             .unwrap_or_else(|| "Lax".to_string());
+        let secure_cookie = req
+            .extensions()
+            .get::<crate::config::Environment>()
+            .copied()
+            .map(crate::config::Environment::requires_secure_defaults)
+            .unwrap_or_else(|| {
+                crate::config::Environment::detect(None)
+                    .map(crate::config::Environment::requires_secure_defaults)
+                    .unwrap_or(true)
+            });
 
         let mut response = next.run(req).await;
 
-        let secure_attr = if is_production() { "; Secure" } else { "" };
+        let secure_attr = if secure_cookie { "; Secure" } else { "" };
         if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
             "rullst_csrf={}; Path=/; SameSite={}{}",
             token, same_site, secure_attr
@@ -171,4 +199,107 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
     }
 
     (StatusCode::FORBIDDEN, "Invalid or missing CSRF token").into_response()
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use axum::{Router, body::Body, http::Request, routing::any};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn safe_http_methods_do_not_require_a_token() {
+        let app = Router::new()
+            .route("/", any(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(csrf_middleware));
+
+        for method in [
+            axum::http::Method::HEAD,
+            axum::http::Method::OPTIONS,
+            axum::http::Method::TRACE,
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method(method)
+                        .uri("/")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_ne!(response.status(), StatusCode::FORBIDDEN);
+        }
+    }
+
+    #[tokio::test]
+    async fn production_like_environment_sets_secure_cookie() {
+        let app = Router::new()
+            .route("/", any(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(csrf_middleware))
+            .layer(axum::Extension(crate::config::Environment::Staging));
+
+        let response = app
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let cookie = response
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(cookie.contains("; Secure"));
+    }
+
+    #[tokio::test]
+    async fn only_exact_configured_post_webhook_path_is_exempt() {
+        let mut security = crate::config::SecurityConfig::default();
+        security.csrf_signed_webhook_paths = vec!["/billing/webhook".to_owned()];
+        let app = Router::new()
+            .route("/billing/webhook", any(|| async { StatusCode::OK }))
+            .route("/billing/webhook/extra", any(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(csrf_middleware))
+            .layer(axum::Extension(security));
+
+        let exempt = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/billing/webhook")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(exempt.status(), StatusCode::OK);
+
+        let prefix = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(axum::http::Method::POST)
+                    .uri("/billing/webhook/extra")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(prefix.status(), StatusCode::FORBIDDEN);
+
+        let non_post = app
+            .oneshot(
+                Request::builder()
+                    .method(axum::http::Method::PUT)
+                    .uri("/billing/webhook")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(non_post.status(), StatusCode::FORBIDDEN);
+    }
 }

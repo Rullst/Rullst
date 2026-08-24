@@ -656,10 +656,6 @@ async fn test_fetch_and_cache_jwks() {
     }
 
     let test_url = "https://example.com/jwks_test";
-    {
-        let mut cache = JWKS_CACHE.write().await;
-        cache.remove(test_url);
-    }
 
     let client = MockJwksClient;
     let jwk_set = fetch_and_cache_jwks(test_url, &client)

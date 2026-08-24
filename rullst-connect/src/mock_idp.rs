@@ -12,8 +12,6 @@ use axum::{
     routing::{get, post},
 };
 #[cfg(feature = "axum")]
-use base64::Engine;
-#[cfg(feature = "axum")]
 use serde::Deserialize;
 #[cfg(feature = "axum")]
 use serde_json::json;
@@ -72,20 +70,11 @@ async fn token_handler(Form(form): Form<TokenForm>) -> impl IntoResponse {
         }));
     }
 
-    // A fake JWT for the id_token
-    // ⚠️ WARNING: alg: none is ONLY safe for local testing. Never use in production.
-    let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"{\"alg\":\"none\"}");
-    let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
-        b"{\"sub\":\"mock_user_999\",\"name\":\"Mock User\",\"email\":\"mock@example.com\",\"email_verified\":true}"
-    );
-    let id_token = format!("{}.{}.", header, payload);
-
     Json(json!({
         "access_token": "mock_access_token_abcde",
         "token_type": "Bearer",
         "expires_in": 3600,
-        "refresh_token": "mock_refresh_token_fghij",
-        "id_token": id_token
+        "refresh_token": "mock_refresh_token_fghij"
     }))
 }
 
@@ -110,8 +99,7 @@ async fn discovery_handler() -> impl IntoResponse {
         "jwks_uri": "http://localhost:8080/jwks",
         "response_types_supported": ["code"],
         "subject_types_supported": ["public"],
-        // ⚠️ WARNING: alg: none is ONLY safe for local testing. Never use in production.
-        "id_token_signing_alg_values_supported": ["RS256", "none"]
+        "id_token_signing_alg_values_supported": ["RS256"]
     }))
 }
 

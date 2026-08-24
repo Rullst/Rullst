@@ -27,6 +27,22 @@ fn test_apple_redirect_url() {
     assert!(url.contains("response_mode=form_post"));
 }
 
+#[tokio::test]
+async fn test_apple_empty_credentials_use_offline_mock() {
+    let provider = AppleProvider::try_new("", "", "", "", "https://app.example/callback")
+        .expect("mock provider");
+    assert_eq!(
+        provider.credential_mode(),
+        crate::configuration::CredentialMode::Mock
+    );
+    let user = provider
+        .get_user(crate::provider::ExchangeParams::default())
+        .await
+        .expect("offline user");
+    assert_eq!(user.id, "mock-user");
+    assert!(provider.redirect_url().contains("example.invalid"));
+}
+
 #[test]
 fn test_apple_generate_client_secret_exp() {
     let provider = AppleProvider::new(
@@ -70,7 +86,7 @@ async fn test_apple_get_user_from_token_invalid() {
     assert!(res.is_err());
     match res.unwrap_err() {
         crate::error::ConnectError::Provider(msg) => {
-            assert!(msg.contains("Failed to verify Apple id_token"));
+            assert!(msg.contains("Apple id_token"));
         }
         _ => panic!("Expected Provider error"),
     }

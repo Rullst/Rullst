@@ -1,4 +1,4 @@
-//! Cross-platform GPIO abstraction for embedded targets.
+//! In-memory GPIO state model for tests and platform adapters.
 
 /// GPIO Pin operating mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,7 +15,7 @@ pub enum PinState {
     High = 1,
 }
 
-/// Simulated / Hardware GPIO Pin controller.
+/// In-memory GPIO pin state. It does not access hardware registers.
 pub struct GpioPin {
     pub pin_number: u8,
     pub mode: PinMode,

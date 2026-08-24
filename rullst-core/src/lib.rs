@@ -116,7 +116,7 @@ pub use rullst_macros::{
 pub use routing::Router;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use server::Server;
+pub use server::{Server, ServerError};
 
 // Re-export rullst-orm for seamless database usage
 #[cfg(not(target_arch = "wasm32"))]

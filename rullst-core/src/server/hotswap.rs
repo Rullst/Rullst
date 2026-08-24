@@ -111,9 +111,10 @@ impl Service<axum::extract::Request> for HotSwapService {
                         let mut active_libs =
                             active_libraries.lock().unwrap_or_else(|p| p.into_inner());
                         active_libs.push(new_lib);
-                        if active_libs.len() > 3 {
-                            active_libs.remove(0);
-                        }
+                        // Never unload a previous application library while a
+                        // request may still be executing code from it. Hot reload
+                        // is development-only, so retaining these handles until
+                        // server shutdown is the safe lifecycle trade-off.
 
                         println!(
                             "\x1b[32m🚀 Rullst Hot-Reload: Dylib swapped instantly via webhook!\x1b[0m"

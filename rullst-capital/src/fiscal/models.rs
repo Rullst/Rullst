@@ -36,6 +36,10 @@ pub enum FiscalError {
     #[error("Failed to parse fiscal response: {0}")]
     ResponseParse(String),
 
+    /// A fiscal capability is intentionally unavailable until independently validated.
+    #[error("Unsupported fiscal operation: {0}")]
+    Unsupported(String),
+
     /// General fiscal exception.
     #[error("Fiscal error: {0}")]
     General(String),
@@ -54,21 +58,21 @@ pub struct FiscalCertificate {
 
 impl FiscalCertificate {
     /// Creates a new certificate container from raw .pfx bytes.
-    pub fn from_bytes(pfx_bytes: &[u8], passphrase: &str) -> Self {
+    pub fn from_bytes(pfx_bytes: &[u8], passphrase: impl Into<String>) -> Self {
         use base64::Engine;
         use base64::engine::general_purpose::STANDARD;
         Self {
             raw_pfx_base64: STANDARD.encode(pfx_bytes),
-            passphrase: passphrase.to_string(),
+            passphrase: passphrase.into(),
             subject_cn: None,
         }
     }
 
     /// Creates a new certificate container from a base64 string.
-    pub fn from_base64(pfx_base64: &str, passphrase: &str) -> Self {
+    pub fn from_base64(pfx_base64: impl Into<String>, passphrase: impl Into<String>) -> Self {
         Self {
-            raw_pfx_base64: pfx_base64.trim().to_string(),
-            passphrase: passphrase.to_string(),
+            raw_pfx_base64: pfx_base64.into().trim().to_string(),
+            passphrase: passphrase.into(),
             subject_cn: None,
         }
     }
@@ -77,10 +81,26 @@ impl FiscalCertificate {
     pub fn raw_bytes(&self) -> Result<Vec<u8>, FiscalError> {
         use base64::Engine;
         use base64::engine::general_purpose::STANDARD;
+        if self.raw_pfx_base64.trim().is_empty() {
+            return Err(FiscalError::Certificate(
+                "PKCS#12 certificate cannot be empty".to_string(),
+            ));
+        }
         STANDARD.decode(&self.raw_pfx_base64).map_err(|e| {
             FiscalError::Certificate(format!("Failed to decode certificate base64: {}", e))
         })
     }
+}
+
+/// Provenance of a fiscal response.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FiscalResponseKind {
+    /// Deterministic offline fixture. It is not a tax authorization.
+    OfflineMock,
+    /// Authorization received from an officially validated tax-authority integration.
+    OfficialAuthorization,
 }
 
 /// The service provider / SaaS emitter company.
@@ -164,21 +184,30 @@ pub struct NfseDps {
     pub service_city_ibge: String,
 }
 
-/// Official response returned by the Receita Federal / SEFAZ national portal.
+/// Result returned by the fiscal engine, with explicit authorization provenance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FiscalResponse {
-    /// 50-digit unique National NFS-e Access Key.
+    /// Distinguishes an offline fixture from an official authorization.
+    pub kind: FiscalResponseKind,
+    /// Official access key, or an unmistakable `MOCK-NOT-AUTHORIZED-*` marker offline.
     pub access_key: String,
-    /// Official authorized NFS-e sequential number.
+    /// Official NFS-e number, or zero for an offline fixture.
     pub nfse_number: u64,
-    /// Protocol authorization number from the tax authority.
+    /// Official protocol, or an unmistakable `MOCK-ONLY-*` marker offline.
     pub protocol: String,
-    /// Full authorized and signed XML document.
+    /// Authorized XML for an official result, or the submitted DPS fixture offline.
     pub authorized_xml: String,
-    /// Date/time of authorization.
+    /// Authorization timestamp, or a deterministic epoch timestamp offline.
     pub authorized_at: DateTime<Utc>,
-    /// Status description ("Autorizada", "Processando", "Rejeitada").
+    /// Status description. Offline fixtures always use `MOCK_NOT_AUTHORIZED`.
     pub status: String,
     /// List of validation warnings or errors if rejected.
     pub errors: Vec<String>,
+}
+
+impl FiscalResponse {
+    /// Returns true only for a response produced by an officially validated integration.
+    pub fn is_officially_authorized(&self) -> bool {
+        self.kind == FiscalResponseKind::OfficialAuthorization
+    }
 }

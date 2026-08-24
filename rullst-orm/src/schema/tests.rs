@@ -47,6 +47,7 @@ fn test_validate_table_name() {
     assert!(validate_table_name("user_posts").is_ok());
     assert!(validate_table_name("DROP TABLE users").is_err());
     assert!(validate_table_name("../../../etc/shadow").is_err());
+    assert!(validate_table_name("user-posts").is_err());
     // dots not allowed in table names
     assert!(validate_table_name("users.id").is_err());
     assert!(validate_table_name("").is_err()); // Empty table name
@@ -57,6 +58,8 @@ fn test_validate_identifier() {
     assert!(validate_identifier("users").is_ok());
     assert!(validate_identifier("users.id").is_ok());
     assert!(validate_identifier("user_posts").is_ok());
+    assert!(validate_identifier("user-posts").is_err());
+    assert!(validate_identifier("users.post-id").is_err());
     assert!(validate_identifier("").is_err());
     assert!(validate_identifier("users.posts.id").is_err()); // two dots
     assert!(validate_identifier("DROP TABLE users").is_err());
@@ -133,7 +136,9 @@ fn test_blueprint_build_produces_valid_sql() {
     bp.id();
     bp.string("name").not_null();
     bp.integer("age");
-    let sql = bp.build().expect("build should succeed for valid columns");
+    let sql = bp
+        .build_for_driver("sqlite")
+        .expect("build should succeed for valid columns");
     assert!(sql.contains("id INTEGER PRIMARY KEY"));
     assert!(sql.contains("name TEXT NOT NULL"));
     assert!(sql.contains("age INTEGER"));

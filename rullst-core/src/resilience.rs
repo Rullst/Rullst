@@ -259,8 +259,12 @@ pub struct RateLimiter {
 }
 
 impl RateLimiter {
-    /// Creates a new `RateLimiter` from the given config, using IP address as the default key.
-    /// The key extractor resolves `X-Forwarded-For`, `X-Real-IP`, or the peer `SocketAddr` in that order.
+    /// Creates a new `RateLimiter` from the given config, using the transport
+    /// peer address as the default key.
+    ///
+    /// Forwarded headers are untrusted and deliberately ignored. Deployments
+    /// behind a trusted proxy can install an explicit key extractor after
+    /// validating the proxy chain.
     pub fn new(config: RateLimitConfig) -> Self {
         Self {
             config,
@@ -303,22 +307,8 @@ impl RateLimiter {
     }
 }
 
-/// Default key extractor: checks X-Forwarded-For, X-Real-IP, and peer SocketAddr.
+/// Default key extractor based only on Axum's transport peer address.
 pub fn default_key_extractor(req: &Request) -> String {
-    if let Some(forwarded) = req.headers().get("x-forwarded-for") {
-        if let Ok(s) = forwarded.to_str() {
-            if let Some(first_ip) = s.split(',').next() {
-                return first_ip.trim().to_string();
-            }
-        }
-    }
-
-    if let Some(real_ip) = req.headers().get("x-real-ip") {
-        if let Ok(s) = real_ip.to_str() {
-            return s.trim().to_string();
-        }
-    }
-
     if let Some(conn_info) = req
         .extensions()
         .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
@@ -326,7 +316,7 @@ pub fn default_key_extractor(req: &Request) -> String {
         return conn_info.0.ip().to_string();
     }
 
-    "anonymous".to_string()
+    "missing-peer-address".to_string()
 }
 
 /// Native Axum middleware enforcing rate limiting.
@@ -367,13 +357,13 @@ mod tests {
             .header("x-forwarded-for", "192.168.1.1, 10.0.0.1")
             .body(axum::body::Body::empty())
             .unwrap();
-        assert_eq!(default_key_extractor(&req1), "192.168.1.1");
+        assert_eq!(default_key_extractor(&req1), "missing-peer-address");
 
         let req2 = Request::builder()
             .header("x-real-ip", "10.0.0.2")
             .body(axum::body::Body::empty())
             .unwrap();
-        assert_eq!(default_key_extractor(&req2), "10.0.0.2");
+        assert_eq!(default_key_extractor(&req2), "missing-peer-address");
 
         let mut req3 = Request::builder().body(axum::body::Body::empty()).unwrap();
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);

@@ -1,7 +1,17 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use rullst_nexus::*;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
+
+fn local_test_router(nexus: Nexus) -> axum::Router {
+    let loopback = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3000);
+    nexus
+        .with_local_access(LocalNexusAccess::loopback_only())
+        .try_build()
+        .expect("debug-only loopback policy should build in tests")
+        .layer(axum::Extension(axum::extract::ConnectInfo(loopback)))
+}
 
 struct UserModel;
 impl NexusModel for UserModel {
@@ -79,7 +89,7 @@ async fn test_nexus_dashboard_and_views() {
         .register::<UserModel>()
         .register::<ComplexModel>();
 
-    let app = nexus.build();
+    let app = local_test_router(nexus);
 
     let routes = [
         "/",
@@ -114,7 +124,7 @@ async fn test_nexus_dashboard_and_views() {
 #[tokio::test]
 async fn test_nexus_crud_lifecycle_requests() {
     let nexus = Nexus::new().register::<UserModel>();
-    let app = nexus.build();
+    let app = local_test_router(nexus);
 
     let csrf_token = "valid_csrf_token_for_test_12345";
 
@@ -193,7 +203,7 @@ async fn test_nexus_crud_lifecycle_requests() {
 #[tokio::test]
 async fn test_nexus_ai_chat_queries_and_responses() {
     let nexus = Nexus::new().register::<UserModel>();
-    let app = nexus.build();
+    let app = local_test_router(nexus);
 
     let csrf_token = "valid_csrf_token_for_test_12345";
     let test_queries = [
@@ -232,7 +242,7 @@ async fn test_nexus_ai_chat_queries_and_responses() {
 #[tokio::test]
 async fn test_nexus_htmx_partial_headers() {
     let nexus = Nexus::new().register::<UserModel>();
-    let app = nexus.build();
+    let app = local_test_router(nexus);
 
     let req = Request::builder()
         .uri("/table/users")
@@ -308,7 +318,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .with_brand("Nexus DB Suite")
         .register::<UserModel>()
         .register::<ComplexModel>();
-    let app = nexus.build();
+    let app = local_test_router(nexus);
 
     let csrf = "valid_test_csrf_token";
 

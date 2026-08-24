@@ -1,51 +1,61 @@
-//! Lightweight Post-Quantum Edge Encryption (`rullst_iot::pqc`).
+//! Deterministic post-quantum-shaped fixtures for tests and demos.
 //!
-//! Provides a compact ML-KEM (Kyber) style key encapsulation stub suitable
-//! for low-power edge nodes protecting telemetry links against quantum threats.
+//! This module is available only with `experimental-simulators`. It does not
+//! implement ML-KEM, Kyber, a KEM round trip, confidentiality, or quantum safety.
 
-extern crate alloc;
-use alloc::vec::Vec;
 use sha2::{Digest, Sha256};
 
-/// Simulated Post-Quantum Key Encapsulation Mechanism (ML-KEM / Kyber stub).
-pub struct PqcKeyPair {
-    pub public_key: Vec<u8>,
-    secret_key: Vec<u8>,
+/// Deterministic fixture data; not a post-quantum key pair.
+#[non_exhaustive]
+pub struct SimulatedPqcFixture {
+    public_fixture: [u8; 32],
+    private_fixture: [u8; 32],
 }
 
-impl PqcKeyPair {
-    /// Derives a deterministic key pair from a seed (for testing).
-    /// Production: replace with a full ML-KEM / Kyber implementation.
+impl SimulatedPqcFixture {
+    /// Derives reproducible, non-secret fixture bytes from a test seed.
+    #[must_use]
     pub fn from_seed(seed: &[u8]) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(seed);
-        let pk = hasher.finalize().to_vec();
+        let mut public_hasher = Sha256::new();
+        public_hasher.update(b"RULLST-SIMULATED-PQC-PUBLIC-V1\0");
+        public_hasher.update(seed);
+        let public_fixture = public_hasher.finalize().into();
 
-        let mut hasher2 = Sha256::new();
-        hasher2.update(&pk);
-        hasher2.update(b"sk_derive");
-        let sk = hasher2.finalize().to_vec();
+        let mut private_hasher = Sha256::new();
+        private_hasher.update(b"RULLST-SIMULATED-PQC-PRIVATE-V1\0");
+        private_hasher.update(seed);
+        let private_fixture = private_hasher.finalize().into();
 
         Self {
-            public_key: pk,
-            secret_key: sk,
+            public_fixture,
+            private_fixture,
         }
     }
 
-    /// Encapsulates a session key using the public key (stub: returns HMAC-SHA256).
-    pub fn encapsulate(&self, plaintext: &[u8]) -> Vec<u8> {
-        let mut hasher = Sha256::new();
-        hasher.update(&self.public_key);
-        hasher.update(plaintext);
-        hasher.finalize().to_vec()
+    /// Returns public fixture bytes with no cryptographic guarantees.
+    #[must_use]
+    pub fn public_fixture(&self) -> [u8; 32] {
+        self.public_fixture
     }
 
-    /// Decapsulates a session key using the private key (stub: HMAC-SHA256 verify).
-    pub fn decapsulate(&self, ciphertext: &[u8]) -> Vec<u8> {
+    /// Produces a deterministic ciphertext-shaped fixture, not KEM encapsulation.
+    #[must_use]
+    pub fn derive_ciphertext_fixture(&self, input: &[u8]) -> [u8; 32] {
         let mut hasher = Sha256::new();
-        hasher.update(&self.secret_key);
-        hasher.update(ciphertext);
-        hasher.finalize().to_vec()
+        hasher.update(b"RULLST-SIMULATED-PQC-CIPHERTEXT-V1\0");
+        hasher.update(self.public_fixture);
+        hasher.update(input);
+        hasher.finalize().into()
+    }
+
+    /// Produces deterministic output-shaped bytes, not KEM decapsulation.
+    #[must_use]
+    pub fn derive_output_fixture(&self, input: &[u8]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(b"RULLST-SIMULATED-PQC-OUTPUT-V1\0");
+        hasher.update(self.private_fixture);
+        hasher.update(input);
+        hasher.finalize().into()
     }
 }
 
@@ -54,16 +64,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_pqc_key_pair_generation() {
-        let keypair = PqcKeyPair::from_seed(b"edge_node_seed_value");
-        assert_eq!(keypair.public_key.len(), 32);
-    }
-
-    #[test]
-    fn test_pqc_encapsulation() {
-        let keypair = PqcKeyPair::from_seed(b"edge_node_seed_value");
-        let ct = keypair.encapsulate(b"sensor_data_payload");
-        assert_eq!(ct.len(), 32);
+    fn simulated_pqc_fixtures_are_deterministic_and_not_a_kem_claim() {
+        let fixture = SimulatedPqcFixture::from_seed(b"documented test seed");
+        assert_eq!(fixture.public_fixture(), fixture.public_fixture());
+        assert_ne!(
+            fixture.derive_ciphertext_fixture(b"a"),
+            fixture.derive_ciphertext_fixture(b"b")
+        );
     }
 }
 
@@ -73,12 +80,12 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_pqc_keypair_bounds() {
-        let keypair = PqcKeyPair {
-            public_key: alloc::vec![0u8; 32],
-            secret_key: alloc::vec![0u8; 32],
+    fn proof_simulated_fixture_bounds() {
+        let fixture = SimulatedPqcFixture {
+            public_fixture: [0_u8; 32],
+            private_fixture: [0_u8; 32],
         };
-        assert_eq!(keypair.public_key.len(), 32);
-        assert_eq!(keypair.secret_key.len(), 32);
+        assert_eq!(fixture.public_fixture.len(), 32);
+        assert_eq!(fixture.private_fixture.len(), 32);
     }
 }

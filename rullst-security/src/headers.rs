@@ -1,12 +1,12 @@
-//! OWASP Secure Headers Suite & Dynamic Hardening Layer.
-//! Provides out-of-the-box A+ rating on security audits with HSTS, CSP nonces, Permissions-Policy, COOP, COEP, and CORP.
+//! Secure response headers with a CSP nonce shared with the request renderer.
 
-use crate::sanitizer::csp::generate_nonce;
 use crate::telemetry::SecurityStore;
 use axum::{
     body::Body,
-    http::{HeaderName, HeaderValue, Request, Response},
+    http::{HeaderMap, HeaderName, HeaderValue, Request, Response, header},
 };
+pub use rullst_core::security::CspNonce;
+use rullst_core::security::render_csp_policy;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -14,6 +14,7 @@ use tower::{Layer, Service};
 
 /// Configuration options for the OWASP Secure Headers suite.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct SecureHeadersConfig {
     /// Strict-Transport-Security (HSTS) header value.
     pub hsts: Option<String>,
@@ -33,6 +34,9 @@ pub struct SecureHeadersConfig {
     pub corp: Option<String>,
     /// Whether to generate dynamic CSP with request nonce.
     pub dynamic_csp: bool,
+    /// Optional CSP template. `{NONCE}` is replaced with the per-request nonce when enabled.
+    /// `None` selects Rullst's strict shared default policy.
+    pub csp: Option<String>,
 }
 
 impl Default for SecureHeadersConfig {
@@ -49,7 +53,34 @@ impl Default for SecureHeadersConfig {
             coep: Some("require-corp".to_string()),
             corp: Some("same-origin".to_string()),
             dynamic_csp: true,
+            csp: None,
         }
+    }
+}
+
+impl SecureHeadersConfig {
+    /// Replaces the default CSP with a custom policy template.
+    pub fn with_csp(mut self, csp: impl Into<String>) -> Self {
+        self.csp = Some(csp.into());
+        self
+    }
+
+    /// Uses a static CSP without generating a request nonce.
+    pub fn without_dynamic_csp(mut self) -> Self {
+        self.dynamic_csp = false;
+        self
+    }
+}
+
+fn insert_configured_header(
+    headers: &mut HeaderMap,
+    name: HeaderName,
+    configured: Option<&String>,
+) {
+    if let Some(configured) = configured
+        && let Ok(value) = HeaderValue::from_str(configured)
+    {
+        headers.insert(name, value);
     }
 }
 
@@ -60,7 +91,7 @@ pub struct SecureHeadersLayer {
 }
 
 impl SecureHeadersLayer {
-    /// Creates a new SecureHeadersLayer with default production A+ settings.
+    /// Creates a new `SecureHeadersLayer` with strict production defaults.
     pub fn new() -> Self {
         Self {
             config: SecureHeadersConfig::default(),
@@ -104,10 +135,12 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let config = self.config.clone();
         let nonce = if config.dynamic_csp {
-            Some(generate_nonce())
+            let nonce = CspNonce::generate();
+            req.extensions_mut().insert(nonce.clone());
+            Some(nonce)
         } else {
             None
         };
@@ -118,63 +151,57 @@ where
             let mut res = fut.await?;
             let headers = res.headers_mut();
 
-            if let Some(ref hsts_val) = config.hsts
-                && let Ok(v) = HeaderValue::from_str(hsts_val)
-            {
-                headers.insert(HeaderName::from_static("strict-transport-security"), v);
-            }
+            insert_configured_header(
+                headers,
+                header::STRICT_TRANSPORT_SECURITY,
+                config.hsts.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                header::X_FRAME_OPTIONS,
+                config.frame_options.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                header::X_CONTENT_TYPE_OPTIONS,
+                config.content_type_options.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                header::REFERRER_POLICY,
+                config.referrer_policy.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                HeaderName::from_static("permissions-policy"),
+                config.permissions_policy.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                HeaderName::from_static("cross-origin-opener-policy"),
+                config.coop.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                HeaderName::from_static("cross-origin-embedder-policy"),
+                config.coep.as_ref(),
+            );
+            insert_configured_header(
+                headers,
+                HeaderName::from_static("cross-origin-resource-policy"),
+                config.corp.as_ref(),
+            );
+            headers.insert(
+                HeaderName::from_static("x-xss-protection"),
+                HeaderValue::from_static("0"),
+            );
 
-            if let Some(ref frame_opt) = config.frame_options
-                && let Ok(v) = HeaderValue::from_str(frame_opt)
-            {
-                headers.insert(HeaderName::from_static("x-frame-options"), v);
-            }
-
-            if let Some(ref content_type_opt) = config.content_type_options
-                && let Ok(v) = HeaderValue::from_str(content_type_opt)
-            {
-                headers.insert(HeaderName::from_static("x-content-type-options"), v);
-            }
-
-            if let Some(ref referrer_pol) = config.referrer_policy
-                && let Ok(v) = HeaderValue::from_str(referrer_pol)
-            {
-                headers.insert(HeaderName::from_static("referrer-policy"), v);
-            }
-
-            if let Some(ref permissions_pol) = config.permissions_policy
-                && let Ok(v) = HeaderValue::from_str(permissions_pol)
-            {
-                headers.insert(HeaderName::from_static("permissions-policy"), v);
-            }
-
-            if let Some(ref coop_opt) = config.coop
-                && let Ok(v) = HeaderValue::from_str(coop_opt)
-            {
-                headers.insert(HeaderName::from_static("cross-origin-opener-policy"), v);
-            }
-
-            if let Some(ref coep_opt) = config.coep
-                && let Ok(v) = HeaderValue::from_str(coep_opt)
-            {
-                headers.insert(HeaderName::from_static("cross-origin-embedder-policy"), v);
-            }
-
-            if let Some(ref corp_opt) = config.corp
-                && let Ok(v) = HeaderValue::from_str(corp_opt)
-            {
-                headers.insert(HeaderName::from_static("cross-origin-resource-policy"), v);
-            }
-
-            if let Some(n) = nonce {
-                let csp_val = format!(
-                    "default-src 'self'; script-src 'self' 'nonce-{}'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self';",
-                    n
-                );
-                if let Ok(v) = HeaderValue::from_str(&csp_val) {
-                    headers.insert(HeaderName::from_static("content-security-policy"), v);
-                }
-            }
+            let csp = render_csp_policy(config.csp.as_deref(), nonce.as_ref());
+            let csp_value = HeaderValue::from_str(&csp).unwrap_or_else(|_| {
+                HeaderValue::from_str(&render_csp_policy(None, nonce.as_ref()))
+                    .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
+            });
+            headers.insert(header::CONTENT_SECURITY_POLICY, csp_value);
 
             SecurityStore::global().inc_secure_headers();
 
@@ -197,6 +224,38 @@ mod tests {
         assert_eq!(cfg.coep.unwrap(), "require-corp");
         assert_eq!(cfg.corp.unwrap(), "same-origin");
         assert!(cfg.dynamic_csp);
+        assert!(cfg.csp.is_none());
+    }
+
+    #[tokio::test]
+    async fn nonce_is_available_to_renderer_and_matches_header() {
+        use axum::{Router, extract::Extension, routing::get};
+        use tower::ServiceExt;
+
+        let app = Router::new()
+            .route(
+                "/",
+                get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
+            )
+            .layer(SecureHeadersLayer::default());
+        let response = app
+            .oneshot(Request::new(Body::empty()))
+            .await
+            .expect("request should complete");
+        let csp = response
+            .headers()
+            .get(header::CONTENT_SECURITY_POLICY)
+            .expect("CSP should be present")
+            .to_str()
+            .expect("CSP should be ASCII")
+            .to_owned();
+        assert!(!csp.contains("unsafe-inline"));
+        assert!(!csp.contains("unsafe-eval"));
+        let body = axum::body::to_bytes(response.into_body(), 1_024)
+            .await
+            .expect("body should be readable");
+        let nonce = std::str::from_utf8(&body).expect("nonce should be UTF-8");
+        assert!(csp.contains(&format!("'nonce-{nonce}'")));
     }
 }
 

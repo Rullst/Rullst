@@ -2,6 +2,79 @@
 
 use crate::error::MailError;
 
+/// Sanitizes all recognized credentials, AWS access keys, and private-key blocks.
+pub fn redact_email_secrets(input: &str) -> String {
+    let mut output = input.to_string();
+    redact_values_after(&mut output, "bearer ", false);
+    for key in ["password=", "secret=", "api_key=", "key=", "token="] {
+        redact_values_after(&mut output, key, true);
+    }
+    redact_aws_access_keys(&mut output);
+    redact_pem_blocks(&mut output, "PRIVATE KEY");
+    redact_pem_blocks(&mut output, "RSA PRIVATE KEY");
+    output
+}
+
+fn redact_values_after(output: &mut String, marker: &str, stop_at_ampersand: bool) {
+    let mut offset = 0usize;
+    loop {
+        let lower = output.to_ascii_lowercase();
+        let Some(relative) = lower.get(offset..).and_then(|tail| tail.find(marker)) else {
+            break;
+        };
+        let start = offset + relative + marker.len();
+        let Some(tail) = output.get(start..) else {
+            break;
+        };
+        let end = tail
+            .find(|character: char| {
+                character.is_whitespace()
+                    || matches!(character, '"' | '\'' | ',' | '<')
+                    || (stop_at_ampersand && character == '&')
+            })
+            .map_or(output.len(), |relative_end| start + relative_end);
+        if end <= start {
+            offset = start;
+            continue;
+        }
+        if output.get(start..end) != Some("[REDACTED]") {
+            output.replace_range(start..end, "[REDACTED]");
+        }
+        offset = start + "[REDACTED]".len();
+    }
+}
+
+fn redact_aws_access_keys(output: &mut String) {
+    let mut offset = 0usize;
+    while let Some(relative) = output.get(offset..).and_then(|tail| tail.find("AKIA")) {
+        let start = offset + relative;
+        let candidate_end = start.saturating_add(20);
+        let valid = output
+            .get(start..candidate_end)
+            .is_some_and(|candidate| candidate.bytes().all(|byte| byte.is_ascii_alphanumeric()));
+        if valid {
+            output.replace_range(start..candidate_end, "AKIA****************");
+            offset = start + 20;
+        } else {
+            offset = start + 4;
+        }
+    }
+}
+
+fn redact_pem_blocks(output: &mut String, label: &str) {
+    let begin = format!("-----BEGIN {label}-----");
+    let end = format!("-----END {label}-----");
+    while let Some(start) = output.find(&begin) {
+        let search_start = start + begin.len();
+        let Some(relative_end) = output.get(search_start..).and_then(|tail| tail.find(&end)) else {
+            output.replace_range(start.., "[REDACTED PRIVATE KEY]");
+            break;
+        };
+        let block_end = search_start + relative_end + end.len();
+        output.replace_range(start..block_end, "[REDACTED PRIVATE KEY]");
+    }
+}
+
 /// Scans a URL string for internationalized domain name (IDN) homograph spoofing attacks.
 ///
 /// An IDN homograph attack occurs when an attacker registers a domain using visually identical

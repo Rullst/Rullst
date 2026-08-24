@@ -103,21 +103,13 @@ fn test_redis_manager_uninitialized() {
 }
 
 #[test]
-#[should_panic(expected = "Orm must be initialized before querying")]
-fn test_pool_uninitialized() {
-    let _ = Orm::pool();
-}
-
-#[test]
-#[should_panic(expected = "Orm must be initialized before querying")]
-fn test_driver_uninitialized() {
-    let _ = Orm::driver();
-}
-
-#[test]
-#[should_panic(expected = "Orm must be initialized before querying")]
-fn test_read_pool_uninitialized() {
-    let _ = Orm::read_pool();
+fn test_uninitialized_getters_are_fallible() {
+    assert!(matches!(Orm::pool(), Err(crate::Error::NotInitialized)));
+    assert!(matches!(
+        Orm::read_pool(),
+        Err(crate::Error::NotInitialized)
+    ));
+    assert!(matches!(Orm::driver(), Err(crate::Error::NotInitialized)));
 }
 
 #[test]

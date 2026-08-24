@@ -3,6 +3,7 @@
 use super::traits::MailDriver;
 use crate::error::MailError;
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
@@ -47,8 +48,9 @@ impl MemoryDriver {
 #[async_trait]
 impl MailDriver for MemoryDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        let prepared = DeliveryPipeline::prepare(message)?;
         if let Ok(mut lock) = self.store.lock() {
-            lock.push(message.clone());
+            lock.push(prepared.into_message());
             Ok(())
         } else {
             Err(MailError::DriverError(

@@ -5,7 +5,7 @@ use axum::response::{Html, IntoResponse};
 
 pub async fn handle_studio_radar(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
-    let content = crate::radar_visualizer::render_radar_page();
+    let content = crate::radar_visualizer::render_radar_page().await;
     if is_htmx {
         Html(format!("{}{}", content, render_sidebar_oob(&[], None))).into_response()
     } else {

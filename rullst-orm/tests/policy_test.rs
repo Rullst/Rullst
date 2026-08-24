@@ -36,7 +36,7 @@ async fn test_policy_enforcement() {
     let _ = rullst_orm::Orm::init("sqlite://policy.db?mode=rwc").await;
 
     // Create a table manually
-    let pool = rullst_orm::Orm::pool();
+    let pool = rullst_orm::Orm::pool().expect("ORM should be initialized");
     rullst_orm::_sqlx::query(
         "CREATE TABLE documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

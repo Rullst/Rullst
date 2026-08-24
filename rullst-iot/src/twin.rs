@@ -1,4 +1,4 @@
-//! Digital Twin Real-Time Sync Engine (`rullst_iot::twin`).
+//! In-memory digital-twin state and JSON serialization helpers.
 
 extern crate alloc;
 use crate::SensorTelemetry;
@@ -6,7 +6,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-/// A Digital Twin snapshot representing the virtual state of a physical IoT device.
+/// A local snapshot representing the reported state of an IoT device.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DigitalTwin {
     pub device_id: String,

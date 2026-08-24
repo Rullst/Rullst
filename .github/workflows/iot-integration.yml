@@ -1,4 +1,4 @@
-name: IoT Integration Tests (QEMU)
+name: IoT Helpers & Signed OTA Verification
 
 on:
   push:
@@ -24,10 +24,10 @@ jobs:
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
 
-      - name: Run unit & OTA signature tests
+      - name: Run helper, simulator-boundary, and signed OTA tests
         run: cargo test -p rullst-iot --all-features
 
-  iot-no-std-qemu:
+  iot-no-std-build:
     name: rullst-iot no_std Cortex-M Target
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +41,7 @@ jobs:
       - name: Add ARM target
         run: rustup target add thumbv7em-none-eabihf
 
-      - name: Build no_std binary (Cortex-M4)
+      - name: Build no_std library (Cortex-M4)
         run: |
           cargo build -p rullst-iot \
             --target thumbv7em-none-eabihf \
@@ -50,4 +50,3 @@ jobs:
 
       - name: Report no_std build status
         run: echo "rullst-iot no_std Cortex-M build complete."
-

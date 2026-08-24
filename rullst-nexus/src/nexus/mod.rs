@@ -1,3 +1,4 @@
+mod access;
 pub mod ai_chat;
 pub mod crud;
 pub mod security;
@@ -5,6 +6,7 @@ pub mod telemetry;
 pub mod types;
 pub mod ui;
 
+pub use access::*;
 pub use ai_chat::*;
 pub use crud::*;
 pub use security::*;
@@ -22,7 +24,12 @@ use std::sync::Arc;
 pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
-    auth: Option<(String, String)>,
+    auth: Option<PendingAuthPolicy>,
+}
+
+enum PendingAuthPolicy {
+    Validated(NexusAuthPolicy),
+    Basic { username: String, password: String },
 }
 
 impl Default for Nexus {
@@ -57,15 +64,58 @@ impl Nexus {
     }
 
     pub fn with_auth(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
-        self.auth = Some((username.into(), password.into()));
+        self.auth = Some(PendingAuthPolicy::Basic {
+            username: username.into(),
+            password: password.into(),
+        });
         self
     }
 
-    pub fn into_router(self) -> AxumRouter {
-        self.build()
+    /// Selects a validated access policy for the Nexus admin panel.
+    pub fn with_auth_policy(mut self, policy: NexusAuthPolicy) -> Self {
+        self.auth = Some(PendingAuthPolicy::Validated(policy));
+        self
     }
 
+    /// Explicitly enables loopback-only access for debug builds.
+    pub fn with_local_access(self, access: LocalNexusAccess) -> Self {
+        self.with_auth_policy(NexusAuthPolicy::loopback_only(access))
+    }
+
+    /// Legacy infallible conversion retained for one compatibility cycle.
+    ///
+    /// Invalid or absent access configuration produces a deny-all router. New code should use
+    /// [`Nexus::try_build`] so startup can report the typed configuration error.
+    #[deprecated(
+        since = "12.0.0",
+        note = "use `try_build()` and handle `NexusBuildError`; this compatibility method denies all requests on configuration errors"
+    )]
+    pub fn into_router(self) -> AxumRouter {
+        self.build_fail_closed()
+    }
+
+    /// Legacy infallible builder retained for one compatibility cycle.
+    ///
+    /// Invalid or absent access configuration produces a deny-all router. New code should use
+    /// [`Nexus::try_build`] so startup can report the typed configuration error.
+    #[deprecated(
+        since = "12.0.0",
+        note = "use `try_build()` and handle `NexusBuildError`; this compatibility method denies all requests on configuration errors"
+    )]
     pub fn build(self) -> AxumRouter {
+        self.build_fail_closed()
+    }
+
+    /// Builds the Nexus router only after validating an explicit access policy.
+    pub fn try_build(self) -> Result<AxumRouter, NexusBuildError> {
+        let policy = match self.auth {
+            Some(PendingAuthPolicy::Validated(policy)) => validate_policy(policy)?,
+            Some(PendingAuthPolicy::Basic { username, password }) => {
+                NexusAuthPolicy::basic(username, password)?
+            }
+            None => return Err(NexusBuildError::MissingAuthenticationPolicy),
+        };
+
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
             brand: Arc::new(self.brand),
@@ -90,62 +140,44 @@ impl Nexus {
             .route("/telemetry", get(nexus_telemetry_page))
             .layer(axum::middleware::from_fn(
                 rullst_core::security::csrf_middleware,
+            ))
+            .layer(rullst_auth::RequireRoleLayer::<NexusPrincipal>::new(
+                NEXUS_ADMIN_ROLE,
             ));
 
-        let router = if let Some((username, password)) = self.auth {
-            router.layer(axum::middleware::from_fn(
-                move |req: axum::extract::Request, next: axum::middleware::Next| {
-                    let expected_username = username.clone();
-                    let expected_password = password.clone();
-                    async move {
-                        if let Some(auth_header) =
-                            req.headers().get(axum::http::header::AUTHORIZATION)
-                            && let Ok(auth_str) = auth_header.to_str()
-                            && let Some(encoded) = auth_str.strip_prefix("Basic ")
-                        {
-                            use base64::Engine;
-                            if let Ok(decoded) =
-                                base64::engine::general_purpose::STANDARD.decode(encoded)
-                                && let Ok(decoded_str) = String::from_utf8(decoded)
-                                && let Some((parts_user, parts_pass)) = decoded_str.split_once(':')
-                            {
-                                use subtle::ConstantTimeEq;
-                                if parts_user == expected_username
-                                    && parts_pass.len() == expected_password.len()
-                                    && parts_pass
-                                        .as_bytes()
-                                        .ct_eq(expected_password.as_bytes())
-                                        .into()
-                                {
-                                    return next.run(req).await;
-                                }
-                            }
-                        }
-                        axum::response::Response::builder()
-                            .status(axum::http::StatusCode::UNAUTHORIZED)
-                            .header(
-                                axum::http::header::WWW_AUTHENTICATE,
-                                "Basic realm=\"Nexus Admin Panel\"",
-                            )
-                            .body(axum::body::Body::empty())
-                            .unwrap_or_else(|_| {
-                                let mut res =
-                                    axum::response::Response::new(axum::body::Body::empty());
-                                *res.status_mut() = axum::http::StatusCode::UNAUTHORIZED;
-                                res
-                            })
-                    }
-                },
-            ))
-        } else {
-            eprintln!(
-                "⚠️ Nexus Warning: Nexus admin panel has NO authentication configured. Use `.with_auth(username, password)` to protect it in production."
-            );
-            router
+        let router = match policy {
+            NexusAuthPolicy::Basic(credentials) => {
+                router.layer(axum::middleware::from_fn(move |request, next| {
+                    let credentials = credentials.clone();
+                    async move { basic_auth_middleware(credentials, request, next).await }
+                }))
+            }
+            NexusAuthPolicy::LoopbackOnly(_) => {
+                router.layer(axum::middleware::from_fn(loopback_only_middleware))
+            }
         };
 
-        router.with_state(state)
+        Ok(router.with_state(state))
     }
+
+    fn build_fail_closed(self) -> AxumRouter {
+        match self.try_build() {
+            Ok(router) => router,
+            Err(error) => {
+                eprintln!("Nexus was not mounted because its access policy is invalid: {error}");
+                deny_all_router()
+            }
+        }
+    }
+}
+
+fn deny_all_router() -> AxumRouter {
+    AxumRouter::new().fallback(|| async {
+        (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            "Nexus is unavailable because secure access has not been configured.",
+        )
+    })
 }
 
 #[cfg(test)]
@@ -229,12 +261,12 @@ mod tests {
         use base64::Engine;
         use tower::ServiceExt;
 
-        let test_pass = String::from_utf8(vec![115, 101, 99, 114, 101, 116]).unwrap();
+        let test_pass = "unique-test-secret-42";
         let nexus = Nexus::new()
             .with_brand("Auth Test")
             .with_auth("admin", test_pass);
 
-        let router = nexus.build();
+        let router = nexus.try_build().expect("valid Nexus configuration");
 
         // 1. Request without authorization header -> 401 Unauthorized
         let req = Request::builder()
@@ -275,7 +307,7 @@ mod tests {
                 axum::http::header::AUTHORIZATION,
                 format!(
                     "Basic {}",
-                    base64::engine::general_purpose::STANDARD.encode("admin:secret")
+                    base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
                 ),
             )
             .body(axum::body::Body::empty())
@@ -283,6 +315,32 @@ mod tests {
 
         let response = router.oneshot(req).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn nexus_requires_an_explicit_authentication_policy() {
+        let result = Nexus::new().register::<DummyModel>().try_build();
+
+        match result {
+            Err(error) => assert_eq!(error, NexusBuildError::MissingAuthenticationPolicy),
+            Ok(_) => panic!("Nexus must not build without an authentication policy"),
+        }
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn legacy_build_is_fail_closed_without_authentication() {
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+
+        let router = Nexus::new().build();
+        let request = Request::builder()
+            .uri("/")
+            .body(axum::body::Body::empty())
+            .expect("valid request");
+        let response = router.oneshot(request).await.expect("router response");
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[test]

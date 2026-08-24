@@ -40,7 +40,7 @@ pub struct {model_name}Repository;
 
 impl {model_name}Repository {{
     pub async fn find_all() -> Result<Vec<{model_name}>, rullst_orm::error::RullstError> {{
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         let rows = sqlx::query_as::<_, {model_name}>("SELECT * FROM {table}")
             .fetch_all(pool)
             .await?;
@@ -48,7 +48,7 @@ impl {model_name}Repository {{
     }}
 
     pub async fn find_by_id(id: i64) -> Result<Option<{model_name}>, rullst_orm::error::RullstError> {{
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         let row = sqlx::query_as::<_, {model_name}>("SELECT * FROM {table} WHERE id = ?")
             .bind(id)
             .fetch_optional(pool)
@@ -57,7 +57,7 @@ impl {model_name}Repository {{
     }}
 
     pub async fn count() -> Result<i64, rullst_orm::error::RullstError> {{
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM {table}")
             .fetch_one(pool)
             .await?;

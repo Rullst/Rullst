@@ -1,41 +1,40 @@
-//! Rullst IoT Core & Embedded Hardware Telemetry Suite.
+//! Rullst IoT data models, protocol frame helpers, and signed firmware gate.
 //!
-//! ## Hardware Compatibility
-//! | Target | Mode | RAM Footprint |
-//! |--------|------|--------------|
-//! | Raspberry Pi / Orange Pi | `std` | < 2MB |
-//! | ESP32 (S3/C3) | `no_std` | < 256KB |
-//! | STM32 (Cortex-M) | `no_std` | < 128KB |
-//! | Arduino 32-bit (Due, Nano BLE) | `no_std` | < 64KB |
+//! This crate does not currently provide MQTT network transport, hardware HSM
+//! bindings, or post-quantum cryptography. Deterministic fixtures resembling
+//! those capabilities require the explicit `experimental-simulators` feature.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use serde::{Deserialize, Serialize};
 
-// Phase 1: Core Telemetry & Protocols
+// Explicitly simulated protocol fixtures.
+#[cfg(feature = "experimental-simulators")]
 pub mod mqtt;
 
-// Phase 2: Hardware HAL & Protocols
+// State models and protocol frame helpers (not hardware drivers).
 pub mod ble;
 pub mod gpio;
 pub mod i2c;
 pub mod modbus;
 
-// Phase 3: Edge AI & Micro-UI
+// Statistical evaluation and HTML rendering helpers.
 pub mod anomaly;
 pub mod ui;
 
-// Phase 4: Autonomous Swarm & OTA
+// Topology state and signed OTA verification.
 pub mod mesh;
 pub mod ota;
 
-// Phase 5: Hardware Security & PQC
+// Explicitly simulated cryptographic fixtures.
+#[cfg(feature = "experimental-simulators")]
 pub mod hsm;
+#[cfg(feature = "experimental-simulators")]
 pub mod pqc;
 
-// Phase 6: Power & Digital Twin
+// Power recommendations and digital-twin state.
 pub mod power;
 pub mod twin;
 
@@ -43,13 +42,17 @@ pub mod twin;
 pub use anomaly::{AnomalyDetector, AnomalyState};
 pub use ble::{GattCharacteristic, GattService};
 pub use gpio::{GpioPin, PinMode, PinState};
-pub use hsm::{HsmChipType, HsmDevice};
+#[cfg(feature = "experimental-simulators")]
+pub use hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
 pub use i2c::I2cHelper;
 pub use mesh::{MeshNode, MeshTopology, NodeStatus};
 pub use modbus::{ModbusFrame, ModbusFunction};
-pub use ota::{BootPartition, OtaManager, OtaStatus};
+#[cfg(feature = "experimental-simulators")]
+pub use mqtt::SimulatedMqttPayloadFormatter;
+pub use ota::{BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, OtaStatus};
 pub use power::{HarvesterState, PowerGovernor, PowerMode};
-pub use pqc::PqcKeyPair;
+#[cfg(feature = "experimental-simulators")]
+pub use pqc::SimulatedPqcFixture;
 pub use twin::DigitalTwin;
 pub use ui::IotDashboard;
 
@@ -83,16 +86,6 @@ impl SensorTelemetry {
     }
 }
 
-/// Lightweight MQTT / CoAP protocol driver helper.
-pub struct MqttDriver;
-
-impl MqttDriver {
-    /// Formats a telemetry model into an MQTT topic payload string.
-    pub fn format_mqtt_payload(telemetry: &SensorTelemetry) -> String {
-        telemetry.value.to_string()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,7 +94,7 @@ mod tests {
     fn test_sensor_telemetry() {
         let t = SensorTelemetry::new("esp32-node-01", "temperature", 24.5, 1700000000);
         assert_eq!(t.device_id, "esp32-node-01");
-        let payload = MqttDriver::format_mqtt_payload(&t);
-        assert_eq!(payload, "24.5");
+        assert_eq!(t.metric, "temperature");
+        assert_eq!(t.value, 24.5);
     }
 }

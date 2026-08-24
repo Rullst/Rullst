@@ -1,8 +1,13 @@
 pub mod cbor;
+mod ceremony;
 pub mod config;
 pub mod service;
 pub mod types;
 
+#[cfg(test)]
+mod invariant_tests;
+#[cfg(test)]
+mod test_support;
 #[cfg(test)]
 mod tests;
 

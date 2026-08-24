@@ -12,40 +12,21 @@ pub async fn nexus_telemetry_page(
     headers: axum::http::HeaderMap,
 ) -> Html<String> {
     let (ai_active, provider_name) = detect_ai_provider();
-    let (ai_metric_val, ai_metric_sub) = if ai_active {
-        (
-            "~410 ms".to_string(),
-            format!("Active Provider: {}", provider_name),
-        )
+    let ai_metric_sub = if ai_active {
+        format!("Provider configured: {provider_name}; no generation sampled")
     } else {
-        (
-            "N/A".to_string(),
-            "Configure any LLM API key or Ollama in .env".to_string(),
-        )
+        "No LLM provider configured".to_string()
     };
 
-    let real_rss_ram_mb = rullst_security::get_real_rss_memory_mb();
-
-    let ai_span_row = if ai_active {
-        format!(
-            r#"<div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: #c084fc; font-weight: 700;">ai.generation</span>
-                    <span style="color: var(--text-muted); margin-left: 16px;">rullst-ai -&gt; {} completion stream</span>
-                </div>
-                <span style="color: #c084fc; font-weight: 700; font-size: 12px;">410 ms</span>
-            </div>"#,
-            provider_name
-        )
-    } else {
-        r#"<div style="background: var(--bg-800); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); opacity: 0.6; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="color: var(--text-dim); font-weight: 700;">ai.generation</span>
-                    <span style="color: var(--text-dim); margin-left: 16px;">[Disabled] Configure LLM API key or Ollama in .env</span>
-                </div>
-                <span style="color: var(--text-dim); font-weight: 700; font-size: 12px;">N/A</span>
-            </div>"#.to_string()
-    };
+    let snapshot = rullst_core::radar::RadarSnapshot::collect_async().await;
+    let rss_metric = snapshot
+        .memory_rss_mb
+        .map(|value| format!("{value:.1} MB"))
+        .unwrap_or_else(|| "Unavailable".to_string());
+    let tokio_latency = snapshot
+        .tokio_latency_micros
+        .map(|value| format!("{value} µs"))
+        .unwrap_or_else(|| "Unavailable".to_string());
 
     let recorded_spans = rullst_core::telemetry_spans::global_span_collector().snapshot();
     let mut spans_html = String::new();
@@ -98,23 +79,23 @@ pub async fn nexus_telemetry_page(
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
         <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Tokio Runtime Latency</div>
-            <div style="font-size: 32px; font-weight: 800; color: #22d3ee; margin-top: 4px;">&lt; 0.15 ms</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Zero-cost async event loop</div>
+            <div style="font-size: 32px; font-weight: 800; color: #22d3ee; margin-top: 4px;">{}</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Observed scheduler yield</div>
         </div>
         <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">RSS RAM Usage (Real Proc)</div>
-            <div style="font-size: 32px; font-weight: 800; color: #34d399; margin-top: 4px;">{:.1} MB</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Ultra-light Rust process footprint</div>
+            <div style="font-size: 32px; font-weight: 800; color: #34d399; margin-top: 4px;">{}</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Platform process probe</div>
         </div>
         <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">AI Generation Latency</div>
-            <div style="font-size: 32px; font-weight: 800; color: #c084fc; margin-top: 4px;">{}</div>
+            <div style="font-size: 32px; font-weight: 800; color: #c084fc; margin-top: 4px;">Unavailable</div>
             <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">{}</div>
         </div>
         <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">OpenTelemetry Exporter</div>
-            <div style="font-size: 32px; font-weight: 800; color: #fbbf24; margin-top: 4px;">READY</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Prometheus &amp; OTLP exporter</div>
+            <div style="font-size: 32px; font-weight: 800; color: #94a3b8; margin-top: 4px;">Not reported</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">No exporter health source connected</div>
         </div>
     </div>
 
@@ -123,12 +104,11 @@ pub async fn nexus_telemetry_page(
         <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">Active Async Telemetry Spans</h3>
         <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; font-family: var(--font-mono); margin-top: 14px;">
             {}
-            {}
         </div>
     </div>
 </div>
 "#,
-        real_rss_ram_mb, ai_metric_val, ai_metric_sub, spans_html, ai_span_row
+        tokio_latency, rss_metric, ai_metric_sub, spans_html
     ));
 
     if headers.contains_key("hx-request") {

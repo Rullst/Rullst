@@ -14,40 +14,91 @@ pub struct CognitoProvider {
     scopes: String,
     state: Option<String>,
     pkce_challenge: Option<String>,
+    credential_mode: crate::configuration::CredentialMode,
 }
 
 impl CognitoProvider {
     /// Note: domain should be the full base url, e.g., <https://my-domain.auth.us-east-1.amazoncognito.com>
-    pub fn new(
-        client_id: String,
+    pub fn try_new(
+        client_id: impl Into<String>,
         client_secret: secrecy::SecretString,
-        redirect_url: String,
-        domain: String,
+        redirect_url: impl Into<String>,
+        domain: impl Into<String>,
+    ) -> Result<Self, ConnectError> {
+        let client_id = client_id.into();
+        let redirect_url = redirect_url.into();
+        crate::configuration::validate_redirect_url(&redirect_url)?;
+        let domain = crate::configuration::validate_https_base_url("domain", &domain.into())?;
+        let credential_mode = crate::configuration::credential_mode(&client_id, &client_secret);
+        let http_client =
+            crate::configuration::provider_http_client(credential_mode, "cognito", None);
+
+        Ok(Self {
+            client_id,
+            client_secret,
+            redirect_url,
+            domain,
+            http_client,
+            scopes: "openid profile email".to_string(),
+            state: None,
+            pkce_challenge: None,
+            credential_mode,
+        })
+    }
+
+    /// Deprecated infallible constructor. Invalid configuration is disabled.
+    #[cfg_attr(
+        not(test),
+        deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
+    )]
+    pub fn new(
+        client_id: impl Into<String>,
+        client_secret: secrecy::SecretString,
+        redirect_url: impl Into<String>,
+        domain: impl Into<String>,
     ) -> Self {
-        use secrecy::ExposeSecret;
-        assert!(
-            !client_id.is_empty(),
-            "Socialite Error: client_id cannot be empty"
-        );
-        assert!(
-            !client_secret.expose_secret().is_empty(),
-            "Socialite Error: client_secret cannot be empty"
-        );
-        assert!(
-            redirect_url.starts_with("http"),
-            "Socialite Error: redirect_url must be a valid HTTP/HTTPS URL"
-        );
-        let clean_domain = domain.trim_end_matches('/').to_string();
+        let client_id = client_id.into();
+        let mut redirect_url = redirect_url.into();
+        let raw_domain = domain.into();
+        let redirect_result = crate::configuration::validate_redirect_url(&redirect_url);
+        let domain_result = crate::configuration::validate_https_base_url("domain", &raw_domain);
+        let (credential_mode, invalid_reason, clean_domain) = match (redirect_result, domain_result)
+        {
+            (Ok(_), Ok(domain)) => (
+                crate::configuration::credential_mode(&client_id, &client_secret),
+                None,
+                domain,
+            ),
+            (redirect, domain) => {
+                redirect_url = "about:blank".to_string();
+                let reason = match (redirect, domain) {
+                    (Err(error), _) | (_, Err(error)) => error.to_string(),
+                    (Ok(_), Ok(_)) => "invalid Cognito configuration".to_string(),
+                };
+                (
+                    crate::configuration::CredentialMode::Invalid,
+                    Some(reason),
+                    "https://invalid.invalid".to_string(),
+                )
+            }
+        };
+        let http_client =
+            crate::configuration::provider_http_client(credential_mode, "cognito", invalid_reason);
         Self {
             client_id,
             client_secret,
             redirect_url,
             domain: clean_domain,
-            http_client: crate::client::DEFAULT_HTTP_CLIENT.clone(),
+            http_client,
             scopes: "openid profile email".to_string(),
             state: None,
             pkce_challenge: None,
+            credential_mode,
         }
+    }
+
+    pub fn credential_mode(&self) -> crate::configuration::CredentialMode {
+        self.credential_mode
     }
 
     /// Overrides the default scopes for this provider.
@@ -57,13 +108,13 @@ impl CognitoProvider {
     }
 
     /// Sets the state parameter for CSRF protection.
-    pub fn with_state(mut self, state: &str) -> Self {
-        self.state = Some(state.to_owned());
+    pub fn with_state(mut self, state: impl Into<String>) -> Self {
+        self.state = Some(state.into());
         self
     }
 
-    pub fn with_pkce(mut self, challenge: &str) -> Self {
-        self.pkce_challenge = Some(challenge.to_owned());
+    pub fn with_pkce(mut self, challenge: impl Into<String>) -> Self {
+        self.pkce_challenge = Some(challenge.into());
         self
     }
 
@@ -71,7 +122,9 @@ impl CognitoProvider {
         mut self,
         client: ::std::sync::Arc<dyn crate::client::HttpClient>,
     ) -> Self {
-        self.http_client = client;
+        if !self.credential_mode.is_invalid() {
+            self.http_client = client;
+        }
         self
     }
 }
@@ -79,6 +132,16 @@ impl CognitoProvider {
 #[async_trait]
 impl Provider for CognitoProvider {
     fn redirect_url(&self) -> String {
+        if self.credential_mode.is_invalid() {
+            return "about:blank".to_string();
+        }
+        if self.credential_mode.is_mock() {
+            return crate::configuration::mock_redirect_url(
+                "cognito",
+                self.state.as_deref(),
+                self.pkce_challenge.as_deref(),
+            );
+        }
         let mut params = crate::provider::build_oauth_params(
             &format!("{}/oauth2/authorize", self.domain),
             &self.client_id,
@@ -185,6 +248,26 @@ mod tests {
         );
         assert!(url.contains("client_id=client_id"));
         assert!(url.contains("redirect_uri=https%3A%2F%2Fredirect.url"));
+    }
+
+    #[tokio::test]
+    async fn test_cognito_mock_credentials_are_network_free() {
+        let provider = CognitoProvider::try_new(
+            "mock_client",
+            secrecy::SecretString::from("mock_secret".to_string()),
+            "https://app.example/callback",
+            "https://tenant.auth.us-east-1.amazoncognito.com",
+        )
+        .expect("mock provider");
+        let user = provider
+            .get_user(crate::provider::ExchangeParams::default())
+            .await
+            .expect("offline user");
+        assert_eq!(user.id, "mock-user");
+        assert_eq!(
+            provider.credential_mode(),
+            crate::configuration::CredentialMode::Mock
+        );
     }
 
     use crate::client::{HttpClient, HttpRequest, HttpResponse};

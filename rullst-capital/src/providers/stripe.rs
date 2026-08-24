@@ -1,15 +1,21 @@
-use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use super::{
+    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, SubscriptionStatus, WebhookEvent,
+    WebhookVerificationMode, ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature,
+    webhook_mode_from_secret,
+};
 use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::time::Duration;
 use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Stripe.
 pub struct StripeProvider {
     api_key: String,
     webhook_secret: String,
+    webhook_tolerance: Duration,
 }
 
 impl StripeProvider {
@@ -18,7 +24,14 @@ impl StripeProvider {
         Self {
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
+            webhook_tolerance: DEFAULT_WEBHOOK_TOLERANCE,
         }
+    }
+
+    /// Overrides the default five-minute webhook timestamp acceptance window.
+    pub fn with_webhook_tolerance(mut self, tolerance: Duration) -> Self {
+        self.webhook_tolerance = tolerance;
+        self
     }
 
     /// Verifies the `Stripe-Signature` header signature (`t=1492774577,v1=604956efe...`).
@@ -27,8 +40,25 @@ impl StripeProvider {
         payload: &[u8],
         signature_header: &str,
     ) -> Result<(), CapitalError> {
-        if self.webhook_secret.is_empty() {
-            return Ok(());
+        self.verify_signature_at(payload, signature_header, chrono::Utc::now().timestamp())
+    }
+
+    /// Verifies a signature against an explicit clock value for deterministic tests.
+    pub fn verify_signature_at(
+        &self,
+        payload: &[u8],
+        signature_header: &str,
+        now_unix_seconds: i64,
+    ) -> Result<(), CapitalError> {
+        match self.webhook_verification_mode()? {
+            WebhookVerificationMode::Mock => {
+                return verify_explicit_mock_signature(
+                    self.name(),
+                    &self.webhook_secret,
+                    signature_header,
+                );
+            }
+            WebhookVerificationMode::Real => {}
         }
 
         let mut timestamp = "";
@@ -67,6 +97,14 @@ impl StripeProvider {
             ));
         }
 
+        ensure_fresh_timestamp(
+            self.name(),
+            timestamp,
+            now_unix_seconds,
+            self.webhook_tolerance,
+            false,
+        )?;
+
         Ok(())
     }
 }
@@ -75,6 +113,10 @@ impl StripeProvider {
 impl BillingProvider for StripeProvider {
     fn name(&self) -> &'static str {
         "stripe"
+    }
+
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        webhook_mode_from_secret(self.name(), &self.webhook_secret)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -143,13 +185,11 @@ impl BillingProvider for StripeProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        if let Some(sig_header) = headers.get("stripe-signature") {
-            self.verify_signature(payload, sig_header)?;
-        } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature(
-                "Missing stripe-signature header".to_string(),
-            ));
-        }
+        let _ = self.webhook_verification_mode()?;
+        let sig_header = headers.get("stripe-signature").ok_or_else(|| {
+            CapitalError::InvalidSignature("Missing stripe-signature header".to_string())
+        })?;
+        self.verify_signature(payload, sig_header)?;
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -394,116 +434,5 @@ impl BillingProvider for StripeProvider {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_stripe_provider_methods() {
-        let provider = StripeProvider::new("mock_key", "whsec_stripe123");
-        assert_eq!(provider.name(), "stripe");
-
-        // 1. Checkout session
-        let url = provider
-            .create_checkout_session(
-                "user@stripe.com",
-                "price_pro_month",
-                "https://app.com/success",
-            )
-            .await
-            .unwrap();
-        assert!(url.contains("checkout.stripe.com"));
-        assert!(url.contains("price_pro_month"));
-
-        // 2. Checkout validation
-        assert!(
-            provider
-                .create_checkout_session("", "plan", "url")
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .create_checkout_session("email", "", "url")
-                .await
-                .is_err()
-        );
-
-        // 3. Customer portal
-        let portal = provider
-            .create_customer_portal("user@stripe.com", "https://app.com")
-            .await
-            .unwrap();
-        assert!(portal.contains("billing.stripe.com/p/session/mock_portal"));
-        assert!(provider.create_customer_portal("", "url").await.is_err());
-
-        // 4. Subscription actions
-        assert!(provider.cancel_subscription("sub_str").await.is_ok());
-        assert!(provider.cancel_subscription("").await.is_err());
-
-        assert!(provider.pause_subscription("sub_str").await.is_ok());
-        assert!(provider.pause_subscription("").await.is_err());
-
-        assert!(provider.report_usage("sub_str", "api", 10).await.is_ok());
-        assert!(provider.report_usage("", "api", 10).await.is_err());
-
-        assert!(provider.apply_coupon("sub_str", "PROMO10").await.is_ok());
-        assert!(provider.apply_coupon("", "PROMO10").await.is_err());
-        assert!(provider.apply_coupon("sub_str", "").await.is_err());
-
-        assert!(provider.extend_trial("sub_str", 1800000000).await.is_ok());
-        assert!(provider.extend_trial("", 1800000000).await.is_err());
-        assert!(provider.extend_trial("sub_str", -1).await.is_err());
-
-        // 5. Signature verification
-        let secret = "whsec_stripe123";
-        let timestamp = "1690000000";
-        let payload = br#"{"data":{"object":{"id":"sub_str_100","customer":"cus_123","customer_email":"user@stripe.com","status":"active","items":{"data":[{"price":{"id":"price_pro"}}]}}}}"#;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
-        let mut ctx = hmac::Context::with_key(&key);
-        ctx.update(timestamp.as_bytes());
-        ctx.update(b".");
-        ctx.update(payload);
-        let sig_hex = hex::encode(ctx.sign().as_ref());
-        let valid_header = format!("t={},v1={}", timestamp, sig_hex);
-
-        assert!(provider.verify_signature(payload, &valid_header).is_ok());
-
-        // Signature error paths
-        let no_sec = StripeProvider::new("k", "");
-        assert!(no_sec.verify_signature(payload, "").is_ok());
-        assert!(
-            provider
-                .verify_signature(payload, "invalid_header")
-                .is_err()
-        );
-        assert!(
-            provider
-                .verify_signature(payload, "t=123,v1=invalid_hex_!")
-                .is_err()
-        );
-        assert!(
-            provider
-                .verify_signature(
-                    payload,
-                    "t=123,v1=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
-                )
-                .is_err()
-        );
-
-        // 6. Handle webhook
-        let mut headers = HashMap::new();
-        headers.insert("stripe-signature".to_string(), valid_header);
-
-        let event = provider.handle_webhook(payload, &headers).unwrap();
-        assert_eq!(event.subscription_id, "sub_str_100");
-        assert_eq!(event.customer_id, "cus_123");
-        assert_eq!(event.customer_email, "user@stripe.com");
-        assert_eq!(event.status, SubscriptionStatus::Active);
-
-        // Webhook error paths
-        let empty_headers = HashMap::new();
-        assert!(provider.handle_webhook(payload, &empty_headers).is_err());
-        assert!(provider.handle_webhook(b"invalid json", &headers).is_err());
-    }
-}
+#[path = "stripe_tests.rs"]
+mod tests;

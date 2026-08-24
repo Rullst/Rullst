@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::Duration;
+use subtle::ConstantTimeEq;
 use tokio::sync::OnceCell;
 
 pub mod alipay;
@@ -26,6 +28,82 @@ pub use polar::PolarProvider;
 pub use razorpay::RazorpayProvider;
 pub use stripe::StripeProvider;
 pub use wise::WiseProvider;
+
+/// Maximum clock drift accepted by timestamped webhook protocols by default.
+pub const DEFAULT_WEBHOOK_TOLERANCE: Duration = Duration::from_secs(5 * 60);
+
+/// Whether a provider verifies live signatures or an explicitly named local mock secret.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WebhookVerificationMode {
+    /// Provider-native cryptographic verification with a non-empty real secret.
+    Real,
+    /// Deterministic local-only verification selected by a `mock_*` secret.
+    Mock,
+}
+
+pub(crate) fn webhook_mode_from_secret(
+    provider: &str,
+    secret: &str,
+) -> Result<WebhookVerificationMode, crate::error::CapitalError> {
+    let secret = secret.trim();
+    if secret.is_empty() {
+        return Err(crate::error::CapitalError::ConfigurationError(format!(
+            "{provider} webhook secret cannot be empty"
+        )));
+    }
+
+    if secret.starts_with("mock_") {
+        Ok(WebhookVerificationMode::Mock)
+    } else {
+        Ok(WebhookVerificationMode::Real)
+    }
+}
+
+pub(crate) fn verify_explicit_mock_signature(
+    provider: &str,
+    secret: &str,
+    signature: &str,
+) -> Result<(), crate::error::CapitalError> {
+    if secret.as_bytes().ct_eq(signature.as_bytes()).unwrap_u8() == 1 {
+        Ok(())
+    } else {
+        Err(crate::error::CapitalError::InvalidSignature(format!(
+            "{provider} mock signature verification failed"
+        )))
+    }
+}
+
+pub(crate) fn ensure_fresh_timestamp(
+    provider: &str,
+    timestamp: &str,
+    now_unix_seconds: i64,
+    tolerance: Duration,
+    allow_milliseconds: bool,
+) -> Result<(), crate::error::CapitalError> {
+    let raw_timestamp = timestamp.parse::<i64>().map_err(|_| {
+        crate::error::CapitalError::InvalidSignature(format!(
+            "Invalid {provider} webhook timestamp"
+        ))
+    })?;
+    let timestamp_seconds = if allow_milliseconds && raw_timestamp.unsigned_abs() >= 100_000_000_000
+    {
+        raw_timestamp / 1_000
+    } else {
+        raw_timestamp
+    };
+    let tolerance_seconds = i64::try_from(tolerance.as_secs()).unwrap_or(i64::MAX);
+    let lower_bound = now_unix_seconds.saturating_sub(tolerance_seconds);
+    let upper_bound = now_unix_seconds.saturating_add(tolerance_seconds);
+
+    if !(lower_bound..=upper_bound).contains(&timestamp_seconds) {
+        return Err(crate::error::CapitalError::StaleWebhook(format!(
+            "{provider} timestamp {timestamp_seconds} is outside the {tolerance_seconds}s acceptance window"
+        )));
+    }
+
+    Ok(())
+}
 
 static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
 static PAYOUT_PROVIDER: OnceCell<Box<dyn PayoutProvider>> = OnceCell::const_new();
@@ -126,6 +204,17 @@ use crate::error::CapitalError;
 pub trait BillingProvider: Send + Sync {
     /// Return the name of the billing provider (e.g. "stripe", "infinitepay", "polar").
     fn name(&self) -> &'static str;
+
+    /// Returns the explicitly selected webhook verification mode.
+    ///
+    /// The fail-closed default preserves source compatibility for custom providers while requiring
+    /// them to opt in before they can be mounted behind Rullst's webhook middleware.
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        Err(CapitalError::ConfigurationError(format!(
+            "{} must explicitly declare its webhook verification mode",
+            self.name()
+        )))
+    }
 
     /// Create a checkout session URL for a customer.
     async fn create_checkout_session(
@@ -313,6 +402,31 @@ mod tests {
         assert_eq!(url_encode("foo/bar?baz=1"), "foo%2Fbar%3Fbaz%3D1");
         assert_eq!(url_encode("user@domain.com"), "user%40domain.com");
         assert_eq!(url_encode("simple_word-123.test~"), "simple_word-123.test~");
+    }
+
+    #[test]
+    fn explicit_mock_webhook_mode_still_requires_its_secret() {
+        let provider = StripeProvider::new("mock_api_key", "mock_webhook_secret");
+        assert_eq!(
+            provider.webhook_verification_mode().unwrap(),
+            WebhookVerificationMode::Mock
+        );
+        assert!(
+            provider
+                .verify_signature(b"{}", "mock_webhook_secret")
+                .is_ok()
+        );
+        assert!(provider.verify_signature(b"{}", "wrong").is_err());
+
+        let empty = StripeProvider::new("mock_api_key", "");
+        assert!(matches!(
+            empty.webhook_verification_mode(),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        assert!(matches!(
+            empty.handle_webhook(b"{}", &HashMap::new()),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
 
     #[test]

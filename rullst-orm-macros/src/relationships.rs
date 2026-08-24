@@ -118,7 +118,11 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
 
         let lazy_load_check = quote! {
             if rullst_orm::is_lazy_loading_prevented() {
-                panic!("StrictLazyLoading: Attempted to lazily load relation '{}' on '{}' without eager loading.", stringify!(#method_name), stringify!(#name));
+                return Err(rullst_orm::Error::Validation(format!(
+                    "StrictLazyLoading: attempted to lazily load relation '{}' on '{}' without eager loading",
+                    stringify!(#method_name),
+                    stringify!(#name),
+                )));
             }
         };
 
@@ -343,17 +347,17 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         let parent_ids: Vec<i32> = results.iter().map(|m| m.#lk_ident).collect();
                         if !parent_ids.is_empty() {
                             let pool = rullst_orm::Orm::try_read_pool()?;
-                            let driver = rullst_orm::Orm::driver();
+                            let driver = rullst_orm::Orm::driver()?;
                             // Q1: pivot table pairs
-                            rullst_orm::schema::validate_identifier(#foreign_key).expect("Invalid foreign_key in pivot table relation");
-                            rullst_orm::schema::validate_identifier(#related_key).expect("Invalid related_key in pivot table relation");
-                            rullst_orm::schema::validate_table_name(#pivot_table).expect("Invalid pivot_table name");
+                            rullst_orm::schema::validate_identifier(#foreign_key)?;
+                            rullst_orm::schema::validate_identifier(#related_key)?;
+                            rullst_orm::schema::validate_table_name(#pivot_table)?;
                             let placeholders_str = if driver == "postgres" {
                                 let mut ph = String::with_capacity(parent_ids.len() * 4);
                                 for i in 1..=parent_ids.len() {
                                     if i > 1 { ph.push_str(", "); }
-                                    use std::fmt::Write;
-                                    write!(&mut ph, "${}", i).unwrap();
+                                    ph.push('$');
+                                    ph.push_str(&i.to_string());
                                 }
                                 ph
                             } else {

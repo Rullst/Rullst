@@ -168,9 +168,9 @@ async fn test_nexus_full_flow() {
     let nexus = Nexus::new()
         .register::<TestUser>()
         .with_brand("Nexus Custom App")
-        .with_auth("admin", "secret");
+        .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.build());
+    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
 
     // 1. UNAUTHORIZED access without auth headers
     let res_unauth = app.get("/").await;
@@ -179,7 +179,7 @@ async fn test_nexus_full_flow() {
     // 2. AUTHORIZED dashboard
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:secret")
+        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
     );
     let res_dash = app.get("/").header("Authorization", &auth_header).await;
     res_dash.assert_status(200);
@@ -277,12 +277,12 @@ async fn test_nexus_foreign_key_and_kinds() {
     let nexus = Nexus::new()
         .register::<TestUser>()
         .register::<TestPost>()
-        .with_auth("admin", "secret");
+        .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.build());
+    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:secret")
+        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
     );
 
     // 1. Table list view for nexus_posts (should render foreign key relationship)
@@ -354,12 +354,12 @@ async fn test_nexus_invalid_tables_and_errors() {
 
     let nexus = Nexus::new()
         .register::<TestUser>()
-        .with_auth("admin", "secret");
+        .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.build());
+    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:secret")
+        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
     );
 
     // 1. Invalid Table Read

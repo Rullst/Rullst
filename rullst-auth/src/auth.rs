@@ -1,7 +1,7 @@
 use crate::error::AuthError;
 use aes_gcm::{
     Aes256Gcm, Nonce,
-    aead::{Aead, KeyInit},
+    aead::{Aead, KeyInit, Payload},
 };
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{
@@ -11,8 +11,14 @@ use argon2::{
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
 use sha2::Digest;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fs;
+
+const MIN_APP_KEY_BYTES: usize = 32;
+const MIN_APP_KEY_ENTROPY_BITS: f64 = 128.0;
+const SESSION_TOKEN_PREFIX: &str = "v1.";
+const SESSION_AAD: &[u8] = b"rullst.session.v1";
 
 /// WebAuthn and Passkey authentication submodule.
 pub mod passkey;
@@ -82,13 +88,15 @@ pub fn dummy_verify(hash: Option<&str>) {
 
 /// Checks if an existing Argon2 password hash needs to be rehashed (e.g. because it was generated with older or weaker parameters).
 pub fn needs_rehash(hash: &str) -> bool {
-    // Basic implementation: if it doesn't match the current library's default format exactly, rehash it.
-    if let Ok(parsed_hash) = PasswordHash::new(hash)
-        && parsed_hash.algorithm.as_str() != "argon2id"
-    {
+    let Ok(parsed_hash) = PasswordHash::new(hash) else {
         return true;
-    }
-    false
+    };
+
+    parsed_hash.algorithm.as_str() != "argon2id"
+        || parsed_hash.version != Some(0x13)
+        || parsed_hash.params.get_decimal("m") != Some(argon2::Params::DEFAULT_M_COST)
+        || parsed_hash.params.get_decimal("t") != Some(argon2::Params::DEFAULT_T_COST)
+        || parsed_hash.params.get_decimal("p") != Some(argon2::Params::DEFAULT_P_COST)
 }
 
 #[cfg(feature = "oauth")]
@@ -112,6 +120,108 @@ pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
 
 static CACHED_APP_KEY: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
 
+/// Validates the minimum size and estimated entropy required for application secrets.
+pub fn validate_app_key(key: &[u8]) -> Result<(), AuthError> {
+    if key.len() < MIN_APP_KEY_BYTES {
+        return Err(AuthError::MissingAppKey(format!(
+            "APP_KEY must contain at least {MIN_APP_KEY_BYTES} bytes"
+        )));
+    }
+
+    let normalized = String::from_utf8_lossy(key).trim().to_ascii_lowercase();
+    if normalized.starts_with("mock_")
+        || matches!(
+            normalized.as_str(),
+            "changeme" | "change_me" | "password" | "replace_me" | "secret"
+        )
+    {
+        return Err(AuthError::MissingAppKey(
+            "APP_KEY must not use a documented placeholder".to_string(),
+        ));
+    }
+
+    let mut frequencies = [0usize; 256];
+    for byte in key {
+        frequencies[usize::from(*byte)] += 1;
+    }
+    let length = key.len() as f64;
+    let estimated_entropy = frequencies
+        .iter()
+        .filter(|frequency| **frequency > 0)
+        .map(|frequency| {
+            let probability = *frequency as f64 / length;
+            -probability * probability.log2()
+        })
+        .sum::<f64>()
+        * length;
+
+    if estimated_entropy < MIN_APP_KEY_ENTROPY_BITS {
+        return Err(AuthError::MissingAppKey(format!(
+            "APP_KEY estimated entropy must be at least {MIN_APP_KEY_ENTROPY_BITS:.0} bits"
+        )));
+    }
+
+    Ok(())
+}
+
+fn load_dotenv_values() -> Result<HashMap<String, String>, AuthError> {
+    if !std::path::Path::new(".env").exists() {
+        return Ok(HashMap::new());
+    }
+
+    let content =
+        fs::read_to_string(".env").map_err(|error| AuthError::General(error.to_string()))?;
+    dotenvy::from_read_iter(content.as_bytes())
+        .map(|entry| entry.map_err(|error| AuthError::General(error.to_string())))
+        .collect()
+}
+
+fn read_process_environment(name: &str) -> Result<Option<String>, AuthError> {
+    match std::env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            Err(AuthError::General(format!("{name} is not valid Unicode")))
+        }
+    }
+}
+
+fn detect_environment_with_dotenv(
+    dotenv: &HashMap<String, String>,
+) -> Result<rullst_core::config::Environment, AuthError> {
+    let configured_environment = match fs::read_to_string("Rullst.toml") {
+        Ok(content) => Some(
+            rullst_core::config::RullstConfig::from_toml(&content)
+                .map_err(|error| AuthError::General(error.to_string()))?
+                .app
+                .env,
+        ),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(AuthError::General(error.to_string())),
+    }
+    .flatten();
+
+    let rullst_env = read_process_environment("RULLST_ENV")?;
+    let app_env = read_process_environment("APP_ENV")?;
+    let fallback = dotenv
+        .get("RULLST_ENV")
+        .or_else(|| dotenv.get("APP_ENV"))
+        .map(String::as_str)
+        .or(configured_environment.as_deref());
+    rullst_core::config::Environment::resolve(rullst_env.as_deref(), app_env.as_deref(), fallback)
+        .map_err(|error| AuthError::General(error.to_string()))
+}
+
+fn detect_environment() -> Result<rullst_core::config::Environment, AuthError> {
+    detect_environment_with_dotenv(&load_dotenv_values()?)
+}
+
+fn cache_validated_app_key(key: Vec<u8>) -> Result<Vec<u8>, AuthError> {
+    validate_app_key(&key)?;
+    let _ = CACHED_APP_KEY.set(key.clone());
+    Ok(key)
+}
+
 /// Resolves the application's unique secret key for encryption.
 /// Tries the environment variable `APP_KEY`, then parses `Rullst.toml`, falling back to an ephemeral key.
 /// Caches the resolved key in memory using `OnceLock` to prevent repeated disk I/O.
@@ -121,27 +231,25 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
         return Ok(cached.clone());
     }
 
-    if let Ok(env_key) = std::env::var("APP_KEY") {
-        let key = env_key.into_bytes();
-        let _ = CACHED_APP_KEY.set(key.clone());
-        return Ok(key);
+    if let Some(env_key) = read_process_environment("APP_KEY")? {
+        return cache_validated_app_key(env_key.into_bytes());
+    }
+
+    let dotenv = load_dotenv_values()?;
+    if let Some(dotenv_key) = dotenv.get("APP_KEY") {
+        return cache_validated_app_key(dotenv_key.as_bytes().to_vec());
     }
 
     if let Ok(toml_content) = fs::read_to_string("Rullst.toml")
         && let Some(key) = parse_app_key_from_toml(&toml_content)
     {
-        let _ = CACHED_APP_KEY.set(key.clone());
-        return Ok(key);
+        return cache_validated_app_key(key);
     }
 
     // Enforce explicit APP_KEY when running in production.
-    let env = std::env::var("RULLST_ENV")
-        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
-    if env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod") {
-        let err_msg = "FATAL: APP_KEY is not set and RULLST_ENV=production. Set APP_KEY environment variable to a 32+ byte secret.".to_string();
-        eprintln!("{}", err_msg);
+    if detect_environment_with_dotenv(&dotenv)?.requires_secure_defaults() {
         return Err(AuthError::MissingAppKey(
-            "Missing APP_KEY in production environment".to_string(),
+            "APP_KEY is required in staging and production".to_string(),
         ));
     }
 
@@ -150,8 +258,7 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
         && let Ok(key_bytes) = general_purpose::STANDARD.decode(key_hex.trim())
         && key_bytes.len() == 32
     {
-        let _ = CACHED_APP_KEY.set(key_bytes.clone());
-        return Ok(key_bytes);
+        return cache_validated_app_key(key_bytes);
     }
 
     eprintln!(
@@ -163,15 +270,33 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     rand::rng().fill_bytes(&mut key);
     let key_vec = key.to_vec();
 
-    let _ = fs::write(dev_key_path, general_purpose::STANDARD.encode(&key_vec));
+    persist_development_key(dev_key_path, &general_purpose::STANDARD.encode(&key_vec))?;
 
-    let _ = CACHED_APP_KEY.set(key_vec.clone());
-    Ok(key_vec)
+    cache_validated_app_key(key_vec)
+}
+
+fn persist_development_key(path: &str, encoded_key: &str) -> Result<(), AuthError> {
+    let mut options = fs::OpenOptions::new();
+    options.create(true).truncate(true).write(true);
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+
+    use std::io::Write;
+    let mut file = options
+        .open(path)
+        .map_err(|error| AuthError::MissingAppKey(error.to_string()))?;
+    file.write_all(encoded_key.as_bytes())
+        .map_err(|error| AuthError::MissingAppKey(error.to_string()))
 }
 
 static CACHED_CIPHER: std::sync::OnceLock<(Vec<u8>, Aes256Gcm)> = std::sync::OnceLock::new();
 
 fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, AuthError> {
+    validate_app_key(app_key)?;
     if let Some((cached_key, cipher)) = CACHED_CIPHER.get()
         && cached_key.as_slice() == app_key
     {
@@ -207,14 +332,23 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, AuthError
 
     let payload = format!("{}|{}", user_id, exp);
     let ciphertext = cipher
-        .encrypt(&nonce, payload.as_bytes())
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: payload.as_bytes(),
+                aad: SESSION_AAD,
+            },
+        )
         .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
 
     let mut combined = Vec::new();
     combined.extend_from_slice(&nonce_bytes);
     combined.extend_from_slice(&ciphertext);
 
-    Ok(general_purpose::URL_SAFE_NO_PAD.encode(&combined))
+    Ok(format!(
+        "{SESSION_TOKEN_PREFIX}{}",
+        general_purpose::URL_SAFE_NO_PAD.encode(&combined)
+    ))
 }
 
 /// Decrypts a secure base64-encoded string back into a user_id.
@@ -222,11 +356,14 @@ pub fn encrypt_session(user_id: i32, app_key: &[u8]) -> Result<String, AuthError
 pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     let cipher = derive_cipher(app_key)?;
 
+    let encoded = token.strip_prefix(SESSION_TOKEN_PREFIX).ok_or_else(|| {
+        AuthError::SessionDecryptionError("Unsupported session token version".to_string())
+    })?;
     let combined = general_purpose::URL_SAFE_NO_PAD
-        .decode(token)
+        .decode(encoded)
         .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
-    if combined.len() < 12 {
+    if combined.len() < 28 {
         return Err(AuthError::SessionDecryptionError(
             "Invalid token length".to_string(),
         ));
@@ -239,33 +376,35 @@ pub fn decrypt_session(token: &str, app_key: &[u8]) -> Result<i32, AuthError> {
     let ciphertext = &combined[12..];
 
     let plaintext = cipher
-        .decrypt(&nonce, ciphertext)
+        .decrypt(
+            &nonce,
+            Payload {
+                msg: ciphertext,
+                aad: SESSION_AAD,
+            },
+        )
         .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
     let payload_str = String::from_utf8(plaintext)
         .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
 
-    if let Some((user_id_str, exp_str)) = payload_str.split_once('|') {
-        let exp = exp_str
-            .parse::<u64>()
-            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?
-            .as_secs();
+    let (user_id_str, exp_str) = payload_str.split_once('|').ok_or_else(|| {
+        AuthError::SessionDecryptionError("Invalid versioned session payload".to_string())
+    })?;
+    let exp = exp_str
+        .parse::<u64>()
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))?
+        .as_secs();
 
-        if now > exp {
-            return Err(AuthError::SessionExpired);
-        }
-        user_id_str
-            .parse::<i32>()
-            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
-    } else {
-        // Fallback for legacy tokens
-        payload_str
-            .parse::<i32>()
-            .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
+    if now > exp {
+        return Err(AuthError::SessionExpired);
     }
+    user_id_str
+        .parse::<i32>()
+        .map_err(|e| AuthError::SessionDecryptionError(e.to_string()))
 }
 
 /// Extracts the secure session cookie value from the request's Cookie headers.
@@ -290,10 +429,11 @@ pub fn make_login_cookie(user_id: i32) -> Result<String, AuthError> {
     let app_key = get_app_key()?;
     let encrypted = encrypt_session(user_id, &app_key)?;
     // Set a HttpOnly, Secure (if not local), SameSite=Lax cookie valid for 30 days
-    let env = std::env::var("RULLST_ENV")
-        .unwrap_or_else(|_| std::env::var("APP_ENV").unwrap_or_default());
-    let is_prod = env.eq_ignore_ascii_case("production") || env.eq_ignore_ascii_case("prod");
-    let secure_attr = if is_prod { "; Secure" } else { "" };
+    let secure_attr = if detect_environment()?.requires_secure_defaults() {
+        "; Secure"
+    } else {
+        ""
+    };
     Ok(format!(
         "rullst_session={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000{}",
         encrypted, secure_attr
@@ -309,6 +449,10 @@ pub fn make_logout_cookie() -> String {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    fn test_app_key() -> Vec<u8> {
+        (0u8..32).collect()
+    }
 
     #[test]
     #[cfg_attr(miri, ignore)]
@@ -356,14 +500,17 @@ mod tests {
     #[test]
     fn test_session_encryption_decryption() {
         let user_id = 42;
-        let k = vec![42u8; 32];
+        let k = test_app_key();
         let token = encrypt_session(user_id, &k).expect("Failed to encrypt session");
         let decrypted = decrypt_session(&token, &k).expect("Failed to decrypt session");
         assert_eq!(user_id, decrypted);
 
         // Test short token
         let short_bytes = vec![0u8; 10];
-        let short_token = general_purpose::URL_SAFE_NO_PAD.encode(&short_bytes);
+        let short_token = format!(
+            "{SESSION_TOKEN_PREFIX}{}",
+            general_purpose::URL_SAFE_NO_PAD.encode(&short_bytes)
+        );
         let err = decrypt_session(&short_token, &k).unwrap_err();
         assert_eq!(
             err,
@@ -373,20 +520,26 @@ mod tests {
 
     #[test]
     fn test_session_encryption_error_paths() {
-        let k = vec![42u8; 32];
+        let k = test_app_key();
 
         // Decrypt with invalid base64
         assert!(decrypt_session("invalid-base64-!", &k).is_err());
 
         // Decrypt with valid base64 but too short
-        let short_token = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 10]);
+        let short_token = format!(
+            "{SESSION_TOKEN_PREFIX}{}",
+            general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 10])
+        );
         assert!(decrypt_session(&short_token, &k).is_err());
 
-        // Test exact length 12 boundary (kills < replaced with <=)
-        let exact_12 = general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 12]);
-        let err_12 = decrypt_session(&exact_12, &k).unwrap_err();
+        // A nonce plus the minimum authentication tag reaches the structural boundary.
+        let exact_minimum = format!(
+            "{SESSION_TOKEN_PREFIX}{}",
+            general_purpose::URL_SAFE_NO_PAD.encode(vec![0u8; 28])
+        );
+        let boundary_error = decrypt_session(&exact_minimum, &k).unwrap_err();
         assert_ne!(
-            err_12,
+            boundary_error,
             AuthError::SessionDecryptionError("Invalid token length".to_string())
         );
 
@@ -402,11 +555,22 @@ mod tests {
         let nonce = Nonce::from(nonce_bytes);
         let exp = 1000; // UNIX epoch + 1000s, way in the past
         let payload = format!("{}|{}", 42, exp);
-        let ciphertext = cipher.encrypt(&nonce, payload.as_bytes()).unwrap();
+        let ciphertext = cipher
+            .encrypt(
+                &nonce,
+                Payload {
+                    msg: payload.as_bytes(),
+                    aad: SESSION_AAD,
+                },
+            )
+            .unwrap();
         let mut combined = Vec::new();
         combined.extend_from_slice(&nonce_bytes);
         combined.extend_from_slice(&ciphertext);
-        let expired_token = general_purpose::URL_SAFE_NO_PAD.encode(&combined);
+        let expired_token = format!(
+            "{SESSION_TOKEN_PREFIX}{}",
+            general_purpose::URL_SAFE_NO_PAD.encode(&combined)
+        );
         assert_eq!(
             decrypt_session(&expired_token, &k).unwrap_err(),
             AuthError::SessionExpired
@@ -434,7 +598,7 @@ mod tests {
     #[test]
     fn test_make_login_logout_cookie() {
         unsafe {
-            std::env::set_var("APP_KEY", "test_key_for_cookie_1234567890");
+            std::env::set_var("APP_KEY", "Rullst-test-key-0123456789-ABCDEFGH");
         }
         let login_cookie = make_login_cookie(42).expect("Failed to make login cookie");
         assert!(login_cookie.starts_with("rullst_session="));
@@ -458,7 +622,7 @@ mod tests {
             "$argon2i$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$YhhQvA1/zHGEoWnUBY/J2iY/R/hG93WqG2k73D655b0";
         assert!(needs_rehash(old_hash));
 
-        assert!(!needs_rehash("invalid"));
+        assert!(needs_rehash("invalid"));
     }
 
     #[test]
@@ -511,6 +675,26 @@ mod tests {
 
         let toml_invalid = "app=42";
         assert!(parse_app_key_from_toml(toml_invalid).is_none());
+    }
+
+    #[test]
+    fn weak_application_keys_are_rejected() {
+        assert!(validate_app_key(b"").is_err());
+        assert!(validate_app_key(b"short").is_err());
+        assert!(validate_app_key(&[b'a'; 64]).is_err());
+        assert!(validate_app_key(&test_app_key()).is_ok());
+    }
+
+    #[test]
+    fn unversioned_session_tokens_are_rejected() {
+        let key = test_app_key();
+        let token = encrypt_session(42, &key).unwrap();
+        let unversioned = token.strip_prefix(SESSION_TOKEN_PREFIX).unwrap();
+        assert!(matches!(
+            decrypt_session(unversioned, &key),
+            Err(AuthError::SessionDecryptionError(message))
+                if message == "Unsupported session token version"
+        ));
     }
 }
 

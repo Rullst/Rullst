@@ -27,7 +27,13 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
                 return base_builder;
             }
 
-            let driver = rullst_orm::Orm::driver();
+            let driver = match rullst_orm::Orm::driver() {
+                Ok(driver) => driver,
+                Err(error) => {
+                    base_builder.errors.push(error);
+                    return base_builder;
+                }
+            };
             let cast_type = if driver == "mysql" { "CHAR" } else { "TEXT" };
             let like_query = format!("%{}%", query);
             let cols = vec![#(#cols),*];

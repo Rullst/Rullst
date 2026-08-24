@@ -2,7 +2,9 @@
 
 use libfuzzer_sys::fuzz_target;
 use rullst_mail::Message;
-use rullst_mail::security::{extract_urls, is_dangerous_scheme, is_homograph_domain, scan_content_security};
+use rullst_mail::security::{
+    extract_urls, is_dangerous_scheme, is_homograph_domain, scan_content_security,
+};
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {

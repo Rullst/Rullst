@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::csrf::{extract_token_from_body, generate_csrf_token, is_csrf_exempt_path};
 use super::headers::headers_middleware;
-use super::pii::mask_pii;
+use super::pii::{mask_pii, pii_masking_middleware};
 use super::waf::waf_middleware;
 
 #[test]
@@ -44,6 +44,108 @@ fn test_mask_pii_email() {
 }
 
 #[tokio::test]
+async fn pii_middleware_only_rewrites_safe_buffered_text() {
+    use axum::{
+        body::Body,
+        http::{HeaderValue, Request, Response, StatusCode, header},
+        routing::get,
+    };
+    use tower::ServiceExt;
+
+    async fn text_handler() -> Response<Body> {
+        let mut response = Response::new(Body::from("email=user@example.com"));
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
+        );
+        response
+            .headers_mut()
+            .insert(header::ETAG, HeaderValue::from_static("\"stale\""));
+        response
+    }
+
+    async fn binary_handler() -> Response<Body> {
+        let payload = b"\xffuser@example.com".to_vec();
+        let mut response = Response::new(Body::from(payload));
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/octet-stream"),
+        );
+        response
+    }
+
+    async fn event_stream_handler() -> Response<Body> {
+        let mut response = Response::new(Body::from("data: user@example.com\n\n"));
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/event-stream"),
+        );
+        response
+    }
+
+    async fn oversized_handler() -> Response<Body> {
+        let mut payload = vec![b'a'; 2 * 1024 * 1024 + 1];
+        payload.extend_from_slice(b" user@example.com");
+        let mut response = Response::new(Body::from(payload));
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
+        );
+        response
+    }
+
+    let app = axum::Router::new()
+        .route("/text", get(text_handler))
+        .route("/binary", get(binary_handler))
+        .route("/events", get(event_stream_handler))
+        .route("/oversized", get(oversized_handler))
+        .layer(axum::middleware::from_fn(pii_masking_middleware));
+
+    let response = app
+        .clone()
+        .oneshot(Request::builder().uri("/text").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(response.headers().get(header::ETAG).is_none());
+    let declared_length = response
+        .headers()
+        .get(header::CONTENT_LENGTH)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 1_024)
+        .await
+        .unwrap();
+    assert_eq!(declared_length, body.len());
+    assert_eq!(body.as_ref(), b"email=u***@example.com");
+
+    for (path, limit) in [
+        ("/binary", 1_024usize),
+        ("/events", 1_024usize),
+        ("/oversized", 2 * 1024 * 1024 + 10_000),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), limit)
+            .await
+            .unwrap();
+        assert!(
+            bytes
+                .windows(b"user@example.com".len())
+                .any(|window| window == b"user@example.com"),
+            "{path} must bypass PII masking without truncation"
+        );
+    }
+}
+
+#[tokio::test]
 async fn test_waf_middleware_blocks_malicious_query() {
     use axum::http::{Request, StatusCode};
 
@@ -70,11 +172,83 @@ async fn test_waf_middleware_blocks_malicious_query() {
 }
 
 #[tokio::test]
-async fn test_headers_middleware_injects_security_headers() {
-    use axum::http::{Request, StatusCode};
+async fn waf_inspects_and_preserves_bounded_request_bodies() {
+    use axum::{
+        body::{Body, Bytes},
+        http::{Request, StatusCode, header},
+        routing::post,
+    };
+    use tower::ServiceExt;
+
+    async fn echo(body: Bytes) -> Bytes {
+        body
+    }
 
     let app = axum::Router::new()
-        .route("/", axum::routing::get(|| async { "OK" }))
+        .route("/echo", post(echo))
+        .route_layer(axum::middleware::from_fn(waf_middleware));
+
+    let attack = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            r#"{"query":"UNION SELECT password FROM users"}"#,
+        ))
+        .unwrap();
+    let response = app.clone().oneshot(attack).await.unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    let clean_payload = br#"{"message":"hello","count":2}"#.to_vec();
+    let clean = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(clean_payload.clone()))
+        .unwrap();
+    let response = app.clone().oneshot(clean).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let echoed = axum::body::to_bytes(response.into_body(), 1_024)
+        .await
+        .unwrap();
+    assert_eq!(echoed.as_ref(), clean_payload);
+
+    let oversized = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "text/plain")
+        .header(header::CONTENT_LENGTH, (1024 * 1024 + 1).to_string())
+        .body(Body::from(vec![b'a'; 1024 * 1024 + 1]))
+        .unwrap();
+    let response = app.clone().oneshot(oversized).await.unwrap();
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+    let encoded = Request::builder()
+        .method("POST")
+        .uri("/echo")
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CONTENT_ENCODING, "gzip")
+        .body(Body::from("compressed"))
+        .unwrap();
+    let response = app.oneshot(encoded).await.unwrap();
+    assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+}
+
+#[tokio::test]
+async fn test_headers_middleware_injects_security_headers() {
+    use super::CspNonce;
+    use axum::{
+        Extension,
+        http::{Request, StatusCode},
+    };
+
+    let app = axum::Router::new()
+        .route(
+            "/",
+            axum::routing::get(
+                |Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() },
+            ),
+        )
         .route_layer(axum::middleware::from_fn(headers_middleware));
 
     let req = Request::builder()
@@ -87,15 +261,31 @@ async fn test_headers_middleware_injects_security_headers() {
     let headers = res.headers();
     assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
     assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
-    assert_eq!(headers.get("X-XSS-Protection").unwrap(), "1; mode=block");
+    assert_eq!(headers.get("X-XSS-Protection").unwrap(), "0");
     assert_eq!(
         headers.get("Strict-Transport-Security").unwrap(),
-        "max-age=31536000; includeSubDomains; preload"
+        "max-age=63072000; includeSubDomains; preload"
     );
     assert_eq!(
         headers.get("Permissions-Policy").unwrap(),
-        "geolocation=(), camera=(), microphone=()"
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
     );
+    assert_eq!(
+        headers.get("Cross-Origin-Embedder-Policy").unwrap(),
+        "require-corp"
+    );
+    let csp = headers
+        .get("Content-Security-Policy")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    assert!(!csp.contains("unsafe-inline"));
+    assert!(!csp.contains("unsafe-eval"));
+    assert!(!csp.contains("{NONCE}"));
+    let body = axum::body::to_bytes(res.into_body(), 1_024).await.unwrap();
+    let nonce = std::str::from_utf8(&body).unwrap();
+    assert!(csp.contains(&format!("'nonce-{nonce}'")));
 }
 
 #[test]
@@ -191,7 +381,7 @@ async fn test_tenant_guard_middleware() {
 
     let mut service = app;
 
-    // 1. With X-Tenant-ID
+    // Client-controlled tenant headers never establish authorization context.
     let req = axum::http::Request::builder()
         .uri("/tenant-data")
         .header("X-Tenant-ID", "org_12345")
@@ -200,12 +390,32 @@ async fn test_tenant_guard_middleware() {
     let res = service.call(req).await.unwrap();
     assert_eq!(res.status(), axum::http::StatusCode::OK);
     let bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
+    assert_eq!(String::from_utf8(bytes.to_vec()).unwrap(), "no tenant");
+
+    // Trusted authentication middleware inserts a validated extension.
+    let authenticated_app = axum::Router::new()
+        .route(
+            "/tenant-data",
+            axum::routing::get(|Extension(ctx): Extension<TenantContext>| async move {
+                format!("tenant: {}", ctx.tenant_id)
+            }),
+        )
+        .layer(axum::middleware::from_fn(tenant_guard_middleware))
+        .layer(Extension(TenantContext::try_new("org_12345").unwrap()));
+    let mut authenticated_service = authenticated_app;
+    let req = axum::http::Request::builder()
+        .uri("/tenant-data")
+        .header("X-Tenant-ID", "attacker-selected")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = authenticated_service.call(req).await.unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
         "tenant: org_12345"
     );
 
-    // 2. Strict Guard: Missing tenant header
+    // Strict guard requires authenticated context, not a header.
     let strict_app = axum::Router::new()
         .route("/strict-data", axum::routing::get(|| async { "OK" }))
         .layer(axum::middleware::from_fn(strict_tenant_guard_middleware));
@@ -216,5 +426,5 @@ async fn test_tenant_guard_middleware() {
         .body(axum::body::Body::empty())
         .unwrap();
     let res = strict_service.call(req).await.unwrap();
-    assert_eq!(res.status(), axum::http::StatusCode::BAD_REQUEST);
+    assert_eq!(res.status(), axum::http::StatusCode::UNAUTHORIZED);
 }

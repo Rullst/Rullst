@@ -4,7 +4,138 @@
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
+use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
+
+const CORS_MIDDLEWARE_TEMPLATE: &str = include_str!("cors_middleware.rs.template");
+const TOWER_HTTP_CORS_DEPENDENCY: &str = r#"tower-http = { version = "0.7", features = ["cors"] }"#;
+
+fn ensure_tower_http_cors_dependency(
+    cargo_toml: &str,
+) -> Result<(String, bool), Box<dyn std::error::Error>> {
+    let Some(dependencies_start) = cargo_toml.find("[dependencies]") else {
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            "Cargo.toml does not contain a [dependencies] table",
+        )
+        .into());
+    };
+
+    let table_content_start = dependencies_start + "[dependencies]".len();
+    let dependencies_end = cargo_toml[table_content_start..]
+        .find("\n[")
+        .map_or(cargo_toml.len(), |offset| table_content_start + offset + 1);
+    let dependencies = &cargo_toml[table_content_start..dependencies_end];
+
+    let mut relative_line_start = 0usize;
+    for line in dependencies.split_inclusive('\n') {
+        let line_without_newline = line.strip_suffix('\n').unwrap_or(line);
+        let declaration = line_without_newline
+            .split_once('#')
+            .map_or(line_without_newline, |(value, _)| value)
+            .trim();
+        let Some((key, value)) = declaration.split_once('=') else {
+            relative_line_start += line.len();
+            continue;
+        };
+        if key.trim().trim_matches(['\'', '"']) != "tower-http" {
+            relative_line_start += line.len();
+            continue;
+        }
+
+        if value.contains("\"cors\"") || value.contains("'cors'") {
+            return Ok((cargo_toml.to_string(), false));
+        }
+
+        let line_start = table_content_start + relative_line_start;
+        let line_end = line_start + line.len();
+        let updated_line = add_cors_feature_to_dependency(line_without_newline)?;
+        let mut updated = cargo_toml.to_string();
+        updated.replace_range(
+            line_start..line_end,
+            &format!(
+                "{}{}",
+                updated_line,
+                if line.ends_with('\n') { "\n" } else { "" }
+            ),
+        );
+        return Ok((updated, true));
+    }
+
+    let mut updated = cargo_toml.to_string();
+    updated.insert_str(
+        table_content_start,
+        &format!("\n{}", TOWER_HTTP_CORS_DEPENDENCY),
+    );
+    Ok((updated, true))
+}
+
+fn add_cors_feature_to_dependency(line: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let (declaration, comment) = line
+        .split_once('#')
+        .map_or((line, None), |(value, comment)| (value, Some(comment)));
+    let Some((key, value)) = declaration.split_once('=') else {
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            "invalid tower-http dependency declaration",
+        )
+        .into());
+    };
+    let indentation = &line[..line.len() - line.trim_start().len()];
+    let value = value.trim();
+    let updated_value = if (value.starts_with('"') && value.ends_with('"'))
+        || (value.starts_with('\'') && value.ends_with('\''))
+    {
+        format!("{{ version = {value}, features = [\"cors\"] }}")
+    } else if value.starts_with('{') && value.ends_with('}') {
+        if let Some(features_start) = value.find("features") {
+            let Some(relative_end) = value[features_start..].find(']') else {
+                return Err(IoError::new(
+                    ErrorKind::InvalidData,
+                    "tower-http features must use an inline array",
+                )
+                .into());
+            };
+            let features_end = features_start + relative_end;
+            let features = &value[features_start..features_end];
+            let features_are_empty = features
+                .split_once('[')
+                .is_some_and(|(_, items)| items.trim().is_empty());
+            let separator = if features_are_empty { "" } else { ", " };
+            format!(
+                "{}{}\"cors\"{}",
+                &value[..features_end],
+                separator,
+                &value[features_end..]
+            )
+        } else {
+            let closing_brace = value.len() - 1;
+            let separator = if value[..closing_brace].trim_end().ends_with('{') {
+                ""
+            } else {
+                ", "
+            };
+            format!(
+                "{}{}features = [\"cors\"]{}",
+                &value[..closing_brace],
+                separator,
+                &value[closing_brace..]
+            )
+        }
+    } else {
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            "tower-http must use a version string or single-line inline table",
+        )
+        .into());
+    };
+
+    let comment = comment.map_or(String::new(), |comment| format!(" #{comment}"));
+    Ok(format!(
+        "{indentation}{} = {updated_value}{comment}",
+        key.trim()
+    ))
+}
 
 pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
@@ -18,6 +149,17 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("{}", "🛠️ Generating CORS middleware...".cyan().bold());
+
+    let cargo_toml_path = Path::new("Cargo.toml");
+    let cargo_toml = fs::read_to_string(cargo_toml_path)?;
+    let (cargo_toml, dependency_added) = ensure_tower_http_cors_dependency(&cargo_toml)?;
+    if dependency_added {
+        fs::write(cargo_toml_path, cargo_toml)?;
+        println!(
+            "{}",
+            "  ✨ Enabled tower-http's tested CORS implementation in Cargo.toml.".green()
+        );
+    }
 
     let middlewares_dir = Path::new("src/middlewares");
     if !middlewares_dir.exists() {
@@ -46,65 +188,7 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        let template = r#"use rullst::server::{
-    Request,
-    Next,
-    Response,
-    header, Method, StatusCode,
-    Body,
-};
-
-/// Middleware CORS robusto e de alta performance.
-/// Gerencia cabeçalhos de compartilhamento de recursos de origem cruzada e requisições preflight (OPTIONS).
-pub async fn cors_middleware(req: Request, next: Next) -> Response {
-    let origin = req.headers()
-        .get(header::ORIGIN)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("*")
-        .to_string();
-
-    // Lida com requisições preflight OPTIONS
-    if req.method() == Method::OPTIONS {
-        // ATENÇÃO: Nunca permita credenciais se a origem for '*'
-        let allow_credentials = if origin == "*" { "false" } else { "true" };
-        
-        return Response::builder()
-            .status(StatusCode::NO_CONTENT)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &origin)
-            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-            .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
-            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, allow_credentials)
-            .header(header::ACCESS_CONTROL_MAX_AGE, "86400")
-            .body(Body::empty())
-            .unwrap();
-    }
-
-    let mut response = next.run(req).await;
-    let headers = response.headers_mut();
-
-    let allow_credentials = if origin == "*" { "false" } else { "true" };
-
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_ORIGIN,
-        header::HeaderValue::from_str(&origin).unwrap_or_else(|_| header::HeaderValue::from_static("*")),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_METHODS,
-        header::HeaderValue::from_static("GET, POST, PUT, DELETE, PATCH, OPTIONS"),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_HEADERS,
-        header::HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, X-CSRF-Token"),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
-        header::HeaderValue::from_str(allow_credentials).unwrap(),
-    );
-
-    response
-}
-"#;
-        fs::write(&middleware_path, template)?;
+        fs::write(&middleware_path, CORS_MIDDLEWARE_TEMPLATE)?;
     }
 
     // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
@@ -141,7 +225,16 @@ pub async fn cors_middleware(req: Request, next: Next) -> Response {
         "{}",
         "How to register in your main router (src/main.rs):".cyan()
     );
-    println!("{}", "  1. Add: '.layer(rullst::server::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
+    println!(
+        "{}",
+        "  1. Set CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com".cyan()
+    );
+    println!(
+        "{}",
+        "  2. Build the layer: 'let cors = middlewares::cors_middleware::cors_layer_from_env()?;'"
+            .cyan()
+    );
+    println!("{}", "  3. Register it: '.layer(cors)'".cyan());
 
     Ok(())
 }
@@ -331,4 +424,61 @@ pub fn generate_token(user_id: &str) -> Result<String, String> {
     println!("{}", "     pub async fn meu_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());
 
     Ok(())
+}
+
+#[cfg(test)]
+mod cors_tests {
+    use super::*;
+
+    #[test]
+    fn injects_cors_dependency_idempotently() {
+        let original = r#"[package]
+name = "demo"
+
+[dependencies]
+rullst = "12.0.0"
+
+[workspace]
+"#;
+
+        let (updated, changed) = ensure_tower_http_cors_dependency(original).unwrap();
+        assert!(changed);
+        assert!(updated.contains(TOWER_HTTP_CORS_DEPENDENCY));
+
+        let (unchanged, changed_again) = ensure_tower_http_cors_dependency(&updated).unwrap();
+        assert!(!changed_again);
+        assert_eq!(unchanged, updated);
+        assert_eq!(unchanged.matches("tower-http").count(), 1);
+    }
+
+    #[test]
+    fn enables_cors_on_an_existing_tower_http_dependency() {
+        let version_only = "[dependencies]\ntower-http = \"0.7\"\n";
+        let (updated, changed) = ensure_tower_http_cors_dependency(version_only).unwrap();
+        assert!(changed);
+        assert!(updated.contains("tower-http = { version = \"0.7\", features = [\"cors\"] }"));
+
+        let inline_table =
+            "[dependencies]\ntower-http = { version = \"0.7\", features = [\"trace\"] }\n";
+        let (updated, changed) = ensure_tower_http_cors_dependency(inline_table).unwrap();
+        assert!(changed);
+        assert!(updated.contains("features = [\"trace\", \"cors\"]"));
+
+        let empty_features = "[dependencies]\ntower-http = { version = \"0.7\", features = [ ] }\n";
+        let (updated, changed) = ensure_tower_http_cors_dependency(empty_features).unwrap();
+        assert!(changed);
+        assert!(updated.contains("features = [ \"cors\"]"));
+    }
+
+    #[test]
+    fn generated_cors_template_is_valid_rust_without_panic_paths() {
+        syn::parse_file(CORS_MIDDLEWARE_TEMPLATE).unwrap();
+        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
+        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains(".expect("));
+        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains("panic!("));
+        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains("mirror_request"));
+        assert!(CORS_MIDDLEWARE_TEMPLATE.contains("CORS_ALLOWED_ORIGINS"));
+        assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".allow_credentials(self.allow_credentials)"));
+        assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".vary([header::ORIGIN])"));
+    }
 }

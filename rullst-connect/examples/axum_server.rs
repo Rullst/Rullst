@@ -1,6 +1,7 @@
 use axum::{
     Router,
     extract::Query,
+    http::StatusCode,
     response::{Html, IntoResponse, Redirect},
     routing::get,
 };
@@ -16,16 +17,18 @@ struct AuthRequest {
 
 // Em um projeto real, isso viria de variáveis de ambiente (.env)
 fn google_client_id() -> String {
-    std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "SEU_GOOGLE_CLIENT_ID".to_string())
+    std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "mock_google_client_id".to_string())
 }
 fn google_client_secret() -> String {
-    std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_else(|_| "SEU_GOOGLE_CLIENT_SECRET".to_string())
+    std::env::var("GOOGLE_CLIENT_SECRET")
+        .unwrap_or_else(|_| "mock_google_client_secret".to_string())
 }
 fn github_client_id() -> String {
-    std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "SEU_GITHUB_CLIENT_ID".to_string())
+    std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "mock_github_client_id".to_string())
 }
 fn github_client_secret() -> String {
-    std::env::var("GITHUB_CLIENT_SECRET").unwrap_or_else(|_| "SEU_GITHUB_CLIENT_SECRET".to_string())
+    std::env::var("GITHUB_CLIENT_SECRET")
+        .unwrap_or_else(|_| "mock_github_client_secret".to_string())
 }
 
 #[tokio::main]
@@ -57,21 +60,25 @@ async fn index() -> Html<&'static str> {
 // ==========================================
 // GOOGLE
 // ==========================================
-async fn login_google() -> Redirect {
-    let provider = GoogleProvider::new(
+async fn login_google() -> Result<Redirect, (StatusCode, String)> {
+    let provider = GoogleProvider::try_new(
         google_client_id(),
         google_client_secret().into(),
         "http://localhost:3000/auth/google/callback".to_string(),
-    );
-    Redirect::to(&provider.redirect_url())
+    )
+    .map_err(internal_error)?;
+    Ok(Redirect::to(&provider.redirect_url()))
 }
 
 async fn callback_google(Query(query): Query<AuthRequest>) -> impl IntoResponse {
-    let provider = GoogleProvider::new(
+    let provider = match GoogleProvider::try_new(
         google_client_id(),
         google_client_secret().into(),
         "http://localhost:3000/auth/google/callback".to_string(),
-    );
+    ) {
+        Ok(provider) => provider,
+        Err(error) => return Html(format!("Invalid Google configuration: {error}")),
+    };
 
     let params = rullst_connect::provider::ExchangeParams {
         auth_code: &query.code,
@@ -89,21 +96,25 @@ async fn callback_google(Query(query): Query<AuthRequest>) -> impl IntoResponse 
 // ==========================================
 // GITHUB
 // ==========================================
-async fn login_github() -> Redirect {
-    let provider = GithubProvider::new(
+async fn login_github() -> Result<Redirect, (StatusCode, String)> {
+    let provider = GithubProvider::try_new(
         github_client_id(),
         github_client_secret().into(),
         "http://localhost:3000/auth/github/callback".to_string(),
-    );
-    Redirect::to(&provider.redirect_url())
+    )
+    .map_err(internal_error)?;
+    Ok(Redirect::to(&provider.redirect_url()))
 }
 
 async fn callback_github(Query(query): Query<AuthRequest>) -> impl IntoResponse {
-    let provider = GithubProvider::new(
+    let provider = match GithubProvider::try_new(
         github_client_id(),
         github_client_secret().into(),
         "http://localhost:3000/auth/github/callback".to_string(),
-    );
+    ) {
+        Ok(provider) => provider,
+        Err(error) => return Html(format!("Invalid GitHub configuration: {error}")),
+    };
 
     let params = rullst_connect::provider::ExchangeParams {
         auth_code: &query.code,
@@ -116,4 +127,8 @@ async fn callback_github(Query(query): Query<AuthRequest>) -> impl IntoResponse 
         )),
         Err(e) => Html(format!("Login error: {:?}", e)),
     }
+}
+
+fn internal_error(error: rullst_connect::ConnectError) -> (StatusCode, String) {
+    (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
 }

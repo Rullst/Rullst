@@ -57,6 +57,10 @@ fn test_sri_hash_and_tag_generation() {
 
 #[test]
 fn test_vault_secret_zeroization_and_field_encryptor() {
+    const KEY: &[u8; 32] = b"0123456789abcdef0123456789abcdef";
+    const OTHER_KEY: &[u8; 32] = b"abcdef0123456789abcdef0123456789";
+    const AAD: &[u8] = b"tenant-1:users:ssn:9";
+
     let secret_data = vec![1u8, 2, 3, 4, 5];
     let vault = VaultSecret::new(secret_data);
     assert_eq!(vault.expose_secret(), &[1u8, 2, 3, 4, 5]);
@@ -69,12 +73,16 @@ fn test_vault_secret_zeroization_and_field_encryptor() {
     assert_eq!(display_str, "***REDACTED***");
 
     // FieldEncryptor encrypt and decrypt
-    let encrypted = FieldEncryptor::encrypt("user_ssn_secret", "master_key_123");
-    assert!(encrypted.starts_with("ENC:v1:"));
+    let encrypted =
+        FieldEncryptor::encrypt_with_key_id("user_ssn_secret", KEY, "primary-2026", AAD)
+            .expect("valid field encryption should succeed");
+    assert!(encrypted.starts_with("ENC:v2:primary-2026:"));
 
-    let decrypted = FieldEncryptor::decrypt(&encrypted, "master_key_123");
-    assert!(decrypted.is_ok());
+    let decrypted = FieldEncryptor::decrypt_with_aad(&encrypted, KEY, AAD)
+        .expect("valid field decryption should succeed");
+    assert_eq!(decrypted, "user_ssn_secret");
 
-    let bad_decrypt = FieldEncryptor::decrypt("INVALID_PREFIX_DATA", "key");
-    assert!(bad_decrypt.is_err());
+    assert!(FieldEncryptor::decrypt_with_aad(&encrypted, OTHER_KEY, AAD).is_err());
+    assert!(FieldEncryptor::decrypt_with_aad(&encrypted, KEY, b"wrong-record").is_err());
+    assert!(FieldEncryptor::decrypt("INVALID_PREFIX_DATA", KEY).is_err());
 }

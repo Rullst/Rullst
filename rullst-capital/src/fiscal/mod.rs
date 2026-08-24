@@ -6,15 +6,17 @@ pub mod signer;
 pub use client::{NfseEnvironment, NfseNationalClient};
 pub use dps::build_dps_xml;
 pub use models::{
-    FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse, NfseDps,
-    TaxRegime,
+    FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse,
+    FiscalResponseKind, NfseDps, TaxRegime,
 };
 pub use signer::{compute_sha256_digest, sign_dps_xml};
 
 /// High-level trait for issuing digital invoices.
 #[async_trait::async_trait]
 pub trait FiscalEngine: Send + Sync {
-    /// Issues an authorized digital invoice for a completed payment.
+    /// Processes a fiscal document and returns its explicit authorization provenance.
+    ///
+    /// Implementations must never label offline or unverified output as an official authorization.
     async fn issue_nfse(
         &self,
         emitter: &FiscalEmitter,
@@ -24,7 +26,10 @@ pub trait FiscalEngine: Send + Sync {
     ) -> Result<FiscalResponse, FiscalError>;
 }
 
-/// Issues a digital invoice (NFS-e Nacional) using the direct zero-cost Receita Federal engine.
+/// Processes a digital invoice through an explicitly selected fiscal environment.
+///
+/// `Mock` produces a clearly marked offline fixture. Homologation and production fail closed until
+/// the full official NFS-e integration is independently validated.
 pub async fn issue_nfse_direct(
     emitter: &FiscalEmitter,
     customer: &FiscalCustomer,
@@ -33,10 +38,8 @@ pub async fn issue_nfse_direct(
     environment: NfseEnvironment,
 ) -> Result<FiscalResponse, FiscalError> {
     let unsigned_xml = build_dps_xml(emitter, customer, dps);
-    let signed_xml = sign_dps_xml(&unsigned_xml, cert)?;
-
     let client = NfseNationalClient::new(emitter.clone(), cert.clone(), environment);
-    client.transmit_dps(&signed_xml).await
+    client.transmit_dps(&unsigned_xml).await
 }
 
 #[cfg(test)]
@@ -88,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn test_xml_digital_signature_structure() {
+    fn xml_digital_signature_fails_closed() {
         let cert = FiscalCertificate::from_base64("MIIKggIBAzCCCl8GCSqGSIb3DQEHA", "mock_pass");
 
         let emitter = FiscalEmitter {
@@ -123,14 +126,10 @@ mod tests {
         };
 
         let unsigned_xml = build_dps_xml(&emitter, &customer, &dps);
-        let signed_xml = sign_dps_xml(&unsigned_xml, &cert).unwrap();
+        let result = sign_dps_xml(&unsigned_xml, &cert);
 
-        assert!(signed_xml.contains("<Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\">"));
-        assert!(signed_xml.contains("<SignedInfo"));
-        assert!(signed_xml.contains("<SignatureValue>"));
-        assert!(
-            signed_xml.contains("<X509Certificate>MIIKggIBAzCCCl8GCSqGSIb3DQEHA</X509Certificate>")
-        );
+        assert!(matches!(result, Err(FiscalError::Unsupported(_))));
+        assert!(!unsigned_xml.contains("<Signature"));
     }
 
     #[tokio::test]
@@ -169,18 +168,14 @@ mod tests {
 
         let cert = FiscalCertificate::from_base64("MIIKggIBAzCCCl8GCSqGSIb3DQEHA", "mock");
 
-        let response = issue_nfse_direct(
-            &emitter,
-            &customer,
-            &dps,
-            &cert,
-            NfseEnvironment::Homologation,
-        )
-        .await
-        .unwrap();
+        let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Mock)
+            .await
+            .unwrap();
 
-        assert_eq!(response.status, "Autorizada");
-        assert_eq!(response.protocol, "PROT-MOCK-999888777");
-        assert_eq!(response.nfse_number, 1);
+        assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
+        assert_eq!(response.status, "MOCK_NOT_AUTHORIZED");
+        assert!(response.protocol.starts_with("MOCK-ONLY-"));
+        assert_eq!(response.nfse_number, 0);
+        assert!(!response.is_officially_authorized());
     }
 }

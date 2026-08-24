@@ -166,7 +166,7 @@ async fn test_database_feature_driver() {
     Orm::init_with_options("sqlite::memory:", 1, 10)
         .await
         .expect("Failed to init ORM in test");
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
 
     let _ = sqlx::query("DROP TABLE IF EXISTS rullst_feature_flags")
         .execute(pool)

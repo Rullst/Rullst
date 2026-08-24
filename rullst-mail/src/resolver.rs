@@ -2,6 +2,7 @@
 
 use crate::drivers::{MailDriver, MailError};
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -102,6 +103,8 @@ impl TenantMailResolver {
         tenant_id: &str,
         message: &Message,
     ) -> Result<(), MailError> {
+        let prepared = DeliveryPipeline::prepare_for_tenant(tenant_id, message)?;
+        let message = prepared.message();
         if let Some(driver) = self.get_driver(tenant_id) {
             driver.send(message).await
         } else if let Some(ref default) = self.default_driver {
@@ -118,6 +121,8 @@ impl TenantMailResolver {
 #[async_trait]
 impl MailDriver for TenantMailResolver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        let prepared = DeliveryPipeline::prepare(message)?;
+        let message = prepared.message();
         if let Some(ref default) = self.default_driver {
             default.send(message).await
         } else {
@@ -126,5 +131,9 @@ impl MailDriver for TenantMailResolver {
                     .to_string(),
             ))
         }
+    }
+
+    async fn send_for_tenant(&self, tenant_id: &str, message: &Message) -> Result<(), MailError> {
+        TenantMailResolver::send_for_tenant(self, tenant_id, message).await
     }
 }

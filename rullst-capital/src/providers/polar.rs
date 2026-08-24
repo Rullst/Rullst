@@ -1,4 +1,7 @@
-use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use super::{
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    verify_explicit_mock_signature, webhook_mode_from_secret,
+};
 use crate::error::CapitalError;
 use async_trait::async_trait;
 use ring::hmac;
@@ -27,8 +30,12 @@ impl PolarProvider {
         payload: &[u8],
         signature_hex: &str,
     ) -> Result<(), CapitalError> {
-        if self.webhook_secret.is_empty() {
-            return Ok(());
+        if self.webhook_verification_mode()? == WebhookVerificationMode::Mock {
+            return verify_explicit_mock_signature(
+                self.name(),
+                &self.webhook_secret,
+                signature_hex,
+            );
         }
 
         let sig_bytes = hex::decode(signature_hex)
@@ -51,6 +58,10 @@ impl PolarProvider {
 impl BillingProvider for PolarProvider {
     fn name(&self) -> &'static str {
         "polar"
+    }
+
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        webhook_mode_from_secret(self.name(), &self.webhook_secret)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -117,17 +128,14 @@ impl BillingProvider for PolarProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
+        let _ = self.webhook_verification_mode()?;
         let sig_header = headers
             .get("polar-signature")
-            .or_else(|| headers.get("webhook-signature"));
-
-        if let Some(sig) = sig_header {
-            self.verify_signature(payload, sig)?;
-        } else if !self.webhook_secret.is_empty() {
-            return Err(CapitalError::InvalidSignature(
-                "Missing Polar-Signature header".to_string(),
-            ));
-        }
+            .or_else(|| headers.get("webhook-signature"))
+            .ok_or_else(|| {
+                CapitalError::InvalidSignature("Missing Polar-Signature header".to_string())
+            })?;
+        self.verify_signature(payload, sig_header)?;
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -342,7 +350,10 @@ mod tests {
 
         // Signature error paths
         let no_sec = PolarProvider::new("t", "");
-        assert!(no_sec.verify_signature(payload, "").is_ok());
+        assert!(matches!(
+            no_sec.verify_signature(payload, ""),
+            Err(CapitalError::ConfigurationError(_))
+        ));
         assert!(provider.verify_signature(payload, "invalid_hex!").is_err());
         assert!(
             provider

@@ -1,5 +1,7 @@
 use crate::error::AuthError;
 
+const MAX_CBOR_DEPTH: usize = 64;
+
 // Custom lightweight CBOR parser for WebAuthn payload decoding
 #[derive(Debug, Clone)]
 #[allow(dead_code)] // Array variant retained for spec completeness; may be used by future attestation formats
@@ -19,6 +21,15 @@ pub enum CborKey {
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
+    parse_cbor_at_depth(bytes, 0)
+}
+
+fn parse_cbor_at_depth(bytes: &[u8], depth: usize) -> Result<(CborValue, &[u8]), AuthError> {
+    if depth > MAX_CBOR_DEPTH {
+        return Err(AuthError::CborParseError(
+            "CBOR nesting limit exceeded".to_string(),
+        ));
+    }
     if bytes.is_empty() {
         return Err(AuthError::CborParseError("Unexpected EOF".to_string()));
     }
@@ -70,34 +81,50 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
     };
 
     match major {
-        0 => Ok((CborValue::Integer(val as i64), rest)),
-        1 => Ok((CborValue::Integer(-(val as i64) - 1), rest)),
+        0 => {
+            let value = i64::try_from(val).map_err(|_| {
+                AuthError::CborParseError("CBOR integer exceeds i64 range".to_string())
+            })?;
+            Ok((CborValue::Integer(value), rest))
+        }
+        1 => {
+            let value = i64::try_from(val).map_err(|_| {
+                AuthError::CborParseError("CBOR integer exceeds i64 range".to_string())
+            })?;
+            Ok((CborValue::Integer(-1 - value), rest))
+        }
         2 => {
-            if rest.len() < val as usize {
+            let length = usize::try_from(val).map_err(|_| {
+                AuthError::CborParseError("CBOR byte string is too large".to_string())
+            })?;
+            if rest.len() < length {
                 return Err(AuthError::CborParseError(
                     "Unexpected EOF in byte string".to_string(),
                 ));
             }
             Ok((
-                CborValue::ByteString(rest[..val as usize].to_vec()),
-                &rest[val as usize..],
+                CborValue::ByteString(rest[..length].to_vec()),
+                &rest[length..],
             ))
         }
         3 => {
-            if rest.len() < val as usize {
+            let length = usize::try_from(val).map_err(|_| {
+                AuthError::CborParseError("CBOR text string is too large".to_string())
+            })?;
+            if rest.len() < length {
                 return Err(AuthError::CborParseError(
                     "Unexpected EOF in text string".to_string(),
                 ));
             }
-            let s = String::from_utf8(rest[..val as usize].to_vec())
+            let s = String::from_utf8(rest[..length].to_vec())
                 .map_err(|e| AuthError::CborParseError(format!("Invalid UTF-8: {}", e)))?;
-            Ok((CborValue::TextString(s), &rest[val as usize..]))
+            Ok((CborValue::TextString(s), &rest[length..]))
         }
         4 => {
             let mut items = Vec::new();
             let mut current = rest;
             for _ in 0..val {
-                let (item, next) = parse_cbor(current)?;
+                let (item, next) = parse_cbor_at_depth(current, depth + 1)?;
                 items.push(item);
                 current = next;
             }
@@ -107,8 +134,8 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
             let mut map = std::collections::HashMap::new();
             let mut current = rest;
             for _ in 0..val {
-                let (key_val, next) = parse_cbor(current)?;
-                let (val_val, next2) = parse_cbor(next)?;
+                let (key_val, next) = parse_cbor_at_depth(current, depth + 1)?;
+                let (val_val, next2) = parse_cbor_at_depth(next, depth + 1)?;
                 let key = match key_val {
                     CborValue::Integer(i) => CborKey::Integer(i),
                     CborValue::TextString(s) => CborKey::TextString(s),
@@ -118,7 +145,11 @@ pub fn parse_cbor(bytes: &[u8]) -> Result<(CborValue, &[u8]), AuthError> {
                         ));
                     }
                 };
-                map.insert(key, val_val);
+                if map.insert(key, val_val).is_some() {
+                    return Err(AuthError::CborParseError(
+                        "duplicate CBOR map key".to_string(),
+                    ));
+                }
                 current = next2;
             }
             Ok((CborValue::Map(map), current))

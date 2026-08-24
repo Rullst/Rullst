@@ -9,10 +9,13 @@ use crate::user::ConnectUser;
 use super::discovery::OidcProvider;
 
 impl OidcProvider {
-    pub(crate) async fn get_jwks(
+    pub(crate) async fn get_jwks_for_kid(
         &self,
+        kid: &str,
     ) -> Result<std::sync::Arc<jsonwebtoken::jwk::JwkSet>, ConnectError> {
-        crate::provider::fetch_and_cache_jwks(&self.jwks_uri, self.http_client.as_ref()).await
+        self.jwks_cache
+            .get_for_kid(&self.jwks_uri, kid, self.http_client.as_ref())
+            .await
     }
 
     #[tracing::instrument(skip(self, form_data))]
@@ -45,7 +48,7 @@ impl OidcProvider {
             })?;
 
             if let Some(kid) = header.kid.as_ref() {
-                let jwks = self.get_jwks().await?;
+                let jwks = self.get_jwks_for_kid(kid).await?;
                 let jwk = jwks.find(kid).ok_or_else(|| {
                     crate::error::ConnectError::Provider(format!(
                         "OIDC JWK with key ID '{}' not found",
@@ -138,7 +141,25 @@ impl OidcProvider {
 
 #[async_trait]
 impl Provider for OidcProvider {
-    crate::impl_standard_redirect_url!("{}");
+    fn redirect_url(&self) -> String {
+        if self.credential_mode.is_mock() {
+            return crate::configuration::mock_redirect_url(
+                "oidc",
+                self.state.as_deref(),
+                self.pkce_challenge.as_deref(),
+            );
+        }
+        let mut params = crate::provider::build_oauth_params(
+            &self.authorization_endpoint,
+            &self.client_id,
+            &self.redirect_url,
+            &self.scopes,
+            self.state.as_deref(),
+            self.pkce_challenge.as_deref(),
+        );
+        params.append_pair("response_type", "code");
+        params.finish()
+    }
 
     #[tracing::instrument(skip(self, params))]
     async fn get_user(

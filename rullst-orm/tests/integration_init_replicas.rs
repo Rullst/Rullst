@@ -21,11 +21,11 @@ async fn test_init_with_replicas() {
         .expect("Orm::init_with_replicas should succeed");
 
     // The primary pool should be accessible
-    let _pool = Orm::pool();
+    let _pool = Orm::pool().expect("primary pool should be initialized");
 
     // The read_pool should alternate between the replicas
-    let read_pool1 = Orm::read_pool();
-    let read_pool2 = Orm::read_pool();
+    let read_pool1 = Orm::read_pool().expect("first replica should be available");
+    let read_pool2 = Orm::read_pool().expect("second replica should be available");
 
     // We can execute queries on them
     sqlx::query("SELECT 1")

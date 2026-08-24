@@ -3,6 +3,7 @@ use crate::server::server_middleware::{inject_hmr_script, zstd_static_middleware
 
 /// Dynamically loads an application router from a compiled dynamic library (`cdylib`).
 #[cfg_attr(mutants, mutants::skip)]
+#[allow(unsafe_code)]
 pub fn load_dylib_router(
     lib_path: &str,
     is_dev: bool,
@@ -81,6 +82,9 @@ pub fn load_dylib_router(
     // future changes to router ABI or plugin implementations must be reflected
     // here and documented. Review and audit this section when upgrading
     // `libloading`, `Router` types, or changing the plugin API.
+    // SAFETY: `temp_path` names the freshly copied application library. The
+    // returned handle is retained for at least as long as every value obtained
+    // from the library, so none of its code is unloaded while it can be called.
     let lib = unsafe { libloading::Library::new(&temp_path)? };
     if let Err(e) = std::fs::remove_file(&temp_path) {
         #[cfg(not(target_os = "windows"))]
@@ -99,12 +103,23 @@ pub fn load_dylib_router(
             }
         }
     }
+    // SAFETY: the development cdylib contract requires this exact symbol and
+    // signature, built by the same Rullst/Rust toolchain as the host process.
     let init_fn: libloading::Symbol<unsafe extern "C" fn() -> *mut Router> =
         unsafe { lib.get(b"rullst_router_init")? };
+    // SAFETY: calling the foreign initializer is covered by the contract above.
     let router_ptr = unsafe { init_fn() };
+    let router_ptr = std::ptr::NonNull::new(router_ptr).ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "rullst_router_init returned a null Router pointer",
+        )
+    })?;
 
-    // Convert *mut Router back to Router box and extract it
-    let rullst_router = unsafe { *Box::from_raw(router_ptr) };
+    // SAFETY: the non-null pointer was produced by `Box::into_raw` in the
+    // initializer, has not been freed or aliased for ownership, and is consumed
+    // exactly once here.
+    let rullst_router = unsafe { *Box::from_raw(router_ptr.as_ptr()) };
 
     // Convert Rullst Router to Axum Router and mount built-in Scalar API docs (/docs)
     let mut axum_router = rullst_router

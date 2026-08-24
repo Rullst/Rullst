@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [12.0.0] - Unreleased 🚀
 
 - **Enterprise Resilience, Memory Safety & Cryptographic Hardening (`rullst-core`, `rullst-security`, `rullst-capital`, `rullst-auth`, `rullst-mail`, `rullst-connect`, `rullst-orm`)**:
+  - **Signed Firmware Gate & IoT Claim Containment (`rullst-iot`)**: Replaced permissive OTA signature stubs with strict Ed25519 verification over a target/version/counter/length/SHA-256 manifest, enforced commit-after-verification and monotonic anti-rollback state, and moved deterministic MQTT/HSM/PQC fixtures behind the explicit `experimental-simulators` feature with `Simulated*` names. Firmware flashing, bootloader control, persistent counters, real MQTT transport, HSM backends, and ML-KEM remain unimplemented.
   - **Graceful Shutdown & Zero-Downtime Deploys (`rullst-core::server::builder`)**: Implemented cross-platform termination signal handling (`SIGINT`, `SIGTERM`, `Ctrl+C`) via `shutdown_signal()` and `.with_graceful_shutdown()`, cleanly draining in-flight requests before process shutdown.
   - **Async Cancellation & Drop Safety (`rullst-core::resilience`)**: Implemented RAII `ActiveRequestGuard` for the backpressure middleware, ensuring `active_requests` counters are never leaked when client futures are dropped or timed out.
   - **Zero-Allocation RASP Request Inspector (`rullst-security::rasp`)**: Replaced per-header heap string allocations with zero-allocation ASCII case-insensitive pattern matching (`contains_ignore_ascii_case`) and static attack pattern tables.
@@ -171,27 +172,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Interactive CLI Wizard Options (`cargo rullst new`)**: Added interactive selection prompts for ORM Architecture (Active Record, Data Mapper / Repository, Hybrid) and Frontend Engine (Zero-Bundle HTMX, Leptos SSR, Dioxus SSR).
 - **3 New CI/CD Workflows:**
   - **`no_std-build.yml`:** Automated bare-metal compilation check for `rullst-iot` on 3 targets (STM32 Cortex-M4/M7, Cortex-M0, ESP32-C3 RISC-V).
-  - **`iot-integration.yml`:** IoT integration test suite running all 18 unit tests + QEMU Cortex-M simulation on push.
-  - **`pqc-compliance.yml`:** Scheduled weekly NIST ML-KEM / Kyber & HSM compliance audit with unsafe-block detection in cryptographic modules.
-- **Enterprise-Grade Security Table (README.md):** Added 3 new CI badge rows: `no_std Build Check`, `OTA Signature Verification`, and `PQC Compliance Audit`.
-- **`rullst-iot` Phase 7: Industrial Standards & Certification (Roadmap):**
+  - **`iot-integration.yml`:** IoT host tests plus Cortex-M `no_std` cross-compilation; no hardware or QEMU execution claim.
+  - **`pqc-compliance.yml`:** Scheduled signed-OTA and simulator-boundary checks; the workflow does not assert ML-KEM, HSM, or post-quantum compliance.
+- **IoT Verification Badges (README.md):** Documents `no_std` builds, signed OTA tests, and simulator containment without asserting PQC or HSM compliance.
+- **`rullst-iot` planned industrial integrations (Roadmap; not implemented or certified):**
   - **OPC-UA Protocol Driver (`rullst_iot::opcua`):** Industry 4.0 OPC-UA driver for SCADA/MES/ERP communication (ISA-95, IEC 62541).
   - **MQTT Sparkplug B Profile (`rullst_iot::sparkplug`):** IIoT-standard Sparkplug B over MQTT for Unified Namespace interoperability.
   - **IEC 61508 / IEC 62443 Safety Mode (`rullst_iot::safety`):** SIL 2/3 safety-critical deterministic execution with watchdog timer and memory protection.
 - **Rullst Vault (`rullst-vault` & `FieldEncryptor`)**: Added zero-trust secret management with `Zeroize` in-memory cleaning upon drop (`VaultSecret<T>`) and field-level AES-256-GCM / ChaCha20-Poly1305 encryption in `rullst-security`.
 - **Intent-Based Modeling (`rullst-orm`)**: Added `IntentAnalyzer` in `rullst-orm` to auto-generate `CREATE INDEX` migrations directly from plain-text Rust doc comments (`/// @index(...)`).
-- **Embedded IoT & Edge Hardware Supremacy (`rullst-iot`)**: Introduced complete `rullst-iot` crate ecosystem (6 Phases, 18 unit tests, `#![no_std]` optional runtime, < 2MB RAM footprint) for Raspberry Pi, ESP32, STM32, and Arduino 32-bit:
-  - **Native Hardware HAL (`rullst_iot::gpio`, `rullst_iot::i2c`)**: Cross-platform GPIO pin toggling (`GpioPin`) and I2C register transaction builder (`I2cHelper`).
-  - **Industrial Modbus Driver (`rullst_iot::modbus`)**: Modbus RTU/TCP request frame builder (`ModbusFrame`) with automatic **CRC-16** calculation for PLCs.
-  - **BLE Telemetry GATT Server (`rullst_iot::ble`)**: GATT service and characteristic generator (`GattService`, `GattCharacteristic`) for Bluetooth Low Energy beacons.
-  - **On-Device Edge AI Engine (`rullst_iot::anomaly`)**: Embedded statistical anomaly detector (`AnomalyDetector`, `AnomalyState`) running locally on `no_std` targets without cloud internet dependencies.
-  - **Embedded Micro-Dashboard (`rullst_iot::ui`)**: Ultra-lightweight (< 50KB) HTMX HTML widget generator (`IotDashboard`) for local gateway UIs.
-  - **IoT Mesh Network (`rullst_iot::mesh`):** Self-healing P2P mesh topology manager (`MeshTopology`, `MeshNode`) with RSSI-based relay path resolution.
-  - **Zero-Trust OTA Firmware Updates (`rullst_iot::ota`):** Dual A/B bootloader partition manager (`OtaManager`, `BootPartition`) with Ed25519 signature verification and rollback protection.
-  - **Hardware Security Element Bindings (`rullst_iot::hsm`):** SHA-256 key derivation and payload signing abstraction (`HsmDevice`) targeting ATECC608A, TPM 2.0, and STSAFE silicon.
-  - **Post-Quantum Edge Encryption (`rullst_iot::pqc`):** ML-KEM / Kyber key encapsulation stub (`PqcKeyPair`) for low-power edge telemetry protection against quantum decryption.
-  - **Deep Sleep Power Governor (`rullst_iot::power`):** Autonomous energy budget evaluator (`PowerGovernor`, `PowerMode`) with solar harvester voltage monitoring (`HarvesterState`).
-  - **Digital Twin Engine (`rullst_iot::twin`):** Bi-directional real-time sync engine (`DigitalTwin`) serializing physical device state snapshots as JSON payloads for Rullst Studio and cloud services.
+- **IoT data and frame helpers (`rullst-iot`)**: Introduced a `no_std`-compatible helper crate; network transports and hardware drivers are not part of this release:
+  - **GPIO state and I2C frame helpers (`rullst_iot::gpio`, `rullst_iot::i2c`)**: In-memory GPIO state plus I2C transaction byte construction; no register access claim.
+  - **Modbus Frame Helper (`rullst_iot::modbus`)**: Modbus request frame construction with **CRC-16**; no serial/TCP transport claim.
+  - **BLE GATT Data Structures (`rullst_iot::ble`)**: Service and characteristic models; no BLE server or radio integration claim.
+  - **Anomaly Evaluator (`rullst_iot::anomaly`)**: Deterministic statistical threshold evaluation for `no_std` applications.
+  - **Dashboard Renderer (`rullst_iot::ui`)**: HTMX sensor-card string rendering; no measured footprint claim.
+  - **Mesh Topology Model (`rullst_iot::mesh`):** In-memory RSSI relay selection; no P2P transport or self-healing network claim.
+  - **Signed OTA Manifest Gate (`rullst_iot::ota`):** Strict Ed25519 verification and monotonic rollback checks before inactive-partition selection; flashing, durable counters, and bootloader integration are not implemented.
+  - **Explicit HSM Fixtures (`rullst_iot::hsm`):** Deterministic `SimulatedHsmDevice` fixtures behind `experimental-simulators`; no hardware binding, protected key, or signature claim.
+  - **Explicit PQC Fixtures (`rullst_iot::pqc`):** Deterministic `SimulatedPqcFixture` values behind `experimental-simulators`; no ML-KEM/Kyber or quantum-safety claim.
+  - **Power Policy Helper (`rullst_iot::power`):** Calculates a recommended mode from supplied voltage values; it does not control sleep or power hardware.
+  - **Digital Twin State Model (`rullst_iot::twin`):** In-memory telemetry snapshots and JSON serialization; no bidirectional network sync claim.
 - **CLI IoT Generator (`cargo rullst make:iot <DeviceName>`)**: Added `make:iot` subcommand in `cargo-rullst` to scaffold IoT edge device modules in seconds.
 - **Multi-Database Read Replica Load Balancer (`rullst::db::replica`)**: Added `ReplicaPool` in `rullst-orm` to automatically load-balance read queries across secondary database replicas with Round-Robin selection while routing writes to primary.
 - **RASP - Runtime Application Self-Protection (`rullst-security`)**: Introduced `RaspSecurityLayer` and `RaspInspector` in `rullst-security` for zero-latency middleware inspection blocking SQLi, Path Traversal, SSRF, and RCE.

@@ -85,9 +85,11 @@ fn test_parse_cbor_integer() {
 fn test_finish_register_mismatches() {
     let config = PasskeyConfig::new("App", "app.com", "https://app.com");
     let auth = PasskeyAuth::new(&config).unwrap();
+    let (_, expected_challenge) = auth.start_register(1, "alice", "Alice").unwrap();
+    let credential_id = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([1_u8, 2, 3]);
 
     let client_data_json = serde_json::json!({
-        "challenge": "correct_challenge",
+        "challenge": "different_challenge",
         "origin": "https://app.com",
         "type": "webauthn.create"
     })
@@ -95,8 +97,8 @@ fn test_finish_register_mismatches() {
     let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
     let mut cred = RegisterPublicKeyCredential {
-        id: "id".into(),
-        raw_id: "raw".into(),
+        id: credential_id.clone(),
+        raw_id: credential_id,
         r#type: "public-key".into(),
         response: AuthenticatorAttestationResponse {
             attestation_object: "dummy".into(),
@@ -105,7 +107,7 @@ fn test_finish_register_mismatches() {
     };
 
     // Challenge mismatch
-    let res = auth.finish_register(&cred, "wrong_challenge");
+    let res = auth.finish_register(&cred, &expected_challenge);
     assert_eq!(
         res.unwrap_err(),
         crate::error::AuthError::PasskeyError("Challenge mismatch".to_string())
@@ -113,7 +115,7 @@ fn test_finish_register_mismatches() {
 
     // Origin mismatch
     let bad_origin_json = serde_json::json!({
-        "challenge": "correct_challenge",
+        "challenge": expected_challenge.clone(),
         "origin": "https://wrong.com",
         "type": "webauthn.create"
     })
@@ -121,7 +123,7 @@ fn test_finish_register_mismatches() {
     cred.response.client_data_json =
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
 
-    let res2 = auth.finish_register(&cred, "correct_challenge");
+    let res2 = auth.finish_register(&cred, &expected_challenge);
     assert_eq!(
         res2.unwrap_err(),
         crate::error::AuthError::PasskeyError("Origin mismatch".to_string())
@@ -133,8 +135,21 @@ fn test_finish_authenticate_mismatches() {
     let config = PasskeyConfig::new("App", "app.com", "https://app.com");
     let auth = PasskeyAuth::new(&config).unwrap();
 
+    let credential_bytes = vec![1_u8, 2, 3];
+    let credential_id = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&credential_bytes);
+    let pk = Passkey {
+        credential_id: credential_bytes,
+        public_key: {
+            let mut key = vec![0x04];
+            key.extend_from_slice(&[0_u8; 64]);
+            key
+        },
+        sign_count: 0,
+    };
+    let (_, expected_challenge) = auth.start_authenticate(std::slice::from_ref(&pk)).unwrap();
+
     let client_data_json = serde_json::json!({
-        "challenge": "correct_challenge",
+        "challenge": "different_challenge",
         "origin": "https://app.com",
         "type": "webauthn.get"
     })
@@ -142,8 +157,8 @@ fn test_finish_authenticate_mismatches() {
     let client_data_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data_json);
 
     let mut cred = PublicKeyCredential {
-        id: "id".into(),
-        raw_id: "raw".into(),
+        id: credential_id.clone(),
+        raw_id: credential_id,
         r#type: "public-key".into(),
         response: AuthenticatorAssertionResponse {
             authenticator_data: "dummy".into(),
@@ -152,14 +167,8 @@ fn test_finish_authenticate_mismatches() {
         },
     };
 
-    let pk = Passkey {
-        credential_id: vec![],
-        public_key: vec![],
-        sign_count: 0,
-    };
-
     // Challenge mismatch
-    let res = auth.finish_authenticate(&cred, "wrong_challenge", pk.clone());
+    let res = auth.finish_authenticate(&cred, &expected_challenge, pk.clone());
     assert_eq!(
         res.unwrap_err(),
         crate::error::AuthError::PasskeyError("Challenge mismatch".to_string())
@@ -167,7 +176,7 @@ fn test_finish_authenticate_mismatches() {
 
     // Origin mismatch
     let bad_origin_json = serde_json::json!({
-        "challenge": "correct_challenge",
+        "challenge": expected_challenge.clone(),
         "origin": "https://wrong.com",
         "type": "webauthn.get"
     })
@@ -175,7 +184,7 @@ fn test_finish_authenticate_mismatches() {
     cred.response.client_data_json =
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bad_origin_json);
 
-    let res2 = auth.finish_authenticate(&cred, "correct_challenge", pk);
+    let res2 = auth.finish_authenticate(&cred, &expected_challenge, pk);
     assert_eq!(
         res2.unwrap_err(),
         crate::error::AuthError::PasskeyError("Origin mismatch".to_string())
@@ -248,6 +257,11 @@ fn test_parse_cbor_errors() {
     assert!(parse_cbor(&[0x65, 0x01]).is_err());
     assert!(parse_cbor(&[0xE0]).is_err());
     assert!(parse_cbor(&[0xA1, 0x80, 0x01]).is_err());
+    assert!(parse_cbor(&[0xA2, 0x01, 0x01, 0x01, 0x02]).is_err());
+
+    let mut deeply_nested = vec![0x81; 66];
+    deeply_nested.push(0x00);
+    assert!(parse_cbor(&deeply_nested).is_err());
 }
 
 #[test]
@@ -292,6 +306,9 @@ fn test_finish_register_and_authenticate_complete_flow() {
     let y_coord = &pub_key_bytes[33..65];
 
     let mut cose_map = std::collections::HashMap::new();
+    cose_map.insert(CborKey::Integer(1), CborValue::Integer(2)); // kty: EC2
+    cose_map.insert(CborKey::Integer(3), CborValue::Integer(-7)); // alg: ES256
+    cose_map.insert(CborKey::Integer(-1), CborValue::Integer(1)); // crv: P-256
     cose_map.insert(
         CborKey::Integer(-2),
         CborValue::ByteString(x_coord.to_vec()),
@@ -385,7 +402,7 @@ fn test_finish_register_and_authenticate_complete_flow() {
     rp_hasher.update(b"localhost");
     let rp_id_hash = rp_hasher.finalize();
     auth_data.extend_from_slice(&rp_id_hash);
-    auth_data.push(0x41); // UP + AT flags
+    auth_data.push(0x45); // UP + UV + AT flags
     auth_data.extend_from_slice(&[0, 0, 0, 1]); // sign count
     auth_data.extend_from_slice(&[0u8; 16]); // AAGUID
     let cred_id = vec![10, 20, 30, 40];
@@ -398,20 +415,28 @@ fn test_finish_register_and_authenticate_complete_flow() {
         CborKey::TextString("authData".to_string()),
         CborValue::ByteString(auth_data.clone()),
     );
+    attestation_map.insert(
+        CborKey::TextString("fmt".to_string()),
+        CborValue::TextString("none".to_string()),
+    );
+    attestation_map.insert(
+        CborKey::TextString("attStmt".to_string()),
+        CborValue::Map(std::collections::HashMap::new()),
+    );
     let attestation_val = CborValue::Map(attestation_map);
     let attestation_bytes = encode_cbor(&attestation_val);
 
-    let reg_challenge = "test_reg_challenge";
+    let (_, reg_challenge) = auth.start_register(1, "alice", "Alice").unwrap();
     let client_data_json = serde_json::json!({
-        "challenge": reg_challenge,
+        "challenge": reg_challenge.clone(),
         "origin": "http://localhost",
         "type": "webauthn.create"
     })
     .to_string();
 
     let reg_cred = RegisterPublicKeyCredential {
-        id: "cred_id".into(),
-        raw_id: "raw_cred_id".into(),
+        id: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&cred_id),
+        raw_id: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&cred_id),
         r#type: "public-key".into(),
         response: AuthenticatorAttestationResponse {
             attestation_object: base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -421,13 +446,15 @@ fn test_finish_register_and_authenticate_complete_flow() {
         },
     };
 
-    let passkey = auth.finish_register(&reg_cred, reg_challenge).unwrap();
+    let passkey = auth.finish_register(&reg_cred, &reg_challenge).unwrap();
     assert_eq!(passkey.credential_id, cred_id);
     assert_eq!(passkey.public_key, pub_key_bytes);
 
-    let auth_challenge = "test_auth_challenge";
+    let (_, auth_challenge) = auth
+        .start_authenticate(std::slice::from_ref(&passkey))
+        .unwrap();
     let auth_client_data_json = serde_json::json!({
-        "challenge": auth_challenge,
+        "challenge": auth_challenge.clone(),
         "origin": "http://localhost",
         "type": "webauthn.get"
     })
@@ -436,7 +463,7 @@ fn test_finish_register_and_authenticate_complete_flow() {
 
     let mut auth_auth_data = Vec::new();
     auth_auth_data.extend_from_slice(&rp_id_hash);
-    auth_auth_data.push(0x01); // UP flag
+    auth_auth_data.push(0x05); // UP + UV flags
     auth_auth_data.extend_from_slice(&[0, 0, 0, 5]); // sign count 5
 
     let mut hasher = sha2::Sha256::new();
@@ -450,8 +477,8 @@ fn test_finish_register_and_authenticate_complete_flow() {
     let sig = key_pair.sign(&rng, &to_sign).unwrap();
 
     let auth_cred = PublicKeyCredential {
-        id: "cred_id".into(),
-        raw_id: "raw_cred_id".into(),
+        id: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&cred_id),
+        raw_id: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&cred_id),
         r#type: "public-key".into(),
         response: AuthenticatorAssertionResponse {
             authenticator_data: base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -463,7 +490,7 @@ fn test_finish_register_and_authenticate_complete_flow() {
     };
 
     let updated_passkey = auth
-        .finish_authenticate(&auth_cred, auth_challenge, passkey)
+        .finish_authenticate(&auth_cred, &auth_challenge, passkey)
         .unwrap();
     assert_eq!(updated_passkey.sign_count, 5);
 }

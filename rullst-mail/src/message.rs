@@ -1,10 +1,11 @@
 use crate::attachment::Attachment;
 use crate::error::MailError;
+pub use crate::security::redact_email_secrets;
 use crate::security::scan_content_security;
 use chrono::{DateTime, Utc};
 
 /// An email message structure to be sent via a mail driver.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Message {
     /// The recipient email address.
     pub to: String,
@@ -193,7 +194,34 @@ impl Message {
         crate::validator::is_disposable_email(&self.to)
     }
 
-    /// Injects a zero-cookie 1x1 tracking pixel into the HTML body.
+    /// Injects a validated, HMAC-authenticated 1x1 tracking pixel into the HTML body.
+    pub fn try_with_open_tracking(
+        mut self,
+        base_tracker_url: impl AsRef<str>,
+        secret: &[u8],
+        campaign_id: impl Into<String>,
+    ) -> Result<Self, crate::tracking::TrackingError> {
+        if let Some(ref html) = self.body_html {
+            let token = crate::tracking::TrackingEngine::try_generate_open_token(
+                secret,
+                self.to.clone(),
+                campaign_id,
+                chrono::Utc::now().timestamp() as u64,
+            )?;
+            let pixel_url = format!(
+                "{}/track/open/{}",
+                base_tracker_url.as_ref().trim_end_matches('/'),
+                token
+            );
+            self.body_html = Some(crate::tracking::TrackingEngine::try_inject_open_pixel(
+                html, &pixel_url,
+            )?);
+        }
+        Ok(self)
+    }
+
+    /// Legacy infallible tracking builder. Invalid configuration leaves the body untracked.
+    #[deprecated(since = "12.0.0", note = "use Message::try_with_open_tracking")]
     pub fn with_open_tracking(
         mut self,
         base_tracker_url: &str,
@@ -201,34 +229,59 @@ impl Message {
         campaign_id: &str,
     ) -> Self {
         if let Some(ref html) = self.body_html {
-            let token = crate::tracking::TrackingEngine::generate_open_token(
+            let token = crate::tracking::TrackingEngine::try_generate_open_token(
                 secret,
                 &self.to,
                 campaign_id,
                 chrono::Utc::now().timestamp() as u64,
             );
-            let pixel_url = format!(
-                "{}/track/open/{}",
-                base_tracker_url.trim_end_matches('/'),
-                token
-            );
-            self.body_html = Some(crate::tracking::TrackingEngine::inject_open_pixel(
-                html, &pixel_url,
-            ));
+            if let Ok(token) = token {
+                let pixel_url = format!(
+                    "{}/track/open/{}",
+                    base_tracker_url.trim_end_matches('/'),
+                    token
+                );
+                if let Ok(tracked) =
+                    crate::tracking::TrackingEngine::try_inject_open_pixel(html, &pixel_url)
+                {
+                    self.body_html = Some(tracked);
+                }
+            }
         }
         self
     }
 
-    /// Rewrites all HTML links to route through the privacy-preserving click tracker.
-    pub fn with_click_tracking(mut self, base_tracker_url: &str, secret: &[u8]) -> Self {
+    /// Rewrites HTML links through a validated, HMAC-authenticated click tracker.
+    pub fn try_with_click_tracking(
+        mut self,
+        base_tracker_url: impl AsRef<str>,
+        secret: &[u8],
+    ) -> Result<Self, crate::tracking::TrackingError> {
         if let Some(ref html) = self.body_html {
-            self.body_html = Some(crate::tracking::TrackingEngine::rewrite_links(
+            self.body_html = Some(crate::tracking::TrackingEngine::try_rewrite_links(
+                html,
+                base_tracker_url.as_ref(),
+                secret,
+                &self.to,
+                chrono::Utc::now().timestamp() as u64,
+            )?);
+        }
+        Ok(self)
+    }
+
+    /// Legacy infallible tracking builder. Invalid configuration leaves links unchanged.
+    #[deprecated(since = "12.0.0", note = "use Message::try_with_click_tracking")]
+    pub fn with_click_tracking(mut self, base_tracker_url: &str, secret: &[u8]) -> Self {
+        if let Some(ref html) = self.body_html
+            && let Ok(tracked) = crate::tracking::TrackingEngine::try_rewrite_links(
                 html,
                 base_tracker_url,
                 secret,
                 &self.to,
                 chrono::Utc::now().timestamp() as u64,
-            ));
+            )
+        {
+            self.body_html = Some(tracked);
         }
         self
     }
@@ -330,86 +383,4 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
     }
 
     normalized.trim().to_string()
-}
-
-/// Outbound DLP Scanner: Sanitizes sensitive credentials, AWS keys, passwords, and tokens.
-pub fn redact_email_secrets(input: &str) -> String {
-    if input.is_empty() {
-        return String::new();
-    }
-
-    let mut result = input.to_string();
-
-    // 1. Mask Authorization Bearer tokens
-    if let Some(idx) = result.find("Bearer ") {
-        let start = idx + 7;
-        if result.is_char_boundary(start) {
-            let end = result[start..]
-                .find(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == ',' || c == '<')
-                .map(|i| start + i)
-                .unwrap_or(result.len());
-
-            if end > start && result.is_char_boundary(end) {
-                let token_slice = &result[start..end];
-                if token_slice.chars().count() > 6 {
-                    let prefix: String = token_slice.chars().take(4).collect();
-                    let masked = format!("{}...", prefix);
-                    result.replace_range(start..end, &masked);
-                }
-            }
-        }
-    }
-
-    // 2. Mask password=, secret=, api_key=, key=, token=
-    for key in &["password=", "secret=", "api_key=", "key=", "token="] {
-        let lower = result.to_lowercase();
-        if let Some(idx) = lower.find(key) {
-            let start = idx + key.len();
-            if result.is_char_boundary(start) {
-                let end = result[start..]
-                    .find(|c: char| {
-                        c.is_whitespace()
-                            || c == '"'
-                            || c == '\''
-                            || c == '&'
-                            || c == ','
-                            || c == '<'
-                    })
-                    .map(|i| start + i)
-                    .unwrap_or(result.len());
-
-                if end > start
-                    && result.is_char_boundary(end)
-                    && &result[start..end] != "[REDACTED]"
-                {
-                    result.replace_range(start..end, "[REDACTED]");
-                }
-            }
-        }
-    }
-
-    // 3. Mask AWS keys (AKIA...)
-    if let Some(idx) = result.find("AKIA") {
-        let mut end = (idx + 20).min(result.len());
-        while end < result.len() && !result.is_char_boundary(end) {
-            end += 1;
-        }
-        if result.is_char_boundary(idx) && result.is_char_boundary(end) {
-            result.replace_range(idx..end, "AKIA****************");
-        }
-    }
-
-    // 4. Mask Private Keys
-    if result.contains("-----BEGIN PRIVATE KEY-----")
-        || result.contains("-----BEGIN RSA PRIVATE KEY-----")
-    {
-        result = result
-            .replace("-----BEGIN PRIVATE KEY-----", "[REDACTED PRIVATE KEY]")
-            .replace(
-                "-----BEGIN RSA PRIVATE KEY-----",
-                "[REDACTED RSA PRIVATE KEY]",
-            );
-    }
-
-    result
 }

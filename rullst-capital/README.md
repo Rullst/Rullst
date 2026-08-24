@@ -87,7 +87,9 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes an Axum middleware [`verify_webhook`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs) that cryptographically verifies HMAC signatures using constant-time comparisons (`subtle::ConstantTimeEq`), parsing payloads into unified [`WebhookEvent`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/providers/mod.rs) structs.
+`rullst-capital` includes an Axum middleware [`verify_webhook`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs) that verifies supported provider signatures, enforces timestamp freshness for Stripe, Mercado Pago and Paddle, and rejects replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by this production-safe middleware.
+
+The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
 ```rust
 use axum::{Router, routing::post, Extension};
@@ -117,14 +119,16 @@ pub fn router() -> Router {
 
 ---
 
-## 🧾 Zero-Cost Native Digital Invoices (NFS-e Padrão Nacional / SEFAZ)
+## 🧾 NFS-e Padrão Nacional — Contained Preview
 
-`rullst-capital` includes a **native, direct digital invoice issuer** for Brazilian SaaS with **R$ 0.00 intermediary fees per invoice**. It signs XML documents in memory using your company's A1 Digital Certificate (`.pfx`) and transmits them directly to the Receita Federal national portal:
+The crate can build an escaped DPS XML fixture, but live NFS-e issuance is intentionally fail-closed. `Homologation` and `Production` return `FiscalError::Unsupported` until PKCS#12 key extraction, XML C14N/XMLDSig, XSD validation, mTLS, strict response parsing and official end-to-end homologation are independently verified. The legacy `sign_dps_xml` entry point never fabricates a signature.
+
+Only `NfseEnvironment::Mock` is executable. Its response is typed as `FiscalResponseKind::OfflineMock`, uses `MOCK_NOT_AUTHORIZED`, and must never be accounted as an issued invoice:
 
 ```rust
 use rullst_capital::fiscal::{
     issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
-    NfseEnvironment, TaxRegime,
+    FiscalResponseKind, NfseEnvironment, TaxRegime,
 };
 
 // 1. Configure the emitting SaaS company
@@ -150,21 +154,27 @@ let customer = FiscalCustomer {
 // 3. Convert paid invoice to national DPS format
 let dps = invoice.to_dps("1.03.01", "3550308", 2.0); // 1.03.01 = SaaS & Hosting, 2.0% ISS
 
-// 4. Load A1 certificate (.pfx in base64 from vault)
-let cert = FiscalCertificate::from_base64(
-    &std::env::var("CERTIFICADO_A1_BASE64").unwrap(),
-    &std::env::var("CERTIFICADO_A1_SENHA").unwrap(),
-);
+// 4. Mock mode does not load or use a real certificate.
+let cert = FiscalCertificate::from_base64("", "");
 
-// 5. Emit directly to Receita Federal with R$ 0.00 fee!
-let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Production).await?;
-println!("✅ NFS-e emitida com sucesso! Chave de Acesso: {}", response.access_key);
+// 5. Produce a deterministic offline fixture; no network request is made.
+let response = issue_nfse_direct(
+    &emitter,
+    &customer,
+    &dps,
+    &cert,
+    NfseEnvironment::Mock,
+).await?;
+assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
+assert!(!response.is_officially_authorized());
 ```
 
 ---
 
 ## 🔐 Security Invariants
 
-- **Constant-Time Verification**: All HMAC-SHA256 signatures are validated with `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
-- **Zero Allocations on Invalid Signatures**: Requests missing or with corrupted signature headers are rejected with `401 Unauthorized` before passing down the middleware pipeline.
-- **In-Memory Cryptographic Signatures**: A1 certificate keys sign XML in memory without temporary files on disk, ensuring zero secret leakage.
+- **Constant-Time Verification**: Supported HMAC/token signatures use cryptographic verification or `subtle::ConstantTimeEq`.
+- **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
+- **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store.
+- **Alipay Containment**: Live RSA2 checkout and webhook verification return `UnsupportedOperation`; only explicitly mock-prefixed credentials operate offline.
+- **Fiscal Containment**: No XMLDSig or official NFS-e authorization is claimed until the complete official integration is validated.

@@ -36,7 +36,7 @@ struct DummySeeder;
 impl Seeder for DummySeeder {
     async fn run(&self) -> Result<(), Error> {
         // Just execute a query
-        let pool = Orm::pool();
+        let pool = Orm::pool()?;
         sqlx::query("SELECT 1").execute(pool).await?;
         Ok(())
     }

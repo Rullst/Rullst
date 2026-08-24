@@ -1,10 +1,10 @@
-//! Bluetooth Low Energy (BLE) GATT Telemetry Server Abstraction.
+//! Bluetooth Low Energy GATT service and characteristic data structures.
 
 extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-/// BLE GATT Characteristic.
+/// BLE GATT characteristic data. This type does not operate a radio.
 #[derive(Clone, Debug)]
 pub struct GattCharacteristic {
     pub uuid: String,
@@ -12,7 +12,7 @@ pub struct GattCharacteristic {
     pub notify: bool,
 }
 
-/// BLE GATT Service.
+/// BLE GATT service data. This type does not run a GATT server.
 #[derive(Clone, Debug)]
 pub struct GattService {
     pub service_uuid: String,
@@ -41,6 +41,7 @@ impl GattService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn test_gatt_service_builder() {

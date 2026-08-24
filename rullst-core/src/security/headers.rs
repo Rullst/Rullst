@@ -1,65 +1,110 @@
-//! OWASP Secure Headers injection middleware.
+//! Secure response headers and per-request Content Security Policy nonces.
 
-use axum::{extract::Request, http::header, middleware::Next, response::Response};
+use axum::{
+    extract::Request,
+    http::{HeaderValue, header},
+    middleware::Next,
+    response::Response,
+};
+use base64::{Engine, engine::general_purpose::STANDARD};
+use rand::Rng;
 
-/// Middleware that injects secure-by-default HTTP headers to prevent standard web exploits.
-pub async fn headers_middleware(req: Request, next: Next) -> Response {
-    let csp = req
+pub use crate::config::DEFAULT_CSP_TEMPLATE;
+
+const DEFAULT_STATIC_CSP: &str = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:";
+
+/// A cryptographically random CSP nonce associated with one request.
+///
+/// Handlers and renderers can extract this value with `Extension<CspNonce>` and add
+/// `nonce="..."` to trusted inline `<script>` or `<style>` elements.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CspNonce(String);
+
+impl CspNonce {
+    /// Generates a fresh 128-bit nonce using the operating system random source.
+    pub fn generate() -> Self {
+        let mut bytes = [0_u8; 16];
+        rand::rng().fill_bytes(&mut bytes);
+        Self(STANDARD.encode(bytes))
+    }
+
+    /// Returns the nonce value for an HTML `nonce` attribute.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for CspNonce {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+/// Renders a CSP template against an optional request nonce.
+///
+/// A template containing `{NONCE}` cannot be emitted without a nonce; in that case the strict
+/// static policy is used instead of sending a broken or permissive directive.
+pub fn render_csp_policy(template: Option<&str>, nonce: Option<&CspNonce>) -> String {
+    let template = template.filter(|value| !value.trim().is_empty());
+    match (template, nonce) {
+        (Some(template), Some(nonce)) => template.replace("{NONCE}", nonce.as_str()),
+        (Some(template), None) if !template.contains("{NONCE}") => template.to_owned(),
+        (None, Some(nonce)) => DEFAULT_CSP_TEMPLATE.replace("{NONCE}", nonce.as_str()),
+        _ => DEFAULT_STATIC_CSP.to_owned(),
+    }
+}
+
+/// Middleware that injects strict security headers and exposes a matching CSP nonce to handlers.
+pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
+    let configured_csp = req
         .extensions()
         .get::<crate::config::SecurityConfig>()
-        .map(|cfg| cfg.csp.clone())
+        .map(|config| config.csp.clone())
         .unwrap_or_else(|| crate::config::RullstConfig::global().security.csp.clone());
+    let nonce = CspNonce::generate();
+    req.extensions_mut().insert(nonce.clone());
 
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
 
-    headers.insert("X-Frame-Options", header::HeaderValue::from_static("DENY"));
+    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(
-        "X-Content-Type-Options",
-        header::HeaderValue::from_static("nosniff"),
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
+    headers.insert("x-xss-protection", HeaderValue::from_static("0"));
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
     );
     headers.insert(
-        "X-XSS-Protection",
-        header::HeaderValue::from_static("1; mode=block"),
+        header::STRICT_TRANSPORT_SECURITY,
+        HeaderValue::from_static("max-age=63072000; includeSubDomains; preload"),
     );
     headers.insert(
-        "Referrer-Policy",
-        header::HeaderValue::from_static("strict-origin-when-cross-origin"),
+        "permissions-policy",
+        HeaderValue::from_static("camera=(), microphone=(), geolocation=(), payment=(), usb=()"),
     );
     headers.insert(
-        "Strict-Transport-Security",
-        header::HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+        "cross-origin-opener-policy",
+        HeaderValue::from_static("same-origin"),
     );
     headers.insert(
-        "Permissions-Policy",
-        header::HeaderValue::from_static("geolocation=(), camera=(), microphone=()"),
+        "cross-origin-resource-policy",
+        HeaderValue::from_static("same-origin"),
     );
     headers.insert(
-        "Cross-Origin-Opener-Policy",
-        header::HeaderValue::from_static("same-origin"),
-    );
-    headers.insert(
-        "Cross-Origin-Resource-Policy",
-        header::HeaderValue::from_static("same-site"),
-    );
-    headers.insert(
-        "Cross-Origin-Embedder-Policy",
-        header::HeaderValue::from_static("unsafe-none"),
-    );
-    headers.insert(
-        "Cache-Control",
-        header::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+        "cross-origin-embedder-policy",
+        HeaderValue::from_static("require-corp"),
     );
 
-    let final_csp = if csp.is_empty() {
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data: https:; object-src 'none'".to_string()
-    } else {
-        csp
-    };
-
-    if let Ok(csp_val) = header::HeaderValue::from_str(&final_csp) {
-        headers.insert("Content-Security-Policy", csp_val);
-    }
+    let csp = render_csp_policy(Some(&configured_csp), Some(&nonce));
+    let csp_value = HeaderValue::from_str(&csp).unwrap_or_else(|_| {
+        HeaderValue::from_str(&render_csp_policy(None, Some(&nonce)))
+            .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
+    });
+    headers.insert(header::CONTENT_SECURITY_POLICY, csp_value);
 
     response
 }

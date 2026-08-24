@@ -1,12 +1,12 @@
 # Rullst Mail 📬
 
-`rullst-mail` is the enterprise-grade transactional email and mailables engine for the Rullst Framework. It provides a robust, zero-panic abstraction over popular delivery providers with built-in multi-driver circuit breaker failover, dynamic multi-tenancy routing, zero-copy attachments, inline CID assets, scheduled delivery, RFC 8058 compliance, DLP secret sanitization, and in-memory test assertions.
+`rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
 ---
 
 ## ✨ Features
 
-- **🛡️ Zero-Panic Guarantees:** 100% safe Rust with typed `MailError` and formal verification via Kani proofs.
+- **🛡️ Typed failures:** production delivery paths return `MailError`; malformed messages and provider configuration fail closed.
 - **⚡ 7 Production Delivery Drivers:**
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
@@ -24,6 +24,7 @@
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
+- **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
 - **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Instant boilerplate generation for Welcome, Password Reset, OTP, and Invoice mailables.
 
 ---
@@ -52,13 +53,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .attach_cid("app_logo", "logo.png", logo_bytes.to_vec(), "image/png")
         .attach_bytes("welcome_guide.pdf", b"%PDF-1.4...".to_vec(), "application/pdf")
         .send_in(std::time::Duration::from_secs(60)) // Deliver in 1 minute
-        .unsubscribe_url("https://rullst.dev/unsub/alice")
-        .sanitize_secrets();
+        .unsubscribe_url("https://rullst.dev/unsub/alice");
 
-    // Validate links against homograph spoofing
-    message.validate_security()?;
-
-    // Sends asynchronously via background queue or active driver
+    // The mandatory pipeline validates and sanitizes before queueing or delivery.
     Mail::send(message).await?;
 
     Ok(())
@@ -74,11 +71,13 @@ use rullst_mail::drivers::{AwsSesDriver, FailoverDriver, PostmarkDriver, ResendD
 use std::sync::Arc;
 use std::time::Duration;
 
-let primary = Arc::new(ResendDriver { api_key: "re_...".into() });
-let fallback_1 = Arc::new(PostmarkDriver::new("pm_token_..."));
-let fallback_2 = Arc::new(AwsSesDriver::new("us-east-1", "ses_token_..."));
+let primary = ResendDriver::try_new("re_...")?;
+let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
+let fallback_2 = AwsSesDriver::try_new("us-east-1", "ses_token_...")?;
 
-let failover_driver = FailoverDriver::new(primary, vec![fallback_1, fallback_2])
+let failover_driver = FailoverDriver::new(primary)
+    .with_fallback(fallback_1)
+    .with_fallback(fallback_2)
     .with_threshold(3) // Trip circuit after 3 consecutive failures
     .with_cooldown(Duration::from_secs(60)); // Cooldown for 60s
 ```
@@ -90,17 +89,15 @@ let failover_driver = FailoverDriver::new(primary, vec![fallback_1, fallback_2])
 ```rust
 use rullst_mail::resolver::TenantMailResolver;
 use rullst_mail::drivers::{ResendDriver, SmtpDriver};
-use std::sync::Arc;
-
-let resolver = TenantMailResolver::new()
-    .with_default_driver(Arc::new(ResendDriver { api_key: "re_global...".into() }));
+let resolver = TenantMailResolver::with_default(
+    ResendDriver::try_new("re_global...")?
+);
 
 // Register tenant-specific dedicated SMTP or API keys
-resolver.register("tenant_acme", Arc::new(SmtpDriver { /* Acme SMTP */ }));
-resolver.register("tenant_globex", Arc::new(ResendDriver { api_key: "re_globex...".into() }));
+resolver.register("tenant_globex", ResendDriver::try_new("re_globex...")?);
 
 // Dispatches using the tenant's isolated credentials
-resolver.send_for_tenant("tenant_acme", &message).await?;
+resolver.send_for_tenant("tenant_globex", &message).await?;
 ```
 
 ---
@@ -179,24 +176,29 @@ if msg.is_disposable() {
 
 ### 7. Zero-Cookie Privacy-Preserving Tracking Engine
 
-Generate HMAC-SHA256 signed tracking tokens and transparent 1x1 GIF pixels without third-party cookies (GDPR & LGPD compliant):
+Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory 32-byte secret and bounded validity. Applications remain responsible for consent, retention, and other privacy-law obligations.
 
 ```rust
-use rullst_mail::{TrackingEngine, PIXEL_1X1_GIF, Message};
+use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
+use std::time::Duration;
 
-let secret = b"my-master-cryptographic-secret";
+let secret = b"replace-with-32-or-more-random-key-bytes";
 
 // Fluent open & click tracking injection
 let tracked_msg = Message::new()
     .to("user@example.com")
     .subject("Monthly Newsletter")
     .html("<p>Check out our <a href=\"https://rullst.dev/pricing\">pricing</a>.</p>")
-    .with_open_tracking("https://app.com", secret, "campaign_2026")
-    .with_click_tracking("https://app.com", secret);
+    .try_with_open_tracking("https://app.com", secret, "campaign_2026")?
+    .try_with_click_tracking("https://app.com", secret)?;
 
-// Verifying tracking events in your web route handler
+// Default verification enforces a 30-day TTL.
 let event = TrackingEngine::verify_open_token(secret, &token)?;
 println!("Email opened by {} for campaign {}", event.email, event.campaign_id);
+
+// Endpoints needing single-consumption semantics can reject replay explicitly.
+let verifier = TrackingVerifier::new(Duration::from_hours(24), 100_000)?;
+let event = verifier.verify_open_once(secret, &token, now_unix_seconds)?;
 ```
 
 ---
@@ -233,6 +235,8 @@ Environment variables:
 - `AWS_SES_BEARER_TOKEN`: Auth token for AWS SES REST v2.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
+
+For Resend, SendGrid, Postmark, AWS SES, and authenticated SMTP, an empty credential or one beginning with `mock_` selects the deterministic offline fallback. Use `driver.delivery_mode()` and `OfflineMailMock::deliveries()` to assert this explicitly in tests.
 
 ---
 

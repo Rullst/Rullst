@@ -1,4 +1,7 @@
-use super::{BillingProvider, SubscriptionStatus, WebhookEvent, url_encode};
+use super::{
+    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    verify_explicit_mock_signature, webhook_mode_from_secret,
+};
 use crate::error::CapitalError;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -22,8 +25,8 @@ impl PicPayProvider {
 
     /// Verifies the `x-seller-token` header.
     pub fn verify_token(&self, token_header: &str) -> Result<(), CapitalError> {
-        if self.seller_token.is_empty() {
-            return Ok(());
+        if self.webhook_verification_mode()? == WebhookVerificationMode::Mock {
+            return verify_explicit_mock_signature(self.name(), &self.seller_token, token_header);
         }
 
         if self
@@ -46,6 +49,10 @@ impl PicPayProvider {
 impl BillingProvider for PicPayProvider {
     fn name(&self) -> &'static str {
         "picpay"
+    }
+
+    fn webhook_verification_mode(&self) -> Result<WebhookVerificationMode, CapitalError> {
+        webhook_mode_from_secret(self.name(), &self.seller_token)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -124,15 +131,11 @@ impl BillingProvider for PicPayProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        let seller_header = headers.get("x-seller-token");
-
-        if let Some(token) = seller_header {
-            self.verify_token(token)?;
-        } else if !self.seller_token.is_empty() {
-            return Err(CapitalError::InvalidSignature(
-                "Missing x-seller-token header".to_string(),
-            ));
-        }
+        let _ = self.webhook_verification_mode()?;
+        let seller_header = headers.get("x-seller-token").ok_or_else(|| {
+            CapitalError::InvalidSignature("Missing x-seller-token header".to_string())
+        })?;
+        self.verify_token(seller_header)?;
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -296,7 +299,10 @@ mod tests {
         assert!(provider.verify_token("wrong_token").is_err());
 
         let no_sec = PicPayProvider::new("t", "");
-        assert!(no_sec.verify_token("any_token").is_ok());
+        assert!(matches!(
+            no_sec.verify_token("any_token"),
+            Err(CapitalError::ConfigurationError(_))
+        ));
 
         // 7. Handle webhook
         let payload = br#"{"referenceId":"ref_pic_100","buyer":{"document":"12345678901","email":"user@picpay.com"},"status":"paid"}"#;

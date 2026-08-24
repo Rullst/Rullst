@@ -8,8 +8,8 @@ use axum::{
 use rullst_core::radar::RadarSnapshot;
 
 /// Renders the unified glassmorphic Rullst Radar & Telemetry Dashboard HTML fragment.
-pub fn render_radar_page() -> String {
-    let snapshot = RadarSnapshot::collect();
+pub async fn render_radar_page() -> String {
+    let snapshot = RadarSnapshot::collect_async().await;
     let collector = rullst_core::telemetry_spans::global_span_collector();
     let spans = collector.snapshot();
 
@@ -67,6 +67,23 @@ pub fn render_radar_page() -> String {
         span_rows_html.push_str("</div>");
     }
 
+    let latency = snapshot
+        .tokio_latency_micros
+        .map(|value| format!("{value} µs"))
+        .unwrap_or_else(|| "Unavailable".to_string());
+    let tasks = snapshot
+        .active_tokio_tasks
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "Unavailable".to_string());
+    let rss = snapshot
+        .memory_rss_mb
+        .map(|value| format!("{value:.1} MB"))
+        .unwrap_or_else(|| "Unavailable".to_string());
+    let cpu = snapshot
+        .cpu_usage_percent
+        .map(|value| format!("{value:.1}%"))
+        .unwrap_or_else(|| "Unavailable".to_string());
+
     format!(
         r#"<div class="p-8 font-mono space-y-8 max-w-7xl mx-auto">
             <header class="pb-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -83,7 +100,7 @@ pub fn render_radar_page() -> String {
                     </a>
                     <span class="px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2">
                         <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span>Zero-Overhead Probe</span>
+                        <span>Live Supported Probes</span>
                     </span>
                 </div>
             </header>
@@ -92,8 +109,8 @@ pub fn render_radar_page() -> String {
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Tokio Tick Latency</div>
-                    <div class="text-2xl font-bold text-emerald-400 mt-1">{latency} µs</div>
-                    <div class="text-xs text-slate-400 mt-2">Zero-cost async event loop</div>
+                    <div class="text-2xl font-bold text-emerald-400 mt-1">{latency}</div>
+                    <div class="text-xs text-slate-400 mt-2">Observed scheduler yield</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Active Async Tasks</div>
@@ -102,12 +119,12 @@ pub fn render_radar_page() -> String {
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Memory RSS RAM</div>
-                    <div class="text-2xl font-bold text-indigo-400 mt-1">{rss:.1} MB</div>
+                    <div class="text-2xl font-bold text-indigo-400 mt-1">{rss}</div>
                     <div class="text-xs text-slate-400 mt-2">Process RAM memory</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Process CPU</div>
-                    <div class="text-2xl font-bold text-amber-400 mt-1">{cpu:.1}%</div>
+                    <div class="text-2xl font-bold text-amber-400 mt-1">{cpu}</div>
                     <div class="text-xs text-slate-400 mt-2">Active CPU core load</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
@@ -133,10 +150,10 @@ pub fn render_radar_page() -> String {
                 {span_rows_html}
             </div>
         </div>"#,
-        latency = snapshot.tokio_latency_micros,
-        tasks = snapshot.active_tokio_tasks,
-        rss = snapshot.memory_rss_mb,
-        cpu = snapshot.cpu_usage_percent,
+        latency = latency,
+        tasks = tasks,
+        rss = rss,
+        cpu = cpu,
         uptime = snapshot.uptime_seconds,
         spans_count = spans.len(),
         span_rows_html = span_rows_html
@@ -145,16 +162,19 @@ pub fn render_radar_page() -> String {
 
 /// Endpoint handler for JSON Radar telemetry API (`GET /api/radar`).
 pub async fn api_radar_handler() -> impl IntoResponse {
-    Json(RadarSnapshot::collect())
+    Json(RadarSnapshot::collect_async().await)
 }
 
 /// Returns an Axum `Router` mounting the Rullst Radar Telemetry endpoints.
 pub fn router() -> Router {
     Router::new()
-        .route("/studio/radar", get(|| async { Html(render_radar_page()) }))
+        .route(
+            "/studio/radar",
+            get(|| async { Html(render_radar_page().await) }),
+        )
         .route(
             "/studio/tools/radar",
-            get(|| async { Html(render_radar_page()) }),
+            get(|| async { Html(render_radar_page().await) }),
         )
         .route("/api/radar", get(api_radar_handler))
 }
@@ -206,7 +226,7 @@ mod tests {
             timestamp: 1700000000,
         });
 
-        let html = render_radar_page();
+        let html = render_radar_page().await;
         assert!(html.contains("Telemetry & Rullst Radar"));
         assert!(html.contains("Prometheus /metrics"));
         assert!(html.contains("SQL QUERY"));

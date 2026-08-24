@@ -3,8 +3,6 @@
 //! Provides zero-config distributed SQLite replication configs and background synchronizers
 //! for edge-replicated databases (like Turso/libsql and Cloudflare D1).
 
-use std::time::Duration;
-
 /// Configuration for distributed SQLite replica database sync.
 #[non_exhaustive]
 #[derive(Clone, Debug)]
@@ -52,49 +50,30 @@ impl ReplicationConfig {
 /// Zero-Config distributed SQLite synchronization engine.
 pub struct ReplicationManager;
 
+/// Failures reported by the replication facade.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ReplicationError {
+    /// Remote replication has no production backend in this release.
+    #[error("SQLite replication backend is not implemented for `{sync_url}`")]
+    Unsupported {
+        /// Requested remote replication endpoint.
+        sync_url: String,
+    },
+}
+
 impl ReplicationManager {
-    /// Launches a non-blocking background task that syncs local replicas with master nodes.
+    /// Validates replication configuration.
+    ///
+    /// Remote synchronization is deliberately fail-closed until a real libSQL/D1
+    /// backend exists; this method never reports a simulated synchronization as
+    /// successful.
     #[cfg_attr(mutants, mutants::skip)]
-    pub fn start(config: ReplicationConfig) {
-        if config.sync_url.is_some() {
-            println!(
-                "🔄 Zero-Config SQLite replication initialized: syncing local replica {} with master...",
-                config.replica_path
-            );
-
-            // Spawn periodic replication routine environment-agnostically
-            crate::edge::spawn(async move {
-                let interval = Duration::from_secs(config.sync_interval_secs);
-                loop {
-                    // On wasm targets, we sleep using appropriate futures-based tickers
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        tokio::time::sleep(interval).await;
-                    }
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        // Emulated sleep ticker on WASM architectures
-                        let mut ticks = 0;
-                        while ticks < config.sync_interval_secs {
-                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::resolve(
-                                &wasm_bindgen::JsValue::NULL,
-                            ))
-                            .await
-                            .ok();
-                            ticks += 1;
-                        }
-                    }
-
-                    println!(
-                        "🔄 [Replication] Synchronizing local SQLite replica at '{}' with remote node...",
-                        config.replica_path
-                    );
-
-                    // Native libsql/d1 driver would invoke syncing calls here.
-                    // We print success to emulate replication cleanly.
-                }
-            });
+    pub fn start(config: ReplicationConfig) -> Result<(), ReplicationError> {
+        if let Some(sync_url) = config.sync_url {
+            return Err(ReplicationError::Unsupported { sync_url });
         }
+        Ok(())
     }
 }
 
@@ -161,22 +140,22 @@ mod tests {
         assert!(driver.is_none());
     }
 
-    #[tokio::test]
-    async fn test_replication_manager_start() {
-        // Test it handles a config with a sync URL
+    #[test]
+    fn test_replication_manager_start() {
         let config = ReplicationConfig::new("test.db")
             .with_sync_url("https://sync.rullst.dev")
             .with_sync_interval(1);
-        ReplicationManager::start(config);
-
-        // Wait briefly to let the background task spawn and run
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        assert_eq!(
+            ReplicationManager::start(config),
+            Err(ReplicationError::Unsupported {
+                sync_url: "https://sync.rullst.dev".to_string(),
+            })
+        );
     }
 
-    #[tokio::test]
-    async fn test_replication_manager_start_no_url() {
-        // Test it handles a config without a sync URL
+    #[test]
+    fn test_replication_manager_start_no_url() {
         let config = ReplicationConfig::new("test.db");
-        ReplicationManager::start(config);
+        assert!(ReplicationManager::start(config).is_ok());
     }
 }

@@ -77,7 +77,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let _ = std::fs::remove_file("test.db");
     std::fs::File::create("test.db").unwrap();
     Orm::init("sqlite://test.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     rullst_orm::_sqlx::query(
         "

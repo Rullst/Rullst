@@ -14,37 +14,82 @@ pub struct GoogleProvider {
     pub(crate) scopes: String,
     pub(crate) state: Option<String>,
     pub(crate) pkce_challenge: Option<String>,
+    pub(crate) credential_mode: crate::configuration::CredentialMode,
+    pub(crate) jwks_cache: crate::provider::JwksCache,
 }
 
 impl GoogleProvider {
-    /// Creates a new `GoogleProvider` with strict client credential validation.
-    pub fn new(
-        client_id: String,
+    /// Creates a validated provider. Placeholder credentials select an offline mock.
+    pub fn try_new(
+        client_id: impl Into<String>,
         client_secret: secrecy::SecretString,
-        redirect_url: String,
+        redirect_url: impl Into<String>,
+    ) -> Result<Self, crate::error::ConnectError> {
+        let client_id = client_id.into();
+        let redirect_url = redirect_url.into();
+        crate::configuration::validate_redirect_url(&redirect_url)?;
+        let credential_mode = crate::configuration::credential_mode(&client_id, &client_secret);
+        let http_client =
+            crate::configuration::provider_http_client(credential_mode, "google", None);
+
+        Ok(Self {
+            client_id,
+            client_secret,
+            redirect_url,
+            http_client,
+            scopes: "openid profile email".to_string(),
+            state: None,
+            pkce_challenge: None,
+            credential_mode,
+            jwks_cache: crate::provider::JwksCache::default(),
+        })
+    }
+
+    /// Deprecated infallible constructor. Invalid configuration is disabled.
+    #[cfg_attr(
+        not(test),
+        deprecated(since = "12.0.0", note = "use try_new and handle ConnectError")
+    )]
+    pub fn new(
+        client_id: impl Into<String>,
+        client_secret: secrecy::SecretString,
+        redirect_url: impl Into<String>,
     ) -> Self {
-        assert!(
-            !client_id.is_empty(),
-            "Socialite Error: client_id cannot be empty"
-        );
-        assert!(
-            !secrecy::ExposeSecret::expose_secret(&client_secret).is_empty(),
-            "Socialite Error: client_secret cannot be empty"
-        );
-        assert!(
-            redirect_url.starts_with("http"),
-            "Socialite Error: redirect_url must be a valid HTTP/HTTPS URL"
-        );
+        let client_id = client_id.into();
+        let mut redirect_url = redirect_url.into();
+        let (credential_mode, invalid_reason) =
+            match crate::configuration::validate_redirect_url(&redirect_url) {
+                Ok(_) => (
+                    crate::configuration::credential_mode(&client_id, &client_secret),
+                    None,
+                ),
+                Err(error) => {
+                    redirect_url = "about:blank".to_string();
+                    (
+                        crate::configuration::CredentialMode::Invalid,
+                        Some(error.to_string()),
+                    )
+                }
+            };
+        let http_client =
+            crate::configuration::provider_http_client(credential_mode, "google", invalid_reason);
 
         Self {
             client_id,
             client_secret,
             redirect_url,
-            http_client: crate::client::DEFAULT_HTTP_CLIENT.clone(),
+            http_client,
             scopes: "openid profile email".to_string(),
             state: None,
             pkce_challenge: None,
+            credential_mode,
+            jwks_cache: crate::provider::JwksCache::default(),
         }
+    }
+
+    /// Returns the selected credential mode.
+    pub fn credential_mode(&self) -> crate::configuration::CredentialMode {
+        self.credential_mode
     }
 
     /// Appends custom OAuth permission scopes to the Google login request.
@@ -54,14 +99,14 @@ impl GoogleProvider {
     }
 
     /// Attaches an OAuth state parameter for CSRF mitigation.
-    pub fn with_state(mut self, state: &str) -> Self {
-        self.state = Some(state.to_owned());
+    pub fn with_state(mut self, state: impl Into<String>) -> Self {
+        self.state = Some(state.into());
         self
     }
 
     /// Attaches a PKCE code challenge to the authorization request.
-    pub fn with_pkce(mut self, challenge: &str) -> Self {
-        self.pkce_challenge = Some(challenge.to_owned());
+    pub fn with_pkce(mut self, challenge: impl Into<String>) -> Self {
+        self.pkce_challenge = Some(challenge.into());
         self
     }
 
@@ -70,7 +115,9 @@ impl GoogleProvider {
         mut self,
         client: ::std::sync::Arc<dyn crate::client::HttpClient>,
     ) -> Self {
-        self.http_client = client;
+        if !self.credential_mode.is_invalid() {
+            self.http_client = client;
+        }
         self
     }
 
@@ -78,19 +125,33 @@ impl GoogleProvider {
     #[cfg(feature = "retry")]
     #[cfg_attr(mutants, mutants::skip)]
     pub fn with_retry(mut self, max_retries: u32) -> Self {
-        self.http_client =
-            ::std::sync::Arc::new(crate::client::ReqwestClient::new_with_retry(max_retries));
+        if matches!(
+            self.credential_mode,
+            crate::configuration::CredentialMode::Live
+        ) {
+            self.http_client =
+                ::std::sync::Arc::new(crate::client::ReqwestClient::new_with_retry(max_retries));
+        }
         self
     }
 
-    pub(crate) async fn get_jwks(
+    /// Overrides JWKS freshness bounds for this provider instance.
+    pub fn with_jwks_cache_policy(mut self, policy: crate::provider::JwksCachePolicy) -> Self {
+        self.jwks_cache = crate::provider::JwksCache::new(policy);
+        self
+    }
+
+    pub(crate) async fn get_jwks_for_kid(
         &self,
+        kid: &str,
     ) -> Result<std::sync::Arc<jsonwebtoken::jwk::JwkSet>, crate::error::ConnectError> {
-        crate::provider::fetch_and_cache_jwks(
-            "https://www.googleapis.com/oauth2/v3/certs",
-            self.http_client.as_ref(),
-        )
-        .await
+        self.jwks_cache
+            .get_for_kid(
+                "https://www.googleapis.com/oauth2/v3/certs",
+                kid,
+                self.http_client.as_ref(),
+            )
+            .await
     }
 
     pub(crate) async fn get_user_from_form(
@@ -121,7 +182,7 @@ impl GoogleProvider {
             })?;
 
             if let Some(kid) = header.kid.as_ref() {
-                let jwks = self.get_jwks().await?;
+                let jwks = self.get_jwks_for_kid(kid).await?;
                 let jwk = jwks.find(kid).ok_or_else(|| {
                     crate::error::ConnectError::Provider(format!(
                         "Google JWK with key ID '{}' not found",

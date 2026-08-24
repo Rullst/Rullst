@@ -63,11 +63,11 @@
 | **CycloneDX SBOM** | [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX_1.5-blue?style=flat-square&label=)](https://cyclonedx.org/) | Automated Software Bill of Materials with SHA-256 package hashes |
 | **Network Surface Audit** | [![Network Scan](https://img.shields.io/badge/Network_Audit-RustScan_Mode-blueviolet?style=flat-square&label=)](https://github.com/Rullst/Rullst) | High-speed local port & interface binding scanner |
 | **Git Pre-Commit Hook** | [![Pre-Commit](https://img.shields.io/badge/Pre--Commit-Active-success?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Local gatekeeper enforcing rustfmt, clippy, and IDOR audits |
-| **IoT Integration** | [![IoT Integration](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml) | MQTT 5.0 broker, sensor telemetry, and edge hardware simulation |
+| **IoT Integration** | [![IoT Integration](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml) | Telemetry helpers, signed OTA manifests, and `no_std` builds |
 | **Security Audit** | [![Security Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml) | RustSec advisory database CVE scanning |
 | **Toolchain Doctor** | [![Doctor](https://img.shields.io/badge/Doctor-System_Diagnostics-teal?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Unified health-check for MSRV, Docker, Kani, and security linters |
 | **Pure-Rustls Native** | [![Pure-Rustls](https://img.shields.io/badge/TLS-100%25_Rustls_Native-10b981?style=flat-square&label=)](https://github.com/rustls/rustls) | Strict zero-OpenSSL C-bindings policy for memory-safe TLS |
-| **PQC Compliance Audit** | [![PQC Compliance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml) | Weekly NIST ML-KEM / Kyber & HSM compliance audit (unsafe-free cryptographic modules) |
+| **IoT Crypto Containment** | [![IoT Crypto Containment](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml) | Signed OTA tests and explicit simulator-boundary checks; no PQC/HSM compliance claim |
 | **MSRV** | [![MSRV](https://img.shields.io/badge/MSRV-1.96.0-orange?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Minimum Supported Rust Version |
 
 </div>
@@ -357,7 +357,7 @@ These are cutting-edge frameworks that let you write both frontend and backend i
 | **Web-based Database Studio** | ✅ (Rullst Studio at `:5555`) | ❌ | ❌ | ❌ | ❌ |
 | **Auto-Generated Admin Panel (CMS)** | ✅ (Rullst Nexus at `/nexus`) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel Telemetry & Prometheus Exporter** | ✅ (`rullst::radar` + `/metrics`) | ❌ | ❌ | ❌ | ❌ |
-| **Embedded IoT & Edge Hardware (`#![no_std]`)** | ✅ (`rullst-iot` / STM32 / ESP32) | ❌ | ❌ | ❌ | ❌ |
+| **`no_std` IoT data and frame helpers** | ✅ (`rullst-iot`) | ❌ | ❌ | ❌ | ❌ |
 | **SaaS Revenue Dashboard & 11 Payment Gateways** | ✅ (`rullst-capital`: Stripe, Alipay, InfinitePay, SPED NFS-e) | ❌ | ❌ | ❌ | ❌ |
 | **Background Workers & Redis Task Queues** | ✅ (`rullst::queue`) | ✅ (Background Tasks) | ❌ | ❌ | ❌ |
 | **Wasm Islands & 5 Hybrid Frontend Engines** | ✅ (HTMX, LiveView, Wasm Islands, Pico Semantic CSS, Tera) | ❌ (Tera Only) | ❌ (Micro-JS Only) | ✅ (Core WASM Focus) | ❌ |
@@ -379,7 +379,7 @@ Rullst is now a unified Monorepo! The framework's core (`rullst`), the database 
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics, Stripe/Alipay/InfinitePay webhooks, and NFS-e digital invoicing.
 - 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: Message queues, WebSockets sync, and OAuth2/OIDC social login.
-- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: High-throughput MQTT 5.0 client, sensor telemetry ingestion, and edge computing.
+- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
 - ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email delivery engine with anti-phishing and DLP secret scanning.
 - 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
 - ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Auto-generated Admin CMS (`/nexus`) and SOC Threat Radar.

@@ -3,6 +3,7 @@
 use super::traits::MailDriver;
 use crate::error::MailError;
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
 /// A driver that outputs emails to the terminal and logs to storage/logs/mail.log
@@ -11,6 +12,8 @@ pub struct LogDriver;
 #[async_trait]
 impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        let prepared = DeliveryPipeline::prepare(message)?;
+        let message = prepared.message();
         let path_str =
             std::env::var("MAIL_LOG_PATH").unwrap_or_else(|_| "storage/logs/mail.log".to_string());
         let log_path = std::path::PathBuf::from(path_str);

@@ -23,25 +23,33 @@ pub mod models;
 {repo_decl}pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Router {{
+pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
         .register::<models::lesson::Lesson>()
-        .build();
+        .try_build()?;
 
-    routes![
+    Ok(routes![
         get("/" => controllers::lms_controller::index),
         get("/courses/{{id}}" => controllers::lms_controller::show_course),
         get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
-    ].nest_axum("/nexus", nexus)
+    ].nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut Router {{
-    Box::into_raw(Box::new(router()))
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("Nexus startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
 }}
 "##,
             repo_decl = repo_decl
@@ -74,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router();
+        let router = {project_name_safe}::router()?;
         rullst::Server::new(router)
     }};
 
@@ -102,13 +110,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth("admin", "password")
+        .with_auth_policy(nexus_auth)
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
         .register::<models::lesson::Lesson>()
-        .build();
+        .try_build()?;
 
     let router = routes![
         get("/" => controllers::lms_controller::index),
@@ -175,7 +184,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial data
-        let pool = rullst::db::Orm::pool();
+        let pool = rullst::db::Orm::pool()?;
 
         // Seed Categories
         rullst::db::sqlx::query(
@@ -408,7 +417,7 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
                         <div style="display: flex; gap: 1rem; align-items: flex-start;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a class="btn" href="/nexus" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(login: admin / password)"</span>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(credentials: environment)"</span>
                         </div>
                             <a class="btn" href="http://localhost:5555" target="_blank" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"📊 Rullst Studio"</a>
                         </div>

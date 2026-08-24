@@ -13,7 +13,7 @@ pub mod server_middleware;
 mod tests;
 
 pub use crate::Router;
-pub use builder::Server;
+pub use builder::{Server, ServerError};
 pub use hotswap::HotSwapService;
 pub use server_middleware::{inject_hmr_script, zstd_static_middleware};
 

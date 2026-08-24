@@ -1,8 +1,10 @@
+use ed25519_dalek::SigningKey;
 use rullst_iot::SensorTelemetry;
 use rullst_iot::anomaly::AnomalyDetector;
 use rullst_iot::modbus::ModbusFrame;
-use rullst_iot::ota::OtaManager;
-use rullst_iot::pqc::PqcKeyPair;
+use rullst_iot::ota::{OtaManager, OtaManifest};
+#[cfg(feature = "experimental-simulators")]
+use rullst_iot::pqc::SimulatedPqcFixture;
 use rullst_iot::twin::DigitalTwin;
 
 #[test]
@@ -62,7 +64,6 @@ fn test_fuzz_anomaly_detector_floats() {
 #[test]
 fn test_fuzz_digital_twin_and_ota() {
     let mut twin = DigitalTwin::new("fuzz-sensor-01");
-    let mut ota = OtaManager::new("12.0.0");
 
     let mut rng_seed: u64 = 0x1122_3344_5566;
     let mut lcg = || {
@@ -84,22 +85,42 @@ fn test_fuzz_digital_twin_and_ota() {
             val,
             1700000000 + i,
         ));
-
-        let ver = format!("12.{}.{}", lcg() % 10, lcg() % 100);
-        let _ = ota.commit_update(&ver);
     }
 
     assert!(twin.latest("temperature").is_some());
+
+    let signing_key = SigningKey::from_bytes(&[31_u8; 32]);
+    let mut ota = OtaManager::new_with_trusted_key(
+        "fuzz-board",
+        "12.0.0",
+        12,
+        signing_key.verifying_key().to_bytes(),
+    )
+    .unwrap();
+    for counter in 13_u64..141 {
+        let firmware = counter.to_be_bytes();
+        let manifest =
+            OtaManifest::from_firmware("fuzz-board", "next", counter, &firmware).unwrap();
+        let mut invalid_signature = [0_u8; 64];
+        for byte in &mut invalid_signature {
+            *byte = (lcg() % 256) as u8;
+        }
+        assert!(
+            ota.verify_update(&manifest, &firmware, &invalid_signature)
+                .is_err()
+        );
+    }
 }
 
 #[test]
-fn test_fuzz_pqc_keypair_invariants() {
-    let keypair = PqcKeyPair::from_seed(b"fuzz_pqc_seed_sensor_01");
-    assert!(!keypair.public_key.is_empty());
+#[cfg(feature = "experimental-simulators")]
+fn test_fuzz_simulated_pqc_fixture_invariants() {
+    let fixture = SimulatedPqcFixture::from_seed(b"fuzz_pqc_fixture_sensor_01");
+    assert!(!fixture.public_fixture().is_empty());
 
-    let ciphertext = keypair.encapsulate(b"sensor_telemetry_payload");
+    let ciphertext = fixture.derive_ciphertext_fixture(b"sensor_telemetry_payload");
     assert!(!ciphertext.is_empty());
 
-    let decrypted = keypair.decapsulate(&ciphertext);
-    assert!(!decrypted.is_empty());
+    let output = fixture.derive_output_fixture(&ciphertext);
+    assert!(!output.is_empty());
 }

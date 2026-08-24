@@ -4,13 +4,13 @@ version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
-description = "OAuth2 social login, enterprise message queues, and real-time synchronization for Rullst."
+description = "OAuth2 social login and OpenID Connect integrations for Rullst."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Rullst/Rullst"
 homepage = "https://rullst.github.io"
 documentation = "https://docs.rs/rullst-connect"
-keywords = ["oauth2", "connect", "authentication", "login", "queues"]
+keywords = ["oauth2", "oidc", "authentication", "login", "security"]
 categories = ["web-programming", "authentication"]
 
 [features]

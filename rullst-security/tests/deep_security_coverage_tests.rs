@@ -5,6 +5,7 @@ use axum::http::{Request, StatusCode};
 use rullst_security::deception::global_deception_routes;
 use rullst_security::log_redactor::redact_secrets;
 use rullst_security::rate_limit::{RateLimitBackend, RateLimiter, rate_limit_middleware};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tower::ServiceExt;
 
@@ -15,8 +16,7 @@ async fn test_rate_limiter_builder_and_middleware() {
     assert_eq!(limiter.backend, RateLimitBackend::Memory);
     assert_eq!(limiter.max_requests, 5);
 
-    let distributed = limiter.clone().with_distributed();
-    assert_eq!(distributed.backend, RateLimitBackend::Distributed);
+    assert!(limiter.clone().try_with_distributed().is_err());
 
     // Middleware integration
     let app = axum::Router::new()
@@ -29,6 +29,12 @@ async fn test_rate_limiter_builder_and_middleware() {
             .header("X-Forwarded-For", "192.168.1.100")
             .body(Body::empty())
             .unwrap();
+        let mut req = req;
+        req.extensions_mut()
+            .insert(axum::extract::ConnectInfo(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(192, 0, 2, 100)),
+                443,
+            )));
         let res = app.clone().oneshot(req).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
     }

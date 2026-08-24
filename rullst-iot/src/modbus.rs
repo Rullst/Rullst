@@ -1,4 +1,4 @@
-//! Modbus RTU / TCP driver frame builder & CRC16 calculator.
+//! Modbus request-frame builder and CRC-16 calculator; no transport is included.
 
 extern crate alloc;
 use alloc::vec::Vec;

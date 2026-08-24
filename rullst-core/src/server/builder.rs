@@ -4,8 +4,43 @@ use crate::server::dylib_loader::load_dylib_router;
 use crate::server::hotswap::HotSwapService;
 use crate::server::server_middleware::zstd_static_middleware;
 use rullst_orm::Orm;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, RwLock};
+
+/// Typed server startup and runtime failures.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum ServerError {
+    /// Application configuration is invalid or unreadable.
+    #[error("server configuration error: {0}")]
+    Configuration(String),
+
+    /// A configured database could not be initialized.
+    #[error("database initialization failed: {0}")]
+    Database(String),
+
+    /// The requested listen address is invalid.
+    #[error("invalid server listen address `{host}:{port}`")]
+    InvalidAddress {
+        /// Configured host value.
+        host: String,
+        /// Configured TCP port.
+        port: u16,
+    },
+
+    /// Hot reload was requested outside its supported local debug mode.
+    #[error("hot reload is available only in local development debug builds")]
+    HotReloadDisabled,
+
+    /// Loading or invoking a hot-reload library failed.
+    #[error("hot reload failed: {0}")]
+    HotReload(String),
+
+    /// An operating-system I/O operation failed.
+    #[error("server I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}
 
 #[non_exhaustive]
 /// The central application server builder for Rullst.
@@ -52,14 +87,7 @@ impl Server {
     /// Creates a `Server` in **hot-reload** mode that loads the application router from
     /// a compiled `cdylib` dynamic library at the given `lib_path`.
     /// The background file-watcher recompiles and hot-swaps the router on source changes.
-    #[allow(clippy::panic)]
     pub fn new_hot<S: Into<String>>(lib_path: S) -> Self {
-        if !cfg!(debug_assertions) {
-            panic!(
-                "CRITICAL SECURITY: Hot-Reloading (new_hot) is strictly disabled in release mode to prevent RCE vulnerabilities via dynamic library injection."
-            );
-        }
-
         Server {
             router: Router::new(),
             db_url: None,
@@ -109,57 +137,69 @@ impl Server {
 
     /// Start the HTTP server on the specified port
     #[cfg_attr(mutants, mutants::skip)]
-    pub async fn run(mut self, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(mut self, port: u16) -> Result<(), ServerError> {
+        let dotenv = Self::load_dotenv_values().await?;
         let _ = crate::artisan::check_and_run_artisan(vec![], vec![]).await;
         let _ = crate::telemetry::init_telemetry();
-        let app_config = Self::load_config().await;
+        let app_config = Self::load_config().await?;
+        let environment = resolve_environment(&app_config, &dotenv)?;
 
-        self.init_database(&app_config).await;
+        self.init_database(&app_config, &dotenv).await?;
         self.start_scheduler();
 
-        let is_dev =
-            std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-        let addr = Self::setup_networking(port, is_dev);
+        let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
 
         if let Some(lib_path) = self.hot_reload_lib.take() {
-            self.run_hot_reload(lib_path, addr, is_dev).await
+            self.run_hot_reload(lib_path, addr, environment).await
         } else {
-            self.run_static(app_config, addr, is_dev).await
+            self.run_static(app_config, addr, environment).await
         }
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn load_config() -> crate::config::RullstConfig {
-        let mut app_config = crate::config::RullstConfig::new();
-        if std::path::Path::new("Rullst.toml").exists() {
-            match crate::config::RullstConfig::load_from_file("Rullst.toml").await {
-                Ok(c) => {
-                    let _ = crate::config::RullstConfig::set_global(c.clone());
-                    app_config = c;
-                }
-                Err(e) => {
-                    eprintln!("⚠️ Rullst Warning: Failed to parse Rullst.toml: {}", e);
-                    let _ = crate::config::RullstConfig::set_global(app_config.clone());
-                }
-            }
-        } else {
-            let _ = crate::config::RullstConfig::set_global(app_config.clone());
+    async fn load_dotenv_values() -> Result<HashMap<String, String>, ServerError> {
+        if !std::path::Path::new(".env").exists() {
+            return Ok(HashMap::new());
         }
+
+        let content = tokio::fs::read_to_string(".env").await?;
+        dotenvy::from_read_iter(content.as_bytes())
+            .map(|entry| entry.map_err(|error| ServerError::Configuration(error.to_string())))
+            .collect()
+    }
+
+    #[cfg_attr(mutants, mutants::skip)]
+    async fn load_config() -> Result<crate::config::RullstConfig, ServerError> {
+        let app_config = if std::path::Path::new("Rullst.toml").exists() {
+            crate::config::RullstConfig::load_from_file("Rullst.toml")
+                .await
+                .map_err(|error| ServerError::Configuration(error.to_string()))?
+        } else {
+            crate::config::RullstConfig::new()
+        };
+
         app_config
+            .validate()
+            .map_err(|error| ServerError::Configuration(error.to_string()))?;
+        let _ = crate::config::RullstConfig::set_global(app_config.clone());
+        Ok(app_config)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn init_database(&mut self, app_config: &crate::config::RullstConfig) {
+    async fn init_database(
+        &mut self,
+        app_config: &crate::config::RullstConfig,
+        dotenv: &HashMap<String, String>,
+    ) -> Result<(), ServerError> {
         if rullst_orm::Orm::try_pool().is_ok() {
-            return;
+            return Ok(());
         }
-
-        let _ = dotenvy::from_filename_override(".env");
-        let _ = dotenvy::dotenv();
 
         if self.db_url.is_none() {
-            if let Ok(env_db_url) = std::env::var("DATABASE_URL") {
+            if let Some(env_db_url) = read_optional_environment_variable("DATABASE_URL")? {
                 self.db_url = Some(env_db_url);
+            } else if let Some(dotenv_db_url) = dotenv.get("DATABASE_URL") {
+                self.db_url = Some(dotenv_db_url.clone());
             } else if let Some(ref url) = app_config.database.url {
                 self.db_url = Some(url.clone());
             }
@@ -167,14 +207,13 @@ impl Server {
 
         if let Some(db_url) = &self.db_url {
             println!("Initializing Orm database pool...");
-            match Orm::init(db_url).await {
-                Ok(_) => println!("Database initialized successfully."),
-                Err(e) => eprintln!(
-                    "⚠️ Rullst Warning: Failed to initialize database: {}. Database features will be offline.",
-                    e
-                ),
-            }
+            Orm::init(db_url)
+                .await
+                .map_err(|error| ServerError::Database(error.to_string()))?;
+            println!("Database initialized successfully.");
         }
+
+        Ok(())
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -185,51 +224,64 @@ impl Server {
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    fn setup_networking(port: u16, is_dev: bool) -> SocketAddr {
-        if is_dev && std::env::var("RUST_BACKTRACE").is_err() {
-            unsafe {
-                std::env::set_var("RUST_BACKTRACE", "1");
-            }
-        }
+    fn setup_networking(
+        fallback_port: u16,
+        configured_port: Option<u16>,
+        environment: crate::config::Environment,
+        dotenv: &HashMap<String, String>,
+    ) -> Result<SocketAddr, ServerError> {
+        let host_str = read_optional_environment_variable("HOST")?
+            .or(read_optional_environment_variable("RULLST_HOST")?)
+            .or_else(|| dotenv.get("HOST").cloned())
+            .or_else(|| dotenv.get("RULLST_HOST").cloned())
+            .unwrap_or_else(|| {
+                if environment.requires_secure_defaults() {
+                    "0.0.0.0".to_string()
+                } else {
+                    "127.0.0.1".to_string()
+                }
+            });
 
-        let host_str = std::env::var("HOST").unwrap_or_else(|_| {
-            if is_dev && std::env::var("RULLST_HOST").is_err() {
-                "127.0.0.1".to_string()
-            } else {
-                "0.0.0.0".to_string()
-            }
-        });
+        let env_port_value =
+            read_optional_environment_variable("PORT")?.or_else(|| dotenv.get("PORT").cloned());
+        let env_port = match env_port_value {
+            Some(value) => Some(value.parse::<u16>().map_err(|_| {
+                ServerError::Configuration(format!("PORT must be a valid u16, got `{value}`"))
+            })?),
+            None => None,
+        };
+        let port = env_port.or(configured_port).unwrap_or(fallback_port);
 
-        let env_port = std::env::var("PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(port);
+        let addr: SocketAddr =
+            format!("{host_str}:{port}")
+                .parse()
+                .map_err(|_| ServerError::InvalidAddress {
+                    host: host_str,
+                    port,
+                })?;
 
-        let addr: SocketAddr = format!("{}:{}", host_str, env_port)
-            .parse()
-            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], env_port)));
-
-        if is_dev && addr.ip().is_unspecified() {
+        if environment.allows_development_tools() && addr.ip().is_unspecified() {
             eprintln!(
                 "⚠️  Rullst Dev: Self-Healing Console mounted on /_rullst/*\n\
-                   Set APP_ENV=production to disable before deploying."
+                   Set RULLST_ENV=production to disable before deploying."
             );
         }
 
-        addr
+        Ok(addr)
     }
 
-    #[allow(clippy::panic)]
     #[cfg_attr(mutants, mutants::skip)]
     async fn run_hot_reload(
         self,
         lib_path: String,
         addr: SocketAddr,
-        is_dev: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        if !cfg!(debug_assertions) {
-            panic!("CRITICAL SECURITY: Hot-Reloading is strictly disabled in release mode!");
+        environment: crate::config::Environment,
+    ) -> Result<(), ServerError> {
+        if !cfg!(debug_assertions) || !environment.allows_development_tools() {
+            return Err(ServerError::HotReloadDisabled);
         }
+
+        let is_dev = true;
 
         println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
         println!("\x1b[36m⚡ Initializing Rullst in Hot-Reloading mode via dylib...\x1b[0m");
@@ -241,7 +293,7 @@ impl Server {
                     "\x1b[31m❌ Failed to load initial dylib: {}. Make sure the dynamic library was compiled by running 'cargo build --lib'.\x1b[0m",
                     e
                 );
-                return Err(e);
+                return Err(ServerError::HotReload(e.to_string()));
             }
         };
 
@@ -279,8 +331,9 @@ impl Server {
         self,
         app_config: crate::config::RullstConfig,
         addr: SocketAddr,
-        is_dev: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+        environment: crate::config::Environment,
+    ) -> Result<(), ServerError> {
+        let is_dev = environment.allows_development_tools();
         let mut app = self
             .router
             .into_axum()
@@ -304,7 +357,9 @@ impl Server {
             },
         ));
 
-        app = app.layer(axum::Extension(app_config.security.clone()));
+        app = app
+            .layer(axum::Extension(app_config.security.clone()))
+            .layer(axum::Extension(environment));
 
         if !app_config.security.cors_allow_origins.is_empty() {
             use tower_http::cors::CorsLayer;
@@ -312,8 +367,14 @@ impl Server {
                 .security
                 .cors_allow_origins
                 .iter()
-                .filter_map(|o| o.parse().ok())
-                .collect();
+                .map(|origin| {
+                    origin.parse().map_err(|_| {
+                        ServerError::Configuration(format!(
+                            "invalid CORS origin header value `{origin}`"
+                        ))
+                    })
+                })
+                .collect::<Result<_, _>>()?;
             app = app.layer(CorsLayer::new().allow_origin(origins));
         }
 
@@ -353,7 +414,7 @@ impl Server {
             }));
         }
 
-        if !is_dev {
+        if environment.requires_secure_defaults() {
             if app_config.security.enable_pii_masking {
                 app = app.layer(axum::middleware::from_fn(
                     crate::security::pii_masking_middleware,
@@ -374,12 +435,41 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app)
-            .with_graceful_shutdown(shutdown_signal())
-            .await?;
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
         Ok(())
     }
+}
+
+fn read_optional_environment_variable(name: &str) -> Result<Option<String>, ServerError> {
+    match std::env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(std::env::VarError::NotUnicode(_)) => Err(ServerError::Configuration(format!(
+            "{name} is not valid Unicode"
+        ))),
+    }
+}
+
+fn resolve_environment(
+    config: &crate::config::RullstConfig,
+    dotenv: &HashMap<String, String>,
+) -> Result<crate::config::Environment, ServerError> {
+    let rullst_env = read_optional_environment_variable("RULLST_ENV")?;
+    let app_env = read_optional_environment_variable("APP_ENV")?;
+    let fallback = dotenv
+        .get("RULLST_ENV")
+        .or_else(|| dotenv.get("APP_ENV"))
+        .map(String::as_str)
+        .or(config.app.env.as_deref());
+
+    crate::config::Environment::resolve(rullst_env.as_deref(), app_env.as_deref(), fallback)
+        .map_err(|error| ServerError::Configuration(error.to_string()))
 }
 
 /// Listens for OS termination signals (SIGINT / SIGTERM / Ctrl+C) to drain in-flight requests cleanly.

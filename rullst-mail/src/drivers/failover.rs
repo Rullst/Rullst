@@ -3,6 +3,7 @@
 use super::traits::MailDriver;
 use crate::error::MailError;
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
@@ -110,6 +111,8 @@ impl FailoverDriver {
 #[async_trait]
 impl MailDriver for FailoverDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        let prepared = DeliveryPipeline::prepare(message)?;
+        let message = prepared.message();
         let tripped = self.is_tripped();
 
         let primary_err_msg = if !tripped {

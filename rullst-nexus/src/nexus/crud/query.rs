@@ -84,7 +84,7 @@ pub fn field_kind_input_type(kind: &FieldKind) -> &'static str {
 pub fn sanitize_identifier(name: &str) -> String {
     let mut res = String::with_capacity(64);
     for c in name.chars() {
-        if c.is_alphanumeric() || c == '_' {
+        if c.is_ascii_alphanumeric() || c == '_' {
             if res.len() + c.len_utf8() > 64 {
                 break;
             }
@@ -105,7 +105,8 @@ pub fn build_table_query(
 ) -> (String, Vec<String>) {
     let clean_table = sanitize_identifier(entry.table);
     let limit = 15;
-    let offset = (page - 1) * limit;
+    let page = page.max(1);
+    let offset = page.saturating_sub(1).saturating_mul(limit);
 
     let mut select_cols: Vec<String> = visible_fields
         .iter()
@@ -162,7 +163,11 @@ pub fn build_table_query(
         }
     }
 
-    let sort_col = sort_by.unwrap_or(entry.pk);
+    let sort_col = sort_by
+        .filter(|candidate| {
+            *candidate == entry.pk || entry.fields.iter().any(|field| field.name == *candidate)
+        })
+        .unwrap_or(entry.pk);
     let sort_dir = order
         .filter(|&o| o.eq_ignore_ascii_case("asc") || o.eq_ignore_ascii_case("desc"))
         .unwrap_or("DESC");

@@ -79,7 +79,8 @@ Generates and configures full CORS (Cross-Origin Resource Sharing) options in yo
 Prepares your project to become a Desktop or Mobile App. It generates Tauri/Omni manifests, creating the native bridge so you can package your website as an `.exe` or `.apk`.
 
 ### `cargo rullst make:iot <DeviceName>`
-Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway) in `src/iot/` pre-configured with `rullst-iot` telemetry models and MQTT/CoAP protocol formatters.
+Scaffolds a telemetry-only IoT module in `src/iot/` using `SensorTelemetry`.
+It does not install an MQTT/CoAP transport or claim broker connectivity.
 
 ### `cargo rullst make:k8s`
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.

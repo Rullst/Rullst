@@ -60,7 +60,7 @@ impl Studio {
             .nest("/env", env_viewer::router())
             .nest("/features", feature_flags::router())
             .nest("/er", er_diagram::router())
-            .nest("/security/stats", security_radar::router());
+            .nest("/security", security_radar::router());
 
         if let Some(openapi) = self.openapi {
             router = router.nest("/api", api_playground::router(openapi));

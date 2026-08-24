@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::File::create("products_demo.db")?;
 
     Orm::init("sqlite://products_demo.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     rullst_orm::_sqlx::query(
         "CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, price REAL NOT NULL)"

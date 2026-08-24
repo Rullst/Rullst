@@ -1,11 +1,25 @@
-# rullst-connect: Security & Quality Audit Report (v10.0.2)
+# rullst-connect: Historical Security & Quality Audit (v10.0.2)
 
 > **Date:** June 24, 2026  
 > **Version:** v10.0.2  
 > **Auditor:** Antigravity (Google DeepMind)  
-> **Status:** ✅ Passed — Production-Ready
+> **Status:** Historical snapshot; not a current certification or release attestation
 
-This document provides a comprehensive, up-to-date security, performance, and quality audit for `rullst-connect` v10.0.2. It supersedes all previous audit documents (including the v9.0.1 audit). All source files, dependencies, and test suites were reviewed as part of this audit.
+This document records an older review of `rullst-connect` v10.0.2. It is retained for
+history and must not be read as evidence about the current commit. Reproduce current
+results with the repository CI and the crate's test/lint commands.
+
+## v12 hardening delta
+
+- Provider `try_new` constructors validate URLs and return typed errors; deprecated
+  infallible constructors fail closed rather than panicking.
+- Empty or `mock_*` credentials select a typed network-free mode. Functional mock
+  identities require tests or the explicit `mock` feature.
+- OIDC discovery parses URLs, rejects lookalike loopback hosts, requires an exact issuer
+  match, and requires HTTPS endpoints except for the issuer's exact loopback origin.
+- JWKS caches are isolated per provider, expire by TTL, refresh immediately for unknown
+  `kid` values, and use bounded stale keys only after an error and only for a known `kid`.
+- The embedded Mock IdP no longer emits an unsigned `alg=none` identity token.
 
 ---
 

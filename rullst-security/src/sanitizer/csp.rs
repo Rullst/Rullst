@@ -2,17 +2,14 @@ use axum::{
     body::Body,
     http::{HeaderValue, Request, Response},
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
-use rand::Rng;
+use rullst_core::security::{CspNonce, render_csp_policy};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
 pub fn generate_nonce() -> String {
-    let mut bytes = [0u8; 16];
-    rand::rng().fill_bytes(&mut bytes);
-    STANDARD.encode(bytes)
+    CspNonce::generate().to_string()
 }
 
 #[derive(Clone, Debug, Default)]
@@ -44,18 +41,16 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let nonce = generate_nonce();
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        let nonce = CspNonce::generate();
+        req.extensions_mut().insert(nonce.clone());
         let fut = self.inner.call(req);
 
         Box::pin(async move {
             let mut res = fut.await?;
             let headers = res.headers_mut();
 
-            let csp_value = format!(
-                "default-src 'self'; script-src 'self' 'nonce-{}'; style-src 'self' 'unsafe-inline';",
-                nonce
-            );
+            let csp_value = render_csp_policy(None, Some(&nonce));
             if let Ok(v) = HeaderValue::from_str(&csp_value) {
                 headers.insert("content-security-policy", v);
             }

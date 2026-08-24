@@ -94,7 +94,6 @@ pub use database::RullstDatabase;
 pub use error::RullstError as Error;
 pub use intent::IntentAnalyzer;
 pub use policy::Policy;
-pub(crate) use pool::DB_DRIVER;
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,
@@ -122,11 +121,11 @@ macro_rules! execute_query {
             if let Some(tx) = tx_guard.as_mut() {
                 $query.$method(&mut **tx).await
             } else {
-                let pool = $crate::Orm::$pool_fn();
+                let pool = $crate::Orm::$pool_fn()?;
                 $query.$method(pool).await
             }
         } else {
-            let pool = $crate::Orm::$pool_fn();
+            let pool = $crate::Orm::$pool_fn()?;
             $query.$method(pool).await
         }
     };
@@ -141,11 +140,11 @@ macro_rules! dispatch_executor {
                 let $executor = &mut **tx;
                 $e
             } else {
-                let $executor = $crate::Orm::$pool_fn();
+                let $executor = $crate::Orm::$pool_fn()?;
                 $e
             }
         } else {
-            let $executor = $crate::Orm::$pool_fn();
+            let $executor = $crate::Orm::$pool_fn()?;
             $e
         }
     };

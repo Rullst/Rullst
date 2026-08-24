@@ -88,10 +88,10 @@ impl Blueprint {
 
     #[cfg_attr(test, mutants::skip)]
     pub fn build(&self) -> Result<String, Error> {
-        let driver = crate::DB_DRIVER
-            .get()
-            .map(|s| s.as_str())
-            .unwrap_or("sqlite");
+        self.build_for_driver(crate::Orm::driver()?)
+    }
+
+    pub(crate) fn build_for_driver(&self, driver: &str) -> Result<String, Error> {
         let mut defs = vec![];
         for col in &self.columns {
             // Defensive re-validation: column names must always be safe

@@ -9,13 +9,27 @@ fuzz_target!(|data: &[u8]| {
         let secret = b"test_fuzz_hmac_secret_key_123456";
         let timestamp = 1700000000;
 
-        let _ = TrackingEngine::inject_open_pixel(s, tracker_url);
-        let _ = TrackingEngine::rewrite_links(s, tracker_url, secret, s, timestamp);
+        let _ = TrackingEngine::try_inject_open_pixel(s, tracker_url);
+        let _ = TrackingEngine::try_rewrite_links(s, tracker_url, secret, s, timestamp);
 
-        let token = TrackingEngine::generate_open_token(secret, s, "campaign-1", timestamp);
-        let _ = TrackingEngine::verify_open_token(secret, &token);
+        if let Ok(token) =
+            TrackingEngine::try_generate_open_token(secret, s, "campaign-1", timestamp)
+        {
+            let _ = TrackingEngine::verify_open_token_at(
+                secret,
+                &token,
+                timestamp,
+                std::time::Duration::from_secs(60),
+            );
+        }
 
-        let click_token = TrackingEngine::generate_click_token(secret, s, s, timestamp);
-        let _ = TrackingEngine::verify_click_token(secret, &click_token);
+        if let Ok(click_token) = TrackingEngine::try_generate_click_token(secret, s, s, timestamp) {
+            let _ = TrackingEngine::verify_click_token_at(
+                secret,
+                &click_token,
+                timestamp,
+                std::time::Duration::from_secs(60),
+            );
+        }
     }
 });

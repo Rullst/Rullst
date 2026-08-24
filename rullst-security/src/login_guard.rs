@@ -3,7 +3,8 @@
 
 use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
 use dashmap::DashMap;
-use std::sync::OnceLock;
+use sha2::{Digest, Sha256};
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 static GLOBAL_LOGIN_GUARD: OnceLock<LoginGuard> = OnceLock::new();
@@ -20,6 +21,9 @@ pub struct LoginGuard {
     pub jail_duration: Duration,
     /// Reset window for consecutive failures (default: 10 minutes).
     pub window_duration: Duration,
+    /// Maximum identities retained in either in-memory map.
+    pub max_identities: usize,
+    last_cleanup: Mutex<Instant>,
 }
 
 impl Default for LoginGuard {
@@ -30,6 +34,8 @@ impl Default for LoginGuard {
             max_failures: 5,
             jail_duration: Duration::from_secs(900), // 15 minutes
             window_duration: Duration::from_secs(600), // 10 minutes
+            max_identities: 100_000,
+            last_cleanup: Mutex::new(Instant::now()),
         }
     }
 }
@@ -37,23 +43,7 @@ impl Default for LoginGuard {
 impl LoginGuard {
     /// Creates a new LoginGuard instance.
     pub fn new() -> Self {
-        let guard = Self::default();
-        if tokio::runtime::Handle::try_current().is_ok() {
-            let failures = guard.failures.clone();
-            let jails = guard.jails.clone();
-            let window = guard.window_duration;
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(300));
-                loop {
-                    interval.tick().await;
-                    let now = Instant::now();
-                    failures
-                        .retain(|_, (_, last_attempt)| now.duration_since(*last_attempt) < window);
-                    jails.retain(|_, exp| now < *exp);
-                }
-            });
-        }
-        guard
+        Self::default()
     }
 
     /// Accesses the global static LoginGuard instance.
@@ -63,12 +53,14 @@ impl LoginGuard {
 
     /// Checks if a client IP or user identity is currently jailed.
     pub fn is_jailed(&self, identity: &str) -> bool {
-        if let Some(exp) = self.jails.get(identity) {
+        self.cleanup_if_due();
+        let identity_key = identity_key(identity);
+        if let Some(exp) = self.jails.get(&identity_key) {
             if Instant::now() < *exp {
                 return true;
             } else {
                 drop(exp);
-                self.jails.remove(identity);
+                self.jails.remove(&identity_key);
             }
         }
         false
@@ -76,13 +68,15 @@ impl LoginGuard {
 
     /// Returns the remaining jail duration for an identity, if jailed.
     pub fn remaining_jail_time(&self, identity: &str) -> Option<Duration> {
-        if let Some(exp) = self.jails.get(identity) {
+        self.cleanup_if_due();
+        let identity_key = identity_key(identity);
+        if let Some(exp) = self.jails.get(&identity_key) {
             let now = Instant::now();
             if now < *exp {
                 return Some(exp.duration_since(now));
             } else {
                 drop(exp);
-                self.jails.remove(identity);
+                self.jails.remove(&identity_key);
             }
         }
         None
@@ -90,17 +84,24 @@ impl LoginGuard {
 
     /// Records a failed authentication attempt. Returns the progressive tarpit delay duration.
     pub fn record_login_failure(&self, identity: &str) -> Duration {
+        self.cleanup_if_due();
         let now = Instant::now();
+        let identity_key = identity_key(identity);
 
         // Check if already jailed
         if self.is_jailed(identity) {
             return Duration::from_secs(5);
         }
 
+        if !self.failures.contains_key(&identity_key) && self.failures.len() >= self.max_identities
+        {
+            return Duration::from_secs(5);
+        }
+
         let current_count = {
             let mut entry = self
                 .failures
-                .entry(identity.to_string())
+                .entry(identity_key.clone())
                 .or_insert((0, now));
             let (count, last_attempt) = entry.value_mut();
 
@@ -117,9 +118,11 @@ impl LoginGuard {
         };
 
         if current_count >= self.max_failures {
-            self.jails
-                .insert(identity.to_string(), now + self.jail_duration);
-            self.failures.remove(identity);
+            self.failures.remove(&identity_key);
+            if self.jails.len() < self.max_identities || self.jails.contains_key(&identity_key) {
+                self.jails
+                    .insert(identity_key.clone(), now + self.jail_duration);
+            }
 
             // Record security telemetry & live event
             let store = SecurityStore::global();
@@ -132,11 +135,12 @@ impl LoginGuard {
                         event_type: "LOGIN_JAIL_TRIGGERED".to_string(),
                         details: format!(
                             "Identity/IP '{}' placed in 15min jail after {} failed login attempts",
-                            identity, current_count
+                            bounded_identity_for_log(identity),
+                            current_count
                         ),
-                        client_ip: identity.to_string(),
+                        client_ip: bounded_identity_for_log(identity),
                         timestamp_str: current_timestamp_str(),
-                        verified_hmac: true,
+                        verified_hmac: false,
                     },
                 );
                 if events.len() > 50 {
@@ -158,9 +162,44 @@ impl LoginGuard {
 
     /// Records a successful authentication, resetting the failure history.
     pub fn record_login_success(&self, identity: &str) {
-        self.failures.remove(identity);
-        self.jails.remove(identity);
+        let identity_key = identity_key(identity);
+        self.failures.remove(&identity_key);
+        self.jails.remove(&identity_key);
     }
+
+    fn cleanup_if_due(&self) {
+        const CLEANUP_INTERVAL: Duration = Duration::from_secs(300);
+        let now = Instant::now();
+        let mut last_cleanup = match self.last_cleanup.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if now.duration_since(*last_cleanup) < CLEANUP_INTERVAL {
+            return;
+        }
+        *last_cleanup = now;
+        self.failures.retain(|_, (_, last_attempt)| {
+            now.saturating_duration_since(*last_attempt) < self.window_duration
+        });
+        self.jails.retain(|_, expiration| now < *expiration);
+    }
+}
+
+fn identity_key(identity: &str) -> String {
+    hex::encode(Sha256::digest(identity.trim().as_bytes()))
+}
+
+fn bounded_identity_for_log(identity: &str) -> String {
+    const MAX_LOGGED_IDENTITY_BYTES: usize = 128;
+    let identity = identity.trim();
+    if identity.len() <= MAX_LOGGED_IDENTITY_BYTES {
+        return identity.to_string();
+    }
+    let mut boundary = MAX_LOGGED_IDENTITY_BYTES;
+    while !identity.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    format!("{}…", &identity[..boundary])
 }
 
 #[cfg(test)]
@@ -195,7 +234,7 @@ mod tests {
         let guard = LoginGuard::new();
         // Insert expired jail
         guard.jails.insert(
-            "expired_user".to_string(),
+            identity_key("expired_user"),
             Instant::now() - Duration::from_secs(10),
         );
         assert!(!guard.is_jailed("expired_user"));
@@ -203,7 +242,7 @@ mod tests {
 
         // Insert active jail
         guard.jails.insert(
-            "active_user".to_string(),
+            identity_key("active_user"),
             Instant::now() + Duration::from_secs(100),
         );
         assert!(guard.is_jailed("active_user"));

@@ -32,8 +32,8 @@ pub struct PostRepository;
 
 impl PostRepository {
     /// Aggregates author publishing metrics via parameterized SQLx query.
-    pub async fn get_author_analytics() -> Result<Vec<AuthorAnalytics>, sqlx::Error> {
-        let pool = Orm::pool();
+    pub async fn get_author_analytics() -> Result<Vec<AuthorAnalytics>, rullst_orm::Error> {
+        let pool = Orm::pool()?;
         let rows = sqlx::query(
             "SELECT 
                 COALESCE(tenant_id, 'community') as author_name,
@@ -67,8 +67,8 @@ impl PostRepository {
     }
 
     /// Fetches all raw posts across all tenants directly via Data Mapper SQLx query.
-    pub async fn get_all_raw_posts() -> Result<Vec<RawPostRecord>, sqlx::Error> {
-        let pool = Orm::pool();
+    pub async fn get_all_raw_posts() -> Result<Vec<RawPostRecord>, rullst_orm::Error> {
+        let pool = Orm::pool()?;
         let rows = sqlx::query("SELECT id, tenant_id, title, body FROM posts ORDER BY id DESC")
             .fetch_all(pool)
             .await?;

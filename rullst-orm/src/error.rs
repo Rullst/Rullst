@@ -3,7 +3,12 @@ use std::fmt;
 
 /// The standard error type for rullst-orm, shielding users from internal dependency errors.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum RullstError {
+    /// The global ORM state has not been initialized yet.
+    NotInitialized,
+    /// The global ORM state was already initialized by an earlier call.
+    AlreadyInitialized,
     /// A record was not found in the database.
     RecordNotFound,
     /// A general database or query error.
@@ -21,6 +26,13 @@ pub enum RullstError {
 impl fmt::Display for RullstError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            RullstError::NotInitialized => {
+                write!(
+                    f,
+                    "Orm is not initialized. Call Orm::init() before querying."
+                )
+            }
+            RullstError::AlreadyInitialized => write!(f, "Orm has already been initialized"),
             RullstError::RecordNotFound => write!(f, "Record not found"),
             RullstError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
             RullstError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
@@ -68,6 +80,14 @@ mod tests {
 
     #[test]
     fn test_rullst_error_display() {
+        assert_eq!(
+            RullstError::NotInitialized.to_string(),
+            "Orm is not initialized. Call Orm::init() before querying."
+        );
+        assert_eq!(
+            RullstError::AlreadyInitialized.to_string(),
+            "Orm has already been initialized"
+        );
         assert_eq!(RullstError::RecordNotFound.to_string(), "Record not found");
         assert_eq!(
             RullstError::DatabaseError("msg".to_string()).to_string(),

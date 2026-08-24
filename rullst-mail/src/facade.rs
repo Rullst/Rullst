@@ -2,12 +2,23 @@
 
 use crate::drivers::*;
 use crate::message::Message;
+use crate::pipeline::DeliveryPipeline;
 use rullst_core::queue::Queue;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 use tokio::sync::OnceCell;
 
 static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
 static CUSTOM_DRIVER: RwLock<Option<Arc<dyn MailDriver>>> = RwLock::new(None);
+
+pub(crate) const MAIL_JOB_SCHEMA_VERSION: u8 = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct QueuedMail {
+    pub(crate) schema_version: u8,
+    pub(crate) tenant_id: Option<String>,
+    pub(crate) message: Message,
+}
 
 /// The main Mail facade
 pub struct Mail;
@@ -36,8 +47,14 @@ impl Mail {
     /// Send a message. If a background queue is initialized, it pushes to the queue automatically.
     /// Otherwise, it sends synchronously.
     pub async fn send(message: Message) -> Result<(), MailError> {
+        let message = DeliveryPipeline::prepare(&message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
-            let payload = serde_json::to_value(&message).map_err(|e| {
+            let payload = serde_json::to_value(QueuedMail {
+                schema_version: MAIL_JOB_SCHEMA_VERSION,
+                tenant_id: None,
+                message,
+            })
+            .map_err(|e| {
                 MailError::SendError(format!("Failed to serialize message for queue: {}", e))
             })?;
             queue
@@ -52,7 +69,8 @@ impl Mail {
 
     /// Forces sending the message synchronously, bypassing the background queue.
     pub async fn send_now(message: Message) -> Result<(), MailError> {
-        let custom_driver = CUSTOM_DRIVER.read().ok().and_then(|l| l.clone());
+        let message = DeliveryPipeline::prepare(&message)?.into_message();
+        let custom_driver = Self::custom_driver()?;
         if let Some(driver) = custom_driver {
             return driver.send(&message).await;
         }
@@ -61,15 +79,56 @@ impl Mail {
     }
 
     /// Sends a message for a specific tenant when using a multi-tenant driver or custom resolver.
-    pub async fn send_for_tenant(tenant_id: &str, message: Message) -> Result<(), MailError> {
-        let _ = tenant_id;
-        let custom_driver = CUSTOM_DRIVER.read().ok().and_then(|l| l.clone());
+    pub async fn send_for_tenant(
+        tenant_id: impl Into<String>,
+        message: Message,
+    ) -> Result<(), MailError> {
+        let tenant_id = tenant_id.into();
+        let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
+        if let Some(queue) = MAIL_QUEUE.get() {
+            let payload = serde_json::to_value(QueuedMail {
+                schema_version: MAIL_JOB_SCHEMA_VERSION,
+                tenant_id: Some(tenant_id),
+                message,
+            })
+            .map_err(|error| {
+                MailError::SendError(format!(
+                    "failed to serialize tenant mail for queue: {error}"
+                ))
+            })?;
+            queue
+                .dispatch("rullst_mail_send", payload)
+                .await
+                .map_err(|error| {
+                    MailError::SendError(format!("failed to enqueue tenant mail job: {error}"))
+                })?;
+            return Ok(());
+        }
+
+        Self::send_now_for_tenant(&tenant_id, message).await
+    }
+
+    /// Forces tenant-aware synchronous delivery, bypassing the background queue.
+    pub async fn send_now_for_tenant(
+        tenant_id: impl Into<String>,
+        message: Message,
+    ) -> Result<(), MailError> {
+        let tenant_id = tenant_id.into();
+        let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
+        let custom_driver = Self::custom_driver()?;
         if let Some(driver) = custom_driver {
-            driver.send(&message).await
+            driver.send_for_tenant(&tenant_id, &message).await
         } else {
             let driver = Self::resolve_driver().await?;
-            driver.send(&message).await
+            driver.send_for_tenant(&tenant_id, &message).await
         }
+    }
+
+    fn custom_driver() -> Result<Option<Arc<dyn MailDriver>>, MailError> {
+        CUSTOM_DRIVER
+            .read()
+            .map(|driver| driver.clone())
+            .map_err(|_| MailError::DriverError("custom driver lock poisoned".to_string()))
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -115,12 +174,9 @@ impl Mail {
                     let username = std::env::var("MAIL_USERNAME").ok();
                     let password = std::env::var("MAIL_PASSWORD").ok();
 
-                    Ok(Box::new(SmtpDriver {
-                        host,
-                        port,
-                        username,
-                        password,
-                    }))
+                    Ok(Box::new(SmtpDriver::try_new(
+                        host, port, username, password,
+                    )?))
                 }
                 #[cfg(not(feature = "mail-smtp"))]
                 {
@@ -128,51 +184,37 @@ impl Mail {
                 }
             }
             "resend" => {
-                let api_key = std::env::var("RESEND_API_KEY").map_err(|_| {
-                    MailError::ConfigError(
-                        "RESEND_API_KEY environment variable is not set".to_string(),
-                    )
-                })?;
-                Ok(Box::new(ResendDriver { api_key }))
+                let api_key = std::env::var("RESEND_API_KEY").unwrap_or_default();
+                Ok(Box::new(ResendDriver::try_new(api_key)?))
             }
             "sendgrid" => {
-                let api_key = std::env::var("SENDGRID_API_KEY").map_err(|_| {
-                    MailError::ConfigError(
-                        "SENDGRID_API_KEY environment variable is not set".to_string(),
-                    )
-                })?;
-                Ok(Box::new(SendGridDriver { api_key }))
+                let api_key = std::env::var("SENDGRID_API_KEY").unwrap_or_default();
+                Ok(Box::new(SendGridDriver::try_new(api_key)?))
             }
             "postmark" => {
                 let server_token = std::env::var("POSTMARK_SERVER_TOKEN")
                     .or_else(|_| std::env::var("POSTMARK_API_KEY"))
-                    .map_err(|_| {
-                        MailError::ConfigError(
-                            "POSTMARK_SERVER_TOKEN environment variable is not set".to_string(),
-                        )
-                    })?;
+                    .unwrap_or_default();
                 let message_stream = std::env::var("POSTMARK_MESSAGE_STREAM").ok();
-                Ok(Box::new(PostmarkDriver {
-                    server_token,
-                    message_stream,
-                }))
+                let mut driver = PostmarkDriver::try_new(server_token)?;
+                if let Some(stream) = message_stream {
+                    driver = driver.with_message_stream(stream);
+                }
+                Ok(Box::new(driver))
             }
             "ses" | "aws_ses" => {
                 let auth_token = std::env::var("AWS_SES_TOKEN")
+                    .or_else(|_| std::env::var("AWS_SES_BEARER_TOKEN"))
                     .or_else(|_| std::env::var("AWS_ACCESS_KEY"))
-                    .map_err(|_| {
-                        MailError::ConfigError(
-                            "AWS_SES_TOKEN environment variable is not set".to_string(),
-                        )
-                    })?;
+                    .unwrap_or_default();
                 let region =
                     std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
                 let endpoint_override = std::env::var("AWS_SES_ENDPOINT").ok();
-                Ok(Box::new(AwsSesDriver {
-                    region,
-                    auth_token,
-                    endpoint_override,
-                }))
+                let mut driver = AwsSesDriver::try_new(region, auth_token)?;
+                if let Some(endpoint) = endpoint_override {
+                    driver = driver.try_with_endpoint(endpoint)?;
+                }
+                Ok(Box::new(driver))
             }
             other => Err(MailError::ConfigError(format!(
                 "Unknown mail driver: {}",

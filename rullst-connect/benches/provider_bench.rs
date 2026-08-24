@@ -5,7 +5,7 @@ use std::hint::black_box;
 fn provider_benchmark(c: &mut Criterion) {
     c.bench_function("github_provider_creation", |b| {
         b.iter(|| {
-            GithubProvider::new(
+            GithubProvider::try_new(
                 black_box("client_id".to_string()),
                 black_box("client_secret".to_string().into()),
                 black_box("https://redirect_url".to_string()),

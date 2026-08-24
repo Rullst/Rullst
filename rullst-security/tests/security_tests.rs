@@ -91,14 +91,17 @@ async fn test_audit_chain_hmac_integrity() {
 async fn test_csp_security_layer_middleware() {
     use axum::Router;
     use axum::body::Body;
+    use axum::extract::Extension;
     use axum::http::{Request, StatusCode};
-    use axum::response::Html;
     use axum::routing::get;
-    use rullst_security::CspSecurityLayer;
+    use rullst_security::{CspNonce, CspSecurityLayer};
     use tower::ServiceExt;
 
     let app = Router::new()
-        .route("/page", get(|| async { Html("<h1>Secure Page</h1>") }))
+        .route(
+            "/page",
+            get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
+        )
         .layer(CspSecurityLayer);
 
     let req = Request::builder().uri("/page").body(Body::empty()).unwrap();
@@ -118,9 +121,15 @@ async fn test_csp_security_layer_middleware() {
         .get("content-security-policy")
         .unwrap()
         .to_str()
-        .unwrap();
+        .unwrap()
+        .to_owned();
     assert!(csp.contains("default-src 'self'"));
     assert!(csp.contains("nonce-"));
+    assert!(!csp.contains("unsafe-inline"));
+    assert!(!csp.contains("unsafe-eval"));
+    let body = axum::body::to_bytes(res.into_body(), 1_024).await.unwrap();
+    let nonce = std::str::from_utf8(&body).unwrap();
+    assert!(csp.contains(&format!("'nonce-{nonce}'")));
 }
 
 #[tokio::test]
@@ -244,7 +253,7 @@ fn test_security_telemetry_store_all_methods() {
     assert!(snapshot.honeypot_traps > 0);
 
     let rss = get_real_rss_memory_mb();
-    assert!(rss >= 0.0);
+    assert!(rss.is_none_or(|memory| memory >= 0.0));
 }
 
 #[tokio::test]
@@ -267,6 +276,10 @@ async fn test_rate_limit_middleware_with_axum() {
         .header("X-Forwarded-For", "192.0.2.1")
         .body(Body::empty())
         .unwrap();
+    let mut req = req;
+    req.extensions_mut().insert(axum::extract::ConnectInfo(
+        "192.0.2.2:443".parse::<std::net::SocketAddr>().unwrap(),
+    ));
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);

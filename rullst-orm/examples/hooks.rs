@@ -37,7 +37,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let _ = std::fs::remove_file("hooks_test.db");
     std::fs::File::create("hooks_test.db").unwrap();
     Orm::init("sqlite://hooks_test.db").await?;
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
 
     rullst_orm::_sqlx::query(
         "

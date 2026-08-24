@@ -334,7 +334,7 @@ pub mod app {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn router() -> rullst::Router {
+pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     use app::*;
     use rullst::routes;
 
@@ -342,12 +342,14 @@ pub fn router() -> rullst::Router {
         rullst::TenantConfig::new(rullst::TenantStrategy::Header).with_header_name("X-Tenant-ID");
 
     let studio_router = rullst_studio::Studio::new().into_router();
+    let nexus_auth = rullst_nexus::NexusAuthPolicy::basic_from_env()?;
     let nexus_router = rullst_nexus::Nexus::new()
+        .with_auth_policy(nexus_auth)
         .with_brand("Rullst Sovereign Publisher")
         .register::<Post>()
-        .build();
+        .try_build()?;
 
-    routes![
+    Ok(routes![
         get("/" => index),
         post("/posts" => store),
         get("/posts/repository" => crate::repository_demo::repository_page),
@@ -373,11 +375,18 @@ pub fn router() -> rullst::Router {
     .nest_axum("/studio", studio_router)
     .nest_axum("/nexus", nexus_router)
     .layer(axum::middleware::map_response(set_security_headers))
-    .layer(rullst::tenant_layer(config))
+    .layer(rullst::tenant_layer(config)))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
-    Box::into_raw(Box::new(router()))
+    let router = match router() {
+        Ok(router) => router,
+        Err(error) => {
+            eprintln!("Nexus startup configuration error: {error}");
+            rullst::Router::new()
+        }
+    };
+    Box::into_raw(Box::new(router))
 }

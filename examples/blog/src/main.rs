@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Orm::init("sqlite://blog.db").await?;
 
     // Create table schema
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
     rullst::db::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         Server::new_hot(lib_path)
     } else {
-        let router = rullst_blog_example::router();
+        let router = rullst_blog_example::router()?;
         Server::new(router)
     };
 

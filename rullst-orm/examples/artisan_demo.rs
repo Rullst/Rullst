@@ -61,7 +61,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     run_artisan(migrations, vec![]).await?;
 
     // Verify migrations table and schemas
-    let pool = Orm::pool();
+    let pool = Orm::pool()?;
     let rows: Vec<(i32, String, i32)> =
         rullst_orm::_sqlx::query_as("SELECT id, migration, batch FROM migrations")
             .fetch_all(pool)

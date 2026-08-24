@@ -205,7 +205,7 @@ async fn scenario_cascade_soft_delete() {
     // delete parent, should cascade to child
     p.delete().await.unwrap();
 
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     let parent_row: Option<(i32, Option<String>)> =
         sqlx::query_as("SELECT id, deleted_at FROM it_parent WHERE id = ?")
             .bind(p.id)
@@ -258,7 +258,7 @@ async fn scenario_soft_delete() {
     u.delete().await.expect("soft delete");
 
     // record still exists in DB but deleted_at is set
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     let row: Option<(i32, Option<String>)> =
         sqlx::query_as("SELECT id, deleted_at FROM it_soft_users WHERE id = ?")
             .bind(u.id)
@@ -368,7 +368,7 @@ async fn scenario_configurable_soft_delete() {
     };
     u.save().await.expect("save IntAlice");
 
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     let row: (i32,) = sqlx::query_as("SELECT is_deleted FROM it_int_soft WHERE id = ?")
         .bind(u.id)
         .fetch_one(pool)
@@ -432,7 +432,7 @@ async fn scenario_configurable_soft_delete() {
     u.delete().await.expect("soft delete TsAlice");
     let row: (Option<String>,) = sqlx::query_as("SELECT deleted_at FROM it_ts_soft WHERE id = ?")
         .bind(u.id)
-        .fetch_one(Orm::pool())
+        .fetch_one(Orm::pool().expect("ORM should be initialized"))
         .await
         .expect("select after delete");
     assert!(row.0.is_some(), "deleted_at should be set after delete");
@@ -479,7 +479,7 @@ async fn scenario_skipped_field() {
     };
     u.save().await.expect("save should ignore `secret` field");
 
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     let row: (i32, String) = sqlx::query_as("SELECT id, name FROM it_skipped WHERE id = ?")
         .bind(u.id)
         .fetch_one(pool)
@@ -606,7 +606,7 @@ async fn scenario_transactions() {
 
     // Successful transaction
     {
-        let pool = Orm::pool();
+        let pool = Orm::pool().expect("ORM should be initialized");
         let mut tx = pool.begin().await.expect("begin tx");
         let mut acc = Account {
             id: 0,
@@ -625,7 +625,7 @@ async fn scenario_transactions() {
     {
         let initial_count = Account::query().count().await.expect("count");
 
-        let pool = Orm::pool();
+        let pool = Orm::pool().expect("ORM should be initialized");
         let mut tx = pool.begin().await.expect("begin tx2");
         let mut ghost = Account {
             id: 0,
@@ -716,7 +716,10 @@ async fn scenario_bulk_operations() {
         values.push(format!("('item_{}', {})", i, i));
     }
     qb.push(values.join(", "));
-    qb.build().execute(Orm::pool()).await.expect("bulk insert");
+    qb.build()
+        .execute(Orm::pool().expect("ORM should be initialized"))
+        .await
+        .expect("bulk insert");
 
     // ORDER BY + LIMIT
     let top5 = BulkItem::query()
@@ -784,7 +787,7 @@ async fn scenario_schema_lifecycle() {
     .expect("create it_lifecycle_alpha");
 
     // Inserting into the new table confirms it exists
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     sqlx::query("INSERT INTO it_lifecycle_alpha (value) VALUES (?)")
         .bind("check")
         .execute(pool)
@@ -825,7 +828,7 @@ async fn scenario_audit() {
     .expect("log audit");
 
     let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_audits")
-        .fetch_one(Orm::pool())
+        .fetch_one(Orm::pool().expect("ORM should be initialized"))
         .await
         .expect("count audits");
     assert_eq!(count.0, 1);
@@ -846,7 +849,7 @@ async fn scenario_query_result_ext() {
     .await
     .expect("create it_query_result_ext");
 
-    let pool = Orm::pool();
+    let pool = Orm::pool().expect("ORM should be initialized");
     let result = sqlx::query("INSERT INTO it_query_result_ext (name) VALUES ('Test')")
         .execute(pool)
         .await
@@ -868,7 +871,7 @@ async fn scenario_query_result_ext() {
 }
 
 async fn scenario_transaction_types() {
-    let pool: &rullst_orm::db::Pool = Orm::pool();
+    let pool: &rullst_orm::db::Pool = Orm::pool().expect("ORM should be initialized");
     let mut tx: rullst_orm::db::Transaction<'_> = pool.begin().await.expect("begin trans");
 
     // Just a dummy query to test transaction works

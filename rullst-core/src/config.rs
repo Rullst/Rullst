@@ -1,4 +1,115 @@
 use serde::Deserialize;
+use std::{fmt, str::FromStr};
+
+/// Validated runtime environment shared by every Rullst subsystem.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Environment {
+    /// Local development with developer tooling enabled.
+    #[default]
+    Development,
+    /// Automated test execution.
+    Test,
+    /// Production-like pre-release deployment.
+    Staging,
+    /// Public production deployment with all secure defaults enabled.
+    Production,
+}
+
+impl Environment {
+    /// Resolves environment sources using the documented precedence:
+    /// `RULLST_ENV`, legacy `APP_ENV`, then `[app].env` from `Rullst.toml`.
+    pub fn resolve(
+        rullst_env: Option<&str>,
+        app_env: Option<&str>,
+        configured_env: Option<&str>,
+    ) -> Result<Self, ConfigError> {
+        rullst_env
+            .or(app_env)
+            .or(configured_env)
+            .map(Self::from_str)
+            .transpose()
+            .map(|environment| environment.unwrap_or_default())
+    }
+
+    /// Resolves the environment from process variables and an optional config value.
+    pub fn detect(configured_env: Option<&str>) -> Result<Self, ConfigError> {
+        let rullst_env = read_environment_variable("RULLST_ENV")?;
+        let app_env = read_environment_variable("APP_ENV")?;
+        Self::resolve(rullst_env.as_deref(), app_env.as_deref(), configured_env)
+    }
+
+    /// Whether local-only developer tooling may be exposed.
+    pub const fn allows_development_tools(self) -> bool {
+        matches!(self, Self::Development)
+    }
+
+    /// Whether production security layers and secure cookies are mandatory.
+    pub const fn requires_secure_defaults(self) -> bool {
+        matches!(self, Self::Staging | Self::Production)
+    }
+}
+
+impl FromStr for Environment {
+    type Err = ConfigError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "development" | "dev" | "local" => Ok(Self::Development),
+            "test" | "testing" => Ok(Self::Test),
+            "staging" | "stage" => Ok(Self::Staging),
+            "production" | "prod" => Ok(Self::Production),
+            _ => Err(ConfigError::InvalidEnvironment(value.to_string())),
+        }
+    }
+}
+
+impl fmt::Display for Environment {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            Self::Development => "development",
+            Self::Test => "test",
+            Self::Staging => "staging",
+            Self::Production => "production",
+        };
+        formatter.write_str(value)
+    }
+}
+
+/// Strongly typed failures while loading Rullst configuration.
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ConfigError {
+    /// A configured environment name is not recognized.
+    #[error("invalid Rullst environment `{0}`")]
+    InvalidEnvironment(String),
+
+    /// An environment variable contains non-Unicode data.
+    #[error("environment variable `{0}` is not valid Unicode")]
+    NonUnicodeEnvironmentVariable(String),
+
+    /// A configuration file could not be read.
+    #[error("failed to read Rullst configuration: {0}")]
+    Read(String),
+
+    /// TOML configuration is invalid.
+    #[error("failed to parse Rullst configuration: {0}")]
+    Parse(String),
+
+    /// A security policy is malformed or would create an ambiguous exemption.
+    #[error("invalid security configuration: {0}")]
+    InvalidSecurityConfiguration(String),
+}
+
+fn read_environment_variable(name: &str) -> Result<Option<String>, ConfigError> {
+    match std::env::var(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            Err(ConfigError::NonUnicodeEnvironmentVariable(name.to_string()))
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[non_exhaustive]
@@ -63,10 +174,18 @@ pub struct SecurityConfig {
     /// Enable global automatic PII masking middleware on all textual responses (heavy performance cost).
     #[serde(default = "default_false")]
     pub enable_pii_masking: bool,
+    /// Exact POST paths that are exempt from browser CSRF tokens because a mandatory signed
+    /// webhook middleware authenticates them. Wildcards and route parameters are rejected.
+    #[serde(default)]
+    pub csrf_signed_webhook_paths: Vec<String>,
 }
 
+/// Strict default CSP template. `{NONCE}` is replaced by the secure headers middleware for each
+/// request before the header is emitted.
+pub const DEFAULT_CSP_TEMPLATE: &str = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-{NONCE}'; style-src 'self' 'nonce-{NONCE}'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:";
+
 fn default_csp() -> String {
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data: https:; object-src 'none'".to_string()
+    DEFAULT_CSP_TEMPLATE.to_string()
 }
 
 fn default_user_agent_blocklist() -> Vec<String> {
@@ -102,7 +221,34 @@ impl Default for SecurityConfig {
             csp: default_csp(),
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
+            csrf_signed_webhook_paths: Vec::new(),
         }
+    }
+}
+
+impl SecurityConfig {
+    /// Validates exact-path CSRF webhook exemptions.
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        let mut unique_paths = std::collections::HashSet::new();
+        for path in &self.csrf_signed_webhook_paths {
+            let is_exact_absolute_path = path.starts_with('/')
+                && path.len() > 1
+                && !path.contains(['?', '#', '*', '{', '}', ':'])
+                && !path
+                    .split('/')
+                    .any(|segment| segment == ".." || segment == ".");
+            if !is_exact_absolute_path {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "CSRF signed-webhook exemption `{path}` must be an exact absolute path"
+                )));
+            }
+            if !unique_paths.insert(path) {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "duplicate CSRF signed-webhook exemption `{path}`"
+                )));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -125,12 +271,28 @@ impl RullstConfig {
         Self::default()
     }
 
+    /// Validates cross-field configuration invariants before any global state is published.
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        self.security.validate()
+    }
+
+    /// Parses a complete `Rullst.toml` document.
+    pub fn from_toml(content: &str) -> Result<Self, ConfigError> {
+        toml::from_str(content).map_err(|error| ConfigError::Parse(error.to_string()))
+    }
+
+    /// Resolves the validated runtime environment for this configuration.
+    pub fn environment(&self) -> Result<Environment, ConfigError> {
+        Environment::detect(self.app.env.as_deref())
+    }
+
     /// Loads and parses the configuration from a TOML file.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = tokio::fs::read_to_string(path).await?;
-        let config: RullstConfig = toml::from_str(&content)?;
-        Ok(config)
+    pub async fn load_from_file(path: &str) -> Result<Self, ConfigError> {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(|error| ConfigError::Read(error.to_string()))?;
+        Self::from_toml(&content)
     }
 }
 
@@ -187,7 +349,10 @@ cors_allow_origins = ["https://example.com"]
         let config = SecurityConfig::default();
         assert_eq!(config.csrf_same_site, "Lax");
         assert!(config.csp.contains("default-src"));
+        assert!(!config.csp.contains("unsafe-inline"));
+        assert!(!config.csp.contains("unsafe-eval"));
         assert!(config.user_agent_blocklist.contains(&"curl".to_string()));
+        assert!(config.csrf_signed_webhook_paths.is_empty());
     }
 
     #[test]
@@ -205,5 +370,57 @@ cors_allow_origins = ["https://example.com"]
     fn test_deserialize_security_config_defaults() {
         let config: SecurityConfig = toml::from_str("").unwrap();
         assert!(!config.enable_pii_masking);
+    }
+
+    #[test]
+    fn environment_resolution_has_one_precedence_and_validated_aliases() {
+        assert_eq!(
+            Environment::resolve(Some("prod"), Some("test"), Some("development")).unwrap(),
+            Environment::Production
+        );
+        assert_eq!(
+            Environment::resolve(None, Some("STAGE"), Some("development")).unwrap(),
+            Environment::Staging
+        );
+        assert_eq!(
+            Environment::resolve(None, None, Some("testing")).unwrap(),
+            Environment::Test
+        );
+        assert_eq!(
+            Environment::resolve(None, None, None).unwrap(),
+            Environment::Development
+        );
+        assert!(Environment::resolve(Some("unknown"), None, None).is_err());
+    }
+
+    #[test]
+    fn only_development_exposes_developer_tools() {
+        assert!(Environment::Development.allows_development_tools());
+        assert!(!Environment::Test.allows_development_tools());
+        assert!(Environment::Staging.requires_secure_defaults());
+        assert!(Environment::Production.requires_secure_defaults());
+    }
+
+    #[test]
+    fn signed_webhook_csrf_exemptions_must_be_exact_paths() {
+        let mut config = SecurityConfig::default();
+        config.csrf_signed_webhook_paths = vec!["/billing/webhook".to_owned()];
+        assert!(config.validate().is_ok());
+
+        for invalid in [
+            "billing/webhook",
+            "/billing/:provider",
+            "/billing/{provider}",
+            "/billing/*path",
+            "/billing/../admin",
+            "/billing/webhook?provider=x",
+        ] {
+            config.csrf_signed_webhook_paths = vec![invalid.to_owned()];
+            assert!(config.validate().is_err(), "{invalid} must be rejected");
+        }
+
+        config.csrf_signed_webhook_paths =
+            vec!["/billing/webhook".to_owned(), "/billing/webhook".to_owned()];
+        assert!(config.validate().is_err());
     }
 }

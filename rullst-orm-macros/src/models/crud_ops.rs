@@ -37,7 +37,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     let audit_before_update = if parsed.auditable {
         quote! {
             let old_model_for_audit = if !is_new {
-                let driver = rullst_orm::Orm::driver();
+                let driver = rullst_orm::Orm::driver()?;
                 let query = if driver == "postgres" {
                     format!("SELECT * FROM {} WHERE id = $1", #table_name)
                 } else {
@@ -173,7 +173,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 for obs in &observers {
                     obs.creating(self).await?;
                 }
-                let driver = rullst_orm::Orm::driver();
+                let driver = rullst_orm::Orm::driver()?;
                 if driver == "postgres" || driver == "sqlite" {
                     use rullst_orm::_sqlx::Execute;
                     let mut final_sql = format!("INSERT INTO {} ({}) VALUES ({}) RETURNING id", #table_name, #insert_columns_str, #insert_placeholders_str);
@@ -227,7 +227,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 }
                 use rullst_orm::_sqlx::Execute;
                 let mut final_sql = format!("UPDATE {} SET {} WHERE id = ?", #table_name, #update_sets_str);
-                if rullst_orm::Orm::driver() == "postgres" {
+                if rullst_orm::Orm::driver()? == "postgres" {
                     final_sql = rullst_orm::replace_placeholders(&final_sql);
                 }
                 if rullst_orm::schema::is_query_log_enabled() {
@@ -328,7 +328,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         let set_clause = format!("{} = {}", cfg.column, delval_expr);
         let set_clause_lit = set_clause;
         quote! {
-            let driver = rullst_orm::Orm::driver();
+            let driver = rullst_orm::Orm::driver()?;
             let query = if driver == "postgres" {
                 format!("UPDATE {} SET {} WHERE id = $1", #table_name, #set_clause_lit)
             } else {
@@ -337,7 +337,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         }
     } else {
         quote! {
-            let driver = rullst_orm::Orm::driver();
+            let driver = rullst_orm::Orm::driver()?;
             let query = if driver == "postgres" {
                 format!("DELETE FROM {} WHERE id = $1", #table_name)
             } else {
@@ -362,7 +362,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("UPDATE ");
             query_builder.push(#table_name);
-            if rullst_orm::Orm::driver() == "postgres" {
+            if rullst_orm::Orm::driver()? == "postgres" {
                 query_builder.push(format!(" SET {} WHERE id = $1", #set_clause_lit));
             } else {
                 query_builder.push(format!(" SET {} WHERE id = ?", #set_clause_lit));
@@ -509,7 +509,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("DELETE FROM ");
             query_builder.push(#table_name);
-            if rullst_orm::Orm::driver() == "postgres" {
+            if rullst_orm::Orm::driver()? == "postgres" {
                 query_builder.push(" WHERE id = $1");
             } else {
                 query_builder.push(" WHERE id = ?");

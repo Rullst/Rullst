@@ -47,11 +47,12 @@ async fn render_feature_flags() -> Html<String> {
                 let enabled = row.try_get::<i32, _>("enabled").map(|v| v != 0).or_else(|_| row.try_get::<bool, _>("enabled")).unwrap_or(false);
                 let rollout = row.try_get::<i32, _>("rollout_percentage").map(|v| v.to_string()).unwrap_or_else(|_| "-".to_string());
                 let variants = row.try_get::<String, _>("variants").unwrap_or_else(|_| "-".to_string());
+                let encoded_name = urlencoding::encode(&name);
 
                 let toggle_btn = if enabled {
-                    format!("<button hx-post=\"/studio/features/toggle/{}\" hx-target=\"body\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button>", name)
+                    format!("<button hx-post=\"/studio/features/toggle/{encoded_name}\" hx-target=\"body\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button>")
                 } else {
-                    format!("<button hx-post=\"/studio/features/toggle/{}\" hx-target=\"body\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button>", name)
+                    format!("<button hx-post=\"/studio/features/toggle/{encoded_name}\" hx-target=\"body\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button>")
                 };
 
                 rows_html.push_str(&format!(
@@ -116,48 +117,72 @@ async fn render_feature_flags() -> Html<String> {
 }
 
 async fn toggle_feature_flag(Path(name): Path<String>) -> axum::response::Response {
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let Some(pool) = rullst_core::db::safe_pool() else {
+        return (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            "Database is not configured",
+        )
+            .into_response();
+    };
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
 
-        let row =
-            rullst_orm::_sqlx::query("SELECT enabled FROM rullst_feature_flags WHERE name = ?")
-                .bind(&name)
-                .fetch_optional(pool)
-                .await
-                .ok()
-                .flatten();
-
-        if let Some(r) = row {
-            use sqlx::Row;
-            let current_enabled = r
-                .try_get::<i32, _>("enabled")
-                .map(|v| v != 0)
-                .or_else(|_| r.try_get::<bool, _>("enabled"))
-                .unwrap_or(false);
-
-            let sql = if driver == "postgres" {
-                "UPDATE rullst_feature_flags SET enabled = $1 WHERE name = $2"
-            } else {
-                "UPDATE rullst_feature_flags SET enabled = ? WHERE name = ?"
-            };
-
-            let _ = if driver == "sqlite" {
-                rullst_orm::_sqlx::query(sql)
-                    .bind(if current_enabled { 0 } else { 1 })
-                    .bind(&name)
-                    .execute(pool)
-                    .await
-            } else {
-                rullst_orm::_sqlx::query(sql)
-                    .bind(!current_enabled)
-                    .bind(&name)
-                    .execute(pool)
-                    .await
-            };
+    let select_sql = if driver == "postgres" {
+        "SELECT enabled FROM rullst_feature_flags WHERE name = $1"
+    } else {
+        "SELECT enabled FROM rullst_feature_flags WHERE name = ?"
+    };
+    let row = match rullst_orm::_sqlx::query(select_sql)
+        .bind(&name)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(Some(row)) => row,
+        Ok(None) => {
+            return (axum::http::StatusCode::NOT_FOUND, "Feature flag not found").into_response();
         }
+        Err(error) => {
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to load feature flag: {error}"),
+            )
+                .into_response();
+        }
+    };
+
+    use sqlx::Row;
+    let current_enabled = row
+        .try_get::<i32, _>("enabled")
+        .map(|v| v != 0)
+        .or_else(|_| row.try_get::<bool, _>("enabled"))
+        .unwrap_or(false);
+
+    let sql = if driver == "postgres" {
+        "UPDATE rullst_feature_flags SET enabled = $1 WHERE name = $2"
+    } else {
+        "UPDATE rullst_feature_flags SET enabled = ? WHERE name = ?"
+    };
+
+    let update = if driver == "sqlite" {
+        rullst_orm::_sqlx::query(sql)
+            .bind(if current_enabled { 0 } else { 1 })
+            .bind(&name)
+            .execute(pool)
+            .await
+    } else {
+        rullst_orm::_sqlx::query(sql)
+            .bind(!current_enabled)
+            .bind(&name)
+            .execute(pool)
+            .await
+    };
+    if let Err(error) = update {
+        return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to update feature flag: {error}"),
+        )
+            .into_response();
     }
 
-    // Redirect back to re-render page
     axum::response::Redirect::to("/studio/features").into_response()
 }
 
