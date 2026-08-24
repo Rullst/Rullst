@@ -14,7 +14,7 @@ Minha conclusão é:
 - **A arquitetura conceitual é boa**, especialmente na divisão por domínios e na preferência por APIs explícitas e compile-time.
 - **A arquitetura efetiva é apenas mediana**, porque `rullst-core` depende obrigatoriamente do ORM, há duas implementações concorrentes de segurança e o metapacote não representa todos os subsistemas anunciados.
 - **Existe bastante coisa a melhorar**, e as prioridades não são apenas refatorações cosméticas: há bloqueadores fiscais, criptográficos, administrativos, de scaffolding e de release.
-- **Existem bugs concretos de severidade alta e crítica.** Os mais sérios podem produzir autorização fiscal falsa, perda irreversível de dados, acesso administrativo aberto, CORS inseguro em projetos gerados, travessia de diretório no storage e aceitação de firmware com assinatura falsa.
+- **Existem bugs concretos de severidade alta e crítica.** Os mais sérios podem produzir autorização fiscal falsa, risco de perda irreversível de dados, acesso administrativo aberto, CORS inseguro em projetos gerados, travessia de diretório no storage e validação falsa de assinatura de firmware quando essas APIs forem usadas nos cenários anunciados.
 - **Não considero o conjunto completo pronto para produção** enquanto os itens P0 deste documento não forem corrigidos ou explicitamente removidos/rotulados como experimentais.
 - Também não considero justo chamar todo o repositório de “ruim” ou “cheio de bugs”: a maturidade varia muito. Routing/HTML e vários fundamentos estão em situação bem melhor que Fiscal, IoT, Nexus, partes de Security, Studio e alguns geradores do CLI.
 
@@ -54,7 +54,7 @@ Inventário estático observado:
 | Item | Quantidade |
 |---|---:|
 | Membros no workspace | 16: 15 crates e o exemplo `examples/blog` |
-| Arquivos rastreados pelo Git | 803 |
+| Arquivos rastreados no commit auditado | 802 |
 | Arquivos Rust | 549 |
 | Declarações de teste Rust encontradas | 927, distribuídas em 224 arquivos |
 | Targets de fuzz | 40 |
@@ -92,7 +92,7 @@ Também não foram realizados exploração ativa, chamadas reais a provedores, t
 | `rullst-security` | Parcial e inconsistente | Tem vários módulos úteis, porém `FieldEncryptor` não criptografa, o janitor de login não limpa o estado real e há problemas em DLP, auditoria, rate limit e telemetria. |
 | `rullst-ai` | Parcial | OpenAI, Gemini, Anthropic e Ollama existem; faltam DeepSeek e integração obrigatória dos guardrails/PII, e alguns caminhos mock ainda fazem rede. |
 | `rullst-capital` | Amplo, com bloqueador crítico | Há vários provedores e bons fallbacks em partes do módulo. A assinatura e a resposta NFS-e não são válidas para produção. |
-| `rullst-connect` | Maduro como OAuth, não aderente ao papel declarado | Implementa muitos provedores OAuth/OIDC, PKCE e testes. Não implementa RabbitMQ, Redis Streams, Kafka, WebSockets ou SSE como exige a SST. |
+| `rullst-connect` | Maduro como OAuth, não aderente ao papel declarado | Implementa muitos provedores OAuth/OIDC, PKCE e testes. Não implementa RabbitMQ, Redis Streams, Kafka ou SSE como exige a SST; WebSocket/broadcast e filas Redis/SQLite existem no Core, portanto parte da responsabilidade foi deslocada. |
 | `rullst-iot` | Protótipo/stub | MQTT é explicitamente stub; OTA, HSM e PQC simulam criptografia. Não deve ser exposto como implementação industrial ou zero-trust. |
 | `rullst-mail` | Parcial/substancial | Drivers reais, fila e validações existem; fallback mock não é uniforme e o facade multi-tenant ignora o tenant em um caminho. |
 | `rullst-studio` | Parcial | Usa coletores reais em partes, mas exibe métricas/estados hardcoded, tem composição de rota quebrada e risco de XSS no polling. |
@@ -180,7 +180,7 @@ O umbrella deveria ter uma matriz de features testada, documentada e simétrica:
 
 O problema mais amplo é que a SST funciona ao mesmo tempo como arquitetura, roadmap e documentação de funcionalidade pronta. Exemplos:
 
-- Connect é um ótimo candidato a crate OAuth, mas a SST o define como mensageria/streaming.
+- Connect é um ótimo candidato a crate OAuth, mas a SST o define como mensageria/streaming. WebSocket/broadcast e filas Redis/SQLite existem em `rullst-core/src/ws.rs`, `rullst-core/src/realtime.rs` e `rullst-core/src/queue/`; logo, parte da capacidade está no crate errado, enquanto AMQP/Kafka/Redis Streams/SSE continuam ausentes do contrato de Connect.
 - IoT declara explicitamente stubs, enquanto README/SST o chamam de cliente MQTT 5 e edge industrial.
 - AI usa `AiProvider/AiClient` e dispatch dinâmico, enquanto a SST fala em `LlmClient` e guardrails automáticos.
 - Capital funde contratos em `BillingProvider`, em vez dos traits separados descritos.
@@ -198,7 +198,7 @@ AI usa `Arc<dyn AiProvider>`, Capital mantém providers globais em `Box<dyn ...>
 
 ## 7. Achados críticos — P0
 
-Nesta seção, “crítico” significa que o item pode causar violação de segurança, integridade fiscal/financeira, perda de dados ou quebra do processo de release no uso anunciado. Alguns dependem da aplicação montar a API com entrada externa; a falha da implementação, porém, é confirmada diretamente no código.
+Nesta seção, “crítico” significa **bloqueador antes de uma release/uso de produção da capacidade anunciada**. Isso inclui defeitos exploráveis e APIs públicas que simulam uma garantia crítica. Não significa que todo item seja remotamente explorável na instalação padrão. Alguns dependem de o consumidor habilitar, montar ou confiar na API; a precondição é explicitada em cada caso.
 
 ### P0-01 — A implementação de NFS-e não produz uma assinatura XMLDSig válida
 
@@ -217,16 +217,16 @@ Isso gera um XML com aparência de XMLDSig, mas sem assinatura criptográfica au
 
 O cliente amplia o risco:
 
-- `rullst-capital/src/fiscal/client.rs:37-50` cria um `reqwest::Client` sem configurar identidade/certificado mTLS;
-- `:60-75` retorna uma resposta mock “Autorizada” quando a senha é `mock` **ou o PFX está vazio**, mesmo se o ambiente selecionado for Production;
+- `rullst-capital/src/fiscal/client.rs:37-50` cria um `reqwest::Client` sem usar o certificado no transporte; se o endpoint oficial exigir autenticação mútua, ela também não está configurada;
+- `:60-75` retorna uma resposta mock “Autorizada” quando a senha é `mock` **ou o PFX está vazio**, mesmo se o ambiente selecionado for Production. O fallback offline é exigido pela SST; o defeito é não existir separação tipada/visível entre mock e autorização oficial;
 - `:112-140` transforma qualquer corpo 2xx não JSON em “Autorizada”, com chave e protocolo inventados;
 - um JSON vazio `{}` também recebe defaults de autorização.
 
 **Impacto:** uma rejeição XML, HTML de proxy, resposta inesperada ou configuração incompleta pode ser registrada como nota autorizada. Isso é um risco fiscal e contábil real.
 
-**Correção necessária:** bloquear o modo Production até existir PKCS#12 real, extração segura do certificado/chave, C14N, digest das referências, RSA-SHA256, mTLS e parser estrito dos estados oficiais. Mock deve ser um tipo/ambiente explícito e nunca retornar um objeto indistinguível de uma autorização real.
+**Correção necessária:** bloquear o modo Production até existir PKCS#12 real, extração segura do certificado/chave, C14N, digest das referências, RSA-SHA256, autenticação de transporte conforme o protocolo oficial e parser estrito dos estados oficiais. Mock deve ser um tipo/ambiente explícito e nunca retornar um objeto indistinguível de uma autorização real.
 
-### P0-02 — `FieldEncryptor` destrói dados e não implementa criptografia
+### P0-02 — `FieldEncryptor` produz saída irreversível e não implementa criptografia
 
 **Evidência:** `rullst-security/src/vault.rs:42-68,83-89`.
 
@@ -237,9 +237,9 @@ encrypt(plaintext, key) = "ENC:v1:" + SHA256(plaintext || key)
 decrypt(ciphertext, qualquer_chave) = "[DECRYPTED:<hash>]"
 ```
 
-O texto original é irrecuperável e a chave é ignorada na “decriptação”. O teste só verifica se a string contém `DECRYPTED`, então ele consolida o comportamento falso em vez de provar round-trip.
+O texto original é irrecuperável e a chave é ignorada na “decriptação”. O teste só verifica se a string contém `DECRYPTED`, então ele consolida o comportamento falso em vez de provar round-trip. Não foi encontrado uso interno fora do próprio módulo/teste; trata-se de um **bloqueador da API pública**, não de perda já demonstrada nos dados do framework.
 
-**Impacto:** qualquer aplicação que migre uma coluna por essa API perde o conteúdo original. Além disso, a garantia de confidencialidade anunciada é inexistente.
+**Impacto condicional:** qualquer consumidor que persista uma migração por essa API perderá o conteúdo original. Além disso, a garantia de confidencialidade anunciada é inexistente.
 
 **Correção necessária:** remover/deprecar imediatamente a API atual ou fazê-la retornar erro explícito. Reutilizar a implementação AES-GCM real de `rullst-orm/src/privacy.rs:73-117`, com envelope versionado, nonce aleatório, AAD, rotação de chave e teste obrigatório `decrypt(encrypt(x)) == x`.
 
@@ -253,7 +253,7 @@ O texto original é irrecuperável e a chave é ignorada na “decriptação”.
 - `rullst-iot/src/mqtt.rs:1`: arquivo de uma linha, declarado como stub;
 - `rullst-iot/src/lib.rs:86-93`: `MqttDriver` apenas formata um valor como string.
 
-**Impacto:** se `verify_signature` for usado como gate de OTA, firmware arbitrário é aceito. HSM/PQC não fornecem autenticidade, sigilo ou resistência pós-quântica. Isso é especialmente grave porque README e workflows anunciam MQTT industrial, HSM e compliance ML-KEM (`README.md:66,70,382`).
+O código marca OTA/PQC como stub e não há um fluxo integrado de download/gravação de firmware. **Impacto condicional:** um consumidor que use o retorno de `verify_signature` como gate aceitará firmware arbitrário. HSM/PQC não fornecem autenticidade, sigilo ou resistência pós-quântica. É um bloqueador de claim/supply chain porque README e workflows anunciam MQTT industrial, HSM e compliance ML-KEM (`README.md:66,70,382`).
 
 **Correção necessária:** colocar o crate inteiro atrás de uma feature `experimental`, renomear tipos para `Simulated...` e impedir uso de stubs no build de produção. OTA deve usar Ed25519 real, chave pública confiável, manifesto assinado, hash do firmware, anti-rollback e estado que só permita `commit` após verificação. HSM precisa de backends reais; PQC deve usar uma implementação ML-KEM auditada.
 
@@ -266,23 +266,23 @@ O texto original é irrecuperável e a chave é ignorada na “decriptação”.
 - `:140-147`: sem `.with_auth`, o sistema apenas imprime um aviso e continua servindo tudo;
 - `rullst-nexus/src/nexus/crud/handlers.rs:258-312,365-387,423-462`: operações destrutivas não exigem `UserContext`, `RbacGuard` ou ownership;
 - `examples/blog/src/lib.rs:344-374` monta o painel sem autenticação;
-- blueprints Blog/LMS/Portfolio/ERP/SaaS geram `admin` / `password`, por exemplo `cargo-rullst/src/blueprints/saas/routes.rs:24-25,113-114`.
+- blueprints Blog/LMS/Portfolio/ERP/SaaS geralmente montam autenticação, mas com a credencial pública `admin` / `password`, por exemplo `cargo-rullst/src/blueprints/saas/routes.rs:24-25,113-114`.
 
-**Impacto:** dependendo de onde o router é montado, um visitante pode ler e alterar toda a base. Nos blueprints, as credenciais são públicas e previsíveis. Isso viola diretamente a invariável de RBAC/ownership.
+**Impacto:** o runtime `Nexus::new()` é aberto e, dependendo de onde o router é montado, um visitante pode ler e alterar toda a base; o exemplo Blog demonstra esse caso. Os blueprints têm um risco distinto: montam Basic Auth com credenciais públicas e previsíveis. Ambos violam o objetivo de RBAC/ownership seguro.
 
 **Correção necessária:** `Nexus::new()` deve ser fail-closed. A construção do router precisa falhar sem uma política autenticada, exceto em um modo local explicitamente tipado. Remover credenciais fixas dos templates; gerar segredo aleatório ou exigir configuração. Cada handler deve validar papel e ownership no servidor, inclusive batch actions e campos `readonly`/`hidden`.
 
-### P0-05 — O gerador de CORS cria aplicações vulneráveis por padrão
+### P0-05 — O scaffold CORS gera uma política reflect-origin insegura quando instalada
 
 **Evidência:** `cargo-rullst/src/generators/cors_jwt.rs:49-105`.
 
-O middleware gerado lê o header `Origin`, devolve exatamente essa origem em `Access-Control-Allow-Origin` e habilita `Access-Control-Allow-Credentials: true` para qualquer valor diferente de `*`. Não existe allowlist.
+O middleware gerado lê o header `Origin`, devolve exatamente essa origem em `Access-Control-Allow-Origin` e habilita `Access-Control-Allow-Credentials: true` para qualquer valor diferente de `*`. Não existe allowlist. O gerador não monta a layer automaticamente; a condição de risco ocorre quando o usuário segue a instrução e instala o middleware.
 
-**Impacto:** um site atacante escolhe sua própria origem, recebe autorização CORS credentialed e pode acessar respostas autenticadas se cookies/credenciais forem enviados. O problema é multiplicado porque está num scaffold: cada aplicação gerada herda a falha.
+**Impacto condicional:** um site atacante escolhe sua própria origem e recebe autorização CORS credentialed. A leitura de respostas autenticadas depende de credenciais cross-site efetivamente enviadas (por exemplo, cookie `SameSite=None` ou outro credential mode); a sessão padrão Lax reduz esse cenário, mas não corrige a política. O problema é multiplicável porque está num scaffold reutilizado.
 
 **Correção necessária:** gerar uma allowlist explícita a partir de configuração, rejeitar origem ausente/desconhecida, emitir `Vary: Origin`, desabilitar credenciais por padrão e usar `tower-http::cors` ou uma implementação testada. O template também deve eliminar `unwrap()` em produção.
 
-### P0-06 — Storage permite escape do diretório e confirma operações inexistentes
+### P0-06 — Storage confirma persistência inexistente e, condicionalmente, permite escape do diretório
 
 **Evidência:** `rullst-core/src/storage.rs:88-124,159-167`.
 
@@ -294,7 +294,7 @@ Ao mesmo tempo:
 - download S3/R2 retorna `Ok(vec![])`;
 - `resize_webp` ignora as dimensões e devolve o arquivo original.
 
-**Impacto condicional:** se `relative_path` vier do usuário, há leitura/escrita fora do storage base. Nos backends cloud, a aplicação recebe confirmação de persistência que nunca ocorreu, gerando perda silenciosa.
+**Impacto:** nos backends cloud, a aplicação recebe confirmação de persistência que nunca ocorreu, gerando perda silenciosa confirmada. Separadamente, se `relative_path` for controlado externamente, há risco condicional de leitura/escrita fora do storage base.
 
 **Correção necessária:** unificar o facade com `LocalDriver`, validar componentes antes de I/O e comprovar que o caminho resolvido permanece sob o root. Backends não implementados devem retornar `Unsupported`, nunca sucesso. O resize também deve ser implementado ou removido.
 
@@ -308,7 +308,7 @@ O `Server`:
 - ignora `RULLST_ENV`, o alias `prod` e `[app].env` já carregado de `Rullst.toml`;
 - instala WAF/CSRF/headers apenas quando esse booleano é considerado produção;
 - monta console/autofix de desenvolvimento no caso contrário;
-- usa `dotenvy::from_filename_override(".env")`, permitindo que `.env` sobrescreva variáveis injetadas pelo ambiente;
+- quando o próprio Server ainda precisa inicializar o ORM, usa `dotenvy::from_filename_override(".env")`, permitindo que `.env` sobrescreva variáveis injetadas pelo ambiente nesse caminho; se o ORM já estiver inicializado, há retorno antecipado;
 - engole falha de inicialização de banco e continua subindo o HTTP;
 - diante de `HOST` inválido, cai silenciosamente em `0.0.0.0`.
 
@@ -318,19 +318,17 @@ Auth e CSRF usam uma lógica diferente e aceitam `RULLST_ENV`, `APP_ENV`, `prod`
 
 **Correção necessária:** criar um único enum `Environment` validado, derivado de uma precedência documentada, e passá-lo a todos os crates. Valor ausente/desconhecido deve falhar em deploy explicitamente produtivo. Configuração fornecida ao builder não pode ser ignorada. Erros de DB solicitada devem abortar o startup.
 
-### P0-08 — Integridade financeira de webhooks e billing não é segura por padrão
+### P0-08 — Integridade de providers/webhooks pode falhar em modo real
 
 **Evidência:**
 
-- vários providers retornam `Ok(())` quando `webhook_secret` está vazio, incluindo Stripe, Mercado Pago, Coinbase, Polar e Razorpay (`rullst-capital/src/providers/stripe.rs:30-32`, `mercadopago.rs:30-32`, `coinbase.rs:33-35`, `polar.rs:30-32`, `razorpay.rs:36-38`);
+- vários providers retornam `Ok(())` quando `webhook_secret` está vazio, incluindo Stripe, Mercado Pago, Coinbase, Polar e Razorpay (`rullst-capital/src/providers/stripe.rs:30-32`, `mercadopago.rs:30-32`, `coinbase.rs:33-35`, `polar.rs:30-32`, `razorpay.rs:36-38`). O mock offline é exigido pela SST; o risco é vazio selecionar mock silenciosamente dentro de um endpoint real, sem modo tipado/isolado;
 - Stripe/Mercado Pago autenticam o timestamp recebido, mas não limitam sua idade (`stripe.rs:34-66`; `mercadopago.rs:34-66`), permitindo replay de mensagens capturadas;
-- `rullst-capital/src/providers/alipay.rs:58-82,126-145` chama o fluxo de RSA2, mas usa HMAC-SHA256 com a chave pública e não produz/valida RSA2;
-- o gerador de billing atribui novas assinaturas ao usuário fixo `1` e usa email fixo (`cargo-rullst/src/generators/billing.rs:168-203,214-279`);
-- segredo ausente vira o previsível `mock_secret` no mesmo template.
+- `rullst-capital/src/providers/alipay.rs:58-82,126-145` chama o fluxo de RSA2, mas usa HMAC-SHA256 com a chave pública e não produz/valida RSA2.
 
-**Impacto:** endpoints podem aceitar eventos forjados, repetir cobrança/eventos antigos ou atribuir assinatura ao tenant errado. Alipay tende a não interoperar com o protocolo real.
+**Impacto:** um endpoint real configurado acidentalmente como mock pode aceitar eventos forjados; timestamps sem janela permitem reprocessar eventos antigos e repetir efeitos laterais/alterações de estado. Alipay tende a não interoperar com o protocolo real.
 
-**Correção necessária:** separar explicitamente verifier real e mock; endpoint público jamais pode aceitar segredo vazio. Adicionar freshness, idempotency store, associação customer→user/tenant obrigatória e testes de replay/cross-tenant. Implementar RSA2 com biblioteca apropriada ou remover o provider da lista de suporte.
+**Correção necessária:** separar explicitamente verifier real e mock; endpoint público em modo real jamais pode aceitar segredo vazio. Adicionar freshness, idempotency store e testes de replay. Implementar RSA2 com biblioteca apropriada ou remover o provider da lista de suporte.
 
 ### P0-09 — O workflow de release está topologicamente quebrado
 
@@ -378,7 +376,7 @@ Além disso:
 
 ### P1-03 — DLP e PII podem apagar, truncar ou tornar respostas protocolarmente inválidas
 
-`rullst-security/src/dlp.rs:152-169` bufferiza qualquer resposta até 2 MiB. Em overflow/erro, devolve body vazio mantendo status e headers. Após mascarar, preserva `Content-Length`, `Content-Encoding` e `ETag` antigos e trata binário como UTF-8 lossy. Streaming, SSE, gzip e downloads podem ser corrompidos.
+`rullst-security/src/dlp.rs:152-169` bufferiza qualquer resposta até 2 MiB. Em overflow/erro, devolve body vazio mantendo status e headers. Após mascarar, não remove nem recalcula `Content-Length`/`ETag`; se encoding/compressão ou headers equivalentes estiverem presentes nessa posição da stack, também ficam incompatíveis. Conteúdo não textual é tratado como UTF-8 lossy. Streaming, SSE e downloads podem ser corrompidos.
 
 `rullst-core/src/security/pii.rs:12-50` tem problema semelhante; stream/overflow pode virar 500 e headers podem ficar incompatíveis com o novo corpo.
 
@@ -470,6 +468,7 @@ Além do CORS crítico, foram confirmados:
 - Resource reutiliza os mesmos helpers e produz nomes/paths incoerentes (`resource.rs:27-106`);
 - `cargo rullst new ../dummy_test` usa o path literal também como package/import name, sem separar basename e destino (`cargo-rullst/src/generators/project/wizard.rs:25-45`; `cargo-rullst/src/generators/project/mod.rs:54-69`);
 - IDs dos blueprints foram deslocados pela inserção de Portfolio, contrariando o contrato estável 0/1/2/3 da SST (`cargo-rullst/src/generators/project/wizard.rs:91-103`; `cargo-rullst/src/blueprints/mod.rs:29-43`);
+- o scaffold Billing usa email fixo, atribui novas assinaturas ao usuário `1` e transforma segredo ausente no previsível `mock_secret` (`cargo-rullst/src/generators/billing.rs:168-203,214-279`); isso é uma falha do template gerado, distinta do runtime Capital;
 - o gerador Docs SSG previsto na SST não existe;
 - grandes templates continuam inline em vez de `include_str!`/blueprints testáveis.
 
@@ -506,7 +505,7 @@ Tracking compara HMAC como string comum, aceita segredo vazio e não expira time
 Exemplos confirmados:
 
 - `rullst-core/src/client.rs:19-31`: `expect`/`unwrap` em todas as etapas do client WASM;
-- `rullst-core/src/server/builder.rs:52-61,222-232`: `panic!` deliberado para hot reload em release;
+- `rullst-core/src/server/builder.rs:52-61,222-232`: `panic!` deliberado e fail-closed quando a API dev-only de hot reload é usada em release; continua sendo uma violação da API fallible/zero-panic, não um vetor geral de crash;
 - `rullst-orm/src/pool.rs:260-307`: getters públicos com `expect`;
 - `rullst-orm-macros/src/relationships.rs:119-139,348-356`: código gerado com panic/expect/unwrap;
 - `cargo-rullst/src/generators/auth/controllers.rs:118,170,183` e `island.rs:75-86`: aplicações geradas com unwrap/panic.
@@ -546,15 +545,12 @@ Os itens abaixo não têm todos a mesma urgência, mas devem entrar no backlog a
 | P2-13 | MFA aceita código abreviado | `rullst-security/src/mfa.rs:82-106` converte TOTP para `u32` sem exigir seis dígitos; zeros iniciais podem ser omitidos. URI `otpauth` usa escape HTML, não percent-encoding (`:110-116`). |
 | P2-14 | Formulário de auth gerado bloqueia Tokio e vaza timing | `cargo-rullst/src/generators/auth/controllers.rs` faz hash/verify síncrono em handlers async, carrega usuários e busca email linearmente, retorna cedo para usuário inexistente e contém unwraps. |
 | P2-15 | JWT gerado é incompleto | `cargo-rullst/src/generators/cors_jwt.rs:162-225` injeta `jsonwebtoken = "9.3"`, divergindo de outras versões, sem issuer/audience e sem validar força do segredo. |
-| P2-16 | `send_for_tenant` não resolve tenant | O facade de Mail ignora `tenant_id` em um caminho, apesar do nome da API. Isso pode aplicar transport/config global quando o chamador espera isolamento. |
-| P2-17 | Rotas Studio mantêm aliases fora do padrão | Existem variantes `/tools/*` e `/studio/tools/*`, enquanto a SST exige URLs limpas `/studio/*`. Backward compatibility pode justificar aliases, mas a rota canônica precisa ser única e testada. |
-| P2-18 | Macro `#[route]` é pública mas fundacional | `rullst-macros/src/lib.rs:196-216` ignora atributo/path e reemite uma função de forma incompleta. Se for API pública anunciada, pode gerar surpresa ou erro de compilação. |
-| P2-19 | Sinais de API semver incompletos | Muitos enums/configs públicos não têm `#[non_exhaustive]`; não foi encontrada uma trilha relevante de `#[deprecated]`. Adicionar campo/variante pode quebrar consumidores. |
-| P2-20 | Construtores não seguem ergonomia uniforme | Há muitos `new(String, ...)` em vez de `impl Into<String>` e vários constructors validam com panic/assert. Isso é dívida de API, além dos casos de segurança já citados. |
-| P2-21 | Dependência `mutants` está em dependências normais do ORM | `rullst-orm/Cargo.toml` inclui `mutants = 0.0.4` no conjunto regular; deve ser confirmado se é necessário em runtime ou movido para tooling/dev. |
-| P2-22 | Compliance gerado é incondicional | `cargo-rullst/src/generators/audit.rs:508-521` marca OWASP, criptografia, CSP, SOC2, TLS e SBOM como PASS sem testar o projeto, inclusive afirmando Vault AES-256. Isso produz evidência falsa. |
-| P2-23 | Basic Auth do Nexus não tem rate limit | A senha usa comparação constante, o que é positivo, mas o username usa igualdade comum e não há rate limiting/lockout na camada montada. Basic também depende integralmente de TLS externo. |
-| P2-24 | Fallback de memória do Radar não é “telemetria real” | Quando coleta real falha, retornar 24 MB e CPU fixa é pior que expor `None/Unavailable`, porque dashboards e alertas passam a tomar decisões com dado inventado. |
+| P2-16 | Macro `#[route]` é pública mas fundacional | `rullst-macros/src/lib.rs:196-216` ignora atributo/path e reemite uma função de forma incompleta. Se for API pública anunciada, pode gerar surpresa ou erro de compilação. |
+| P2-17 | Sinais de API semver incompletos | Muitos enums/configs públicos não têm `#[non_exhaustive]`; não foi encontrada uma trilha relevante de `#[deprecated]`. Adicionar campo/variante pode quebrar consumidores. |
+| P2-18 | Construtores não seguem ergonomia uniforme | Há muitos `new(String, ...)` em vez de `impl Into<String>` e vários constructors validam com panic/assert. Isso é dívida de API, além dos casos de segurança já citados. |
+| P2-19 | Dependência `mutants` está em dependências normais do ORM | `rullst-orm/Cargo.toml` inclui `mutants = 0.0.4` no conjunto regular; deve ser confirmado se é necessário em runtime ou movido para tooling/dev. |
+| P2-20 | Compliance gerado é incondicional | `cargo-rullst/src/generators/audit.rs:508-521` marca OWASP, criptografia, CSP, SOC2, TLS e SBOM como PASS sem testar o projeto, inclusive afirmando Vault AES-256. Isso produz evidência falsa. |
+| P2-21 | Basic Auth do Nexus não tem rate limit | A senha usa comparação constante, o que é positivo, mas o username usa igualdade comum e não há rate limiting/lockout na camada montada. Basic também depende integralmente de TLS externo. |
 
 ## 10. Matriz de aderência à SST
 
@@ -570,15 +566,14 @@ Os itens abaixo não têm todos a mesma urgência, mas devem entrar no backlog a
 | Compatibilidade pública | **Fraca** | `#[non_exhaustive]` e depreciação não são aplicados de modo uniforme. |
 | External providers/mocks | **Parcial** | Capital tem vários mocks, mas Mail/Connect/AI não cobrem todos os caminhos; vazio pode também abrir webhook. |
 | Capital/pagamentos | **Parcial** | Muitos providers reais; webhooks/billing/Alipay têm falhas relevantes. |
-| Fiscal NFS-e | **Crítica/não aderente** | XMLDSig, mTLS e parser de autorização não são implementações válidas. |
+| Fiscal NFS-e | **Crítica/não aderente** | XMLDSig e parser de autorização não são implementações válidas; autenticação de transporte deve seguir o protocolo oficial. |
 | Auth | **Parcial** | Argon2 e AES-GCM reais; JWT ausente no crate e WebAuthn incompleto. |
 | AI | **Parcial** | Quatro providers existem; falta DeepSeek, guardrails automáticos e mocks completos. |
 | Studio | **Parcial** | Parte da telemetria é conectada; há métricas falsas, rota quebrada e XSS latente. |
 | Nexus | **Crítica** | CRUD existe, mas não é fail-closed nem aplica RBAC/ownership server-side. |
-| Connect | **Não aderente ao papel** | É OAuth/OIDC, não mensageria/streaming. Como OAuth, tem substância. |
+| Connect | **Não aderente ao papel** | É OAuth/OIDC. WebSocket/broadcast e filas Redis/SQLite existem no Core, mas AMQP/Kafka/Redis Streams/SSE e a fronteira prevista não estão no Connect. |
 | IoT | **Não aderente/protótipo** | MQTT, OTA, HSM e PQC não cumprem as garantias anunciadas. |
 | Mail | **Parcial** | Drivers/fila existem; segurança/fallback/tenant não são invariantes do facade. |
-| Studio URLs e dados reais | **Parcial** | Existem aliases legacy e estados hardcoded proibidos pela SST. |
 
 Minha estimativa global permanece em **55–60% de aderência**, mas a média esconde extremos: HTML/routing estão bem mais próximos do contrato; Fiscal/IoT/Connect e segurança administrativa estão muito abaixo.
 
@@ -668,9 +663,9 @@ A divergência documental é um dos maiores riscos do projeto, pois influencia d
 | “RBAC/IDOR enforced” (`SECURITY_COMPLIANCE.md:9`) | Nexus não exige auth/RBAC/ownership por padrão e Tenant Guard aceita header sem vínculo. |
 | “MQTT 5 industrial” (`README.md:66,382`) | `mqtt.rs` é stub e `MqttDriver` só converte valor para string. |
 | “PQC ML-KEM/HSM compliance” (`README.md:70`) | PQC e HSM são hashes simulados explicitamente marcados como stubs. |
-| “NFS-e / XMLDSig ICP-Brasil” (`docs/src/spec.md:251-254`) | Não há assinatura com chave privada, C14N, mTLS ou parser de autorização estrito. |
+| “NFS-e / XMLDSig ICP-Brasil” (`docs/src/spec.md:251-254`) | Não há assinatura com chave privada, C14N ou parser de autorização estrito. |
 | “DeepSeek + guardrails/PII built-in” (`README.md:278,352`) | DeepSeek está ausente e guardrails não formam pipeline obrigatório antes de requests. |
-| “Connect: Kafka/RabbitMQ/Redis Streams/WS/SSE” (`docs/src/spec.md:306`) | O crate atual implementa OAuth/OIDC/social login. |
+| “Connect: Kafka/RabbitMQ/Redis Streams/WS/SSE” (`docs/src/spec.md:306`) | O crate atual implementa OAuth/OIDC/social login; WS/broadcast e filas Redis/SQLite existem no Core, fora da fronteira prometida. |
 | “Compliance PASS” gerado pelo CLI | O gerador imprime PASS incondicionalmente sem avaliar o projeto. |
 
 ### 12.2. Documentos de auditoria não são evidência reproduzível atual
@@ -841,7 +836,7 @@ Eu só chamaria o conjunto de production-ready quando os seguintes critérios fo
 ### Fiscal, pagamentos e IoT
 
 - NFS-e homologada de ponta a ponta contra ambiente oficial, incluindo rejeições;
-- XMLDSig validada independentemente e certificado/mTLS real;
+- XMLDSig validada independentemente e autenticação de transporte conforme o protocolo oficial;
 - webhooks com replay/freshness/idempotência e testes cross-tenant;
 - OTA com vetores Ed25519 válidos/inválidos e anti-rollback;
 - HSM/PQC somente com implementação real ou nomes explícitos de simulação;
@@ -863,7 +858,7 @@ Eu só chamaria o conjunto de production-ready quando os seguintes critérios fo
 | **Depois** | CLI end-to-end, Studio, AI guardrails/mocks, Mail, Connect/OIDC hardening, semver e arquivos grandes. |
 | **Estratégico** | Decidir SST vs roadmap, desacoplar Core/ORM, unificar Security e completar umbrella. |
 
-Este relatório registra **9 grupos P0, 19 grupos P1 e 24 itens P2**. Isso não representa 52 CVEs independentes: alguns são lacunas de produto ou grupos de bugs relacionados. Ainda assim, a quantidade e a severidade justificam uma fase de hardening antes de expandir funcionalidades.
+Este relatório registra **9 grupos P0, 19 grupos P1 e 21 itens P2**. Isso não representa 49 CVEs independentes: alguns são riscos condicionais, lacunas de produto ou grupos de bugs relacionados. Ainda assim, a quantidade e a severidade justificam uma fase de hardening antes de expandir funcionalidades.
 
 ## 18. Veredito final
 
