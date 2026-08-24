@@ -524,3 +524,392 @@ O total bruto de ocorrências inclui muitos testes e não deve ser tratado como 
 `rullst-security/src/cswsh.rs:29-45` aceita origin cujo host começa com `localhost` ou `127.0.0.1`. Assim, `localhost.evil.example` pode ser classificado como local.
 
 **Recomendação:** fazer parse de URL e comparar host exato/IP, esquema e porta contra allowlist normalizada.
+
+## 9. Achados médios e dívida técnica relevante — P2
+
+Os itens abaixo não têm todos a mesma urgência, mas devem entrar no backlog antes de chamar a versão de estável.
+
+| ID | Achado confirmado | Evidência/efeito |
+|---|---|---|
+| P2-01 | Auditoria encadeada usa serialização ambígua | `rullst-security/src/audit/chain.rs:77-128` concatena campos com `:` sem escaping/length-prefix. Campos diferentes contendo `:` podem gerar o mesmo material assinado. `verify_record` valida um registro isolado, não a continuidade de uma sequência. Chave vazia também é aceita. |
+| P2-02 | Telemetria declara HMAC sem verificar HMAC | `rullst-security/src/telemetry.rs:103-195` grava `verified_hmac: true` em eventos locais e usa IP `127.0.0.1`; `current_timestamp_str` usa epoch `% 60` (`:288-298`), então “59s ago” volta a “Just now” a cada minuto. |
+| P2-03 | Honeypot confia em XFF e bane indefinidamente | `rullst-security/src/honey/middleware.rs:51-74,120-144` aceita identidade forjável, usa substring para trap e mantém bans sem expiração, criando bypass, falso positivo e crescimento de memória. |
+| P2-04 | TrafficShield pode panic fora de runtime | `rullst-core/src/resilience.rs:74-113` chama `tokio::spawn` em construtor síncrono. As tasks não têm cancelamento no drop. |
+| P2-05 | Scheduler permite sobreposição ilimitada | `rullst-core/src/scheduler.rs:129-154` cria novo task a cada tick, sem impedir job anterior ainda em execução, timeout, shutdown ou política de panic. |
+| P2-06 | Queue worker faz spawn sem limite e pode deixar jobs presos | `rullst-core/src/queue/worker.rs:69-105` ignora erros de `mark_complete/failed`; crash pode deixar job em `processing`. JSON inválido vira `Null` silenciosamente em `queue/sqlite.rs:127-146`. |
+| P2-07 | Hot-swap descarrega biblioteca potencialmente em uso | `rullst-core/src/server/hotswap.rs:104-115` libera biblioteca antiga após três reloads sem provar que requests em voo terminaram. O loader não verifica ponteiro null antes de `Box::from_raw` (`dylib_loader.rs:102-107`). É risco de UB no modo dev. |
+| P2-08 | `std::env::set_var` unsafe dentro do runtime | `rullst-core/src/server/builder.rs:188-192` altera ambiente global potencialmente após threads terem iniciado, sem uma invariável documentada. |
+| P2-09 | Replicação de DB é simulação | `rullst-core/src/db.rs:84-98` registra que está “sincronizando” e comenta que imprime sucesso para emular replicação. Deve retornar `Unsupported` ou ser rotulado experimental. |
+| P2-10 | Substituição de placeholders SQL é textual | `rullst-orm/src/pool.rs:50` substitui `?` sem parser, podendo alterar literais/comentários. A estratégia precisa ser consciente do dialeto ou removida. |
+| P2-11 | Validação de identificador aceita hífen | `rullst-orm/src/schema/validation.rs:9-50` permite hífen que depois pode ser usado sem quote, produzindo SQL inválido/ambíguo. |
+| P2-12 | Auditoria ORM perde diffs e segredos aninhados | `rullst-orm/src/audit.rs:108-155` pode interpretar JSON inválido/array/primitivo como ausência de diferença; masking cobre apenas primeiro nível. |
+| P2-13 | MFA aceita código abreviado | `rullst-security/src/mfa.rs:82-106` converte TOTP para `u32` sem exigir seis dígitos; zeros iniciais podem ser omitidos. URI `otpauth` usa escape HTML, não percent-encoding (`:110-116`). |
+| P2-14 | Formulário de auth gerado bloqueia Tokio e vaza timing | `cargo-rullst/src/generators/auth/controllers.rs` faz hash/verify síncrono em handlers async, carrega usuários e busca email linearmente, retorna cedo para usuário inexistente e contém unwraps. |
+| P2-15 | JWT gerado é incompleto | `cargo-rullst/src/generators/cors_jwt.rs:162-225` injeta `jsonwebtoken = "9.3"`, divergindo de outras versões, sem issuer/audience e sem validar força do segredo. |
+| P2-16 | `send_for_tenant` não resolve tenant | O facade de Mail ignora `tenant_id` em um caminho, apesar do nome da API. Isso pode aplicar transport/config global quando o chamador espera isolamento. |
+| P2-17 | Rotas Studio mantêm aliases fora do padrão | Existem variantes `/tools/*` e `/studio/tools/*`, enquanto a SST exige URLs limpas `/studio/*`. Backward compatibility pode justificar aliases, mas a rota canônica precisa ser única e testada. |
+| P2-18 | Macro `#[route]` é pública mas fundacional | `rullst-macros/src/lib.rs:196-216` ignora atributo/path e reemite uma função de forma incompleta. Se for API pública anunciada, pode gerar surpresa ou erro de compilação. |
+| P2-19 | Sinais de API semver incompletos | Muitos enums/configs públicos não têm `#[non_exhaustive]`; não foi encontrada uma trilha relevante de `#[deprecated]`. Adicionar campo/variante pode quebrar consumidores. |
+| P2-20 | Construtores não seguem ergonomia uniforme | Há muitos `new(String, ...)` em vez de `impl Into<String>` e vários constructors validam com panic/assert. Isso é dívida de API, além dos casos de segurança já citados. |
+| P2-21 | Dependência `mutants` está em dependências normais do ORM | `rullst-orm/Cargo.toml` inclui `mutants = 0.0.4` no conjunto regular; deve ser confirmado se é necessário em runtime ou movido para tooling/dev. |
+| P2-22 | Compliance gerado é incondicional | `cargo-rullst/src/generators/audit.rs:508-521` marca OWASP, criptografia, CSP, SOC2, TLS e SBOM como PASS sem testar o projeto, inclusive afirmando Vault AES-256. Isso produz evidência falsa. |
+| P2-23 | Basic Auth do Nexus não tem rate limit | A senha usa comparação constante, o que é positivo, mas o username usa igualdade comum e não há rate limiting/lockout na camada montada. Basic também depende integralmente de TLS externo. |
+| P2-24 | Fallback de memória do Radar não é “telemetria real” | Quando coleta real falha, retornar 24 MB e CPU fixa é pior que expor `None/Unavailable`, porque dashboards e alertas passam a tomar decisões com dado inventado. |
+
+## 10. Matriz de aderência à SST
+
+| Área da SST | Estado | Avaliação |
+|---|---|---|
+| Workspace e existência dos crates | **Parcial** | Os crates principais existem, mas responsabilidades reais de Connect/IoT divergem e Security está duplicada. |
+| Core HTTP (`routes!`, `Router`, `Server`) | **Boa** | API legível e substancial. O builder precisa de startup fail-closed. |
+| `html!`, escape e `RawHtml` | **Boa** | Escape automático é real; bypass é explícito. |
+| ORM Active Record/Repository | **Parcial/boa** | CRUD, macros e binds existem; assinaturas divergem em pontos, globais/panics prejudicam robustez. |
+| CLI e scaffolding | **Fraca** | Amplitude alta, mas há bugs concretos de flags, nomes, paths, IDs, CORS, auth e billing. Docs SSG não existe. |
+| Erros e zero-panic | **Fraca** | Erros tipados são comuns, porém há panics em runtime, macros e código gerado. |
+| Middleware e segurança | **Parcial/fraca** | Bons controles isolados coexistem com detecção fail-open, WAF sem body, CSP fraca e pilhas duplicadas. |
+| Compatibilidade pública | **Fraca** | `#[non_exhaustive]` e depreciação não são aplicados de modo uniforme. |
+| External providers/mocks | **Parcial** | Capital tem vários mocks, mas Mail/Connect/AI não cobrem todos os caminhos; vazio pode também abrir webhook. |
+| Capital/pagamentos | **Parcial** | Muitos providers reais; webhooks/billing/Alipay têm falhas relevantes. |
+| Fiscal NFS-e | **Crítica/não aderente** | XMLDSig, mTLS e parser de autorização não são implementações válidas. |
+| Auth | **Parcial** | Argon2 e AES-GCM reais; JWT ausente no crate e WebAuthn incompleto. |
+| AI | **Parcial** | Quatro providers existem; falta DeepSeek, guardrails automáticos e mocks completos. |
+| Studio | **Parcial** | Parte da telemetria é conectada; há métricas falsas, rota quebrada e XSS latente. |
+| Nexus | **Crítica** | CRUD existe, mas não é fail-closed nem aplica RBAC/ownership server-side. |
+| Connect | **Não aderente ao papel** | É OAuth/OIDC, não mensageria/streaming. Como OAuth, tem substância. |
+| IoT | **Não aderente/protótipo** | MQTT, OTA, HSM e PQC não cumprem as garantias anunciadas. |
+| Mail | **Parcial** | Drivers/fila existem; segurança/fallback/tenant não são invariantes do facade. |
+| Studio URLs e dados reais | **Parcial** | Existem aliases legacy e estados hardcoded proibidos pela SST. |
+
+Minha estimativa global permanece em **55–60% de aderência**, mas a média esconde extremos: HTML/routing estão bem mais próximos do contrato; Fiscal/IoT/Connect e segurança administrativa estão muito abaixo.
+
+## 11. Testes, CI e release
+
+### 11.1. Distribuição estática dos testes
+
+| Área | Declarações de teste encontradas |
+|---|---:|
+| `rullst-connect` | 182 |
+| `rullst-core` | 173 |
+| `rullst-orm` | 129 |
+| `rullst-security` | 83 |
+| `rullst` | 79 |
+| `rullst-capital` | 54 |
+| `rullst-mail` | 53 |
+| `rullst-auth` | 34 |
+| `rullst-iot` | 34 |
+| `rullst-studio` | 34 |
+| `rullst-ai` | 22 |
+| `rullst-orm-macros` | 22 |
+| `rullst-nexus` | 18 |
+| `cargo-rullst` | 9 |
+| `rullst-macros` | 1 |
+| **Total** | **927** |
+
+O volume é um ponto positivo, mas a distribuição mostra uma lacuna: o CLI, que gera uma grande quantidade de código e concentra regressões observadas, tem apenas nove declarações de teste. O exemplo Blog não tem testes próprios. Muitos testes verificam a própria simulação como comportamento desejado — por exemplo, OTA aceita `[0; 64]` e Vault considera uma string de hash como “decriptada”. Portanto, quantidade sem qualidade de oráculo pode até congelar um bug.
+
+### 11.2. Pontos positivos da automação
+
+- testes workspace all-features na matriz Linux/macOS/Windows (`.github/workflows/ci.yml:44-62`);
+- MSRV explícito e job específico (`ci.yml:74-89`);
+- bancos reais via testcontainers na matriz (`ci.yml:64-72`);
+- targets no_std reais em workflow próprio;
+- ampla presença de fuzz, bench, Kani, Miri, cargo-deny/audit e supply-chain checks;
+- a maioria das actions está pinada.
+
+### 11.3. Gaps dos gates
+
+1. **Clippy oficial não usa todas as features.** `ci.yml:39` e `release.yml:38` executam `--all-targets`, não `--all-features`. Um Clippy adicional cobre somente três features do umbrella (`ci.yml:41-42`). Isso não cumpre a regra do AGENTS.
+
+2. **Features strict de DB não são compiladas isoladamente.** `--all-features` ativa strict Postgres/MySQL/SQLite simultaneamente, mas condicionais do ORM dão precedência a Postgres (`rullst-orm/src/lib.rs:20-44`). Não há jobs dedicados `strict-mysql`, `strict-sqlite` e `strict-postgres`, então branches exclusivas podem apodrecer.
+
+3. **WASM sempre pode ficar verde.** Os dois `cargo check` de `.github/workflows/wasm-matrix.yml:39-40` terminam com `|| true`.
+
+4. **Unsafe policy é informativa, não enforcement.** `.github/workflows/unsafe-policy.yml:76-77` sempre termina em `exit 0`, e a busca omite Security/IoT. A lógica de comentário SAFETY também não comprova comentário precedente. Há unsafe real em `dylib_loader.rs`, `builder.rs` e `radar.rs`.
+
+5. **Kani/Miri/mutants/udeps não bloqueiam.** Kani e Miri têm `continue-on-error`; mutants e udeps usam `|| true`. Isso pode ser uma escolha aceitável de telemetria, mas a documentação não pode chamá-los de gates formais.
+
+6. **Fuzz agendado não cobre todos os targets.** Há 40 manifests/targets, mas o workflow agenda 34. Ficam fora, entre outros, DLP/sanitizer, AI message serde e validações/tracking/security de Mail.
+
+7. **O workflow “IoT QEMU” não executa QEMU.** Ele compila; não instala nem roda em hardware simulado. Isso não valida MQTT, OTA ou drivers.
+
+8. **O benchmark tolera regressão enorme.** A documentação fala em regressão de nanossegundos, mas o threshold observado é de aproximadamente 300%.
+
+9. **Quatro actions não estão pinadas por SHA.** Foram observadas em corpus sync, udeps e release. Em pipeline de publicação, pinning deve ser obrigatório.
+
+10. **`deny.toml` ignora 11 advisories sem owner/prazo.** Exceção pode ser necessária, mas precisa de justificativa, responsável, compensating control e data de expiração.
+
+### 11.4. O que a CI ainda não prova
+
+Mesmo quando o workflow está verde, ele não prova:
+
+- que NFS-e é aceita pela SEFIN;
+- que OTA valida Ed25519;
+- que HSM/PQC são algoritmos reais;
+- que Nexus está protegido quando montado;
+- que CORS gerado possui allowlist;
+- que todos os scaffolds compilam;
+- que Studio exibe dados reais;
+- que os checks formal/unsafe/mutation são gates.
+
+Esses comportamentos precisam de testes de contrato que falhem com as implementações atuais, não apenas testes unitários que confirmem stubs.
+
+## 12. Documentação, compliance e honestidade de produto
+
+A divergência documental é um dos maiores riscos do projeto, pois influencia decisões de adoção.
+
+### 12.1. Alegações que o código atual contradiz
+
+| Alegação | Realidade observada |
+|---|---|
+| “100% memory safe / no unsafe blocks” (`README.md:50`; `SECURITY_COMPLIANCE.md:14`) | Há unsafe de produção no loader dinâmico, builder e FFI do Radar. Unsafe pode ser legítimo, mas a alegação zero é falsa. |
+| “Zero-Panic / 100% crash-free” (`README.md:284`) | Há `panic!`, `expect` e `unwrap` em Core, ORM, macros e scaffolds de produção. |
+| “OWASP A+ / CSP com nonces” (`README.md:186`; `AUDIT.md:66`) | O Server padrão usa CSP com `unsafe-inline`/`unsafe-eval`; a pilha com nonce nem é a mesma instalada por padrão. |
+| “Vault AES-256” (`SECURITY_COMPLIANCE.md:10`) | `rullst-security::FieldEncryptor` é hash irreversível; somente o ORM tem AES-GCM real. |
+| “RBAC/IDOR enforced” (`SECURITY_COMPLIANCE.md:9`) | Nexus não exige auth/RBAC/ownership por padrão e Tenant Guard aceita header sem vínculo. |
+| “MQTT 5 industrial” (`README.md:66,382`) | `mqtt.rs` é stub e `MqttDriver` só converte valor para string. |
+| “PQC ML-KEM/HSM compliance” (`README.md:70`) | PQC e HSM são hashes simulados explicitamente marcados como stubs. |
+| “NFS-e / XMLDSig ICP-Brasil” (`docs/src/spec.md:251-254`) | Não há assinatura com chave privada, C14N, mTLS ou parser de autorização estrito. |
+| “DeepSeek + guardrails/PII built-in” (`README.md:278,352`) | DeepSeek está ausente e guardrails não formam pipeline obrigatório antes de requests. |
+| “Connect: Kafka/RabbitMQ/Redis Streams/WS/SSE” (`docs/src/spec.md:306`) | O crate atual implementa OAuth/OIDC/social login. |
+| “Compliance PASS” gerado pelo CLI | O gerador imprime PASS incondicionalmente sem avaliar o projeto. |
+
+### 12.2. Documentos de auditoria não são evidência reproduzível atual
+
+`AUDIT.md` declara 739 dependências e três advisories, enquanto o `Cargo.lock` contém 773 packages e o `deny.toml` atual ignora 11 advisories. Ele também declara Clippy all-targets/all-features limpo e nota 9,8/10, algo que não pôde ser reproduzido neste ambiente. `SECURITY_COMPLIANCE.md` afirma zero unsafe apesar de blocos existentes.
+
+O SBOM, por outro lado, lista 773 componentes e tem timestamp recente, alinhando-se melhor ao lock. O caminho correto é gerar todos esses relatórios em CI a partir do commit/tag e anexar logs/artefatos verificáveis, nunca manter PASS estático no repositório.
+
+### 12.3. Estado de versão confuso
+
+- todos os manifests publicáveis estão em `12.0.0`;
+- o `CHANGELOG.md` ainda trata 12 como Unreleased;
+- as tags locais observadas vão somente até `v5.0.0`;
+- o último commit usa `feat: ...`, sem o scope obrigatório por `<type>(<scope>): <summary>`.
+
+Isso não é bug runtime, mas reduz confiança na governança de release. Versão do código, changelog, tag, crates publicados, SBOM e release notes precisam apontar para a mesma realidade.
+
+## 13. Manutenibilidade e qualidade estrutural
+
+### 13.1. Arquivos acima da meta de 500 linhas
+
+| Linhas | Arquivo |
+|---:|---|
+| 674 | `rullst-core/src/artisan/studio_views.rs` |
+| 597 | `rullst-core/src/error_console/renderer.rs` |
+| 588 | `cargo-rullst/src/cli.rs` |
+| 582 | `cargo-rullst/src/blueprints/portfolio.rs` |
+| 581 | `cargo-rullst/src/blueprints/erp.rs` |
+| 576 | `rullst-connect/src/extractors.rs` |
+| 569 | `rullst-core/src/cache.rs` |
+| 545 | `rullst-core/src/resilience.rs` |
+| 511 | `cargo-rullst/src/generators/audit.rs` |
+| 504 | `rullst-mail/src/lib.rs` |
+
+A regra é um alvo, não um limite absoluto. Ainda assim, esses são bons candidatos para decomposição porque concentram lógica de domínio, rendering/templates e branches de feature.
+
+### 13.2. Templates inline aumentam drift
+
+Controller, Island, CORS/JWT, Dockerfile e vários blueprints são strings grandes dentro de Rust. Isso dificulta syntax highlighting, snapshots, format/check do código gerado e reutilização. A SST já prescreve `include_str!` e templates separados; seguir essa regra permitiria testar cada arquivo gerado diretamente.
+
+### 13.3. Ausência de TODO não significa completude
+
+Não há grande concentração de `TODO`/`FIXME`, mas operações incompletas estão implementadas como sucesso ou como API final: S3/R2, DB replication, MQTT, OTA, HSM, PQC, resize, fiscal e telemetria. Um `todo!()` visível seria, em vários casos, menos perigoso que `Ok(())` falso.
+
+### 13.4. APIs deveriam tornar estados inválidos irrepresentáveis
+
+Vários problemas decorrem de `String`, bools e opções soltas:
+
+- ambiente é uma string interpretada diferentemente por cada crate;
+- secret vazio significa ora mock, ora endpoint sem autenticação, ora request real;
+- `Nexus` permite construir router sem política de auth;
+- Fiscal mock e Fiscal autorizado compartilham a mesma resposta;
+- backends não implementados retornam sucesso.
+
+Tipos como `Environment`, `CredentialMode<Real|Mock>`, `VerifiedWebhook`, `AuthorizedNfse`, `AuthenticatedNexus` e `ImplementedStorageBackend` poderiam mover essas garantias para compile-time.
+
+## 14. O que eu manteria, refatoraria e reescreveria
+
+### Manter e evoluir
+
+- a separação nominal em crates;
+- `routes!`, Router e a ergonomia geral do Server;
+- o modelo seguro de escape do `html!`/`RawHtml`;
+- a decomposição das macros ORM e o uso de SQLx bind;
+- AES-GCM de `rullst-orm::privacy`;
+- os providers OAuth/OIDC de Connect, renomeando/redefinindo a responsabilidade do crate se necessário;
+- os providers reais de Capital/Mail/AI que já têm testes e clientes HTTP claros;
+- a infraestrutura multi-OS, MSRV, fuzz, bench e testcontainers.
+
+### Refatorar profundamente
+
+- grafo Core→ORM e features do umbrella;
+- uma única pilha Security integrada ao Server;
+- resolução de ambiente/configuração e startup fail-closed;
+- estado global do ORM;
+- facades de Mail/Storage/providers e política de mock;
+- montagem/segurança/telemetria do Studio e Nexus;
+- geradores do CLI e seus templates.
+
+### Reescrever ou desabilitar até existir implementação real
+
+- `rullst-security::FieldEncryptor`;
+- signer e parser NFS-e;
+- OTA/HSM/PQC/MQTT industrial de IoT;
+- RSA2 de Alipay;
+- S3/R2 e replication stubs que retornam sucesso;
+- middleware CORS gerado;
+- compliance generator que imprime PASS incondicional.
+
+## 15. Roadmap recomendado
+
+### Fase 0 — contenção imediata, antes de qualquer nova release
+
+1. Marcar Fiscal, IoT crypto/MQTT, `FieldEncryptor`, S3/R2 e Alipay como `experimental` ou fazer seus caminhos reais retornarem `Unsupported`.
+2. Tornar Nexus fechado por padrão; remover `admin/password` de todos os blueprints e exemplos.
+3. Corrigir o CORS gerado e publicar aviso de segurança para projetos já scaffoldados.
+4. Corrigir path traversal do facade Storage.
+5. Unificar detecção de produção e impedir subida sem as proteções configuradas.
+6. Exigir segredo de webhook em endpoints reais; nunca usar fallback mock em rota pública.
+7. Bloquear o workflow de release atual e corrigir ordem/omissões antes da próxima tag.
+8. Atualizar README, SST, `AUDIT.md` e compliance para diferenciar “implementado”, “experimental” e “roadmap”.
+
+### Fase 1 — segurança e confiabilidade do kernel
+
+1. Criar um enum de ambiente único e uma política de configuração com precedência testada.
+2. Fazer DB initialization atômica/fallible; remover getters panicking dos caminhos normais.
+3. Validar APP_KEY e retirar sessão legacy sem expiração.
+4. Corrigir WebAuthn com biblioteca/fluxo auditado.
+5. Corrigir DLP/PII para content-type, streaming e headers.
+6. Separar CSRF de webhooks assinados e adicionar freshness/idempotência.
+7. Corrigir Login Guard, rate limit, trusted proxies, Tenant Guard e CSWSH.
+8. Eliminar panics/unwraps confirmados em produção e código gerado.
+
+### Fase 2 — integridade de produto e scaffolding
+
+1. Criar harness que execute todos os comandos do CLI em tempdirs e rode `cargo fmt --check`, `cargo check` e testes smoke nos projetos gerados.
+2. Corrigir flags Nix/Buildah, nomes Island/Resource, path/package, IDs de blueprint, Auth, Billing e Docs SSG.
+3. Aplicar RBAC/ownership e field policy server-side no Nexus.
+4. Corrigir rotas, escaping, env redaction e fonte de métricas do Studio.
+5. Completar mocks offline de AI/Mail/Connect sem transformar endpoints reais em fail-open.
+
+### Fase 3 — alinhar arquitetura e contrato
+
+Escolher explicitamente uma das duas estratégias:
+
+**Estratégia A — cumprir a SST atual:** implementar Connect de mensageria, MQTT 5/zero-copy, DeepSeek, guardrails automáticos, NFS-e real e todos os contratos descritos.
+
+**Estratégia B — reduzir o contrato da versão 12:** documentar Connect como OAuth, mover mensageria para outro crate/roadmap, marcar IoT/Fiscal experimentais e remover comparativos/claims ainda não sustentados.
+
+A Estratégia B entrega confiança mais rápido. A Estratégia A entrega a visão completa, mas exige um ciclo de engenharia e homologação considerável.
+
+Depois, desacoplar Core do ORM, consolidar Security, completar o umbrella e padronizar `#[non_exhaustive]`, builders e `impl Into<String>`.
+
+### Fase 4 — engenharia de release
+
+1. Tornar a trifeta do AGENTS um gate real com `--all-features`.
+2. Compilar/testar cada feature strict isoladamente.
+3. Fazer unsafe, WASM, Kani/Miri e mutation tests refletirem claramente se são bloqueantes ou informativos.
+4. Cobrir os 40 fuzz targets ou documentar tiers.
+5. Empacotar/validar todos os crates antes de publicar o primeiro.
+6. Gerar SBOM, audit e compliance por tag, com commit digest e artefatos assinados.
+7. Alinhar `12.0.0`, changelog, tag, crates.io e release notes.
+
+## 16. Gates mínimos para considerar o framework pronto
+
+Eu só chamaria o conjunto de production-ready quando os seguintes critérios fossem reproduzíveis:
+
+### Build e qualidade
+
+- `cargo fmt --all -- --check` verde;
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` verde;
+- `cargo test --workspace --all-features` verde em Linux/Windows/macOS;
+- cada feature exclusiva de DB compilada e testada isoladamente;
+- cada blueprint/gerador produz projeto que compila;
+- nenhuma API de produção retorna sucesso para operação não implementada.
+
+### Segurança
+
+- Nexus inacessível sem auth e RBAC/ownership testados em create/read/update/delete/batch;
+- CORS por allowlist, CSP real com nonce e headers testados na aplicação final;
+- APP_KEY/webhook secrets validados e sem modo vazio fail-open;
+- WebAuthn com suíte negativa normativa;
+- DLP/PII testados com JSON, HTML, gzip, binário, SSE, streaming e overflow;
+- tenant e IP derivados de identidade/proxy confiável;
+- inventário de `unsafe` com comentário SAFETY e teste de fronteira FFI;
+- zero panics comprovado nos caminhos de runtime definidos pela política.
+
+### Fiscal, pagamentos e IoT
+
+- NFS-e homologada de ponta a ponta contra ambiente oficial, incluindo rejeições;
+- XMLDSig validada independentemente e certificado/mTLS real;
+- webhooks com replay/freshness/idempotência e testes cross-tenant;
+- OTA com vetores Ed25519 válidos/inválidos e anti-rollback;
+- HSM/PQC somente com implementação real ou nomes explícitos de simulação;
+- MQTT validado contra broker real e parser fuzzado.
+
+### Observabilidade e documentação
+
+- métricas desconhecidas aparecem como indisponíveis, nunca como números inventados;
+- Studio/Nexus sem XSS e com rotas smoke-tested;
+- README/SST/compliance gerados ou revisados contra o mesmo commit;
+- toda capacidade marcada como estável, experimental ou roadmap.
+
+## 17. Priorização resumida
+
+| Horizonte | Prioridade |
+|---|---|
+| **Agora** | Fiscal, falso Vault, IoT crypto, Nexus/default credentials, CORS gerado, Storage traversal, ambiente fail-open, webhooks/billing e release pipeline. |
+| **Em seguida** | WebAuthn, APP_KEY, ORM atômico, DLP/PII, CSRF/webhooks, WAF claims, rate limit, tenant isolation, panics. |
+| **Depois** | CLI end-to-end, Studio, AI guardrails/mocks, Mail, Connect/OIDC hardening, semver e arquivos grandes. |
+| **Estratégico** | Decidir SST vs roadmap, desacoplar Core/ORM, unificar Security e completar umbrella. |
+
+Este relatório registra **9 grupos P0, 19 grupos P1 e 24 itens P2**. Isso não representa 52 CVEs independentes: alguns são lacunas de produto ou grupos de bugs relacionados. Ainda assim, a quantidade e a severidade justificam uma fase de hardening antes de expandir funcionalidades.
+
+## 18. Veredito final
+
+### A arquitetura está boa?
+
+**A ideia está boa; a arquitetura executada ainda precisa de consolidação.** A divisão por crates, o estilo explícito, as macros e a direção compile-time são fundamentos fortes. Eu daria 7/10 para a visão e aproximadamente 5,5/10 para o grafo/contratos reais. O acoplamento Core→ORM, a segurança duplicada e a diferença entre crate anunciado e crate implementado são os maiores problemas arquiteturais.
+
+### Existe muita coisa a melhorar?
+
+**Sim.** Não apenas estilo, documentação ou cobertura: há áreas que precisam ser reescritas ou bloqueadas para produção. A boa notícia é que não é necessário jogar o framework fora. O trabalho deve ser de redução de escopo, hardening e honestidade contratual, preservando routing, HTML, fundamentos ORM, providers já substanciais e infraestrutura de testes.
+
+### Ele apresenta muitos bugs ou erros?
+
+**Há vários bugs importantes e múltiplos bloqueadores críticos**, mas eles estão concentrados em certas fronteiras: Fiscal, IoT, Nexus, Security/Vault, storage, scaffolds, configuração de produção, webhooks e release. Outras partes estão significativamente mais maduras. Portanto, a resposta correta não é “tudo está quebrado”, e sim “a maturidade é muito desigual e as promessas enterprise ultrapassaram a implementação”.
+
+### Eu usaria hoje?
+
+- Para estudo, prototipagem local e evolução do próprio framework: **sim**.
+- Para uma aplicação controlada usando somente routing/HTML e uma parte revisada do ORM: **possivelmente, com hardening e pin do commit**.
+- Para fiscal real, OTA, HSM/PQC, painel Nexus exposto, billing multi-tenant gerado ou claims de compliance: **não na forma atual**.
+- Para uma release pública estável 12.0.0 com todas as alegações do README: **não antes dos P0 e dos gates mínimos**.
+
+Minha recomendação principal é simples: **reduzir temporariamente o que o Rullst afirma entregar e elevar a qualidade do que permanece estável**. Corrigir essa distância entre promessa e implementação aumentará mais a credibilidade do projeto do que adicionar novos módulos neste momento.
+
+---
+
+## Apêndice A — Referências centrais para a correção
+
+- SST: `docs/src/spec.md`
+- Server e ambiente: `rullst-core/src/server/builder.rs`
+- Storage: `rullst-core/src/storage.rs`
+- Telemetria Radar: `rullst-core/src/radar.rs`
+- CSRF/WAF/headers: `rullst-core/src/security/`
+- Estado global ORM: `rullst-orm/src/pool.rs`
+- Criptografia ORM real: `rullst-orm/src/privacy.rs`
+- Vault falso: `rullst-security/src/vault.rs`
+- Login/rate/DLP: `rullst-security/src/login_guard.rs`, `rate_limit.rs`, `dlp.rs`
+- Passkeys: `rullst-auth/src/auth/passkey/service.rs`
+- Signer/cliente fiscal: `rullst-capital/src/fiscal/signer.rs`, `client.rs`
+- Webhooks/providers: `rullst-capital/src/webhook.rs`, `providers/`
+- IoT: `rullst-iot/src/ota.rs`, `hsm.rs`, `pqc.rs`, `mqtt.rs`
+- Nexus: `rullst-nexus/src/nexus/`
+- Studio: `rullst-studio/src/`
+- CLI/scaffolds: `cargo-rullst/src/generators/`, `blueprints/`
+- CI/release: `.github/workflows/ci.yml`, `.github/workflows/release.yml`
+
+## Apêndice B — O que não foi alterado
+
+Esta auditoria não corrigiu o código-fonte. O único artefato criado para atender ao pedido é este arquivo `gpt.md`. A próxima etapa recomendada é transformar os itens P0 em issues pequenas, cada uma com teste de regressão e critério de aceite reproduzível.
