@@ -54,7 +54,7 @@ Inventário estático observado:
 | Item | Quantidade |
 |---|---:|
 | Membros no workspace | 16: 15 crates e o exemplo `examples/blog` |
-| Arquivos no repositório | 755 |
+| Arquivos rastreados pelo Git | 803 |
 | Arquivos Rust | 549 |
 | Declarações de teste Rust encontradas | 927, distribuídas em 224 arquivos |
 | Targets de fuzz | 40 |
@@ -71,9 +71,9 @@ O ambiente desta auditoria não possui `cargo`, `rustc` ou `rustup` no `PATH` ne
 
 | Comando obrigatório | Resultado local |
 |---|---|
-| `cargo test --workspace --all-features` | Não executado: `cargo` não encontrado |
-| `cargo clippy --workspace --all-features -- -D warnings` | Não executado: `cargo` não encontrado |
-| `cargo fmt --all -- --check` | Não executado: `cargo` não encontrado |
+| `cargo test --workspace --all-features` | Invocado, mas bloqueado antes de compilar/executar: `cargo` não encontrado, exit 1 |
+| `cargo clippy --workspace --all-features -- -D warnings` | Invocado, mas bloqueado antes de analisar: `cargo` não encontrado, exit 1 |
+| `cargo fmt --all -- --check` | Invocado, mas bloqueado antes de formatar/verificar: `cargo` não encontrado, exit 1 |
 
 Isso significa que a trifeta ficou **inconclusiva por limitação do ambiente**, e não que os testes passaram ou falharam. Nenhuma conclusão deste relatório usa `AUDIT.md` ou badges como substituto para uma execução reproduzível.
 
@@ -442,9 +442,9 @@ Achados confirmados:
 
 - resposta de LLM externo é inserida diretamente como HTML em `rullst-nexus/src/nexus/ai_chat.rs:264-296`;
 - PK textual do banco entra sem escape em atributos, URLs e `onclick` em `rullst-nexus/src/nexus/crud/views.rs:75-82,123-136`;
-- flags `readonly` e `hidden` só afetam a view; create/update aceitam os campos enviados manualmente (`crud/handlers.rs:156-165,286-297`);
-- batch delete ignora erro do banco e informa sucesso (`crud/handlers.rs:455-467`);
-- `page=0` pode causar underflow em `nexus/crud/query.rs:102-109`.
+- flags `readonly` e `hidden` só afetam a view; create/update aceitam os campos enviados manualmente (`rullst-nexus/src/nexus/crud/handlers.rs:156-165,286-297`);
+- batch delete ignora erro do banco e informa sucesso (`rullst-nexus/src/nexus/crud/handlers.rs:455-467`);
+- `page=0` pode causar underflow em `rullst-nexus/src/nexus/crud/query.rs:102-109`.
 
 **Recomendação:** renderizar conteúdo não confiável como texto/HTML sanitizado por allowlist; nunca construir JS inline com dados; aplicar política de campos e RBAC nos handlers; validar paginação e propagar erro do banco.
 
@@ -465,11 +465,11 @@ Pontos positivos: `RadarSnapshot::collect()` e `SpanCollector` são consultados 
 
 Além do CORS crítico, foram confirmados:
 
-- `--nix` e `--buildah` são enviados na ordem trocada (`cargo-rullst/src/cli.rs:341-348`; `generators/project/mod.rs:43-50`);
-- Island usa helpers que acrescentam `_controller`/`Controller`, gerando nomes errados, importa `rullst::view` inexistente e gera `unwrap()` (`generators/mod.rs:89-150`; `island.rs:17-18,59-87`);
+- `--nix` e `--buildah` são enviados na ordem trocada (`cargo-rullst/src/cli.rs:341-348`; `cargo-rullst/src/generators/project/mod.rs:43-50`);
+- Island usa helpers que acrescentam `_controller`/`Controller`, gerando nomes errados, importa `rullst::view` inexistente e gera `unwrap()` (`cargo-rullst/src/generators/mod.rs:89-150`; `cargo-rullst/src/generators/island.rs:17-18,59-87`);
 - Resource reutiliza os mesmos helpers e produz nomes/paths incoerentes (`resource.rs:27-106`);
-- `cargo rullst new ../dummy_test` usa o path literal também como package/import name, sem separar basename e destino (`project/wizard.rs:25-45`; `project/mod.rs:54-69`);
-- IDs dos blueprints foram deslocados pela inserção de Portfolio, contrariando o contrato estável 0/1/2/3 da SST (`project/wizard.rs:91-103`; `blueprints/mod.rs:29-43`);
+- `cargo rullst new ../dummy_test` usa o path literal também como package/import name, sem separar basename e destino (`cargo-rullst/src/generators/project/wizard.rs:25-45`; `cargo-rullst/src/generators/project/mod.rs:54-69`);
+- IDs dos blueprints foram deslocados pela inserção de Portfolio, contrariando o contrato estável 0/1/2/3 da SST (`cargo-rullst/src/generators/project/wizard.rs:91-103`; `cargo-rullst/src/blueprints/mod.rs:29-43`);
 - o gerador Docs SSG previsto na SST não existe;
 - grandes templates continuam inline em vez de `include_str!`/blueprints testáveis.
 
@@ -536,7 +536,7 @@ Os itens abaixo não têm todos a mesma urgência, mas devem entrar no backlog a
 | P2-03 | Honeypot confia em XFF e bane indefinidamente | `rullst-security/src/honey/middleware.rs:51-74,120-144` aceita identidade forjável, usa substring para trap e mantém bans sem expiração, criando bypass, falso positivo e crescimento de memória. |
 | P2-04 | TrafficShield pode panic fora de runtime | `rullst-core/src/resilience.rs:74-113` chama `tokio::spawn` em construtor síncrono. As tasks não têm cancelamento no drop. |
 | P2-05 | Scheduler permite sobreposição ilimitada | `rullst-core/src/scheduler.rs:129-154` cria novo task a cada tick, sem impedir job anterior ainda em execução, timeout, shutdown ou política de panic. |
-| P2-06 | Queue worker faz spawn sem limite e pode deixar jobs presos | `rullst-core/src/queue/worker.rs:69-105` ignora erros de `mark_complete/failed`; crash pode deixar job em `processing`. JSON inválido vira `Null` silenciosamente em `queue/sqlite.rs:127-146`. |
+| P2-06 | Queue worker faz spawn sem limite e pode deixar jobs presos | `rullst-core/src/queue/worker.rs:69-105` ignora erros de `mark_complete/failed`; crash pode deixar job em `processing`. JSON inválido vira `Null` silenciosamente em `rullst-core/src/queue/sqlite.rs:127-146`. |
 | P2-07 | Hot-swap descarrega biblioteca potencialmente em uso | `rullst-core/src/server/hotswap.rs:104-115` libera biblioteca antiga após três reloads sem provar que requests em voo terminaram. O loader não verifica ponteiro null antes de `Box::from_raw` (`dylib_loader.rs:102-107`). É risco de UB no modo dev. |
 | P2-08 | `std::env::set_var` unsafe dentro do runtime | `rullst-core/src/server/builder.rs:188-192` altera ambiente global potencialmente após threads terem iniciado, sem uma invariável documentada. |
 | P2-09 | Replicação de DB é simulação | `rullst-core/src/db.rs:84-98` registra que está “sincronizando” e comenta que imprime sucesso para emular replicação. Deve retornar `Unsupported` ou ser rotulado experimental. |
@@ -628,11 +628,11 @@ O volume é um ponto positivo, mas a distribuição mostra uma lacuna: o CLI, qu
 
 5. **Kani/Miri/mutants/udeps não bloqueiam.** Kani e Miri têm `continue-on-error`; mutants e udeps usam `|| true`. Isso pode ser uma escolha aceitável de telemetria, mas a documentação não pode chamá-los de gates formais.
 
-6. **Fuzz agendado não cobre todos os targets.** Há 40 manifests/targets, mas o workflow agenda 34. Ficam fora, entre outros, DLP/sanitizer, AI message serde e validações/tracking/security de Mail.
+6. **A matriz do workflow manual de fuzz não cobre todos os targets.** Há 10 manifests de fuzz e 40 targets, mas `.github/workflows/fuzzing.yml`, acionado por `workflow_dispatch`, inclui 34. Ficam fora exatamente `fuzz_dlp`, `fuzz_sanitizer`, `fuzz_message_serde`, `fuzz_email_validator`, `fuzz_email_tracking` e `fuzz_email_security`.
 
-7. **O workflow “IoT QEMU” não executa QEMU.** Ele compila; não instala nem roda em hardware simulado. Isso não valida MQTT, OTA ou drivers.
+7. **O job “IoT QEMU” não executa QEMU.** Ele não instala nem roda em hardware simulado. O workflow também possui unit tests, mas esse job comprova somente compilação para o target, não comportamento em QEMU/hardware simulado.
 
-8. **O benchmark tolera regressão enorme.** A documentação fala em regressão de nanossegundos, mas o threshold observado é de aproximadamente 300%.
+8. **O benchmark tolera regressão enorme.** A documentação fala em regressão de nanossegundos, mas o YAML configura `alert-threshold: '300%'`.
 
 9. **Quatro actions não estão pinadas por SHA.** Foram observadas em corpus sync, udeps e release. Em pipeline de publicação, pinning deve ser obrigatório.
 
