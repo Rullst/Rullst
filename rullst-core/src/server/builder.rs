@@ -267,7 +267,9 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, hotswap_service).await?;
+        axum::serve(listener, hotswap_service)
+            .with_graceful_shutdown(shutdown_signal())
+            .await?;
 
         Ok(())
     }
@@ -372,8 +374,41 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app).await?;
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown_signal())
+            .await?;
 
         Ok(())
+    }
+}
+
+/// Listens for OS termination signals (SIGINT / SIGTERM / Ctrl+C) to drain in-flight requests cleanly.
+#[cfg_attr(mutants, mutants::skip)]
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        if let Ok(mut stream) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            stream.recv().await;
+        } else {
+            std::future::pending::<()>().await;
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            println!("\n🛑 [Rullst Shutdown] Received SIGINT (Ctrl+C). Draining in-flight requests...");
+        },
+        _ = terminate => {
+            println!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests...");
+        },
     }
 }

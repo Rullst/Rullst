@@ -91,7 +91,12 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = RullstPool::connect(database_url).await?;
+        let pool = RullstPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_secs(10))
+            .idle_timeout(Some(std::time::Duration::from_secs(300)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .connect(database_url)
+            .await?;
 
         if DB_POOL.set(pool).is_err() {
             return Err(crate::Error::Internal(
@@ -131,6 +136,8 @@ impl Orm {
         let pool = RullstPoolOptions::new()
             .max_connections(max_connections)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
+            .idle_timeout(Some(std::time::Duration::from_secs(300)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
             .connect(database_url)
             .await?;
 
@@ -217,7 +224,12 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = RullstPool::connect(primary_url).await?;
+        let pool = RullstPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_secs(10))
+            .idle_timeout(Some(std::time::Duration::from_secs(300)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .connect(primary_url)
+            .await?;
 
         if DB_POOL.set(pool).is_err() {
             return Err(crate::Error::Internal(

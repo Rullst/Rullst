@@ -9,7 +9,8 @@ pub async fn inject_hmr_script(
     if let Some(content_type) = res.headers().get(axum::http::header::CONTENT_TYPE) {
         if content_type.to_str().unwrap_or("").contains("text/html") {
             let (mut parts, body) = res.into_parts();
-            if let Ok(bytes) = axum::body::to_bytes(body, usize::MAX).await {
+            const MAX_HMR_BODY_BYTES: usize = 10 * 1024 * 1024;
+            if let Ok(bytes) = axum::body::to_bytes(body, MAX_HMR_BODY_BYTES).await {
                 let mut html = String::from_utf8_lossy(&bytes).to_string();
 
                 let port = std::env::var("PORT")

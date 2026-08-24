@@ -104,7 +104,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "items": [{
                 "price_id": plan_id,
@@ -217,7 +217,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .post(format!(
                     "https://api.paddle.com/subscriptions/{}/cancel",
@@ -244,7 +244,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .post(format!(
                     "https://api.paddle.com/subscriptions/{}/pause",

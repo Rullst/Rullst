@@ -1,6 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
 use rand::{RngExt, distr::Alphanumeric};
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 /// Generates a (code_verifier, code_challenge) pair for OAuth2 PKCE.
 ///
@@ -25,6 +26,19 @@ pub fn generate_pkce() -> (String, String) {
     let code_challenge = general_purpose::URL_SAFE_NO_PAD.encode(result);
 
     (code_verifier, code_challenge)
+}
+
+/// Verifies that a given `code_verifier` matches the expected `code_challenge` using constant-time comparison to prevent timing attacks.
+pub fn verify_pkce_challenge(code_verifier: &str, expected_challenge: &str) -> bool {
+    let mut hasher = Sha256::new();
+    hasher.update(code_verifier.as_bytes());
+    let result = hasher.finalize();
+    let computed_challenge = general_purpose::URL_SAFE_NO_PAD.encode(result);
+
+    computed_challenge
+        .as_bytes()
+        .ct_eq(expected_challenge.as_bytes())
+        .into()
 }
 
 #[cfg(test)]
@@ -62,18 +76,14 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_pkce_uniqueness() {
-        let (verifier1, challenge1) = generate_pkce();
-        let (verifier2, challenge2) = generate_pkce();
-
-        assert_ne!(
-            verifier1, verifier2,
-            "Multiple calls should generate unique verifiers"
-        );
-        assert_ne!(
-            challenge1, challenge2,
-            "Multiple calls should generate unique challenges"
-        );
+    fn test_verify_pkce_challenge() {
+        let (verifier, challenge) = generate_pkce();
+        assert!(verify_pkce_challenge(&verifier, &challenge));
+        assert!(!verify_pkce_challenge(&verifier, "invalid_challenge_hash"));
+        assert!(!verify_pkce_challenge(
+            "wrong_verifier_string_123456",
+            &challenge
+        ));
     }
 
     use proptest::prelude::*;

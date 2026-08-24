@@ -13,7 +13,22 @@ use std::time::{Duration, Instant};
 static RATE_LIMIT_STORE: OnceLock<DashMap<String, (Instant, AtomicU64)>> = OnceLock::new();
 
 pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
-    RATE_LIMIT_STORE.get_or_init(DashMap::new)
+    RATE_LIMIT_STORE.get_or_init(|| {
+        let store = DashMap::new();
+        if tokio::runtime::Handle::try_current().is_ok() {
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(300));
+                loop {
+                    interval.tick().await;
+                    let now = Instant::now();
+                    global_rate_limit_store().retain(|_, (start_time, _)| {
+                        now.duration_since(*start_time) < Duration::from_secs(600)
+                    });
+                }
+            });
+        }
+        store
+    })
 }
 
 /// Supported rate limiting backend strategies.

@@ -169,14 +169,25 @@ pub fn get_app_key() -> Result<Vec<u8>, AuthError> {
     Ok(key_vec)
 }
 
+static CACHED_CIPHER: std::sync::OnceLock<(Vec<u8>, Aes256Gcm)> = std::sync::OnceLock::new();
+
 fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, AuthError> {
+    if let Some((cached_key, cipher)) = CACHED_CIPHER.get()
+        && cached_key.as_slice() == app_key
+    {
+        return Ok(cipher.clone());
+    }
+
     let mut hasher = sha2::Sha256::new();
     hasher.update(app_key);
     let key_hash = hasher.finalize();
     let mut key_bytes = [0u8; 32];
     key_bytes.copy_from_slice(&key_hash);
-    Aes256Gcm::new_from_slice(&key_bytes)
-        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
+
+    let _ = CACHED_CIPHER.set((app_key.to_vec(), cipher.clone()));
+    Ok(cipher)
 }
 
 /// Encrypts a user_id into a secure base64-encoded string.

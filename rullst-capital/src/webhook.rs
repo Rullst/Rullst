@@ -20,10 +20,11 @@ pub async fn verify_webhook(
     // We will read the body, verify the signature, inject the event, and then we could
     // reconstruct the body if needed, but since we parsed the event, the handler just needs the event.
 
-    // Extract body bytes
-    let body_bytes = match axum::body::to_bytes(req.into_body(), usize::MAX).await {
+    // Extract body bytes (limited to 2MB to prevent DoS/OOM exhaustion)
+    const MAX_WEBHOOK_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
+    let body_bytes = match axum::body::to_bytes(req.into_body(), MAX_WEBHOOK_PAYLOAD_BYTES).await {
         Ok(bytes) => bytes,
-        Err(_) => return Err(StatusCode::BAD_REQUEST),
+        Err(_) => return Err(StatusCode::PAYLOAD_TOO_LARGE),
     };
 
     // Convert HeaderMap to HashMap<String, String> as expected by BillingProvider

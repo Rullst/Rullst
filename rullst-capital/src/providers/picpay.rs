@@ -78,7 +78,7 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "referenceId": format!("sub_{}", plan_id),
             "callbackUrl": redirect_url,

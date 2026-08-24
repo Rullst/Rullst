@@ -104,7 +104,7 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "items": [{
                 "title": format!("Subscription Plan {}", plan_id),
@@ -240,7 +240,7 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .put(format!(
                     "https://api.mercadopago.com/preapproval/{}",
@@ -268,7 +268,7 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .put(format!(
                     "https://api.mercadopago.com/preapproval/{}",

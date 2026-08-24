@@ -86,7 +86,7 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "plan_id": plan_id,
             "total_count": 12,
@@ -220,7 +220,7 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .post(format!(
                     "https://api.razorpay.com/v1/subscriptions/{}/cancel",
@@ -247,7 +247,7 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .post(format!(
                     "https://api.razorpay.com/v1/subscriptions/{}/pause",

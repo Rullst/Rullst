@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [12.0.0] - Unreleased 🚀
 
+- **Enterprise Resilience, Memory Safety & Cryptographic Hardening (`rullst-core`, `rullst-security`, `rullst-capital`, `rullst-auth`, `rullst-mail`, `rullst-connect`, `rullst-orm`)**:
+  - **Graceful Shutdown & Zero-Downtime Deploys (`rullst-core::server::builder`)**: Implemented cross-platform termination signal handling (`SIGINT`, `SIGTERM`, `Ctrl+C`) via `shutdown_signal()` and `.with_graceful_shutdown()`, cleanly draining in-flight requests before process shutdown.
+  - **Async Cancellation & Drop Safety (`rullst-core::resilience`)**: Implemented RAII `ActiveRequestGuard` for the backpressure middleware, ensuring `active_requests` counters are never leaked when client futures are dropped or timed out.
+  - **Zero-Allocation RASP Request Inspector (`rullst-security::rasp`)**: Replaced per-header heap string allocations with zero-allocation ASCII case-insensitive pattern matching (`contains_ignore_ascii_case`) and static attack pattern tables.
+  - **Full-Spectrum DLP Secret Masking (`rullst-security::dlp`)**: Converted AWS key and database DSN redactor to iterative scanner masking 100% of secret occurrences in complex JSON responses.
+  - **In-Memory Rate Limiting & Login Guard Leak Prevention (`rullst-security::rate_limit`, `rullst-security::login_guard`)**: Added periodic asynchronous background janitors pruning expired IP sliding windows and failed login records to prevent memory growth under IP spoofing.
+  - **HTTP Connection Pool Reuse (`rullst-capital::providers`)**: Centralized `reqwest::Client` singleton across all 11 billing and payout providers (`stripe`, `mercadopago`, `paddle`, `lemonsqueezy`, etc.), enabling HTTP Keep-Alive and eliminating socket storms.
+  - **DoS & OOM Payload Buffering Shields (`rullst-capital::webhook`, `rullst-core::server_middleware`)**: Enforced strict 2 MB payload limit on payment webhooks returning `StatusCode::PAYLOAD_TOO_LARGE` and 10 MB limit on HMR script injection.
+  - **Cipher Key Schedule Caching (`rullst-auth::auth`)**: Added `OnceLock` caching for derived `Aes256Gcm` cipher instances, eliminating repeated SHA-256 key hashing on every session encryption and decryption.
+  - **Zero-Copy Outbound Email Link Scanner & Anti-CRLF Guards (`rullst-mail::security`)**: Eliminated full-body string cloning in `extract_urls` and added `is_crlf_safe` header validation preventing SMTP header injection attacks.
+  - **Constant-Time PKCE Verification (`rullst-connect::pkce`)**: Added `verify_pkce_challenge` using `subtle::ConstantTimeEq` to prevent side-channel timing attacks in OAuth2 / OIDC code exchange flows.
+  - **Resilient Database Pool Defaults (`rullst-orm::pool`)**: Added default `acquire_timeout` (10s), `idle_timeout` (300s), and `max_lifetime` (1800s) on global ORM connection pool initializers.
+  - **O(1) Circular Telemetry Spans (`rullst-core::telemetry_spans`)**: Migrated `SpanCollector` circular buffer to `VecDeque` with `pop_front`, eliminating $O(N)$ memory moves on trace recordings.
+
 - **Engineering Governance, Tokio Concurrency Shielding & SemVer Integrity**: Hardened framework runtime predictability, Git history discipline, and build pipeline integrity:
   - **Git Governance & Conventional Commits Policy (`.githooks/commit-msg`, `CONTRIBUTING.md`, `AGENTS.md`)**: Enforced strict Conventional Commits validation (`<type>(<scope>): <description>`) via automated Git hook, banning verbose AI-generated marketing essays and maintaining clean, audit-friendly commit histories.
   - **CLI Pre-Commit Hook Suite (`cargo rullst hook:install`)**: Upgraded `cargo rullst hook:install` to automatically configure both `.git/hooks/pre-commit` (fmt, Clippy with zero-warnings, IDOR scan) and `.git/hooks/commit-msg`.

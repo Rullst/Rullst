@@ -83,7 +83,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "name": format!("Subscription Plan {}", plan_id),
             "description": "SaaS Subscription Payment via Web3 Crypto",

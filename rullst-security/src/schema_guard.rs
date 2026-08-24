@@ -13,6 +13,7 @@ pub const DEFAULT_MAX_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 pub const DEFAULT_MAX_NESTING_DEPTH: usize = 32;
 
 /// Inspects raw JSON bytes to verify maximum size and nesting depth to prevent JSON bomb DoS.
+/// Correctly ignores braces inside JSON quoted strings to prevent false positives on string values.
 pub fn inspect_json_payload(
     bytes: &[u8],
     max_depth: usize,
@@ -24,15 +25,35 @@ pub fn inspect_json_payload(
     }
 
     let mut current_depth: usize = 0;
+    let mut in_string = false;
+    let mut escape = false;
+
     for &b in bytes {
-        if b == b'{' || b == b'[' {
-            current_depth += 1;
-            if current_depth > max_depth {
-                SecurityStore::global().inc_schema_violations();
-                return Err("Payload exceeds maximum allowed object nesting depth");
+        if escape {
+            escape = false;
+            continue;
+        }
+
+        if b == b'\\' && in_string {
+            escape = true;
+            continue;
+        }
+
+        if b == b'"' {
+            in_string = !in_string;
+            continue;
+        }
+
+        if !in_string {
+            if b == b'{' || b == b'[' {
+                current_depth += 1;
+                if current_depth > max_depth {
+                    SecurityStore::global().inc_schema_violations();
+                    return Err("Payload exceeds maximum allowed object nesting depth");
+                }
+            } else if b == b'}' || b == b']' {
+                current_depth = current_depth.saturating_sub(1);
             }
-        } else if b == b'}' || b == b']' {
-            current_depth = current_depth.saturating_sub(1);
         }
     }
 
@@ -84,6 +105,13 @@ mod tests {
     fn test_inspect_json_payload_valid() {
         let json = b"{\"user\": {\"name\": \"Alice\", \"roles\": [\"admin\", \"user\"]}}";
         assert!(inspect_json_payload(json, 10, 1024).is_ok());
+    }
+
+    #[test]
+    fn test_inspect_json_payload_braces_in_strings() {
+        // String with 50 braces should not trigger a depth limit of 5
+        let json = br#"{"snippet": "{{{{{{{{{{[[[[[[[[[[}}}}}}}}}}]]]]]]]]]]", "status": 200}"#;
+        assert!(inspect_json_payload(json, 5, 1024).is_ok());
     }
 
     #[test]

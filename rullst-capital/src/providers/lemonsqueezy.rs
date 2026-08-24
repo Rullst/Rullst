@@ -76,7 +76,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "data": {
                 "type": "checkouts",
@@ -222,7 +222,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .delete(format!(
                     "https://api.lemonsqueezy.com/v1/subscriptions/{}",
@@ -249,7 +249,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let payload = serde_json::json!({
                 "data": {
                     "type": "subscriptions",
@@ -298,7 +298,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let payload = serde_json::json!({
                 "data": {
                     "type": "usage-records",

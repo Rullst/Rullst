@@ -1,6 +1,7 @@
 //! Distributed Tracing Telemetry & Flamegraph Collector.
 
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::sync::RwLock;
 
 /// Represents a single telemetry span (HTTP request, ORM query, AI prompt).
@@ -18,7 +19,7 @@ pub struct TraceSpan {
 
 /// In-memory circular buffer collector for distributed trace spans.
 pub struct SpanCollector {
-    spans: RwLock<Vec<TraceSpan>>,
+    spans: RwLock<VecDeque<TraceSpan>>,
     capacity: usize,
 }
 
@@ -26,18 +27,18 @@ impl SpanCollector {
     /// Creates a new SpanCollector with a fixed capacity.
     pub fn new(capacity: usize) -> Self {
         Self {
-            spans: RwLock::new(Vec::with_capacity(capacity)),
+            spans: RwLock::new(VecDeque::with_capacity(capacity)),
             capacity,
         }
     }
 
-    /// Records a new trace span into the circular buffer.
+    /// Records a new trace span into the circular buffer in O(1) time.
     pub fn record(&self, span: TraceSpan) {
         if let Ok(mut lock) = self.spans.write() {
             if lock.len() >= self.capacity {
-                lock.remove(0);
+                lock.pop_front();
             }
-            lock.push(span);
+            lock.push_back(span);
         }
     }
 
@@ -45,7 +46,7 @@ impl SpanCollector {
     pub fn snapshot(&self) -> Vec<TraceSpan> {
         self.spans
             .read()
-            .map(|lock| lock.clone())
+            .map(|lock| lock.iter().cloned().collect())
             .unwrap_or_default()
     }
 }

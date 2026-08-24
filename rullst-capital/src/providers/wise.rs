@@ -87,7 +87,7 @@ impl PayoutProvider for WiseProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "targetAccount": recipient_email,
             "quoteUuid": format!("profile_{}", self.profile_id),
@@ -141,7 +141,7 @@ impl PayoutProvider for WiseProvider {
             return Ok(PayoutStatus::OutgoingPaymentSent);
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let res = client
             .get(format!("https://api.wise.com/v1/transfers/{}", transfer_id))
             .bearer_auth(&self.api_token)

@@ -37,7 +37,23 @@ impl Default for LoginGuard {
 impl LoginGuard {
     /// Creates a new LoginGuard instance.
     pub fn new() -> Self {
-        Self::default()
+        let guard = Self::default();
+        if tokio::runtime::Handle::try_current().is_ok() {
+            let failures = guard.failures.clone();
+            let jails = guard.jails.clone();
+            let window = guard.window_duration;
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(300));
+                loop {
+                    interval.tick().await;
+                    let now = Instant::now();
+                    failures
+                        .retain(|_, (_, last_attempt)| now.duration_since(*last_attempt) < window);
+                    jails.retain(|_, exp| now < *exp);
+                }
+            });
+        }
+        guard
     }
 
     /// Accesses the global static LoginGuard instance.

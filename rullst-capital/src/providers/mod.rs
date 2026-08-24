@@ -29,6 +29,12 @@ pub use wise::WiseProvider;
 
 static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
 static PAYOUT_PROVIDER: OnceCell<Box<dyn PayoutProvider>> = OnceCell::const_new();
+static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+
+/// Returns the shared `reqwest::Client` singleton to enable HTTP connection pooling and keep-alive.
+pub(crate) fn http_client() -> &'static reqwest::Client {
+    HTTP_CLIENT.get_or_init(reqwest::Client::new)
+}
 
 /// Initializes the global billing provider.
 pub fn init_provider(provider: Box<dyn BillingProvider>) {

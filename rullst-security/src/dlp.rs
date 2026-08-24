@@ -48,27 +48,46 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
         }
     }
 
-    // 2. Mask AWS Access Keys (AKIA...)
-    if sanitized.contains("AKIA")
-        && let Some(start) = sanitized.find("AKIA")
-    {
+    // 2. Mask all AWS Access Keys (AKIA...)
+    let mut cursor = 0;
+    while let Some(offset) = sanitized[cursor..].find("AKIA") {
+        let start = cursor + offset;
         let end = (start + 20).min(sanitized.len());
-        sanitized.replace_range(start..end, "AKIA****************");
-        modified = true;
+        if !sanitized[start..end].starts_with("AKIA****************") {
+            sanitized.replace_range(start..end, "AKIA****************");
+            modified = true;
+        }
+        cursor = start + 20.min(sanitized.len().saturating_sub(start));
+        if cursor >= sanitized.len() {
+            break;
+        }
     }
 
-    // 3. Mask database connection string passwords (postgres://user:pass@host:5432/db)
+    // 3. Mask all database connection string passwords (postgres://user:pass@host:5432/db)
     for scheme in &["postgres://", "postgresql://", "mysql://", "redis://"] {
-        if let Some(start) = sanitized.find(scheme) {
+        let mut cursor = 0;
+        while let Some(offset) = sanitized[cursor..].find(scheme) {
+            let start = cursor + offset;
             let rest = &sanitized[start + scheme.len()..];
             if let Some(at_idx) = rest.find('@') {
                 let auth_part = &rest[..at_idx];
                 if let Some(colon_idx) = auth_part.find(':') {
                     let pass_start = start + scheme.len() + colon_idx + 1;
                     let pass_end = start + scheme.len() + at_idx;
-                    sanitized.replace_range(pass_start..pass_end, "*****");
-                    modified = true;
+                    if &sanitized[pass_start..pass_end] != "*****" {
+                        sanitized.replace_range(pass_start..pass_end, "*****");
+                        modified = true;
+                    }
+                    cursor = start + scheme.len() + at_idx + 1;
+                    if cursor >= sanitized.len() {
+                        break;
+                    }
+                    continue;
                 }
+            }
+            cursor = start + scheme.len();
+            if cursor >= sanitized.len() {
+                break;
             }
         }
     }
@@ -208,6 +227,20 @@ mod tests {
         let masked_str = String::from_utf8(masked).unwrap();
         assert!(masked_str.contains("mysql://root:*****@127.0.0.1:3306/db"));
         assert!(masked_str.contains("redis://default:*****@cache:6379"));
+    }
+
+    #[test]
+    fn test_mask_multiple_keys_and_dsns() {
+        let payload = br#"{"keys": ["AKIA1111111111111111", "AKIA2222222222222222"], "dbs": ["postgres://u1:p1@h1:5432/d1", "postgres://u2:p2@h2:5432/d2"]}"#;
+        let (masked, was_modified) = mask_response_payload(payload);
+        assert!(was_modified);
+        let masked_str = String::from_utf8(masked).unwrap();
+        assert!(!masked_str.contains("AKIA1111111111111111"));
+        assert!(!masked_str.contains("AKIA2222222222222222"));
+        assert!(!masked_str.contains(":p1@"));
+        assert!(!masked_str.contains(":p2@"));
+        assert!(masked_str.contains("postgres://u1:*****@h1:5432/d1"));
+        assert!(masked_str.contains("postgres://u2:*****@h2:5432/d2"));
     }
 
     #[tokio::test]

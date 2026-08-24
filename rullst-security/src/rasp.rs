@@ -12,69 +12,74 @@ use tower::{Layer, Service};
 
 /// RASP (Runtime Application Self-Protection) Inspector.
 /// Analyzes request telemetry in zero-latency to block SQLi, Path Traversal, SSRF, RCE, and JNDI exploits.
+static ATTACK_PATTERNS: &[&str] = &[
+    // SQL Injection
+    "union select",
+    "union%20select",
+    "union+select",
+    "' or '1'='1",
+    "%27%20or%20%271%27=%271",
+    "; drop table",
+    ";%20drop%20table",
+    "sleep(",
+    "benchmark(",
+    "extractvalue(",
+    "information_schema",
+    // Path Traversal
+    "../",
+    "..\\",
+    "%2e%2e/",
+    "%2e%2e%2f",
+    "/etc/passwd",
+    "c:\\windows\\system32",
+    // SSRF
+    "169.254.169.254",
+    "metadata.google.internal",
+    "127.0.0.1:2375",
+    // RCE & Shell Injection
+    "; cat ",
+    "| sh",
+    "; rm -rf",
+    "powershell",
+    "cmd.exe",
+    "/bin/bash",
+    "/bin/sh",
+    // Log4j / JNDI
+    "${jndi:",
+    "${ldap:",
+    "${rmi:",
+    "${dns:",
+];
+
+#[inline]
+fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    let h_bytes = haystack.as_bytes();
+    let n_bytes = needle.as_bytes();
+    if h_bytes.len() < n_bytes.len() {
+        return false;
+    }
+
+    h_bytes.windows(n_bytes.len()).any(|window| {
+        window
+            .iter()
+            .zip(n_bytes.iter())
+            .all(|(&h, &n)| h.eq_ignore_ascii_case(&n))
+    })
+}
+
 pub struct RaspInspector;
 
 impl RaspInspector {
-    /// Deep inspection of a generic text payload for attack signatures.
+    /// Deep inspection of a generic text payload for attack signatures with zero heap allocations.
     pub fn inspect_text(payload: &str) -> bool {
-        let lower = payload.to_lowercase();
-
-        // SQL Injection patterns
-        if lower.contains("union select")
-            || lower.contains("union%20select")
-            || lower.contains("union+select")
-            || lower.contains("' or '1'='1")
-            || lower.contains("%27%20or%20%271%27=%271")
-            || lower.contains("; drop table")
-            || lower.contains(";%20drop%20table")
-            || lower.contains("sleep(")
-            || lower.contains("benchmark(")
-            || lower.contains("extractvalue(")
-            || lower.contains("information_schema")
-        {
-            return true;
+        for &pattern in ATTACK_PATTERNS {
+            if contains_ignore_ascii_case(payload, pattern) {
+                return true;
+            }
         }
-
-        // Path Traversal patterns
-        if lower.contains("../")
-            || lower.contains("..\\")
-            || lower.contains("%2e%2e/")
-            || lower.contains("%2e%2e%2f")
-            || lower.contains("/etc/passwd")
-            || lower.contains("c:\\windows\\system32")
-        {
-            return true;
-        }
-
-        // SSRF patterns
-        if lower.contains("169.254.169.254")
-            || lower.contains("metadata.google.internal")
-            || lower.contains("127.0.0.1:2375")
-        {
-            return true;
-        }
-
-        // RCE & Shell Command Injection patterns
-        if lower.contains("; cat ")
-            || lower.contains("| sh")
-            || lower.contains("; rm -rf")
-            || lower.contains("powershell")
-            || lower.contains("cmd.exe")
-            || lower.contains("/bin/bash")
-            || lower.contains("/bin/sh")
-        {
-            return true;
-        }
-
-        // Log4j / JNDI Injection patterns
-        if lower.contains("${jndi:")
-            || lower.contains("${ldap:")
-            || lower.contains("${rmi:")
-            || lower.contains("${dns:")
-        {
-            return true;
-        }
-
         false
     }
 

@@ -149,10 +149,19 @@ impl TrafficShield {
     }
 }
 
+struct ActiveRequestGuard<'a>(&'a AtomicUsize);
+
+impl<'a> Drop for ActiveRequestGuard<'a> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// Router-level protection middleware that tracks load timing and drops requests under critical saturation.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: Next) -> Response {
     let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
+    let _guard = ActiveRequestGuard(&shield.active_requests);
 
     let max_active = shield.config.max_active_requests;
     let lag = shield.event_loop_lag();
@@ -163,8 +172,6 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
     let is_critical_active = active >= max_active;
 
     if is_critical_cpu || is_critical_db || is_critical_active {
-        shield.active_requests.fetch_sub(1, Ordering::SeqCst);
-
         eprintln!(
             "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {}",
             lag, db_lat, active
@@ -198,9 +205,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 
-    let response = next.run(req).await;
-    shield.active_requests.fetch_sub(1, Ordering::SeqCst);
-    response
+    next.run(req).await
 }
 
 /// Extensible configuration for the Token-Bucket Rate Limiter.

@@ -104,7 +104,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let body_str = format!(
             "mode=subscription&success_url={}&cancel_url={}&customer_email={}&line_items[0][price]={}&line_items[0][quantity]=1",
             url_encode(redirect_url),
@@ -225,7 +225,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .delete(format!(
                     "https://api.stripe.com/v1/subscriptions/{}",
@@ -252,7 +252,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .post(format!(
                     "https://api.stripe.com/v1/subscriptions/{}",
@@ -291,7 +291,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let body = format!("quantity={}&action=increment", quantity);
             let res = client
                 .post(format!(
@@ -330,7 +330,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let body = format!("coupon={}", coupon_code);
             let res = client
                 .post(format!(
@@ -369,7 +369,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let body = format!("trial_end={}", trial_ends_at);
             let res = client
                 .post(format!(

@@ -80,7 +80,7 @@ impl BillingProvider for PolarProvider {
             ));
         }
 
-        let client = reqwest::Client::new();
+        let client = crate::providers::http_client();
         let payload = serde_json::json!({
             "product_price_id": plan_id,
             "customer_email": customer_email,
@@ -189,7 +189,7 @@ impl BillingProvider for PolarProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = reqwest::Client::new();
+            let client = crate::providers::http_client();
             let res = client
                 .delete(format!(
                     "https://api.polar.sh/v1/subscriptions/{}",
