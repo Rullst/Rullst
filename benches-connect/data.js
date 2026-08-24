@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787255296809,
+  "lastUpdate": 1787547149941,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2307,6 +2307,34 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 77,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "committer": {
+            "name": "venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "id": "068fbd3c8453af922ecfaaee6c2ccd181943a7dc",
+          "message": "feat: implement multi-provider AI support, enhance security middleware, and expand project test coverage documentation",
+          "timestamp": "2026-08-24T04:34:58Z",
+          "url": "https://github.com/Rullst/Rullst/commit/068fbd3c8453af922ecfaaee6c2ccd181943a7dc"
+        },
+        "date": 1787547149215,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 73,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
