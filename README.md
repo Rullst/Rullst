@@ -7,7 +7,7 @@
 </p>
 
 <h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
-<h3 align="center"><i>Effortless, highly secure Rust framework.</i></h3>
+<h3 align="center"><i>Effortless, highly secure Rust framework. - Because with Rullst we rule!</i></h3>
 
 <p align="center">
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io"></a>
@@ -38,7 +38,7 @@
 | **OWASP ZAP DAST** | [![OWASP ZAP DAST](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/dast-zap.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Dynamic vulnerability scanning |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
 | **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
-| **Cargo Geiger** | [![Cargo Geiger](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/geiger.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/geiger.yml) | Unsafe code counting & memory safety auditing |
+| **Cargo Geiger** | [![Cargo Geiger](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=Geiger)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | Unsafe code counting & memory safety auditing |
 | **Cargo SemVer** | [![SemVer Checks](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
 | **Cargo Machete** | [![Cargo Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
 | **Benchmark CI** | [![Benchmark CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Continuous performance regression testing |
@@ -63,6 +63,8 @@
 | **CycloneDX SBOM** | [![SBOM](https://img.shields.io/badge/SBOM-CycloneDX_1.5-blue?style=flat-square&label=)](https://cyclonedx.org/) | Automated Software Bill of Materials with SHA-256 package hashes |
 | **Network Surface Audit** | [![Network Scan](https://img.shields.io/badge/Network_Audit-RustScan_Mode-blueviolet?style=flat-square&label=)](https://github.com/Rullst/Rullst) | High-speed local port & interface binding scanner |
 | **Git Pre-Commit Hook** | [![Pre-Commit](https://img.shields.io/badge/Pre--Commit-Active-success?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Local gatekeeper enforcing rustfmt, clippy, and IDOR audits |
+| **IoT Integration** | [![IoT Integration](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml) | MQTT 5.0 broker, sensor telemetry, and edge hardware simulation |
+| **Security Audit** | [![Security Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml) | RustSec advisory database CVE scanning |
 | **Toolchain Doctor** | [![Doctor](https://img.shields.io/badge/Doctor-System_Diagnostics-teal?style=flat-square&label=)](https://github.com/Rullst/Rullst) | Unified health-check for MSRV, Docker, Kani, and security linters |
 | **Pure-Rustls Native** | [![Pure-Rustls](https://img.shields.io/badge/TLS-100%25_Rustls_Native-10b981?style=flat-square&label=)](https://github.com/rustls/rustls) | Strict zero-OpenSSL C-bindings policy for memory-safe TLS |
 | **PQC Compliance Audit** | [![PQC Compliance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?style=flat-square&label=)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml) | Weekly NIST ML-KEM / Kyber & HSM compliance audit (unsafe-free cryptographic modules) |

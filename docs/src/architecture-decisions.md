@@ -240,6 +240,34 @@ By keeping Security and Telemetry **built-in by default**, the CLI avoids "surve
 
 ---
 
+## 🛡️ Part 5: Engineering Invariants & Architectural Rigor
+
+To establish a predictable, enterprise-grade foundation, the entire Rullst crate architecture adheres to 5 non-negotiable engineering invariants:
+
+### 1. Multi-Crate Decoupled Facade Pattern
+Rullst is not a monolithic single crate. The umbrella `rullst` crate acts as a facade re-exporting specialized, decoupled micro-crates (`rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`, `rullst-mail`, `rullst-ai`, etc.):
+* **Feature-Gated Bloat Mitigation:** Heavy sub-systems (like SQL engines or email transports) are optional via Cargo features (`default = ["orm"]`). When building lightweight REST proxies or microservices, users can disable default features (`default-features = false`) to eliminate unnecessary dependencies and achieve sub-second compile times.
+
+### 2. Zero-Panic Guarantees in Production Paths
+* Production code (`src/`) strictly prohibits `panic!()`, `unwrap()`, or `expect()`.
+* All operations return typed domain error enums (`AppError`, `OrmError`, `AuthError`, `CapitalError`, `FiscalError`) deriving `thiserror::Error`, allowing graceful error propagation and structured JSON/HTMX error responses.
+* `unwrap()` is strictly confined to unit test suites (`#[test]` / `tests/`) where assertion failures are expected.
+
+### 3. Tokio Runtime Concurrency Shielding
+* Asynchronous HTTP handlers running on Tokio's multi-threaded runtime must never be starved by CPU-intensive synchronous operations.
+* Intensive cryptographic tasks (such as Argon2id password hashing in `rullst-auth` or XMLDSig envelope canonicalization in `rullst-capital`) are automatically offloaded to Tokio's dedicated blocking pool (`tokio::task::spawn_blocking`), protecting event loop responsiveness under high concurrent load.
+
+### 4. No "Walled Gardens": First-Class Axum & Tower Escape Hatches
+* Rullst explicitly avoids hiding the underlying server engine behind opaque proprietary wrappers.
+* `rullst::Router` implements seamless, bidirectional conversion traits with `axum::Router` (`From<axum::Router>`, `.into_axum()`, `.as_axum()`, `.as_axum_mut()`, `Deref`/`DerefMut`).
+* Any third-party middleware from the Tokio/Tower ecosystem (`tower_http::cors::CorsLayer`, `tower::limit::RateLimitLayer`, `utoipa-swagger-ui`) can be attached directly without impedance.
+
+### 5. 100% Pure-Rustls Cryptographic Stack
+* The framework enforces a strict zero-OpenSSL C-bindings policy.
+* Network and cryptographic crates use `aws-lc-rs` and `rustls` for memory-safe, cross-platform compilation without requiring external system C libraries (`libssl-dev`).
+
+---
+
 ## 💡 Summary Recommendations
 
 1. **For most web applications:** Choose **Active Record Mode** + **Zero-Bundle HTMX** + **No AI** + **In-Memory Cache**. This gives you maximum speed, zero JS overhead, and minimal infrastructure complexity.

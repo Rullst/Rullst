@@ -71,6 +71,7 @@
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)
+- [🛡️ CI/CD & Security Workflows](../../../WORKFLOWS.md)
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)

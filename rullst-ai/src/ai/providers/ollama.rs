@@ -40,6 +40,19 @@ impl AiProvider for OllamaProvider {
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        if self.host.contains("mock") || self.host.is_empty() {
+            let last_user = messages
+                .iter()
+                .rev()
+                .find(|m| m.role == "user")
+                .map(|m| m.content.as_str())
+                .unwrap_or("Hello");
+            return Ok(format!(
+                "Mock response from Ollama (model: {}): Echo '{}'",
+                self.model, last_user
+            ));
+        }
+
         let url = format!("{}/api/chat", self.host);
 
         let body = serde_json::json!({

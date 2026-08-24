@@ -200,3 +200,27 @@ async fn test_inject_hmr_script() {
     assert!(body_str.contains("Rullst Hybrid Hot-Reloading"));
     assert!(body_str.contains("3001/_rullst_hmr"));
 }
+
+#[tokio::test]
+async fn test_server_timing_middleware() {
+    use crate::server::server_middleware::server_timing_middleware;
+
+    let router = axum::Router::new()
+        .route("/api/ping", axum::routing::get(|| async { "pong" }))
+        .layer(axum::middleware::from_fn(server_timing_middleware));
+
+    use tower_service::Service;
+    let mut service = router;
+
+    let req = axum::http::Request::builder()
+        .uri("/api/ping")
+        .body(axum::body::Body::empty())
+        .unwrap();
+
+    let res = service.call(req).await.unwrap();
+    assert_eq!(res.status(), axum::http::StatusCode::OK);
+    let timing = res.headers().get("server-timing");
+    assert!(timing.is_some());
+    let timing_str = timing.unwrap().to_str().unwrap();
+    assert!(timing_str.contains("app;dur="));
+}

@@ -132,3 +132,26 @@ pub async fn zstd_static_middleware(
 
     next.run(req).await
 }
+
+/// Adds standard W3C `Server-Timing` headers to HTTP responses for instant DevTools network profiling.
+///
+/// Format: `Server-Timing: app;dur=X.XX;desc="Rullst App Handler"`
+#[cfg_attr(mutants, mutants::skip)]
+pub async fn server_timing_middleware(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let start = std::time::Instant::now();
+    let mut res = next.run(req).await;
+    let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
+
+    let timing_header_val = format!("app;dur={:.2};desc=\"Rullst App Handler\"", elapsed_ms);
+    if let Ok(val) = axum::http::HeaderValue::from_str(&timing_header_val) {
+        res.headers_mut().insert(
+            axum::http::header::HeaderName::from_static("server-timing"),
+            val,
+        );
+    }
+
+    res
+}

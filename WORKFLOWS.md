@@ -34,6 +34,8 @@ To ensure mission-critical resilience, Rullst does not rely on a single verifica
   ▲▲▲▲▲▲▲▲  [1. CODECOV] 90%+ Deterministic LLVM Multi-OS Code Coverage
 ```
 
+> **Coverage Target Guard:** Rullst enforces a strict **90% code coverage** threshold (project and patch) with a **1% tolerance** via Codecov. All AI provider integrations (`rullst-ai`) implement deterministic offline mock fallbacks per [AGENTS.md §3.5](AGENTS.md), ensuring 100% test reliability without live API credentials.
+
 ---
 
 ## 🏛️ Comprehensive Test & Formal Verification Matrix

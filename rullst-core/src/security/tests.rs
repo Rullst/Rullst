@@ -168,3 +168,53 @@ fn test_is_csrf_exempt_path() {
     assert!(!is_csrf_exempt_path("/posts/create"));
     assert!(!is_csrf_exempt_path("/api/v1/orders"));
 }
+
+#[tokio::test]
+async fn test_tenant_guard_middleware() {
+    use super::tenant_guard::{
+        TenantContext, strict_tenant_guard_middleware, tenant_guard_middleware,
+    };
+    use axum::extract::Extension;
+    use tower_service::Service;
+
+    let app = axum::Router::new()
+        .route(
+            "/tenant-data",
+            axum::routing::get(|ext: Option<Extension<TenantContext>>| async move {
+                match ext {
+                    Some(Extension(ctx)) => format!("tenant: {}", ctx.tenant_id),
+                    None => "no tenant".to_string(),
+                }
+            }),
+        )
+        .layer(axum::middleware::from_fn(tenant_guard_middleware));
+
+    let mut service = app;
+
+    // 1. With X-Tenant-ID
+    let req = axum::http::Request::builder()
+        .uri("/tenant-data")
+        .header("X-Tenant-ID", "org_12345")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = service.call(req).await.unwrap();
+    assert_eq!(res.status(), axum::http::StatusCode::OK);
+    let bytes = axum::body::to_bytes(res.into_body(), 1024).await.unwrap();
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "tenant: org_12345"
+    );
+
+    // 2. Strict Guard: Missing tenant header
+    let strict_app = axum::Router::new()
+        .route("/strict-data", axum::routing::get(|| async { "OK" }))
+        .layer(axum::middleware::from_fn(strict_tenant_guard_middleware));
+
+    let mut strict_service = strict_app;
+    let req = axum::http::Request::builder()
+        .uri("/strict-data")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = strict_service.call(req).await.unwrap();
+    assert_eq!(res.status(), axum::http::StatusCode::BAD_REQUEST);
+}

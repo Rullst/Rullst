@@ -7,15 +7,16 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "70...100"
+  range: "80...100"
   status:
     project:
       default:
-        target: auto
-        threshold: 2%
+        target: 90%
+        threshold: 1%
     patch:
       default:
-        informational: true
+        target: 90%
+        threshold: 1%
 
 ignore:
   - "examples/**/*"

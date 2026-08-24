@@ -38,7 +38,7 @@ pub use mfa::{
     build_otpauth_uri, decode_base32, generate_mfa_secret, generate_totp_code, verify_totp_code,
 };
 pub use rasp::{RaspInspector, RaspSecurityLayer, RaspSecurityService};
-pub use rate_limit::{is_rate_limited, rate_limit_middleware};
+pub use rate_limit::{RateLimitBackend, RateLimiter, is_rate_limited, rate_limit_middleware};
 pub use rbac::{RbacGuard, UserContext};
 pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
 pub use schema_guard::{inspect_json_payload, schema_guard_middleware};

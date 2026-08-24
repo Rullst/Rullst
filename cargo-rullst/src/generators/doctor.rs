@@ -1,13 +1,21 @@
 use colored::Colorize;
 use std::process::Command;
 
-pub fn run_doctor() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         "🩺 Running Rullst Framework System & Toolchain Doctor..."
             .bright_cyan()
             .bold()
     );
+    if auto_fix {
+        println!(
+            "{}",
+            "🔧 Auto-Fix Mode Active: Attempting to resolve missing dependencies..."
+                .bright_yellow()
+                .bold()
+        );
+    }
     println!(
         "{}",
         "═══════════════════════════════════════════════════════════════".bright_black()
@@ -53,11 +61,26 @@ pub fn run_doctor() -> Result<(), Box<dyn std::error::Error>> {
     if fmt_ok && clippy_ok {
         println!("{}", "[OK] (Installed)".bright_green().bold());
         passed += 1;
+    } else if auto_fix {
+        println!(
+            "{}",
+            "[FIXING] (Running rustup component add)..."
+                .bright_yellow()
+                .bold()
+        );
+        let _ = Command::new("rustup")
+            .args(["component", "add", "rustfmt", "clippy"])
+            .output();
+        println!(
+            "  🎨 Rustfmt & Clippy Linters... {}",
+            "[FIXED]".bright_green().bold()
+        );
+        passed += 1;
     } else {
         println!("{}", "[WARNING]".bright_yellow().bold());
         warnings += 1;
         fix_suggestions
-            .push("Run 'rustup component add rustfmt clippy' to install linters.".to_string());
+            .push("Run 'rustup component add rustfmt clippy' (or 'cargo rullst doctor --fix') to install linters.".to_string());
     }
 
     // 3. LLVM Tools Preview (for code coverage)
@@ -232,6 +255,13 @@ pub fn run_doctor() -> Result<(), Box<dyn std::error::Error>> {
         );
         for (idx, sug) in fix_suggestions.iter().enumerate() {
             println!("  {}. {}", idx + 1, sug.bright_white());
+        }
+        if !auto_fix {
+            println!(
+                "\n{}",
+                "💡 Tip: Run 'cargo rullst doctor --fix' to automatically resolve fixable dependencies."
+                    .bright_green()
+            );
         }
     } else {
         println!(

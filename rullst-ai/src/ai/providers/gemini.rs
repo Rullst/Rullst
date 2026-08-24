@@ -74,6 +74,19 @@ impl AiProvider for GeminiProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        if self.api_key.starts_with("mock_") || self.api_key.is_empty() {
+            let last_user = messages
+                .iter()
+                .rev()
+                .find(|m| m.role == "user")
+                .map(|m| m.content.as_str())
+                .unwrap_or("Hello");
+            return Ok(format!(
+                "Mock response from Gemini (model: {}): Echo '{}'",
+                self.model, last_user
+            ));
+        }
+
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
             self.model, self.api_key

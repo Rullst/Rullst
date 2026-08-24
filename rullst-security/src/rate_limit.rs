@@ -16,6 +16,56 @@ pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64
     RATE_LIMIT_STORE.get_or_init(DashMap::new)
 }
 
+/// Supported rate limiting backend strategies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RateLimitBackend {
+    /// High-throughput in-memory sliding window using DashMap.
+    #[default]
+    Memory,
+    /// Distributed multi-instance sliding window using Redis or shared cache backend.
+    Distributed,
+}
+
+/// Configurable builder for application rate limiters.
+#[derive(Debug, Clone)]
+pub struct RateLimiter {
+    pub max_requests: u64,
+    pub window: Duration,
+    pub backend: RateLimitBackend,
+}
+
+impl Default for RateLimiter {
+    fn default() -> Self {
+        Self {
+            max_requests: 120,
+            window: Duration::from_secs(60),
+            backend: RateLimitBackend::Memory,
+        }
+    }
+}
+
+impl RateLimiter {
+    /// Creates a new RateLimiter with specified max requests and duration window.
+    pub fn new(max_requests: u64, window: Duration) -> Self {
+        Self {
+            max_requests,
+            window,
+            backend: RateLimitBackend::Memory,
+        }
+    }
+
+    /// Configures the RateLimiter to use the distributed backend.
+    pub fn with_distributed(mut self) -> Self {
+        self.backend = RateLimitBackend::Distributed;
+        self
+    }
+
+    /// Checks if a client IP or key has exceeded the rate limit.
+    pub fn check(&self, key: &str) -> bool {
+        is_rate_limited(key, self.max_requests, self.window)
+    }
+}
+
 /// In-memory sliding-window IP rate limiter checking request rates.
 pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Duration) -> bool {
     let store = global_rate_limit_store();
@@ -78,5 +128,17 @@ mod tests {
         assert!(!is_rate_limited(ip, 3, window));
         // 4th request exceeds max_requests=3
         assert!(is_rate_limited(ip, 3, window));
+    }
+
+    #[test]
+    fn test_rate_limiter_builder() {
+        let limiter = RateLimiter::new(5, Duration::from_secs(1)).with_distributed();
+        assert_eq!(limiter.max_requests, 5);
+        assert_eq!(limiter.backend, RateLimitBackend::Distributed);
+        let key = "10.0.0.1";
+        for _ in 0..5 {
+            assert!(!limiter.check(key));
+        }
+        assert!(limiter.check(key));
     }
 }

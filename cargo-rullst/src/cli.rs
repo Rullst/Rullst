@@ -308,7 +308,11 @@ pub enum Commands {
     #[command(name = "hook:install")]
     HookInstall,
     /// Runs full system diagnostics and toolchain health checks (Rust MSRV, Docker, linters, security tools)
-    Doctor,
+    Doctor {
+        /// Automatically attempt to install missing components or fix environment configurations
+        #[arg(long)]
+        fix: bool,
+    },
     /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
     Eject {
         /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs
@@ -546,8 +550,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::HookInstall => {
             crate::generators::hook::install_git_pre_commit_hook()?;
         }
-        Commands::Doctor => {
-            crate::generators::doctor::run_doctor()?;
+        Commands::Doctor { fix } => {
+            crate::generators::doctor::run_doctor(*fix)?;
         }
         Commands::Eject { force, output } => {
             crate::generators::eject::run_eject_project(*force, output.as_deref())?;

@@ -61,6 +61,10 @@ impl Nexus {
         self
     }
 
+    pub fn into_router(self) -> AxumRouter {
+        self.build()
+    }
+
     pub fn build(self) -> AxumRouter {
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),

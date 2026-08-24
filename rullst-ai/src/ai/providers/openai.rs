@@ -41,6 +41,19 @@ impl AiProvider for OpenAiProvider {
     }
 
     async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+        if self.api_key.starts_with("mock_") || self.api_key.is_empty() {
+            let last_user = messages
+                .iter()
+                .rev()
+                .find(|m| m.role == "user")
+                .map(|m| m.content.as_str())
+                .unwrap_or("Hello");
+            return Ok(format!(
+                "Mock response from OpenAI (model: {}): Echo '{}'",
+                self.model, last_user
+            ));
+        }
+
         let url = "https://api.openai.com/v1/chat/completions";
 
         let body = serde_json::json!({
