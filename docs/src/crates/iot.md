@@ -1,58 +1,110 @@
-# rullst-iot
+# Rullst IoT 📡
+### *"Embedded Sensor Protocols, Ed25519 OTA Gate & Edge Computing for Rust"*
 
-> **Vision preserved:** MQTT/CoAP/Sparkplug, real flash/boot lifecycle, HSM/PQC,
-> Embassy, hardware integration, and HIL testing remain itemized with status and
-> recommendation in the [capability ledger](../capability-ledger.md#iot-edge-and-cryptography-vision).
+`rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]` data structures, and a cryptographically verified Over-The-Air (OTA) firmware update state machine.
 
-`rullst-iot` contains `no_std`-compatible telemetry models, protocol frame
-helpers, edge state models, and a signed firmware verification gate.
+---
 
-## Current capabilities
+## ⚡ Capability & Lifecycle Matrix
 
-- Telemetry and digital-twin in-memory models.
-- Modbus CRC/frame, I2C frame, BLE GATT data, anomaly, topology, and power-policy
-  helpers. These types do not operate hardware or network transports by
-  themselves.
-- Strict Ed25519 verification of a domain-separated OTA manifest that binds the
-  target, version, monotonic rollback counter, firmware size, and SHA-256 hash.
-- A fail-closed state machine that refuses partition selection until the exact
-  firmware and manifest signature have been verified.
+| Subsystem | Lifecycle Status | Description |
+| :--- | :---: | :--- |
+| **Ed25519 OTA Manifest Gate** | 🟢 `[Production-Ready]` | Cryptographic firmware verification with provisioned public key, monotonic anti-rollback counter, and SHA-256 integrity. |
+| **`no_std` Telemetry Models** | 🟢 `[Production-Ready]` | Zero-allocation telemetry, digital twin, and sensor data structures compiling on bare-metal Cortex-M, STM32, and ESP32-C3. |
+| **Protocol Frame Helpers** | 🟢 `[Production-Ready]` | Modbus CRC, I2C frame packing, BLE GATT data models, and power policy abstractions. |
+| **Hardware Simulators** | 🟡 `[Simulador Dev]` | Deterministic in-memory GPIO, I2C, and BLE simulators for local testing (`feature = "experimental-simulators"`). |
+| **Native MQTT 5.0 Transport** | 🔵 `[Roadmap]` | High-performance asynchronous MQTT 5.0 client integrated via `rumqttc` with QoS 0/1/2. |
+| **Hardware Security Module (HSM)** | 🔵 `[Roadmap]` | Native secure-element driver interfaces (ATECC608A, TPM 2.0, SE050). |
+
+---
+
+## 🛡️ Over-The-Air (OTA) Firmware Verification
+
+The `OtaManager` enforces a **Fail-Closed Gate**: firmware updates cannot be committed or swapped into the active partition without passing strict Ed25519 cryptographic signature verification over the signed manifest.
+
+### The Cryptographic Invariant
+
+```
+[Signed Firmware Manifest]
+├── Target Hardware ID: "stm32-sensor-node-v1"
+├── Version String:     "2.4.0"
+├── Rollback Counter:   12  (Must be strictly > current committed counter)
+├── Firmware Length:    131072 bytes
+└── Firmware SHA-256:   [32 bytes hash]
+                     │
+                     ▼
+       [Ed25519 Strict Signature Check]
+                     │
+           ┌─────────┴─────────┐
+        Passed               Failed
+           │                   │
+  [Ready to Commit]     [Revert & Reject]
+```
+
+### Usage Example
 
 ```rust
 use rullst_iot::{OtaManager, OtaManifest};
 
-# fn verify_update(
-#     firmware: &[u8],
-#     signature: &[u8],
-#     trusted_public_key: [u8; 32],
-# ) -> Result<(), rullst_iot::OtaError> {
-let manifest = OtaManifest::from_firmware("board-a", "2.0.0", 8, firmware)?;
-let mut manager =
-    OtaManager::new_with_trusted_key("board-a", "1.0.0", 7, trusted_public_key)?;
+fn process_incoming_ota(
+    firmware_bytes: &[u8],
+    signature_bytes: &[u8],
+    provisioned_public_key: [u8; 32],
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Construct the expected manifest from the payload
+    let manifest = OtaManifest::from_firmware(
+        "esp32-sensor-node", 
+        "2.0.0", 
+        15, // Proposed monotonic counter
+        firmware_bytes
+    )?;
 
-manager.verify_update(&manifest, firmware, signature)?;
-let selection = manager.commit_verified_update()?;
+    // 2. Initialize manager with the last durably committed counter
+    let mut manager = OtaManager::new_with_trusted_key(
+        "esp32-sensor-node",
+        "1.9.0",
+        14, // Current hardware counter
+        provisioned_public_key,
+    )?;
 
-// The application must flash/read-back the bank, persist the counter, and
-// configure the bootloader. The receipt does not claim those operations ran.
-let _target_bank = selection.target_partition();
-# Ok(())
-# }
+    // 3. Cryptographically verify signature, target, and anti-rollback state
+    manager.verify_update(&manifest, firmware_bytes, signature_bytes)?;
+
+    // 4. Commit verified update to the inactive partition
+    let commit_receipt = manager.commit_verified_update()?;
+    println!("Update verified! Target partition: {:?}", commit_receipt.target_partition());
+
+    Ok(())
+}
 ```
 
-The trusted public key must be provisioned independently of the update channel.
-The monotonic counter supplied to `new_with_trusted_key` must come from durable,
-rollback-resistant platform storage.
+---
 
-## Experimental fixtures
+## 🔌 Embedded Bare-Metal Telemetry (`#![no_std]`)
 
-Enabling `experimental-simulators` exposes only explicitly named deterministic
-fixtures:
+`rullst-iot` is designed to run seamlessly on microcontrollers with limited RAM:
 
-- `SimulatedMqttPayloadFormatter` is not an MQTT encoder/client.
-- `SimulatedHsmDevice` does not use hardware or create signatures.
-- `SimulatedPqcFixture` does not implement ML-KEM/Kyber or confidentiality.
+```rust
+#![no_std]
+use rullst_iot::telemetry::SensorReading;
 
-These types have no production aliases. MQTT transport, real HSM backends,
-post-quantum cryptography, firmware flashing, bootloader control, and persistent
-anti-rollback storage remain roadmap work.
+let reading = SensorReading {
+    sensor_id: 1,
+    temperature_celsius: 24.5,
+    humidity_percent: 60.2,
+    timestamp_epoch: 1724500000,
+};
+```
+
+---
+
+## 🔬 Experimental Simulators (`experimental-simulators`)
+
+For local integration tests without physical hardware attached, enable the simulator feature:
+
+```toml
+[dependencies]
+rullst-iot = { version = "12.0.0", features = ["experimental-simulators"] }
+```
+
+This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.

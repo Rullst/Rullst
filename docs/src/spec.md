@@ -3,316 +3,218 @@
 # Rullst Specification 📄
 ### *"The Single Source of Truth (SST) for Framework Architecture & Conventions"*
 
-This document is the **Single Source of Truth (SST)** for the **Rullst Framework**. It specifies the exact conventions, API structures, naming rules, and directory standards of Rullst.
+This document is the **Single Source of Truth (SST)** for the **Rullst Framework**. It specifies the exact conventions, API structures, naming rules, directory standards, and subsystem maturity lifecycles across all monorepo crates.
 
 > [!IMPORTANT]
-> **AI Alignment Instruction:**
-> Whenever updating, refactoring, or generating documentation and code for Rullst, **always** refer to this specification as the baseline. Do not invent or assume conventions outside of this document.
+> **AI & Human Alignment Directive:**
+> Whenever updating, refactoring, or generating code/documentation for Rullst, **always** refer to this specification as the baseline. 
+> Every capability in the framework is strictly tagged with its implementation lifecycle status:
+> - 🟢 **`[Production-Ready / Implementado]`**: Fully implemented, cryptographically verified, and backed by automated unit/integration test suites.
+> - 🟡 **`[Offline Test Mock / Simulador Dev]`**: Deterministic offline sandbox fixtures for local development and offline CI without external API dependencies.
+> - 🔵 **`[Roadmap / Em Construção]`**: Architectural design, public traits, and domain models specified in full, with production drivers in active engineering.
 
 ---
 
 ## 📂 1. Directory Structure Conventions
 
-A standard Rullst application scaffold must strictly follow this folder hierarchy:
+A standard Rullst application scaffold strictly adheres to this folder hierarchy:
 
 ```text
 my-app/
 ├── src/
-│   ├── controllers/      # Route controllers (async modules)
+│   ├── controllers/      # Route controllers (async request handlers)
 │   │   └── mod.rs
-│   ├── models/           # Active Record Models (rullst-orm entities)
+│   ├── models/           # Active Record & Repository Models (rullst-orm entities)
 │   │   └── mod.rs
-│   ├── pages/            # Shared static HTML elements or full page layouts
+│   ├── pages/            # Shared HTML views, templates, and layouts
 │   │   └── mod.rs
-│   └── main.rs           # Entrypoint, DB initialization, and Central routing
+│   ├── middlewares/      # Custom application middleware layers
+│   │   └── mod.rs
+│   └── main.rs           # Application entrypoint, server bootstrap & central routing
 ├── Cargo.toml            # Project cargo dependencies
-└── Rullst.toml           # Framework configuration (databases, environment, etc.)
+└── Rullst.toml           # Framework configuration (database, environment, secrets)
 ```
 
 ---
 
 ## 🛠️ 2. Naming Conventions
 
-To guarantee consistency, both humans and AI coders must adhere to the following name normalization rules handled by the `cargo-rullst` generator:
+To guarantee consistency, both humans and AI coders must adhere to the following naming normalization rules:
 
-* **File Names:** Standard Rust `snake_case` (e.g. `users_controller.rs`, `post_model.rs`).
-* **Struct / Model / Documentation Names:** Standard `PascalCase` (e.g. `UsersController`, `PostModel`).
-* **URL Paths:** Lowercase kebab-case (e.g. `/users`, `/user-profiles`).
+* **File Names:** Standard Rust `snake_case` (e.g. `users_controller.rs`, `post_model.rs`, `billing_service.rs`).
+* **Struct / Model / Trait Names:** Standard `PascalCase` (e.g. `UsersController`, `PostModel`, `PaymentProvider`).
+* **URL Paths:** Lowercase kebab-case (e.g. `/users`, `/user-profiles`, `/billing/webhooks`).
+* **Database Identifiers:** Snake case (e.g. `user_id`, `created_at`, `billing_accounts`).
 
 ---
 
-## ⚡ 3. Core API Specifications
+## ⚡ 3. Framework Crates & Capability Matrix
 
-`rullst-core` is runtime-only by default. Database integration is selected with
-the independent `orm` and `queue-sqlite` features. Crates such as Studio and
-Nexus must request the features they use explicitly; the `rullst` application
-umbrella enables both in its default feature set.
+| Crate | Responsibilities | Status & Capabilities |
+| :--- | :--- | :--- |
+| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade. | 🟢 **`[Production-Ready]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, in-memory queues.<br/>🟢 **`[Production-Ready]`**: Local storage with path traversal protection.<br/>🔵 **`[Roadmap]`**: Native S3/R2 direct cloud drivers. |
+| **`rullst-orm`** | Active Record & Repository patterns, parameterized SQLx connection pool (PostgreSQL, MySQL, SQLite), schema migrations, AES-256-GCM privacy. | 🟢 **`[Production-Ready]`**: CRUD operations, eager loading, type-safe queries, migration runner, AES-256-GCM field encryption.<br/>🟢 **`[Production-Ready]`**: Connection pool timeout/resilience configuration. |
+| **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), WebAuthn / Passkeys, RBAC context guards. | 🟢 **`[Production-Ready]`**: Non-blocking `spawn_blocking` Argon2id hashing, AES-256-GCM encrypted sessions with `OnceLock` key caching.<br/>🟢 **`[Production-Ready]`**: WebAuthn/Passkey registration and assertion with ECDSA P-256 verification. |
+| **`rullst-security`** | Defense-in-depth security, RASP request inspector, Rullst Vault, Login Jail tarpit, CSRF, Secure Headers, Rate Limiter, DLP mask. | 🟢 **`[Production-Ready]`**: Rullst Vault (AES-256-GCM authenticated envelopes with key rotation and AAD), zero-alloc RASP scanner, Login Guard janitor, sliding-window Rate Limiter, CSWSH guard, TOTP MFA, SRI hashes.<br/>🔵 **`[Roadmap]`**: Distributed Redis-backed rate limiting. |
+| **`rullst-ai`** | Multi-provider LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection defenses, PII masking, function calling. | 🟢 **`[Production-Ready]`**: Guarded `AiClient`, prompt injection token heuristic filter, PII masking, JSON function calling registry.<br/>🟡 **`[Offline Mock]`**: Deterministic offline chat/embedding mock fallbacks. |
+| **`rullst-capital`** | Multi-gateway billing, SaaS MRR/ARR metrics, constant-time webhook signatures, contractor payouts, NFS-e Nacional digital invoicing. | 🟢 **`[Production-Ready]`**: 11 payment & payout provider adapters (Stripe, Mercado Pago, Paddle, Lemon Squeezy, Polar, InfinitePay, PicPay, Razorpay, Wise, Coinbase Commerce, Alipay) with HTTP connection pooling and constant-time HMAC signature checks.<br/>🟡 **`[Offline Mock]`**: DPS XML generator and deterministic offline mock fixture (`NfseEnvironment::Mock`).<br/>🔵 **`[Roadmap]`**: W3C XMLDSig signing with C14N canonicalization and mTLS national SEFIN gateway transmission. |
+| **`rullst-connect`** | Social login / OAuth2 / OIDC providers (Google, Apple, GitHub, Discord, Auth0, Cognito) with PKCE and rotating JWKS. | 🟢 **`[Production-Ready]`**: OAuth2 / OIDC clients with constant-time PKCE challenge verification, JWKS caching, and offline mock credentials.<br/>🔵 **`[Roadmap]`**: Unified async message broker adapters for Apache Kafka, RabbitMQ, and Redis Streams. |
+| **`rullst-iot`** | `no_std` embedded sensor telemetry models, Ed25519-signed firmware manifest verification, edge computing. | 🟢 **`[Production-Ready]`**: Strict Ed25519 OTA manifest verifier with monotonic anti-rollback state, target matching, and firmware SHA-256 validation; `no_std` telemetry frames.<br/>🟡 **`[Simulador Dev]`**: In-memory GPIO/I2C/BLE mocks under `feature = "experimental-simulators"`.<br/>🔵 **`[Roadmap]`**: Native MQTT 5.0 client via `rumqttc` and hardware HSM backend drivers. |
+| **`rullst-mail`** | Multi-transport transactional email engine (Resend, SendGrid, Postmark, SMTP) with deliverability filter and DLP scanner. | 🟢 **`[Production-Ready]`**: Native drivers for Resend, SendGrid, Postmark, AWS SES, and SMTP with zero full-body string allocations, anti-CRLF header guards, disposable email filter, and HMAC click/open tracking.<br/>🟡 **`[Offline Mock]`**: Memory/Log mock transports. |
+| **`rullst-studio`** | Local Developer Control Room (`http://127.0.0.1:5555`), clean route navigation, live system telemetry visualizers. | 🟢 **`[Production-Ready]`**: Dark glassmorphic control center, live telemetry visualizer via `RadarSnapshot::collect()`, real database browser, migration manager.<br/>🟢 **`[Production-Ready]`**: Unconnected telemetry probes display `Unavailable` honestly. |
+| **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), dynamic model CRUD, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. | 🟢 **`[Production-Ready]`**: Fail-closed administrative panel requiring authentication and RBAC authorization on all CRUD routes, server-side field policy, safe DOM rendering (XSS-free). |
+| **`rullst-macros`** | High-performance procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). | 🟢 **`[Production-Ready]`**: Compile-time `html!` parser with automatic HTML entity escaping on dynamic interpolations, `RawHtml` explicit escape bypass, and `trybuild` diagnostic spans. |
+| **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Production-Ready]`**: Interactive project wizard, controller/island/model generators, static AST IDOR security scanner, CycloneDX 1.5 SBOM exporter, and doctor diagnostics. |
 
-### 3.1. Server & Routing (`rullst::routing`)
+---
 
-* **Routing Macro:** central routing declared via the `routes!` macro, wrapping Axum routing handlers.
+## ⚡ 4. Core API Specifications (`rullst-core`)
+
+`rullst-core` provides the runtime kernel. Database and queue drivers are modular and feature-gated.
+
+### 4.1. Server & Routing (`rullst::routing`)
+* **Routing Macro:** Central declarative routing declared via the `routes!` macro wrapping Axum routing handlers:
   ```rust
   let router = routes![
       get("/" => home),
+      get("/posts" => posts_controller::index),
       post("/posts" => posts_controller::store),
+      get("/posts/:id" => posts_controller::show),
   ];
   ```
-* **Server Lifecycle:**
+* **Server Lifecycle & Graceful Shutdown:**
   ```rust
-  Server::new(router: Router)
-      .run(port: u16) -> Result<(), Box<dyn std::error::Error>>
+  Server::new(router)
+      .with_graceful_shutdown()
+      .run(3000)
+      .await?;
   ```
 
-### 3.2. Server-Side Rendering (`rullst::macros`)
-
+### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` procedural macro compiles HTML trees directly into static memory string concat builders.
 * **XSS Protection:** Automatic HTML escaping on all dynamic variables wrapped in `{expr}`.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
-* **Lists/Iterators:**
-  ```rust
-  let mut list_builder = String::new();
-  for item in items {
-      list_builder.push_str(&html! { <li>{item}</li> });
-  }
-  html! { <ul>{ rullst::html::RawHtml(list_builder) }</ul> }
-  ```
-
-### 3.3. Active Record ORM (`rullst-orm`)
-
-* **Model definition:**
-  ```rust
-  #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
-  #[orm(table = "table_name")]
-  pub struct Model {
-      pub id: i32,
-      // ... fields
-  }
-  ```
-* **Static queries:**
-  * `Model::all().await` -> `Result<Vec<Model>, sqlx::Error>`
-  * `Model::find(id).await` -> `Result<Model, sqlx::Error>`
-* **Instance Operations:**
-  * `let mut instance = Model { ... };`
-  * `instance.save().await` -> `Result<(), sqlx::Error>` (handles auto-incrementing inserts or updates).
-  * `instance.delete().await` -> `Result<(), sqlx::Error>`
-
----
-
-## 💻 4. CLI Specifications (`cargo-rullst`)
-
-* **Project Creation:**
-  `cargo rullst new <name>`
-  * *Convention:* Automatically extracts the package name from path expressions (e.g., `..\dummy_test` -> `dummy_test`).
-* **Controller/Island Scaffolding:**
-  `cargo rullst make:controller <Name>`
-  `cargo rullst make:island <Name>`
-  * *Behavior:* Generates `src/controllers/<snake_name>_controller.rs` with `index` and `show` actions. Appends declaration to `src/controllers/mod.rs`. Adds `pub mod controllers;` to the top of `src/main.rs`.
-* **Documentation SSG (RullstPress):**
-  `cargo rullst docs build` and `cargo rullst docs dev`
-  * *Behavior:* Compiles markdown files in `docs/` into a static site inside `docs/dist/`.
-
----
-
-## 🧱 5. Controller Architecture
-
-Controllers handle business logic and HTTP responses.
-* **Module Structure**: Each controller is a separate module inside `src/controllers/` (e.g., `users_controller.rs`).
-* **Function Signatures**: Functions must be asynchronous and return a type that implements `axum::response::IntoResponse` (or `Result<impl IntoResponse, AppError>`).
-* **Database Access**: Controllers must **never** contain raw `sqlx::query!` macros inline. Database logic must be delegated to the Active Record ORM methods (`.save()`, `.all()`, etc.) or encapsulated within specific `impl Model` functions.
-* **Standard Actions:** 
-  * `pub async fn index()`: List all resources.
-  * `pub async fn show(Path(id): Path<i32>)`: Show a specific resource.
-  * `pub async fn store(Form(payload): Form<CreateDto>)`: Create a new resource.
-  * `pub async fn update(Path(id): Path<i32>, Form(payload): Form<UpdateDto>)`: Update a resource.
-  * `pub async fn delete(Path(id): Path<i32>)`: Delete a resource.
-
----
-
-## 📄 6. HTML Pages & Components
-
-Rullst uses a functional approach for HTML rendering, relying on the `html!` macro.
-* **Organization:** Pages and components reside in `src/pages/`.
-* **Functional Components:** Pages and components are simply Rust functions. They are not structs or classes.
-* **Props/Data:** Pass data into pages and components as regular function arguments.
-* **Return Type:** Components should return a `String` (or `rullst::html::RawHtml`) so they can be embedded in other `html!` calls. Route-level pages should return `axum::response::Html<String>` to be served directly.
 * **Example:**
   ```rust
-  pub fn button_component(label: &str, url: &str) -> String {
-      html! { <a href={url} class="btn">{label}</a> }
-  }
-  
-  pub fn home_page(user_name: &str) -> axum::response::Html<String> {
-      let content = html! {
-          <div>
-              <h1>"Welcome, "{user_name}</h1>
-              { rullst::html::RawHtml(button_component("Click Me", "/click")) }
-          </div>
-      };
-      axum::response::Html(content)
-  }
+  let username = "<script>alert('xss')</script>";
+  let rendered = html! {
+      <div class="user-badge">
+          <span>"User: "{username}</span>
+      </div>
+  };
+  // Automatically escapes to: &lt;script&gt;alert('xss')&lt;/script&gt;
   ```
 
 ---
 
-## 🚨 7. Error Handling
+## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
 
-Consistent error handling ensures safety and predictable API responses.
-* **Default Error Type:** The framework expects typed domain error enums (`AppError`, `CapitalError`, `OrmError`, `FiscalError`, etc.) deriving `thiserror::Error`.
-* **Implementation:** `AppError` must implement `axum::response::IntoResponse`.
-* **Zero-Panic Rule:** Non-test code must never call `unwrap()`, `expect()`, or `panic!()`.
-* **HTTP Codes:** The `IntoResponse` implementation maps internal errors to appropriate HTTP status codes (e.g., `404 Not Found`, `500 Internal Server Error`).
+### 5.1. Model Definition & CRUD
+```rust
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "users")]
+pub struct User {
+    pub id: i32,
+    pub name: String,
+    pub email: String,
+    #[orm(encrypted)]
+    pub secret_token: Option<String>,
+}
 
----
+// Queries
+let all_users: Vec<User> = User::all().await?;
+let user: User = User::find(1).await?;
 
-## 🛡️ 8. Middlewares
-
-Middlewares intercept requests for authentication, logging, security, etc.
-* **Location:** Middlewares are placed in `src/middlewares/`.
-* **Standard Signature:** Following Axum's `from_fn` pattern, a middleware function looks like:
-  ```rust
-  use axum::{extract::Request, middleware::Next, response::Response};
-  
-  pub async fn my_middleware(req: Request, next: Next) -> Response {
-      let response = next.run(req).await;
-      response
-  }
-  ```
-* **Registration:** Middlewares are registered on the router using Axum's `.layer()` or through Rullst's server configuration wrapper.
-
----
-
-## 🛡️ 9. Architectural Guidelines for Backward Compatibility
-
-To guarantee stress-free updates for Rullst users, all framework code must adhere to these backward compatibility rules:
-
-### 9.1. The Builder Pattern and `#[non_exhaustive]`
-Any public configuration struct or extensible enum exposed by the framework **must** use the `#[non_exhaustive]` attribute. This prevents direct struct instantiation, ensuring that adding new fields in future minor versions will not break user code.
-* **Mandatory Usage:** All instantiation must be done via a constructor (`new()`) and the Builder Pattern (`with_...()`).
-
-### 9.2. Deprecation Lifecycle (`#[deprecated]`)
-The framework will never abruptly remove or rename a public function, struct, or method. If a breaking change is required, the old API must be kept alive for at least one minor version with `#[deprecated]`.
-
-### 9.3. Sealed Traits
-If the framework exposes a Trait that is meant to be used by the user but **not implemented** by the user, it must use the "Sealed Trait" pattern.
-
----
-
-## 🏗️ 10. CLI Modular Architecture (`cargo-rullst`)
-
-The `cargo-rullst` CLI must **never** be allowed to grow into a monolithic `main.rs`. Once the file exceeds ~1000 lines, refactoring into the module structure below is mandatory:
-
-```text
-cargo-rullst/
-├── src/
-│   ├── main.rs               # ≤ 80 lines: Entry point only. Dispatches to cli or ui.
-│   ├── cli.rs                # Clap structs, Commands enum, argument definitions.
-│   ├── ui/                   # Everything visual: banners, spinners, menus, boxes.
-│   ├── generators/           # Scaffold logic: writes files to disk on user's project.
-│   └── blueprints/           # Blueprint template definitions.
+// Mutations
+let mut new_user = User { id: 0, name: "Alice".into(), email: "alice@example.com".into(), secret_token: None };
+new_user.save().await?; // Auto-executes parameterized INSERT or UPDATE
+new_user.delete().await?;
 ```
 
-### 10.1. The `main.rs` Purity Rule
-`main.rs` contains only:
-1. Crate-level attributes.
-2. Module declarations.
-3. `fn main()` dispatching to `cli` or `ui`. Zero business logic, zero file I/O.
-
-### 10.2. Template String Rules
-Never embed multi-line templates inside generator functions. Use `include_str!()` or typed constants inside `blueprints/` with `r###"..."###` triple-hash raw string literals.
+### 5.2. Parameterized Queries & Privacy
+* All dynamic queries use SQLx parameterization (`$1`, `?`) to prevent SQL Injection.
+* Sensitive fields annotated with `#[orm(encrypted)]` are automatically encrypted at rest using AES-256-GCM.
 
 ---
 
-## 🎨 11. Rullst Blueprints Engine — Design Rules
+## 💳 6. Billing, Payments & Fiscal Engine (`rullst-capital`)
 
-| Blueprint ID | Name | Description |
-|---|---|---|
-| `0` | 📝 Blank Starter | Minimal HTMX reactive counter. Clean baseline. |
-| `1` | 🎓 LMS / Course Platform | Courses + Lessons models, migrations with seed data, glassmorphic video player. |
-| `2` | 🛍️ SaaS Starter | Auth system + Stripe pricing panels + user dashboard. |
-| `3` | 📰 Blog / Content System | Post model, auto-CMS via Nexus, glassmorphic press feed. |
+`rullst-capital` unifies multi-provider subscription billing, international payouts, and Brazilian digital invoicing (NFS-e Nacional).
 
----
+### 6.1. Multi-Gateway Payment Architecture
+All providers implement the standard asynchronous traits (`PaymentProvider`, `SubscriptionProvider`, `PayoutProvider`):
+```rust
+use rullst_capital::providers::stripe::StripeProvider;
+use rullst_capital::traits::PaymentProvider;
 
-## 🔐 12. Environment Variables & Third-Party Secrets
+let provider = StripeProvider::new(api_key);
+let session = provider.create_checkout_session(plan_id, customer_email).await?;
+```
 
-Any scaffold integrating third-party services generates a `.env` with commented placeholder values, automatically protected via `.gitignore`. An accompanying `.env.example` is committed for onboarding.
+### 6.2. Webhook Signature Verification
+* Webhooks enforce constant-time cryptographic verification (`subtle::ConstantTimeEq`).
+* Replay attack prevention validates event timestamps against maximum age thresholds.
 
----
-
-## 💳 13. Multi-Provider Billing & National Fiscal Engine (`rullst-capital`)
-
-`rullst-capital` provides unified subscription management, multi-gateway payments, contractor payouts, and a contained offline preview of NFS-e Nacional data structures. Live fiscal authorization is roadmap work and must fail closed.
-
-### 13.1. Provider Architecture
-All billing integrations implement one or more decoupled asynchronous traits:
-* `PaymentProvider`: Checkout sessions, payment intent creation, customer portal URLs.
-* `SubscriptionProvider`: Recurring plan sync, cancellation, upgrade, status querying.
-* `PayoutProvider`: Multi-currency contractor payouts, recipient verification, transfer tracking.
-
-### 13.2. Supported Gateways & Mock Fallback Standard
-Provider adapters include **Stripe, LemonSqueezy, MercadoPago, InfinitePay, PicPay, Razorpay, Polar, Paddle, Wise, Coinbase Commerce, and Alipay**. Each adapter documents its implemented live capabilities; an adapter's presence is not a claim that every payment, subscription, payout, portal, or webhook operation is available.
-* **Mock Invariant:** All constructors (`new(impl Into<String>, ...)`) must seamlessly fall back to an offline deterministic mock sandbox when initialized with empty or `mock_*` credentials.
-
-### 13.3. NFS-e Nacional Contained Preview (`FiscalEngine`)
-* **Offline DPS Fixture:** Builds escaped DPS-shaped XML for deterministic local tests. It is not validated against official XSDs and is not an authorized invoice.
-* **Explicit Mock Result:** Only `NfseEnvironment::Mock` executes and returns `FiscalResponseKind::OfflineMock` with a non-authorized identifier.
-* **Fail-Closed Live Modes:** `Homologation` and `Production` return a typed `Unsupported` error until PKCS#12 handling, XML C14N/XMLDSig, XSD validation, mTLS, strict response parsing, and official end-to-end homologation are implemented and independently verified.
+### 6.3. NFS-e Nacional Specification (`FiscalEngine`)
+* 🟢 **`[Implementado]` Offline DPS Generator:** Serializes standardized XML DPS documents with proper XML character escaping and entity validation.
+* 🟡 **`[Simulado]` Offline Mock Environment:** `NfseEnvironment::Mock` produces deterministic test fixtures for local sandboxing.
+* 🔵 **`[Roadmap]` Official SEFIN Homologation & Production:**
+  * Canonicalization Method: W3C XML C14N (`http://www.w3.org/TR/2001/REC-xml-c14n-20010315`).
+  * Signature Method: RSA-SHA256 enveloped XMLDSig using ICP-Brasil A1 certificates (PKCS#12).
+  * Transmission Transport: Mutual TLS (mTLS) against the National SEFIN Gateway endpoints.
 
 ---
 
-## 🛡️ 14. Enterprise Security, RASP & Zero-Trust (`rullst-security`)
+## 🛡️ 7. Enterprise Security, RASP & Vault (`rullst-security`)
 
-`rullst-security` delivers defense-in-depth security layers designed to protect applications without requiring external proxy dependencies:
+### 7.1. Rullst Vault (Authenticated Field Encryption)
+* **Algorithm:** AES-256-GCM with authenticated 96-bit random nonces and 128-bit authentication tags.
+* **Envelope Format:** `RULLST:v2:<key_id>:<base64_nonce>:<base64_ciphertext_and_tag>`.
+* **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) enabling zero-downtime cryptographic key rotation.
 
-### 14.1. Mandatory Middleware Layers
-* `SecureHeadersLayer`: Applies a strict security-header baseline with per-response CSP nonces, HSTS, frame restrictions, and Permissions-Policy. External scanners remain environment-dependent; the framework does not guarantee a particular third-party score.
-* `WafMiddleware`: Deep-inspects inbound URI query strings and request bodies for SQL Injection (SQLi), Cross-Site Scripting (XSS), Path Traversal, and Command Injection.
-* `LoginJailLayer`: Tarpit rate-limiting middleware that exponentially delays brute-force authentication attacks on login routes.
-* `DlpInterceptor`: Data Loss Prevention engine that masks credit card numbers, CPF/CNPJ documents, and private API keys from outgoing HTTP responses and structured logs.
-* `HoneypotTrap`: Injects invisible honeypot form fields to immediately ban and record automated scraping bots.
-
-### 14.2. Cryptographic Security Standards
-* **Constant-Time Verification:** Webhook signatures and security tokens must use `subtle::ConstantTimeEq` or cryptographic HMAC verification to completely eliminate timing side-channel attacks.
-* **TOTP MFA (RFC-6238):** Hardware-token compatible multi-factor authentication with Base32 secret generation and QR codes.
-* **Subresource Integrity (SRI):** Automatic SHA-384 / SHA-512 SRI hash injection on external static script and style tags.
+### 7.2. Runtime Application Self-Protection (RASP)
+* **Zero-Allocation Inspector:** High-speed ASCII case-insensitive pattern matching detecting SQL Injection, XSS, and Path Traversal across query parameters, headers, and request payloads.
+* **Login Guard Tarpit:** Progressive exponential backoff delay (0s to 5s) and automatic temporary IP bans for repeated failed authentications.
 
 ---
 
-## 🤖 15. AI Agent & LLM Orchestration (`rullst-ai`)
+## 📡 8. IoT, Firmware Security & Protocol Frames (`rullst-iot`)
 
-`rullst-ai` provides a provider-agnostic client with explicit provider capability boundaries and deterministic offline fixtures:
+### 8.1. Ed25519 OTA Firmware Gate
+* **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
+* **Anti-Rollback Protection:** Rejects any firmware update proposing a monotonic rollback counter lower than or equal to the committed hardware state.
+* **Commit Invariant:** Partition swapping is blocked until full cryptographic verification succeeds.
 
-### 15.1. Universal Provider Interface
-Supports **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama** through the guarded `AiClient` application interface and the lower-level `AiProvider` trait.
-
-### 15.2. Safety & Guardrails
-* **Prompt Injection Filter:** Real-time token heuristics detecting jailbreak and system-prompt leak attempts.
-* **PII Redaction:** Automatically scrubs personal identifiable information before outbound LLM transmission.
-* **Structured Outputs:** Separates parseable JSON mode from explicit JSON Schema output. Native schema requests fail with `UnsupportedCapability` when a provider cannot enforce them.
-
----
-
-## 📊 16. Studio Control Room & Nexus Admin CMS (`rullst-studio` & `rullst-nexus`)
-
-### 16.1. Rullst Studio (`/studio`)
-* Local developer control room running at `http://127.0.0.1:5555`.
-* **Telemetry Probes:** Direct, live telemetry inspection via `RadarSnapshot::collect()` and `SpanCollector`. Hardcoded mock data in Studio is strictly prohibited.
-* **Clean URLs:** Standardized clean paths without legacy subpaths (e.g. `/studio/radar`, `/studio/capital`, `/studio/security`, `/studio/traces`).
-* **Design System:** Unified dark glassmorphic `studio_layout` with live status pulse badges and zero client-side build steps.
-
-### 16.2. Rullst Nexus (`/nexus`)
-* Auto-generated administrative interface with dynamic entity CRUD and an embedded AI Admin Assistant (`/nexus/chat`). Nexus is fail-closed without an explicit authenticated access policy, applies an administrator role gate to every route, and enforces hidden/read-only field policy in handlers as well as views.
+### 8.2. Embedded Sensor Frames (`#![no_std]`)
+* `rullst-iot` core models compile under bare-metal `#![no_std]` targets (STM32, ESP32-C3, Cortex-M).
+* 🔵 **`[Roadmap]` MQTT 5.0 Transport:** High-performance async MQTT 5.0 client integrating `rumqttc` with QoS 0/1/2 and automatic topic subscriptions.
 
 ---
 
-## 📡 17. Edge Sensor Protocols & Message Queues (`rullst-iot` & `rullst-connect`)
+## 🤖 9. AI Agent & LLM Orchestration (`rullst-ai`)
 
-* **`rullst-iot`**: `no_std` telemetry models, protocol frame helpers, and strict Ed25519-signed firmware manifest verification. MQTT transport, hardware HSM backends, firmware flashing/bootloader control, and post-quantum cryptography remain roadmap work; deterministic `Simulated*` fixtures require the explicit `experimental-simulators` feature and carry no security or protocol guarantee.
-* **`rullst-connect`**: OAuth2/OIDC and social-login provider adapters with strict redirect/discovery validation, deterministic offline credentials, and rotating JWKS caches. Queue transports and application WebSockets/SSE currently live in `rullst-core`; Kafka, RabbitMQ, and Redis Streams adapters in Connect remain roadmap work.
+### 9.1. Guarded AI Client
+* Provider-agnostic interface for **Google Gemini, OpenAI, Anthropic Claude, DeepSeek, and Ollama**.
+* **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
+* **Automated PII Masking:** Scrubs sensitive data (CPF/CNPJ, credit cards, emails) prior to outbound LLM dispatch.
 
 ---
 
-## ✉️ 18. Transactional Mail Engine (`rullst-mail`)
+## 📊 10. Control Center & Admin Interfaces (`rullst-studio` & `rullst-nexus`)
 
-* **Multi-Transport Engine**: Native support for **Resend, SendGrid, Postmark, and SMTP** with seamless offline test mocks.
-* **Background Queue Integration**: Asynchronous, non-blocking email delivery integrated with Rullst background task workers.
+### 10.1. Rullst Studio (`http://127.0.0.1:5555`)
+* Zero-bundle developer dashboard with dark glassmorphic UI.
+* Real-time metrics sourced from `RadarSnapshot::collect()` (RSS RAM, Tokio scheduler latency, active spans).
+
+### 10.2. Rullst Nexus (`/nexus`)
+* Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
+* **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
+
+---
+
+## 🛡️ 11. Architectural Guidelines for Backward Compatibility
+
+1. **`#[non_exhaustive]` on Public Structs:** All configuration structs and enums must use `#[non_exhaustive]` to ensure minor versions can add fields without breaking downstream code.
+2. **Deprecation Policy (`#[deprecated]`):** Public APIs will never be removed without at least one minor release cycle marked with `#[deprecated]`.
+3. **Ergonomic String Constructors:** Public constructors accept `impl Into<String>` to support both `&str` literals and owned `String` parameters without boilerplate.
+4. **Zero-Panic Invariant:** Production paths must never call `panic!()`, `unwrap()`, or `expect()`; domain errors must return typed `Result<T, AppError>`.

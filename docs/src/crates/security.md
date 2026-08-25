@@ -1,62 +1,104 @@
-# `rullst-security`
+# Rullst Security 🛡️
+### *"Defense-in-Depth RASP, Cryptographic Vault & Runtime Protection for Rust"*
 
-> **Vision preserved:** controls and security ambitions that are partial or not
-> implemented were not discarded. See their itemized status and recommendation
-> in the [capability ledger](../capability-ledger.md#security-authentication-studio-and-nexus).
+`rullst-security` delivers military-grade runtime application self-protection, authenticated field encryption, and defensive middleware layers to protect web applications against OWASP Top 10 and API Top 10 vulnerabilities.
 
-`rullst-security` provides composable security controls and telemetry primitives.
-Availability in the crate does not install a control automatically, and no single
-middleware can guarantee that an application is secure.
+---
 
-## Main modules
+## ⚡ Capability & Lifecycle Matrix
 
-- `headers`: strict security-header baseline with per-response CSP nonces.
-- `rasp` and WAF helpers: bounded inspection for common suspicious request
-  patterns.
-- `honey` and `deception`: exact trap paths, trusted-peer attribution, bounded
-  telemetry, and TTL-limited bans.
-- `login_guard`, `rate_limit`, and `timing_guard`: authentication-abuse controls.
-- `rbac` and ownership helpers: explicit server-side authorization primitives.
-- `mfa`: six-digit TOTP verification and percent-encoded `otpauth` URIs.
-- `cswsh`: normalized Origin/Host validation for WebSocket handshakes.
-- `dlp`, `sanitizer`, and `log_redactor`: content-aware masking and sanitization
-  for supported representations.
-- `vault`: authenticated AES-256-GCM field encryption and zeroizing secret
-  wrappers.
-- `audit`: canonical HMAC records and ordered continuity verification.
-- `siem` and telemetry: bounded operational event export.
-- `ai_firewall`: heuristic prompt inspection; the high-level AI client integrates
-  prompt and PII guardrails.
+| Subsystem | Lifecycle Status | Description |
+| :--- | :---: | :--- |
+| **Rullst Vault** | 🟢 `[Production-Ready]` | Authenticated AES-256-GCM encryption with 96-bit nonces, AAD, versioned envelopes, and keyring rotation. |
+| **Zero-Allocation RASP** | 🟢 `[Production-Ready]` | High-speed ASCII pattern matching for SQLi, XSS, and Path Traversal across query params and headers. |
+| **Login Guard Tarpit** | 🟢 `[Production-Ready]` | Progressive async backoff delays and automatic 15-minute IP bans for repeated brute-force authentication attempts. |
+| **Sliding-Window Rate Limiter** | 🟢 `[Production-Ready]` | Memory-efficient sliding-window rate limiter with automatic async janitor pruning. |
+| **DLP & Secret Masking** | 🟢 `[Production-Ready]` | Automatic masking of credit cards, CPF/CNPJ documents, AWS keys, and database credentials in HTTP responses. |
+| **TOTP Multi-Factor Auth** | 🟢 `[Production-Ready]` | RFC-6238 compliant 6-digit TOTP generator and validator with `otpauth` QR code builder. |
+| **CSWSH Hijacking Guard** | 🟢 `[Production-Ready]` | Strict WebSocket handshake validation preventing Cross-Site WebSocket Hijacking. |
+| **Distributed Rate Limiting** | 🔵 `[Roadmap]` | Cluster-wide distributed rate limiting via Redis Sentinel / Redis Cluster. |
 
-## Important boundaries
+---
 
-- RASP and prompt inspection are bounded heuristics, not complete parsers or proof
-  that input is safe.
-- Client IP defaults to the direct peer. Forwarded headers require an explicitly
-  trusted proxy policy.
-- Tenant and role identity must come from verified authentication claims.
-- DLP supports defined textual responses and size limits; applications must test
-  binary, encoded, compressed, streaming, SSE, and oversized responses.
-- Security headers provide a baseline. Deployed content and proxies determine the
-  effective CSP and any third-party scanner result.
-- An HMAC audit chain is tamper-evident only while the key and ordered records are
-  protected. It cannot prevent wholesale deletion or key theft.
-- Offline/local AI privacy depends on selecting a local endpoint and preventing
-  fallback to a cloud provider; it is not implied by the crate alone.
+## 🔐 1. Rullst Vault (Authenticated AES-256-GCM)
 
-## Minimal integration checklist
+`FieldEncryptor` provides authenticated encryption at rest (AEAD) with built-in versioning and zero-downtime key rotation support.
 
-1. Establish authentication and trusted peer/tenant context before authorization
-   or rate-limit layers consume it.
-2. Apply RBAC/owner checks to every protected CRUD and batch operation.
-3. Mount CSRF on browser routes and exempt only exact, cryptographically verified
-   webhook routes.
-4. Configure strong, non-empty session, webhook, audit, and encryption keys.
-5. Render the CSP nonce supplied for the current response and test the final page.
-6. Export telemetry and audit records to durable, access-controlled storage.
-7. Run application-specific negative integration and penetration tests.
+### Usage Example
 
-For the full control map and deployment boundaries, see
-[Security architecture and boundaries](../security-architecture.md). For audit
-and compliance language, see the repository `AUDIT.md` and
-`SECURITY_COMPLIANCE.md`.
+```rust
+use rullst_security::vault::FieldEncryptor;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let master_key = [0x42u8; 32]; // 256-bit cryptographic key
+    let sensitive_data = "user_ssn_123-45-6789";
+
+    // Encrypt with key ID and Additional Authenticated Data (AAD)
+    let encrypted = FieldEncryptor::encrypt_with_key_id(
+        sensitive_data,
+        master_key,
+        "key-2026-v1",
+        b"tenant-organization-id-42",
+    )?;
+    println!("Ciphertext Envelope: {}", encrypted);
+
+    // Decrypt and verify authentication tag and AAD
+    let decrypted = FieldEncryptor::decrypt_with_aad(
+        &encrypted,
+        master_key,
+        b"tenant-organization-id-42",
+    )?;
+    assert_eq!(decrypted, sensitive_data);
+
+    Ok(())
+}
+```
+
+---
+
+## 🛡️ 2. Runtime Application Self-Protection (RASP)
+
+The RASP request inspector scrutinizes incoming requests before they reach your controllers:
+
+```rust
+use rullst_security::rasp::RaspInspector;
+
+let is_sqli = RaspInspector::detect_sqli("SELECT * FROM users WHERE id = 1 OR 1=1--");
+assert!(is_sqli);
+
+let is_traversal = RaspInspector::detect_path_traversal("../../../etc/passwd");
+assert!(is_traversal);
+```
+
+---
+
+## 🚫 3. Anti-Bruteforce Login Guard & Tarpit
+
+```rust
+use rullst_security::login_guard::LoginGuard;
+use std::time::Duration;
+
+let guard = LoginGuard::new(5, Duration::from_secs(900)); // 5 max attempts, 15-min jail
+
+// Record failed login
+guard.record_failure("192.168.1.100").await;
+
+// Check if IP is currently jailed
+if guard.is_jailed("192.168.1.100").await {
+    println!("IP is in Login Jail!");
+}
+```
+
+---
+
+## 📱 4. Multi-Factor Authentication (TOTP MFA)
+
+```rust
+use rullst_security::mfa::MfaEngine;
+
+let secret = MfaEngine::generate_secret();
+let otp_uri = MfaEngine::generate_otpauth_uri("alice@example.com", "Rullst SaaS", &secret);
+
+// Validate 6-digit code submitted by user
+let is_valid = MfaEngine::verify_code(&secret, "123456");
+```

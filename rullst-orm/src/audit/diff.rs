@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
-fn is_sensitive(key: &str) -> bool {
+pub(super) fn is_sensitive(key: &str) -> bool {
     let normalized = key.to_ascii_lowercase();
     [
         "password",

@@ -315,19 +315,19 @@ mod tests {
 
     #[test]
     fn test_is_sensitive() {
-        assert!(super::is_sensitive("password"));
-        assert!(super::is_sensitive("PASSWORD"));
-        assert!(super::is_sensitive("user_token"));
-        assert!(super::is_sensitive("client_secret"));
-        assert!(super::is_sensitive("senha"));
-        assert!(super::is_sensitive("api_key"));
-        assert!(super::is_sensitive("card_cvv"));
-        assert!(super::is_sensitive("ssn_number"));
-        assert!(super::is_sensitive("credit_card"));
-        assert!(super::is_sensitive("auth_code"));
-        assert!(!super::is_sensitive("name"));
-        assert!(!super::is_sensitive("email"));
-        assert!(!super::is_sensitive("age"));
+        assert!(super::diff::is_sensitive("password"));
+        assert!(super::diff::is_sensitive("PASSWORD"));
+        assert!(super::diff::is_sensitive("user_token"));
+        assert!(super::diff::is_sensitive("client_secret"));
+        assert!(super::diff::is_sensitive("senha"));
+        assert!(super::diff::is_sensitive("api_key"));
+        assert!(super::diff::is_sensitive("card_cvv"));
+        assert!(super::diff::is_sensitive("ssn_number"));
+        assert!(super::diff::is_sensitive("credit_card"));
+        assert!(super::diff::is_sensitive("auth_code"));
+        assert!(!super::diff::is_sensitive("name"));
+        assert!(!super::diff::is_sensitive("email"));
+        assert!(!super::diff::is_sensitive("age"));
     }
 
     #[test]
