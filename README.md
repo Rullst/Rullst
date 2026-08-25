@@ -356,7 +356,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 
 ---
 
-**Rullst** is an opinionated, developer-first AI-powered full-stack framework for Rust, obsessively designed for **Emotional Productivity and Security**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
+**Rullst** is an AI-powered opinionated, developer-first Super Full-Stack framework for Rust, obsessively designed for **Emotional Productivity and Security**. It solves the biggest problem in the Rust web ecosystem: the high barrier of entry. With Rullst, you spend your energy building your business, not fighting borrow checkers and manual routing setups.
 
 ---
 
