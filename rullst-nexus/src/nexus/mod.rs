@@ -261,10 +261,16 @@ mod tests {
         use base64::Engine;
         use tower::ServiceExt;
 
-        let test_pass = "unique-test-secret-42";
+        let test_pass = format!(
+            "nexus_auth_test_{:016x}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
         let nexus = Nexus::new()
             .with_brand("Auth Test")
-            .with_auth("admin", test_pass);
+            .with_auth("admin", &test_pass);
 
         let router = nexus.try_build().expect("valid Nexus configuration");
         let secure_request = |mut request: Request<axum::body::Body>| {
@@ -324,7 +330,7 @@ mod tests {
                     format!(
                         "Basic {}",
                         base64::engine::general_purpose::STANDARD
-                            .encode("admin:unique-test-secret-42")
+                            .encode(format!("admin:{test_pass}"))
                     ),
                 )
                 .body(axum::body::Body::empty())

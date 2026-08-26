@@ -22,8 +22,7 @@ async fn test_mail_custom() {
 
 #[tokio::test]
 async fn test_attachments_and_inline_cid() {
-    MailTrap::clear();
-    let trap = MailTrap::driver();
+    let (trap, store) = MemoryDriver::isolated();
 
     let pdf_data = b"%PDF-1.4 test invoice content";
     let logo_data = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR";
@@ -44,16 +43,17 @@ async fn test_attachments_and_inline_cid() {
     let res = trap.send(&msg).await;
     assert!(res.is_ok());
 
-    MailTrap::assert_sent_to("billing@client.com")
-        .with_attachment_count(2)
-        .with_attachment_named("invoice.pdf")
-        .with_inline_cid("brand_logo");
+    let sent = store.lock().unwrap();
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].to, "billing@client.com");
+    assert_eq!(sent[0].attachments.len(), 2);
+    assert_eq!(sent[0].attachments[0].filename, "invoice.pdf");
+    assert_eq!(sent[0].attachments[1].cid.as_deref(), Some("brand_logo"));
 }
 
 #[tokio::test]
 async fn test_scheduled_delivery_send_at() {
-    MailTrap::clear();
-    let trap = MailTrap::driver();
+    let (trap, store) = MemoryDriver::isolated();
 
     let target_time = chrono::Utc::now() + chrono::Duration::hours(24);
     let msg = Message::new()
@@ -66,7 +66,10 @@ async fn test_scheduled_delivery_send_at() {
     let res = trap.send(&msg).await;
     assert!(res.is_ok());
 
-    MailTrap::assert_sent_to("future@example.com").with_scheduled_at(target_time);
+    let sent = store.lock().unwrap();
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].to, "future@example.com");
+    assert_eq!(sent[0].send_at, Some(target_time));
 
     let in_msg = Message::new().send_in(std::time::Duration::from_secs(3600));
     assert!(in_msg.send_at.is_some());

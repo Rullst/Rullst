@@ -2,14 +2,35 @@ use super::*;
 use axum::{Router, http::Request, middleware, routing::get};
 use tower::ServiceExt;
 
+fn dynamic_test_secret() -> String {
+    format!(
+        "dyn_test_cred_{:016x}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    )
+}
+
+fn dynamic_wrong_secret() -> String {
+    format!(
+        "dyn_wrong_cred_{:016x}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    )
+}
+
 #[test]
 fn basic_auth_debug_output_redacts_password() {
-    let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-        .expect("test credentials should be valid");
+    let secret = dynamic_test_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
     let output = format!("{credentials:?}");
 
     assert!(output.contains("ops"));
-    assert!(!output.contains("unique-test-secret-42"));
+    assert!(!output.contains(&secret));
 }
 
 #[test]
@@ -25,21 +46,22 @@ fn basic_auth_rejects_weak_and_placeholder_credentials() {
             .expect_err("placeholder password must fail"),
         NexusBuildError::PlaceholderPassword
     );
+    let secret = dynamic_test_secret();
     assert_eq!(
-        NexusBasicAuth::new("your_username", "unique-test-secret-42")
-            .expect_err("placeholder username must fail"),
+        NexusBasicAuth::new("your_username", &secret).expect_err("placeholder username must fail"),
         NexusBuildError::PlaceholderUsername
     );
 }
 
 #[test]
 fn basic_credentials_require_both_exact_values() {
-    let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-        .expect("test credentials should be valid");
-    let valid_header =
-        base64::engine::general_purpose::STANDARD.encode("ops:unique-test-secret-42");
-    let wrong_user = base64::engine::general_purpose::STANDARD.encode("bad:unique-test-secret-42");
-    let wrong_password = base64::engine::general_purpose::STANDARD.encode("ops:wrong-value");
+    let secret = dynamic_test_secret();
+    let wrong = dynamic_wrong_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
+    let valid_header = base64::engine::general_purpose::STANDARD.encode(format!("ops:{secret}"));
+    let wrong_user = base64::engine::general_purpose::STANDARD.encode(format!("bad:{secret}"));
+    let wrong_password = base64::engine::general_purpose::STANDARD.encode(format!("ops:{wrong}"));
 
     let valid = Request::builder()
         .header(header::AUTHORIZATION, format!("Basic {valid_header}"))
@@ -96,10 +118,11 @@ fn test_request(authorization: &str, tls_verified: bool) -> Request<Body> {
 
 #[tokio::test]
 async fn basic_auth_requires_verified_tls() {
-    let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-        .expect("test credentials should be valid");
+    let secret = dynamic_test_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
     let app = protected_test_router(credentials);
-    let request = test_request(&basic_header("ops", "unique-test-secret-42"), false);
+    let request = test_request(&basic_header("ops", &secret), false);
 
     let response = app.oneshot(request).await.expect("router response");
     assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
@@ -107,12 +130,14 @@ async fn basic_auth_requires_verified_tls() {
 
 #[tokio::test]
 async fn basic_auth_locks_peer_after_bounded_failures() {
-    let credentials = NexusBasicAuth::new("ops", "unique-test-secret-42")
-        .expect("test credentials should be valid");
+    let secret = dynamic_test_secret();
+    let wrong = dynamic_wrong_secret();
+    let credentials =
+        NexusBasicAuth::new("ops", &secret).expect("test credentials should be valid");
     let app = protected_test_router(credentials);
 
     for attempt in 1..NEXUS_BASIC_AUTH_MAX_FAILURES {
-        let request = test_request(&basic_header("ops", "wrong-password-value"), true);
+        let request = test_request(&basic_header("ops", &wrong), true);
         let response = app.clone().oneshot(request).await.expect("router response");
         assert_eq!(
             response.status(),
@@ -121,7 +146,7 @@ async fn basic_auth_locks_peer_after_bounded_failures() {
         );
     }
 
-    let locking_request = test_request(&basic_header("ops", "wrong-password-value"), true);
+    let locking_request = test_request(&basic_header("ops", &wrong), true);
     let locking_response = app
         .clone()
         .oneshot(locking_request)
@@ -130,7 +155,7 @@ async fn basic_auth_locks_peer_after_bounded_failures() {
     assert_eq!(locking_response.status(), StatusCode::TOO_MANY_REQUESTS);
     assert!(locking_response.headers().contains_key(header::RETRY_AFTER));
 
-    let valid_request = test_request(&basic_header("ops", "unique-test-secret-42"), true);
+    let valid_request = test_request(&basic_header("ops", &secret), true);
     let locked_response = app.oneshot(valid_request).await.expect("router response");
     assert_eq!(locked_response.status(), StatusCode::TOO_MANY_REQUESTS);
 }

@@ -38,12 +38,16 @@ fn test_argon2_password_hashing_and_verification() {
 
 #[tokio::test]
 async fn test_argon2_password_hashing_and_verification_async() {
-    let password = "AsyncSuperSecretPassword123!";
-    let hash = hash_password_async(password).await.unwrap();
+    let mut rng = rand::rng();
+    let mut random_bytes = [0u8; 16];
+    rng.fill_bytes(&mut random_bytes);
+    let password = format!("TestSecret_{}", STANDARD.encode(random_bytes));
+    let hash = hash_password_async(&password).await.unwrap();
 
     assert!(hash.starts_with("$argon2id$"));
-    assert!(verify_password_async(password, &hash).await);
-    assert!(!verify_password_async("WrongPassword456!", &hash).await);
+    assert!(verify_password_async(&password, &hash).await);
+    let wrong_password = format!("Wrong_{}", STANDARD.encode(random_bytes));
+    assert!(!verify_password_async(&wrong_password, &hash).await);
 }
 
 #[test]
