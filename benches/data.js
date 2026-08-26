@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787766340844,
+  "lastUpdate": 1787777387171,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9069,6 +9069,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2310,
             "range": "± 58",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0cc62d34d1795eacaef4fdc9f990395aa827d285",
+          "message": "refactor: update CI configuration for improved coverage reporting and scheduling; enhance documentation examples",
+          "timestamp": "2026-08-26T17:47:47-03:00",
+          "tree_id": "2b164dfadca31e53d2795396924ab0a9b1bf21b7",
+          "url": "https://github.com/Rullst/Rullst/commit/0cc62d34d1795eacaef4fdc9f990395aa827d285"
+        },
+        "date": 1787777385042,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 740,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1019,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 659,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2223,
+            "range": "± 50",
             "unit": "ns/iter"
           }
         ]
