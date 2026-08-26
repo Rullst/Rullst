@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787719159268,
+  "lastUpdate": 1787766340844,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9015,6 +9015,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2327,
             "range": "± 97",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "07acd0ae1510509b423678383d7746dcc9ecf796",
+          "message": "feat(tests): enhance edge server integration test with dynamic port allocation and increased retry attempts\n\ndocs: introduce \"Maybe SaaS\" strategy proposal for incubating Rullst products\n\ndocs: create historical documentation audit to preserve original vision and claims\n\ndocs: establish Rullst v12 release program with detailed tasks and gates for stabilization",
+          "timestamp": "2026-08-26T14:43:32-03:00",
+          "tree_id": "4fef2a91ea424357a16f7fed0e7913fc83eba738",
+          "url": "https://github.com/Rullst/Rullst/commit/07acd0ae1510509b423678383d7746dcc9ecf796"
+        },
+        "date": 1787766337295,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 767,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1044,
+            "range": "± 144",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 619,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2310,
+            "range": "± 58",
             "unit": "ns/iter"
           }
         ]
