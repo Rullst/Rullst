@@ -123,8 +123,8 @@ pub fn compute_diff(old_json: &str, new_json: &str) -> (Option<String>, Option<S
         );
     }
 
-    let old = old_res.unwrap();
-    let new = new_res.unwrap();
+    let Ok(old) = old_res else { return (None, None) };
+    let Ok(new) = new_res else { return (None, None) };
     let Some((old_diff, new_diff)) = diff_values(&old, &new, false) else {
         return (None, None);
     };

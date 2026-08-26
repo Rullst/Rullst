@@ -209,7 +209,9 @@ pub async fn increment_counter() -> CounterResponse {
             .to_string();
             manifest.push(("src/rpc.rs", server_fn));
 
-            let island_counter = crate::generators::island::render_island("Counter").2;
+            let island_counter = include_str!("../generators/island.rs.template")
+                .replace("__MODULE_NAME__", "counter")
+                .replace("__TYPE_NAME__", "Counter");
             manifest.push(("src/islands/mod.rs", "pub mod counter;\n".to_string()));
             manifest.push(("src/islands/counter.rs", island_counter));
         }

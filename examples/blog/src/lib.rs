@@ -395,6 +395,7 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
     match router() {

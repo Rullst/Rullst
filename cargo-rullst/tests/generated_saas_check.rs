@@ -86,7 +86,6 @@ fn start_generated_workers(
 
     let output = Command::new(env!("CARGO"))
         .arg("check")
-        .arg("--offline")
         .arg("--all-targets")
         .arg("--manifest-path")
         .arg(project_dir.join("Cargo.toml"))
@@ -144,7 +143,6 @@ fn generated_hot_blank_with_island_passes_cargo_check() {
 
     let output = Command::new(env!("CARGO"))
         .arg("check")
-        .arg("--offline")
         .arg("--all-targets")
         .arg("--manifest-path")
         .arg(project_dir.join("Cargo.toml"))

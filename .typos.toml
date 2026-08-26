@@ -3,12 +3,16 @@ extend-exclude = [
     "rullst-connect/src/providers/apple.rs",
     "rullst-connect/src/providers/google.rs",
     "rullst-connect/src/providers/oidc.rs",
+    "gpt.md",
+    "docs/src/hardening-status.md",
+    "sbom-cyclonedx.json"
 ]
 
 [default.extend-words]
 Ba = "Ba"
 Jus = "Jus"
 Ue = "Ue"
+tabel = "tabel"
 wheres = "wheres"
 COSE = "COSE"
 cose = "cose"

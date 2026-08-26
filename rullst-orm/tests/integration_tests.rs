@@ -840,8 +840,6 @@ async fn scenario_audit() {
 
 // ── Scenario 8: query result ext ──────────────────────────────────────────
 async fn scenario_query_result_ext() {
-    use rullst_orm::database::QueryResultExt;
-
     Schema::create("it_query_result_ext", |t: &mut Blueprint| {
         t.id();
         t.string("name").not_null();
@@ -850,7 +848,7 @@ async fn scenario_query_result_ext() {
     .expect("create it_query_result_ext");
 
     let pool = Orm::pool().expect("ORM should be initialized");
-    let result = sqlx::query("INSERT INTO it_query_result_ext (name) VALUES ('Test')")
+    let _result = sqlx::query("INSERT INTO it_query_result_ext (name) VALUES ('Test')")
         .execute(pool)
         .await
         .expect("insert");
@@ -861,7 +859,8 @@ async fn scenario_query_result_ext() {
         feature = "strict-sqlite"
     )))]
     {
-        let id = result.get_last_insert_id();
+        use rullst_orm::database::QueryResultExt;
+        let id = _result.get_last_insert_id();
         assert!(id >= 0, "last insert id should be >= 0");
     }
 
