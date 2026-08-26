@@ -24,7 +24,7 @@ pub mod models;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("LMS Admin")
@@ -66,9 +66,13 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
         println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 LMS server starting on port 3000...");
@@ -110,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("LMS Admin")
@@ -125,10 +129,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus);
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 LMS server starting on port 3000...");
     Server::new(router)
@@ -417,9 +425,9 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
                         <div style="display: flex; gap: 1rem; align-items: flex-start;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a class="btn" href="/nexus" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(credentials: environment)"</span>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(local in debug; credentials in release)"</span>
                         </div>
-                            <a class="btn" href="http://localhost:5555" target="_blank" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"📊 Rullst Studio"</a>
+                            <a class="btn" href="http://127.0.0.1:5555" target="_blank" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"📊 Rullst Studio (local)"</a>
                         </div>
                     </header>
                     <div class="categories-container">

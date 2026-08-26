@@ -1,5 +1,11 @@
 # 🗺️ rullst-connect Roadmap
 
+> **Status policy (2026-08-26):** this detailed design backlog is preserved.
+> Read legacy checkboxes through the audited
+> [`rullst-connect` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
+> the [capability ledger](../docs/src/capability-ledger.md); messaging remains a
+> separate future boundary, not a shipped OAuth feature.
+
 Welcome to the official roadmap for `rullst-connect`! The library currently supports 11 robust core providers, dynamic token parsing, `get_user_from_token` extraction, CSRF protection (via `state`), and `scopes` customization.
 
 The crate is currently version 12. The checked items below describe implemented OAuth/OIDC

@@ -197,6 +197,7 @@ pub fn dashboard_page(_user_name: &str) -> Html<String> {
            <div class="logo">⚡ Rullst SaaS Dashboard</div>
            <div>
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
+             <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
              <a href="/logout" class="btn-logout">Logout</a>
            </div>
          </div>

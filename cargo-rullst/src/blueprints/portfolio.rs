@@ -27,7 +27,7 @@ pub mod models;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Portfolio CMS Admin")
@@ -68,14 +68,18 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (credentials loaded from the environment)");
+    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
     let server = if is_hot {{
@@ -114,10 +118,17 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-    println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    }}
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Portfolio CMS Admin")
@@ -132,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ].nest_axum("/nexus", nexus);
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS Admin available at http://127.0.0.1:3000/nexus (credentials loaded from the environment)");
+    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
     Server::new(router)
         .run(3000)
         .await?;
@@ -607,6 +618,7 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
                 <div class="engine-badge">"{engine_badge}"</div>
                 <p class="summary">{{&profile.subtitle}}</p>
                 <a href="/nexus" target="_blank" class="cms-btn">"⚙️ Manage via Nexus CMS"</a>
+                <a href="http://127.0.0.1:5555" target="_blank" class="cms-btn">"📊 Open local Studio"</a>
             </div>
             
             <div class="contact-info">

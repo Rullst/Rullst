@@ -16,23 +16,22 @@ or proof that every crate and feature is exercised.
   offline DPS XML preview. It never issues or signs an NFS-e.
 - `/security-demo`: bounded security-helper demonstrations.
 - `/ai-assistant`: local deterministic vector-search and guardrail example.
-- `/studio`: local developer tools.
-- `/nexus`: authenticated administrative panel.
+- `http://127.0.0.1:5555`: debug-only local Studio server.
+- `/nexus`: one-click, loopback-only admin access in debug builds; validated
+  Basic Auth credentials are mandatory in release builds.
 
 The provider catalogue is descriptive. Adapter capabilities differ, fees and
 provider terms can change, and this example makes no live provider request.
 
 ## Local setup
 
-From the workspace root, create `examples/blog/.env` with an application key,
-database URL, and explicit Nexus credentials:
+From the workspace root, create `examples/blog/.env` with an application key
+and database URL:
 
 ```dotenv
 APP_ENV=development
 APP_KEY=replace-with-at-least-32-random-bytes
 DATABASE_URL=sqlite://blog.db
-NEXUS_ADMIN_USERNAME=local-admin
-NEXUS_ADMIN_PASSWORD=replace-with-a-strong-local-password
 ```
 
 Then run:
@@ -42,12 +41,15 @@ touch examples/blog/blog.db
 cargo run -p rullst-blog-example
 ```
 
-Open `http://127.0.0.1:3000`.
+Open `http://127.0.0.1:3000`, then use the Studio and Nexus buttons. Studio is
+served on `http://127.0.0.1:5555`; Nexus accepts only a verified loopback peer in
+this debug build.
 
-Nexus Basic authentication requires a verified TLS boundary. For a plain-HTTP
-loopback development flow, an application may instead opt explicitly into
-`LocalNexusAccess::loopback_only()` in a debug build. Never expose Studio or a
-credential-free Nexus policy on a public interface.
+A release build does not start Studio. It also replaces the local Nexus policy
+with `NexusAuthPolicy::basic_from_env()`, so production startup requires unique
+`NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values plus a verified TLS
+boundary. Never expose Studio or a credential-free Nexus policy on a public
+interface.
 
 ## Tenant fixture
 

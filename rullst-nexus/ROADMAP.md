@@ -1,5 +1,10 @@
 # Rullst Nexus - Roadmap
 
+> **Status policy (2026-08-26):** this backlog is preserved; the audited
+> [`rullst-nexus` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
+> [capability ledger](../docs/src/capability-ledger.md) distinguish implemented
+> server-side controls from host-policy and future UI work.
+
 Rullst Nexus is the official Admin Panel for the Rullst ecosystem. It aims to provide a fully-featured, Django Admin-like experience out of the box, with zero frontend code required.
 
 ## Phase 1: Core CRUD (Next Priority)

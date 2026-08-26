@@ -23,7 +23,8 @@ The blog package demonstrates:
 - an escaped, unsigned DPS XML preview that is explicitly not an NFS-e
   authorization;
 - bounded security-helper demonstrations and a local AI/vector fixture;
-- Studio and an explicitly authenticated Nexus router.
+- a debug-only standalone Studio and Nexus access that is loopback-only in
+  debug builds and credential-protected in release builds.
 
 The complete, current route list is maintained in
 `examples/blog/README.md` alongside its configuration requirements.
@@ -55,9 +56,11 @@ touch examples/blog/blog.db
 cargo run -p rullst-blog-example
 ```
 
-Before startup, configure `APP_KEY`, `DATABASE_URL`, and explicit Nexus access as
-documented in the example README. Studio is local developer tooling; keep it on a
-trusted interface.
+Before local startup, configure `APP_KEY` and `DATABASE_URL` as documented in the
+example README. The debug build needs no Nexus password, but verifies the socket
+peer as loopback. A release build does not start Studio and refuses to construct
+Nexus without validated `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`
+values. Studio is local developer tooling; keep it on a trusted interface.
 
 ## Verifying examples and blueprints
 

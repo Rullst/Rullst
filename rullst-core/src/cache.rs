@@ -106,7 +106,9 @@ impl MemoryDriver {
     /// could outlive the cache. Entries are also removed immediately when read.
     fn cleanup_if_due(&self) {
         const CLEANUP_INTERVAL_OPERATIONS: usize = 256;
-        let previous = self.operations_since_cleanup.fetch_add(1, Ordering::Relaxed);
+        let previous = self
+            .operations_since_cleanup
+            .fetch_add(1, Ordering::Relaxed);
         if previous > 0 && previous.is_multiple_of(CLEANUP_INTERVAL_OPERATIONS) {
             let now = Instant::now();
             self.store

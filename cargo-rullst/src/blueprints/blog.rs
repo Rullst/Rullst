@@ -25,7 +25,7 @@ pub mod models;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Blog Admin")
@@ -66,10 +66,14 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 Blog server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
@@ -109,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Blog Admin")
@@ -123,10 +127,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
     ].nest_axum("/nexus", nexus);
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 Blog server starting on port 3000...");
     Server::new(router)
@@ -265,7 +273,7 @@ pub async fn show(Path(slug): Path<String>) -> impl IntoResponse {{
 pub async fn robots_txt() -> impl IntoResponse {{
     (
         rullst::http::StatusCode::OK,
-        "User-agent: *\nDisallow: /studio\nDisallow: /nexus\nSitemap: /sitemap.xml\n",
+        "User-agent: *\nDisallow: /nexus\nSitemap: /sitemap.xml\n",
     )
 }}
 
@@ -338,9 +346,9 @@ pub fn index_page(posts: Vec<Post>) -> String {
                         <div style="display: flex; gap: 1rem; align-items: flex-start;">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
                             <a href="/nexus" style="background: rgba(5, 150, 105, 0.2); border: 1px solid rgba(5, 150, 105, 0.5); color: #10b981; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(credentials: environment)"</span>
+                            <span style="font-size: 0.7rem; color: #94a3b8;">"(local in debug; credentials in release)"</span>
                         </div>
-                            <a href="http://localhost:5555" target="_blank" style="background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"📊 Rullst Studio"</a>
+                            <a href="http://127.0.0.1:5555" target="_blank" style="background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem;">"📊 Rullst Studio (local)"</a>
                         </div>
                     </header>
                     <div class="post-list">

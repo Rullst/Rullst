@@ -9,6 +9,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Intercept Artisan and Studio CLI commands
     rullst::artisan!(vec![]);
 
+    #[cfg(debug_assertions)]
+    tokio::spawn(async {
+        if let Err(error) = rullst_studio::run_studio(5555).await {
+            eprintln!("Rullst Studio could not start: {error}");
+        }
+    });
+
     // Initialize SQLite database
     Orm::init("sqlite://blog.db").await?;
 
@@ -48,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     id: 0,
                     tenant_id: "community".to_string(),
                     title: "Welcome to The Sovereign SaaS Blog & Publisher".to_string(),
-                    body: "Welcome to The Sovereign SaaS Blog & Publisher. Explore the top navigation bar to test all front-end paradigms, the Hybrid ORM, Rullst Studio (/studio), Nexus CMS (/nexus), Capital Billing, and Security RASP in action!\n\nUnder Rullst SaaS Multi-tenancy with Task-Local Scopes, database records are strictly isolated with zero cross-tenant leakage. Startups and enterprise teams can build full-featured reactive applications in pure Rust with high velocity without maintaining complex JavaScript npm ecosystems.".to_string(),
+                    body: "Welcome to The Sovereign SaaS Blog & Publisher. Explore the top navigation bar to test the available front-end foundations, the Hybrid ORM, local Rullst Studio (http://127.0.0.1:5555), Nexus CMS (/nexus), Capital Billing, and Security RASP demonstrations.\n\nThe example uses task-local tenant scoping as a development fixture. Production applications must derive membership from authenticated identity and keep cross-tenant negative tests in their own authorization model.".to_string(),
                 };
                 let _ = post1.save().await;
             }
@@ -89,7 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("🚀 Rullst Sovereign SaaS Showcase running at http://127.0.0.1:3000");
-    println!("   - Studio Developer Control Room: http://127.0.0.1:3000/studio");
+    #[cfg(debug_assertions)]
+    println!("   - Studio Developer Control Room: http://127.0.0.1:5555");
     println!("   - Nexus Admin CMS: http://127.0.0.1:3000/nexus");
 
     server.run(3000).await?;

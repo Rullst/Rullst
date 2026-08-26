@@ -62,6 +62,9 @@
 # Reference
 - [📜 Framework Spec](spec.md)
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
+- [🚦 Rullst v12 Release Program](v12.md)
+- [🗃️ Pre-gpt.md Documentation Preservation](original-documentation-audit.md)
+- [🧪 Maybe SaaS: Product Incubation Strategy](maybesaas.md)
 - [🔒 Hardening Status](hardening-status.md)
 - [🛡️ Security Architecture](security-architecture.md)
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)

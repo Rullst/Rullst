@@ -21,7 +21,9 @@ old changelog entry or marketing description:
 
 The recommendation column is intentionally opinionated. "Worth implementing"
 does not mean "put it in Core": several excellent ideas belong in optional,
-independently tested crates.
+independently tested crates. Ideas that additionally need continuous operations,
+homologation, or hardware can follow the
+[Maybe SaaS incubation strategy](maybesaas.md).
 
 ## Architecture and framework contract
 
@@ -124,15 +126,16 @@ independently tested crates.
 | Stable blueprint IDs and corrected Nix/Buildah/Island/Resource flags | **Implemented in current hardening** | Keep snapshot tests because generated CLI identifiers are public compatibility surface. |
 | RullstPress documentation SSG | **Implemented in current hardening** | Keep parser/render tests and generated-site smoke checks; distinguish `dev` watching from a production build. |
 | Parameterized browser RPC through `server_function` | **Partial (worth a versioned protocol)** | Native expansion now preserves the complete Rust signature and body, and invalid macro forms have compile diagnostics. The Wasm helper still has no argument payload or matching server-side `/api/rpc` registration, so end-to-end parameter transport must not be claimed until serialization, routing, auth, errors, and browser tests exist. |
-| Every generator/blueprint combination compiled in a tempdir | **Partial (highest remaining CLI priority)** | The SaaS/security path has a real `cargo check` smoke test. Expand to a generated-artifact matrix without making the normal unit suite prohibitively slow. |
+| Every generator/blueprint combination compiled in a tempdir | **Partial (highest remaining CLI priority)** | A structural matrix validates 270 combinations across six blueprints, materializes every blueprint, parses extracted templates, and inventories every public command; two representative projects pass real offline `cargo check`. Expand `fmt/check/smoke` to every applicable generated combination without treating provider/deploy commands as offline tests. |
 | Generated Auth/JWT/Billing production defaults | **Implemented for the audited regressions; still application code** | Async Argon2, issuer/audience/strong-secret checks, authenticated billing identity, CORS allowlists, and signed webhooks are foundations; generated apps still need deployment review. |
 | Fully compliant automatic OpenAPI | **Partial (do not claim completeness)** | A syntax-derived draft is useful. Full fidelity needs a typed schema/route contract and validation, not regex confidence. |
 | TypeScript SDK that eliminates contract breaks | **Partial (worth contract tests)** | Generation reduces duplication; add serialization golden tests and API compatibility tests instead of promising elimination of drift. |
 | Total framework ejection | **Partial (keep as migration aid)** | Generate an inspectable entry point, list remaining Rullst dependencies, and run `cargo check`. Do not promise automatic removal of every subsystem. |
+| Opt-in Git pre-commit/commit-message installer | **Partial (useful DX, CI remains authoritative)** | `hook:install` writes format/Clippy/IDOR and Conventional Commit hooks. Add safe handling for existing hooks, idempotency/permission tests, and clear failure on a missing Git worktree before presenting it as a hardened installer. |
 | One-click, zero-downtime deployment | **Partial (guided deploy is worthwhile)** | Manifest/SSH helpers are useful, but availability, secrets, migrations, rollback, DNS, and cloud credentials remain operator concerns. |
 | IDOR scanner that proves authorization | **Heuristic (keep as a warning tool)** | AST patterns can find omissions, not prove ownership semantics. Pair findings with route-level negative tests. |
 | Compliance report that prints unconditional PASS | **Removed; evidence-oriented report implemented** | This is the correct direction. Keep raw evidence, tool versions, skipped states, and commit digests. |
-| Release packaging in dependency order with preflight gates | **Implemented in workflow; unreleased** | Keep package-all-before-publish and topological publishing. Do not call version 12 released until tags, crates, SBOM, provenance, and notes match. |
+| Release packaging in dependency order with preflight gates | **Implemented in workflow; unreleased** | Keep package-all-before-publish and topological publishing. The tag job now bundles Cargo metadata/lockfile, governed Cargo Audit output, CycloneDX, bounded compliance evidence, policies, context and checksums, then attests the bundle and packages. Do not call version 12 released until a matching green tag, crates and notes exist. |
 | SLSA Level 3 certification | **Not established (do not claim)** | Build provenance is worth keeping. Pursue a named SLSA level only after every requirement is independently evaluated for the actual release platform. |
 | RustSec/OSV exception governance | **Implemented** | Keep only unavoidable exceptions, each with owner, compensating control, and expiry; patched findings must block regressions again. |
 | Full Kani/Miri/mutation proof of the framework | **Not implemented (do not promise)** | Scoped harnesses are valuable. Promote stable, deterministic subsets to blocking gates and label exploratory jobs honestly. |

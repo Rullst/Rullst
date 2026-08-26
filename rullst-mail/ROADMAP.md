@@ -1,5 +1,11 @@
 # Rullst Mail 📬 — Strategic Engineering Roadmap
 
+> **Status policy (2026-08-26):** all ideas below are preserved. Older `[x]`
+> markers can denote a useful foundation, not the entire enterprise claim in the
+> item. See the audited [`rullst-mail` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](../docs/src/capability-ledger.md) for verified
+> boundaries.
+
 > **Mission**: Transform `rullst-mail` into the most reliable, secure, productive, and developer-friendly transactional email engine in the Rust ecosystem — combining **Zero-Panic compile-time safety**, **AI-native intelligence**, **OWASP-grade DLP security**, and **Zero-Bundle SSR templating**.
 
 ---

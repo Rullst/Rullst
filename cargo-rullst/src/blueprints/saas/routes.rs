@@ -22,7 +22,7 @@ pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
     controllers::billing_controller::initialize_billing_provider()?;
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("SaaS Admin")
@@ -80,9 +80,13 @@ pub mod pages;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
         println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 SaaS server starting on port 3000...");
@@ -124,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
     controllers::billing_controller::initialize_billing_provider()?;
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("SaaS Admin")
@@ -154,10 +158,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
     .nest_axum("/nexus", nexus);
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 SaaS server starting on port 3000...");
     Server::new(router)

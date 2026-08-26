@@ -2,6 +2,14 @@ use rullst::db::{ReplicationConfig, ReplicationError, ReplicationManager};
 use rullst::edge::{EdgeRequest, EdgeResponse, EdgeServer};
 use std::collections::HashMap;
 
+fn free_loopback_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("an ephemeral loopback port should be available")
+        .local_addr()
+        .expect("the loopback listener should have a local address")
+        .port()
+}
+
 #[test]
 fn test_edge_request_builder() {
     let req = EdgeRequest::new("POST", "/submit")
@@ -114,19 +122,20 @@ async fn test_edge_server_run_integration() {
             .with_body(b"Hello from EdgeServer!".to_vec())
     };
 
-    let port = 19998;
+    let port = free_loopback_port();
     let server = EdgeServer::new(handler).with_port(port);
 
     // Spawn the server in the background
-    let handle = tokio::spawn(async move {
-        let _ = server.run().await;
-    });
+    let handle = tokio::spawn(async move { server.run().await.map_err(|error| error.to_string()) });
 
     // Retry connecting with backoff for robustness under heavy CI / test concurrency
     let client = reqwest::Client::new();
     let mut last_res = None;
-    for _ in 0..25 {
+    for _ in 0..50 {
         tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        if handle.is_finished() {
+            break;
+        }
         if let Ok(res) = client
             .get(format!("http://127.0.0.1:{}/test/integration", port))
             .send()
@@ -137,7 +146,16 @@ async fn test_edge_server_run_integration() {
         }
     }
 
-    let res = last_res.expect("Failed to execute request to EdgeServer after retry window");
+    let Some(res) = last_res else {
+        if handle.is_finished() {
+            let server_result = handle
+                .await
+                .expect("EdgeServer task should not panic before accepting requests");
+            panic!("EdgeServer stopped before accepting requests: {server_result:?}");
+        }
+        handle.abort();
+        panic!("Failed to execute request to EdgeServer after retry window");
+    };
 
     assert_eq!(res.status().as_u16(), 200);
     assert_eq!(

@@ -99,6 +99,66 @@ fn protected_test_router(credentials: NexusBasicAuth) -> Router {
         }))
 }
 
+fn loopback_test_router() -> Router {
+    Router::new()
+        .route("/", get(|| async { StatusCode::OK }))
+        .layer(middleware::from_fn(loopback_only_middleware))
+}
+
+fn request_from(peer: Option<&str>) -> Request<Body> {
+    let mut request = Request::builder()
+        .uri("/")
+        .body(Body::empty())
+        .expect("valid test request");
+    if let Some(peer) = peer {
+        request.extensions_mut().insert(ConnectInfo(
+            peer.parse::<SocketAddr>().expect("valid test peer"),
+        ));
+    }
+    request
+}
+
+#[test]
+fn ergonomic_policy_never_selects_loopback_in_release_builds() {
+    let policy = NexusAuthPolicy::local_development_or_basic_from_env();
+    if cfg!(debug_assertions) {
+        assert!(matches!(
+            policy.expect("debug builds should select local access"),
+            NexusAuthPolicy::LoopbackOnly(_)
+        ));
+    } else {
+        assert!(
+            !matches!(policy, Ok(NexusAuthPolicy::LoopbackOnly(_))),
+            "release builds must require a credential-bearing policy"
+        );
+    }
+}
+
+#[tokio::test]
+async fn loopback_access_allows_local_peer_and_denies_every_other_source() {
+    let app = loopback_test_router();
+
+    let local_response = app
+        .clone()
+        .oneshot(request_from(Some("127.0.0.1:41000")))
+        .await
+        .expect("router response");
+    assert_eq!(local_response.status(), StatusCode::OK);
+
+    let remote_response = app
+        .clone()
+        .oneshot(request_from(Some("192.0.2.10:41000")))
+        .await
+        .expect("router response");
+    assert_eq!(remote_response.status(), StatusCode::FORBIDDEN);
+
+    let missing_peer_response = app
+        .oneshot(request_from(None))
+        .await
+        .expect("router response");
+    assert_eq!(missing_peer_response.status(), StatusCode::FORBIDDEN);
+}
+
 fn test_request(authorization: &str, tls_verified: bool) -> Request<Body> {
     let mut request = Request::builder()
         .uri("/")

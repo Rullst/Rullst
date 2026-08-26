@@ -51,14 +51,21 @@ Before releasing, make sure:
 
 - [ ] All CI checks on `dev` are ✅ **green** on GitHub:
   - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS ARM64, Windows MSVC).
-  - `kani.yml`: 100% formal mathematical verification proofs.
-  - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`).
-  - `miri.yml`: Undefined Behavior & strict provenance across 13 packages.
-  - `fuzzing.yml`: Continuous libFuzzer and Google OSS-Fuzz readiness.
+  - `kani.yml`: Model checking for the explicit harnesses and configured bounds;
+    this is not a proof of every path in the workspace.
+  - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`) for
+    the targets declared by the workflow.
+  - `miri.yml`: Undefined Behavior and strict-provenance checks for its declared
+    package matrix.
+  - `fuzzing.yml`: Bounded libFuzzer runs and OSS-Fuzz packaging/readiness.
   - `e2e-smoke.yml`: Live SSR HTML status 200 checks, CSRF, and SQLite/Postgres persistence.
-- [ ] You have manually verified local features and tests (`cargo test --workspace`).
+- [ ] You have manually verified the mandatory local trifecta:
+  `cargo fmt --all -- --check`,
+  `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
+  `cargo test --workspace --all-features`.
 - [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
-- [ ] All 11+ crate `Cargo.toml` versions are synchronized (`12.0.0`):
+- [ ] All 15 publishable crate `Cargo.toml` versions and internal requirements
+  are synchronized (`12.0.0-rc.1` for the RC or `12.0.0` for stable):
   - `rullst-macros`, `rullst-orm-macros`
   - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
   - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
@@ -81,17 +88,21 @@ git merge dev
 # 3. Push main
 git push origin main
 
-# 4. Create a version tag (e.g. v12.0.0)
-git tag v12.0.0
+# 4. Create a version tag (v12.0.0-rc.1 for the RC; v12.0.0 for stable)
+git tag v12.0.0-rc.1
 
 # 5. Push the tag — THIS triggers the automatic crates.io publish pipeline!
-git push origin v12.0.0
+git push origin v12.0.0-rc.1
 ```
+
+The RC is a real public crates.io release. It can be yanked but never
+overwritten; inspect and test every `.crate` before pushing the tag. Users must
+opt in to it explicitly with a requirement such as `12.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
-2. 📦 Core primitives: `rullst-core`, `rullst-security`, `rullst-auth`, `rullst-orm`
-3. 📦 Domain crates: `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
+2. 📦 Foundations: `rullst-core`, `rullst-orm`
+3. 📦 Domain crates: `rullst-iot`, `rullst-mail`, `rullst-ai`, `rullst-connect`, `rullst-security`, `rullst-auth`, `rullst-capital`
 4. 📦 Dashboards: `rullst-studio`, `rullst-nexus`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 

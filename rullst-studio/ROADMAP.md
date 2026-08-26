@@ -1,5 +1,10 @@
 # Rullst Studio - Roadmap
 
+> **Status policy (2026-08-26):** this UI backlog is preserved. See the audited
+> [`rullst-studio` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
+> [capability ledger](../docs/src/capability-ledger.md) for the boundary between
+> real local telemetry, unavailable sources, and future distributed tooling.
+
 Rullst Studio is the visual development environment and dashboard for managing your Rullst applications. It aims to bridge the gap between code and data management, providing an experience similar to Prisma Studio but native to Rust.
 
 ## Phase 1: Data & API Management

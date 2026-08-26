@@ -23,7 +23,7 @@ pub mod models;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("ERP Admin")
@@ -64,10 +64,14 @@ pub mod pages;
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 ERP Pocket server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
@@ -108,7 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("ERP Admin")
@@ -123,10 +127,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         post("/orders" => controllers::erp_controller::store_order),
     ].nest_axum("/nexus", nexus);
 
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
-    if is_dev {{
-        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio(5555).await; }});
-        println!("📊 Rullst Studio running on port 5555");
+    #[cfg(debug_assertions)]
+    {{
+        rullst::runtime::spawn(async {{
+            if let Err(error) = rullst::studio::run_studio(5555).await {{
+                eprintln!("Rullst Studio could not start: {{error}}");
+            }}
+        }});
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
     }}
     println!("🚀 ERP Pocket server starting on port 3000...");
     Server::new(router)
@@ -453,9 +461,9 @@ fn render_header() -> String {
             <div class="flex flex-col items-end gap-1">
                 <div class="flex gap-3">
                     <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
-                    <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
+                    <a href="http://127.0.0.1:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio (local)"</a>
                 </div>
-                <span class="text-[10px] text-slate-500 mr-2">"(Credentials: environment)"</span>
+                <span class="text-[10px] text-slate-500 mr-2">"Nexus: local in debug; credentials in release"</span>
             </div>
         </header>
     }

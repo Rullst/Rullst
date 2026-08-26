@@ -1,7 +1,7 @@
 # Hardening status — rastreabilidade da avaliação `gpt.md`
 
-> Estado pontual do worktree em **2026-08-24**, baseado no `HEAD`
-> `da4057a3f11e` e nas alterações locais ainda não consolidadas. Este documento
+> Estado pontual do worktree em **2026-08-26**, baseado no `HEAD`
+> `0918e2ee158d` e nas alterações locais ainda não consolidadas. Este documento
 > mapeia as recomendações da [avaliação técnica](../../gpt.md); não é certificado,
 > pentest, homologação de provedor nem declaração geral de production-readiness.
 
@@ -70,11 +70,11 @@ como registra o capability ledger.
 | **P1-10 — distributed rate limit no-op/IP forjável** | **Mitigado / fail-closed** | [`rate_limit.rs`](../../rullst-security/src/rate_limit.rs) retorna `DistributedBackendUnsupported` em vez de rotular o mapa local como distribuído e deriva peer de `ConnectInfo`. [`resilience.rs`](../../rullst-core/src/resilience.rs) ignora forwarded headers no extractor padrão e permite política explícita de proxy confiável. Testes: `test_default_key_extractor` e [`deep_security_coverage_tests.rs`](../../rullst-security/tests/deep_security_coverage_tests.rs). Backend Redis/atômico distribuído ainda não existe. |
 | **P1-11 — XSS/autorização visual no Nexus** | **Corrigido** | [`ai_chat.rs`](../../rullst-nexus/src/nexus/ai_chat.rs) sanitiza saída externa; [`crud/views.rs`](../../rullst-nexus/src/nexus/crud/views.rs) escapa/encodeia IDs sem JS inline; [`crud/handlers.rs`](../../rullst-nexus/src/nexus/crud/handlers.rs) aplica `hidden`/`readonly`, limita batch e propaga erro; paginação é limitada/saturating. O router inteiro exige papel admin em [`nexus/mod.rs`](../../rullst-nexus/src/nexus/mod.rs). Testes de acesso e CRUD estão em [`rullst-nexus/tests`](../../rullst-nexus/tests). |
 | **P1-12 — Studio inventa métricas/rota/XSS/env leak** | **Corrigido** | [`radar.rs`](../../rullst-core/src/radar.rs) representa probes ausentes como `Option`; [`security_radar.rs`](../../rullst-studio/src/security_radar.rs) usa `Unavailable`, rota coerente e DOM `textContent`/`replaceChildren`; [`env_viewer.rs`](../../rullst-studio/src/env_viewer.rs) usa política de redaction; [`feature_flags.rs`](../../rullst-studio/src/feature_flags.rs) encodeia nomes e usa binds corretos. Regressões: `test_studio_builder_and_routes`, `test_studio_security_radar_and_telemetry` e `test_studio_env_viewer_endpoint`. |
-| **P1-13 — regressões concretas dos geradores** | **Parcial** | Flags, IDs estáveis, path/package, Island/Resource, Auth, Billing e Docs SSG têm correções/testes em [`cargo-rullst/src`](../../cargo-rullst/src). [`generated_saas_check.rs`](../../cargo-rullst/tests/generated_saas_check.rs) faz `cargo check --offline --all-targets` para SaaS e blank+Wasm Island. Falta a matriz pedida para **todos** os comandos/blueprints/combinações, com `cargo fmt --check`, `cargo check` e smoke tests. Templates grandes ainda permanecem inline em pontos do CLI. |
+| **P1-13 — regressões concretas dos geradores** | **Parcial** | Flags, IDs estáveis, path/package, Island/Resource, Auth, Billing e Docs SSG têm correções/testes em [`cargo-rullst/src`](../../cargo-rullst/src). [`scaffold_contracts.rs`](../../cargo-rullst/tests/scaffold_contracts.rs) valida paths, Rust e `Cargo.toml` em **270 combinações estruturais**, materializa os seis blueprints, analisa templates extraídos e mantém inventário explícito dos comandos públicos; [`generated_saas_check.rs`](../../cargo-rullst/tests/generated_saas_check.rs) executa `cargo check --offline --all-targets` em dois projetos representativos. Ainda falta `fmt/check/smoke` para toda combinação aplicável e ambientes de contrato para comandos externos. |
 | **P1-14 — guardrails/mocks/DeepSeek/structured output** | **Corrigido** | [`guardrails.rs`](../../rullst-ai/src/ai/guardrails.rs) integra o estágio ao client de alto nível e providers repetem a proteção em chamadas diretas; [`deepseek.rs`](../../rullst-ai/src/ai/providers/deepseek.rs) existe; empty/`mock_*` é offline determinístico em chat/vision/embeddings. [`structured.rs`](../../rullst-ai/src/ai/structured.rs) diferencia JSON parseável de schema nativo e retorna `UnsupportedCapability` quando o provider não o garante. [`guardrails_pipeline_test.rs`](../../rullst-ai/tests/guardrails_pipeline_test.rs) percorre providers/capacidades e prova determinismo sem endpoint. Schema nativo em todos os LLMs continua visão, não claim. |
 | **P1-15 — constructors/OIDC/JWKS de Connect** | **Corrigido** | Constructors gerados são fallible e aceitam `impl Into<String>` em [`macros.rs`](../../rullst-connect/src/macros.rs); credenciais mock/empty não podem ser redirecionadas a endpoint real. [`oidc/discovery.rs`](../../rullst-connect/src/providers/oidc/discovery.rs) valida URL/host/issuer/endpoints, e o client HTTP desabilita redirects. [`provider/jwks.rs`](../../rullst-connect/src/provider/jwks.rs) implementa TTL, refresh por `kid` desconhecido e stale limitado. Negativos/rotação estão em [`providers/oidc/tests.rs`](../../rullst-connect/src/providers/oidc/tests.rs) e [`provider/tests.rs`](../../rullst-connect/src/provider/tests.rs). |
 | **P1-16 — invariantes de Mail/tenant/tracking** | **Corrigido** | [`pipeline.rs`](../../rullst-mail/src/pipeline.rs), [`facade.rs`](../../rullst-mail/src/facade.rs) e [`worker.rs`](../../rullst-mail/src/worker.rs) centralizam CRLF, deliverability, links e tenant; [`drivers/mock.rs`](../../rullst-mail/src/drivers/mock.rs) seleciona offline deterministicamente; [`tracking.rs`](../../rullst-mail/src/tracking.rs) exige segredo forte, HMAC constant-time, TTL e replay store limitado. Regressões estão em [`tracking_tests.rs`](../../rullst-mail/tests/tracking_tests.rs), [`pipeline_tests.rs`](../../rullst-mail/tests/pipeline_tests.rs) e [`mail_integration_tests.rs`](../../rullst-mail/tests/mail_integration_tests.rs). |
-| **P1-17 — panics nos caminhos apontados** | **Corrigido** | Os caminhos citados foram convertidos a erros/fallbacks: client Wasm e server em [`rullst-core/src`](../../rullst-core/src), getters ORM em [`pool.rs`](../../rullst-orm/src/pool.rs), expansão ORM em [`rullst-orm-macros`](../../rullst-orm-macros/src) e Auth/Island gerados em [`cargo-rullst/src/generators`](../../cargo-rullst/src/generators). [`.github/workflows/zero-panics.yml`](../../.github/workflows/zero-panics.yml) lista exatamente os crates/caminhos cobertos e testa a expansão. Esta classificação vale para os exemplos de `gpt.md`; não é prova global de ausência de panic em todo artefato gerado, dependência ou runtime. |
+| **P1-17 — panics nos caminhos apontados** | **Corrigido** | Os caminhos citados foram convertidos a erros/fallbacks: client Wasm e server em [`rullst-core/src`](../../rullst-core/src), cache global e getters ORM, expansão de macros e Auth/Island/Omni gerados. [`.github/workflows/zero-panics.yml`](../../.github/workflows/zero-panics.yml) cobre bibliotecas, `rullst-macros`, CLI/binários, Wasm e testes de expansão; a auditoria AST genérica rejeita `unwrap`/`expect`/`panic!`/`todo!`/`unimplemented!` em literais de código runtime dos geradores. O escopo não inclui dependências, OOM ou falhas do host. |
 | **P1-18 — tenant escolhido pelo cliente** | **Corrigido** | [`tenant_guard.rs`](../../rullst-core/src/security/tenant_guard.rs) deriva seleção de `TenantMembership`/`TenantContext` confiável e ignora headers como autoridade; [`multitenant.rs`](../../rullst-core/src/multitenant.rs) trata header/query/subdomínio apenas como seletor sujeito a membership, devolvendo 403 sem vínculo. Testes negativos estão nos próprios módulos e em [`rullst-core/tests`](../../rullst-core/tests). |
 | **P1-19 — bypass CSWSH por prefixo de host** | **Corrigido** | [`cswsh.rs`](../../rullst-security/src/cswsh.rs) normaliza e compara esquema/host/porta exatos, com origin ausente fechado por padrão. Testes `deceptive_localhost_prefixes_are_rejected` e `middleware_rejects_a_deceptive_localhost_origin` cobrem `localhost.evil`. |
 
@@ -98,8 +98,8 @@ como registra o capability ledger.
 | **P2-14 — Auth gerado bloqueia Tokio/timing/busca linear** | **Corrigido** | [`auth/controllers.rs`](../../cargo-rullst/src/generators/auth/controllers.rs) gera lookup indexado, hash/verify via `spawn_blocking`, dummy hash para usuário ausente e não emite calls panicking. Regressão: `generated_auth_is_async_query_bound_and_panic_free`; o modelo gerado também cria índice/constraint de email. |
 | **P2-15 — JWT gerado incompleto/versão divergente** | **Corrigido** | [`cors_jwt.rs`](../../cargo-rullst/src/generators/cors_jwt.rs) injeta dependência idempotente do workspace, exige segredo forte e valida claims `iss`, `aud`, `sub`, `iat` e `exp` por configuração tipada. Regressões: `generated_jwt_validates_secret_issuer_and_audience` e teste de dependências atuais/idempotentes. |
 | **P2-16 — macro pública `#[route]` incompleta** | **Mitigado / fail-closed** | [`rullst-macros/src/lib.rs`](../../rullst-macros/src/lib.rs) mantém somente marcador de compatibilidade deprecado: atributo vazio preserva a função e atributo que fingiria registrar rota produz erro orientando `routes!`. [`route_compat.rs`](../../rullst-macros/tests/route_compat.rs) fixa a compatibilidade. Não existe registro funcional por `#[route]`; remoção em major futura ainda é trabalho de contrato. |
-| **P2-17 — sinais semver incompletos** | **Parcial** | Vários erros/configs centrais agora usam `#[non_exhaustive]`, APIs antigas têm `#[deprecated]`, e [`.github/workflows/semver.yml`](../../.github/workflows/semver.yml) audita crates públicos. A aplicação não é uniforme em toda a superfície pública; structs/enums históricos e política de transição ainda exigem inventário por crate. |
-| **P2-18 — ergonomia/panic de constructors inconsistente** | **Parcial** | Connect, AI, Capital, Mail, IoT e vários tipos Core adotaram `impl Into<String>` e/ou `try_new`; caminhos perigosos foram tornados fallible. Permanecem constructors públicos históricos com `&str`/`String` rígido, por exemplo em [`schema/column.rs`](../../rullst-orm/src/schema/column.rs), [`schema/join.rs`](../../rullst-orm/src/schema/join.rs) e adapters antigos. Falta auditoria e migração uniforme com deprecation. |
+| **P2-17 — sinais semver incompletos** | **Parcial** | Vários erros/configs centrais agora usam `#[non_exhaustive]`, APIs antigas têm `#[deprecated]`, e [`.github/workflows/semver.yml`](../../.github/workflows/semver.yml) enumera todos os pacotes públicos publicados. A aplicação não é uniforme em toda a superfície pública; structs/enums históricos e política de transição ainda exigem inventário por crate. |
+| **P2-18 — ergonomia/panic de constructors inconsistente** | **Parcial** | Connect, AI, Capital, Mail, IoT e os caminhos identificados em Core/ORM adotaram `impl Into<String>` e/ou construção fallible; `Column`, `JoinClause`, `RawExpression`, secrets, cache e queues também aceitam strings owned, e joins inválidos registram erro em vez de produzir SQL inseguro. A superfície histórica completa ainda precisa de inventário SemVer e migração gradual de builders/adapters restantes. |
 | **P2-19 — `mutants` como dependência runtime do ORM** | **Corrigido** | [`rullst-orm/Cargo.toml`](../../rullst-orm/Cargo.toml) moveu `mutants` para `[dev-dependencies]`; `cfg(mutants)` é declarado ao lint sem carregar tooling em consumidores. |
 | **P2-20 — compliance gerado imprime PASS incondicional** | **Corrigido** | [`audit_compliance.rs`](../../cargo-rullst/src/generators/audit_compliance.rs) modela `NoFindings`, `Findings`, `Generated`, `Observed`, `NotChecked` e `Error`, descreve o limite da evidência e rejeita linguagem de certificação. Teste: `report_never_fabricates_compliance_passes`. |
 | **P2-21 — Basic Auth Nexus sem rate limit/user constant-time/TLS** | **Corrigido** | [`access.rs`](../../rullst-nexus/src/nexus/access.rs) compara username e senha em tempo constante, exige marcador TLS confiável e aplica limiter por peer. Regressões em [`access/tests.rs`](../../rullst-nexus/src/nexus/access/tests.rs): `basic_credentials_require_both_exact_values`, `basic_auth_requires_verified_tls` e `basic_auth_locks_peer_after_bounded_failures`. |
@@ -115,7 +115,7 @@ achados individuais.
 |---|---|---|
 | **0.1 Conter Fiscal, IoT crypto/MQTT, Vault, S3/R2 e Alipay** | **Mitigado / fail-closed** | Vault e OTA foram implementados; NFS-e/Alipay/remote storage falham fechados; simuladores IoT são explícitos. As integrações reais permanecem no capability ledger/ROADMAP. |
 | **0.2 Nexus fechado; remover credenciais geradas** | **Corrigido** | `Nexus::try_build` exige policy, legacy é deny-all e blueprints não incluem `admin/password`; ver P0-04. |
-| **0.3 Corrigir CORS e avisar projetos já scaffoldados** | **Parcial** | O template e seus testes foram corrigidos (P0-05), mas não foi encontrado advisory específico e versionado para consumidores de scaffolds antigos. [`security-advisory-exceptions.md`](security-advisory-exceptions.md) governa exceções RustSec, não substitui esse aviso de migração CORS. |
+| **0.3 Corrigir CORS e avisar projetos já scaffoldados** | **Corrigido** | O template e seus testes foram corrigidos (P0-05), e o [`cors-scaffold-security-advisory.md`](cors-scaffold-security-advisory.md) fornece detecção, correção e validação para projetos já scaffoldados. |
 | **0.4 Corrigir traversal do Storage** | **Corrigido** | Validação, canonicalização e teste de symlink em `storage.rs`; ver P0-06. |
 | **0.5 Unificar ambiente/fail-closed no startup** | **Corrigido** | `Environment` único, precedência e secure defaults testados; ver P0-07. |
 | **0.6 Segredo obrigatório em webhook real** | **Mitigado / fail-closed** | Segredos vazios/mock não entram no modo real; assinatura/freshness/replay existem. Falta store de idempotência cross-instance; ver P0-08/P1-04. |
@@ -133,13 +133,13 @@ achados individuais.
 | **1.5 DLP/PII por content-type/stream/header** | **Corrigido** | P1-03. |
 | **1.6 CSRF separado de webhook + freshness/idempotência** | **Mitigado / fail-closed** | Composição, freshness e replay local corrigidos; idempotência compartilhada permanece; P1-04. |
 | **1.7 Login Guard, rate, proxy, tenant e CSWSH** | **Mitigado / fail-closed** | Todos os bypasses/limites locais foram corrigidos; distributed rate limit retorna Unsupported, sem backend real; P1-09/P1-10/P1-18/P1-19. |
-| **1.8 Zero-panic em produção e código gerado** | **Parcial** | Os caminhos enumerados foram corrigidos e há gate CI com escopo declarado (P1-17), mas não existe prova global para todos os generators/configurações/dependências. |
+| **1.8 Zero-panic em produção e código gerado** | **Corrigido no escopo declarado** | Os caminhos enumerados foram corrigidos; o gate inclui bibliotecas, macros, CLI/binários, Wasm e auditoria genérica dos templates runtime (P1-17). Não é uma promessa impossível sobre dependências, OOM ou falhas do host. |
 
 ### Fase 2 — integridade de produto e scaffolding
 
 | Passo | Estado | Evidência/pendência |
 |---|---|---|
-| **2.1 Harness de todos os comandos + fmt/check/smoke** | **Parcial** | Existem checks reais para dois projetos gerados, não a matriz completa; P1-13. |
+| **2.1 Harness de todos os comandos + fmt/check/smoke** | **Parcial** | Há matriz estrutural de 270 combinações, materialização dos seis blueprints, parse de templates e inventário de todos os comandos; dois projetos passam `cargo check` real. `fmt/check/smoke` de toda combinação aplicável e comandos externos em ambientes de contrato continuam pendentes; P1-13. |
 | **2.2 Flags, nomes, paths, IDs, Auth, Billing e Docs SSG** | **Corrigido** | Os bugs concretos têm regressões em `cargo-rullst/src` e os dois projetos gerados compilam no harness focado. |
 | **2.3 Nexus server-side RBAC/ownership/field policy** | **Corrigido** | Role layer e field policy são server-side; batch/errors/escaping foram corrigidos; P0-04/P1-11. A identidade/membership final continua responsabilidade da aplicação hospedeira. |
 | **2.4 Studio: rotas, escaping, redaction e métricas** | **Corrigido** | P1-12. |
@@ -150,50 +150,53 @@ achados individuais.
 | Decisão/ação | Estado | Evidência/pendência |
 |---|---|---|
 | **Escolher Estratégia A ou B** | **Corrigido** | A SST e o [capability ledger](capability-ledger.md) adotam explicitamente o resultado prático da **Estratégia B**: Connect é OAuth/OIDC; messaging, NFS-e real, MQTT/HSM/PQC e outros providers permanecem roadmap/fail-closed. |
-| **Desacoplar Core de ORM** | **Parcial** | [`rullst-core/Cargo.toml`](../../rullst-core/Cargo.toml) tornou Core runtime-only por default e isolou `orm`/`queue-sqlite`, com jobs de boundary em `ci.yml`; Core ainda possui dependência opcional e módulos de integração com ORM. |
-| **Consolidar Security** | **Parcial** | Limites e claims foram alinhados, mas ainda existem implementações de headers/WAF/PII no Core e headers/RASP/DLP no Security. O ledger marca “One canonical security stack” como prioridade parcial. |
-| **Completar umbrella** | **Parcial** | [`rullst/Cargo.toml`](../../rullst/Cargo.toml) possui features explícitas e boundary mínimo testado; a consolidação de contratos/reexports e o desacoplamento Core↔ORM ainda não terminaram. |
+| **Desacoplar Core de ORM** | **Corrigido no boundary definido** | [`rullst-core/Cargo.toml`](../../rullst-core/Cargo.toml) é runtime-only por default; `orm` e `queue-sqlite` são bridges opt-in independentes, com boundaries em CI. A dependência opcional é integração explícita, não acoplamento do Core mínimo. |
+| **Consolidar Security** | **Parcial** | Claims e composição foram alinhados, e Core/Security reutilizam o mesmo `CspNonce`, evitando CSPs conflitantes. Ainda há ownership/headers/WAF/PII no Core e headers/RASP/DLP no Security. Uma dependência direta Core → Security criaria ciclo; o caminho seguro é um trait de stack no Core, implementação no crate dedicado e deprecation gradual das duplicações. |
+| **Completar umbrella** | **Corrigido no contrato atual** | [`rullst/Cargo.toml`](../../rullst/Cargo.toml) possui features/reexports explícitos para Security, IoT, Connect, SMTP e boundaries mínimos testados. Capacidades ausentes continuam roadmap, sem reexport fictício. |
 | **Padronizar semver/builders/`Into<String>`** | **Parcial** | P2-17/P2-18. |
 
 ### Fase 4 — engenharia de release
 
 | Passo | Estado | Evidência/pendência |
 |---|---|---|
-| **4.1 Tríade AGENTS como gate `--all-features`** | **Corrigido** | [`ci.yml`](../../.github/workflows/ci.yml) e [`release.yml`](../../.github/workflows/release.yml) executam fmt, Clippy workspace/all-targets/all-features com `-D warnings` e testes workspace/all-features. A existência do gate não comprova o resultado do worktree atual. |
-| **4.2 Features strict DB isoladas** | **Corrigido** | O job `strict-database-features` de [`ci.yml`](../../.github/workflows/ci.yml) compila `strict-postgres`, `strict-mysql` e `strict-sqlite` individualmente; boundary mínimo Core/umbrella também é exercitado. |
-| **4.3 Unsafe/WASM/Kani/Miri/mutation honestos** | **Parcial** | [`unsafe-policy.yml`](../../.github/workflows/unsafe-policy.yml) e [`wasm-matrix.yml`](../../.github/workflows/wasm-matrix.yml) são bloqueantes; Kani/Miri/mutants são explicitamente não bloqueantes em seus YAMLs. Porém [`WORKFLOWS.md`](../../WORKFLOWS.md) ainda usa linguagem como “matematicamente prove”/“asserting every mutant” e precisa ser alinhado ao comportamento informativo. |
-| **4.4 Cobrir 40 fuzz targets ou documentar tiers** | **Parcial** | Há 40 arquivos em `*/fuzz/fuzz_targets` e a matriz manual [`fuzzing.yml`](../../.github/workflows/fuzzing.yml) lista os 40. `WORKFLOWS.md` ainda documenta 33/33+ e não há execução desta matriz registrada nesta inspeção. |
+| **4.1 Tríade AGENTS como gate `--all-features`** | **Corrigido** | [`ci.yml`](../../.github/workflows/ci.yml) e [`release.yml`](../../.github/workflows/release.yml) executam fmt, Clippy workspace/all-targets/all-features com `-D warnings` e testes workspace/all-features. A tríade também passou localmente no worktree de 2026-08-26; uma execução de CI/tag continua evidência separada. |
+| **4.2 Features strict DB isoladas** | **Corrigido no workflow** | O job `strict-database-features` de [`ci.yml`](../../.github/workflows/ci.yml) compila e executa CRUD específico em `strict-postgres`, `strict-mysql` e `strict-sqlite`, cada um somente com sua feature; boundary mínimo Core/umbrella também é exercitado. |
+| **4.3 Unsafe/WASM/Kani/Miri/mutation honestos** | **Corrigido no contrato automatizado** | [`unsafe-policy.yml`](../../.github/workflows/unsafe-policy.yml) e [`wasm-matrix.yml`](../../.github/workflows/wasm-matrix.yml) são bloqueantes; Kani, Miri, mutants e udeps são explicitamente informativos nos YAMLs e em [`WORKFLOWS.md`](../../WORKFLOWS.md). |
+| **4.4 Cobrir 40 fuzz targets ou documentar tiers** | **Corrigido no workflow** | Há 40 arquivos em `*/fuzz/fuzz_targets`; a matriz manual [`fuzzing.yml`](../../.github/workflows/fuzzing.yml) enumera os 40 e [`WORKFLOWS.md`](../../WORKFLOWS.md) registra o limite: configuração não equivale a uma campanha executada com sucesso. |
 | **4.5 Package-all antes do primeiro publish** | **Corrigido** | `release.yml` usa `cargo package --workspace ... --all-features --locked` no job `verify`, antes do job `publish`; P0-09. |
-| **4.6 SBOM/audit/compliance por tag + digest/assinatura** | **Parcial** | Release gera `.crate`, SHA-256, attestation e provenance; audits/SBOM/compliance existem em outros workflows/CLI, mas não são gerados e anexados pelo fluxo tag-only como um único conjunto de evidência. |
+| **4.6 SBOM/audit/compliance por tag + digest/assinatura** | **Corrigido no workflow** | A release tag-only agrega metadata/Cargo.lock, Cargo Audit com exceções governadas, SBOM CycloneDX, relatório de evidência limitado, policy/advisory ledger, checksums e contexto tag/commit; os `.crate` e o bundle são atestados e anexados. Isso não é certificação nem prova de uma execução verde ainda não observada. |
 | **4.7 Alinhar 12.0.0/changelog/tag/crates/release notes** | **Parcial** | Todos os manifests publicáveis inspecionados estão em `12.0.0` e o release rejeita tag divergente. [`CHANGELOG.md`](../../CHANGELOG.md) ainda marca 12.0.0 como Unreleased e o `HEAD` inspecionado não possui tag exata; crates.io/release notes não foram verificadas por esta inspeção local. |
 
 ## Evidência de testes e limites da validação
 
-Há dois tipos de evidência neste documento:
+Há três tipos de evidência neste documento:
 
 1. **Evidência estática local**: arquivos de implementação e testes nomeados nas
    tabelas foram inspecionados no worktree atual.
-2. **Execuções focadas registradas durante o hardening**: antes da limpeza dos
-   artefatos de build, foram executados testes/Clippy focados para Connect; AI;
-   Mail; CSWSH em Security; tenant em Core; e expansão de macros ORM. Entre os
-   resultados registrados estão 183 testes unitários + 18 de integração em
-   Connect, as suites offline de AI/Mail, os seis testes CSWSH e os testes de
-   tenant/macro citados. Esses resultados sustentam apenas os respectivos
-   recortes e não são promovidos a resultado do workspace.
-
-Não foi executado `cargo` para produzir este relatório documental. Em
-particular, **não se declara concluída a tríade final**:
+2. **Execuções focadas registradas durante o hardening**: Connect, AI, Mail,
+   CSWSH/Security, tenant/Core, macros ORM, cache global, CSP compartilhado,
+   scaffolding e strict-SQLite tiveram regressões focadas. A matriz estrutural
+   validou 270 combinações e os dois projetos representativos passaram checks
+   Cargo offline.
+3. **Tríade local final em 2026-08-26**, com Rust/Cargo 1.98.0:
 
 ```text
-cargo test --workspace --all-features
-cargo clippy --workspace --all-features -- -D warnings
-cargo fmt --all
+cargo test --workspace --all-features                                      PASS
+cargo clippy --workspace --all-targets --all-features -- -D warnings       PASS
+cargo fmt --all -- --check                                                 PASS
 ```
 
-Ela deve ser executada sobre o diff consolidado, e o resultado deve ser ligado
-ao commit/tag. Também não foram executados aqui testcontainers, fuzzing, Kani,
-Miri, mutation, DAST, scanners de dependência, package/publish ou homologações
-externas. Arquivos YAML que descrevem esses jobs não constituem resultado.
+Os testes de integração que abrem loopback foram executados fora do sandbox
+restritivo; o restante permaneceu local. Cargo também emitiu um aviso de
+compatibilidade futura para a dependência transitiva `proc-macro-error2 2.0.1`;
+isso não foi um warning de Clippy nem falhou o gate, mas merece acompanhamento.
+
+Não foram executados aqui os Testcontainers PostgreSQL/MySQL isolados, campanhas
+de fuzz, Kani, Miri, mutation, DAST, scanners de dependência, package/publish,
+uma pipeline de tag ou homologações externas. O CRUD strict-SQLite isolado foi
+executado e passou; PostgreSQL/MySQL permanecem evidência configurada no workflow
+até uma execução apropriada com containers. Arquivos YAML não constituem, por si
+sós, resultado.
 
 ## Lacunas técnicas remanescentes
 
@@ -203,18 +206,17 @@ Em ordem de risco/impacto, o código e a governança ainda precisam de:
    rate limiting distribuído, com testes multi-instância;
 2. suíte normativa/biblioteca auditada para WebAuthn, além dos negativos atuais;
 3. matriz de geração cobrindo todos os comandos/blueprints com fmt/check/smoke;
-4. conclusão da arquitetura da Fase 3: Core sem dependência de ORM, uma pilha
-   Security canônica e contratos/reexports coerentes no umbrella;
+4. conclusão da arquitetura Security da Fase 3: um contrato de stack no Core,
+   implementação canônica no crate dedicado e deprecation das duplicações;
 5. inventário semver e migração uniforme de constructors/builders fallible;
 6. revisão específica da fronteira FFI/ABI do hot reload dev-only, incluindo
    testes apropriados de ciclo de vida; retenção de dylibs corrige o unload
    inseguro, mas não transforma ABI Rust dinâmica em contrato estável;
-7. pipeline de tag que agregue SBOM, audit, compliance, digest e artefatos
-   assinados, seguido da tríade final no commit exato;
-8. alinhamento de [`WORKFLOWS.md`](../../WORKFLOWS.md) com 40 fuzz targets e com
-   o caráter informativo de Kani/Miri/mutation;
+7. atualizar ou substituir a cadeia opcional Leptos que ainda traz
+   `proc-macro-error2 2.0.1`, antes que o lint futuro E0365 vire erro do Rust;
+8. execução verde da pipeline de tag no commit/release exato, alinhando versão,
+   changelog, tag, crates.io e release notes;
 9. somente quando houver mantenedor, ambiente de interoperabilidade e suite de
    contrato: NFS-e homologada, Alipay RSA2, storage remoto, replicação específica,
    messaging, MQTT, HSM/PQC e ciclo real de flash/boot. Até lá, manter
    `Unsupported`/experimental é o comportamento seguro.
-

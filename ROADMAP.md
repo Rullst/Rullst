@@ -11,7 +11,8 @@ for Humans and AI."**
 > **Single roadmap source:** `ROADMAP.md` is canonical.
 > `docs/src/roadmap.md` embeds it directly in mdBook instead of maintaining a
 > divergent copy. The deeper evidence and decision record is
-> `docs/src/capability-ledger.md`.
+> `docs/src/capability-ledger.md`. The release gates and executable checklist
+> for the next major version live in [`docs/src/v12.md`](docs/src/v12.md).
 
 ## Status language
 
@@ -27,6 +28,35 @@ for Humans and AI."**
 Target windows are planning intentions, not release guarantees. Promotion to
 `[x]` requires code, focused tests, truthful documentation, and the release gates
 at the end of this document.
+
+## Audit of the detailed crate roadmaps
+
+The per-crate roadmaps are intentionally preserved as detailed design backlogs.
+Some predate this status policy, so an old `[x]` can record the original author's
+milestone claim rather than today's verified end-to-end contract. This table is
+the current interpretation; the [capability ledger](docs/src/capability-ledger.md)
+contains the evidence boundary and recommendation for the highest-risk claims.
+
+| Detailed roadmap | What is verifiably implemented now | Partial, experimental, or not implemented |
+| :--- | :--- | :--- |
+| [`rullst-ai`](rullst-ai/ROADMAP.md) | Guarded high-level client; OpenAI/Gemini/Anthropic/DeepSeek/Ollama adapters; deterministic offline chat/vision/embedding paths; JSON/schema distinction; local fallback/RAG/vector/tool foundations. | Streaming/cancellation, derived JSON Schema, provider-native authorized tool loop, durable memory/ORM hooks, external vector adapters, and versioned safety evals are not implemented. |
+| [`rullst-auth`](rullst-auth/ROADMAP.md) | Argon2/local sessions, RBAC middleware, declarative `Gate`, OAuth/OIDC re-exports, and a substantial custom ES256 passkey foundation. | WebAuthn is partial until normative conformance; first-class application JWT, TOTP with recovery codes inside Auth, magic links, and device/session management are not implemented. They are worthwhile, with WebAuthn first. |
+| [`rullst-capital`](rullst-capital/ROADMAP.md) | Provider trait/adapters, explicit offline mocks, fail-closed webhook verification, bounded local replay protection, billing scaffolding, analytics, and unsigned NFS-e preview. | Live method coverage varies by gateway; durable cross-instance idempotency, Alipay RSA2, full tax/proration contracts, and homologated live NFS-e are not implemented. NFS-e is extraordinary and worthwhile only as a dedicated homologation program. |
+| [`rullst-connect`](rullst-connect/ROADMAP.md) | OAuth2/OIDC/social providers, PKCE/state, fallible credential modes, pluggable HTTP client, refresh/revoke foundations, discovery/JWKS validation, retry, mocks, and Axum extraction. | Some checked DX/provider conveniences are narrower than their wording; SAML/SCIM/DPoP/JWE/mTLS/risk ML and all Phase 9 message queues are not implemented. Messaging is worthwhile in a separate crate, not the OAuth-focused Connect. |
+| [`rullst-iot`](rullst-iot/ROADMAP.md) | `no_std` frames/telemetry and the Ed25519 OTA manifest/hash/target/version/anti-rollback verification gate. | Download, durable counter, flash/boot/rollback, MQTT/CoAP/LoRaWAN, real hardware, HSM and PQC are not implemented; deterministic `Simulated*` types are experimental fixtures only. Keep the vision, but require target hardware and interoperability programs. |
+| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, attachments/scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories and background worker integration. | A checked item does not prove universal provider/deliverability behavior. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME, Studio Mail Radar and extra gateways are not implemented; add providers only with a shared contract suite. |
+| [`rullst-nexus`](rullst-nexus/ROADMAP.md) | Fail-closed authenticated admin construction, server-side CRUD/search/pagination/sorting, field policies/type-aware forms, bounded batch operations, threat radar and AI assistant surfaces. | Custom dashboard injection and a visual SQL builder are not implemented; AI/data mutation remains host-policy-bound. Both ideas are useful if authorization, query limits, preview and audit remain server-side. |
+| [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, strict DB modes, transactions, relations/scopes/soft-delete foundations, audit/privacy, raw SQL mapping, admin/resource helpers and focused tooling. | Several historical `[x]` entries are only foundations or are unsupported end to end: transparent Turso/edge replication, external search/vector stores, autonomous indexing/migrations, complete graph traversal, NoSQL, Wasm drivers and PQC. Preserve them, but promote each only after backend/runtime contract tests. |
+| [`rullst-security`](rullst-security/ROADMAP.md) | Bounded honeypot, sanitizer/CSP, RBAC, HMAC audit chain, RASP/DLP, AES-GCM vault, headers, login guard, TOTP, CSWSH, schema/log guards, SRI, CEF formatting, timing/prompt filters and evidence-oriented CLI audit/SBOM tools. | “Autonomous”, live reputation/SIEM delivery, A+ guarantees, zero-leak/zero-latency, certification and total OWASP/memory-safety claims are not established. Distributed rate limits/audit sinks, KMS/rotation, adaptive WAF, SQL firewall and all PQC/kernel/Wasm containment items remain partial or absent. |
+| [`rullst-studio`](rullst-studio/ROADMAP.md) | Real DB browser, API playground, jobs monitor, ER diagram, feature flags, redacted environment view and local telemetry/radar/trace surfaces with unavailable states. | N+1 profiling and Cache/Redis inspection are not implemented; request/trace views are local bounded observability, not a complete distributed profiler. Both missing tools are worthwhile after a canonical telemetry contract. |
+
+This audit does not downgrade ambitious ideas merely because they are difficult.
+Capabilities that require continuous operations, homologation, hardware, or a
+separate release lifecycle can follow the
+[Maybe SaaS incubation strategy](docs/src/maybesaas.md) instead of being forced
+into the framework core.
+It prevents a checkbox from becoming a production promise before the necessary
+code, tests, provider/hardware environment, and operational semantics exist.
 
 ## Executive milestone tracker
 
@@ -159,8 +189,9 @@ contains the more detailed evidence and acceptance boundaries.
 - **An IDOR scanner that proves authorization** *(`[!] Do not promise proof` —
   the AST scanner is worth keeping as a heuristic warning tool, paired with
   route-level ownership and cross-tenant negative tests).*
-- **DevSecOps git-hook installer** *(not implemented — useful as an opt-in DX
-  shortcut, but CI must remain authoritative because local hooks are bypassable).*
+- **DevSecOps git-hook installer** *(partial — `hook:install` writes pre-commit
+  and Conventional Commit hooks; worth adding backup/idempotency/permission
+  tests, while CI remains authoritative because local hooks are bypassable).*
 - **Automatic SOC 2/ISO/FedRAMP PASS reports** *(`[!] Do not implement as an
   unconditional verdict` — evidence export is worthwhile; certification covers
   an organization and deployment, not a crate).*

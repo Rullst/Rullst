@@ -302,7 +302,7 @@ pub mod app {
     pub async fn robots_txt() -> impl IntoResponse {
         (
             axum::http::StatusCode::OK,
-            "User-agent: *\nDisallow: /studio\nDisallow: /nexus\n",
+            "User-agent: *\nDisallow: /nexus\n",
         )
     }
 
@@ -356,8 +356,7 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     ])?
     .with_default("community")?;
 
-    let studio_router = rullst_studio::Studio::new().into_router();
-    let nexus_auth = rullst_nexus::NexusAuthPolicy::basic_from_env()?;
+    let nexus_auth = rullst_nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus_router = rullst_nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Rullst Sovereign Publisher")
@@ -387,7 +386,6 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
         get("/robots.txt" => robots_txt),
         get("/sitemap.xml" => sitemap_xml),
     ]
-    .nest_axum("/studio", studio_router)
     .nest_axum("/nexus", nexus_router)
     .layer(axum::middleware::map_response(set_security_headers))
     .layer(rullst::tenant_layer(config))

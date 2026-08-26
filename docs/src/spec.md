@@ -206,10 +206,12 @@ let session = provider.create_checkout_session(plan_id, customer_email).await?;
 ### 10.1. Rullst Studio (`http://127.0.0.1:5555`)
 * Zero-bundle developer dashboard with dark glassmorphic UI.
 * Real-time metrics sourced from `RadarSnapshot::collect()` (RSS RAM, Tokio scheduler latency, active spans).
+* Generated applications start the standalone Studio only in debug builds and bind it to loopback. Exposing it beyond the developer machine requires an explicit authenticated network boundary owned by the application; no environment variable silently converts the local server into a production admin surface.
 
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.
 * **Security Default:** Fail-closed by design; requires explicit authentication middleware and RBAC role validation (`admin`) on all mutating endpoints.
+* Generated applications may use `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds accept only a peer address verified as loopback through `ConnectInfo`, while release builds require validated Basic Auth credentials from the environment. Missing peer metadata is denied, and an environment mode flag cannot enable unauthenticated release access.
 
 ---
 

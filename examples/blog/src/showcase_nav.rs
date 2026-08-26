@@ -98,7 +98,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                     { rullst::html::RawHtml(buttons_html.clone()) }
                 </div>
                 <div class="showcase-portals desktop-nav">
-                    <a href="/studio" target="_blank" class="portal-btn studio-btn" title="Open Developer Control Room">
+                    <a href="http://127.0.0.1:5555" target="_blank" class="portal-btn studio-btn" title="Open local Developer Control Room">
                         "🚀 Studio"
                     </a>
                     <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">
@@ -111,7 +111,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                         { rullst::html::RawHtml(buttons_html) }
                     </div>
                     <div class="showcase-mobile-portals">
-                        <a href="/studio" target="_blank" class="portal-btn studio-btn" title="Open Developer Control Room">
+                        <a href="http://127.0.0.1:5555" target="_blank" class="portal-btn studio-btn" title="Open local Developer Control Room">
                             "🚀 Studio"
                         </a>
                         <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">

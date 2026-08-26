@@ -207,6 +207,24 @@ impl NexusAuthPolicy {
         Self::basic(username, password)
     }
 
+    /// Uses credential-free loopback access in debug builds and validated
+    /// environment credentials in release builds.
+    ///
+    /// This is the ergonomic policy for generated applications and local
+    /// examples. Debug access still requires Axum `ConnectInfo<SocketAddr>` and
+    /// denies every non-loopback peer. Release builds never enable local access
+    /// and require [`NEXUS_ADMIN_USERNAME_ENV`] and
+    /// [`NEXUS_ADMIN_PASSWORD_ENV`] through [`Self::basic_from_env`].
+    /// Applications that need to exercise Basic Auth in a debug build can call
+    /// [`Self::basic_from_env`] explicitly.
+    pub fn local_development_or_basic_from_env() -> Result<Self, NexusBuildError> {
+        if cfg!(debug_assertions) {
+            Ok(Self::loopback_only(LocalNexusAccess::loopback_only()))
+        } else {
+            Self::basic_from_env()
+        }
+    }
+
     /// Creates an explicitly opted-in loopback-only development policy.
     pub const fn loopback_only(access: LocalNexusAccess) -> Self {
         Self::LoopbackOnly(access)

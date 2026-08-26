@@ -1,5 +1,10 @@
 # Rullst Capital - Roadmap
 
+> **Status policy (2026-08-26):** the roadmap remains ambitious. A checked
+> foundation does not imply every provider method or live fiscal contract. See
+> the audited [`rullst-capital` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](../docs/src/capability-ledger.md).
+
 Rullst Capital simplifies the billing and subscription complexities of building a SaaS application in Rust.
 
 ## Phase 1: Payment Gateways Integration

@@ -39,17 +39,18 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
 
-`ci.yml` also checks each ORM strict database feature in isolation, exercises
-the runtime-only Core and minimal umbrella boundaries, runs PostgreSQL/MySQL
-integration tests on Linux, and tests the all-feature workspace on Linux,
-macOS, and Windows. A dedicated job checks the declared MSRV, Rust 1.96.0.
+`ci.yml` also compiles and exercises each ORM strict database feature in
+isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
+minimal umbrella boundaries, runs the portable database matrix on Linux, and
+tests the all-feature workspace on Linux, macOS, and Windows. A dedicated job
+checks the declared MSRV, Rust 1.96.0.
 
 ## Phase 4 release-engineering status
 
 | Goal from `gpt.md` | Current status | Assessment |
 | :--- | :--- | :--- |
 | Trifecta with all features | **Implemented** | CI and tag release both run format, all-target/all-feature Clippy, and all-feature tests. |
-| Strict DB features in isolation | **Partial** | `strict-postgres`, `strict-mysql`, and `strict-sqlite` compile independently. Provider-specific runtime tests for every strict mode remain worthwhile. |
+| Strict DB features in isolation | **Implemented in workflow** | `strict-postgres`, `strict-mysql`, and `strict-sqlite` compile independently and each runs a backend-specific CRUD test with only the selected strict feature enabled. |
 | Honest blocking/informational labels | **Implemented** | Unsafe and Wasm checks are blocking; Kani, Miri, mutation testing, and udeps explicitly say they are informational. |
 | Cover every fuzz target | **Implemented in workflow** | `fuzzing.yml` has one manual matrix entry for each of the 40 targets in the ten fuzz manifests. This records configuration, not a successful six-hour run. |
 | Package all crates before publishing | **Implemented in workflow** | The tag-only release validates versions, packages all publishable workspace crates, hashes and attests the archives, then publishes in dependency order. |
@@ -134,7 +135,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/dev push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Blocking run | Eight benchmark groups with 20% regression alerts and gh-pages history. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/dev push and PR, weekly | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/dev push, main PR | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, DB feature boundaries, and MSRV. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/dev push, main PR | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, isolated strict-DB compile/runtime boundaries, and MSRV. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push/PR, weekly | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/dev push and PR | Automated evidence | LLVM LCOV generation and non-blocking Codecov upload. |

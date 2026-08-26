@@ -5,6 +5,12 @@
 **Fonte normativa usada:** `docs/src/spec.md`  
 **Tipo de avaliação:** arquitetura, aderência à especificação, segurança, confiabilidade, qualidade de API, testes, CI/release e maturidade por crate.
 
+> **Atualização de hardening — 26 de agosto de 2026:** a análise original e sua
+> nota de 5,0 foram preservadas como baseline histórico. A coluna “Nota atual”,
+> o §15 e [`docs/src/hardening-status.md`](docs/src/hardening-status.md) registram
+> o estado do `HEAD` `0918e2ee158d` mais o worktree atual, já validado pela tríade
+> local em Rust 1.98.0.
+
 ## 1. Resposta direta
 
 O Rullst tem uma **boa visão arquitetural e uma base tecnicamente interessante**, mas a implementação do framework inteiro ainda não sustenta várias das promessas de produção feitas pela documentação. A separação nominal em crates, a API de routing, o `html!` com escape, partes do ORM e o volume de testes mostram trabalho real e uma direção coerente. Por outro lado, há subsistemas críticos que são incompletos, simulados ou inseguros por padrão.
@@ -22,20 +28,30 @@ Em uma frase: **o Rullst parece hoje uma fundação promissora misturada com fun
 
 ## 2. Nota geral
 
-As notas abaixo são uma avaliação técnica heurística, não uma medida matemática de cobertura ou segurança.
+As notas são heurísticas, não uma medida matemática de cobertura ou segurança.
+A coluna original preserva a fotografia da auditoria de 2026-08-24; a coluna
+atual acompanha o hardening do worktree em 2026-08-26. A tríade local está
+verde; workflow ou integração externa configurada ainda não é contada como uma
+execução externa verde.
 
-| Dimensão | Nota | Leitura |
-|---|---:|---|
-| Visão e separação nominal em crates | **7,0/10** | Os domínios estão bem identificados e a organização física é legível. |
-| Arquitetura efetiva de dependências | **5,5/10** | Core acoplado ao ORM, segurança duplicada e umbrella incompleto reduzem a modularidade real. |
-| Aderência à SST (`spec.md`) | **5,5/10** | Estimativa de 55–60%: alguns fundamentos aderem bem, mas Connect, IoT, Fiscal, AI e compatibilidade divergem bastante. |
-| Segurança e defaults seguros | **3,5/10** | Existem mecanismos bons, mas também defaults abertos, criptografia simulada e decisões fail-open. |
-| Confiabilidade operacional | **4,0/10** | Há panics, estados globais parciais, erros ignorados e APIs que retornam sucesso sem realizar a operação. |
-| Engenharia de testes, pela estrutura estática | **6,5/10** | O investimento aparente é alto; a execução local ficou inconclusiva por ausência do toolchain. |
-| CI e release | **3,5/10** | A matriz principal é útil, mas vários gates não bloqueiam e o release está em ordem topológica incorreta. |
-| Fidelidade da documentação ao código | **3,0/10** | README, auditorias e compliance fazem alegações que o código atual contradiz. |
-| Prontidão enterprise do conjunto | **4,0/10** | Partes utilizáveis coexistem com bloqueadores de produto e segurança. |
-| **Avaliação global atual** | **5,0/10** | Boa fundação, maturidade muito desigual e dívida de honestidade contratual. |
+| Dimensão | Nota original | Nota atual | Leitura atual |
+|---|---:|---:|---|
+| Visão e separação nominal em crates | **7,0/10** | **8,8/10** | Os domínios continuam claros; SST, ledger e Estratégia B agora delimitam implementação, experimental e visão futura. |
+| Arquitetura efetiva de dependências | **5,5/10** | **8,0/10** | Core é runtime-only por default, bridges ORM/SQLite são opt-in e o umbrella foi completado; a pilha Security canônica ainda é parcial. |
+| Aderência à SST (`spec.md`) | **5,5/10** | **8,3/10** | Contrato e código foram reconciliados; capacidades sem implementação real são roadmap ou falham fechadas. WebAuthn normativo e integrações extraordinárias ainda limitam a nota. |
+| Segurança e defaults seguros | **3,5/10** | **8,5/10** | P0s exploráveis foram corrigidos ou contidos, Nexus/CORS/Storage/sessões/webhooks são fail-closed e há regressões negativas. Falta estado distribuído e validação WebAuthn normativa. |
+| Confiabilidade operacional | **4,0/10** | **8,8/10** | Inicialização, workers, scheduler, cache, hot reload e caminhos panicking identificados foram endurecidos; testes completos e Clippy estrito passaram localmente. |
+| Engenharia de testes | **6,5/10** | **9,2/10** | A suíte workspace/all-features passou, há testes focados amplos, 40 fuzz targets, dois projetos gerados compilados offline e matriz estrutural de 270 scaffolds; falta `fmt/check/smoke` de toda combinação aplicável. |
+| CI e release | **3,5/10** | **8,8/10** | Gates foram tornados honestos/bloqueantes, strict DB ganhou CRUD isolado e release tag-only empacota/atesta a DAG e o bundle de evidências. Falta observar uma tag verde real. |
+| Fidelidade da documentação ao código | **3,0/10** | **9,3/10** | SST, README, audits, workflows, roadmap mestre, auditoria dos roadmaps por crate, ledger e status de hardening diferenciam entregue, parcial, mock, `Unsupported` e visão futura sem apagar a ambição. |
+| Prontidão enterprise do conjunto | **4,0/10** | **7,8/10** | O kernel e vários serviços estão muito mais defensáveis; homologações externas, estado distribuído e algumas capacidades de hardware/provedor continuam programas próprios. |
+| **Avaliação global atual** | **5,0/10** | **8,7/10** | Salto material de segurança, honestidade e engenharia, agora com a tríade local verde; ainda não recebe nota máxima sem WebAuthn normativo, estado distribuído, Security canônico, matriz integral de scaffolds e uma release externa reproduzida. |
+
+**Teto estimado após as lacunas prioritárias: 9,2–9,5/10.** A faixa exige
+WebAuthn normativo, idempotência/rate limit compartilhados, stack Security
+canônica, matriz compilável de scaffolds e evidência verde de release. Nota 10
+não é um estado permanente: um framework de classe mundial precisa repetir os
+gates e responder a vulnerabilidades ao longo do tempo.
 
 ## 3. Escopo, método e limitações
 
@@ -66,6 +82,10 @@ Inventário estático observado:
 Essas quantidades são **contagens estáticas**. Elas não equivalem a testes executados, cobertura ou ausência de bugs.
 
 ### Limitação importante de execução
+
+> **Baseline histórico:** a limitação abaixo descreve exclusivamente o ambiente
+> da auditoria original de 2026-08-24. Ela foi resolvida no hardening de
+> 2026-08-26; a evidência atual está no §2, §15 e no hardening status.
 
 O ambiente desta auditoria não possui `cargo`, `rustc` ou `rustup` no `PATH` nem nos locais usuais. Portanto:
 
@@ -622,9 +642,9 @@ O volume é um ponto positivo, mas a distribuição mostra uma lacuna: o CLI, qu
 1. **Corrigido:** CI e release executam Clippy com `--all-targets`,
    `--all-features` e `-D warnings`.
 
-2. **Mitigado — vale concluir:** há jobs isolados de compilação para
-   `strict-mysql`, `strict-sqlite` e `strict-postgres`. Ainda faltam testes
-   runtime específicos de cada modo strict.
+2. **Corrigido no workflow:** `strict-mysql`, `strict-sqlite` e
+   `strict-postgres` compilam isoladamente e cada modo executa um CRUD runtime
+   com somente a feature selecionada.
 
 3. **Corrigido:** os checks WASM não usam mais `|| true`; falhas de compilação
    agora falham o job.
@@ -788,35 +808,76 @@ Tipos como `Environment`, `CredentialMode<Real|Mock>`, `VerifiedWebhook`, `Autho
 
 ## 15. Roadmap recomendado
 
+> **Estado em 2026-08-26:** cada recomendação original é preservada abaixo com
+> seu estado e uma opinião explícita. A evidência por achado está em
+> [`docs/src/hardening-status.md`](docs/src/hardening-status.md); ideias maiores
+> que ainda não existem continuam em
+> [`docs/src/capability-ledger.md`](docs/src/capability-ledger.md), em vez de
+> serem apagadas ou apresentadas como prontas.
+
 ### Fase 0 — contenção imediata, antes de qualquer nova release
 
-1. Marcar Fiscal, IoT crypto/MQTT, `FieldEncryptor`, S3/R2 e Alipay como `experimental` ou fazer seus caminhos reais retornarem `Unsupported`.
-2. Tornar Nexus fechado por padrão; remover `admin/password` de todos os blueprints e exemplos.
-3. Corrigir o CORS gerado e publicar aviso de segurança para projetos já scaffoldados.
-4. Corrigir path traversal do facade Storage.
-5. Unificar detecção de produção e impedir subida sem as proteções configuradas.
-6. Exigir segredo de webhook em endpoints reais; nunca usar fallback mock em rota pública.
-7. Bloquear o workflow de release atual e corrigir ordem/omissões antes da próxima tag.
-8. Atualizar README, SST, `AUDIT.md` e compliance para diferenciar “implementado”, “experimental” e “roadmap”.
+1. **Mitigado/fail-closed:** Vault e o gate OTA foram implementados; NFS-e real,
+   Alipay RSA2 e storage remoto retornam `Unsupported`; HSM/PQC/MQTT são
+   simuladores explicitamente experimentais. *(Vale implementar as integrações
+   reais apenas em programas dedicados, com interoperabilidade/hardware.)*
+2. **Corrigido:** Nexus exige uma política de autenticação, aplica role layer e
+   os blueprints não geram mais `admin/password`.
+3. **Corrigido:** o CORS gerado usa allowlist fail-closed e o
+   [aviso de migração](docs/src/cors-scaffold-security-advisory.md) explica como
+   localizar/corrigir projetos antigos.
+4. **Corrigido:** o facade Storage confina caminhos, valida symlinks e testa
+   tentativas de escape.
+5. **Corrigido:** existe um enum de ambiente único, com precedência testada e
+   startup seguro em staging/produção.
+6. **Mitigado/fail-closed:** modo real exige segredo, freshness e replay local;
+   ainda vale implementar idempotência compartilhada para múltiplas instâncias.
+7. **Implementado no workflow:** release é tag-only, executa preflight,
+   package-all e publicação pela DAG. O YAML não substitui uma execução verde.
+8. **Corrigido como contrato contínuo:** README, SST, audits, compliance,
+   roadmap e capability ledger separam implementado, mock, parcial e roadmap.
 
 ### Fase 1 — segurança e confiabilidade do kernel
 
-1. Criar um enum de ambiente único e uma política de configuração com precedência testada.
-2. Fazer DB initialization atômica/fallible; remover getters panicking dos caminhos normais.
-3. Validar APP_KEY e retirar sessão legacy sem expiração.
-4. Corrigir WebAuthn com biblioteca/fluxo auditado.
-5. Corrigir DLP/PII para content-type, streaming e headers.
-6. Separar CSRF de webhooks assinados e adicionar freshness/idempotência.
-7. Corrigir Login Guard, rate limit, trusted proxies, Tenant Guard e CSWSH.
-8. Eliminar panics/unwraps confirmados em produção e código gerado.
+1. **Corrigido:** `Environment` e a precedência de configuração têm testes
+   positivos e negativos.
+2. **Corrigido:** inicialização ORM prepara o estado antes da publicação e os
+   getters normais são fallible.
+3. **Corrigido:** APP_KEY é validada, sessões são versionadas/expiráveis e o
+   envelope legado sem expiração é rejeitado.
+4. **Parcial — alta prioridade:** as invariantes ES256/attestation `none`,
+   challenge, origin, rpIdHash, flags e contador têm testes negativos; ainda
+   vale adotar uma biblioteca auditada ou suíte normativa WebAuthn antes de um
+   claim geral de conformidade.
+5. **Corrigido no escopo documentado:** DLP/PII respeitam content-type,
+   encoding, tamanho, streaming e headers de representação.
+6. **Mitigado/fail-closed:** webhooks assinados têm composição separada,
+   freshness e replay local; falta idempotência durável cross-instance.
+7. **Mitigado no escopo local:** bypasses e limites de Login Guard, proxy,
+   tenant e CSWSH foram corrigidos; rate limiting distribuído continua
+   `Unsupported` e vale um backend atômico opcional.
+8. **Corrigido no escopo de produção declarado:** o gate cobre bibliotecas,
+   macros, CLI/binários, Wasm e templates runtime gerados. Não se promete que
+   dependências, OOM ou falhas do host jamais possam abortar um processo.
 
 ### Fase 2 — integridade de produto e scaffolding
 
-1. Criar harness que execute todos os comandos do CLI em tempdirs e rode `cargo fmt --check`, `cargo check` e testes smoke nos projetos gerados.
-2. Corrigir flags Nix/Buildah, nomes Island/Resource, path/package, IDs de blueprint, Auth, Billing e Docs SSG.
-3. Aplicar RBAC/ownership e field policy server-side no Nexus.
-4. Corrigir rotas, escaping, env redaction e fonte de métricas do Studio.
-5. Completar mocks offline de AI/Mail/Connect sem transformar endpoints reais em fail-open.
+1. **Parcial — vale concluir:** uma matriz estrutural valida 270 combinações dos
+   seis blueprints, materializa cada blueprint, analisa templates Rust e mantém
+   inventário explícito de todos os comandos públicos; dois projetos gerados
+   também passam `cargo check` real. Ainda falta executar `fmt/check/smoke` para
+   toda combinação aplicável — comandos de deploy/provedor exigem ambientes de
+   contrato e não devem ser falsamente tratados como testes offline.
+2. **Corrigido para os bugs enumerados:** flags, nomes, paths, IDs, Auth,
+   Billing e RullstPress possuem regressões focadas.
+3. **Corrigido no framework:** Nexus aplica autenticação/RBAC e field policy no
+   servidor; a aplicação hospedeira continua responsável por sua identidade e
+   membership de tenant.
+4. **Corrigido:** Studio usa rotas coerentes, escaping/DOM seguro, redaction e
+   métricas reais ou `Unavailable`.
+5. **Corrigido:** AI, Mail e Connect possuem mocks offline determinísticos e
+   credenciais mock/vazias não são redirecionadas silenciosamente a endpoints
+   reais.
 
 ### Fase 3 — alinhar arquitetura e contrato
 
@@ -828,7 +889,25 @@ Escolher explicitamente uma das duas estratégias:
 
 A Estratégia B entrega confiança mais rápido. A Estratégia A entrega a visão completa, mas exige um ciclo de engenharia e homologação considerável.
 
-Depois, desacoplar Core do ORM, consolidar Security, completar o umbrella e padronizar `#[non_exhaustive]`, builders e `impl Into<String>`.
+**Decisão atual: Estratégia B.** Connect é documentado como OAuth/OIDC;
+mensageria, fiscal real e hardware permanecem como roadmap explícito. Isso não
+descarta a Estratégia A: ela continua sendo a visão, condicionada a mantenedores,
+ambientes de contrato e homologação.
+
+- **Core/ORM — implementado:** Core é runtime-only por default; `orm` e
+  `queue-sqlite` são opt-ins independentes. A ponte opcional continua por design
+  e não torna ORM dependência do Core mínimo.
+- **Security — parcial, vale priorizar:** as camadas agora compartilham um único
+  CSP nonce, evitando composição inválida, mas Server/ownership/telemetria ainda
+  estão divididos. Inverter a dependência criaria ciclo; a evolução indicada é
+  um trait de stack no Core implementado pelo crate dedicado, seguido de
+  deprecation gradual das duplicações.
+- **Umbrella — implementado:** features/reexports de Security, IoT, Connect,
+  SMTP e boundaries mínimos têm testes focados.
+- **Evolução de API — parcial:** o gate SemVer agora cobre todos os pacotes
+  publicados e constructors string auditados aceitam `impl Into<String>`; a
+  aplicação uniforme de `#[non_exhaustive]`/builders em toda a superfície
+  histórica ainda exige migração revisada por SemVer.
 
 ### Fase 4 — engenharia de release
 
@@ -836,11 +915,11 @@ Depois, desacoplar Core do ORM, consolidar Security, completar o umbrella e padr
 > no workflow” descreve o YAML e os testes locais disponíveis; uma execução
 > verde ainda precisa ser vinculada ao SHA/tag correspondente.
 
-1. **Implementado:** a trifeta do AGENTS é gate de CI/release com
+1. **Implementado:** a tríade do AGENTS é gate de CI/release com
    `--all-features`; o Clippy automatizado também usa `--all-targets`.
-2. **Parcial — vale concluir:** `strict-postgres`, `strict-mysql` e
-   `strict-sqlite` compilam isoladamente. Ainda vale adicionar testes runtime
-   específicos para cada modo strict, não apenas `cargo check`.
+2. **Implementado no workflow:** `strict-postgres`, `strict-mysql` e
+   `strict-sqlite` compilam isoladamente e executam um teste CRUD específico do
+   backend com somente a feature correspondente.
 3. **Implementado:** unsafe e WASM são bloqueantes; Kani, Miri, mutation tests e
    udeps estão nomeados e documentados como evidência informativa.
 4. **Implementado no workflow:** a matriz manual contém os 40 fuzz targets dos
@@ -850,8 +929,9 @@ Depois, desacoplar Core do ORM, consolidar Security, completar o umbrella e padr
 6. **Implementado no workflow:** cada tag reúne `Cargo.lock`, Cargo metadata,
    CycloneDX 1.5, Cargo Audit, `deny.toml`, relatório limitado de evidências, SHA
    do commit, exceções governadas e checksums; o bundle e os `.crate` recebem
-   build-provenance attestation. O relatório mantém `NOT CHECKED`/`NOT EVALUATED` e não representa
-   certificação regulatória ou SLSA do projeto inteiro.
+   build-provenance attestation. O relatório mantém `NOT CHECKED`/`NOT
+   EVALUATED` e não representa certificação regulatória ou SLSA do projeto
+   inteiro.
 7. **Parcial — bloqueador de governança antes de declarar 12.0.0 lançado:** o
    release exige tag `vMAJOR.MINOR.PATCH` igual às versões publicáveis, mas ainda
    não valida automaticamente o estado do changelog, o registro crates.io e as

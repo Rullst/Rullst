@@ -106,6 +106,22 @@ A complete back-office suite out of the box. It features:
 > smoke tests. Treat generated code as an application starting point: inspect its
 > configuration and rerun `cargo check` and security tests after customization.
 
+### Local Studio and Nexus access
+
+The Blog, Portfolio, LMS, ERP, and SaaS blueprints expose visible buttons for
+both control surfaces during local development:
+
+- **Nexus** is mounted at `/nexus` and accepts only a verified loopback peer in a
+  debug build, so the first local click needs no placeholder password.
+- **Studio** starts as a separate debug-only service at
+  `http://127.0.0.1:5555`.
+
+This convenience cannot be enabled in a release binary through `APP_ENV`. A
+release build does not start the generated Studio task and requires unique
+`NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values before Nexus can be
+constructed. Put production Nexus behind a verified TLS boundary and explicit
+application authorization; do not expose Studio publicly.
+
 ## 5. Database Configuration & Turso Cloud Integration
 
 Rullst ORM supports **SQLite**, **Turso / libSQL**, **PostgreSQL**, and **MySQL**.

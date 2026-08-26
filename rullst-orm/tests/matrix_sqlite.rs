@@ -9,7 +9,7 @@ use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 
 #[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "sqlite_matrix_users")]
+#[orm(table = "matrix_sqlite_users")]
 struct User {
     pub id: i32,
     pub name: String,
@@ -23,7 +23,7 @@ async fn strict_sqlite_crud_uses_the_sqlite_pool_and_dialect() {
         .expect("strict SQLite pool should initialize");
     assert_eq!(Orm::driver().expect("driver should be available"), "sqlite");
 
-    Schema::create("sqlite_matrix_users", |table: &mut Blueprint| {
+    Schema::create("matrix_sqlite_users", |table: &mut Blueprint| {
         table.id();
         table.string("name").not_null();
         table.string("email").not_null();

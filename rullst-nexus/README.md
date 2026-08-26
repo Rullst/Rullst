@@ -49,6 +49,12 @@ For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
 loopback socket peer and is rejected in release builds.
 
+Generated applications use
+`NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select
+that loopback-only policy, while release builds require the validated
+environment credentials above. Applications can always select either policy
+explicitly when testing a production topology.
+
 ## Security boundaries
 
 Nexus includes CSRF protection and escapes untrusted values rendered into admin pages. Applications

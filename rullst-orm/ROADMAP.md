@@ -1,5 +1,11 @@
 # Rullst ORM Roadmap
 
+> **Status policy (2026-08-26):** this long-form roadmap is preserved as design
+> history and ambition. Legacy `[x]` markers are not authoritative when a claim
+> lacks an end-to-end backend/runtime contract. See the audited
+> [`rullst-orm` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and the
+> [capability ledger](../docs/src/capability-ledger.md).
+
 **The Emotional Productivity ORM**
 To beat competitors like Diesel (focused on complex mathematical safety) and SeaORM (focused on traditional Active Record inheritance), Rullst-ORM positions itself as the "Emotional Productivity ORM":
 - **Zero black boxes**: All SQL generated under the hood should be easily inspectable via structured development logs.

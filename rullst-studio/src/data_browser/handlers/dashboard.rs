@@ -124,7 +124,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                 <span class="text-amber-400 text-xl">🛡️</span>
                 <div>
                     <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Studio Security & Auth Protection</h4>
-                    <p class="text-xs text-slate-300 mt-0.5">Bound strictly to local loopback (127.0.0.1) for dev isolation. To add password protection in shared environments, set <code class="text-emerald-400 bg-slate-950 px-1.5 py-0.5 rounded">STUDIO_PASSWORD=your_password</code> in <code>.env</code>.</p>
+                    <p class="text-xs text-slate-300 mt-0.5">The standalone Studio server is bound strictly to local loopback (127.0.0.1) for development. It has no built-in shared-environment password mode; do not expose it publicly. A shared deployment must add an authenticated reverse-proxy or application boundary explicitly.</p>
                 </div>
             </div>
             <span class="text-xs text-emerald-400 font-bold border border-emerald-900 bg-emerald-950 px-3 py-1 rounded-lg flex-shrink-0">

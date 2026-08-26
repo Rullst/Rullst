@@ -1,5 +1,9 @@
 # Rullst AI roadmap
 
+> **Status policy (2026-08-26):** this detailed backlog is preserved. Its
+> verified interpretation is the [`rullst-ai` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> in the canonical roadmap and the [capability ledger](../docs/src/capability-ledger.md).
+
 ## Implemented
 
 - Guarded high-level client for prompt, chat, vision, embeddings, JSON, and schema output.

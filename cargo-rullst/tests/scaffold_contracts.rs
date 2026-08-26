@@ -1,7 +1,8 @@
 //! Cheap contract coverage for every CLI command and blueprint variant.
 //!
-//! This test intentionally does not invoke nested Cargo builds. The dedicated
-//! scaffold-matrix workflow runs the slower generated-project quality gate.
+//! This test intentionally does not invoke nested Cargo builds. The focused
+//! `generated_saas_check` suite runs the slower quality gate for representative
+//! generated projects; compiling every variant remains separate roadmap work.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
@@ -77,36 +78,24 @@ fn manifest_for(
             orm_pattern,
             frontend_engine,
         ),
-        LMS_BLUEPRINT_ID => blueprints::lms::file_manifest(
-            "matrix_app",
-            hot_reload,
-            orm_pattern,
-            frontend_engine,
-        ),
-        SAAS_BLUEPRINT_ID => blueprints::saas::file_manifest(
-            "matrix_app",
-            hot_reload,
-            orm_pattern,
-            frontend_engine,
-        ),
-        BLOG_BLUEPRINT_ID => blueprints::blog::file_manifest(
-            "matrix_app",
-            hot_reload,
-            orm_pattern,
-            frontend_engine,
-        ),
+        LMS_BLUEPRINT_ID => {
+            blueprints::lms::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
+        }
+        SAAS_BLUEPRINT_ID => {
+            blueprints::saas::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
+        }
+        BLOG_BLUEPRINT_ID => {
+            blueprints::blog::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
+        }
         PORTFOLIO_BLUEPRINT_ID => blueprints::portfolio::file_manifest(
             "matrix_app",
             hot_reload,
             orm_pattern,
             frontend_engine,
         ),
-        ERP_BLUEPRINT_ID => blueprints::erp::file_manifest(
-            "matrix_app",
-            hot_reload,
-            orm_pattern,
-            frontend_engine,
-        ),
+        ERP_BLUEPRINT_ID => {
+            blueprints::erp::file_manifest("matrix_app", hot_reload, orm_pattern, frontend_engine)
+        }
         _ => panic!("unregistered blueprint ID {}", spec.id),
     }
 }
@@ -118,7 +107,10 @@ fn assert_safe_parseable_manifest(
     let mut paths = BTreeSet::new();
     for (relative, contents) in manifest {
         let path = Path::new(relative);
-        assert!(!path.is_absolute(), "{case}: absolute output path {relative}");
+        assert!(
+            !path.is_absolute(),
+            "{case}: absolute output path {relative}"
+        );
         assert!(
             path.components()
                 .all(|part| matches!(part, Component::Normal(_))),
@@ -179,6 +171,26 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 frontend_engine,
                             );
                             assert_safe_parseable_manifest(&case, &files);
+                            if spec.id != BLANK_BLUEPRINT_ID {
+                                let rust_sources = files
+                                    .iter()
+                                    .filter(|(path, _)| path.ends_with(".rs"))
+                                    .map(|(_, contents)| contents.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                assert!(
+                                    rust_sources.contains(
+                                        "NexusAuthPolicy::local_development_or_basic_from_env()"
+                                    ),
+                                    "{case}: Nexus local/release access policy drifted"
+                                );
+                                assert!(
+                                    rust_sources.contains(
+                                        "#[cfg(debug_assertions)]\n    {\n        rullst::runtime::spawn"
+                                    ) && rust_sources.contains("run_studio(5555)"),
+                                    "{case}: Studio must be a debug-build-only local service"
+                                );
+                            }
 
                             let cargo_toml = build_cargo_toml(
                                 "matrix-app",
@@ -194,8 +206,10 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                             .unwrap_or_else(|error| {
                                 panic!("{case}: could not generate Cargo.toml: {error}")
                             });
-                            let document: toml::Value = toml::from_str(&cargo_toml)
-                                .unwrap_or_else(|error| panic!("{case}: invalid Cargo.toml: {error}"));
+                            let document: toml::Value =
+                                toml::from_str(&cargo_toml).unwrap_or_else(|error| {
+                                    panic!("{case}: invalid Cargo.toml: {error}")
+                                });
                             assert_eq!(
                                 document["package"]["name"].as_str(),
                                 Some("matrix-app"),

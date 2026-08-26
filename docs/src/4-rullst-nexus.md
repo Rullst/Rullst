@@ -25,17 +25,28 @@ impl NexusModel for User {
 }
 ```
 
-And then, in your routing file (usually `src/lib.rs` or `src/main.rs`), you "hook up" the Nexus engine:
+Then select an explicit access policy in your routing file (usually `src/lib.rs`
+or `src/main.rs`) and mount the resulting router:
 
 ```rust
+let nexus_auth =
+    rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
 let nexus = rullst::nexus::Nexus::new()
+    .with_auth_policy(nexus_auth)
     .with_brand("SaaS Admin")
     .register::<models::user::User>()
-    .build();
+    .build()?;
 
 // ... and add it to the final router:
 let router = router.nest_axum("/nexus", nexus);
 ```
+
+The helper is intentionally asymmetric: debug builds allow only requests whose
+`ConnectInfo` peer is loopback; release builds load and validate
+`NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`. Missing connection metadata
+is denied, and `APP_ENV` cannot turn credential-free access on in a release
+binary. Applications can call `basic_from_env()` directly in debug when testing
+the production authentication flow.
 
 ## 👤 Example: Dynamic Profile Settings in Blueprints
 
@@ -61,18 +72,28 @@ pub struct Profile {
 
 When registered in Nexus:
 ```rust
+let nexus_auth =
+    rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
 let nexus = rullst::nexus::Nexus::new()
+    .with_auth_policy(nexus_auth)
     .with_brand("Portfolio Admin")
     .register::<models::profile::Profile>()
-    .build();
+    .build()?;
 ```
 
 Administrators can edit the developer profile fields directly at `/nexus`. Changes to name, title, bio, email, website, avatar image, and social URLs immediately update the live portfolio website without requiring code changes or server redeployment!
 
 ## Benefits of Nexus
 
-1. **Zero Front-end Effort:** Nexus renders responsive tables, creation/edition modals, and delete buttons using HTML and HTMX without writing a single line of JS.
-2. **Totally Secure:** Nexus lives *inside* the same compiled binary. There is no need for separate APIs or complex permissions to access the database; it uses the secure global connection pool.
-3. **Highly Customizable:** The `hidden` and `readonly` flags in `FieldMeta` ensure you control exactly what the administrative team can see and modify.
+1. **Small Front-end Surface:** Nexus renders responsive tables, forms and
+   actions with server-side HTML and HTMX.
+2. **Fail-closed Construction:** Nexus cannot build without a selected access
+   policy. Being in the same binary is not itself a security guarantee; the
+   application still owns TLS, trusted proxies, roles, ownership, field policy
+   and database permissions.
+3. **Server-side Field Policy:** `hidden` and `readonly` metadata improve the UI,
+   while authorization and write restrictions are also enforced on the server.
 
-To access it, open your browser at the `/nexus` route on your app.
+In a generated debug application, open `/nexus` from the same machine. In a
+release deployment, configure strong unique credentials and the verified TLS
+boundary before exposing the route.

@@ -1,5 +1,11 @@
 # Rullst Security - Master Roadmap 🛡️⚡
 
+> **Status policy (2026-08-26):** the defensive ideas below are preserved, but
+> legacy `[x]` markers do not establish absolute claims such as zero leakage,
+> universal OWASP coverage, certification, or live external intelligence. See
+> the audited [`rullst-security` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](../docs/src/capability-ledger.md).
+
 `rullst-security` is the dedicated high-assurance security suite of the Rullst Framework, responsible for threat deception, sanitization, access guards, auditability, autonomous AI-driven defense, and post-quantum protection.
 
 ---

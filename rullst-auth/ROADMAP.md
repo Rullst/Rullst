@@ -1,5 +1,10 @@
 # Rullst Auth - Roadmap
 
+> **Status policy (2026-08-26):** the ideas below are preserved, but legacy
+> checkboxes are not broader production guarantees. See the audited
+> [`rullst-auth` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and the
+> [capability ledger](../docs/src/capability-ledger.md) for current boundaries.
+
 Rullst Auth is the core security and authentication module for the framework. While we already support Social Auth (`rullst-connect`), Passkeys (WebAuthn), and Local Auth (Sessions/JWT), the journey to enterprise-grade security continues.
 
 ## Phase 1: Access Control & Permissions

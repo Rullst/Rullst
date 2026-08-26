@@ -8,6 +8,11 @@ Studio is not an authentication boundary. Keep it on a loopback or otherwise
 trusted interface, and do not expose it publicly without application-level
 authentication, authorization, TLS, and network policy.
 
+Generated Blog, Portfolio, LMS, ERP, and SaaS applications start the standalone
+server only in debug builds and link to `http://127.0.0.1:5555`. Release builds
+do not start it; a runtime `APP_ENV` value cannot override that compile-time
+boundary.
+
 ## Running Studio
 
 The CLI can launch the local server:
