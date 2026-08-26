@@ -1,5 +1,5 @@
 codecov:
-  require_ci_to_pass: false
+  require_ci_to_pass: true
   notify:
     after_n_builds: 1
     wait_for_ci: true
@@ -12,20 +12,42 @@ coverage:
     project:
       default:
         target: 90%
-        threshold: 1%
+        threshold: 0%
     patch:
       default:
-        target: auto
-        threshold: 1%
+        target: 95%
+        threshold: 0%
+
+component_management:
+  individual_components:
+    - component_id: authentication
+      name: Authentication (rullst-auth)
+      paths:
+        - "rullst-auth/src/**"
+      statuses:
+        - type: project
+          target: 95%
+          threshold: 0%
+    - component_id: security
+      name: Security (rullst-security)
+      paths:
+        - "rullst-security/src/**"
+      statuses:
+        - type: project
+          target: 95%
+          threshold: 0%
+
+comment:
+  layout: "header, diff, components, files"
+  behavior: default
+  require_changes: false
 
 ignore:
   - "examples/**/*"
-  - "cargo-rullst/**/*"
-  - "rullst-macros/**/*"
-  - "rullst-orm-macros/**/*"
   - "benches/**/*"
   - "benchmark/**/*"
   - "target/**/*"
   - "docs/**/*"
+  - "**/test_support.rs"
   - "**/*_tests.rs"
   - "**/tests/**/*"

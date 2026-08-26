@@ -74,10 +74,20 @@ impl Container {
 /// Axum extractor for dependencies managed by Rullst DI Container.
 ///
 /// Usage in route handlers:
-/// ```rust,ignore
-/// pub async fn index(user_svc: Inject<UserService>) -> Result<Json<Vec<User>>, AppError> {
-///     let users = user_svc.list_users().await?;
-///     Ok(Json(users))
+/// ```rust,no_run
+/// use axum::Json;
+/// use rullst_core::di::Inject;
+///
+/// #[derive(Clone)]
+/// struct User;
+/// struct UserService;
+///
+/// impl UserService {
+///     async fn list_users(&self) -> Vec<User> { vec![] }
+/// }
+///
+/// async fn index(Inject(user_svc): Inject<UserService>) -> Json<Vec<User>> {
+///     Json(user_svc.list_users().await)
 /// }
 /// ```
 pub struct Inject<T: Send + Sync + 'static>(pub Arc<T>);

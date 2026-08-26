@@ -3,26 +3,26 @@
 //! Provides a unified API for dispatching and processing background jobs.
 //!
 //! ## Drivers
-//! - **SQLite** (`queue-sqlite`, enabled by default): Uses an auto-created
-//!   `rullst_jobs` table. Zero config.
+//! - **SQLite** (`queue-sqlite`, opt-in): Uses an auto-created `rullst_jobs`
+//!   table.
 //! - **Redis** (optional): Requires the `queue-redis` feature flag.
 //!
 //! ## Quick Start
-//! ```rust,ignore
-//! use rullst::queue::{Queue, Worker};
+//! ```rust,no_run
+//! use rullst_core::queue::{Queue, QueueError, Worker, WorkerHandle};
 //!
-//! // Dispatch a job
-//! let queue = Queue::sqlite("sqlite://rullst.db").await?;
-//! queue.dispatch("send_email", serde_json::json!({"to": "user@example.com"})).await?;
+//! async fn configure_worker(queue: &Queue) -> Result<WorkerHandle, QueueError> {
+//!     queue
+//!         .dispatch("send_email", serde_json::json!({"to": "user@example.com"}))
+//!         .await?;
 //!
-//! // Process jobs in the background
-//! let mut worker = Worker::new(&queue);
-//! worker.register("send_email", |payload| async move {
-//!     println!("Sending email to: {}", payload["to"]);
-//!     Ok(())
-//! });
-//! let worker_handle = worker.run()?;
-//! # let _ = worker_handle;
+//!     let mut worker = Worker::new(queue);
+//!     worker.register("send_email", |payload| async move {
+//!         println!("Sending email to: {}", payload["to"]);
+//!         Ok(())
+//!     });
+//!     worker.run()
+//! }
 //! ```
 
 #[cfg(feature = "queue-redis")]

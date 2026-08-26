@@ -59,13 +59,12 @@ pub enum ServerError {
 /// a single fluent chain.
 ///
 /// # Example
-/// ```rust,ignore
-/// use rullst::{Server, routes, routing::get};
+/// ```rust,no_run
+/// use rullst_core::{Server, routes, routing::get};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     Server::new(routes![get("/" => || async { "OK" })])
-///         .with_db("sqlite://app.db")
 ///         .run(3000)
 ///         .await?;
 ///     Ok(())
@@ -121,16 +120,21 @@ impl Server {
     /// Attach a task scheduler that runs alongside the HTTP server.
     ///
     /// # Example
-    /// ```rust,ignore
-    /// use rullst::scheduler::Scheduler;
+    /// ```rust,no_run
+    /// use rullst_core::{Server, Scheduler, routes, routing::get};
     ///
-    /// let scheduler = Scheduler::new()
-    ///     .task("0 0 * * *", || async { cleanup().await });
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let scheduler = Scheduler::new()
+    ///         .task("0 0 * * *", || async { println!("daily cleanup"); })?;
+    ///     let router = routes![get("/" => || async { "OK" })];
     ///
-    /// Server::new(router)
-    ///     .schedule(scheduler)
-    ///     .run(3000)
-    ///     .await?;
+    ///     Server::new(router)
+    ///         .schedule(scheduler)
+    ///         .run(3000)
+    ///         .await?;
+    ///     Ok(())
+    /// }
     /// ```
     pub fn schedule(mut self, scheduler: Scheduler) -> Self {
         self.scheduler = Some(scheduler);

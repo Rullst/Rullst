@@ -5,6 +5,9 @@ on:
     branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main", "dev" ]
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,11 +48,54 @@ jobs:
       - name: Generate merged coverage report
         run: |
           cargo llvm-cov report --lcov --output-path lcov.info \
-            --ignore-filename-regex "examples/|cargo-rullst/|rullst-macros/|rullst-orm-macros/|benchmark/"
+            --ignore-filename-regex "examples/|benches/|benchmark/|test_support\\.rs$"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: lcov.info
-          fail_ci_if_error: false
+          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  branch-coverage:
+    name: Measure Branch Coverage (nightly, observational)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up nightly Rust for branch instrumentation
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Run branch-instrumented workspace tests
+        run: |
+          cargo llvm-cov --branch --no-report --all-features --workspace
+
+      - name: Generate branch coverage evidence
+        run: |
+          cargo llvm-cov report --branch --json --summary-only \
+            --output-path branch-coverage.json \
+            --ignore-filename-regex "examples/|benches/|benchmark/|test_support\\.rs$"
+          cargo llvm-cov report --branch --text \
+            --output-path branch-coverage.txt \
+            --ignore-filename-regex "examples/|benches/|benchmark/|test_support\\.rs$"
+          tail -n 25 branch-coverage.txt
+
+      - name: Preserve branch coverage evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: branch-coverage-${{ github.sha }}
+          path: |
+            branch-coverage.json
+            branch-coverage.txt
+          if-no-files-found: error
+          retention-days: 30

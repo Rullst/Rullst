@@ -6,16 +6,22 @@ use serde::Deserialize;
 /// deserialize URL query strings into this struct.
 ///
 /// # Example (Axum)
-/// ```rust,ignore
-/// async fn auth_callback(Query(params): Query<AuthCallback>) -> impl IntoResponse {
+/// ```rust,no_run
+/// use axum::{
+///     extract::Query,
+///     response::{IntoResponse, Response},
+/// };
+/// use rullst_connect::extractors::AuthCallback;
+///
+/// async fn auth_callback(Query(params): Query<AuthCallback>) -> Response {
 ///     if let Some(error) = params.error {
-///         return format!("Auth failed: {}", error);
+///         return format!("Auth failed: {error}").into_response();
 ///     }
-///     
+///
 ///     let Some(code) = params.code else {
 ///         return "Authorization code missing".into_response();
 ///     };
-///     // Handle token exchange...
+///     format!("Exchange authorization code: {code}").into_response()
 /// }
 /// ```
 #[derive(Debug, Deserialize, Clone, PartialEq)]

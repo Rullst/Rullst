@@ -12,13 +12,22 @@ mod live_parser;
 /// and automatically escapes dynamic variables to prevent XSS.
 ///
 /// # Example
+///
+/// This block is ignored only in the standalone proc-macro crate because the
+/// expansion deliberately calls the `rullst::html` runtime and adding that
+/// facade here would create a circular development dependency. The same dynamic
+/// expansion is compiled and asserted in `rullst/tests/html_snapshot_tests.rs`.
+///
 /// ```rust,ignore
+/// use rullst_macros::html;
+///
 /// let name = "Mundo";
 /// let page = html! {
 ///     <div class="container">
 ///         <h1>"Olá, " {name} "!"</h1>
 ///     </div>
 /// };
+/// assert!(page.contains("Olá, Mundo!"));
 /// ```
 #[proc_macro]
 pub fn html(input: TokenStream) -> TokenStream {

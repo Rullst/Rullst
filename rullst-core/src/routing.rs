@@ -186,13 +186,13 @@ where
 /// Declarative macro for building a [`Router`] from a list of HTTP route definitions.
 ///
 /// # Example
-/// ```rust,ignore
-/// use rullst::{routes, routing::{get, post}};
+/// ```rust,no_run
+/// use rullst_core::{routes, routing::{get, post}};
 ///
 /// async fn home_handler() -> &'static str { "home" }
 /// async fn create_user() -> &'static str { "created" }
 ///
-/// let router = routes![
+/// let _router = routes![
 ///     get("/" => home_handler),
 ///     post("/users" => create_user),
 /// ];

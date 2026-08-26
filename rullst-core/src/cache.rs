@@ -7,21 +7,23 @@
 //! - **Redis** (optional): Requires the `cache-redis` feature flag.
 //!
 //! ## Quick Start
-//! ```rust,ignore
-//! use rullst::cache::Cache;
+//! ```rust,no_run
+//! use rullst_core::cache::{Cache, CacheError};
 //!
-//! let cache = Cache::memory();
+//! async fn cache_example() -> Result<(), CacheError> {
+//!     let cache = Cache::memory();
 //!
-//! // Store a value with 60-second TTL
-//! cache.put("user:42:name", "Alice", Some(60)).await?;
+//!     cache.put("user:42:name", "Alice", Some(60)).await?;
+//!     let name = cache.get("user:42:name").await?;
+//!     assert_eq!(name.as_deref().map(String::as_str), Some("Alice"));
 //!
-//! // Retrieve it
-//! let name = cache.get("user:42:name").await?; // Some("Alice")
+//!     let value = cache.remember("expensive_key", 300, || async {
+//!         Ok("computed_value".to_string())
+//!     }).await?;
+//!     assert_eq!(value.as_str(), "computed_value");
 //!
-//! // Cache-aside pattern: fetch from cache or compute + store
-//! let value = cache.remember("expensive_key", 300, || async {
-//!     Ok("computed_value".to_string())
-//! }).await?;
+//!     Ok(())
+//! }
 //! ```
 
 use async_trait::async_trait;
@@ -432,11 +434,15 @@ impl Cache {
     /// This is the **cache-aside** (or "remember") pattern — the most common caching strategy.
     ///
     /// # Example
-    /// ```rust,ignore
-    /// let bio = cache.remember("user:42:bio", 300, || async {
-    ///     let user = User::find(42).await.map_err(|e| CacheError::Driver(e.to_string()))?;
-    ///     Ok(user.bio)
-    /// }).await?;
+    /// ```rust,no_run
+    /// use std::sync::Arc;
+    /// use rullst_core::cache::{Cache, CacheError};
+    ///
+    /// async fn load_bio(cache: &Cache) -> Result<Arc<String>, CacheError> {
+    ///     cache.remember("user:42:bio", 300, || async {
+    ///         Ok("Example biography".to_string())
+    ///     }).await
+    /// }
     /// ```
     pub async fn remember<F, Fut>(
         &self,

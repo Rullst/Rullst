@@ -2,7 +2,7 @@
 //!
 //! A convenient module to import everything you need to authenticate users via OAuth2.
 //!
-//! ```rust,ignore
+//! ```rust
 //! use rullst_connect::prelude::*;
 //! ```
 

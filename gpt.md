@@ -8,7 +8,7 @@
 > **Atualização de hardening — 26 de agosto de 2026:** a análise original e sua
 > nota de 5,0 foram preservadas como baseline histórico. A coluna “Nota atual”,
 > o §15 e [`docs/src/hardening-status.md`](docs/src/hardening-status.md) registram
-> o estado do `HEAD` `0918e2ee158d` mais o worktree atual, já validado pela tríade
+> o estado do `HEAD` `07acd0ae1510` mais o worktree atual, já validado pela tríade
 > local em Rust 1.98.0.
 
 ## 1. Resposta direta

@@ -1,7 +1,7 @@
 # Hardening status — rastreabilidade da avaliação `gpt.md`
 
 > Estado pontual do worktree em **2026-08-26**, baseado no `HEAD`
-> `0918e2ee158d` e nas alterações locais ainda não consolidadas. Este documento
+> `07acd0ae1510` e na auditoria documental local subsequente. Este documento
 > mapeia as recomendações da [avaliação técnica](../../gpt.md); não é certificado,
 > pentest, homologação de provedor nem declaração geral de production-readiness.
 
@@ -185,6 +185,15 @@ cargo test --workspace --all-features                                      PASS
 cargo clippy --workspace --all-targets --all-features -- -D warnings       PASS
 cargo fmt --all -- --check                                                 PASS
 ```
+
+O teste workspace/all-features foi reexecutado pelo mantenedor após `cargo
+clean`, com um único job para limitar pressão de memória, e repetido sobre o
+worktree após a auditoria dos exemplos. Nove dos dez doctests antes marcados
+`ignore` agora compilam; o único restante está justificado na crate proc-macro e
+tem cobertura equivalente na facade. O teste de driver de banco ignorado sob a
+combinação artificial `--all-features` continua exigindo as matrizes exclusivas
+por driver. O Clippy precisou baixar o arquivo Swagger UI pinado depois da
+limpeza do target; após liberar esse acesso, terminou sem lint de código.
 
 Os testes de integração que abrem loopback foram executados fora do sandbox
 restritivo; o restante permaneceu local. Cargo também emitiu um aviso de
