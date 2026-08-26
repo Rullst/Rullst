@@ -150,13 +150,12 @@ fn inspect_models() -> Result<(), Box<dyn std::error::Error>> {
     for entry in fs::read_dir(models_dir)? {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "rs") && path.file_name().unwrap() != "mod.rs"
-        {
+        let Some(file_name) = path.file_name() else {
+            continue;
+        };
+        if path.extension().is_some_and(|ext| ext == "rs") && file_name != "mod.rs" {
             let content = fs::read_to_string(&path)?;
-            println!(
-                "\n  📦 Model File: {}",
-                path.file_name().unwrap().to_string_lossy().cyan()
-            );
+            println!("\n  📦 Model File: {}", file_name.to_string_lossy().cyan());
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("pub struct") || trimmed.starts_with("pub enum") {

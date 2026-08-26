@@ -75,8 +75,7 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
         let mut js_path = path.clone();
 
         for segment in path.split('/') {
-            if segment.starts_with(':') {
-                let arg_name = &segment[1..];
+            if let Some(arg_name) = segment.strip_prefix(':') {
                 path_args.push(format!("{}: string | number", arg_name));
                 js_path = js_path.replace(segment, &format!("${{{}}}", arg_name));
             }

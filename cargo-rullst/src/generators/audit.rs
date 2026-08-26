@@ -18,29 +18,29 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
                 let path = entry.path();
                 if path.is_dir() {
                     visit_dirs(&path, warnings, count);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        for line in content.lines() {
-                            let trimmed = line.trim();
-                            if (trimmed.contains("\":id\"")
-                                || trimmed.contains("/:id")
-                                || trimmed.contains("/:user_id")
-                                || trimmed.contains("/:order_id")
-                                || trimmed.contains("/:item_id")
-                                || trimmed.contains("/{id}")
-                                || trimmed.contains("/{user_id}"))
-                                && !content.contains("RbacGuard")
-                                && !content.contains("authorize_owner")
-                                && !content.contains("UserContext")
-                            {
-                                let msg = format!(
-                                    "File '{}': Parameterized route detected without RbacGuard ownership authorization",
-                                    path.display()
-                                );
-                                if !warnings.contains(&msg) {
-                                    warnings.push(msg);
-                                    *count += 1;
-                                }
+                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+                    && let Ok(content) = fs::read_to_string(&path)
+                {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if (trimmed.contains("\":id\"")
+                            || trimmed.contains("/:id")
+                            || trimmed.contains("/:user_id")
+                            || trimmed.contains("/:order_id")
+                            || trimmed.contains("/:item_id")
+                            || trimmed.contains("/{id}")
+                            || trimmed.contains("/{user_id}"))
+                            && !content.contains("RbacGuard")
+                            && !content.contains("authorize_owner")
+                            && !content.contains("UserContext")
+                        {
+                            let msg = format!(
+                                "File '{}': Parameterized route detected without RbacGuard ownership authorization",
+                                path.display()
+                            );
+                            if !warnings.contains(&msg) {
+                                warnings.push(msg);
+                                *count += 1;
                             }
                         }
                     }
@@ -67,31 +67,31 @@ pub fn scan_unsafe_code(src_dir: &Path) -> (usize, Vec<String>) {
                 let path = entry.path();
                 if path.is_dir() {
                     visit_dirs(&path, warnings, count);
-                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        for (line_idx, line) in content.lines().enumerate() {
-                            let trimmed = line.trim();
-                            if trimmed.starts_with("//")
-                                || trimmed.starts_with("/*")
-                                || trimmed.starts_with('*')
-                            {
-                                continue;
-                            }
-                            if trimmed.contains("unsafe {")
-                                || trimmed.contains("unsafe fn")
-                                || trimmed.contains("unsafe impl")
-                                || trimmed.starts_with("unsafe ")
-                            {
-                                let msg = format!(
-                                    "File '{}:{}': Unsafe Rust detected: `{}`",
-                                    path.display(),
-                                    line_idx + 1,
-                                    trimmed
-                                );
-                                if !warnings.contains(&msg) {
-                                    warnings.push(msg);
-                                    *count += 1;
-                                }
+                } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+                    && let Ok(content) = fs::read_to_string(&path)
+                {
+                    for (line_idx, line) in content.lines().enumerate() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with("//")
+                            || trimmed.starts_with("/*")
+                            || trimmed.starts_with('*')
+                        {
+                            continue;
+                        }
+                        if trimmed.contains("unsafe {")
+                            || trimmed.contains("unsafe fn")
+                            || trimmed.contains("unsafe impl")
+                            || trimmed.starts_with("unsafe ")
+                        {
+                            let msg = format!(
+                                "File '{}:{}': Unsafe Rust detected: `{}`",
+                                path.display(),
+                                line_idx + 1,
+                                trimmed
+                            );
+                            if !warnings.contains(&msg) {
+                                warnings.push(msg);
+                                *count += 1;
                             }
                         }
                     }

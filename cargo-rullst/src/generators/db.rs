@@ -22,7 +22,7 @@ pub fn run_project_db_command(command: &str) -> Result<(), Box<dyn std::error::E
     );
 
     let status = std::process::Command::new("cargo")
-        .args(&["run", "--", command])
+        .args(["run", "--", command])
         .status()?;
 
     if !status.success() {

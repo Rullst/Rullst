@@ -65,7 +65,7 @@ async fn test_stripe_provider_mock_checkout() {
 
 #[tokio::test]
 async fn test_stripe_provider_webhook_parsing() {
-    let provider = StripeProvider::new("mock_key".to_string(), "".to_string());
+    let provider = StripeProvider::new("mock_key".to_string(), "mock_secret".to_string());
 
     let payload = serde_json::json!({
         "type": "customer.subscription.updated",
@@ -86,8 +86,8 @@ async fn test_stripe_provider_webhook_parsing() {
     })
     .to_string();
 
-    let headers = std::collections::HashMap::new();
-    // With empty secret, it skips signature verification
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("stripe-signature".to_string(), "mock_secret".to_string());
     let event = provider
         .handle_webhook(payload.as_bytes(), &headers)
         .unwrap();
@@ -99,13 +99,14 @@ async fn test_stripe_provider_webhook_parsing() {
 
 #[tokio::test]
 async fn test_stripe_provider_webhook_uninteresting() {
-    let provider = StripeProvider::new("mock_key".to_string(), "".to_string());
+    let provider = StripeProvider::new("mock_key".to_string(), "mock_secret".to_string());
     let payload = serde_json::json!({
         "type": "invoice.paid"
     })
     .to_string();
 
-    let headers = std::collections::HashMap::new();
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("stripe-signature".to_string(), "mock_secret".to_string());
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
     assert!(res.unwrap_err().to_string().contains("Uninteresting"));
@@ -133,7 +134,7 @@ async fn test_lemonsqueezy_provider_mock_checkout() {
 #[tokio::test]
 async fn test_lemonsqueezy_provider_webhook_parsing() {
     use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "".to_string());
+    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
 
     let payload = serde_json::json!({
         "meta": {
@@ -152,7 +153,8 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
     })
     .to_string();
 
-    let headers = std::collections::HashMap::new();
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("x-signature".to_string(), "mock_secret".to_string());
     let event = provider
         .handle_webhook(payload.as_bytes(), &headers)
         .unwrap();
@@ -166,7 +168,7 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
 #[tokio::test]
 async fn test_lemonsqueezy_webhook_uninteresting() {
     use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "".to_string());
+    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
     let payload = serde_json::json!({
         "meta": {
             "event_name": "order_created"
@@ -174,7 +176,8 @@ async fn test_lemonsqueezy_webhook_uninteresting() {
     })
     .to_string();
 
-    let headers = std::collections::HashMap::new();
+    let mut headers = std::collections::HashMap::new();
+    headers.insert("x-signature".to_string(), "mock_secret".to_string());
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
     assert!(res.unwrap_err().to_string().contains("Uninteresting"));

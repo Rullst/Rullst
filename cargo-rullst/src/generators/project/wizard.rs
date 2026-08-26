@@ -2,10 +2,7 @@
 
 use colored::*;
 
-use crate::blueprints::{
-    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
-    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
-};
+use crate::blueprints::BLANK_BLUEPRINT_ID;
 
 pub struct ProjectWizardOptions {
     pub name: String,

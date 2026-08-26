@@ -32,7 +32,7 @@ pub async fn generate_models_from_db(
             "sqlite" => get_sqlite_columns(&mut conn, table).await?,
             "postgres" => get_postgres_columns(&mut conn, table).await?,
             "mysql" => get_mysql_columns(&mut conn, table).await?,
-            _ => unreachable!(),
+            _ => return Err("Unsupported driver. Use sqlite, postgres, or mysql".into()),
         };
 
         let struct_code = generate_struct(table, &columns);

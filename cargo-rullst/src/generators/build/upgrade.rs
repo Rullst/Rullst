@@ -155,32 +155,32 @@ fn apply_self_healing_codemods() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let compiled_rules = vec![
-            (
-                regex::Regex::new(r#"\bold_initializer\s*\(\s*\)"#)?,
-                "Router::new()",
-                "Legacy old_initializer() -> Router::new()",
-            ),
-            (
-                regex::Regex::new(r#"\brullst::routing::old_initializer\b"#)?,
-                "rullst::routing::Router::new",
-                "Legacy router initialization path",
-            ),
-            (
-                regex::Regex::new(r#"\buse\s+sqlx::"#)?,
-                "use rullst::db::sqlx::",
-                "Enforce Dependency Shielding for sqlx",
-            ),
-            (
-                regex::Regex::new(r#"\buse\s+axum::"#)?,
-                "use rullst::server::",
-                "Enforce Dependency Shielding for axum",
-            ),
-            (
-                regex::Regex::new(r#"\buse\s+tokio::"#)?,
-                "use rullst::runtime::",
-                "Enforce Dependency Shielding for tokio",
-            ),
-        ];
+        (
+            regex::Regex::new(r#"\bold_initializer\s*\(\s*\)"#)?,
+            "Router::new()",
+            "Legacy old_initializer() -> Router::new()",
+        ),
+        (
+            regex::Regex::new(r#"\brullst::routing::old_initializer\b"#)?,
+            "rullst::routing::Router::new",
+            "Legacy router initialization path",
+        ),
+        (
+            regex::Regex::new(r#"\buse\s+sqlx::"#)?,
+            "use rullst::db::sqlx::",
+            "Enforce Dependency Shielding for sqlx",
+        ),
+        (
+            regex::Regex::new(r#"\buse\s+axum::"#)?,
+            "use rullst::server::",
+            "Enforce Dependency Shielding for axum",
+        ),
+        (
+            regex::Regex::new(r#"\buse\s+tokio::"#)?,
+            "use rullst::runtime::",
+            "Enforce Dependency Shielding for tokio",
+        ),
+    ];
 
     let mut applied_count = 0;
     if Path::new("src").exists() {

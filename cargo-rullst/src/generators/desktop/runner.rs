@@ -52,10 +52,9 @@ fn run_desktop(omni_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         .current_dir(omni_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
-        .spawn()
-        .expect("Failed to execute cargo run");
+        .spawn()?;
 
-    let stdout = child.stdout.take().expect("Failed to open stdout");
+    let stdout = child.stdout.take().ok_or("Failed to open stdout")?;
 
     let launched = with_spinner(
         "🚀 Soon the Omni window will automatically open...",
@@ -78,7 +77,7 @@ fn run_desktop(omni_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", "✅ Omni window launched successfully!".green().bold());
     }
 
-    let status = child.wait().expect("Failed to wait on child");
+    let status = child.wait()?;
     if !status.success() {
         std::process::exit(1);
     }
@@ -91,8 +90,7 @@ fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error:
         .arg("run")
         .arg("-q")
         .current_dir(".")
-        .spawn()
-        .expect("Failed to spawn Rullst backend");
+        .spawn()?;
     let backend_guard = ChildGuard(backend);
 
     println!("⏳ Waiting for backend to bind...");
@@ -123,11 +121,11 @@ fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error:
         };
 
         let _ = std::process::Command::new(&adb_cmd)
-            .args(&["reverse", "tcp:3000", "tcp:3000"])
+            .args(["reverse", "tcp:3000", "tcp:3000"])
             .status()
             .or_else(|_| {
                 std::process::Command::new("adb")
-                    .args(&["reverse", "tcp:3000", "tcp:3000"])
+                    .args(["reverse", "tcp:3000", "tcp:3000"])
                     .status()
             });
     }
@@ -135,7 +133,7 @@ fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error:
     match get_tauri_command(omni_dir) {
         Ok(mut tauri_cmd) => {
             tauri_cmd.arg(platform).arg("dev").current_dir(omni_dir);
-            let status = tauri_cmd.status().expect("Failed to run cargo tauri dev");
+            let status = tauri_cmd.status()?;
 
             drop(backend_guard);
             if !status.success() {
@@ -171,7 +169,7 @@ pub fn get_tauri_command(
 
     let has_npx = if cfg!(windows) {
         std::process::Command::new("npx.cmd")
-            .args(&["--version"])
+            .args(["--version"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -186,11 +184,11 @@ pub fn get_tauri_command(
     if has_npx {
         let cmd = if cfg!(windows) {
             let mut c = std::process::Command::new("npx.cmd");
-            c.args(&["--yes", "@tauri-apps/cli"]);
+            c.args(["--yes", "@tauri-apps/cli"]);
             c
         } else {
             let mut c = std::process::Command::new("npx");
-            c.args(&["--yes", "@tauri-apps/cli"]);
+            c.args(["--yes", "@tauri-apps/cli"]);
             c
         };
         return Ok(cmd);
@@ -202,7 +200,7 @@ pub fn get_tauri_command(
 
     let installed = with_spinner("🚀 Installing Omni background tools...", || {
         std::process::Command::new("cargo")
-            .args(&["install", "tauri-cli"])
+            .args(["install", "tauri-cli"])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()

@@ -26,13 +26,13 @@ fn is_version_newer(current: &str, latest: &str) -> bool {
 
 pub fn check_update_available() -> Option<String> {
     let cache_path = get_cache_path();
-    if cache_path.exists() {
-        if let Ok(cached_version) = std::fs::read_to_string(&cache_path) {
-            let cached_version = cached_version.trim().to_string();
-            let current_version = env!("CARGO_PKG_VERSION");
-            if is_version_newer(current_version, &cached_version) {
-                return Some(cached_version);
-            }
+    if cache_path.exists()
+        && let Ok(cached_version) = std::fs::read_to_string(&cache_path)
+    {
+        let cached_version = cached_version.trim().to_string();
+        let current_version = env!("CARGO_PKG_VERSION");
+        if is_version_newer(current_version, &cached_version) {
+            return Some(cached_version);
         }
     }
     None

@@ -260,10 +260,10 @@ pub async fn run_docs_dev(
     let rebuild_root = project_root.to_path_buf();
     let (sender, receiver) = mpsc::channel();
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-        if let Ok(event) = event {
-            if event_requires_rebuild(&event.paths, &output_dir, &current_dir) {
-                let _ = sender.send(());
-            }
+        if let Ok(event) = event
+            && event_requires_rebuild(&event.paths, &output_dir, &current_dir)
+        {
+            let _ = sender.send(());
         }
     })?;
     watcher.watch(&source_dir, RecursiveMode::Recursive)?;

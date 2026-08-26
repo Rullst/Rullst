@@ -1,8 +1,8 @@
+#[cfg(feature = "orm")]
+use rullst::feature::DbFeatureDriver;
 use rullst::feature::{
     self, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
 };
-#[cfg(feature = "orm")]
-use rullst::feature::DbFeatureDriver;
 #[cfg(feature = "orm")]
 use rullst_orm::Orm;
 use std::fs;

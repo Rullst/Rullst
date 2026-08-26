@@ -8,10 +8,10 @@ use std::path::Path;
 pub fn generate_scalar_docs() -> Result<(), Box<dyn std::error::Error>> {
     let target_path = Path::new("src/controllers/docs_controller.rs");
 
-    if let Some(parent) = target_path.parent() {
-        if !parent.exists() {
-            fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = target_path.parent()
+        && !parent.exists()
+    {
+        fs::create_dir_all(parent)?;
     }
 
     let code_content = r###"// src/controllers/docs_controller.rs — Scalar Interactive API Documentation

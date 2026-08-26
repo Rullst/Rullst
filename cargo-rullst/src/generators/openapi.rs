@@ -29,8 +29,8 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
             while j > 0 {
                 j -= 1;
                 let prev_line = lines[j].trim();
-                if prev_line.starts_with("///") {
-                    comments.push(prev_line["///".len()..].trim().to_string());
+                if let Some(stripped) = prev_line.strip_prefix("///") {
+                    comments.push(stripped.trim().to_string());
                 } else if prev_line.starts_with("#[") || prev_line.is_empty() {
                     // skip decorators and empty lines
                     continue;
@@ -66,17 +66,17 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let mut main_content = String::new();
-    if Path::new("src/main.rs").exists() {
-        if let Ok(c) = fs::read_to_string("src/main.rs") {
-            main_content.push_str(&c);
-            main_content.push('\n');
-        }
+    if Path::new("src/main.rs").exists()
+        && let Ok(c) = fs::read_to_string("src/main.rs")
+    {
+        main_content.push_str(&c);
+        main_content.push('\n');
     }
-    if Path::new("src/lib.rs").exists() {
-        if let Ok(c) = fs::read_to_string("src/lib.rs") {
-            main_content.push_str(&c);
-            main_content.push('\n');
-        }
+    if Path::new("src/lib.rs").exists()
+        && let Ok(c) = fs::read_to_string("src/lib.rs")
+    {
+        main_content.push_str(&c);
+        main_content.push('\n');
     }
 
     if main_content.is_empty() {
@@ -104,8 +104,8 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         let openapi_path = path
             .split('/')
             .map(|segment| {
-                if segment.starts_with(':') {
-                    format!("{{{}}}", &segment[1..])
+                if let Some(stripped) = segment.strip_prefix(':') {
+                    format!("{{{}}}", stripped)
                 } else {
                     segment.to_string()
                 }
@@ -116,17 +116,18 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         let description = extract_description_from_handler(&handler_path)
             .unwrap_or_else(|| format!("Action '{}' executed by handler.", handler_path));
 
-        let mut parameters = serde_json::json!([]);
+        let mut parameters = Vec::new();
         for segment in path.split('/') {
-            let param_name = if segment.starts_with(':') {
-                Some(&segment[1..])
-            } else if segment.starts_with('{') && segment.ends_with('}') && segment.len() > 2 {
-                Some(&segment[1..segment.len() - 1])
+            let param_name = if let Some(stripped) = segment.strip_prefix(':') {
+                Some(stripped)
             } else {
-                None
+                segment
+                    .strip_prefix('{')
+                    .and_then(|s| s.strip_suffix('}'))
+                    .filter(|s| !s.is_empty())
             };
             if let Some(p) = param_name {
-                parameters.as_array_mut().unwrap().push(serde_json::json!({
+                parameters.push(serde_json::json!({
                     "name": p,
                     "in": "path",
                     "required": true,
@@ -146,17 +147,21 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-        if !parameters.as_array().unwrap().is_empty() {
-            operation
-                .as_object_mut()
-                .unwrap()
-                .insert("parameters".to_string(), parameters);
+        if !parameters.is_empty()
+            && let Some(op_obj) = operation.as_object_mut()
+        {
+            op_obj.insert(
+                "parameters".to_string(),
+                serde_json::Value::Array(parameters),
+            );
         }
 
         let path_item = paths_map
             .entry(openapi_path)
             .or_insert_with(|| serde_json::json!({}));
-        path_item.as_object_mut().unwrap().insert(method, operation);
+        if let Some(item_obj) = path_item.as_object_mut() {
+            item_obj.insert(method, operation);
+        }
     }
 
     let openapi = serde_json::json!({

@@ -421,7 +421,7 @@ fn generate_placeholder_icons(icons_dir: &Path) -> Result<(), Box<dyn std::error
 fn run_npm_install(omni_dir: &Path) {
     let has_npm = if cfg!(windows) {
         std::process::Command::new("npm.cmd")
-            .args(&["--version"])
+            .args(["--version"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -437,7 +437,7 @@ fn run_npm_install(omni_dir: &Path) {
         println!("📦 Installing project dependencies via npm...");
         let mut npm_install = if cfg!(windows) {
             let mut c = std::process::Command::new("npm.cmd");
-            c.args(&["install"]);
+            c.args(["install"]);
             c
         } else {
             let mut c = std::process::Command::new("npm");

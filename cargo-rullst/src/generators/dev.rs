@@ -133,12 +133,14 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let mut app_child = cmd.spawn()?;
 
     if is_dash {
-        let stdout = app_child.stdout.take().ok_or_else(|| {
-            std::io::Error::other("cargo stdout was not piped for the dashboard")
-        })?;
-        let stderr = app_child.stderr.take().ok_or_else(|| {
-            std::io::Error::other("cargo stderr was not piped for the dashboard")
-        })?;
+        let stdout = app_child
+            .stdout
+            .take()
+            .ok_or_else(|| std::io::Error::other("cargo stdout was not piped for the dashboard"))?;
+        let stderr = app_child
+            .stderr
+            .take()
+            .ok_or_else(|| std::io::Error::other("cargo stderr was not piped for the dashboard"))?;
         let tx1 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
@@ -159,24 +161,23 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
 
     let watcher_task = tokio::spawn(async move {
         let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
-        let mut watcher = match notify::recommended_watcher(
-            move |res: Result<notify::Event, notify::Error>| {
+        let mut watcher =
+            match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
                     let _ = notify_tx.blocking_send(event);
                 }
-            },
-        ) {
-            Ok(watcher) => watcher,
-            Err(error) => {
-                let message = format!("❌ Failed to initialize the file watcher: {error}");
-                if is_dash {
-                    let _ = log_tx_watcher.send(LogMsg::System(message));
-                } else {
-                    eprintln!("{message}");
+            }) {
+                Ok(watcher) => watcher,
+                Err(error) => {
+                    let message = format!("❌ Failed to initialize the file watcher: {error}");
+                    if is_dash {
+                        let _ = log_tx_watcher.send(LogMsg::System(message));
+                    } else {
+                        eprintln!("{message}");
+                    }
+                    return;
                 }
-                return;
-            }
-        };
+            };
 
         for (path, mode) in [
             (Path::new("src"), RecursiveMode::Recursive),
@@ -211,10 +212,9 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         {
             if entry.path().is_file()
                 && entry.path().extension().and_then(|e| e.to_str()) == Some("rs")
+                && let Ok(content) = fs::read_to_string(entry.path())
             {
-                if let Ok(content) = fs::read_to_string(entry.path()) {
-                    file_cache.insert(entry.path().to_path_buf(), content);
-                }
+                file_cache.insert(entry.path().to_path_buf(), content);
             }
         }
 

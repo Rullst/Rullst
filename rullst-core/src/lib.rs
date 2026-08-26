@@ -169,12 +169,12 @@ pub use resilience::{
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use async_trait::async_trait;
+#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
+pub use feature::DbFeatureDriver;
 #[cfg(not(target_arch = "wasm32"))]
 pub use feature::{
     EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
-pub use feature::DbFeatureDriver;
 #[cfg(not(target_arch = "wasm32"))]
 pub use multitenant::{TenantConfig, TenantLayer, TenantService, TenantStrategy, tenant_layer};
 

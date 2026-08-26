@@ -67,14 +67,12 @@ fn diff_values(old: &Value, new: &Value, sensitive: bool) -> Option<(Value, Valu
                     (Some(old_value), Some(new_value)) => {
                         diff_values(old_value, new_value, is_sensitive(key))
                     }
-                    (Some(old_value), None) => Some((
-                        mask_if_sensitive(key, old_value.clone()),
-                        Value::Null,
-                    )),
-                    (None, Some(new_value)) => Some((
-                        Value::Null,
-                        mask_if_sensitive(key, new_value.clone()),
-                    )),
+                    (Some(old_value), None) => {
+                        Some((mask_if_sensitive(key, old_value.clone()), Value::Null))
+                    }
+                    (None, Some(new_value)) => {
+                        Some((Value::Null, mask_if_sensitive(key, new_value.clone())))
+                    }
                     (None, None) => None,
                 };
 
@@ -90,15 +88,6 @@ fn diff_values(old: &Value, new: &Value, sensitive: bool) -> Option<(Value, Valu
     }
 }
 
-fn parse_or_sentinel(input: &str) -> Value {
-    serde_json::from_str(input).unwrap_or_else(|_| {
-        serde_json::json!({
-            "$audit_error": "invalid_json",
-            "bytes": input.len(),
-        })
-    })
-}
-
 /// Computes a recursively redacted JSON difference.
 ///
 /// Arrays and primitive roots are retained when changed. Invalid JSON is represented by a
@@ -110,8 +99,32 @@ pub fn compute_diff(old_json: &str, new_json: &str) -> (Option<String>, Option<S
         return (None, None);
     }
 
-    let old = parse_or_sentinel(old_json);
-    let new = parse_or_sentinel(new_json);
+    let old_res: Result<Value, _> = serde_json::from_str(old_json);
+    let new_res: Result<Value, _> = serde_json::from_str(new_json);
+
+    if old_res.is_err() || new_res.is_err() {
+        let old_val = match old_res {
+            Ok(v) => mask_nested(v),
+            Err(_) => serde_json::json!({
+                "$audit_error": "invalid_json",
+                "bytes": old_json.len(),
+            }),
+        };
+        let new_val = match new_res {
+            Ok(v) => mask_nested(v),
+            Err(_) => serde_json::json!({
+                "$audit_error": "invalid_json",
+                "bytes": new_json.len(),
+            }),
+        };
+        return (
+            serde_json::to_string(&old_val).ok(),
+            serde_json::to_string(&new_val).ok(),
+        );
+    }
+
+    let old = old_res.unwrap();
+    let new = new_res.unwrap();
     let Some((old_diff, new_diff)) = diff_values(&old, &new, false) else {
         return (None, None);
     };
@@ -148,8 +161,18 @@ mod tests {
     #[test]
     fn invalid_and_non_object_json_changes_are_not_dropped() {
         let invalid = compute_diff("not-json-a", "not-json-b");
-        assert!(invalid.0.as_deref().is_some_and(|value| value.contains("invalid_json")));
-        assert!(invalid.1.as_deref().is_some_and(|value| value.contains("invalid_json")));
+        assert!(
+            invalid
+                .0
+                .as_deref()
+                .is_some_and(|value| value.contains("invalid_json"))
+        );
+        assert!(
+            invalid
+                .1
+                .as_deref()
+                .is_some_and(|value| value.contains("invalid_json"))
+        );
 
         assert_eq!(
             compute_diff("[1,2]", "[1,3]"),

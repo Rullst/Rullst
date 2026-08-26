@@ -87,10 +87,12 @@ impl Migration for MigrationImpl {{
 
 fn get_table_name_from_migration(name: &str) -> String {
     let s = name.to_lowercase();
-    if s.starts_with("create_") && s.ends_with("_table") {
-        s[7..s.len() - 6].to_string()
-    } else if s.starts_with("create_") {
-        s[7..].to_string()
+    if let Some(stripped) = s.strip_prefix("create_") {
+        if let Some(inner) = stripped.strip_suffix("_table") {
+            inner.to_string()
+        } else {
+            stripped.to_string()
+        }
     } else {
         "table_name".to_string()
     }
@@ -106,14 +108,13 @@ pub fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     let mut modules = vec![];
     for path in paths {
         let path = path?.path();
-        if let Some(ext) = path.extension() {
-            if ext == "rs" {
-                if let Some(stem) = path.file_stem() {
-                    let stem_str = stem.to_string_lossy().to_string();
-                    if stem_str != "mod" && stem_str.starts_with('m') {
-                        modules.push(stem_str);
-                    }
-                }
+        if let Some(ext) = path.extension()
+            && ext == "rs"
+            && let Some(stem) = path.file_stem()
+        {
+            let stem_str = stem.to_string_lossy().to_string();
+            if stem_str != "mod" && stem_str.starts_with('m') {
+                modules.push(stem_str);
             }
         }
     }
@@ -235,8 +236,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
                     "        Schema::drop_if_exists(\"{}\").await?;\n",
                     tname
                 ));
-            } else {
-                let db_cols = db_schema.get(tname).unwrap();
+            } else if let Some(db_cols) = db_schema.get(tname) {
                 for field in &ast_table.fields {
                     if !db_cols.contains(&field.name) {
                         up_queries.push(format!("        rullst_orm::sqlx::query(\"ALTER TABLE {} ADD COLUMN {} TEXT\").execute(rullst_orm::Orm::pool()?).await?;\n", tname, field.name));

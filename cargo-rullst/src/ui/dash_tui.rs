@@ -121,12 +121,11 @@ pub async fn run(
     let (key_tx, mut key_rx) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         loop {
-            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150)) {
-                if let Ok(event) = crossterm::event::read() {
-                    if key_tx.send(event).is_err() {
-                        break;
-                    }
-                }
+            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150))
+                && let Ok(event) = crossterm::event::read()
+                && key_tx.send(event).is_err()
+            {
+                break;
             }
         }
     });
