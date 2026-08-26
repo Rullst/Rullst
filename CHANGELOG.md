@@ -32,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Corrected Studio telemetry to display `Unavailable` for unconnected probes and
   aligned README, audit, compliance, example, and roadmap language with actual
   implementation boundaries.
+- Published a [CORS scaffold migration advisory](docs/src/cors-scaffold-security-advisory.md)
+  for applications generated before the fail-closed origin allowlist. Updating
+  the CLI alone does not rewrite middleware already copied into an application.
 
 - **Enterprise Resilience, Memory Safety & Cryptographic Hardening (`rullst-core`, `rullst-security`, `rullst-capital`, `rullst-auth`, `rullst-mail`, `rullst-connect`, `rullst-orm`)**:
   - **Signed Firmware Gate & IoT Claim Containment (`rullst-iot`)**: Replaced permissive OTA signature stubs with strict Ed25519 verification over a target/version/counter/length/SHA-256 manifest, enforced commit-after-verification and monotonic anti-rollback state, and moved deterministic MQTT/HSM/PQC fixtures behind the explicit `experimental-simulators` feature with `Simulated*` names. Firmware flashing, bootloader control, persistent counters, real MQTT transport, HSM backends, and ML-KEM remain unimplemented.

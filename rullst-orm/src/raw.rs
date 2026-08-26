@@ -6,9 +6,9 @@ pub struct RawQueryBuilder {
 }
 
 impl RawQueryBuilder {
-    pub fn new(sql: &str) -> Self {
+    pub fn new(sql: impl Into<String>) -> Self {
         Self {
-            sql: sql.to_string(),
+            sql: sql.into(),
             bindings: Vec::new(),
         }
     }

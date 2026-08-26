@@ -25,6 +25,21 @@ jobs:
         uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
         with:
           tool: cargo-semver-checks
-      - name: Run SemVer checks
-        run: cargo semver-checks check-release -p rullst -p rullst-macros
-
+      - name: Check every published Rust API for SemVer regressions
+        run: |
+          cargo semver-checks check-release \
+            -p rullst-macros \
+            -p rullst-orm-macros \
+            -p rullst-core \
+            -p rullst-orm \
+            -p rullst-iot \
+            -p rullst-mail \
+            -p rullst-ai \
+            -p rullst-connect \
+            -p rullst-security \
+            -p rullst-auth \
+            -p rullst-capital \
+            -p rullst-studio \
+            -p rullst-nexus \
+            -p rullst \
+            -p cargo-rullst

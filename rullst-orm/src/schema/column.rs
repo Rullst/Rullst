@@ -1,5 +1,3 @@
-use super::validation::validate_identifier;
-
 /// Safe values allowed for a column DEFAULT clause.
 ///
 /// Accepting a raw `&str` would allow DDL injection through the DEFAULT
@@ -44,17 +42,14 @@ pub struct Column {
 }
 
 impl Column {
-    /// Creates a new column, validating `name` against SQL identifier rules.
+    /// Creates a new column.
     ///
-    /// # Panics
-    /// Panics if `name` fails identifier validation. Column names are always
-    /// developer-supplied compile-time literals — an invalid name is a bug,
-    /// not a runtime condition.
-    pub fn new(name: &str, col_type: &str) -> Self {
-        let _ = validate_identifier(name);
+    /// Identifier validation is repeated by the fallible schema builder before
+    /// SQL is emitted, including for callers that mutate the public fields.
+    pub fn new(name: impl Into<String>, col_type: impl Into<String>) -> Self {
         Self {
-            name: name.to_string(),
-            col_type: col_type.to_string(),
+            name: name.into(),
+            col_type: col_type.into(),
             is_nullable: true,
             is_primary_key: false,
             is_auto_increment: false,

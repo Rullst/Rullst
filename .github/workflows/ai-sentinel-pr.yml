@@ -1,4 +1,4 @@
-name: AI Security Sentinel & PR Review
+name: PR Security Evidence
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,7 +13,7 @@ env:
 
 jobs:
   pr-security-audit:
-    name: Rullst Security & AST Audit
+    name: Bounded static audit and SBOM
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Monorepo
@@ -23,26 +22,29 @@ jobs:
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
 
-      - name: Run Rullst CLI IDOR & Compliance Audit
+      - name: Run bounded IDOR, dependency, and evidence audit
         run: |
           cargo run -p cargo-rullst --bin rullst -- audit --idor --compliance --sbom
 
-      - name: Audit Git Diff for Security Anti-Patterns
-        id: diff-check
+      - name: Summarize the evidence boundary
         run: |
-          echo "### 🛡️ Rullst PR Security Audit Results" > pr_audit_comment.md
+          echo "### Rullst PR security evidence" > pr_audit_comment.md
           echo "" >> pr_audit_comment.md
           echo "| Check | Status | Details |" >> pr_audit_comment.md
           echo "| :--- | :---: | :--- |" >> pr_audit_comment.md
-          echo "| **Zero-Panic Policy** | ✅ PASS | Verified zero unwrap/expect in production paths |" >> pr_audit_comment.md
-          echo "| **IDOR / Access Control** | ✅ PASS | Parameterized routes checked for RBAC ownership |" >> pr_audit_comment.md
-          echo "| **CycloneDX SBOM** | ✅ PASS | Software Bill of Materials generated |" >> pr_audit_comment.md
-          echo "| **100% Pure-Rustls** | ✅ PASS | No OpenSSL C-bindings introduced |" >> pr_audit_comment.md
+          echo "| **Bounded source heuristics** | EXECUTED | See SECURITY_COMPLIANCE.md for findings, errors, and checks that were not run. |" >> pr_audit_comment.md
+          echo "| **CycloneDX SBOM** | GENERATED | See sbom-cyclonedx.json; generation is not a supply-chain certification. |" >> pr_audit_comment.md
+          echo "| **Zero-panic policy** | NOT EVALUATED HERE | Enforced separately by zero-panics.yml. |" >> pr_audit_comment.md
+          echo "| **TLS / deployment controls** | NOT EVALUATED HERE | Require deployed-system evidence. |" >> pr_audit_comment.md
           echo "" >> pr_audit_comment.md
-          echo "> *Automated report by Rullst DevSecOps Sentinel.*" >> pr_audit_comment.md
+          echo "> This workflow produces bounded evidence; it does not certify OWASP, SOC 2, ISO 27001, FedRAMP, or a cryptographic supply chain." >> pr_audit_comment.md
 
-      - name: Upload Audit Summary Artifact
+      - name: Upload bounded audit artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: pr-security-audit-report
-          path: SECURITY_COMPLIANCE.md
+          path: |
+            SECURITY_COMPLIANCE.md
+            sbom-cyclonedx.json
+            pr_audit_comment.md
+          if-no-files-found: error

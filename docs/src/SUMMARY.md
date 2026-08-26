@@ -64,6 +64,7 @@
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
 - [🔒 Hardening Status](hardening-status.md)
 - [🛡️ Security Architecture](security-architecture.md)
+- [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)
 - [🧾 Security Advisory Exceptions](security-advisory-exceptions.md)
 - [🛡️ Threat Radar & SOC Master Guide](threat-radar-soc-guide.md)
 - [📡 Telemetry & Distributed Tracing](telemetry-guide.md)
@@ -74,7 +75,7 @@
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)
-- [🛡️ CI/CD & Security Workflows](../../../WORKFLOWS.md)
+- [🛡️ CI/CD & Security Workflows](workflows.md)
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)

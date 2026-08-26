@@ -32,10 +32,10 @@ pub struct ChatMessage {
 }
 
 impl ChatSession {
-    pub fn new(title: &str) -> Self {
+    pub fn new(title: impl Into<String>) -> Self {
         Self {
             id: rullst::utils::uuid(),
-            title: title.to_string(),
+            title: title.into(),
             created_at: rullst::utils::now(),
         }
     }

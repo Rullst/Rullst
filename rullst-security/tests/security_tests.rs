@@ -115,7 +115,10 @@ async fn test_csp_security_layer_middleware() {
             "/page",
             get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
         )
-        .layer(CspSecurityLayer);
+        .layer(CspSecurityLayer)
+        .layer(axum::middleware::from_fn(
+            rullst_core::security::headers_middleware,
+        ));
 
     let req = Request::builder().uri("/page").body(Body::empty()).unwrap();
     let res = app.oneshot(req).await.unwrap();

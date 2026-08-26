@@ -294,7 +294,7 @@ impl Orm {
     }
 
     /// Create a raw SQL query builder.
-    pub fn raw(sql: &str) -> crate::raw::RawQueryBuilder {
+    pub fn raw(sql: impl Into<String>) -> crate::raw::RawQueryBuilder {
         crate::raw::RawQueryBuilder::new(sql)
     }
 

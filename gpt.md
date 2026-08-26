@@ -332,6 +332,12 @@ Auth e CSRF usam uma lógica diferente e aceitam `RULLST_ENV`, `APP_ENV`, `prod`
 
 ### P0-09 — O workflow de release está topologicamente quebrado
 
+> **Estado atual — corrigido no workflow:** o release é tag-only, executa a
+> trifeta, valida versões, empacota todos os crates publicáveis antes do primeiro
+> publish, publica pelo DAG, aceita retomada idempotente, gera checksums e agrega
+> evidências/attestations por tag. A descrição abaixo permanece como registro do
+> defeito encontrado no commit originalmente auditado.
+
 **Evidência:** `.github/workflows/release.yml:69-113`; `rullst-core/Cargo.toml:34,42`.
 
 O workflow publica `rullst-core` antes de `rullst-macros`, `rullst-orm-macros` e `rullst-orm`, apesar de Core depender deles. Também omite `rullst-security` e `rullst-iot` do publish, package e hashes. Nexus/Studio dependem de Security, de modo que uma release fresca pode parar no meio depois de pacotes já publicados. O empacotamento/attestation só ocorre **depois** da publicação.
@@ -609,44 +615,61 @@ O volume é um ponto positivo, mas a distribuição mostra uma lacuna: o CLI, qu
 - bancos reais via testcontainers na matriz (`ci.yml:64-72`);
 - targets no_std reais em workflow próprio;
 - ampla presença de fuzz, bench, Kani, Miri, cargo-deny/audit e supply-chain checks;
-- a maioria das actions está pinada.
+- todas as referências atuais de actions estão pinadas por SHA completo.
 
-### 11.3. Gaps dos gates
+### 11.3. Gaps encontrados na revisão original — estado atual anotado
 
-1. **Clippy oficial não usa todas as features.** `ci.yml:39` e `release.yml:38` executam `--all-targets`, não `--all-features`. Um Clippy adicional cobre somente três features do umbrella (`ci.yml:41-42`). Isso não cumpre a regra do AGENTS.
+1. **Corrigido:** CI e release executam Clippy com `--all-targets`,
+   `--all-features` e `-D warnings`.
 
-2. **Features strict de DB não são compiladas isoladamente.** `--all-features` ativa strict Postgres/MySQL/SQLite simultaneamente, mas condicionais do ORM dão precedência a Postgres (`rullst-orm/src/lib.rs:20-44`). Não há jobs dedicados `strict-mysql`, `strict-sqlite` e `strict-postgres`, então branches exclusivas podem apodrecer.
+2. **Mitigado — vale concluir:** há jobs isolados de compilação para
+   `strict-mysql`, `strict-sqlite` e `strict-postgres`. Ainda faltam testes
+   runtime específicos de cada modo strict.
 
-3. **WASM sempre pode ficar verde.** Os dois `cargo check` de `.github/workflows/wasm-matrix.yml:39-40` terminam com `|| true`.
+3. **Corrigido:** os checks WASM não usam mais `|| true`; falhas de compilação
+   agora falham o job.
 
-4. **Unsafe policy é informativa, não enforcement.** `.github/workflows/unsafe-policy.yml:76-77` sempre termina em `exit 0`, e a busca omite Security/IoT. A lógica de comentário SAFETY também não comprova comentário precedente. Há unsafe real em `dylib_loader.rs`, `builder.rs` e `radar.rs`.
+4. **Corrigido como fronteira explícita:** a política compila produção com
+   `-Dunsafe-code` e permite somente os arquivos revisados do Radar/loader; uma
+   alteração da allowlist falha. Isso não deve ser convertido na alegação falsa
+   de que toda dependência é “zero unsafe”.
 
-5. **Kani/Miri/mutants/udeps não bloqueiam.** Kani e Miri têm `continue-on-error`; mutants e udeps usam `|| true`. Isso pode ser uma escolha aceitável de telemetria, mas a documentação não pode chamá-los de gates formais.
+5. **Classificação corrigida:** Kani, Miri, mutants e udeps continuam
+   deliberadamente informativos. É uma escolha aceitável enquanto nomes,
+   documentação e branch protection não os apresentam como provas bloqueantes.
 
-6. **A matriz do workflow manual de fuzz não cobre todos os targets.** Há 10 manifests de fuzz e 40 targets, mas `.github/workflows/fuzzing.yml`, acionado por `workflow_dispatch`, inclui 34. Ficam fora exatamente `fuzz_dlp`, `fuzz_sanitizer`, `fuzz_message_serde`, `fuzz_email_validator`, `fuzz_email_tracking` e `fuzz_email_security`.
+6. **Corrigido no workflow:** a matriz manual contém os 40 targets declarados.
+   O estado verde de campanhas longas continua dependendo de execução e logs.
 
-7. **O job “IoT QEMU” não executa QEMU.** Ele não instala nem roda em hardware simulado. O workflow também possui unit tests, mas esse job comprova somente compilação para o target, não comportamento em QEMU/hardware simulado.
+7. **Corrigido documentalmente:** o job foi renomeado para build `no_std` e não
+   faz claim de QEMU/hardware.
 
-8. **O benchmark tolera regressão enorme.** A documentação fala em regressão de nanossegundos, mas o YAML configura `alert-threshold: '300%'`.
+8. **Corrigido:** alertas de benchmark usam limiar de 20%. Isso é um sinal de
+   regressão, não uma garantia contra qualquer variação de nanossegundos.
 
-9. **Quatro actions não estão pinadas por SHA.** Foram observadas em corpus sync, udeps e release. Em pipeline de publicação, pinning deve ser obrigatório.
+9. **Corrigido:** as referências de actions estão pinadas por SHA completo.
 
-10. **`deny.toml` ignora 11 advisories sem owner/prazo.** Exceção pode ser necessária, mas precisa de justificativa, responsável, compensating control e data de expiração.
+10. **Mitigado com governança:** `deny.toml` mantém somente três exceções, cada
+    uma com escopo, controle compensatório, owner e expiração em
+    `docs/src/security-advisory-exceptions.md`. O workflow de contenção IoT foi
+    sincronizado com a mesma lista.
 
 ### 11.4. O que a CI ainda não prova
 
 Mesmo quando o workflow está verde, ele não prova:
 
 - que NFS-e é aceita pela SEFIN;
-- que OTA valida Ed25519;
-- que HSM/PQC são algoritmos reais;
-- que Nexus está protegido quando montado;
-- que CORS gerado possui allowlist;
+- que HSM/PQC, MQTT ou integração de bootloader existem em hardware real;
 - que todos os scaffolds compilam;
-- que Studio exibe dados reais;
-- que os checks formal/unsafe/mutation são gates.
+- que Studio está conectado a todas as fontes reais em todo deployment;
+- que os checks informativos de Kani, Miri e mutation passaram para um SHA;
+- que uma aplicação consumidora preservou os middlewares e invariantes seguros
+  do framework ao compor suas próprias rotas.
 
-Esses comportamentos precisam de testes de contrato que falhem com as implementações atuais, não apenas testes unitários que confirmem stubs.
+OTA Ed25519, Nexus fail-closed, CORS gerado e limites explícitos de
+unsafe/WASM agora têm checks dedicados. As lacunas restantes precisam de testes
+de contrato, evidência de execução e, quando envolvem hardware/fisco, homologação
+externa; testes unitários não devem confirmar stubs como se fossem produção.
 
 ## 12. Documentação, compliance e honestidade de produto
 
@@ -673,6 +696,14 @@ A divergência documental é um dos maiores riscos do projeto, pois influencia d
 `AUDIT.md` declara 739 dependências e três advisories, enquanto o `Cargo.lock` contém 773 packages e o `deny.toml` atual ignora 11 advisories. Ele também declara Clippy all-targets/all-features limpo e nota 9,8/10, algo que não pôde ser reproduzido neste ambiente. `SECURITY_COMPLIANCE.md` afirma zero unsafe apesar de blocos existentes.
 
 O SBOM, por outro lado, lista 773 componentes e tem timestamp recente, alinhando-se melhor ao lock. O caminho correto é gerar todos esses relatórios em CI a partir do commit/tag e anexar logs/artefatos verificáveis, nunca manter PASS estático no repositório.
+
+> **Estado atual — corrigido/mitigado:** `AUDIT.md` e
+> `SECURITY_COMPLIANCE.md` agora são inventários de controles, não certificados
+> PASS; `deny.toml` possui três exceções governadas e expirantes. O release gera
+> por tag Cargo metadata, SBOM CycloneDX, Cargo Audit JSON, relatório limitado de
+> evidências, commit digest, checksums e build-provenance attestation. Esses
+> artefatos só constituem evidência quando o run/tag real existe e continuam sem
+> representar certificação regulatória.
 
 ### 12.3. Estado de versão confuso
 
@@ -801,13 +832,30 @@ Depois, desacoplar Core do ORM, consolidar Security, completar o umbrella e padr
 
 ### Fase 4 — engenharia de release
 
-1. Tornar a trifeta do AGENTS um gate real com `--all-features`.
-2. Compilar/testar cada feature strict isoladamente.
-3. Fazer unsafe, WASM, Kani/Miri e mutation tests refletirem claramente se são bloqueantes ou informativos.
-4. Cobrir os 40 fuzz targets ou documentar tiers.
-5. Empacotar/validar todos os crates antes de publicar o primeiro.
-6. Gerar SBOM, audit e compliance por tag, com commit digest e artefatos assinados.
-7. Alinhar `12.0.0`, changelog, tag, crates.io e release notes.
+> **Estado em 2026-08-26:** as ideias abaixo foram preservadas. “Implementado
+> no workflow” descreve o YAML e os testes locais disponíveis; uma execução
+> verde ainda precisa ser vinculada ao SHA/tag correspondente.
+
+1. **Implementado:** a trifeta do AGENTS é gate de CI/release com
+   `--all-features`; o Clippy automatizado também usa `--all-targets`.
+2. **Parcial — vale concluir:** `strict-postgres`, `strict-mysql` e
+   `strict-sqlite` compilam isoladamente. Ainda vale adicionar testes runtime
+   específicos para cada modo strict, não apenas `cargo check`.
+3. **Implementado:** unsafe e WASM são bloqueantes; Kani, Miri, mutation tests e
+   udeps estão nomeados e documentados como evidência informativa.
+4. **Implementado no workflow:** a matriz manual contém os 40 fuzz targets dos
+   dez manifests. Isso não afirma que uma campanha de seis horas já passou.
+5. **Implementado no workflow:** todos os crates publicáveis são empacotados,
+   verificados, hashados e atestados antes do primeiro upload irreversível.
+6. **Implementado no workflow:** cada tag reúne `Cargo.lock`, Cargo metadata,
+   CycloneDX 1.5, Cargo Audit, `deny.toml`, relatório limitado de evidências, SHA
+   do commit, exceções governadas e checksums; o bundle e os `.crate` recebem
+   build-provenance attestation. O relatório mantém `NOT CHECKED`/`NOT EVALUATED` e não representa
+   certificação regulatória ou SLSA do projeto inteiro.
+7. **Parcial — bloqueador de governança antes de declarar 12.0.0 lançado:** o
+   release exige tag `vMAJOR.MINOR.PATCH` igual às versões publicáveis, mas ainda
+   não valida automaticamente o estado do changelog, o registro crates.io e as
+   release notes como uma única realidade.
 
 ## 16. Gates mínimos para considerar o framework pronto
 

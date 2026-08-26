@@ -71,6 +71,8 @@ jobs:
   strict-database-features:
     name: ORM ${{ matrix.feature }}
     runs-on: ubuntu-latest
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +86,29 @@ jobs:
 
       - name: Compile ORM feature in isolation
         run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
+
+      - name: Exercise the selected strict pool and dialect
+        env:
+          STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
+        run: |
+          case "$STRICT_DATABASE_FEATURE" in
+            strict-postgres)
+              cargo test -p rullst-orm --no-default-features \
+                --features strict-postgres --test matrix_postgres -- --test-threads=1
+              ;;
+            strict-mysql)
+              cargo test -p rullst-orm --no-default-features \
+                --features strict-mysql --test matrix_mysql -- --test-threads=1
+              ;;
+            strict-sqlite)
+              cargo test -p rullst-orm --no-default-features \
+                --features strict-sqlite --test matrix_sqlite -- --test-threads=1
+              ;;
+            *)
+              echo "Unknown strict database feature: $STRICT_DATABASE_FEATURE"
+              exit 1
+              ;;
+          esac
 
   minimal-feature-boundaries:
     name: Core and umbrella minimal feature boundaries

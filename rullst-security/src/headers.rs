@@ -138,8 +138,10 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let config = self.config.clone();
         let nonce = if config.dynamic_csp {
-            let nonce = CspNonce::generate();
-            req.extensions_mut().insert(nonce.clone());
+            // Keep CSP nonce identity stable when this extended layer is composed with the
+            // Core baseline layer. Replacing an existing nonce would make inline assets render
+            // with a value that the outer response header does not authorize.
+            let nonce = CspNonce::get_or_insert(req.extensions_mut());
             Some(nonce)
         } else {
             None
@@ -256,6 +258,53 @@ mod tests {
             .expect("body should be readable");
         let nonce = std::str::from_utf8(&body).expect("nonce should be UTF-8");
         assert!(csp.contains(&format!("'nonce-{nonce}'")));
+    }
+
+    async fn assert_composed_layers_share_nonce(app: axum::Router) {
+        use tower::ServiceExt;
+
+        let response = app
+            .oneshot(Request::new(Body::empty()))
+            .await
+            .expect("request should complete");
+        let csp = response
+            .headers()
+            .get(header::CONTENT_SECURITY_POLICY)
+            .expect("CSP should be present")
+            .to_str()
+            .expect("CSP should be ASCII")
+            .to_owned();
+        let body = axum::body::to_bytes(response.into_body(), 1_024)
+            .await
+            .expect("body should be readable");
+        let nonce = std::str::from_utf8(&body).expect("nonce should be UTF-8");
+        assert!(csp.contains(&format!("'nonce-{nonce}'")));
+    }
+
+    #[tokio::test]
+    async fn core_and_extended_header_layers_share_one_nonce_in_either_order() {
+        use axum::{Extension, Router, middleware, routing::get};
+
+        fn page() -> Router {
+            Router::new().route(
+                "/",
+                get(|Extension(nonce): Extension<CspNonce>| async move { nonce.to_string() }),
+            )
+        }
+
+        let core_outside = page()
+            .layer(SecureHeadersLayer::default())
+            .layer(middleware::from_fn(
+                rullst_core::security::headers_middleware,
+            ));
+        assert_composed_layers_share_nonce(core_outside).await;
+
+        let extended_outside = page()
+            .layer(middleware::from_fn(
+                rullst_core::security::headers_middleware,
+            ))
+            .layer(SecureHeadersLayer::default());
+        assert_composed_layers_share_nonce(extended_outside).await;
     }
 }
 

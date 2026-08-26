@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 pub struct SecretString(String);
 
 impl SecretString {
-    pub fn new(val: &str) -> Self {
-        SecretString(val.to_string())
+    pub fn new(val: impl Into<String>) -> Self {
+        SecretString(val.into())
     }
 
     /// Reveals the real value only when explicitly requested.
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_secret_string_reveal_audited() {
-        let secret = SecretString::new("my-secret-data");
+        let secret = SecretString::new(String::from("my-secret-data"));
         assert_eq!(secret.reveal_audited(), "my-secret-data");
     }
 

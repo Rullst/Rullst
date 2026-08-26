@@ -42,8 +42,7 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        let nonce = CspNonce::generate();
-        req.extensions_mut().insert(nonce.clone());
+        let nonce = CspNonce::get_or_insert(req.extensions_mut());
         let fut = self.inner.call(req);
 
         Box::pin(async move {

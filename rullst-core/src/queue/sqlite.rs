@@ -15,8 +15,9 @@ pub struct SqliteDriver {
 impl SqliteDriver {
     /// Create a new SQLite queue driver. Automatically creates the `rullst_jobs`
     /// table if it doesn't exist.
-    pub async fn new(database_url: &str) -> Result<Self, QueueError> {
-        let pool = sqlx::SqlitePool::connect(database_url)
+    pub async fn new(database_url: impl Into<String>) -> Result<Self, QueueError> {
+        let database_url = database_url.into();
+        let pool = sqlx::SqlitePool::connect(&database_url)
             .await
             .map_err(|e| QueueError::Driver(format!("Failed to connect to SQLite: {}", e)))?;
 

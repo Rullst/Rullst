@@ -255,14 +255,26 @@ pub fn run() {
                 c.arg("run").arg("-q").current_dir("..");
                 c
             } else {
-                let exe_dir = std::env::current_exe().unwrap().parent().unwrap().to_path_buf();
+                let Some(exe_dir) = std::env::current_exe()
+                    .ok()
+                    .and_then(|path| path.parent().map(std::path::Path::to_path_buf))
+                else {
+                    eprintln!("❌ Failed to resolve the Omni executable directory.");
+                    return;
+                };
                 let server_bin = if cfg!(windows) { "server.exe" } else { "server" };
                 Command::new(exe_dir.join(server_bin))
             };
 
             match cmd.spawn() {
                 Ok(child) => {
-                    let mut lock = backend_clone.lock().unwrap();
+                    let mut lock = match backend_clone.lock() {
+                        Ok(lock) => lock,
+                        Err(poisoned) => {
+                            eprintln!("⚠️ Backend process state was poisoned; recovering ownership.");
+                            poisoned.into_inner()
+                        }
+                    };
                     *lock = Some(child);
                 }
                 Err(e) => {
@@ -293,11 +305,17 @@ pub fn run() {
 
         let backend_for_cleanup = Arc::clone(&backend_process);
 
-        tauri::Builder::default()
+        if let Err(error) = tauri::Builder::default()
             .on_window_event(move |_window, event| {
                 if let tauri::WindowEvent::Destroyed = event {
                     println!("🛑 Omni window closed. Shutting down Rullst backend...");
-                    let mut lock = backend_for_cleanup.lock().unwrap();
+                    let mut lock = match backend_for_cleanup.lock() {
+                        Ok(lock) => lock,
+                        Err(poisoned) => {
+                            eprintln!("⚠️ Backend process state was poisoned; recovering ownership.");
+                            poisoned.into_inner()
+                        }
+                    };
                     if let Some(mut child) = lock.take() {
                         let _ = child.kill();
                         println!("✅ Rullst backend terminated.");
@@ -305,14 +323,16 @@ pub fn run() {
                 }
             })
             .run(tauri::generate_context!())
-            .expect("error while running tauri application");
+        {
+            eprintln!("❌ Tauri application failed: {error}");
+        }
     }
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
-        tauri::Builder::default()
-            .run(tauri::generate_context!())
-            .expect("error while running tauri application on mobile");
+        if let Err(error) = tauri::Builder::default().run(tauri::generate_context!()) {
+            eprintln!("❌ Tauri mobile application failed: {error}");
+        }
     }
 }
 "#,
@@ -476,5 +496,37 @@ fn init_mobile_target(omni_dir: &Path, platform: &str) {
                 .yellow()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn generated_omni_runtime_is_valid_and_zero_panic() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "rullst-omni-zero-panic-{}-{unique}",
+            std::process::id()
+        ));
+        let src = root.join("src");
+
+        fs::create_dir_all(&src).expect("temporary Omni source directory");
+        write_omni_files(&root, &src).expect("Omni scaffold files");
+        let generated = fs::read_to_string(src.join("lib.rs")).expect("generated Omni runtime");
+
+        syn::parse_file(&generated).expect("generated Omni runtime must parse as Rust");
+        assert!(!generated.contains(".unwrap("));
+        assert!(!generated.contains(".expect("));
+        assert!(!generated.contains("panic!("));
+        assert!(!generated.contains("todo!("));
+        assert!(!generated.contains("unimplemented!("));
+
+        let _ = fs::remove_dir_all(root);
     }
 }

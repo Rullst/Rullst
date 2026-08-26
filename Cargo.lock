@@ -916,6 +916,7 @@ dependencies = [
  "sqlx",
  "syn 3.0.3",
  "tokio",
+ "toml",
  "tower",
  "tower-http 0.7.0",
  "walkdir",

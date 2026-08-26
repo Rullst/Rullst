@@ -304,6 +304,35 @@ pub fn middleware_to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use syn::visit::Visit;
+
+    const PANICKING_RUNTIME_CALLS: [&str; 5] = [
+        ".unwrap(",
+        ".expect(",
+        "panic!(",
+        "todo!(",
+        "unimplemented!(",
+    ];
+
+    #[derive(Default)]
+    struct RuntimeLiteralAudit {
+        violations: Vec<String>,
+    }
+
+    impl<'ast> Visit<'ast> for RuntimeLiteralAudit {
+        fn visit_lit_str(&mut self, literal: &'ast syn::LitStr) {
+            let value = literal.value();
+            for needle in PANICKING_RUNTIME_CALLS {
+                // Unit tests use the exact needles to assert the generated
+                // output. Longer literals containing them are emitted source
+                // candidates and must remain panic-free.
+                if value != needle && value.contains(needle) {
+                    self.violations.push(value.clone());
+                }
+            }
+            syn::visit::visit_lit_str(self, literal);
+        }
+    }
 
     #[test]
     fn test_is_rullst_project() {
@@ -344,5 +373,36 @@ mod tests {
         assert!(!is_valid_rust_identifier("type"));
         assert!(!is_valid_rust_identifier("bad-name"));
         assert!(!is_valid_rust_identifier(""));
+    }
+
+    #[test]
+    fn embedded_runtime_templates_have_no_panicking_calls() {
+        let generators_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/generators");
+        let mut violations = Vec::new();
+
+        for entry in walkdir::WalkDir::new(generators_dir) {
+            let entry = entry.expect("generator source entry");
+            let path = entry.path();
+            if !entry.file_type().is_file()
+                || path.extension().and_then(std::ffi::OsStr::to_str) != Some("rs")
+            {
+                continue;
+            }
+
+            let source = fs::read_to_string(path).expect("generator source");
+            let syntax = syn::parse_file(&source).expect("generator source must parse");
+            let mut audit = RuntimeLiteralAudit::default();
+            audit.visit_file(&syntax);
+
+            for literal in audit.violations {
+                violations.push(format!("{}: {literal:?}", path.display()));
+            }
+        }
+
+        assert!(
+            violations.is_empty(),
+            "embedded generated-runtime literals contain panic paths:\n{}",
+            violations.join("\n")
+        );
     }
 }

@@ -198,7 +198,7 @@ pub struct Queue {
 impl Queue {
     /// Create a queue backed by SQLite. The `rullst_jobs` table is auto-created.
     #[cfg(feature = "queue-sqlite")]
-    pub async fn sqlite(database_url: &str) -> Result<Self, QueueError> {
+    pub async fn sqlite(database_url: impl Into<String>) -> Result<Self, QueueError> {
         let driver = SqliteDriver::new(database_url).await?;
         Ok(Self {
             driver: Arc::new(Box::new(driver)),
@@ -208,7 +208,7 @@ impl Queue {
     /// Create a queue backed by Redis. Requires the `queue-redis` feature.
     #[cfg(feature = "queue-redis")]
     #[cfg_attr(mutants, mutants::skip)]
-    pub fn redis(redis_url: &str) -> Result<Self, QueueError> {
+    pub fn redis(redis_url: impl Into<String>) -> Result<Self, QueueError> {
         let driver = redis::redis_driver::RedisDriver::new(redis_url)?;
         Ok(Self {
             driver: Arc::new(Box::new(driver)),

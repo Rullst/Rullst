@@ -26,13 +26,17 @@
 
 use async_trait::async_trait;
 use dashmap::DashMap;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 use std::time::Instant;
 
 // ─── Error Types ────────────────────────────────────────────────────────────
 
 /// Errors that can occur during cache operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum CacheError {
     /// The underlying driver encountered an error.
     Driver(String),
@@ -86,28 +90,54 @@ struct CacheEntry {
 /// Perfect for single-instance deployments and development.
 pub struct MemoryDriver {
     store: DashMap<String, CacheEntry>,
+    operations_since_cleanup: AtomicUsize,
 }
 
 impl MemoryDriver {
     /// Create a new in-memory cache driver.
     pub fn new() -> Self {
-        let store: DashMap<String, CacheEntry> = DashMap::new();
-
-        // Spawn active background janitor task to clean up expired cache entries from memory
-        if tokio::runtime::Handle::try_current().is_ok() {
-            let store_clone = store.clone();
-            tokio::spawn(async move {
-                loop {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
-                    // Retain only unexpired or eternal entries
-                    store_clone.retain(|_, entry| {
-                        entry.expires_at.map_or(true, |exp| Instant::now() < exp)
-                    });
-                }
-            });
+        Self {
+            store: DashMap::new(),
+            operations_since_cleanup: AtomicUsize::new(0),
         }
+    }
 
-        Self { store }
+    /// Reclaims expired entries opportunistically without spawning a task that
+    /// could outlive the cache. Entries are also removed immediately when read.
+    fn cleanup_if_due(&self) {
+        const CLEANUP_INTERVAL_OPERATIONS: usize = 256;
+        let previous = self.operations_since_cleanup.fetch_add(1, Ordering::Relaxed);
+        if previous > 0 && previous.is_multiple_of(CLEANUP_INTERVAL_OPERATIONS) {
+            let now = Instant::now();
+            self.store
+                .retain(|_, entry| entry.expires_at.is_none_or(|expires_at| now < expires_at));
+        }
+    }
+
+    fn get_sync(&self, key: &str) -> Option<Arc<String>> {
+        self.cleanup_if_due();
+        let entry = self.store.get(key)?;
+        if entry
+            .expires_at
+            .is_some_and(|expires_at| Instant::now() >= expires_at)
+        {
+            drop(entry);
+            self.store.remove(key);
+            return None;
+        }
+        Some(Arc::clone(&entry.value))
+    }
+
+    fn put_sync(&self, key: &str, value: &str, ttl_secs: Option<u64>) {
+        self.cleanup_if_due();
+        let expires_at = ttl_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
+        self.store.insert(
+            key.to_string(),
+            CacheEntry {
+                value: Arc::new(value.to_string()),
+                expires_at,
+            },
+        );
     }
 }
 
@@ -121,32 +151,11 @@ impl Default for MemoryDriver {
 impl CacheDriver for MemoryDriver {
     #[cfg_attr(mutants, mutants::skip)]
     async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError> {
-        if let Some(entry) = self.store.get(key) {
-            // Check TTL expiration
-            if let Some(expires_at) = entry.expires_at
-                && Instant::now() > expires_at
-            {
-                // Entry has expired — remove it lazily
-                drop(entry);
-                self.store.remove(key);
-                return Ok(None);
-            }
-            // Cheap pointer clone instead of deep string copy
-            Ok(Some(entry.value.clone()))
-        } else {
-            Ok(None)
-        }
+        Ok(self.get_sync(key))
     }
 
     async fn put(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> Result<(), CacheError> {
-        let expires_at = ttl_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
-        self.store.insert(
-            key.to_string(),
-            CacheEntry {
-                value: Arc::new(value.to_string()),
-                expires_at,
-            },
-        );
+        self.put_sync(key, value, ttl_secs);
         Ok(())
     }
 
@@ -169,7 +178,6 @@ impl CacheDriver for MemoryDriver {
 
 /// Global memory cache functions used by the `#[memoize]` macro.
 pub mod memory {
-    use super::CacheDriver;
     use super::MemoryDriver;
     use std::sync::OnceLock;
 
@@ -181,33 +189,12 @@ pub mod memory {
 
     /// Retrieve a value from the global memoize cache.
     pub fn get(key: &str) -> Option<String> {
-        // Run in synchronous context since macros often wrap sync or async functions
-        let cache = get_cache();
-        if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            if let Ok(Some(arc_val)) = rt.block_on(async { cache.get(key).await }) {
-                return Some(arc_val.to_string());
-            }
-        } else {
-            // Fallback for non-tokio contexts
-            if let Ok(rt) = tokio::runtime::Runtime::new() {
-                if let Ok(Some(arc_val)) = rt.block_on(async { cache.get(key).await }) {
-                    return Some(arc_val.to_string());
-                }
-            }
-        }
-        None
+        get_cache().get_sync(key).map(|value| value.to_string())
     }
 
     /// Store a value in the global memoize cache.
     pub fn set(key: &str, value: &str) {
-        let cache = get_cache();
-        if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            let _ = rt.block_on(async { cache.put(key, value, Some(3600)).await });
-        } else {
-            if let Ok(rt) = tokio::runtime::Runtime::new() {
-                let _ = rt.block_on(async { cache.put(key, value, Some(3600)).await });
-            }
-        }
+        get_cache().put_sync(key, value, Some(3600));
     }
 }
 
@@ -231,7 +218,8 @@ pub mod redis_driver {
         /// Create a new Redis cache driver.
         ///
         /// All keys are prefixed with `rullst:cache:` to avoid collisions.
-        pub fn new(redis_url: &str) -> Result<Self, CacheError> {
+        pub fn new(redis_url: impl Into<String>) -> Result<Self, CacheError> {
+            let redis_url = redis_url.into();
             let client = redis::Client::open(redis_url)
                 .map_err(|e| CacheError::Driver(format!("Failed to connect to Redis: {}", e)))?;
             Ok(Self {
@@ -391,7 +379,7 @@ impl Cache {
     /// Data persists across restarts and is shared between instances.
     #[cfg(feature = "cache-redis")]
     #[cfg_attr(mutants, mutants::skip)]
-    pub fn redis(redis_url: &str) -> Result<Self, CacheError> {
+    pub fn redis(redis_url: impl Into<String>) -> Result<Self, CacheError> {
         let driver = redis_driver::RedisDriver::new(redis_url)?;
         Ok(Self {
             driver: Arc::new(Box::new(driver)),
@@ -631,5 +619,14 @@ mod tests {
         memory::set("test_mem_key", "test_mem_val");
         assert_eq!(memory::get("test_mem_key").unwrap(), "test_mem_val");
         assert_eq!(memory::get("non_existent_mem_key"), None);
+    }
+
+    #[tokio::test]
+    async fn global_memoize_cache_is_safe_inside_a_tokio_runtime() {
+        memory::set("runtime_mem_key", "runtime_mem_val");
+        assert_eq!(
+            memory::get("runtime_mem_key").as_deref(),
+            Some("runtime_mem_val")
+        );
     }
 }

@@ -32,6 +32,20 @@ impl CspNonce {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Returns the nonce already associated with a request or creates and stores a fresh one.
+    ///
+    /// Security layers should use this helper instead of unconditionally replacing the request
+    /// extension so independently composed layers and the renderer share one nonce identity.
+    pub fn get_or_insert(extensions: &mut axum::http::Extensions) -> Self {
+        if let Some(nonce) = extensions.get::<Self>() {
+            return nonce.clone();
+        }
+
+        let nonce = Self::generate();
+        extensions.insert(nonce.clone());
+        nonce
+    }
 }
 
 impl std::fmt::Display for CspNonce {
@@ -61,8 +75,10 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
         .get::<crate::config::SecurityConfig>()
         .map(|config| config.csp.clone())
         .unwrap_or_else(|| crate::config::RullstConfig::global().security.csp.clone());
-    let nonce = CspNonce::generate();
-    req.extensions_mut().insert(nonce.clone());
+    // Reuse a nonce installed by an outer security layer. Generated applications and
+    // integrations may compose more than one header layer; replacing the request nonce here
+    // would make the renderer use a different value from the final CSP response header.
+    let nonce = CspNonce::get_or_insert(req.extensions_mut());
 
     let mut response = next.run(req).await;
     let headers = response.headers_mut();

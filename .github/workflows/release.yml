@@ -40,6 +40,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install cargo-audit for release evidence
+        uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
+        with:
+          tool: cargo-audit
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -90,17 +95,66 @@ jobs:
             --all-features \
             --locked
 
+      - name: Generate tag-bound SBOM, audit, and bounded compliance evidence
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          evidence_dir="target/package/release-evidence"
+          mkdir -p "$evidence_dir"
+
+          cargo metadata --locked --format-version 1 \
+            > "$evidence_dir/cargo-metadata.json"
+
+          # Any advisory outside the governed, expiring exception list blocks
+          # the release. The JSON result is retained as tag-bound evidence.
+          cargo audit --json \
+            --ignore RUSTSEC-2023-0071 \
+            --ignore RUSTSEC-2026-0173 \
+            --ignore RUSTSEC-2024-0436 \
+            > "$evidence_dir/cargo-audit.json"
+
+          # This command intentionally emits NOT CHECKED / NOT EVALUATED for
+          # controls that a bounded source audit cannot establish.
+          cargo run --locked -p cargo-rullst --bin rullst -- \
+            audit --idor --compliance --sbom
+          mv SECURITY_COMPLIANCE.md \
+            "$evidence_dir/security-evidence.md"
+          mv sbom-cyclonedx.json \
+            "$evidence_dir/sbom-cyclonedx-1.5.json"
+          cp Cargo.lock "$evidence_dir/Cargo.lock"
+          cp deny.toml "$evidence_dir/deny.toml"
+          cp docs/src/security-advisory-exceptions.md \
+            "$evidence_dir/security-advisory-exceptions.md"
+
+          jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg commit "$GITHUB_SHA" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            '{
+              schema_version: 1,
+              release_tag: $tag,
+              commit_sha: $commit,
+              repository: $repository,
+              github_run_id: $run_id,
+              evidence_boundary: "Generated from the tagged source and Cargo.lock; this is not a regulatory certification."
+            }' > "$evidence_dir/release-context.json"
+
       - name: Generate release checksums
         id: hash
         run: |
           cd target/package
           sha256sum -- *.crate | sort -k2 > checksums.txt
+          sha256sum -- release-evidence/* | sort -k2 > evidence-checksums.txt
           echo "hashes=$(base64 -w0 < checksums.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Generate cryptographic build attestation
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: 'target/package/*.crate'
+          subject-path: |
+            target/package/*.crate
+            target/package/evidence-checksums.txt
+            target/package/release-evidence/*
 
       - name: Preserve verified release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -109,6 +163,8 @@ jobs:
           path: |
             target/package/*.crate
             target/package/checksums.txt
+            target/package/evidence-checksums.txt
+            target/package/release-evidence/*
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
@@ -137,7 +193,9 @@ jobs:
 
       - name: Verify downloaded artifact checksums
         working-directory: verified-crates
-        run: sha256sum --check checksums.txt
+        run: |
+          sha256sum --check checksums.txt
+          sha256sum --check evidence-checksums.txt
 
       - name: Authenticate with crates.io
         id: auth
@@ -211,11 +269,18 @@ jobs:
       - name: Create GitHub release from verified artifacts
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          files: verified-crates/*
+          files: |
+            verified-crates/*.crate
+            verified-crates/checksums.txt
+            verified-crates/evidence-checksums.txt
+            verified-crates/release-evidence/*
           fail_on_unmatched_files: true
 
   provenance:
-    name: Generate SLSA 3 provenance
+    # The reusable workflow is the official generic SLSA provenance generator.
+    # This produces provenance for the release subjects; it does not by itself
+    # certify the whole project or release process at a named SLSA level.
+    name: Generate release provenance
     needs: [verify, publish]
     permissions:
       actions: read

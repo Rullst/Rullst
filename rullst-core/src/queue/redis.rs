@@ -103,7 +103,8 @@ return recovered
 
     impl RedisDriver {
         /// Creates a Redis driver without opening a network connection.
-        pub fn new(redis_url: &str) -> Result<Self, QueueError> {
+        pub fn new(redis_url: impl Into<String>) -> Result<Self, QueueError> {
+            let redis_url = redis_url.into();
             let client = redis::Client::open(redis_url).map_err(|error| {
                 QueueError::Driver(format!("Failed to connect to Redis: {error}"))
             })?;

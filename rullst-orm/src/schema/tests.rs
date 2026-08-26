@@ -42,6 +42,19 @@ fn test_join_clause() {
 }
 
 #[test]
+fn schema_constructors_accept_owned_strings_and_reject_invalid_join_tables() {
+    let column = Column::new(String::from("display_name"), String::from("TEXT"));
+    assert_eq!(column.name, "display_name");
+    assert_eq!(column.col_type, "TEXT");
+
+    let valid = JoinClause::new(String::from("users"));
+    assert!(valid.errors.is_empty());
+
+    let invalid = JoinClause::new(String::from("users; DROP TABLE users"));
+    assert_eq!(invalid.errors.len(), 1);
+}
+
+#[test]
 fn test_validate_table_name() {
     assert!(validate_table_name("users").is_ok());
     assert!(validate_table_name("user_posts").is_ok());

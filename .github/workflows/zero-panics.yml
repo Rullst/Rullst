@@ -14,7 +14,7 @@ env:
 
 jobs:
   check-panics:
-    name: Enforce Zero Panics (published libraries)
+    name: Enforce Zero Panics (published runtime targets)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Monorepo
@@ -26,10 +26,10 @@ jobs:
           components: clippy
           target: wasm32-unknown-unknown
 
-      - name: Run Clippy (Deny Panics) — covered native libraries
-        # rullst-orm-macros is included because it generates application runtime
-        # code. cargo-rullst, rullst-macros, and examples/blog are not covered by
-        # this library job and must not be inferred to have passed this policy.
+      - name: Run Clippy (Deny Panics) — native libraries and macro engines
+        # Both procedural-macro crates are included because they generate
+        # application runtime code. Tests are intentionally excluded here:
+        # assertion helpers may panic by design and are covered by `cargo test`.
         # rullst-core::testing is downstream assertion support; its explicit
         # assertion-failure panics are test semantics, not an application path.
         run: |
@@ -39,6 +39,7 @@ jobs:
             -p rullst-security \
             -p rullst-orm \
             -p rullst-orm-macros \
+            -p rullst-macros \
             -p rullst-connect \
             -p rullst-auth \
             -p rullst-mail \
@@ -54,6 +55,28 @@ jobs:
             -D clippy::panic \
             -D clippy::todo \
             -D clippy::unimplemented
+
+      - name: Run Clippy (Deny Panics) — cargo-rullst production targets
+        # `--lib --bins` covers the CLI engine and every shipped executable
+        # without compiling `#[cfg(test)]` modules under the panic-deny lints.
+        run: |
+          cargo clippy \
+            -p cargo-rullst \
+            --lib --bins --all-features \
+            -- \
+            -D clippy::unwrap_used \
+            -D clippy::expect_used \
+            -D clippy::panic \
+            -D clippy::todo \
+            -D clippy::unimplemented
+
+      - name: Verify zero-panic CLI runtime templates
+        # Runtime Rust embedded in scaffold strings is not visible to Clippy;
+        # generator regression tests parse and inspect the emitted source.
+        run: |
+          cargo test \
+            -p cargo-rullst --lib \
+            generators::
 
       - name: Verify zero-panic ORM runtime expansion
         # Clippy checks the proc-macro engine; this regression test separately

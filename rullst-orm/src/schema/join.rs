@@ -1,4 +1,4 @@
-use super::validation::{ALLOWED_OPERATORS, validate_identifier};
+use super::validation::{ALLOWED_OPERATORS, validate_identifier, validate_table_name};
 
 pub struct JoinClause {
     pub table: String,
@@ -8,13 +8,18 @@ pub struct JoinClause {
 }
 
 impl JoinClause {
-    pub fn new(table: &str) -> Self {
-        Self {
-            table: table.to_string(),
+    pub fn new(table: impl Into<String>) -> Self {
+        let table = table.into();
+        let mut clause = Self {
+            table,
             conditions: vec![],
             bindings: vec![],
             errors: vec![],
+        };
+        if let Err(error) = validate_table_name(&clause.table) {
+            clause.errors.push(error);
         }
+        clause
     }
 
     /// Adds a column-to-column JOIN condition.
