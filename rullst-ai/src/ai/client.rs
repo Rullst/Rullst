@@ -241,4 +241,37 @@ mod tests {
         assert!(matches!(error, AiError::BlockedByFirewall(_)));
         assert!(seen.lock().expect("test mutex").is_empty());
     }
+
+    #[tokio::test]
+    async fn client_chat_builder_multi_turn() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let client = AiClient::new(SpyProvider { seen: seen.clone() });
+        let response = client
+            .chat()
+            .system("You are a helpful assistant")
+            .user("Hello")
+            .assistant("Hi there")
+            .send()
+            .await
+            .expect("safe multi-turn chat");
+        assert_eq!(response, "ok");
+        let values = seen.lock().expect("test mutex");
+        assert_eq!(values.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn client_auto_fallback() {
+        let client = AiClient::auto().expect("auto client init");
+        let res = client.prompt("Hello").await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[allow(deprecated)]
+    async fn client_structured_prompt_unsupported() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let client = AiClient::new(SpyProvider { seen });
+        let res: Result<serde_json::Value, _> = client.structured_prompt("test").await;
+        assert!(matches!(res, Err(AiError::UnsupportedCapability { .. })));
+    }
 }

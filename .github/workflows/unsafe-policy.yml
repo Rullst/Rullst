@@ -34,8 +34,8 @@ jobs:
       - name: Verify the reviewed exception allowlist
         run: |
           actual="$(
-            rg --glob '*.rs' -l '#\[allow\(unsafe_code\)\]' \
-              rullst*/src cargo-rullst/src rullst/src |
+            grep -rn -l '#\[allow(unsafe_code)\]' \
+              rullst*/src cargo-rullst/src rullst/src 2>/dev/null |
               sort
           )"
           expected="$(printf '%s\n' \
@@ -50,7 +50,6 @@ jobs:
 
       - name: Publish the audited unsafe inventory
         run: |
-          rg --glob '*.rs' --line-number \
-            '\bunsafe\s*(\{|fn\b|impl\b|trait\b|extern\b)' \
+          grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
             rullst-core/src/radar.rs \
             rullst-core/src/server/dylib_loader.rs

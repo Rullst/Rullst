@@ -31,8 +31,6 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
 
 const AUTH_CONTROLLER_TEMPLATE: &str = include_str!("auth_controller.rs.template");
 
-
-
 pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     let middlewares_dir = Path::new("src/middlewares");
     fs::create_dir_all(middlewares_dir)?;

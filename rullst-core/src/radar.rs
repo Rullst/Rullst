@@ -283,8 +283,45 @@ mod tests {
             .unwrap();
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
         assert!(body_str.contains("rullst_uptime_seconds"));
-        assert!(body_str.contains("rullst_memory_rss_bytes"));
-        assert!(body_str.contains("rullst_tokio_active_tasks"));
+        if get_process_memory_mb().is_some() {
+            assert!(body_str.contains("rullst_memory_rss_bytes"));
+        }
+        if get_active_tasks_count().is_some() {
+            assert!(body_str.contains("rullst_tokio_active_tasks"));
+        }
+    }
+
+    #[test]
+    fn test_render_prometheus_metrics_all_fields() {
+        let snapshot = RadarSnapshot {
+            uptime_seconds: 120,
+            memory_rss_mb: Some(50.0),
+            cpu_usage_percent: Some(2.5),
+            active_tokio_tasks: Some(4),
+            tokio_latency_micros: Some(15),
+            timestamp: 1700000000,
+        };
+        let metrics = render_prometheus_metrics(&snapshot);
+        assert!(metrics.contains("rullst_uptime_seconds 120"));
+        assert!(metrics.contains("rullst_memory_rss_bytes 52428800"));
+        assert!(metrics.contains("rullst_cpu_usage_percent 2.50"));
+        assert!(metrics.contains("rullst_tokio_active_tasks 4"));
+        assert!(metrics.contains("rullst_tokio_latency_microseconds 15"));
+
+        let empty_snapshot = RadarSnapshot {
+            uptime_seconds: 60,
+            memory_rss_mb: None,
+            cpu_usage_percent: None,
+            active_tokio_tasks: None,
+            tokio_latency_micros: None,
+            timestamp: 1700000000,
+        };
+        let empty_metrics = render_prometheus_metrics(&empty_snapshot);
+        assert!(empty_metrics.contains("rullst_uptime_seconds 60"));
+        assert!(!empty_metrics.contains("rullst_memory_rss_bytes"));
+        assert!(!empty_metrics.contains("rullst_cpu_usage_percent"));
+        assert!(!empty_metrics.contains("rullst_tokio_active_tasks"));
+        assert!(!empty_metrics.contains("rullst_tokio_latency_microseconds"));
     }
 
     #[tokio::test]
