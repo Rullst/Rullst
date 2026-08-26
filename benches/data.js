@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787717330208,
+  "lastUpdate": 1787719159268,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -8961,6 +8961,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2226,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0918e2ee158de12e491b4485ec5144ba8409e561",
+          "message": "Refactor cache and queue drivers to accept owned strings; improve CspNonce handling in security headers\n\n- Updated MemoryDriver to use atomic operations for cleanup tracking and removed background task for expired entries.\n- Introduced synchronous methods for cache operations in MemoryDriver.\n- Modified queue drivers (SQLite and Redis) to accept owned string parameters for database URLs.\n- Enhanced CspNonce management to ensure nonce stability across security layers.\n- Added tests for global memoize cache and security layer nonce sharing.\n- Introduced a security advisory for CORS configurations in older scaffolds.\n- Added comprehensive tests for SQLite CRUD operations in strict mode.",
+          "timestamp": "2026-08-26T01:36:39-03:00",
+          "tree_id": "67735c1e412f4cb8de55381da6f94e9de5f88d60",
+          "url": "https://github.com/Rullst/Rullst/commit/0918e2ee158de12e491b4485ec5144ba8409e561"
+        },
+        "date": 1787719158238,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 758,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1013,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 672,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2327,
+            "range": "± 97",
             "unit": "ns/iter"
           }
         ]
