@@ -322,6 +322,39 @@ mod tests {
         assert_eq!(state.banned_count(), 2);
     }
 
+    #[test]
+    fn strict_configuration_rejects_unsafe_or_unbounded_values() {
+        let valid_path = vec!["/.env".to_string()];
+        assert!(HoneypotState::try_with_limits(valid_path.clone(), Duration::ZERO, 1).is_err());
+        assert!(HoneypotState::try_with_limits(valid_path, Duration::from_secs(1), 0).is_err());
+        assert!(
+            HoneypotState::try_with_limits(
+                vec!["relative/path".to_string()],
+                Duration::from_secs(1),
+                1,
+            )
+            .is_err()
+        );
+        assert!(HoneypotState::try_with_limits(Vec::new(), Duration::from_secs(1), 1).is_err());
+
+        let too_many_paths = (0..=MAX_HONEYPOT_TRAP_PATHS)
+            .map(|index| format!("/trap-{index}"))
+            .collect();
+        assert!(HoneypotState::try_with_limits(too_many_paths, Duration::from_secs(1), 1).is_err());
+    }
+
+    #[test]
+    fn compatibility_constructor_filters_invalid_and_duplicate_paths() {
+        let state = HoneypotState::new(vec![
+            "/Trap".to_string(),
+            "/trap".to_string(),
+            "relative".to_string(),
+            "/bad?query=true".to_string(),
+        ]);
+        assert!(state.is_trap("/trap"));
+        assert_eq!(state.trap_paths.len(), 1);
+    }
+
     #[tokio::test]
     async fn middleware_ignores_forwarded_identity_and_uses_socket_peer() {
         let state = HoneypotState::new(vec!["/.env".to_string()]);
@@ -352,6 +385,18 @@ mod tests {
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
         assert!(state.is_banned("192.0.2.25"));
         assert!(!state.is_banned("198.51.100.99"));
+
+        let mut banned_peer = Request::builder()
+            .uri("/safe")
+            .body(Body::empty())
+            .expect("valid request");
+        banned_peer.extensions_mut().insert(ConnectInfo(
+            "192.0.2.25:8443"
+                .parse::<SocketAddr>()
+                .expect("valid socket address"),
+        ));
+        let response = app.clone().oneshot(banned_peer).await.expect("response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
 
         let lookalike = Request::builder()
             .uri("/download/.env")

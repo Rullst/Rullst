@@ -306,6 +306,67 @@ mod tests {
             .layer(SecureHeadersLayer::default());
         assert_composed_layers_share_nonce(extended_outside).await;
     }
+
+    #[tokio::test]
+    async fn static_custom_policy_and_optional_headers_are_applied_safely() {
+        use axum::{Router, routing::get};
+        use tower::ServiceExt;
+
+        let config = SecureHeadersConfig::default()
+            .with_csp("default-src 'self'; img-src https:")
+            .without_dynamic_csp();
+        let app = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(SecureHeadersLayer::with_config(config));
+        let response = app
+            .oneshot(Request::new(Body::empty()))
+            .await
+            .expect("request should complete");
+        assert_eq!(
+            response.headers()[header::CONTENT_SECURITY_POLICY],
+            "default-src 'self'; img-src https:"
+        );
+        assert!(response.extensions().get::<CspNonce>().is_none());
+    }
+
+    #[tokio::test]
+    async fn malformed_header_configuration_is_ignored_or_falls_back() {
+        use axum::{Router, routing::get};
+        use tower::ServiceExt;
+
+        let config = SecureHeadersConfig {
+            hsts: Some("invalid\nvalue".to_string()),
+            frame_options: None,
+            content_type_options: None,
+            referrer_policy: None,
+            permissions_policy: None,
+            coop: None,
+            coep: None,
+            corp: None,
+            dynamic_csp: false,
+            csp: Some("default-src 'none'\nscript-src *".to_string()),
+        };
+        let app = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(SecureHeadersLayer::with_config(config));
+        let response = app
+            .oneshot(Request::new(Body::empty()))
+            .await
+            .expect("request should complete");
+        assert!(
+            !response
+                .headers()
+                .contains_key(header::STRICT_TRANSPORT_SECURITY)
+        );
+        let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .expect("fallback CSP should be ASCII");
+        assert!(csp.contains("default-src 'self'"));
+        assert!(!csp.contains('\n'));
+
+        let default_layer = SecureHeadersLayer::new();
+        assert!(default_layer.config.dynamic_csp);
+    }
 }
 
 #[cfg(kani)]

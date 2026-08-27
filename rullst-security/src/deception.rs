@@ -72,10 +72,57 @@ pub async fn deception_trap_middleware(req: Request, next: Next) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{Router, body::Body, http::Request, middleware, routing::get};
+    use tower::ServiceExt;
 
     #[test]
     fn test_register_deception_trap() {
         register_deception_trap("/api/v1/secret_test");
         assert!(global_deception_routes().contains("/api/v1/secret_test"));
+    }
+
+    #[tokio::test]
+    async fn middleware_blocks_registered_traps_and_allows_safe_routes() {
+        register_deception_trap("agent_test_trap");
+        let app = Router::new()
+            .route("/safe", get(|| async { StatusCode::OK }))
+            .fallback(|| async { StatusCode::NOT_FOUND })
+            .layer(middleware::from_fn(deception_trap_middleware));
+
+        let mut trapped = Request::get("/agent_test_trap")
+            .body(Body::empty())
+            .expect("request should be valid");
+        trapped.extensions_mut().insert(ConnectInfo(
+            "127.0.0.27:4123"
+                .parse::<SocketAddr>()
+                .expect("socket address should be valid"),
+        ));
+        let response = app
+            .clone()
+            .oneshot(trapped)
+            .await
+            .expect("trap request should complete");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::get("/agent_test_trap")
+                    .body(Body::empty())
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("trap without peer information should complete");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let response = app
+            .oneshot(
+                Request::get("/safe")
+                    .body(Body::empty())
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("safe request should complete");
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

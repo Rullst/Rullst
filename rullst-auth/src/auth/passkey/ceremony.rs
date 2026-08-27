@@ -125,3 +125,50 @@ impl ChallengeStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expired_wrong_ceremony_and_allowlist_challenges_are_rejected() {
+        let expired = ChallengeStore::new(Duration::ZERO, 1);
+        let challenge = expired.issue(Ceremony::Registration, Vec::new()).unwrap();
+        assert!(matches!(
+            expired.consume(&challenge, &challenge, Ceremony::Registration, None),
+            Err(AuthError::PasskeyError(message)) if message.contains("expired")
+        ));
+
+        let store = ChallengeStore::new(Duration::from_secs(30), 3);
+        let challenge = store.issue(Ceremony::Registration, Vec::new()).unwrap();
+        assert!(matches!(
+            store.consume(&challenge, &challenge, Ceremony::Authentication, None),
+            Err(AuthError::PasskeyError(message)) if message.contains("different ceremony")
+        ));
+
+        let challenge = store
+            .issue(Ceremony::Authentication, vec![vec![1, 2, 3]])
+            .unwrap();
+        assert!(matches!(
+            store.consume(&challenge, &challenge, Ceremony::Authentication, None),
+            Err(AuthError::PasskeyError(message)) if message.contains("not allowed")
+        ));
+    }
+
+    #[test]
+    fn poisoned_challenge_store_fails_closed() {
+        let store = ChallengeStore::new(Duration::from_secs(30), 1);
+        let pending = Arc::clone(&store.pending);
+        let _ = std::thread::spawn(move || {
+            let _guard = pending.lock().unwrap();
+            panic!("poison the test-only mutex");
+        })
+        .join();
+
+        assert!(matches!(
+            store.issue(Ceremony::Registration, Vec::new()),
+            Err(AuthError::PasskeyError(message)) if message.contains("unavailable")
+        ));
+    }
+}

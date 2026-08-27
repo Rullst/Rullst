@@ -24,6 +24,57 @@ flowchart LR
 Each arrow is an application integration point. If a layer is not mounted, its
 counter and API being present in the crate do not protect traffic.
 
+## Canonical production preset
+
+`ProductionPreset::middleware_order()` is the v12 machine-readable ordering
+contract. From the outermost inbound boundary to the handler, the order is:
+
+1. trusted-proxy policy;
+2. request-body limit;
+3. request ID;
+4. tracing;
+5. secure headers;
+6. explicit CORS allowlist;
+7. bounded WAF/RASP;
+8. CSRF;
+9. session validation;
+10. authentication;
+11. tenant membership resolution;
+12. role, permission and object-ownership authorization;
+13. identity/direct-peer rate limit;
+14. application handler.
+
+Tower response flow unwinds in reverse, so the secure-header layer still
+observes and protects responses returned by the inner guards and handler.
+`Server` mounts the framework-owned staging/production baseline. Session,
+authentication, tenant membership and authorization are deliberately
+application-owned: the framework cannot infer those policies without creating
+an insecure universal default. Generated applications must mount those layers
+in the declared slots, and protected parameterized routes must still perform an
+object-level ownership check.
+
+The direct socket peer is the default network identity. A deployment must not
+accept `Forwarded` or `X-Forwarded-For` until its exact proxy hops are configured
+and tested. Body limits must be outer to any middleware that buffers content.
+Webhook routes may bypass browser CSRF only by exact path and only when their
+provider signature middleware is mandatory.
+
+### Parameterized-route access contract
+
+`cargo rullst audit --idor` requires every recognized parameterized route to
+carry an adjacent `// rullst-access: public|owner|role|admin — reason` marker.
+`public` is accepted only for a recognized GET route. `owner` requires
+`RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard;
+and `admin` requires `RequireRoleLayer` or
+`NexusAuthPolicy::protect_router`. The latter lets application operational
+routes reuse the same fail-closed peer/credential and administrator boundary as
+Nexus.
+
+The marker records intent and the scanner catches common omissions; neither is
+a proof of domain ownership. Protected object routes still need negative HTTP
+tests in which an authenticated subject requests another subject's resource and
+receives a denial before data or side effects are exposed.
+
 ## Control map
 
 | Risk area | Available primitives | Boundary |

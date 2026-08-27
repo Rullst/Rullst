@@ -1,7 +1,7 @@
 # Rullst Capital 💰
 ### *"Enterprise Multi-Gateway Billing, SaaS Analytics & Fiscal Engine"*
 
-`rullst-capital` provides a unified financial layer for SaaS, digital commerce, and marketplace platforms written in Rust. It consolidates multi-provider payment checkouts, recurring subscriptions, international payouts, and Brazilian digital invoicing (NFS-e Nacional).
+`rullst-capital` provides a unified financial foundation for SaaS, digital commerce, and marketplace platforms written in Rust. It includes multi-provider adapter surfaces, recurring-subscription models, international payout helpers, and an offline Brazilian NFS-e DPS preview. Live provider and fiscal production readiness must be established per adapter and environment.
 
 ---
 
@@ -9,11 +9,11 @@
 
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
-| **Direct Gateways** | 🟢 `[Production-Ready]` | 11 direct payment & payout provider adapters with connection pooling and constant-time HMAC signature checks. |
-| **Subscription Sync** | 🟢 `[Production-Ready]` | Automated recurring plan lifecycle (checkout, upgrade, cancellation, trial periods). |
-| **Webhook Processing** | 🟢 `[Production-Ready]` | Constant-time cryptographic signature verification (`subtle::ConstantTimeEq`), freshness windows, and replay protection. |
-| **SaaS MRR/ARR Analytics** | 🟢 `[Production-Ready]` | In-memory revenue metrics and churn rate calculation for dashboard visualizers. |
-| **NFS-e DPS XML Generator** | 🟢 `[Production-Ready]` | Standardized national DPS XML builder with automatic entity escaping and validation. |
+| **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
+| **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
+| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Named adapters implement signature verification and freshness checks; cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
+| **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
+| **NFS-e DPS XML Preview** | 🟡 `[Offline Test Mock]` | Escaped DPS XML construction and deterministic offline fixtures; no XMLDSig, transmission, official schema conformance, authorization, or homologation claim. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
 | **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap]` | W3C XMLDSig signing (C14N canonicalization, RSA-SHA256 with ICP-Brasil A1 PKCS#12) and mTLS transmission to SEFIN. |
 
@@ -21,7 +21,7 @@
 
 ## 📦 Supported Payment & Payout Providers
 
-`rullst-capital` includes built-in, decoupled adapters for 11 global and regional gateways:
+`rullst-capital` includes decoupled adapter surfaces for 11 global and regional gateways. The list preserves the intended product reach; it does **not** mean every provider product, fee, payment method, tax promise, or live API path has been independently homologated by Rullst:
 
 1. 💳 **Stripe**: Global card checkouts, Customer Portal, and recurring subscriptions.
 2. 🍋 **Lemon Squeezy**: Merchant of Record (MoR) with automated global tax compliance.
@@ -43,17 +43,24 @@
 
 ```rust
 use rullst_capital::providers::stripe::StripeProvider;
-use rullst_capital::traits::PaymentProvider;
+use rullst_capital::BillingProvider;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let stripe = StripeProvider::new("sk_live_your_stripe_api_key");
+    let stripe = StripeProvider::new(
+        "sk_live_your_stripe_api_key",
+        "whsec_your_webhook_signing_secret",
+    );
 
     let session = stripe
-        .create_checkout_session("price_pro_monthly", "customer@example.com")
+        .create_checkout_session(
+            "customer@example.com",
+            "price_pro_monthly",
+            "https://example.com/billing/complete",
+        )
         .await?;
 
-    println!("Checkout URL: {}", session.checkout_url);
+    println!("Checkout URL: {session}");
     Ok(())
 }
 ```
@@ -65,26 +72,38 @@ Webhooks enforce constant-time cryptographic verification to eliminate side-chan
 ```rust
 use axum::{body::Bytes, http::HeaderMap, response::IntoResponse};
 use rullst_capital::providers::stripe::StripeProvider;
-use rullst_capital::traits::PaymentProvider;
+use rullst_capital::BillingProvider;
+use std::collections::HashMap;
 
 pub async fn handle_stripe_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<impl IntoResponse, axum::http::StatusCode> {
-    let stripe = StripeProvider::new("sk_live_api_key");
-    let secret = "whsec_your_webhook_signing_secret";
+    let stripe = StripeProvider::new(
+        "sk_live_api_key",
+        "whsec_your_webhook_signing_secret",
+    );
 
     let signature = headers
         .get("Stripe-Signature")
         .and_then(|v| v.to_str().ok())
         .ok_or(axum::http::StatusCode::BAD_REQUEST)?;
 
-    // Verifies cryptographic signature in constant time
+    let provider_headers = HashMap::from([(
+        "stripe-signature".to_string(),
+        signature.to_string(),
+    )]);
+
+    // Verifies the provider signature and timestamp before parsing the event.
     let event = stripe
-        .verify_webhook_signature(&body, signature, secret)
+        .handle_webhook(&body, &provider_headers)
         .map_err(|_| axum::http::StatusCode::UNAUTHORIZED)?;
 
-    println!("Received verified event: {:?}", event.event_type);
+    println!(
+        "Verified subscription {} with status {:?}",
+        event.subscription_id,
+        event.status,
+    );
     Ok(axum::http::StatusCode::OK)
 }
 ```
@@ -93,7 +112,7 @@ pub async fn handle_stripe_webhook(
 
 ## 🏛️ Brazilian Digital Invoicing (NFS-e Nacional)
 
-`rullst-capital` includes a dedicated fiscal module (`rullst_capital::fiscal`) conforming to the National NFS-e standard (Padrão Nacional).
+`rullst-capital` includes a dedicated offline fiscal preview module (`rullst_capital::fiscal`) shaped around the National NFS-e domain. It is not yet an officially conformant issuer.
 
 ### Architecture & Pipeline
 

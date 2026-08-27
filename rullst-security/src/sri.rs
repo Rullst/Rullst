@@ -12,7 +12,7 @@ pub fn compute_sri_hash(content: &[u8]) -> String {
     format!("sha384-{}", b64)
 }
 
-/// Generates an HTML <script> tag with Subresource Integrity (SRI) attributes.
+/// Generates an HTML `<script>` tag with Subresource Integrity (SRI) attributes.
 pub fn sri_script_tag(url: &str, content: &[u8]) -> String {
     let hash = compute_sri_hash(content);
     let escaped_url = rullst_core::html::escape_str(url);
@@ -22,7 +22,7 @@ pub fn sri_script_tag(url: &str, content: &[u8]) -> String {
     )
 }
 
-/// Generates an HTML <link rel="stylesheet"> tag with Subresource Integrity (SRI) attributes.
+/// Generates an HTML `<link rel="stylesheet">` tag with Subresource Integrity attributes.
 pub fn sri_link_tag(url: &str, content: &[u8]) -> String {
     let hash = compute_sri_hash(content);
     let escaped_url = rullst_core::html::escape_str(url);

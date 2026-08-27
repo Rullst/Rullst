@@ -166,7 +166,12 @@ During project creation (`cargo rullst new`), you can choose between two main ap
 ### 4. Integration with Rullst Omni (`cargo rullst make:omni`)
 
 #### Clarifying Frontend Engines vs. Rullst Omni (Tauri 2.0 Integration)
-* **Rullst Omni (`cargo rullst make:omni` / Tauri 2.0):** Acts as the **Native Operating System Shell & Container**. It creates native OS windows (`.exe`, `.app`, `.apk`, `.ipa`), handles system tray icons, native OS notifications, auto-updates, and low-level system APIs.
+* **Rullst Omni (`cargo rullst make:omni` / Tauri 2.0):** The current
+  scaffold creates a Tauri shell and development commands for desktop, Android
+  and iOS. Tauri can expose system tray, notifications, updates and native
+  plugins, but the Rullst scaffold does not install or validate those
+  capabilities automatically. Mobile release signing, secure remote networking,
+  offline synchronization and store publication remain application work.
 * **Frontend Engine (HTMX / LiveView / Wasm / Pico.css / Tera):** Acts as the **UI Engine / Renderer** running inside the Omni webview window with zero friction.
 
 ---

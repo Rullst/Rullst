@@ -100,6 +100,8 @@ pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{Router, http::Request, middleware, routing::post};
+    use tower::ServiceExt;
 
     #[test]
     fn test_inspect_json_payload_valid() {
@@ -139,5 +141,60 @@ mod tests {
         let res = inspect_json_payload(&json, 10, 1000);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), "Payload exceeds maximum allowed size");
+    }
+
+    fn guarded_app() -> Router {
+        Router::new()
+            .route("/", post(|body: String| async move { body }))
+            .layer(middleware::from_fn(schema_guard_middleware))
+    }
+
+    #[tokio::test]
+    async fn middleware_preserves_valid_json_and_non_json_bodies() {
+        for (content_type, body) in [
+            ("application/json; charset=utf-8", r#"{"safe":[1,2,3]}"#),
+            ("text/plain", "not JSON { and deliberately unbalanced"),
+        ] {
+            let response = guarded_app()
+                .oneshot(
+                    Request::post("/")
+                        .header(axum::http::header::CONTENT_TYPE, content_type)
+                        .body(Body::from(body))
+                        .expect("request should be valid"),
+                )
+                .await
+                .expect("middleware request should complete");
+            assert_eq!(response.status(), StatusCode::OK);
+            let returned = axum::body::to_bytes(response.into_body(), 1_024)
+                .await
+                .expect("response body should be readable");
+            assert_eq!(returned.as_ref(), body.as_bytes());
+        }
+    }
+
+    #[tokio::test]
+    async fn middleware_rejects_deep_and_oversized_json() {
+        let deep = format!("{}0{}", "[".repeat(33), "]".repeat(33));
+        let response = guarded_app()
+            .oneshot(
+                Request::post("/")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(deep))
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("middleware request should complete");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let response = guarded_app()
+            .oneshot(
+                Request::post("/")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(vec![b' '; DEFAULT_MAX_PAYLOAD_BYTES + 2]))
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("middleware request should complete");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }

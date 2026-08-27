@@ -5,8 +5,10 @@ use rullst_core::Queue;
 use std::sync::Arc;
 use utoipa::openapi::OpenApi;
 
+pub mod access;
 pub mod ai_playground;
 pub mod api_playground;
+pub use access::{LocalStudioAccess, StudioBuildError};
 pub mod data_browser;
 pub use data_browser::run_studio;
 pub mod env_viewer;
@@ -49,7 +51,8 @@ impl Studio {
         self
     }
 
-    pub fn into_router(self) -> Router {
+    /// Builds Studio behind an explicit debug-only loopback access capability.
+    pub fn into_router(self, access: LocalStudioAccess) -> Result<Router, StudioBuildError> {
         let logger_state = Arc::new(logger::LoggerState::new());
         let mut router = data_browser::router()
             .nest("/requests", logger::router(logger_state.clone()))
@@ -70,7 +73,7 @@ impl Studio {
             router = router.nest("/jobs", jobs_monitor::router(queue));
         }
 
-        router
+        access.protect_router(router)
     }
 }
 
@@ -83,26 +86,30 @@ mod tests {
     #[tokio::test]
     async fn test_studio_builder_and_routes() {
         let studio = Studio::new();
-        let router = studio.into_router();
+        let router = studio
+            .into_router(LocalStudioAccess::loopback_only())
+            .expect("debug Studio router");
+        let request = |uri: &'static str| {
+            let mut request = Request::builder()
+                .uri(uri)
+                .body(Body::empty())
+                .expect("valid request");
+            request.extensions_mut().insert(axum::extract::ConnectInfo(
+                "127.0.0.1:42000"
+                    .parse::<std::net::SocketAddr>()
+                    .expect("loopback peer"),
+            ));
+            request
+        };
         let security_page = router
             .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/studio/security")
-                    .body(Body::empty())
-                    .expect("valid request"),
-            )
+            .oneshot(request("/studio/security"))
             .await
             .expect("security page response");
         assert_eq!(security_page.status(), axum::http::StatusCode::OK);
 
         let security_stats = router
-            .oneshot(
-                Request::builder()
-                    .uri("/studio/security/stats")
-                    .body(Body::empty())
-                    .expect("valid request"),
-            )
+            .oneshot(request("/studio/security/stats"))
             .await
             .expect("security stats response");
         assert_eq!(security_stats.status(), axum::http::StatusCode::OK);
@@ -111,6 +118,8 @@ mod tests {
         let openapi = OpenApi::default();
 
         let full_studio = Studio::default().with_openapi(openapi).with_horizon(queue);
-        let _ = full_studio.into_router();
+        let _ = full_studio
+            .into_router(LocalStudioAccess::loopback_only())
+            .expect("debug full Studio router");
     }
 }

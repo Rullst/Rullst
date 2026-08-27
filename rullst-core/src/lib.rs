@@ -51,6 +51,9 @@ pub mod live;
 /// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
 #[cfg(not(target_arch = "wasm32"))]
+/// Canonical production middleware ordering contract.
+pub mod production;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod queue;
 #[cfg(not(target_arch = "wasm32"))]
 /// Rullst Radar Kernel-Level Telemetry & Tokio runtime visualizer.
@@ -161,6 +164,8 @@ pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
 pub use ws::{WebSocket, WsError};
 
 // Re-export Milestone 6 Resilience Features
+#[cfg(not(target_arch = "wasm32"))]
+pub use production::{ProductionMiddlewareStage, ProductionPreset};
 #[cfg(not(target_arch = "wasm32"))]
 pub use resilience::{
     RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,

@@ -19,6 +19,7 @@ pub fn router(queue: Queue) -> Router {
     Router::new()
         .route("/", get(dashboard_home))
         .route("/jobs-table", get(jobs_table))
+        // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/retry/{id}", post(retry_job))
         .route("/purge", post(purge_failed_jobs))
         .with_state(state)

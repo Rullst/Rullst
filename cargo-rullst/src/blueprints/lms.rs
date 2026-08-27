@@ -35,7 +35,9 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
 
     Ok(routes![
         get("/" => controllers::lms_controller::index),
+        // rullst-access: public — the starter catalog is public by design.
         get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        // rullst-access: public — demo lessons are public; add entitlement checks before protected video.
         get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus))
 }}
@@ -125,7 +127,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let router = routes![
         get("/" => controllers::lms_controller::index),
+        // rullst-access: public — the starter catalog is public by design.
         get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        // rullst-access: public — demo lessons are public; add entitlement checks before protected video.
         get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
     ].nest_axum("/nexus", nexus);
 

@@ -34,6 +34,7 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
 
     Ok(routes![
         get("/" => controllers::blog_controller::index),
+        // rullst-access: public — published blog posts are intentionally public resources.
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),
@@ -122,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let router = routes![
         get("/" => controllers::blog_controller::index),
+        // rullst-access: public — published blog posts are intentionally public resources.
         get("/posts/{{slug}}" => controllers::blog_controller::show),
         get("/robots.txt" => controllers::blog_controller::robots_txt),
         get("/sitemap.xml" => controllers::blog_controller::sitemap_xml),

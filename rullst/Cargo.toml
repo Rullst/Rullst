@@ -12,7 +12,7 @@ homepage = "https://rullst.github.io"
 documentation = "https://docs.rs/rullst"
 keywords = ["framework", "web", "async", "tokio", "fullstack"]
 categories = ["web-programming::http-server", "asynchronous"]
-exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
+exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
 [features]
 default = ["orm", "queue-sqlite"]
 orm = ["dep:rullst-orm", "rullst-core/orm"]

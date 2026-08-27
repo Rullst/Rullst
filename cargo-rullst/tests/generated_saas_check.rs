@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use cargo_rullst::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use cargo_rullst::blueprints::{BLANK_BLUEPRINT_ID, ERP_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use std::fs;
 use std::process::Command;
@@ -164,4 +164,62 @@ fn generated_hot_blank_with_island_passes_cargo_check() {
     }
 
     fs::remove_dir_all(project_dir).expect("temporary generated project cleanup");
+}
+
+#[test]
+fn generated_erp_admin_routes_pass_cargo_check() {
+    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = crate_dir.parent().expect("workspace root");
+    let project_dir =
+        std::env::temp_dir().join(format!("rullst-generated-erp-{}", rand::random::<u64>()));
+    fs::create_dir_all(&project_dir).expect("temporary generated ERP project");
+
+    let manifest = build_cargo_toml(
+        "generated-erp",
+        false,
+        true,
+        "Sqlite",
+        false,
+        false,
+        ERP_BLUEPRINT_ID,
+        "Zero-Bundle HTMX",
+        workspace,
+    )
+    .expect("generated ERP Cargo.toml");
+    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write generated ERP manifest");
+    cargo_rullst::blueprints::apply(
+        ERP_BLUEPRINT_ID,
+        &project_dir,
+        "generated-erp",
+        "generated_erp",
+        false,
+        false,
+        true,
+        "Active Record",
+        "Zero-Bundle HTMX",
+    )
+    .expect("apply ERP blueprint");
+
+    let output = Command::new(env!("CARGO"))
+        .arg("check")
+        .arg("--offline")
+        .arg("--all-targets")
+        .arg("--manifest-path")
+        .arg(project_dir.join("Cargo.toml"))
+        .env(
+            "CARGO_TARGET_DIR",
+            workspace.join("target/generated-scaffold-check"),
+        )
+        .output()
+        .expect("run cargo check for generated ERP project");
+
+    if !output.status.success() {
+        panic!(
+            "generated ERP failed cargo check\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    fs::remove_dir_all(project_dir).expect("temporary generated ERP project cleanup");
 }

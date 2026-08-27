@@ -123,16 +123,24 @@ impl Nexus {
 
         let router = AxumRouter::new()
             .route("/", get(nexus_dashboard))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}", get(nexus_table_view))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/search", get(nexus_table_search))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/new", get(nexus_new_form))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}", post(nexus_create_record))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/{id}/edit", get(nexus_edit_form))
             .route(
+                // rullst-access: admin — protected by policy.protect_router below.
                 "/table/{table}/{id}",
                 put(nexus_update_record).post(nexus_update_record),
             )
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/{id}", delete(nexus_delete_record))
+            // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/batch", post(nexus_batch_action))
             .route("/chat", get(nexus_chat_page))
             .route("/chat/query", post(nexus_chat_query))
@@ -140,22 +148,9 @@ impl Nexus {
             .route("/telemetry", get(nexus_telemetry_page))
             .layer(axum::middleware::from_fn(
                 rullst_core::security::csrf_middleware,
-            ))
-            .layer(rullst_auth::RequireRoleLayer::<NexusPrincipal>::new(
-                NEXUS_ADMIN_ROLE,
             ));
 
-        let router = match policy {
-            NexusAuthPolicy::Basic(credentials) => {
-                router.layer(axum::middleware::from_fn(move |request, next| {
-                    let credentials = credentials.clone();
-                    async move { basic_auth_middleware(credentials, request, next).await }
-                }))
-            }
-            NexusAuthPolicy::LoopbackOnly(_) => {
-                router.layer(axum::middleware::from_fn(loopback_only_middleware))
-            }
-        };
+        let router = policy.protect_router(router)?;
 
         Ok(router.with_state(state))
     }

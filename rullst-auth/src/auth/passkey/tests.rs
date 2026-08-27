@@ -11,11 +11,17 @@ fn test_passkey_config_builder() {
     let config = PasskeyConfig::new("RP", "rp.com", "https://rp.com")
         .with_rp_name("New RP")
         .with_rp_id("new.rp.com")
-        .with_rp_origin("https://new.rp.com");
+        .with_rp_origin("https://new.rp.com")
+        .require_user_verification(false)
+        .with_challenge_ttl_seconds(42)
+        .with_max_pending_challenges(7);
 
     assert_eq!(config.rp_name, "New RP");
     assert_eq!(config.rp_id, "new.rp.com");
     assert_eq!(config.rp_origin, "https://new.rp.com");
+    assert!(!config.require_user_verification);
+    assert_eq!(config.challenge_ttl_seconds, 42);
+    assert_eq!(config.max_pending_challenges, 7);
 }
 
 #[test]
@@ -258,6 +264,8 @@ fn test_parse_cbor_errors() {
     assert!(parse_cbor(&[0xE0]).is_err());
     assert!(parse_cbor(&[0xA1, 0x80, 0x01]).is_err());
     assert!(parse_cbor(&[0xA2, 0x01, 0x01, 0x01, 0x02]).is_err());
+    assert!(parse_cbor(&[0x1b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).is_err());
+    assert!(parse_cbor(&[0x3b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).is_err());
 
     let mut deeply_nested = vec![0x81; 66];
     deeply_nested.push(0x00);

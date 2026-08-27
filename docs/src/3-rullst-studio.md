@@ -4,9 +4,10 @@ Rullst Studio is a developer-facing Axum dashboard. It can run as a standalone
 server bound to `127.0.0.1` (port `5555` by default) or its router can be mounted
 explicitly by an application.
 
-Studio is not an authentication boundary. Keep it on a loopback or otherwise
-trusted interface, and do not expose it publicly without application-level
-authentication, authorization, TLS, and network policy.
+Studio's built-in boundary is deliberately limited to debug builds and verified
+loopback peers. It is not a shared-environment authentication system; do not
+expose raw subrouters publicly without application-level authentication,
+authorization, TLS, and network policy.
 
 Generated Blog, Portfolio, LMS, ERP, and SaaS applications start the standalone
 server only in debug builds and link to `http://127.0.0.1:5555`. Release builds
@@ -30,8 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 ```
 
-`Studio::new().into_router()` builds a router for explicit composition. Optional
-OpenAPI and queue views are enabled with `with_openapi` and `with_horizon`.
+`Studio::new().into_router(LocalStudioAccess::loopback_only())` builds the same
+debug-only router for explicit composition. The serving stack must preserve
+Axum `ConnectInfo<SocketAddr>` or requests fail closed. Optional OpenAPI and
+queue views are enabled with `with_openapi` and `with_horizon`.
 
 ## Current views
 
@@ -60,7 +63,8 @@ unavailable.
 
 ## Production boundary
 
-Studio is an optional crate and is not automatically removed merely because a
-binary is compiled with `--release`. Exclude it from production features or do
-not mount/start it. If an operator intentionally deploys Studio, protect it like
-any other privileged administrative interface.
+Studio is an optional crate. Its supported `run_studio` and `Studio::into_router`
+paths reject credential-free use in release builds, but consumers should still
+exclude it from production features unless they are implementing and testing a
+separate authenticated administrator boundary. Built-in shared production
+access remains roadmap work, not a password environment-variable promise.

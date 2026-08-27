@@ -23,20 +23,25 @@ pub mod models;
 pub mod pages;
 
 pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
+        .with_auth_policy(admin_access.clone())
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
         .try_build()?;
 
-    Ok(routes![
-        get("/" => controllers::erp_controller::index),
+    let admin_routes = routes![
         post("/products" => controllers::erp_controller::store_product),
+        // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
-    ].nest_axum("/nexus", nexus))
+    ];
+    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
+
+    Ok(routes![
+        get("/" => controllers::erp_controller::index),
+    ].merge_axum(admin_routes).nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
@@ -112,20 +117,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
+        .with_auth_policy(admin_access.clone())
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
         .try_build()?;
 
-    let router = routes![
-        get("/" => controllers::erp_controller::index),
+    let admin_routes = routes![
         post("/products" => controllers::erp_controller::store_product),
+        // rullst-access: admin — protected by admin_access.protect_router below.
         post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
         post("/orders" => controllers::erp_controller::store_order),
-    ].nest_axum("/nexus", nexus);
+    ];
+    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
+
+    let router = routes![
+        get("/" => controllers::erp_controller::index),
+    ].merge_axum(admin_routes).nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {{

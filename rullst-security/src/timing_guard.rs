@@ -168,4 +168,46 @@ mod tests {
         synthetic_argon2_cpu_work();
         assert!(start.elapsed() < Duration::from_millis(50));
     }
+
+    #[test]
+    fn default_configuration_is_security_conservative() {
+        let config = TimingGuardConfig::default();
+        assert_eq!(config.min_duration, Duration::from_millis(250));
+        assert_eq!(config.max_jitter, Duration::from_millis(20));
+        assert!(config.enable_synthetic_cpu_cycles);
+    }
+
+    #[tokio::test]
+    async fn synthetic_finish_supports_enabled_and_disabled_modes() {
+        for enabled in [false, true] {
+            TimingScope::start(TimingGuardConfig {
+                min_duration: Duration::ZERO,
+                max_jitter: Duration::ZERO,
+                enable_synthetic_cpu_cycles: enabled,
+            })
+            .finish_with_synthetic_work()
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn middleware_returns_the_inner_response_after_padding() {
+        use axum::{Router, body::Body, http::Request, middleware, routing::get};
+        use tower::ServiceExt;
+
+        let app = Router::new()
+            .route("/", get(|| async { "protected" }))
+            .layer(middleware::from_fn(timing_guard_middleware));
+        let started = Instant::now();
+        let response = app
+            .oneshot(
+                Request::get("/")
+                    .body(Body::empty())
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("middleware request should complete");
+        assert!(started.elapsed() >= Duration::from_millis(245));
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+    }
 }

@@ -178,6 +178,8 @@ pub async fn rate_limit_middleware(req: Request, next: Next) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{Router, body::Body, extract::ConnectInfo, http::Request, middleware, routing::get};
+    use tower::ServiceExt;
 
     #[test]
     fn test_sliding_window_rate_limiter() {
@@ -203,5 +205,67 @@ mod tests {
             RateLimiter::new(5, Duration::from_secs(1)).try_with_distributed(),
             Err(RateLimitError::DistributedBackendUnsupported)
         ));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn distributed_compatibility_builder_fails_closed() {
+        let limiter = RateLimiter::new(10, Duration::from_secs(1)).with_distributed();
+        assert_eq!(limiter.backend, RateLimitBackend::Distributed);
+        assert!(limiter.check("distributed-client"));
+    }
+
+    #[test]
+    fn expired_window_resets_request_count() {
+        let limiter = RateLimiter::new(1, Duration::from_millis(1));
+        limiter.store.insert(
+            "expired-client".to_string(),
+            (Instant::now() - Duration::from_secs(1), AtomicU64::new(99)),
+        );
+        assert!(!limiter.check("expired-client"));
+        assert!(limiter.check("expired-client"));
+    }
+
+    #[tokio::test]
+    async fn middleware_fails_closed_without_peer_address() {
+        let app = Router::new()
+            .route("/", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn(rate_limit_middleware));
+        let response = app
+            .oneshot(
+                Request::get("/")
+                    .body(Body::empty())
+                    .expect("request should be valid"),
+            )
+            .await
+            .expect("middleware request should complete");
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn middleware_returns_too_many_requests_after_default_limit() {
+        let app = Router::new()
+            .route("/", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn(rate_limit_middleware));
+        let peer = ConnectInfo(
+            "192.0.2.217:4123"
+                .parse::<std::net::SocketAddr>()
+                .expect("socket address should be valid"),
+        );
+
+        for expected in std::iter::repeat_n(StatusCode::OK, 120)
+            .chain(std::iter::once(StatusCode::TOO_MANY_REQUESTS))
+        {
+            let mut request = Request::get("/")
+                .body(Body::empty())
+                .expect("request should be valid");
+            request.extensions_mut().insert(peer);
+            let response = app
+                .clone()
+                .oneshot(request)
+                .await
+                .expect("middleware request should complete");
+            assert_eq!(response.status(), expected);
+        }
     }
 }

@@ -30,4 +30,4 @@ jobs:
           tool: cargo-audit
       - name: Run cargo audit
         # Every exception is time-bounded in docs/src/security-advisory-exceptions.md.
-        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0173 --ignore RUSTSEC-2024-0436
+        run: cargo audit --ignore RUSTSEC-2023-0071

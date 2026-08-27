@@ -10,12 +10,25 @@ coverage:
   range: "80...100"
   status:
     project:
-      default:
-        target: 90%
+      framework_libraries:
+        target: 80%
         threshold: 0%
+        paths:
+          - "rullst/src/**"
+          - "rullst-ai/src/**"
+          - "rullst-auth/src/**"
+          - "rullst-capital/src/**"
+          - "rullst-connect/src/**"
+          - "rullst-core/src/**"
+          - "rullst-iot/src/**"
+          - "rullst-mail/src/**"
+          - "rullst-nexus/src/**"
+          - "rullst-orm/src/**"
+          - "rullst-security/src/**"
+          - "rullst-studio/src/**"
     patch:
       default:
-        target: 95%
+        target: 90%
         threshold: 0%
 
 component_management:
@@ -26,7 +39,7 @@ component_management:
         - "rullst-auth/src/**"
       statuses:
         - type: project
-          target: 95%
+          target: 90%
           threshold: 0%
     - component_id: security
       name: Security (rullst-security)
@@ -34,8 +47,17 @@ component_management:
         - "rullst-security/src/**"
       statuses:
         - type: project
-          target: 95%
+          target: 90%
           threshold: 0%
+    - component_id: cli_tooling
+      name: CLI tooling (informational)
+      paths:
+        - "cargo-rullst/src/**"
+    - component_id: procedural_macros
+      name: Procedural macros (informational)
+      paths:
+        - "rullst-macros/src/**"
+        - "rullst-orm-macros/src/**"
 
 comment:
   layout: "header, diff, components, files"

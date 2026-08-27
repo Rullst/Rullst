@@ -1,10 +1,19 @@
+use axum::{
+    Router,
+    body::Body,
+    extract::{Extension, Path, State},
+    http::{Request, StatusCode},
+    routing::get,
+};
 use rullst_security::{
     audit::{AuditChain, StdoutAuditLogger},
     honey::HoneypotState,
     rbac::{RbacGuard, UserContext},
     sanitizer::{HtmlSanitizer, csp::generate_nonce},
 };
+use std::collections::HashMap;
 use std::sync::Arc;
+use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_honeypot_trap_detection() {
@@ -55,6 +64,77 @@ fn test_rbac_guard_authorization() {
 
 fn editor_or_admin(ctx: &UserContext) -> UserContext {
     ctx.clone()
+}
+
+async fn show_owned_document(
+    Path(document_id): Path<String>,
+    State(owners): State<Arc<HashMap<String, String>>>,
+    context: Option<Extension<UserContext>>,
+) -> StatusCode {
+    let Some(Extension(context)) = context else {
+        return StatusCode::UNAUTHORIZED;
+    };
+    let Some(owner_id) = owners.get(&document_id) else {
+        return StatusCode::NOT_FOUND;
+    };
+
+    match RbacGuard::authorize_owner_or_role(&context, owner_id, "moderator") {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::FORBIDDEN,
+    }
+}
+
+fn document_request(path: &str, context: Option<UserContext>) -> Request<Body> {
+    let mut request = Request::builder()
+        .uri(path)
+        .body(Body::empty())
+        .expect("valid document request");
+    if let Some(context) = context {
+        request.extensions_mut().insert(context);
+    }
+    request
+}
+
+#[tokio::test]
+async fn parameterized_route_denies_cross_owner_access_before_the_handler_succeeds() {
+    let owners = Arc::new(HashMap::from([(
+        "document-7".to_string(),
+        "owner-1".to_string(),
+    )]));
+    let router = Router::new()
+        .route("/documents/{document_id}", get(show_owned_document))
+        .with_state(owners);
+
+    let owner = UserContext::new("owner-1", vec!["member".to_string()]);
+    let unrelated = UserContext::new("user-2", vec!["member".to_string()]);
+    let moderator = UserContext::new("moderator-3", vec!["moderator".to_string()]);
+
+    let owner_response = router
+        .clone()
+        .oneshot(document_request("/documents/document-7", Some(owner)))
+        .await
+        .expect("owner response");
+    assert_eq!(owner_response.status(), StatusCode::OK);
+
+    let unrelated_response = router
+        .clone()
+        .oneshot(document_request("/documents/document-7", Some(unrelated)))
+        .await
+        .expect("cross-owner response");
+    assert_eq!(unrelated_response.status(), StatusCode::FORBIDDEN);
+
+    let moderator_response = router
+        .clone()
+        .oneshot(document_request("/documents/document-7", Some(moderator)))
+        .await
+        .expect("moderator response");
+    assert_eq!(moderator_response.status(), StatusCode::OK);
+
+    let unauthenticated_response = router
+        .oneshot(document_request("/documents/document-7", None))
+        .await
+        .expect("unauthenticated response");
+    assert_eq!(unauthenticated_response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

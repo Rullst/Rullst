@@ -1,0 +1,17 @@
+[
+  "rullst-macros",
+  "rullst-orm-macros",
+  "rullst-connect",
+  "rullst-iot",
+  "rullst-orm",
+  "rullst-core",
+  "rullst-security",
+  "rullst-ai",
+  "rullst-capital",
+  "rullst-mail",
+  "rullst-auth",
+  "rullst-nexus",
+  "rullst-studio",
+  "rullst",
+  "cargo-rullst"
+]

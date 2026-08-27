@@ -54,7 +54,7 @@ else
     cargo rullst audit --idor
 fi
 if [ $? -ne 0 ]; then
-    echo "❌ IDOR / BOLA authorization check failed. Enforce RbacGuard on parameterized routes."
+    echo "❌ IDOR / BOLA authorization check failed. Classify each parameterized route and enforce its owner, role, or admin boundary."
     exit 1
 fi
 

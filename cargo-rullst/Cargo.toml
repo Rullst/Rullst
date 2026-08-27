@@ -20,14 +20,17 @@ path = "src/lib.rs"
 [[bin]]
 name = "cargo-rullst"
 path = "src/bin/cargo-rullst.rs"
+doc = false
 
 [[bin]]
 name = "rullst"
 path = "src/bin/rullst.rs"
+doc = false
 
 [[bin]]
 name = "sync-badges"
 path = "src/bin/sync_badges.rs"
+doc = false
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }

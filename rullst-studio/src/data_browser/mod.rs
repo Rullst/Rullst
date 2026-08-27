@@ -22,7 +22,9 @@ pub fn router() -> Router {
         .route("/", axum::routing::get(handle_dashboard))
         .route("/studio", axum::routing::get(handle_dashboard))
         // Tables Data Browser
+        // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/tables/{table}", axum::routing::get(handle_table))
+        // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/studio/tables/{table}", axum::routing::get(handle_table))
         // Core Studio Navigation Routes
         .route(
@@ -149,9 +151,13 @@ pub async fn run_studio(
     port: impl IntoStudioPort,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let port_num = port.into_port();
-    let app = router();
+    let app = crate::Studio::new().into_router(crate::LocalStudioAccess::loopback_only())?;
     let addr = format!("127.0.0.1:{}", port_num);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await?;
     Ok(())
 }

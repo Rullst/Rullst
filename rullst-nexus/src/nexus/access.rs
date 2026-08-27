@@ -229,6 +229,37 @@ impl NexusAuthPolicy {
     pub const fn loopback_only(access: LocalNexusAccess) -> Self {
         Self::LoopbackOnly(access)
     }
+
+    /// Protects an arbitrary administrator router with the same fail-closed
+    /// identity and role boundary used by Nexus.
+    ///
+    /// This is intended for generated or application-owned operational routes
+    /// that must share the Nexus administrator policy. Loopback access remains
+    /// debug-only; Basic Auth still requires verified TLS and peer metadata.
+    pub fn protect_router<S>(
+        &self,
+        router: axum::Router<S>,
+    ) -> Result<axum::Router<S>, NexusBuildError>
+    where
+        S: Clone + Send + Sync + 'static,
+    {
+        let policy = validate_policy(self.clone())?;
+        let router = router.layer(rullst_auth::RequireRoleLayer::<NexusPrincipal>::new(
+            NEXUS_ADMIN_ROLE,
+        ));
+
+        Ok(match policy {
+            NexusAuthPolicy::Basic(credentials) => {
+                router.layer(axum::middleware::from_fn(move |request, next| {
+                    let credentials = credentials.clone();
+                    async move { basic_auth_middleware(credentials, request, next).await }
+                }))
+            }
+            NexusAuthPolicy::LoopbackOnly(_) => {
+                router.layer(axum::middleware::from_fn(loopback_only_middleware))
+            }
+        })
+    }
 }
 
 pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy, NexusBuildError> {

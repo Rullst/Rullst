@@ -106,8 +106,12 @@ fn loopback_test_router() -> Router {
 }
 
 fn request_from(peer: Option<&str>) -> Request<Body> {
+    request_to("/", peer)
+}
+
+fn request_to(path: &str, peer: Option<&str>) -> Request<Body> {
     let mut request = Request::builder()
-        .uri("/")
+        .uri(path)
         .body(Body::empty())
         .expect("valid test request");
     if let Some(peer) = peer {
@@ -156,6 +160,34 @@ async fn loopback_access_allows_local_peer_and_denies_every_other_source() {
         .oneshot(request_from(None))
         .await
         .expect("router response");
+    assert_eq!(missing_peer_response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn protect_router_enforces_the_admin_boundary_on_application_routes() {
+    let policy = NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only());
+    let router = policy
+        .protect_router(Router::new().route("/products/{id}", get(|| async { StatusCode::OK })))
+        .expect("debug loopback policy should be valid");
+
+    let local_response = router
+        .clone()
+        .oneshot(request_to("/products/42", Some("127.0.0.1:41000")))
+        .await
+        .expect("local protected request");
+    assert_eq!(local_response.status(), StatusCode::OK);
+
+    let remote_response = router
+        .clone()
+        .oneshot(request_to("/products/42", Some("192.0.2.10:41000")))
+        .await
+        .expect("remote protected request");
+    assert_eq!(remote_response.status(), StatusCode::FORBIDDEN);
+
+    let missing_peer_response = router
+        .oneshot(request_to("/products/42", None))
+        .await
+        .expect("missing-peer protected request");
     assert_eq!(missing_peer_response.status(), StatusCode::FORBIDDEN);
 }
 

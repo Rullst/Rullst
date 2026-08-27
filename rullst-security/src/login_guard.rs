@@ -248,6 +248,51 @@ mod tests {
         assert!(guard.is_jailed("active_user"));
         assert!(guard.remaining_jail_time("active_user").is_some());
     }
+
+    #[test]
+    fn already_jailed_and_capacity_exhaustion_fail_closed() {
+        let guard = LoginGuard::new();
+        guard.jails.insert(
+            identity_key("jailed-user"),
+            Instant::now() + Duration::from_secs(60),
+        );
+        assert_eq!(
+            guard.record_login_failure("jailed-user"),
+            Duration::from_secs(5)
+        );
+
+        let mut full_guard = LoginGuard::new();
+        full_guard.max_identities = 0;
+        assert_eq!(
+            full_guard.record_login_failure("new-user"),
+            Duration::from_secs(5)
+        );
+        assert!(full_guard.failures.is_empty());
+    }
+
+    #[test]
+    fn expired_failure_window_restarts_the_tarpit_sequence() {
+        let mut guard = LoginGuard::new();
+        guard.window_duration = Duration::from_millis(1);
+        guard.failures.insert(
+            identity_key("window-user"),
+            (4, Instant::now() - Duration::from_secs(1)),
+        );
+        assert_eq!(guard.record_login_failure("window-user"), Duration::ZERO);
+    }
+
+    #[test]
+    fn logged_identity_is_trimmed_and_truncated_on_utf8_boundary() {
+        assert_eq!(
+            bounded_identity_for_log("  short identity  "),
+            "short identity"
+        );
+        let long = format!("{}é-tail", "a".repeat(127));
+        let bounded = bounded_identity_for_log(&long);
+        assert!(bounded.ends_with('…'));
+        assert!(bounded.len() <= 131);
+        assert!(!bounded.contains("tail"));
+    }
 }
 
 #[cfg(kani)]

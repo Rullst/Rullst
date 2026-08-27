@@ -1,14 +1,33 @@
 use axum::{
     body::Body,
+    extract::{ConnectInfo, Request as AxumRequest},
     http::{Request, StatusCode},
+    middleware::Next,
     response::IntoResponse,
 };
 use rullst_studio::*;
+use std::net::SocketAddr;
 use tower::ServiceExt;
+
+async fn inject_loopback(mut request: AxumRequest, next: Next) -> axum::response::Response {
+    request.extensions_mut().insert(ConnectInfo(
+        "127.0.0.1:42000"
+            .parse::<SocketAddr>()
+            .expect("loopback test peer"),
+    ));
+    next.run(request).await
+}
+
+fn local_studio(studio: Studio) -> axum::Router {
+    studio
+        .into_router(LocalStudioAccess::loopback_only())
+        .expect("debug Studio router")
+        .layer(axum::middleware::from_fn(inject_loopback))
+}
 
 #[tokio::test]
 async fn test_studio_core_routes() {
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     let routes = [
         "/",
@@ -106,7 +125,7 @@ async fn test_studio_table_browser_and_schema_inspection() {
         .await;
     }
 
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     // 1. Standard HTML table view
     let req = Request::builder()
@@ -206,7 +225,7 @@ async fn test_studio_ai_playground_and_providers() {
 
 #[tokio::test]
 async fn test_studio_security_radar_and_telemetry() {
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     let req = Request::builder()
         .uri("/security/stats")
@@ -226,7 +245,7 @@ async fn test_studio_security_radar_and_telemetry() {
 #[tokio::test]
 async fn test_studio_horizon_jobs_and_purge() {
     let queue = rullst_core::Queue::sqlite(":memory:").await.unwrap();
-    let app = Studio::new().with_horizon(queue).into_router();
+    let app = local_studio(Studio::new().with_horizon(queue));
 
     let req = Request::builder().uri("/jobs").body(Body::empty()).unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -278,7 +297,7 @@ async fn test_studio_db_helpers_and_serializers() {
 
 #[tokio::test]
 async fn test_studio_env_viewer_endpoint() {
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     let req = Request::builder().uri("/env").body(Body::empty()).unwrap();
     let res = app.oneshot(req).await.unwrap();
@@ -287,7 +306,7 @@ async fn test_studio_env_viewer_endpoint() {
 
 #[tokio::test]
 async fn test_studio_logger_requests_flow() {
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     let req = Request::builder()
         .uri("/studio")
@@ -305,7 +324,7 @@ async fn test_studio_logger_requests_flow() {
 
 #[tokio::test]
 async fn test_studio_api_json_endpoints() {
-    let app = Studio::new().into_router();
+    let app = local_studio(Studio::new());
 
     let endpoints = ["/api/radar", "/api/revenue", "/api/traces"];
 

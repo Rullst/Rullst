@@ -71,12 +71,17 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Interactive Experience timeline and Skills tags.
 - Project cards showcase with live external links.
 
-## 3. LMS Platform
+## 3. LMS Platform Starter
 **Use Case:** Online course platforms and video streaming.
-A complete learning management system featuring:
+An initial learning-management scaffold featuring:
 - Courses and Lessons database models.
 - Migrations pre-populated with seed data.
 - A glassmorphic video player layout integrated with HTMX.
+
+Enrollment/entitlements, student progress, assessments, certificates, protected
+video delivery, uploads/transcoding, notifications and native offline playback
+are not implemented by this starter. They are worthwhile application modules,
+but require domain authorization, durable jobs/storage and provider contracts.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.

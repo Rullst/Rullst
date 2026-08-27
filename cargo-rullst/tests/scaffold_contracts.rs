@@ -14,6 +14,7 @@ use cargo_rullst::blueprints::{
     PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
 use cargo_rullst::cli::Cli;
+use cargo_rullst::generators::audit::scan_idor_vulnerabilities;
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use clap::CommandFactory;
 
@@ -265,9 +266,27 @@ fn apply_materializes_each_public_blueprint_without_path_drift() {
                 .unwrap_or_else(|error| panic!("{}:{relative}: {error}", spec.key));
             assert_eq!(actual, contents, "{}:{relative}: write drift", spec.key);
         }
+        let (idor_count, idor_findings) = scan_idor_vulnerabilities(&root.join("src"));
+        assert_eq!(
+            idor_count, 0,
+            "{}: generated parameterized routes lack an auditable access boundary: {idor_findings:#?}",
+            spec.key
+        );
         std::fs::remove_dir_all(&root)
             .unwrap_or_else(|error| panic!("{}: temp cleanup failed: {error}", spec.key));
     }
+}
+
+#[test]
+fn workspace_parameterized_routes_have_explicit_access_boundaries() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root");
+    let (idor_count, idor_findings) = scan_idor_vulnerabilities(workspace);
+    assert_eq!(
+        idor_count, 0,
+        "workspace parameterized-route audit failed: {idor_findings:#?}"
+    );
 }
 
 #[test]

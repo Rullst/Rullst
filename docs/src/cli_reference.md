@@ -90,7 +90,11 @@ into their source tree and must be reviewed manually. Follow the
 origin reflection/wildcards and migrate to the current fail-closed allowlist.
 
 ### `cargo rullst make:omni`
-Prepares your project to become a Desktop or Mobile App. It generates Tauri/Omni manifests, creating the native bridge so you can package your website as an `.exe` or `.apk`.
+Generates a Tauri/Omni shell and development configuration for desktop, Android
+or iOS. The generated client wraps the Rullst web application; it does not by
+itself implement native plugins, offline synchronization, production network
+policy, release signing, Play Store/App Store publication or a tested `.apk`
+artifact.
 
 ### `cargo rullst make:iot <DeviceName>`
 Scaffolds a telemetry-only IoT module in `src/iot/` using `SensorTelemetry`.
@@ -179,7 +183,7 @@ compliance certification.
 * **Flags:**
   * `--ai`: Enables AI Sentinel suggestions for threat mitigation.
   * `--compliance`: Generates an evidence-oriented control report with `PASS`, `FAIL`, `SKIPPED`, or `NOT_EVALUATED`; it does not confer SOC 2 or ISO 27001 certification.
-  * `--idor`: Finds parameterized routes that do not contain a recognizable ownership-check pattern. It cannot prove authorization correctness.
+  * `--idor`: Fails on parameterized routes without an adjacent `// rullst-access: public|owner|role|admin — reason` classification and the recognized guard required by non-public classifications. `public` is accepted only for recognized GET routes. This bounded heuristic cannot prove domain authorization correctness.
 
 ### `cargo rullst eject [--force] [--output <path>]`
 Generates an inspectable Axum/Tokio entry-point snapshot
@@ -233,7 +237,8 @@ migrations, service reload, and a health probe. Availability and rollback depend
 on the target topology; the command does not guarantee zero downtime.
 
 ### `cargo rullst omni`
-Initializes your native application client (after using `make:omni`), launching the operating system window.
+Runs the generated Tauri development client after `make:omni`. Android/iOS
+require their official SDK/toolchain and a reachable backend.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).
 
 ---
@@ -246,7 +251,7 @@ route, dependency, and local network patterns.
 * **Optional Flags:**
   * `--ai`: Enables autonomous AI Sentinel analysis with risk assessment and proactive remediation advice.
   * `--compliance`: Generates an evidence-oriented control report; it is not a SOC 2, ISO 27001, or transport certification.
-  * `--idor`: Reports parameterized routes without a recognized ownership-check pattern; manual authorization review remains required.
+  * `--idor`: Fails on parameterized routes without an explicit adjacent access classification. `owner` requires `RbacGuard::authorize_owner_or_role`; `role` requires a recognized role guard; `admin` requires `RequireRoleLayer` or `NexusAuthPolicy::protect_router`; `public` is restricted to recognized GET routes. Manual review and runtime negative tests remain required.
   * `--geiger`: Inventories `unsafe` in the dependency tree. Unsafe may be justified and requires review; the command does not prove a zero-unsafe invariant.
   * `--sbom`: Generates a standardized **CycloneDX 1.5 JSON** Software Bill of Materials (`sbom-cyclonedx.json`) with package SHA-256 checksums and license metadata.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.

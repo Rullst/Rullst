@@ -2,7 +2,7 @@
 #![cfg(feature = "studio")]
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
-use rullst::studio::Studio;
+use rullst::studio::{LocalStudioAccess, Studio};
 use rullst::testing::TestApp;
 
 static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
@@ -41,7 +41,19 @@ async fn init_test_db() {
 }
 
 fn build_studio_router() -> axum::Router {
-    Studio::new().into_router()
+    Studio::new()
+        .into_router(LocalStudioAccess::loopback_only())
+        .expect("debug Studio router")
+        .layer(axum::middleware::from_fn(
+            |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.extensions_mut().insert(axum::extract::ConnectInfo(
+                    "127.0.0.1:42000"
+                        .parse::<std::net::SocketAddr>()
+                        .expect("loopback test peer"),
+                ));
+                next.run(request).await
+            },
+        ))
 }
 
 #[tokio::test]

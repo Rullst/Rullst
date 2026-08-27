@@ -73,27 +73,22 @@ jobs:
             exit 1
           fi
           release_version="${RELEASE_TAG#v}"
-          invalid_versions="$(
-            cargo metadata --no-deps --format-version 1 |
-              jq -r --arg version "$release_version" '
-                .packages[]
-                | select(.name != "rullst-blog-example")
-                | select(.publish != [])
-                | select(.version != $version)
-                | "\(.name)=\(.version)"
-              '
-          )"
-          if [ -n "$invalid_versions" ]; then
-            echo "The release tag does not match every publishable crate:"
-            echo "$invalid_versions"
-            exit 1
-          fi
+          cargo metadata --no-deps --format-version 1 |
+            jq --exit-status \
+              --slurpfile release_order .github/release-order.json \
+              --arg version "$release_version" \
+              -f .github/release-preflight.jq
 
           cargo package \
             --workspace \
             --exclude rullst-blog-example \
             --all-features \
             --locked
+
+      - name: Inspect packaged crate contents
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash .github/audit-packages.sh "${RELEASE_TAG#v}"
 
       - name: Generate tag-bound SBOM, audit, and bounded compliance evidence
         env:
@@ -109,8 +104,6 @@ jobs:
           # the release. The JSON result is retained as tag-bound evidence.
           cargo audit --json \
             --ignore RUSTSEC-2023-0071 \
-            --ignore RUSTSEC-2026-0173 \
-            --ignore RUSTSEC-2024-0436 \
             > "$evidence_dir/cargo-audit.json"
 
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
@@ -197,6 +190,28 @@ jobs:
           sha256sum --check checksums.txt
           sha256sum --check evidence-checksums.txt
 
+      - name: Reproduce verified packages from the tagged checkout
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          release_version="${RELEASE_TAG#v}"
+          cargo package \
+            --workspace \
+            --exclude rullst-blog-example \
+            --all-features \
+            --locked \
+            --no-verify
+          bash .github/audit-packages.sh "$release_version"
+
+          while IFS= read -r crate; do
+            cmp --silent \
+              "verified-crates/${crate}-${release_version}.crate" \
+              "target/package/${crate}-${release_version}.crate" || {
+                echo "Reproduced archive differs for ${crate} ${release_version}."
+                exit 1
+              }
+          done < <(jq -r '.[]' .github/release-order.json)
+
       - name: Authenticate with crates.io
         id: auth
         uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1
@@ -233,7 +248,26 @@ jobs:
               attempts=$((attempts + 1))
               echo "Publishing ${crate} ${release_version} (attempt ${attempts}/6)..."
               if cargo publish -p "$crate" --locked --no-verify; then
-                return 0
+                index_attempts=0
+                while [ "$index_attempts" -lt 18 ]; do
+                  if published_metadata="$(curl --fail --silent \
+                    --user-agent "rullst-release/${release_version}" \
+                    "https://crates.io/api/v1/crates/${crate}/${release_version}")"; then
+                    published_checksum="$(jq -r '.version.checksum // empty' <<< "$published_metadata")"
+                    if [ "$published_checksum" != "$expected_checksum" ]; then
+                      echo "Checksum mismatch after publishing ${crate} ${release_version}."
+                      return 1
+                    fi
+                    echo "${crate} ${release_version} indexed with the verified checksum."
+                    return 0
+                  fi
+
+                  index_attempts=$((index_attempts + 1))
+                  sleep 10
+                done
+
+                echo "Could not verify crates.io indexing for ${crate} ${release_version}."
+                return 1
               fi
 
               sleep $((attempts * 10))
@@ -243,28 +277,9 @@ jobs:
             return 1
           }
 
-          # Foundation crates with no internal dependencies.
-          publish_crate rullst-macros
-          publish_crate rullst-orm-macros
-          publish_crate rullst-connect
-          publish_crate rullst-iot
-
-          # The actual dependency DAG is ORM -> Core, not Core -> ORM.
-          publish_crate rullst-orm
-          publish_crate rullst-core
-
-          # Domain crates built on Core.
-          publish_crate rullst-security
-          publish_crate rullst-ai
-          publish_crate rullst-capital
-          publish_crate rullst-mail
-          publish_crate rullst-auth
-
-          # Developer interfaces and final distribution crates.
-          publish_crate rullst-nexus
-          publish_crate rullst-studio
-          publish_crate rullst
-          publish_crate cargo-rullst
+          while IFS= read -r crate; do
+            publish_crate "$crate"
+          done < <(jq -r '.[]' .github/release-order.json)
 
       - name: Create GitHub release from verified artifacts
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2

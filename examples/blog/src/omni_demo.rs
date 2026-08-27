@@ -119,7 +119,7 @@ pub async fn omni_page() -> impl IntoResponse {
                             <span class="feature-tag tag-orm">"rullst-omni"</span>
                         </h1>
                         <p style="color: var(--text-muted); margin-bottom: 0;">
-                            "Transform your Rullst Web application into native Desktop (Windows, Linux, macOS) and Mobile (Android, iOS) binaries with shared state, native notifications, and offline-first zero-bundle performance."
+                            "Generate a Tauri development shell for a responsive Rullst application on desktop, Android, or iOS. Native plugins, offline synchronization, signing, store publication, and release artifacts remain explicit application work."
                         </p>
                     </div>
 
@@ -128,22 +128,23 @@ pub async fn omni_page() -> impl IntoResponse {
                             <div class="platform-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span class="platform-badge badge-desktop">"🖥️ Desktop Target (Windows / Linux / macOS)"</span>
-                                    <span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">"Zero Heavy Dependencies"</span>
+                                    <span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">"Tauri System WebView"</span>
                                 </div>
                                 <h3 style="color: #fff; margin-top: 0.25rem; font-size: 1.2rem;">"Standalone Native Desktop Binary (Wry / Tauri Engine)"</h3>
                                 <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5;">
-                                    "Wraps the Rullst Tokio server and SSR UI in a high-performance native OS webview (Edge WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Produces lightweight ~5MB binaries without the heavy memory footprint of Electron."
+                                    "The generated desktop shell can start the Rullst backend and open its responsive UI in the operating system webview. Final size, memory use, installers, updates, and platform dependencies must be measured on each release target."
                                 </p>
 
                                 <div class="code-block" style="margin: 1rem 0;">
-                                    "# 1-Click Desktop Packaging CLI:\n"
-                                    "cargo rullst make:desktop --release\n"
-                                    "# Output: target/release/bundle/rullst-blog.exe (or .deb / .AppImage)"
+                                    "# Generate the Tauri shell:\n"
+                                    "cargo rullst make:omni\n\n"
+                                    "# Run the desktop development client:\n"
+                                    "cargo rullst omni desktop"
                                 </div>
 
                                 <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1rem; font-size: 0.85rem; color: #94a3b8;">
                                     <strong style="color: #38bdf8;">"Requirements: "</strong>
-                                    "Standard Rust compiler (`cargo` / `rustc`). No extra IDEs or virtual machines required."
+                                    "Rust, Tauri prerequisites, the platform webview, and either cargo-tauri or npm/npx."
                                 </div>
                             </div>
 
@@ -154,22 +155,20 @@ pub async fn omni_page() -> impl IntoResponse {
                                 </div>
                                 <h3 style="color: #fff; margin-top: 0.25rem; font-size: 1.2rem;">"Native Mobile Application (Android APK & iOS)"</h3>
                                 <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5;">
-                                    "Compiles native Rust system libraries via `cargo-apk` or `tauri-mobile`, embedding the local responsive interface with hardware bridge APIs (Camera, SQLite, Biometrics, Push Notifications)."
+                                    "Initializes and runs the Tauri mobile development target around the responsive web interface. Camera, SQLite, biometrics, push notifications, secure offline storage, deep links, and background playback require reviewed Tauri plugins and application code."
                                 </p>
 
                                 <div class="code-block" style="margin: 1rem 0;">
-                                    "# 1. Add Android Compilation Targets:\n"
-                                    "rustup target add aarch64-linux-android armv7-linux-androideabi\n\n"
-                                    "# 2. Build Release APK:\n"
-                                    "cargo rullst make:mobile --platform android --apk\n"
-                                    "# Output: target/mobile/android/app-release.apk"
+                                    "# 1. Generate and select Android during setup:\n"
+                                    "cargo rullst make:omni\n\n"
+                                    "# 2. Run the Android development client:\n"
+                                    "cargo rullst omni android\n\n"
+                                    "# Release signing/build remains a Tauri/Android gate."
                                 </div>
 
                                 <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1rem; font-size: 0.85rem; color: #94a3b8;">
                                     <strong style="color: #f59e0b;">"Do I need Android Studio installed? "</strong><br />
-                                    "Not the full heavy Android Studio GUI! You only need the "
-                                    <strong style="color: #fff;">"Android Command Line Tools (`sdkmanager` + NDK)"</strong>
-                                    " or `ANDROID_HOME` configured on your machine so the Rust compiler can cross-compile and sign the APK package."
+                                    "Use the Android SDK, NDK, Java toolchain, platform tools, and a configured emulator/device. A release also needs application identity, signing keys, network policy, store metadata, and Play Console validation."
                                 </div>
                             </div>
                         </div>

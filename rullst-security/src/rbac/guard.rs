@@ -92,3 +92,46 @@ impl RbacGuard {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn user() -> UserContext {
+        UserContext::new("user-17", vec!["Editor".to_string()])
+            .with_permissions(vec!["Posts:Publish".to_string()])
+    }
+
+    #[test]
+    fn context_checks_roles_permissions_and_ownership() {
+        let context = user();
+        assert!(context.has_role("editor"));
+        assert!(context.has_permission("posts:publish"));
+        assert!(context.is_owner_of("user-17"));
+        assert!(!context.has_role("auditor"));
+        assert!(!context.has_permission("posts:delete"));
+        assert!(!context.is_owner_of("other-user"));
+    }
+
+    #[test]
+    fn role_authorization_accepts_required_role_or_admin_and_denies_others() {
+        assert!(RbacGuard::authorize(&user(), "EDITOR").is_ok());
+        let admin = UserContext::new("admin-1", vec!["ADMIN".to_string()]);
+        assert!(RbacGuard::authorize(&admin, "auditor").is_ok());
+
+        let denied = RbacGuard::authorize(&user(), "auditor");
+        assert!(matches!(denied, Err(SecurityError::Forbidden(_))));
+    }
+
+    #[test]
+    fn ownership_authorization_covers_owner_role_admin_and_denial() {
+        assert!(RbacGuard::authorize_owner_or_role(&user(), "user-17", "moderator").is_ok());
+        assert!(RbacGuard::authorize_owner_or_role(&user(), "other-user", "editor").is_ok());
+        let admin = UserContext::new("admin-1", vec!["admin".to_string()]);
+        assert!(RbacGuard::authorize_owner_or_role(&admin, "other-user", "moderator").is_ok());
+        assert!(matches!(
+            RbacGuard::authorize_owner_or_role(&user(), "other-user", "moderator"),
+            Err(SecurityError::Forbidden(_))
+        ));
+    }
+}

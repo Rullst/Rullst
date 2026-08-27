@@ -8,6 +8,7 @@ use axum::{
 pub fn router() -> Router {
     Router::new()
         .route("/", get(render_feature_flags))
+        // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/toggle/{name}", post(toggle_feature_flag))
 }
 

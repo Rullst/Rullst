@@ -575,6 +575,35 @@ mod tests {
             decrypt_session(&expired_token, &k).unwrap_err(),
             AuthError::SessionExpired
         );
+
+        fn encrypted_payload(payload: &str, key: &[u8]) -> String {
+            let cipher = derive_cipher(key).unwrap();
+            let nonce_bytes = [7_u8; 12];
+            let ciphertext = cipher
+                .encrypt(
+                    &Nonce::from(nonce_bytes),
+                    Payload {
+                        msg: payload.as_bytes(),
+                        aad: SESSION_AAD,
+                    },
+                )
+                .unwrap();
+            let mut combined = nonce_bytes.to_vec();
+            combined.extend_from_slice(&ciphertext);
+            format!(
+                "{SESSION_TOKEN_PREFIX}{}",
+                general_purpose::URL_SAFE_NO_PAD.encode(combined)
+            )
+        }
+
+        let future = u64::MAX;
+        for payload in [
+            "missing-separator".to_string(),
+            "42|not-a-timestamp".to_string(),
+            format!("not-an-id|{future}"),
+        ] {
+            assert!(decrypt_session(&encrypted_payload(&payload, &k), &k).is_err());
+        }
     }
 
     #[test]
@@ -649,6 +678,12 @@ mod tests {
             extract_session_cookie(&headers),
             Some("my_secret_token_2".to_string())
         );
+
+        headers.insert(
+            axum::http::header::COOKIE,
+            "other=123; theme=dark".parse().unwrap(),
+        );
+        assert_eq!(extract_session_cookie(&headers), None);
     }
 
     #[test]
@@ -682,6 +717,7 @@ mod tests {
         assert!(validate_app_key(b"").is_err());
         assert!(validate_app_key(b"short").is_err());
         assert!(validate_app_key(&[b'a'; 64]).is_err());
+        assert!(validate_app_key(b"mock_credential_that_is_long_but_forbidden").is_err());
         assert!(validate_app_key(&test_app_key()).is_ok());
     }
 

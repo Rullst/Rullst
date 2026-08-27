@@ -99,27 +99,30 @@ When publishing or preparing multi-crate releases to crates.io, publish in stric
 cargo publish -p rullst-macros
 cargo publish -p rullst-orm-macros
 
-# Step 2: Foundation Runtime & ORM Crates
-cargo publish -p rullst-core
+# Step 2: ORM then Core (Core has an optional ORM dependency)
 cargo publish -p rullst-orm
+cargo publish -p rullst-core
 
 # Step 3: Domain & Service Crates
-cargo publish -p rullst-iot
-cargo publish -p rullst-mail
-cargo publish -p rullst-ai
 cargo publish -p rullst-connect
+cargo publish -p rullst-iot
 cargo publish -p rullst-security
-cargo publish -p rullst-auth
+cargo publish -p rullst-ai
 cargo publish -p rullst-capital
+cargo publish -p rullst-mail
+cargo publish -p rullst-auth
 
 # Step 4: Visual Dashboards & Admin Interfaces
-cargo publish -p rullst-studio
 cargo publish -p rullst-nexus
+cargo publish -p rullst-studio
 
 # Step 5: Umbrella Metapackage & Developer CLI
 cargo publish -p rullst
 cargo publish -p cargo-rullst
 ```
+
+The machine-readable source of truth is `.github/release-order.json`; the
+release workflow validates it against `cargo metadata` before packaging.
 
 ### 4.3. CLI Scaffolding First
 - Prefer CLI scaffolding generators (`cargo rullst make:*`) when adding new entities, controllers, or migrations to ensure architectural consistency.
