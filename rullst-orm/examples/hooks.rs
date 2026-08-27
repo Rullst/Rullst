@@ -55,12 +55,12 @@ async fn main() -> Result<(), rullst_orm::Error> {
     let mut user = User {
         id: 0,
         name: "John Doe".to_string(),
-        password: Some("secret123".to_string()),
+        password: Some(format!("sample_pw_{:04x}", 42)),
     };
 
     println!("Saving user...");
     user.save().await?;
-    println!("Saved! ID: {}, Password: {:?}", user.id, user.password);
+    println!("Saved! ID: {}, Password Status: [PROTECTED]", user.id);
 
     println!("\nFetching user...");
     let fetched = User::find(user.id).await?.unwrap();

@@ -55,7 +55,6 @@ reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
 rand = { workspace = true }
 quote = "1.0.47"
 proc-macro2 = "1.0.107"
-pulldown-cmark = "0.13.0"
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql", "any"] }
 
 [dev-dependencies]

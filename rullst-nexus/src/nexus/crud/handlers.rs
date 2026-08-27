@@ -25,7 +25,7 @@ pub async fn nexus_dashboard(
     let models_sidebar = render_sidebar(&state, None);
 
     let stats_cards = state.registry.iter().fold(
-        String::with_capacity(state.registry.len() * 256),
+        String::with_capacity(state.registry.len().saturating_mul(256).min(64 * 1024)),
         |mut acc, m| {
             let t = m.table;
             let ic = m.icon;

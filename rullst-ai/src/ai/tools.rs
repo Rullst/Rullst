@@ -305,7 +305,13 @@ fn deny(
     risk: Option<ToolRisk>,
     error: ToolExecutionError,
 ) -> ToolExecutionError {
-    match audit.record(audit_event(context, tool, risk, ToolAuditOutcome::Denied)) {
+    match audit.record(audit_event(
+        context,
+        tool,
+        risk,
+        None,
+        ToolAuditOutcome::Denied,
+    )) {
         Ok(()) => error,
         Err(audit_error) => audit_error,
     }

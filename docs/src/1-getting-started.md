@@ -17,7 +17,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **For Windows:**
 Download and run `rustup-init.exe` from the website.
 
-Next, install the **Rullst CLI**. The CLI is the heart of the developer experience, handling scaffolding, static sites (RullstPress), database migrations, and more.
+Next, install the **Rullst CLI**. The CLI is the heart of the developer experience, handling scaffolding, database migrations, dev server, and more.
 
 ```bash
 cargo install cargo-rullst

@@ -350,7 +350,6 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "db:status",
         "deploy",
         "dev",
-        "docs",
         "doctor",
         "dockerize",
         "eject",

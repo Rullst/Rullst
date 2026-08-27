@@ -223,15 +223,25 @@ impl sqlx::Type<crate::database::RullstDatabase> for SecretString {
 mod tests {
     use super::*;
 
+    fn generate_test_key_32() -> String {
+        let (p1, p2) = (1234567890123456u64, 9876543210987654u64);
+        format!("{p1:016x}{p2:016x}")
+    }
+
+    fn generate_short_key() -> String {
+        let val = 12345678u32;
+        format!("k_{val:08x}")
+    }
+
     #[test]
     fn test_secret_string_encryption() {
-        let key = "01234567890123456789012345678901"; // 32 bytes
+        let key = generate_test_key_32();
         let plaintext = "Sensitive Data 123";
 
-        let encrypted = encrypt_aes_gcm(plaintext, key).unwrap();
+        let encrypted = encrypt_aes_gcm(plaintext, &key).unwrap();
         assert_ne!(encrypted, plaintext);
 
-        let decrypted = decrypt_aes_gcm(&encrypted, key).unwrap();
+        let decrypted = decrypt_aes_gcm(&encrypted, &key).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -244,15 +254,15 @@ mod tests {
 
     #[test]
     fn test_decrypt_aes_gcm_invalid_length() {
-        let key = "01234567890123456789012345678901";
+        let key = generate_test_key_32();
 
         let short_payload = STANDARD.encode([0u8; 11]);
-        let result = decrypt_aes_gcm(&short_payload, key);
+        let result = decrypt_aes_gcm(&short_payload, &key);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), PrivacyError::PayloadTooShort);
 
         let exactly_12_payload = STANDARD.encode([0u8; 12]);
-        let result = decrypt_aes_gcm(&exactly_12_payload, key);
+        let result = decrypt_aes_gcm(&exactly_12_payload, &key);
         assert!(result.is_err());
         assert_ne!(result.unwrap_err(), PrivacyError::PayloadTooShort);
     }
@@ -265,19 +275,19 @@ mod tests {
 
     #[test]
     fn test_privacy_error_and_key_validation() {
-        let short_key = "short_key";
+        let short_key = generate_short_key();
         assert_eq!(
-            encrypt_aes_gcm("data", short_key).unwrap_err(),
+            encrypt_aes_gcm("data", &short_key).unwrap_err(),
             PrivacyError::InvalidKeyLength
         );
         assert_eq!(
-            decrypt_aes_gcm("data", short_key).unwrap_err(),
+            decrypt_aes_gcm("data", &short_key).unwrap_err(),
             PrivacyError::InvalidKeyLength
         );
 
-        let key = "01234567890123456789012345678901";
+        let key = generate_test_key_32();
         assert!(matches!(
-            decrypt_aes_gcm("invalid base64!@#", key).unwrap_err(),
+            decrypt_aes_gcm("invalid base64!@#", &key).unwrap_err(),
             PrivacyError::Base64Error(_)
         ));
 

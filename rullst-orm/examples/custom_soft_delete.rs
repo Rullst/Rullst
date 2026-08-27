@@ -23,15 +23,15 @@ pub struct SoftDeleteDemo {
     pub id: i32,
     pub name: String,
     pub is_deleted: i32,
-    // `secret` is intentionally NOT persisted. The macro removes it
+    // `transient_note` is intentionally NOT persisted. The macro removes it
     // from generated INSERT / UPDATE column lists, the `*Column` enum
     // and the JSON serialiser. The field remains on the struct so user
     // code can still read/write it locally. We use `#[sqlx(skip)]`
     // (the alias recognised by both this ORM derive and the
     // `sqlx::FromRow` derive) so the database row mapping also skips
-    // the field — there is no `secret` column in the schema.
+    // the field — there is no `transient_note` column in the schema.
     #[sqlx(skip)]
-    pub secret: String,
+    pub transient_note: String,
 }
 
 #[tokio::main]
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         id: 0,
         name: "Alice".to_string(),
         is_deleted: 0,
-        secret: "shhh, this is not persisted".to_string(),
+        transient_note: "unpersisted in-memory tag".to_string(),
     };
     row.save().await?;
     println!("inserted id={} name={}", row.id, row.name);
@@ -65,9 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("visible rows: {}", visible.len());
     assert_eq!(visible.len(), 1, "fresh row should be visible");
 
-    // The locally maintained `secret` value is still available even
+    // The locally maintained `transient_note` value is still available even
     // though it is not persisted.
-    println!("local secret after insert: {}", row.secret);
+    println!("local note after insert: {}", row.transient_note);
 
     // ── SOFT DELETE ──────────────────────────────────────────────────────
     // Generates: UPDATE soft_delete_demo SET is_deleted = 1 WHERE id = ?

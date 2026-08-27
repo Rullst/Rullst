@@ -102,9 +102,9 @@ async fn main() -> Result<(), rullst_orm::Error> {
         .get()
         .await?;
 
-    println!("Active Users (with published posts):");
+    println!("Active Users found: {}", active_users.len());
     for u in &active_users {
-        println!("  - [{}] {}", u.id, u.name);
+        println!("  - User record ID: #{}", u.id);
     }
 
     // 2. Test join_constrained
@@ -122,9 +122,9 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
     // Since FromRow doesn't map virtual select_raw author_name directly into Post struct without extra fields,
     // we can fetch them or prove it compiles and runs without sqlite schema exceptions.
-    println!("Returned posts count for Alice: {}", posts_with_users.len());
+    println!("Returned posts count: {}", posts_with_users.len());
     for p in &posts_with_users {
-        println!("  - Post: {} (Author ID: {})", p.title, p.user_id);
+        println!("  - Post record ID: #{} (Status: {})", p.id, p.status);
     }
 
     // Clean up

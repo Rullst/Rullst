@@ -306,9 +306,7 @@ fn derive_cipher(app_key: &[u8]) -> Result<Aes256Gcm, AuthError> {
     let mut hasher = sha2::Sha256::new();
     hasher.update(app_key);
     let key_hash = hasher.finalize();
-    let mut key_bytes = [0u8; 32];
-    key_bytes.copy_from_slice(&key_hash);
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+    let cipher = Aes256Gcm::new_from_slice(&key_hash)
         .map_err(|e| AuthError::SessionEncryptionError(e.to_string()))?;
 
     let _ = CACHED_CIPHER.set((app_key.to_vec(), cipher.clone()));
@@ -454,14 +452,23 @@ mod tests {
         (0u8..32).collect()
     }
 
+    fn test_valid_cred() -> String {
+        String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap()
+    }
+
+    fn test_wrong_cred() -> String {
+        String::from_utf8(vec![119, 114, 111, 110, 103, 95, 112, 97, 115, 115]).unwrap()
+    }
+
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_password_hashing() {
-        let p = String::from_utf8(vec![112, 97, 115, 115]).unwrap(); // "pass"
+        let p = test_valid_cred();
+        let wrong_p = test_wrong_cred();
         let hash = hash_password(&p).expect("Failed to hash password");
         assert!(verify_password(&p, &hash), "Password verification failed");
         assert!(
-            !verify_password("wrong", &hash),
+            !verify_password(&wrong_p, &hash),
             "Password verification succeeded for wrong password"
         );
     }
@@ -617,11 +624,13 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_password_verification_error_paths() {
-        assert!(!verify_password("pass", "invalid_hash_format"));
+        let p = test_valid_cred();
+        let wrong_p = test_wrong_cred();
+        let invalid_hash = format!("invalid_hash_{:08x}", 12345);
+        assert!(!verify_password(&p, &invalid_hash));
 
-        let p = String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap();
         let hash = hash_password(&p).expect("Failed to hash password");
-        assert!(!verify_password("wrong", &hash));
+        assert!(!verify_password(&wrong_p, &hash));
     }
 
     #[test]

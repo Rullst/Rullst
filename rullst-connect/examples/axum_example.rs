@@ -31,28 +31,47 @@ async fn login() -> Result<impl IntoResponse, (StatusCode, String)> {
     Ok(axum::response::Redirect::to(&url))
 }
 
+fn html_escape(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
 // Notice how we magically extract the callback parameters using `AuthCallback` directly!
 async fn callback(auth: AuthCallback) -> impl IntoResponse {
     if let Some(error) = auth.error {
-        return Html(format!("<h1>Error: {}</h1>", error));
+        let safe_error = html_escape(&error);
+        return Html(format!("<h1>Error: {}</h1>", safe_error));
     }
 
     if let Some(code) = auth.code {
         let provider = match get_provider() {
             Ok(provider) => provider,
-            Err(error) => return Html(format!("<h1>Invalid provider: {error}</h1>")),
+            Err(error) => {
+                let safe_error = html_escape(&error.to_string());
+                return Html(format!("<h1>Invalid provider: {}</h1>", safe_error));
+            }
         };
         let params = rullst_connect::provider::ExchangeParams {
             auth_code: &code,
             ..Default::default()
         };
         match provider.get_user(params).await {
-            Ok(user) => Html(format!(
-                "<h1>Welcome, {}!</h1><img src='{}' />",
-                user.name,
-                user.avatar_url.unwrap_or_default()
-            )),
-            Err(e) => Html(format!("<h1>Failed to get user: {}</h1>", e)),
+            Ok(user) => {
+                let safe_name = html_escape(&user.name);
+                let safe_avatar = html_escape(&user.avatar_url.unwrap_or_default());
+                Html(format!(
+                    "<h1>Welcome, {}!</h1><img src='{}' />",
+                    safe_name, safe_avatar
+                ))
+            }
+            Err(e) => {
+                let safe_error = html_escape(&e.to_string());
+                Html(format!("<h1>Failed to get user: {}</h1>", safe_error))
+            }
         }
     } else {
         Html("<h1>No code provided</h1>".to_string())

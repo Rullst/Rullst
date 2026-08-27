@@ -18,7 +18,6 @@ pub mod deploy;
 pub mod desktop;
 pub mod dev;
 pub mod diagram;
-pub mod docs;
 pub mod doctor;
 pub mod eject;
 pub mod foundry;

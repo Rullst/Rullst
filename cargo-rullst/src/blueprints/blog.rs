@@ -342,7 +342,7 @@ pub fn index_page(posts: Vec<Post>) -> String {
                 <div class="container">
                     <header style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="text-align: left;">
-                            <h1>"RullstPress Feed"</h1>
+                            <h1>"Rullst Blog"</h1>
                             <p class="sub">"Insights on hyper-performance fullstack development"</p>
                         </div>
                         <div style="display: flex; gap: 1rem; align-items: flex-start;">

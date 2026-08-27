@@ -171,8 +171,6 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "cargo rullst dash",
                     "Start interactive Ratatui Dev Dashboard",
                 ),
-                ("cargo rullst docs dev", "Live docs preview server"),
-                ("cargo rullst docs build", "Build static docs site"),
             ],
         ),
     ]

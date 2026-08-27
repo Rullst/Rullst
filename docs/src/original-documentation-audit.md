@@ -36,7 +36,7 @@ snapshot. Os identificadores `M*` apontam para a classificação detalhada no
 
 | Ambição original preservada | Estado atual e opinião | Destino canônico |
 | :--- | :--- | :--- |
-| CLI completa, generators, `make:resource`, RullstPress e SDK TypeScript | `[~] Parcial` — vale concluir com matriz de projetos gerados e um schema de API canônico; inferência AST isolada não basta. | M1, M4, M5 e M34 |
+| CLI completa, generators, `make:resource`, docs hub (mdBook) e SDK TypeScript | `[~] Parcial` — vale concluir com matriz de projetos gerados e um schema de API canônico; inferência AST isolada não basta. | M1, M4, M5 e M34 |
 | Recompilação sub-100 ms com mold/lld/Cranelift | `[~] Parcial` — vale otimizar e publicar benchmarks por máquina; não vale garantir um tempo universal. | M2 |
 | Zero lock-in, eject para Axum/Tokio e módulos totalmente opcionais | `[~] Parcial` — escape hatches são valiosos; migração sem custo e opcionalidade universal não são garantias honestas. | M3 e M32 |
 | Active Record, Repository, Turso/libSQL e réplicas SQLite transparentes | `[~] Parcial` — os padrões ORM existem; drivers e replicação precisam de semântica vendor-specific e testes reais. | M6 e M38 |

@@ -5,6 +5,10 @@ extend-exclude = [
     "rullst-connect/src/providers/oidc.rs",
     "gpt.md",
     "docs/src/hardening-status.md",
+    "docs/src/original-documentation-audit.md",
+    "docs/src/cors-scaffold-security-advisory.md",
+    "docs/src/comparatives.md",
+    "docs/src/v12.md",
     "sbom-cyclonedx.json"
 ]
 

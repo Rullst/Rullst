@@ -37,7 +37,13 @@ impl MailDriver for LogDriver {
             message.body_text.as_deref().unwrap_or(""),
             message.body_html.as_deref().unwrap_or("")
         );
-        println!("{}", formatted);
+        println!(
+            "[MAIL LOGGED] {} | To: {} | Subject: {} | Target: {}",
+            chrono::Local::now().to_rfc3339(),
+            message.to,
+            message.subject,
+            log_path.display()
+        );
 
         let log_path_owned = log_path.clone();
         let formatted_clone = formatted.clone();

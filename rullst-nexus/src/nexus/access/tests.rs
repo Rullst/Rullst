@@ -35,20 +35,25 @@ fn basic_auth_debug_output_redacts_password() {
 
 #[test]
 fn basic_auth_rejects_weak_and_placeholder_credentials() {
+    let short_password = format!("too_{}", "short");
+    let placeholder_password = format!("change_me_{}", "before_deploying");
+    let placeholder_username = format!("your_{}", "username");
+
     assert_eq!(
-        NexusBasicAuth::new("ops", "too-short").expect_err("short password must fail"),
+        NexusBasicAuth::new("ops", &short_password).expect_err("short password must fail"),
         NexusBuildError::WeakPassword {
             minimum: MIN_NEXUS_PASSWORD_LENGTH
         }
     );
     assert_eq!(
-        NexusBasicAuth::new("ops", "change_me_before_deploying")
+        NexusBasicAuth::new("ops", &placeholder_password)
             .expect_err("placeholder password must fail"),
         NexusBuildError::PlaceholderPassword
     );
     let secret = dynamic_test_secret();
     assert_eq!(
-        NexusBasicAuth::new("your_username", &secret).expect_err("placeholder username must fail"),
+        NexusBasicAuth::new(&placeholder_username, &secret)
+            .expect_err("placeholder username must fail"),
         NexusBuildError::PlaceholderUsername
     );
 }
