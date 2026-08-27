@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787547348765,
+  "lastUpdate": 1787866486578,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -1867,6 +1867,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 685,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bb07dc2e7a96ca2c0dd87838be98e68c152f119f",
+          "message": "ci: add automated benchmark and semver regression workflows, and expand project testing and modular support.",
+          "timestamp": "2026-08-27T18:21:04-03:00",
+          "tree_id": "11a05be9f6e35a84b89577a9fe3c6610cf5c1df9",
+          "url": "https://github.com/Rullst/Rullst/commit/bb07dc2e7a96ca2c0dd87838be98e68c152f119f"
+        },
+        "date": 1787866485812,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1490,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 330,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 694,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
