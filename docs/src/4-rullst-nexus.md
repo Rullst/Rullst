@@ -35,7 +35,7 @@ let nexus = rullst::nexus::Nexus::new()
     .with_auth_policy(nexus_auth)
     .with_brand("SaaS Admin")
     .register::<models::user::User>()
-    .build()?;
+    .try_build()?;
 
 // ... and add it to the final router:
 let router = router.nest_axum("/nexus", nexus);
@@ -78,7 +78,7 @@ let nexus = rullst::nexus::Nexus::new()
     .with_auth_policy(nexus_auth)
     .with_brand("Portfolio Admin")
     .register::<models::profile::Profile>()
-    .build()?;
+    .try_build()?;
 ```
 
 Administrators can edit the developer profile fields directly at `/nexus`. Changes to name, title, bio, email, website, avatar image, and social URLs immediately update the live portfolio website without requiring code changes or server redeployment!

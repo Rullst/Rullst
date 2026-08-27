@@ -1,54 +1,61 @@
-# Rullst Nexus ⚙️
+# Rullst Nexus
 
-`rullst-nexus` is the auto-generated, dark-mode Content Management System (CMS) and Admin Panel for the Rullst Framework. It dynamically inspects your Rust structs and database schema to build a full-featured admin interface instantly.
+`rullst-nexus` is a server-rendered administrative panel for models that
+implement `NexusModel`. It provides registered-model CRUD, search, pagination,
+typed form widgets, batch actions, telemetry, a security view and an optional AI
+query page. The current interface uses server-side HTML and HTMX; Wasm islands,
+drag-and-drop media management and automatic relationship discovery described by
+older documentation were not implemented. They remain worthwhile separate
+features, but must not be presented as current behavior.
 
-## ✨ Features
+## Build a protected panel
 
-- **Zero-Config Admin Panel:** Generates complete CRUD (Create, Read, Update, Delete) interfaces directly from your `rullst-orm` models.
-- **Wasm Islands:** Uses Rust-based WebAssembly for hyper-fast, SPA-like interactions without writing a single line of JavaScript.
-- **Rich Media Support:** Built-in drag-and-drop file uploads, Markdown editors, and image previews for `Text` and `Blob` columns.
-- **Relational Awareness:** Automatically understands and provides dropdowns or multi-selects for `HasMany` and `BelongsTo` relationships.
-- **Role-Based Protection:** Native integration with `rullst-auth` ensures only authenticated Administrators can access the Nexus dashboard.
-
-## 🚀 Quickstart
-
-Add `rullst-nexus` to your project:
-
-```bash
-cargo add rullst-nexus
-```
-
-### Exposing Nexus
-
-You can easily mount Nexus onto an existing Router. By default, it inspects the global `Orm` pool to map all registered tables.
+Nexus fails closed: `try_build()` requires an explicit validated access policy.
+The generated-app helper permits credential-free access only in debug builds and
+only for a loopback peer proven by Axum `ConnectInfo`. Release builds require
+`NEXUS_ADMIN_USERNAME` and a unique `NEXUS_ADMIN_PASSWORD` of at least 16
+characters.
 
 ```rust
-use rullst::{Router, Server};
-use rullst_nexus::NexusLayer;
-use rullst_orm::Orm;
-use rullst_auth::{AuthLayer, SessionStore};
+use rullst_nexus::{Nexus, NexusAuthPolicy};
 
-#[tokio::main]
-async fn main() {
-    let pool = Orm::pool();
-    let session_store = SessionStore::postgres(pool.clone());
-    
-    let admin_app = Router::new()
-        // Ensure only admins can access Nexus
-        .layer(AuthLayer::new(session_store).require_role("admin"))
-        // Mount Nexus
-        .nest("/admin", NexusLayer::new(pool).into_router());
+# fn build() -> Result<axum::Router, Box<dyn std::error::Error>> {
+let access = NexusAuthPolicy::local_development_or_basic_from_env()?;
+let nexus = Nexus::new()
+    .with_auth_policy(access)
+    .with_brand("Application Admin")
+    // .register::<User>()
+    .try_build()?;
 
-    Server::new().route("/", admin_app).run().await;
-}
+let app = axum::Router::new().nest("/nexus", nexus);
+# Ok(app)
+# }
 ```
 
-Now, navigate to `http://localhost:3000/admin` to manage your application data!
+The serving boundary must preserve the socket address, for example with Axum's
+`into_make_service_with_connect_info::<SocketAddr>()`. Basic Auth additionally
+requires direct HTTPS or the application-owned `NexusVerifiedTls` capability
+inserted only after validating a trusted TLS terminator. Never derive that
+capability from an untrusted forwarded header.
 
-## 🔐 Security Audit
+`NexusAuthPolicy::protect_router` can apply the same administrator boundary to
+application-owned operational routes, as the ERP blueprint does for inventory
+mutations.
 
-`rullst-nexus` generates UI forms dynamically. To protect against CSRF (Cross-Site Request Forgery) and XSS (Cross-Site Scripting), it utilizes automatic CSRF token injection in forms and strictly escapes all user-generated content rendered in the Admin Panel tables. Modifying database records through Nexus passes through the same `rullst-orm` validations as your public API.
+## Capability boundary
 
-## 📚 Documentation
+- Implemented: explicit model registration; server-rendered tables/forms;
+  parameterized and sanitized SQL identifiers; bound record values; CRUD,
+  search, pagination and batch operations; CSRF middleware; fail-closed
+  loopback/Basic access; bounded Basic Auth failure throttling.
+- Application responsibility: model/field authorization policy, database
+  privileges, trusted proxy and TLS configuration, secret rotation, audit-log
+  durability, tenant isolation and any ownership rules beyond the panel-wide
+  administrator boundary.
+- Not implemented: a generic `NexusLayer`, automatic ORM schema reflection,
+  automatic `HasMany`/`BelongsTo` widgets, full rich-media management and a
+  shared-production authentication service. These ideas may be implemented when
+  they have typed contracts and proportional tests.
 
-For advanced usage, customizing the Admin Panel's CSS, and overriding default form widgets, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+For a complete model example and the local/release access flow, see
+[Rullst Nexus: Your Instant CMS](../4-rullst-nexus.md).

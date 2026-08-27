@@ -93,28 +93,19 @@ mod tests {
     #[test]
     fn identity_is_validated_before_tenant_authorization_and_rate_limit() {
         let order = ProductionPreset::middleware_order();
-        let index = |stage| {
-            order
-                .iter()
-                .position(|candidate| *candidate == stage)
-                .expect("every asserted stage belongs to the preset")
-        };
+        let expected_identity_order = [
+            ProductionMiddlewareStage::Session,
+            ProductionMiddlewareStage::Authentication,
+            ProductionMiddlewareStage::Tenant,
+            ProductionMiddlewareStage::Authorization,
+            ProductionMiddlewareStage::RateLimit,
+        ];
+        let observed_identity_order = order
+            .iter()
+            .copied()
+            .filter(|stage| expected_identity_order.contains(stage))
+            .collect::<Vec<_>>();
 
-        assert!(
-            index(ProductionMiddlewareStage::Session)
-                < index(ProductionMiddlewareStage::Authentication)
-        );
-        assert!(
-            index(ProductionMiddlewareStage::Authentication)
-                < index(ProductionMiddlewareStage::Tenant)
-        );
-        assert!(
-            index(ProductionMiddlewareStage::Tenant)
-                < index(ProductionMiddlewareStage::Authorization)
-        );
-        assert!(
-            index(ProductionMiddlewareStage::Authorization)
-                < index(ProductionMiddlewareStage::RateLimit)
-        );
+        assert_eq!(observed_identity_order, expected_identity_order);
     }
 }

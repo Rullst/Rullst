@@ -201,9 +201,9 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     <div class="text-xs text-slate-400 mt-2">IP bucket throttles enforced</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
-                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">📡 SIEM Common Event Log</div>
+                    <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">📡 Local SIEM-Candidate Alerts</div>
                     <div class="text-3xl font-bold text-emerald-400 mt-1">{siem_dispatches}</div>
-                    <div class="text-xs text-slate-400 mt-2">CEF &amp; Webhook alerts exported</div>
+                    <div class="text-xs text-slate-400 mt-2">Bounded in-process events; no external delivery</div>
                 </div>
             </div>
 

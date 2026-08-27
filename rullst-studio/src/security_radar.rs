@@ -260,9 +260,9 @@ async fn render_radar_dashboard() -> Html<String> {
             <p class="text-[10px] text-slate-500 mt-1">Sliding-Window IP Limits</p>
         </div>
         <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SIEM Alerts Streamed</span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Local SIEM-Candidate Alerts</span>
             <div class="text-2xl font-extrabold text-emerald-500 mt-1" id="stat-siem">{siem_dispatches_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">CEF / JSON SOC Exports</p>
+            <p class="text-[10px] text-slate-500 mt-1">In-process only; no delivery acknowledgement</p>
         </div>
         <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">IDOR Scanner Audited</span>

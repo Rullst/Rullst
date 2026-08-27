@@ -8,6 +8,10 @@ Rullst exposes development dashboards for security events in Studio and Nexus.
 They are observability surfaces, not a managed SOC, a penetration test, or proof
 of compliance.
 
+The current `dispatch_siem_alert` compatibility facade records a bounded local
+event; it does not transmit or acknowledge delivery to an external SIEM. The
+dashboards therefore label this metric as local SIEM-candidate alerts.
+
 ## Surfaces and access
 
 - Studio mounts its security view under `/studio/security`.

@@ -63,6 +63,7 @@
 - [📜 Framework Spec](spec.md)
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
 - [🚦 Rullst v12 Release Program](v12.md)
+- [⚖️ Framework Comparatives & Competitive Priorities](comparatives.md)
 - [🗃️ Pre-gpt.md Documentation Preservation](original-documentation-audit.md)
 - [🧪 Maybe SaaS: Product Incubation Strategy](maybesaas.md)
 - [🔒 Hardening Status](hardening-status.md)

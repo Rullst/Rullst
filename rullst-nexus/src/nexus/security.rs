@@ -268,7 +268,7 @@ pub async fn nexus_security_page(
                 <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{rate_limit_blocks}</span>
             </div>
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">SIEM Alerts Streamed</span>
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Local SIEM-Candidate Alerts</span>
                 <span style="font-size: 20px; font-weight: 700; color: #34d399;">{siem_dispatches}</span>
             </div>
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">

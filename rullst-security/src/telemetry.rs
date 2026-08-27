@@ -44,6 +44,8 @@ pub struct SecurityStore {
     pub deception_hits_count: AtomicU64,
     pub cswsh_blocks_count: AtomicU64,
     pub rate_limit_blocks_count: AtomicU64,
+    /// Local alerts recorded through the legacy SIEM dispatch facade.
+    /// This is not a successful external-delivery counter.
     pub siem_dispatches_count: AtomicU64,
     pub login_jail_bans_count: AtomicU64,
     pub dlp_secrets_masked_count: AtomicU64,

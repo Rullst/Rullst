@@ -17,6 +17,34 @@ const ACCESS_MARKER: &str = "rullst-access:";
 /// it cannot recognize the route boundary; a clean scan is not a proof that a
 /// domain resource lookup enforces ownership correctly at runtime.
 pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
+    let source_files = collect_rust_source_files(src_dir);
+    let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
+    let mut sources = Vec::new();
+    for path in source_files {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let production = production_source(&content);
+        let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
+        crate_evidence
+            .entry(source_root.clone())
+            .or_default()
+            .include(production);
+        sources.push((path, source_root, production.to_string()));
+    }
+
+    let mut warnings = Vec::new();
+    for (path, source_root, content) in sources {
+        let evidence = crate_evidence
+            .get(&source_root)
+            .copied()
+            .unwrap_or_default();
+        warnings.extend(scan_idor_source_with_evidence(&path, &content, evidence));
+    }
+    (warnings.len(), warnings)
+}
+
+fn collect_rust_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
     let require_src_component = src_dir.file_name().and_then(|name| name.to_str()) != Some("src");
     let mut source_files = Vec::new();
 
@@ -56,31 +84,7 @@ pub fn scan_idor_vulnerabilities(src_dir: &Path) -> (usize, Vec<String>) {
     if src_dir.exists() {
         visit_dirs(src_dir, require_src_component, &mut source_files);
     }
-
-    let mut crate_evidence = HashMap::<std::path::PathBuf, GuardEvidence>::new();
-    let mut sources = Vec::new();
-    for path in source_files {
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let production = production_source(&content);
-        let source_root = source_root_for(&path).unwrap_or_else(|| src_dir.to_path_buf());
-        crate_evidence
-            .entry(source_root.clone())
-            .or_default()
-            .include(production);
-        sources.push((path, source_root, production.to_string()));
-    }
-
-    let mut warnings = Vec::new();
-    for (path, source_root, content) in sources {
-        let evidence = crate_evidence
-            .get(&source_root)
-            .copied()
-            .unwrap_or_default();
-        warnings.extend(scan_idor_source_with_evidence(&path, &content, evidence));
-    }
-    (warnings.len(), warnings)
+    source_files
 }
 
 #[cfg(test)]
@@ -148,27 +152,31 @@ fn scan_idor_source_with_evidence(
         };
         let marker_line = access_marker_line(&lines, index, trimmed);
         let classification = marker_line.and_then(access_classification);
-        let reason = match classification {
-            Some("public") if route_is_read_only(trimmed) => None,
-            Some("public") => Some(
-                "public classification is accepted only for a recognized GET route; classify the mutation as owner, role, or admin",
-            ),
-            Some("owner") if evidence.owner => None,
-            Some("owner") => Some(
-                "owner classification requires RbacGuard::authorize_owner_or_role in this source file",
-            ),
-            Some("role") if evidence.role => None,
-            Some("role") => Some(
-                "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this source file",
-            ),
-            Some("admin") if evidence.admin => None,
-            Some("admin") => Some(
-                "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this source file",
-            ),
-            Some(_) => Some("unknown rullst-access classification"),
-            None => Some(
-                "missing an adjacent `// rullst-access: public|owner|role|admin — reason` classification",
-            ),
+        let reason = if marker_line.is_some_and(|marker| !access_marker_has_reason(marker)) {
+            Some("classification must include a concrete reason after its access level")
+        } else {
+            match classification {
+                Some("public") if route_is_read_only(trimmed) => None,
+                Some("public") => Some(
+                    "public classification is accepted only for a recognized GET route; classify the mutation as owner, role, or admin",
+                ),
+                Some("owner") if evidence.owner => None,
+                Some("owner") => Some(
+                    "owner classification requires RbacGuard::authorize_owner_or_role in this source file",
+                ),
+                Some("role") if evidence.role => None,
+                Some("role") => Some(
+                    "role classification requires RbacGuard::authorize, RequireRoleLayer, or protect_router in this source file",
+                ),
+                Some("admin") if evidence.admin => None,
+                Some("admin") => Some(
+                    "admin classification requires RequireRoleLayer or NexusAuthPolicy::protect_router in this source file",
+                ),
+                Some(_) => Some("unknown rullst-access classification"),
+                None => Some(
+                    "missing an adjacent `// rullst-access: public|owner|role|admin — reason` classification",
+                ),
+            }
         };
 
         if let Some(reason) = reason {
@@ -235,6 +243,18 @@ fn access_classification(marker: &str) -> Option<&str> {
         .map(|classification| {
             classification.trim_matches(|character: char| !character.is_alphanumeric())
         })
+}
+
+fn access_marker_has_reason(marker: &str) -> bool {
+    marker
+        .split_once(ACCESS_MARKER)
+        .map(|(_, suffix)| {
+            suffix
+                .split_whitespace()
+                .skip(1)
+                .any(|word| word.chars().any(char::is_alphanumeric))
+        })
+        .unwrap_or(false)
 }
 
 fn route_is_read_only(line: &str) -> bool {
@@ -447,15 +467,22 @@ pub fn run_security_audit(
     } else {
         Path::new(".")
     };
+    let idor_source_available = !collect_rust_source_files(idor_root).is_empty();
     let (idor_count, idor_warnings) = scan_idor_vulnerabilities(idor_root);
     if idor_mode || idor_count > 0 {
         println!(
             "  {} Checking IDOR / BOLA authorization on parameterized routes...",
             "[IDOR]".bright_yellow()
         );
-        if idor_count == 0 {
+        if !idor_source_available {
             println!(
-                "  {} The bounded route heuristic found no missing ownership guards.",
+                "  {} No scannable Rust source was available; the IDOR/BOLA check is incomplete.",
+                "[ERROR]".red().bold()
+            );
+            issues_found += 1;
+        } else if idor_count == 0 {
+            println!(
+                "  {} The bounded route heuristic found no missing access classifications or recognized guards.",
                 "[OK]".green()
             );
         } else {
@@ -562,7 +589,9 @@ pub fn run_security_audit(
             } else {
                 EvidenceStatus::Findings(unsafe_count)
             },
-            idor_scan: if idor_count == 0 {
+            idor_scan: if !idor_source_available {
+                EvidenceStatus::NotChecked("no scannable Rust source was available")
+            } else if idor_count == 0 {
                 EvidenceStatus::NoFindings
             } else {
                 EvidenceStatus::Findings(idor_count)
@@ -578,6 +607,13 @@ pub fn run_security_audit(
     }
 
     println!("\nAudit finished. Issues found: {}", issues_found);
+
+    if idor_mode && !idor_source_available {
+        return Err(std::io::Error::other(
+            "IDOR/BOLA audit could not find any scannable Rust source",
+        )
+        .into());
+    }
 
     if idor_mode && idor_count > 0 {
         return Err(std::io::Error::other(format!(
@@ -622,6 +658,17 @@ delete("/documents/{id}" => destroy),
         let result = findings(source);
         assert_eq!(result.len(), 1);
         assert!(result[0].contains("accepted only for a recognized GET"));
+    }
+
+    #[test]
+    fn classifications_require_a_concrete_adjacent_reason() {
+        let source = r#"
+// rullst-access: public
+get("/posts/{slug}" => show),
+"#;
+        let result = findings(source);
+        assert_eq!(result.len(), 1);
+        assert!(result[0].contains("must include a concrete reason"));
     }
 
     #[test]

@@ -26,7 +26,12 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
     )
 }
 
-/// Emits a security alert to configured SIEM endpoints and records telemetry.
+/// Records a SIEM-candidate alert in the bounded local telemetry store.
+///
+/// Despite the compatibility name, this function does not deliver events to an
+/// external SIEM. Use [`format_cef_event`] to serialize a local event; durable
+/// transport, retry, dead-letter handling and delivery acknowledgement remain
+/// application-owned until a real sink contract is implemented.
 pub fn dispatch_siem_alert(event_type: &str, details: &str, client_ip: &str) {
     let now = current_timestamp_str();
     let event = LiveSecurityEvent {

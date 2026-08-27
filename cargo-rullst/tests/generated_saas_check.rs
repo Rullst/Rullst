@@ -1,46 +1,146 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+//! Compile representative generated projects across every public blueprint.
+//!
+//! The structural suite covers all 270 combinations. This slower suite selects
+//! the smallest set that crosses every public blueprint plus the distinct ORM,
+//! frontend, API, database, hot-reload and release-build boundaries.
 
-use cargo_rullst::blueprints::{BLANK_BLUEPRINT_ID, ERP_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+
+use cargo_rullst::blueprints::{
+    self, BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
+    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
+};
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
-use std::fs;
-use std::process::Command;
+use std::{fs, path::Path, process::Command};
 
-#[test]
-fn generated_saas_blueprint_passes_cargo_check() {
-    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let workspace = crate_dir.parent().expect("workspace root");
-    let project_dir =
-        std::env::temp_dir().join(format!("rullst-generated-saas-{}", rand::random::<u64>()));
-    fs::create_dir_all(&project_dir).expect("temporary generated project");
+#[derive(Clone, Copy)]
+struct GeneratedCase {
+    name: &'static str,
+    blueprint: usize,
+    api: bool,
+    hot_reload: bool,
+    db_needed: bool,
+    orm_pattern: &'static str,
+    frontend: &'static str,
+    release: bool,
+}
 
+const GENERATED_CASES: [GeneratedCase; 7] = [
+    GeneratedCase {
+        name: "blank-minimal",
+        blueprint: BLANK_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: false,
+        orm_pattern: "Active Record",
+        frontend: "Zero-Bundle HTMX",
+        release: false,
+    },
+    GeneratedCase {
+        name: "blank-api-hot-wasm",
+        blueprint: BLANK_BLUEPRINT_ID,
+        api: true,
+        hot_reload: true,
+        db_needed: false,
+        orm_pattern: "Active Record",
+        frontend: "Wasm Island",
+        release: false,
+    },
+    GeneratedCase {
+        name: "lms-repository-liveview",
+        blueprint: LMS_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: true,
+        orm_pattern: "Repository",
+        frontend: "LiveView",
+        release: false,
+    },
+    GeneratedCase {
+        name: "saas-active-htmx",
+        blueprint: SAAS_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: true,
+        orm_pattern: "Active Record",
+        frontend: "Zero-Bundle HTMX",
+        release: false,
+    },
+    GeneratedCase {
+        name: "blog-hybrid-tera",
+        blueprint: BLOG_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: true,
+        orm_pattern: "Hybrid",
+        frontend: "Tera Template",
+        release: false,
+    },
+    GeneratedCase {
+        name: "portfolio-repository-pico",
+        blueprint: PORTFOLIO_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: true,
+        orm_pattern: "Repository",
+        frontend: "Pico CSS",
+        release: false,
+    },
+    GeneratedCase {
+        name: "erp-hybrid-release",
+        blueprint: ERP_BLUEPRINT_ID,
+        api: false,
+        hot_reload: false,
+        db_needed: true,
+        orm_pattern: "Hybrid",
+        frontend: "Zero-Bundle HTMX",
+        release: true,
+    },
+];
+
+fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
+    fs::create_dir_all(project_dir).expect("temporary generated project");
+    let package_name = format!("generated-{}", case.name);
+    let module_name = package_name.replace('-', "_");
     let manifest = build_cargo_toml(
-        "generated_saas",
-        false,
-        true,
+        &package_name,
+        case.hot_reload,
+        case.db_needed,
         "Sqlite",
         false,
         false,
-        SAAS_BLUEPRINT_ID,
-        "Zero-Bundle HTMX",
+        case.blueprint,
+        case.frontend,
         workspace,
     )
-    .expect("generated Cargo.toml");
-    let manifest = cargo_rullst::generators::cors_jwt::ensure_jwt_dependencies(&manifest)
-        .expect("JWT dependencies");
-    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write generated manifest");
-    cargo_rullst::blueprints::apply(
-        SAAS_BLUEPRINT_ID,
-        &project_dir,
-        "generated-saas",
-        "generated_saas",
-        false,
-        false,
-        true,
-        "Active Record",
-        "Zero-Bundle HTMX",
+    .unwrap_or_else(|error| panic!("{}: generated Cargo.toml: {error}", case.name));
+    let manifest = if case.blueprint == SAAS_BLUEPRINT_ID {
+        cargo_rullst::generators::cors_jwt::ensure_jwt_dependencies(&manifest)
+            .unwrap_or_else(|error| panic!("{}: JWT dependencies: {error}", case.name))
+    } else {
+        manifest
+    };
+    fs::write(project_dir.join("Cargo.toml"), manifest)
+        .unwrap_or_else(|error| panic!("{}: write Cargo.toml: {error}", case.name));
+    blueprints::apply(
+        case.blueprint,
+        project_dir,
+        &package_name,
+        &module_name,
+        case.api,
+        case.hot_reload,
+        case.db_needed,
+        case.orm_pattern,
+        case.frontend,
     )
-    .expect("apply SaaS blueprint");
+    .unwrap_or_else(|error| panic!("{}: apply blueprint: {error}", case.name));
 
+    if case.blueprint == SAAS_BLUEPRINT_ID {
+        add_saas_generator_smoke(project_dir);
+    }
+}
+
+fn add_saas_generator_smoke(project_dir: &Path) {
     let workers_dir = project_dir.join("src/workers");
     fs::create_dir_all(&workers_dir).expect("generated workers directory");
     let workers_module = format!(
@@ -53,6 +153,7 @@ fn generated_saas_blueprint_passes_cargo_check() {
         cargo_rullst::generators::worker::render_worker_source("smoke"),
     )
     .expect("generated worker handler");
+
     fs::write(
         project_dir.join("src/middlewares/jwt_middleware.rs"),
         cargo_rullst::generators::cors_jwt::jwt_middleware_template(),
@@ -66,6 +167,7 @@ fn generated_saas_blueprint_passes_cargo_check() {
         format!("{middlewares_mod}pub mod jwt_middleware;\n"),
     )
     .expect("register generated JWT middleware");
+
     let main_path = project_dir.join("src/main.rs");
     let main_source = fs::read_to_string(&main_path).expect("generated main source");
     let worker_lifecycle_smoke = r#"
@@ -82,12 +184,16 @@ fn start_generated_workers(
         main_path,
         format!("mod workers;\n{worker_lifecycle_smoke}\n{main_source}"),
     )
-    .expect("register generated worker module and lifecycle smoke");
+    .expect("register generated worker lifecycle smoke");
+}
 
-    let output = Command::new(env!("CARGO"))
-        .arg("check")
-        .arg("--offline")
-        .arg("--all-targets")
+fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
+    let mut command = Command::new(env!("CARGO"));
+    command.arg("check").arg("--offline").arg("--all-targets");
+    if case.release {
+        command.arg("--release");
+    }
+    let output = command
         .arg("--manifest-path")
         .arg(project_dir.join("Cargo.toml"))
         .env(
@@ -95,131 +201,32 @@ fn start_generated_workers(
             workspace.join("target/generated-scaffold-check"),
         )
         .output()
-        .expect("run cargo check for generated SaaS project");
+        .unwrap_or_else(|error| panic!("{}: run cargo check: {error}", case.name));
 
     if !output.status.success() {
         panic!(
-            "generated SaaS failed cargo check\nstdout:\n{}\nstderr:\n{}",
+            "{} failed cargo check\nstdout:\n{}\nstderr:\n{}",
+            case.name,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
     }
-
-    fs::remove_dir_all(project_dir).expect("temporary generated project cleanup");
 }
 
 #[test]
-fn generated_hot_blank_with_island_passes_cargo_check() {
-    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+fn every_blueprint_and_distinct_generated_boundary_passes_cargo_check() {
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");
-    let project_dir =
-        std::env::temp_dir().join(format!("rullst-generated-blank-{}", rand::random::<u64>()));
-    fs::create_dir_all(&project_dir).expect("temporary generated project");
 
-    let manifest = build_cargo_toml(
-        "dummy-test",
-        true,
-        false,
-        "Sqlite",
-        false,
-        false,
-        BLANK_BLUEPRINT_ID,
-        "Wasm Island",
-        workspace,
-    )
-    .expect("generated Cargo.toml");
-    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write generated manifest");
-    cargo_rullst::blueprints::apply(
-        BLANK_BLUEPRINT_ID,
-        &project_dir,
-        "dummy-test",
-        "dummy_test",
-        false,
-        true,
-        false,
-        "Active Record",
-        "Wasm Island",
-    )
-    .expect("apply blank blueprint");
-
-    let output = Command::new(env!("CARGO"))
-        .arg("check")
-        .arg("--offline")
-        .arg("--all-targets")
-        .arg("--manifest-path")
-        .arg(project_dir.join("Cargo.toml"))
-        .env(
-            "CARGO_TARGET_DIR",
-            workspace.join("target/generated-scaffold-check"),
-        )
-        .output()
-        .expect("run cargo check for generated blank project");
-
-    if !output.status.success() {
-        panic!(
-            "generated hot blank failed cargo check\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
+    for case in GENERATED_CASES {
+        let project_dir = std::env::temp_dir().join(format!(
+            "rullst-generated-{}-{}",
+            case.name,
+            rand::random::<u64>()
+        ));
+        materialize(case, &project_dir, workspace);
+        cargo_check(case, &project_dir, workspace);
+        fs::remove_dir_all(&project_dir)
+            .unwrap_or_else(|error| panic!("{}: temporary cleanup: {error}", case.name));
     }
-
-    fs::remove_dir_all(project_dir).expect("temporary generated project cleanup");
-}
-
-#[test]
-fn generated_erp_admin_routes_pass_cargo_check() {
-    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let workspace = crate_dir.parent().expect("workspace root");
-    let project_dir =
-        std::env::temp_dir().join(format!("rullst-generated-erp-{}", rand::random::<u64>()));
-    fs::create_dir_all(&project_dir).expect("temporary generated ERP project");
-
-    let manifest = build_cargo_toml(
-        "generated-erp",
-        false,
-        true,
-        "Sqlite",
-        false,
-        false,
-        ERP_BLUEPRINT_ID,
-        "Zero-Bundle HTMX",
-        workspace,
-    )
-    .expect("generated ERP Cargo.toml");
-    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write generated ERP manifest");
-    cargo_rullst::blueprints::apply(
-        ERP_BLUEPRINT_ID,
-        &project_dir,
-        "generated-erp",
-        "generated_erp",
-        false,
-        false,
-        true,
-        "Active Record",
-        "Zero-Bundle HTMX",
-    )
-    .expect("apply ERP blueprint");
-
-    let output = Command::new(env!("CARGO"))
-        .arg("check")
-        .arg("--offline")
-        .arg("--all-targets")
-        .arg("--manifest-path")
-        .arg(project_dir.join("Cargo.toml"))
-        .env(
-            "CARGO_TARGET_DIR",
-            workspace.join("target/generated-scaffold-check"),
-        )
-        .output()
-        .expect("run cargo check for generated ERP project");
-
-    if !output.status.success() {
-        panic!(
-            "generated ERP failed cargo check\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    fs::remove_dir_all(project_dir).expect("temporary generated ERP project cleanup");
 }

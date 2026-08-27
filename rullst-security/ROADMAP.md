@@ -21,6 +21,11 @@
 
 ## 🚀 Phase 2: Autonomous Intelligence & Threat Radar (v12.0.0) — Completed
 - [x] **Visual Threat Radar (SOC) in Rullst Studio & Nexus (`/nexus/security`)**: Real-time visual dashboard displaying active threat attack vectors, live IP reputation scoring, blocked honeypot hits, and AI incident reports.
+  - **Escopo auditado na v12:** Studio e Nexus exibem contadores e os eventos
+    recentes, limitados e locais do processo. Reputação externa de IP, feed de
+    inteligência e operação de um SOC não foram implementados.
+  - **Ambição restante:** vale conectar fontes versionadas e mostrar saúde,
+    atraso e proveniência de cada feed; a interface nunca deve inventar dados.
 - [x] **AI Threat Sentinel (`rullst-security-ai`)**: Autonomous AI classifier detecting anomaly patterns (Credential Stuffing, API Scraping, Distributed Botnets) and issuing dynamic Proof-of-Work challenge tokens.
 - [x] **RASP Deep Request Inspector (`rullst-security::rasp`)**: Zero-latency request and header inspector blocking SQL Injection, XSS, Path Traversal, SSRF, RCE, and JNDI/Log4j before controller execution.
 - [x] **Rullst Vault (`rullst-vault`)**: Zero-trust secret management with in-memory zeroization (`Zeroize`) preventing heap dump leaks and transparent field-level AES-256-GCM / ChaCha20-Poly1305 database encryption (`#[orm(encrypted)]`).
@@ -35,6 +40,12 @@
 - [x] **Cross-Site WebSocket Hijacking (CSWSH) Guard (`rullst-security::cswsh`)**: Handshake origin validation, CSRF ticket verification, and frame-level encryption for real-time WebSocket streams.
 - [x] **Subresource Integrity (SRI) & Asset Signer (`rullst-security::sri`)**: Automatic SHA-384 SRI hash generation and tag injection for static JS/CSS assets preventing CDN supply chain tampering.
 - [x] **SIEM & SOC Export Adapter (`rullst-security::siem`)**: Real-time alert streamer sending security events to Datadog, Splunk, Elastic, and Slack via CEF (Common Event Format) and Syslog.
+  - **Escopo auditado na v12:** há formatação CEF e registro em memória; não há
+    transporte para Datadog, Splunk, Elastic, Slack ou Syslog. O nome legado
+    `dispatch_siem_alert` não significa entrega externa confirmada.
+  - **Ambição restante:** vale implementar um contrato de sink durável com fila,
+    retry, backoff, dead-letter, redaction, backpressure, health e confirmação,
+    seguido de adapters testados por provedor.
 - [x] **CLI IDOR / BOLA Static Audit Scanner (`cargo rullst audit --idor`)**: Static scanner analyzing parameterized routes and verifying RbacGuard / UserContext ownership enforcement.
 - [x] **Cargo Geiger Memory Safety & Zero-Unsafe Scanner (`cargo rullst audit --geiger`)**: Static AST and dependency tree unsafe code auditor enforcing 100% memory safe Rust invariants.
 - [x] **Parser Fuzz Testing Suites (`rullst-security/tests/fuzz_robustness.rs` & `fuzz/`)**: Continuous chaos fuzzing against RASP, DLP, Schema Guard, and Sanitizers proving Zero-Panic resilience.

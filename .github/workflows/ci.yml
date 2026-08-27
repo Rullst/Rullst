@@ -131,6 +131,22 @@ jobs:
       - name: Compile the minimal application umbrella
         run: cargo check -p rullst --all-targets --no-default-features
 
+  generated-release-access:
+    name: Generated release access boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Prove Nexus never selects credential-free release access
+        run: cargo test --release -p rullst-nexus ergonomic_policy_never_selects_loopback_in_release_builds
+
+      - name: Prove Studio rejects its local capability in release builds
+        run: cargo test --release -p rullst-studio protected_router_accepts_only_a_verified_loopback_peer
+
   msrv:
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest

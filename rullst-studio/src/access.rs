@@ -92,9 +92,18 @@ mod tests {
     #[tokio::test]
     async fn protected_router_accepts_only_a_verified_loopback_peer() {
         let access = LocalStudioAccess::loopback_only();
-        let router = access
-            .protect_router(Router::new().route("/", get(|| async { StatusCode::OK })))
-            .expect("debug Studio access");
+        let protected =
+            access.protect_router(Router::new().route("/", get(|| async { StatusCode::OK })));
+
+        if !cfg!(debug_assertions) {
+            assert!(matches!(
+                protected,
+                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+            ));
+            return;
+        }
+
+        let router = protected.expect("debug Studio access");
 
         let local = router
             .clone()
