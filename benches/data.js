@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787861107011,
+  "lastUpdate": 1787863841827,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9337,6 +9337,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1609,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "85ffc99d3cf8882453e04112e6ce9ced80afae4b",
+          "message": "feat: initialize core modules and documentation audit while scaffolding new CLI and ORM capabilities",
+          "timestamp": "2026-08-27T17:48:13-03:00",
+          "tree_id": "d5ab587526115e7f34009d4fd276f95f3bff0f37",
+          "url": "https://github.com/Rullst/Rullst/commit/85ffc99d3cf8882453e04112e6ce9ced80afae4b"
+        },
+        "date": 1787863840825,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 974,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 613,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2304,
+            "range": "± 109",
             "unit": "ns/iter"
           }
         ]
