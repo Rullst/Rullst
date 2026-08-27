@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787842706363,
+  "lastUpdate": 1787861107011,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9283,6 +9283,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2285,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6188888d9368477a03fac0c9550f787f3701ecbe",
+          "message": "feat: implement tool auditing and execution policies\n\n- Added `ToolAuditOutcome`, `ToolAuditEvent`, and `ToolAuditSink` for auditing tool execution.\n- Introduced `InMemoryToolAuditTrail` for in-memory storage of audit events.\n- Created `ToolExecutionPolicy` to manage allowed tools and input/output limits.\n- Implemented `HumanApproval` for managing approvals for high-risk tools.\n- Developed `ToolExecutionContext` to track authorized tools and remaining calls.\n- Added validation functions for tool registration and payloads.\n- Created tests for tool execution, auditing, and policy enforcement.\n- Introduced `FieldAttributes` and `ModelAttributes` for ORM macros.\n- Added a sample AI chat handler using Axum with AI client integration.",
+          "timestamp": "2026-08-27T17:03:15-03:00",
+          "tree_id": "902835ffc93a1cad75e1b93ee6d52ec63e61b447",
+          "url": "https://github.com/Rullst/Rullst/commit/6188888d9368477a03fac0c9550f787f3701ecbe"
+        },
+        "date": 1787861105254,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 527,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 757,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 528,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1609,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
