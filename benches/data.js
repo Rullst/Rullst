@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787777387171,
+  "lastUpdate": 1787790516371,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9123,6 +9123,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2223,
             "range": "± 50",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "494451c16c531bd05ec381f28bf4ff2128ab103e",
+          "message": "feat: add release order and preflight checks for package publication\n\n- Introduced `.github/release-order.json` to define the order of package releases.\n- Added `.github/release-preflight.jq` for preflight checks to ensure package integrity and dependencies before publication.\n\nchore: add LICENSE files to all packages\n\n- Added MIT License files to `cargo-rullst`, `rullst-ai`, `rullst-auth`, `rullst-capital`, `rullst-core`, `rullst-iot`, `rullst-macros`, `rullst-mail`, `rullst-nexus`, `rullst-orm-macros`, `rullst-security`, and `rullst-studio`.\n\ndocs: create release recovery and threat models documentation\n\n- Added `docs/src/release-recovery.md` to outline recovery steps for interrupted multi-crate publications.\n- Created `docs/src/threat-models.md` detailing security threats and mitigations for Rullst v12.\n\nfeat: implement production middleware ordering in rullst-core\n\n- Added `ProductionMiddlewareStage` enum and `ProductionPreset` struct to define the canonical middleware order for production applications.\n- Included tests to validate middleware order and identity validation before tenant authorization.\n\nfeat: implement local access control for rullst-studio\n\n- Introduced `LocalStudioAccess` struct to enforce loopback-only access in debug builds.\n- Added middleware to restrict access to verified loopback peers.",
+          "timestamp": "2026-08-26T21:26:37-03:00",
+          "tree_id": "f1a698132497483536637b57554e3293fac1ca3c",
+          "url": "https://github.com/Rullst/Rullst/commit/494451c16c531bd05ec381f28bf4ff2128ab103e"
+        },
+        "date": 1787790515192,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 760,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1006,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 631,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2361,
+            "range": "± 89",
             "unit": "ns/iter"
           }
         ]
