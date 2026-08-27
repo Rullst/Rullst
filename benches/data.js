@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787834395086,
+  "lastUpdate": 1787842706363,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9229,6 +9229,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2362,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1eac4fd8c62e45483a72b606d7d0b457b97473c5",
+          "message": "Refactor middleware order validation in tests, update SIEM alert terminology, and enhance documentation\n\n- Refactored the identity validation test in `production.rs` to use a more concise approach for checking middleware order.\n- Updated the terminology in `security.rs`, `handlers/security.rs`, and `security_radar.rs` to clarify that SIEM alerts are local and not externally delivered.\n- Revised comments in `siem.rs` and `telemetry.rs` to accurately reflect the current functionality of the SIEM dispatch mechanism.\n- Added a comprehensive technical comparison document in `comparatives.md` outlining Rullst's capabilities against other frameworks and languages, emphasizing its unique features and areas for improvement.",
+          "timestamp": "2026-08-27T11:56:26-03:00",
+          "tree_id": "f4058b8b153101b9c051fc4a50ddb35775e43d12",
+          "url": "https://github.com/Rullst/Rullst/commit/1eac4fd8c62e45483a72b606d7d0b457b97473c5"
+        },
+        "date": 1787842704213,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 760,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 967,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 654,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2285,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
