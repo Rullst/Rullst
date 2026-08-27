@@ -1,5 +1,8 @@
 #![cfg(not(miri))]
-#![cfg(feature = "studio")]
+// The suite exercises both the Studio facade and direct ORM-backed fixtures.
+// Keep it out of isolated `studio` feature checks where the facade intentionally
+// does not expose its optional `rullst-orm` dependency.
+#![cfg(all(feature = "studio", feature = "orm"))]
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use rullst::studio::{LocalStudioAccess, Studio};

@@ -20,6 +20,11 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
     } else {
         quote! { ..Default::default() }
     };
+    let redis_get_default_bound = if skipped_fields.is_empty() {
+        quote! {}
+    } else {
+        quote! { where Self: Default }
+    };
 
     let mut to_hash_fields = vec![];
     let mut from_hash_fields = vec![];
@@ -27,17 +32,25 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
     for field in normal_fields {
         let field_str = field.to_string();
 
-        // When saving, convert each field to a JSON string
+        // Redis hashes store each field as JSON. Serialization failures are
+        // returned to the caller instead of silently replacing data with null.
         to_hash_fields.push(quote! {
-            (#field_str, rullst_orm::_serde_json::to_string(&self.#field).unwrap_or_else(|_| String::from("null")))
+            (#field_str, rullst_orm::_serde_json::to_string(&self.#field)?)
         });
 
-        // When loading, parse each field from its JSON string representation
-        // If missing, default to string "null" for parsing
+        // A missing or malformed cache field means the cached model is corrupt;
+        // do not invent a Default value that the model never promised to have.
         from_hash_fields.push(quote! {
-            #field: rullst_orm::_serde_json::from_str(
-                hash.get(#field_str).unwrap_or(&String::from("null"))
-            ).unwrap_or_default()
+            #field: {
+                let serialized = hash.get(#field_str).ok_or_else(|| {
+                    rullst_orm::Error::CacheError(format!(
+                        "Redis hash for {} is missing field {}",
+                        #table_name,
+                        #field_str,
+                    ))
+                })?;
+                rullst_orm::_serde_json::from_str(serialized)?
+            }
         });
     }
 
@@ -60,7 +73,9 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
         }
 
         #[cfg(feature = "redis")]
-        pub async fn get_from_redis(id: impl std::fmt::Display) -> Result<Option<Self>, rullst_orm::Error> {
+        pub async fn get_from_redis(id: impl std::fmt::Display) -> Result<Option<Self>, rullst_orm::Error>
+        #redis_get_default_bound
+        {
             use rullst_orm::_redis::AsyncCommands;
             let mut conn = rullst_orm::Orm::redis_manager()?;
 
@@ -94,5 +109,28 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
                 .await?;
             Ok(new_val)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn redis_deserialization_propagates_corrupt_cache_errors() {
+        let input: DeriveInput = parse_quote! {
+            struct CachedModel {
+                id: i64,
+                payload: Json<Payload>,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let generated = generate_redis_hash_methods(&parsed).to_string();
+
+        assert!(!generated.contains("unwrap_or_default"));
+        assert!(!generated.contains("String :: from (\"null\")"));
+        assert!(generated.contains("is missing field"));
+        assert!(generated.contains("from_str (serialized) ?"));
     }
 }

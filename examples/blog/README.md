@@ -14,11 +14,20 @@ or proof that every crate and feature is exercised.
 - `/posts/repository`: parameterized repository queries.
 - `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
-- `/security-demo`: bounded security-helper demonstrations.
+- `/security-demo`: bounded, instrumented security-control demonstrations. The
+  buttons exercise the real local timing, prompt, RASP, DLP and Login Guard
+  primitives; they do not prove that a production application mounted every
+  middleware or eliminated the represented threat.
 - `/ai-assistant`: local deterministic vector-search and guardrail example.
 - `http://127.0.0.1:5555`: debug-only local Studio server.
 - `/nexus`: one-click, loopback-only admin access in debug builds; validated
   Basic Auth credentials are mandatory in release builds.
+
+Studio process metrics are sampled from the running process. CPU sampling is
+available on Linux and Windows and needs two observations to calculate a delta;
+unsupported or disconnected probes remain `Unavailable`. Nexus security
+counters are in-process and reset on restart. Local events are explicitly shown
+as unsigned until an application connects a durable audit-chain verifier.
 
 The provider catalogue is descriptive. Adapter capabilities differ, fees and
 provider terms can change, and this example makes no live provider request.
@@ -75,8 +84,11 @@ demo CSP for those pages. It is not the production header baseline. A deployed
 application should self-host or explicitly trust assets, use per-response nonces,
 and test the final CSP.
 
-The `/wp-admin` handler is a visible demo route. Real honeypot and ban behavior is
-provided by the security middleware with trusted-peer identity and TTL limits.
+The `/wp-admin` button crosses the mounted deception middleware, records the
+socket peer as a local unsigned event, and returns `403`. The generic honeypot
+engine also supports bounded TTL bans when applications mount that enforcement
+state explicitly; this showcase route records an observation and does not claim
+that a telemetry entry is a network-wide ban.
 
 ## Verification
 

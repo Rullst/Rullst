@@ -2,7 +2,10 @@
 
 use colored::*;
 
-use crate::blueprints::BLANK_BLUEPRINT_ID;
+use crate::blueprints::{
+    BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
+    PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
+};
 
 pub struct ProjectWizardOptions {
     pub name: String,
@@ -20,19 +23,48 @@ pub struct ProjectWizardOptions {
 
 pub fn run_project_wizard(
     name_arg: Option<&str>,
-    mut api: bool,
+    api: bool,
     use_defaults: bool,
     turso: bool,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    run_project_wizard_with_blueprint(name_arg, api, use_defaults, turso, None)
+}
+
+pub(crate) fn run_project_wizard_with_blueprint(
+    name_arg: Option<&str>,
+    mut api: bool,
+    use_defaults: bool,
+    turso: bool,
+    blueprint_override: Option<usize>,
+) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    if blueprint_override.is_some_and(|id| {
+        !matches!(
+            id,
+            BLANK_BLUEPRINT_ID
+                | LMS_BLUEPRINT_ID
+                | SAAS_BLUEPRINT_ID
+                | BLOG_BLUEPRINT_ID
+                | PORTFOLIO_BLUEPRINT_ID
+                | ERP_BLUEPRINT_ID
+        )
+    }) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "unknown public blueprint ID",
+        )
+        .into());
+    }
+
     if use_defaults {
         let name = name_arg.unwrap_or("app").to_string();
+        let blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
         return Ok(ProjectWizardOptions {
             name,
             api,
             db_provider: "sqlite".to_string(),
             db_needed: true,
             hot_reload: false,
-            blueprint_selection: BLANK_BLUEPRINT_ID,
+            blueprint_selection,
             wants_ai: false,
             wants_redis: false,
             turso,
@@ -87,7 +119,7 @@ pub fn run_project_wizard(
     let mut db_provider = "Sqlite".to_string();
     let mut db_needed = true;
     let mut hot_reload = false;
-    let mut blueprint_selection = BLANK_BLUEPRINT_ID;
+    let mut blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
 
     if name_arg.is_none() {
         let portfolio_title = format!(
@@ -102,11 +134,13 @@ pub fn run_project_wizard(
             portfolio_title,
             "ERP Pocket (Inventory, stock management, orders tracker, auto-CMS)".to_string(),
         ];
-        blueprint_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("👉 Select a Starter Blueprint")
-            .default(0)
-            .items(&blueprint_choices)
-            .interact()?;
+        if blueprint_override.is_none() {
+            blueprint_selection = dialoguer::Select::with_theme(&theme)
+                .with_prompt("👉 Select a Starter Blueprint")
+                .default(0)
+                .items(&blueprint_choices)
+                .interact()?;
+        }
 
         if blueprint_selection == BLANK_BLUEPRINT_ID {
             let build_options = &[

@@ -1,10 +1,10 @@
 [
   "rullst-macros",
   "rullst-orm-macros",
-  "rullst-connect",
-  "rullst-iot",
   "rullst-orm",
   "rullst-core",
+  "rullst-connect",
+  "rullst-iot",
   "rullst-security",
   "rullst-ai",
   "rullst-capital",

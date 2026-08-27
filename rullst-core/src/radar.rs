@@ -12,6 +12,10 @@ static BOOT_INSTANT: std::sync::LazyLock<std::time::Instant> =
 #[cfg(target_os = "linux")]
 static PREVIOUS_CPU_SAMPLE: std::sync::LazyLock<std::sync::Mutex<Option<(u64, u64)>>> =
     std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
+#[cfg(target_os = "windows")]
+static PREVIOUS_WINDOWS_CPU_SAMPLE: std::sync::LazyLock<
+    std::sync::Mutex<Option<(u64, std::time::Instant)>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
 
 /// Initializes the Radar boot time timestamp.
 pub fn init_radar() {
@@ -142,13 +146,18 @@ fn get_linux_memory_mb() -> Option<f64> {
     None
 }
 
+#[cfg(target_os = "linux")]
 fn get_process_cpu_usage() -> Option<f64> {
-    #[cfg(target_os = "linux")]
-    {
-        get_linux_process_cpu_usage()
-    }
+    get_linux_process_cpu_usage()
+}
 
-    #[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "windows")]
+fn get_process_cpu_usage() -> Option<f64> {
+    get_windows_process_cpu_usage()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+fn get_process_cpu_usage() -> Option<f64> {
     None
 }
 
@@ -190,6 +199,61 @@ fn get_linux_process_cpu_usage() -> Option<f64> {
         .unwrap_or(1);
     let percent = (process_delta as f64 / total_delta as f64) * logical_cpus as f64 * 100.0;
     Some(percent.clamp(0.0, logical_cpus as f64 * 100.0))
+}
+
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+fn get_windows_process_cpu_usage() -> Option<f64> {
+    use windows_sys::Win32::Foundation::FILETIME;
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};
+
+    let sampled_at = std::time::Instant::now();
+    let process_time_100ns = unsafe {
+        // SAFETY: `GetCurrentProcess` returns a pseudo-handle valid in this process. Every
+        // `FILETIME` pointer references initialized writable storage for the duration of the
+        // call, and Windows does not retain any pointer after `GetProcessTimes` returns.
+        let process = GetCurrentProcess();
+        let mut creation: FILETIME = std::mem::zeroed();
+        let mut exit: FILETIME = std::mem::zeroed();
+        let mut kernel: FILETIME = std::mem::zeroed();
+        let mut user: FILETIME = std::mem::zeroed();
+        if GetProcessTimes(process, &mut creation, &mut exit, &mut kernel, &mut user) == 0 {
+            return None;
+        }
+        filetime_100ns(kernel).saturating_add(filetime_100ns(user))
+    };
+
+    let mut previous = PREVIOUS_WINDOWS_CPU_SAMPLE.lock().ok()?;
+    let old_sample = previous.replace((process_time_100ns, sampled_at));
+    let (old_process_time_100ns, old_sampled_at) = old_sample?;
+    calculate_windows_cpu_percent(
+        process_time_100ns.saturating_sub(old_process_time_100ns),
+        sampled_at.saturating_duration_since(old_sampled_at),
+        std::thread::available_parallelism()
+            .map(std::num::NonZeroUsize::get)
+            .unwrap_or(1),
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn filetime_100ns(value: windows_sys::Win32::Foundation::FILETIME) -> u64 {
+    (u64::from(value.dwHighDateTime) << 32) | u64::from(value.dwLowDateTime)
+}
+
+#[cfg(target_os = "windows")]
+fn calculate_windows_cpu_percent(
+    process_delta_100ns: u64,
+    wall_elapsed: std::time::Duration,
+    logical_cpus: usize,
+) -> Option<f64> {
+    let wall_seconds = wall_elapsed.as_secs_f64();
+    if wall_seconds <= f64::EPSILON {
+        return None;
+    }
+
+    let process_seconds = process_delta_100ns as f64 / 10_000_000.0;
+    let max_percent = logical_cpus.max(1) as f64 * 100.0;
+    Some(((process_seconds / wall_seconds) * 100.0).clamp(0.0, max_percent))
 }
 
 fn get_active_tasks_count() -> Option<usize> {
@@ -322,6 +386,30 @@ mod tests {
         assert!(!empty_metrics.contains("rullst_cpu_usage_percent"));
         assert!(!empty_metrics.contains("rullst_tokio_active_tasks"));
         assert!(!empty_metrics.contains("rullst_tokio_latency_microseconds"));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_cpu_percentage_uses_process_time_delta_and_is_bounded() {
+        let percent =
+            calculate_windows_cpu_percent(2_500_000, std::time::Duration::from_secs(1), 8);
+        assert_eq!(percent, Some(25.0));
+
+        let bounded =
+            calculate_windows_cpu_percent(100_000_000, std::time::Duration::from_millis(1), 2);
+        assert_eq!(bounded, Some(200.0));
+        assert_eq!(
+            calculate_windows_cpu_percent(1, std::time::Duration::ZERO, 1),
+            None
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[tokio::test]
+    async fn windows_cpu_probe_produces_a_second_sample() {
+        let _ = RadarSnapshot::collect();
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        assert!(RadarSnapshot::collect().cpu_usage_percent.is_some());
     }
 
     #[tokio::test]

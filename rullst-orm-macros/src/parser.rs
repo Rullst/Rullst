@@ -1,99 +1,9 @@
+mod attributes;
+
+use attributes::{FieldAttributes, ModelAttributes};
+#[cfg(test)]
+use attributes::{split_top_level, strip_outer_call, validate_relation_attribute};
 use syn::{Data, DeriveInput, Fields, spanned::Spanned};
-
-/// Split a token string at top-level commas, ignoring commas that
-/// appear inside matched parentheses. This lets us keep arguments of
-/// calls like `soft_delete(field = "a", value = "0")` together while
-/// still separating the outer attributes.
-fn split_top_level(input: &str) -> Vec<String> {
-    let mut parts: Vec<String> = Vec::new();
-    let mut buf = String::new();
-    let mut depth: i32 = 0;
-    for c in input.chars() {
-        match c {
-            '(' => {
-                depth += 1;
-                buf.push(c);
-            }
-            ')' => {
-                if depth > 0 {
-                    depth -= 1;
-                }
-                buf.push(c);
-            }
-            ',' if depth == 0 => {
-                parts.push(std::mem::take(&mut buf));
-            }
-            other => buf.push(other),
-        }
-    }
-    if !buf.is_empty() {
-        parts.push(buf);
-    }
-    parts
-}
-
-/// If `input` looks like `<name>(<inner>)`, return the inner portion
-/// (with surrounding whitespace trimmed). Returns `None` otherwise.
-fn strip_outer_call(input: &str, name: &str) -> Option<String> {
-    let trimmed = input.trim();
-    if let Some(rest) = trimmed.strip_prefix(name) {
-        let rest = rest.trim_start();
-        if rest.starts_with('(') && rest.ends_with(')') {
-            let inner = &rest[1..rest.len() - 1];
-            return Some(inner.trim().to_string());
-        }
-    }
-    None
-}
-
-/// Validates that a relation attribute has valid syntax
-fn validate_relation_attribute(
-    key: &str,
-    value: &str,
-    span: proc_macro2::Span,
-) -> Result<(), syn::Error> {
-    match key {
-        "has_many" | "has_one" | "belongs_to" | "belongs_to_many" | "morph_many" | "morph_one" => {
-            if value.is_empty() {
-                return Err(syn::Error::new(
-                    span,
-                    format!(
-                        "Relation attribute '{}' requires a target model name (e.g. #[orm({} = \"User\")])",
-                        key, key
-                    ),
-                ));
-            }
-            // Check if value looks like a valid Rust identifier
-            if !value
-                .chars()
-                .next()
-                .map(|c| c.is_uppercase())
-                .unwrap_or(false)
-            {
-                return Err(syn::Error::new(
-                    span,
-                    format!(
-                        "Relation attribute '{}' model name must start with uppercase (PascalCase, e.g. #[orm({} = \"User\")])",
-                        key, key
-                    ),
-                ));
-            }
-        }
-        "foreign_key" | "related_key" | "pivot_table" | "local_key" | "name"
-            if value.is_empty() =>
-        {
-            return Err(syn::Error::new(
-                span,
-                format!(
-                    "Attribute '{}' requires a non-empty string value (e.g. #[orm({} = \"user_id\")])",
-                    key, key
-                ),
-            ));
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 pub struct ParsedModel {
     pub name: syn::Ident,
@@ -164,105 +74,7 @@ pub struct ParsedRelation {
 
 pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let name = input.ident.clone();
-    let mut table_name = format!("{}s", name.to_string().to_lowercase());
-    let mut global_scope = String::new();
-    let mut tenant_column = String::new();
-    let mut auditable = false;
-    let mut searchable = false;
-    let mut policy = String::new();
-    let mut before_save = String::new();
-    let mut after_save = String::new();
-    let mut before_delete = String::new();
-    let mut after_delete = String::new();
-    let mut after_fetch = String::new();
-    let mut soft_delete: Option<SoftDeleteConfig> = None;
-
-    for attr in &input.attrs {
-        if attr.path().is_ident("orm") {
-            let token_str = match attr.meta.require_list() {
-                Ok(list) => list.tokens.to_string(),
-                Err(_) => continue, // Skip malformed attributes
-            };
-            // Split top-level orm attributes, but keep parenthesised
-            // groups such as `soft_delete(field = "...", value = "0", delval = "1")`
-            // intact so the inner key/value pairs aren't accidentally cut
-            // by the comma split.
-            let top_parts = split_top_level(&token_str);
-            for part in top_parts {
-                let trimmed = part.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                if trimmed == "auditable" {
-                    auditable = true;
-                } else if trimmed == "searchable" {
-                    searchable = true;
-                } else if let Some(inner) = strip_outer_call(trimmed, "soft_delete") {
-                    let mut column: Option<String> = None;
-                    let mut value: Option<String> = None;
-                    let mut delval: Option<String> = None;
-                    for kv in split_top_level(&inner) {
-                        let kv = kv.trim();
-                        if kv.is_empty() {
-                            continue;
-                        }
-                        let kv_parts: Vec<&str> = kv.splitn(2, '=').collect();
-                        if kv_parts.len() != 2 {
-                            continue;
-                        }
-                        let k = kv_parts[0].trim();
-                        let v = kv_parts[1].trim().trim_matches('"');
-                        match k {
-                            "field" | "column" => column = Some(v.to_string()),
-                            "value" => value = Some(v.to_string()),
-                            "delval" => delval = Some(v.to_string()),
-                            _ => {}
-                        }
-                    }
-                    soft_delete = Some(SoftDeleteConfig {
-                        column: column.unwrap_or_else(|| "deleted_at".to_string()),
-                        value: value.unwrap_or_default(),
-                        delval: delval.unwrap_or_default(),
-                    });
-                } else {
-                    let parts: Vec<&str> = trimmed.splitn(2, '=').collect();
-                    if parts.len() == 2 {
-                        let key = parts[0].trim();
-                        let val = parts[1].trim().trim_matches('"');
-                        match key {
-                            "table" | "table_name" => {
-                                if val.trim().is_empty() {
-                                    return Err(syn::Error::new_spanned(
-                                        attr,
-                                        "table name cannot be empty (e.g. #[orm(table = \"users\")])",
-                                    ));
-                                }
-                                table_name = val.to_string();
-                            }
-                            "tabel" | "tbl" | "tablename" => {
-                                return Err(syn::Error::new_spanned(
-                                    attr,
-                                    format!(
-                                        "Unknown model attribute `#[orm({} = ...)]`. Did you mean `#[orm(table = \"...\")]`?",
-                                        key
-                                    ),
-                                ));
-                            }
-                            "global_scope" => global_scope = val.to_string(),
-                            "tenant_column" => tenant_column = val.to_string(),
-                            "policy" => policy = val.to_string(),
-                            "before_save" => before_save = val.to_string(),
-                            "after_save" => after_save = val.to_string(),
-                            "before_delete" => before_delete = val.to_string(),
-                            "after_delete" => after_delete = val.to_string(),
-                            "after_fetch" => after_fetch = val.to_string(),
-                            _ => {}
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let mut model_attributes = ModelAttributes::parse(input)?;
 
     let fields = match &input.data {
         Data::Struct(data_struct) => match &data_struct.fields {
@@ -293,7 +105,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     // `has_soft_deletes` flag is derived from that. Otherwise we keep the
     // legacy behaviour of detecting a `deleted_at` field by name so
     // existing models keep working without changes.
-    let mut has_soft_deletes = soft_delete.is_some();
+    let mut has_soft_deletes = model_attributes.soft_delete.is_some();
     // Track the column name that should be considered the soft delete
     // marker. Used at the end of field iteration to synthesise a
     // default `SoftDeleteConfig` for legacy `deleted_at` models so the
@@ -312,126 +124,19 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             detected_soft_delete_column = Some(field_name_str.clone());
         }
 
-        let mut is_relation = false;
-        let mut rel_type = String::new();
-        let mut rel_model = String::new();
-        let mut foreign_key = String::new();
-        let mut related_key = String::new();
-        let mut pivot_table = String::new();
-        let mut local_key = "id".to_string();
-        let mut morph_name = String::new();
-        let mut is_hidden = false;
-        let mut is_skipped = false;
-        let mut is_masked = false;
-        let mut cascade_soft_delete = false;
-
-        for attr in &field.attrs {
-            // The macro accepts `#[orm(...)]` as well as the more
-            // explicit `#[sqlx(...)]` style requested in the feature
-            // spec. Both produce the same set of recognised keys.
-            if attr.path().is_ident("orm") || attr.path().is_ident("sqlx") {
-                let token_str = match attr.meta.require_list() {
-                    Ok(list) => list.tokens.to_string(),
-                    Err(_) => continue, // Skip malformed attributes
-                };
-                for part in split_top_level(&token_str) {
-                    let trimmed = part.trim();
-                    if trimmed.is_empty() {
-                        continue;
-                    }
-                    if trimmed == "hidden" {
-                        is_hidden = true;
-                    } else if trimmed == "skip" {
-                        // Excluded from generated INSERT / UPDATE column
-                        // lists, bindings, JSON serialisation and the
-                        // `*Column` enum. The field is still part of the
-                        // struct so user code can still read/write it.
-                        is_skipped = true;
-                    } else if trimmed == "masked" {
-                        is_masked = true;
-                    } else if trimmed == "cascade_soft_delete" {
-                        cascade_soft_delete = true;
-                    } else if trimmed == "rag_context" {
-                        rag_context_fields.push(field_name.clone());
-                    } else {
-                        let parts: Vec<&str> = trimmed.split('=').collect();
-                        if parts.len() == 2 {
-                            let key = parts[0].trim();
-                            let val = parts[1].trim().trim_matches('"');
-                            // Validate relation attributes
-                            validate_relation_attribute(key, val, field.span())?;
-                            match key {
-                                "has_many" => {
-                                    is_relation = true;
-                                    rel_type = "has_many".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "has_one" => {
-                                    is_relation = true;
-                                    rel_type = "has_one".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "belongs_to" => {
-                                    is_relation = true;
-                                    rel_type = "belongs_to".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "belongs_to_many" => {
-                                    is_relation = true;
-                                    rel_type = "belongs_to_many".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "morph_many" => {
-                                    is_relation = true;
-                                    rel_type = "morph_many".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "morph_one" => {
-                                    is_relation = true;
-                                    rel_type = "morph_one".to_string();
-                                    rel_model = val.to_string();
-                                }
-                                "hasmany" => {
-                                    return Err(syn::Error::new_spanned(
-                                        attr,
-                                        "Unknown attribute `#[orm(hasmany = ...)]`. Did you mean `#[orm(has_many = \"...\")]`?",
-                                    ));
-                                }
-                                "belongsto" => {
-                                    return Err(syn::Error::new_spanned(
-                                        attr,
-                                        "Unknown attribute `#[orm(belongsto = ...)]`. Did you mean `#[orm(belongs_to = \"...\")]`?",
-                                    ));
-                                }
-                                "hasone" => {
-                                    return Err(syn::Error::new_spanned(
-                                        attr,
-                                        "Unknown attribute `#[orm(hasone = ...)]`. Did you mean `#[orm(has_one = \"...\")]`?",
-                                    ));
-                                }
-                                "foreignkey" | "fk" => {
-                                    return Err(syn::Error::new_spanned(
-                                        attr,
-                                        "Unknown attribute `#[orm(foreignkey = ...)]`. Did you mean `#[orm(foreign_key = \"...\")]`?",
-                                    ));
-                                }
-                                "foreign_key" => foreign_key = val.to_string(),
-                                "related_key" => related_key = val.to_string(),
-                                "pivot_table" => pivot_table = val.to_string(),
-                                "local_key" => local_key = val.to_string(),
-                                "name" => morph_name = val.to_string(),
-                                "embedding_for" => {
-                                    embedding_for = Some((field_name.clone(), val.to_string()));
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            }
+        let field_attributes = FieldAttributes::parse(field)?;
+        if field_attributes.rag_context {
+            rag_context_fields.push(field_name.clone());
+        }
+        if let Some(target) = field_attributes.embedding_for.clone() {
+            embedding_for = Some((field_name.clone(), target));
         }
 
-        if auditable && !is_masked && !is_skipped && !is_relation {
+        if model_attributes.auditable
+            && !field_attributes.is_masked
+            && !field_attributes.is_skipped
+            && !field_attributes.is_relation()
+        {
             let lower_name = field_name_str.to_lowercase();
             if lower_name.contains("password")
                 || lower_name.contains("token")
@@ -448,30 +153,20 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             }
         }
 
-        if is_relation {
-            relations.push(ParsedRelation {
-                field_name,
-                rel_type,
-                rel_model,
-                foreign_key,
-                local_key,
-                related_key,
-                pivot_table,
-                morph_name,
-                cascade_soft_delete,
-            });
-        } else if is_skipped {
+        if field_attributes.is_relation() {
+            relations.push(field_attributes.into_relation(field_name));
+        } else if field_attributes.is_skipped {
             // Skipped fields are not exposed to the generated SQL or the
             // column enum; record the ident so downstream code (if it ever
             // needs to introspect) can still see them.
             skipped_fields.push(field_name.clone());
-            if is_hidden {
+            if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
             }
         } else {
             normal_fields.push(field_name.clone());
             normal_fields_types.push(field.ty.clone());
-            if is_hidden {
+            if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
             }
         }
@@ -483,7 +178,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     // behaviour (column = `deleted_at`, not-deleted = NULL, deleted =
     // `CURRENT_TIMESTAMP`) so all pre-existing models continue to
     // compile and behave identically.
-    let soft_delete = soft_delete.or_else(|| {
+    let soft_delete = model_attributes.soft_delete.take().or_else(|| {
         detected_soft_delete_column.map(|column| SoftDeleteConfig {
             column,
             value: String::new(),
@@ -493,17 +188,17 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
 
     Ok(ParsedModel {
         name,
-        table_name,
-        global_scope,
-        tenant_column,
-        auditable,
-        searchable,
-        policy,
-        before_save,
-        after_save,
-        before_delete,
-        after_delete,
-        after_fetch,
+        table_name: model_attributes.table_name,
+        global_scope: model_attributes.global_scope,
+        tenant_column: model_attributes.tenant_column,
+        auditable: model_attributes.auditable,
+        searchable: model_attributes.searchable,
+        policy: model_attributes.policy,
+        before_save: model_attributes.before_save,
+        after_save: model_attributes.after_save,
+        before_delete: model_attributes.before_delete,
+        after_delete: model_attributes.after_delete,
+        after_fetch: model_attributes.after_fetch,
         soft_delete,
         normal_fields,
         normal_fields_types,

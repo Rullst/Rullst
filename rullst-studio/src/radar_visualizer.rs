@@ -109,27 +109,27 @@ pub async fn render_radar_page() -> String {
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Tokio Tick Latency</div>
-                    <div class="text-2xl font-bold text-emerald-400 mt-1">{latency}</div>
+                    <div id="radar-latency" aria-live="polite" class="text-2xl font-bold text-emerald-400 mt-1">{latency}</div>
                     <div class="text-xs text-slate-400 mt-2">Observed scheduler yield</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Active Async Tasks</div>
-                    <div class="text-2xl font-bold text-sky-400 mt-1">{tasks}</div>
+                    <div id="radar-tasks" aria-live="polite" class="text-2xl font-bold text-sky-400 mt-1">{tasks}</div>
                     <div class="text-xs text-slate-400 mt-2">Running tokio tasks</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Memory RSS RAM</div>
-                    <div class="text-2xl font-bold text-indigo-400 mt-1">{rss}</div>
+                    <div id="radar-rss" aria-live="polite" class="text-2xl font-bold text-indigo-400 mt-1">{rss}</div>
                     <div class="text-xs text-slate-400 mt-2">Process RAM memory</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Process CPU</div>
-                    <div class="text-2xl font-bold text-amber-400 mt-1">{cpu}</div>
+                    <div id="radar-cpu" aria-live="polite" class="text-2xl font-bold text-amber-400 mt-1">{cpu}</div>
                     <div class="text-xs text-slate-400 mt-2">Active CPU core load</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">System Uptime</div>
-                    <div class="text-2xl font-bold text-cyan-400 mt-1">{uptime}s</div>
+                    <div id="radar-uptime" aria-live="polite" class="text-2xl font-bold text-cyan-400 mt-1">{uptime}s</div>
                     <div class="text-xs text-slate-400 mt-2">Total process runtime</div>
                 </div>
             </div>
@@ -149,6 +149,35 @@ pub async fn render_radar_page() -> String {
                 </div>
                 {span_rows_html}
             </div>
+            <script>
+                (() => {{
+                    const setMetric = (id, value) => {{
+                        const element = document.getElementById(id);
+                        if (element) element.textContent = value;
+                    }};
+                    const availableNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+                    const refreshRadar = async () => {{
+                        try {{
+                            const response = await fetch('/api/radar', {{
+                                cache: 'no-store',
+                                headers: {{ accept: 'application/json' }}
+                            }});
+                            if (!response.ok) return;
+                            const data = await response.json();
+                            setMetric('radar-latency', availableNumber(data.tokio_latency_micros) ? `${{data.tokio_latency_micros}} µs` : 'Unavailable');
+                            setMetric('radar-tasks', availableNumber(data.active_tokio_tasks) ? String(data.active_tokio_tasks) : 'Unavailable');
+                            setMetric('radar-rss', availableNumber(data.memory_rss_mb) ? `${{data.memory_rss_mb.toFixed(1)}} MB` : 'Unavailable');
+                            setMetric('radar-cpu', availableNumber(data.cpu_usage_percent) ? `${{data.cpu_usage_percent.toFixed(1)}}%` : 'Unavailable');
+                            setMetric('radar-uptime', availableNumber(data.uptime_seconds) ? `${{data.uptime_seconds}}s` : 'Unavailable');
+                        }} catch (_error) {{
+                            // Preserve the last valid snapshot while the local probe is unreachable.
+                        }} finally {{
+                            window.setTimeout(refreshRadar, 2000);
+                        }}
+                    }};
+                    window.setTimeout(refreshRadar, 1000);
+                }})();
+            </script>
         </div>"#,
         latency = latency,
         tasks = tasks,
@@ -231,5 +260,7 @@ mod tests {
         assert!(html.contains("Prometheus /metrics"));
         assert!(html.contains("SQL QUERY"));
         assert!(html.contains("SECURITY WAF"));
+        assert!(html.contains("id=\"radar-cpu\""));
+        assert!(html.contains("fetch('/api/radar'"));
     }
 }

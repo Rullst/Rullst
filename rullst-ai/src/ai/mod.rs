@@ -69,6 +69,107 @@ pub struct Message {
     pub content: String,
 }
 
+/// Level of JSON response support exposed by a provider transport.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JsonCapability {
+    /// The provider transport has no JSON-specific request path.
+    Unsupported,
+    /// JSON is requested through prompt instructions without a native response mode.
+    PromptOnly,
+    /// The provider request selects a native JSON response mode.
+    NativeMode,
+}
+
+/// Machine-readable capability contract for an [`AiProvider`].
+///
+/// A `true` value means that the Rullst transport implements the capability. It
+/// does not guarantee that every model configured behind that provider accepts
+/// it. Model-specific rejection is returned as [`AiError::UnsupportedCapability`]
+/// or a provider API error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProviderCapabilities {
+    /// Single-prompt text generation.
+    pub text: bool,
+    /// Multi-turn chat messages.
+    pub chat: bool,
+    /// Text embeddings.
+    pub embeddings: bool,
+    /// Image input with a text prompt.
+    pub vision: bool,
+    /// JSON response mode available through the transport.
+    pub json: JsonCapability,
+    /// Provider-requested JSON Schema enforcement.
+    pub json_schema: bool,
+    /// Incremental streaming responses.
+    pub streaming: bool,
+    /// Provider-native tool/function calling and guarded dispatch.
+    pub tools: bool,
+    /// A Rullst-configured request deadline.
+    pub request_timeout: bool,
+    /// Automatic transport retry policy.
+    pub retries: bool,
+    /// An explicit cancellation token or handle beyond dropping the request future.
+    pub explicit_cancellation: bool,
+}
+
+impl ProviderCapabilities {
+    /// Capabilities required directly by the portable provider trait plus its
+    /// prompt-only JSON fallback.
+    pub const PORTABLE: Self = Self {
+        text: true,
+        chat: true,
+        embeddings: true,
+        vision: false,
+        json: JsonCapability::PromptOnly,
+        json_schema: false,
+        streaming: false,
+        tools: false,
+        request_timeout: false,
+        retries: false,
+        explicit_cancellation: false,
+    };
+
+    /// Empty capability set, used when a fallback chain contains no providers.
+    pub const NONE: Self = Self {
+        text: false,
+        chat: false,
+        embeddings: false,
+        vision: false,
+        json: JsonCapability::Unsupported,
+        json_schema: false,
+        streaming: false,
+        tools: false,
+        request_timeout: false,
+        retries: false,
+        explicit_cancellation: false,
+    };
+
+    fn union(self, other: Self) -> Self {
+        let json = match (self.json, other.json) {
+            (JsonCapability::NativeMode, _) | (_, JsonCapability::NativeMode) => {
+                JsonCapability::NativeMode
+            }
+            (JsonCapability::PromptOnly, _) | (_, JsonCapability::PromptOnly) => {
+                JsonCapability::PromptOnly
+            }
+            _ => JsonCapability::Unsupported,
+        };
+        Self {
+            text: self.text || other.text,
+            chat: self.chat || other.chat,
+            embeddings: self.embeddings || other.embeddings,
+            vision: self.vision || other.vision,
+            json,
+            json_schema: self.json_schema || other.json_schema,
+            streaming: self.streaming || other.streaming,
+            tools: self.tools || other.tools,
+            request_timeout: self.request_timeout || other.request_timeout,
+            retries: self.retries || other.retries,
+            explicit_cancellation: self.explicit_cancellation || other.explicit_cancellation,
+        }
+    }
+}
+
 impl Message {
     /// Creates a system instruction message.
     pub fn system(content: impl Into<String>) -> Self {
@@ -104,6 +205,16 @@ pub trait AiProvider: Send + Sync {
     /// Stable provider identifier used in capability errors.
     fn provider_name(&self) -> &'static str {
         "custom"
+    }
+
+    /// Reports the transport capabilities implemented by this provider.
+    ///
+    /// Custom providers receive the portable default because `prompt`, `chat`,
+    /// and `embed` are required trait methods. Override this method when one of
+    /// those methods deliberately returns `UnsupportedCapability` or when the
+    /// implementation adds native capabilities.
+    fn capabilities(&self) -> ProviderCapabilities {
+        ProviderCapabilities::PORTABLE
     }
 
     /// Generates a response for a single text prompt.
@@ -167,6 +278,14 @@ impl FallbackProvider {
 impl AiProvider for FallbackProvider {
     fn provider_name(&self) -> &'static str {
         "fallback chain"
+    }
+
+    fn capabilities(&self) -> ProviderCapabilities {
+        self.providers
+            .iter()
+            .fold(ProviderCapabilities::NONE, |capabilities, provider| {
+                capabilities.union(provider.capabilities())
+            })
     }
 
     async fn prompt(&self, text: &str) -> Result<String, AiError> {

@@ -42,6 +42,8 @@ crossterm = "0.29.0"
 regex = "1.12.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
+semver = "1.0.28"
+thiserror = { workspace = true }
 walkdir = "2.5.0"
 axum = { workspace = true, features = ["ws"] }
 notify = { workspace = true }
@@ -58,6 +60,9 @@ sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", 
 
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
+# Keeps the generated Tera blueprint dependency locked and cached for the
+# packaged-distribution compile gate without adding it to the CLI runtime graph.
+tera = "1.20"
 toml = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }

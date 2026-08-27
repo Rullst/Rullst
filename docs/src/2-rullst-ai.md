@@ -9,6 +9,11 @@ type and ownership errors in generated code, but it cannot validate requirements
 security intent, or business correctness; AI-generated changes still require
 review and tests.
 
+For runtime LLM integrations, consult the machine-readable and documented
+[provider capability matrix](ai-provider-capabilities.md). Streaming, native
+tools, built-in deadlines/retries, and explicit cancellation are not implied by
+the existence of a provider adapter.
+
 ## 1. The Agent Manifesto (`AGENTS.md`)
 
 Every Rullst project generated via `cargo rullst new` automatically includes two vital files in the root: `.ai-rules` and `AGENTS.md`.

@@ -183,13 +183,26 @@ async fn test_studio_table_browser_and_schema_inspection() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
+    let pool = rullst_core::db::safe_pool().expect("Studio SQLite pool");
+    rullst_orm::_sqlx::query(
+        "INSERT OR REPLACE INTO rullst_feature_flags \
+         (name, enabled, rollout_percentage, variants) VALUES (?, ?, ?, ?)",
+    )
+    .bind("dark_mode")
+    .bind(0_i32)
+    .bind(100_i32)
+    .bind("[]")
+    .execute(pool)
+    .await
+    .expect("insert deterministic feature flag fixture");
+
     let req = Request::builder()
         .method("POST")
         .uri("/features/toggle/dark_mode")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(res.status().is_success() || res.status().is_redirection());
+    assert!(res.status().is_redirection());
 
     // 7. Migration Manager Handlers
     use rullst_studio::migration_manager::*;

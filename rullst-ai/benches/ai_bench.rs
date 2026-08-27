@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use rullst_ai::ai::{AiTool, Message, ToolParam, ToolRegistry};
+use rullst_ai::ai::{AiTool, Message, ToolExecutionPolicy, ToolParam, ToolRegistry, ToolRisk};
 use serde_json::Value;
 use std::hint::black_box;
 
@@ -28,6 +28,9 @@ impl AiTool for SampleDbTool {
             },
         ]
     }
+    fn risk(&self) -> ToolRisk {
+        ToolRisk::Destructive
+    }
     fn execute(&self, _payload: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         Ok(serde_json::json!({ "status": "ok" }))
     }
@@ -37,10 +40,13 @@ fn bench_tool_schema_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ai_tool_registry");
 
     let mut registry = ToolRegistry::new();
-    registry.register(SampleDbTool);
+    registry
+        .register(SampleDbTool)
+        .expect("valid benchmark tool");
+    let policy = ToolExecutionPolicy::new(["db_query"]).expect("valid benchmark policy");
 
     group.bench_function("export_openai_schema", |b| {
-        b.iter(|| registry.export_openai_schema())
+        b.iter(|| registry.export_openai_schema(&policy))
     });
 
     group.finish();

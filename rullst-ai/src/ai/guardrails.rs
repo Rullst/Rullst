@@ -1,4 +1,7 @@
-//! Mandatory outbound guardrails for every high-level AI request.
+//! Mandatory bounded outbound heuristics for every high-level AI request.
+//!
+//! Passing these checks means only that the implemented patterns did not match.
+//! It is not a proof that a prompt, model response, or tool decision is safe.
 
 use super::{AiError, Message};
 use rullst_core::security::mask_pii;
@@ -32,7 +35,8 @@ impl PromptThreat {
     }
 }
 
-/// Result of inspecting and redacting one outbound text value.
+/// Result of applying the implemented heuristics and redaction classes to one
+/// outbound text value.
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GuardrailReport {
@@ -57,9 +61,21 @@ impl GuardrailReport {
         self.pii_was_masked
     }
 
-    /// Returns true when no prompt-injection heuristic matched.
-    pub const fn is_safe(&self) -> bool {
+    /// Returns true when no implemented prompt-injection heuristic matched.
+    ///
+    /// Unknown, obfuscated, contextual, and model-specific attacks can still
+    /// pass, so this is not a security guarantee.
+    pub const fn passed_heuristics(&self) -> bool {
         self.threat.is_none()
+    }
+
+    /// Compatibility alias for [`GuardrailReport::passed_heuristics`].
+    #[deprecated(
+        since = "12.0.0",
+        note = "use passed_heuristics; no heuristic filter can prove a prompt safe"
+    )]
+    pub const fn is_safe(&self) -> bool {
+        self.passed_heuristics()
     }
 }
 
@@ -223,7 +239,7 @@ mod tests {
     #[test]
     fn masks_pii_before_returning_safe_text() {
         let report = AiGuardrails::inspect("Contact alice@example.com or 4242 4242 4242 4242");
-        assert!(report.is_safe());
+        assert!(report.passed_heuristics());
         assert!(report.pii_was_masked());
         assert!(!report.redacted_text().contains("alice@example.com"));
         assert!(!report.redacted_text().contains("4242 4242 4242 4242"));

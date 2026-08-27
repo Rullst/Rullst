@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rullst_ai::ai::tools::{ToolParam, ToolRegistry};
+use rullst_ai::ai::tools::{ToolExecutionPolicy, ToolParam, ToolRegistry};
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
@@ -12,6 +12,8 @@ fuzz_target!(|data: &[u8]| {
             required: data.len() % 2 == 0,
         };
         let registry = ToolRegistry::new();
-        let _ = registry.export_openai_schema();
+        if let Ok(policy) = ToolExecutionPolicy::new([s]) {
+            let _ = registry.export_openai_schema(&policy);
+        }
     }
 });

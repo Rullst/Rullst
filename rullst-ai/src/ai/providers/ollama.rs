@@ -1,6 +1,7 @@
 use super::support::{embedding_values, endpoint, success_response};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, Message, StructuredOutputSchema,
+    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
+    StructuredOutputSchema,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -56,6 +57,22 @@ impl OllamaProvider {
 impl AiProvider for OllamaProvider {
     fn provider_name(&self) -> &'static str {
         "Ollama"
+    }
+
+    fn capabilities(&self) -> ProviderCapabilities {
+        ProviderCapabilities {
+            text: true,
+            chat: true,
+            embeddings: true,
+            vision: true,
+            json: JsonCapability::NativeMode,
+            json_schema: true,
+            streaming: false,
+            tools: false,
+            request_timeout: false,
+            retries: false,
+            explicit_cancellation: false,
+        }
     }
 
     async fn prompt(&self, text: &str) -> Result<String, AiError> {

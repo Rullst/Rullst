@@ -23,9 +23,28 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--turso`: Scaffolds Turso/libSQL sidecar (`sqld`) configuration. It does not implement Core's currently unsupported replication manager.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
   * `--buildah`: Adds rootless Buildah container-build files where supported.
+  * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
+  * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
+  * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
+
+For example, the release gate can generate a SaaS starter without prompts or
+network-dependent bootstrap work:
+
+```bash
+cargo rullst new packaged-saas --default --blueprint saas --skip-initial-migration
+```
 
 ### `cargo rullst upgrade`
-Globally updates the CLI on your machine (`cargo install cargo-rullst`) and simultaneously scans your current project's `Cargo.toml` to ensure Rullst and its internal macros (like `rullst-macros` and `rullst-connect`) are updated to the corresponding stable version, running automatic codemods if breaking changes are detected.
+Updates standard versioned `rullst-*` dependencies in the current project's
+`Cargo.toml` to the newer cached version, or to the installed CLI version when
+no newer valid cache entry exists. It then runs `cargo update`, compiler-provided
+`cargo fix`, and `cargo check`.
+
+The command does not install the CLI globally, rewrite Axum/SQLx/Tokio imports,
+change path-only or renamed dependencies, run database migrations, or replace
+the project's test suite. A failed Cargo command makes the upgrade fail instead
+of reporting success. Commit first and follow the relevant
+[v12 migration guide](migration-v12.md).
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

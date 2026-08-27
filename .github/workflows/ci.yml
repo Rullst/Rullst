@@ -110,8 +110,8 @@ jobs:
               ;;
           esac
 
-  minimal-feature-boundaries:
-    name: Core and umbrella minimal feature boundaries
+  feature-boundaries:
+    name: Public no-default and isolated feature boundaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Monorepo
@@ -120,16 +120,8 @@ jobs:
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
 
-      - name: Test runtime-only Core without ORM or SQLite queue
-        run: cargo test -p rullst-core --no-default-features
-
-      - name: Compile independent Core database features
-        run: |
-          cargo check -p rullst-core --all-targets --no-default-features --features orm
-          cargo check -p rullst-core --all-targets --no-default-features --features queue-sqlite
-
-      - name: Compile the minimal application umbrella
-        run: cargo check -p rullst --all-targets --no-default-features
+      - name: Compile all public minimal and isolated feature boundaries
+        run: bash .github/check-feature-boundaries.sh
 
   generated-release-access:
     name: Generated release access boundaries

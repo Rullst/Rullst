@@ -173,10 +173,22 @@ impl SecurityStore {
         });
     }
 
+    /// Records a RASP rejection emitted by an actual inspector or middleware path.
+    pub fn record_rasp_interception(&self, uri_bad: bool, headers_bad: bool, body_bad: bool) {
+        self.push_live_event(LiveSecurityEvent {
+            event_type: "RASP_PAYLOAD_INTERCEPTED".to_string(),
+            details: format!(
+                "Rejected request (uri={uri_bad}, headers={headers_bad}, body={body_bad})"
+            ),
+            client_ip: "unknown".to_string(),
+            timestamp_str: current_timestamp_str(),
+            verified_hmac: false,
+        });
+    }
+
     pub fn record_prompt_injection_blocked(&self, ip: &str, prompt_snippet: &str) {
         self.prompt_injections_blocked_count
             .fetch_add(1, Ordering::Relaxed);
-        self.prompts_inspected_count.fetch_add(1, Ordering::Relaxed);
         self.push_live_event(LiveSecurityEvent {
             event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
             details: format!("Blocked malicious prompt snippet: {prompt_snippet}"),
@@ -406,5 +418,32 @@ mod tests {
         store.record_honeypot_observation("192.0.2.80", "/.git/config");
 
         assert_eq!(store.active_banned_count(), 0);
+    }
+
+    #[test]
+    fn blocked_prompt_is_not_counted_as_two_inspections() {
+        let store = SecurityStore::new();
+        store.record_prompt_inspected();
+        store.record_prompt_injection_blocked("192.0.2.42", "ignore previous instructions");
+
+        assert_eq!(store.prompts_inspected_count.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            store
+                .prompt_injections_blocked_count
+                .load(Ordering::Relaxed),
+            1
+        );
+    }
+
+    #[test]
+    fn rasp_interceptions_are_local_unsigned_events() {
+        let store = SecurityStore::new();
+        store.record_rasp_interception(false, false, true);
+
+        let events = store.live_events.lock().expect("telemetry lock");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_type, "RASP_PAYLOAD_INTERCEPTED");
+        assert!(events[0].details.contains("body=true"));
+        assert!(!events[0].verified_hmac);
     }
 }

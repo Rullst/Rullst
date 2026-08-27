@@ -6,7 +6,23 @@ use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
 
-/// GET /nexus/security — Visual Threat Radar (SOC) with 100% Real Live Security Telemetry.
+const AUDIT_CHAIN_UNAVAILABLE: &str = "Unavailable";
+
+fn event_integrity_badge(verified_hmac: bool) -> (&'static str, &'static str) {
+    if verified_hmac {
+        (
+            "HMAC VERIFIED",
+            "background: rgba(52,211,153,0.15); color: #34d399;",
+        )
+    } else {
+        (
+            "UNSIGNED LOCAL EVENT",
+            "background: rgba(148,163,184,0.15); color: #94a3b8;",
+        )
+    }
+}
+
+/// GET /nexus/security — Visual Threat Radar (SOC) with bounded in-process telemetry.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn nexus_security_page(
     State(state): State<Arc<NexusState>>,
@@ -98,7 +114,7 @@ pub async fn nexus_security_page(
             honeypot_routes_html.push_str(&format!(
                 "<div style=\"display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-800); border-radius: 6px;\">\
                  <span style=\"color: #fbbf24;\">{}</span>\
-                 <span style=\"color: var(--text-muted);\">0 hits (Armed)</span>\
+                 <span style=\"color: var(--text-muted);\">Available default; mount middleware to arm</span>\
                  </div>",
                 trap
             ));
@@ -123,7 +139,7 @@ pub async fn nexus_security_page(
     if let Ok(events) = store.live_events.lock() {
         if events.is_empty() {
             events_feed_html.push_str(
-                "<div style=\"padding: 16px; color: var(--text-muted); font-size: 13px; text-align: center;\">🛡️ No security incidents recorded. RASP and WAF shields active.</div>"
+                "<div style=\"padding: 16px; color: var(--text-muted); font-size: 13px; text-align: center;\">No in-process security events recorded. This does not prove that every security middleware is mounted.</div>"
             );
         } else {
             for ev in events.iter().take(15) {
@@ -133,6 +149,7 @@ pub async fn nexus_security_page(
                     "AI_PROMPT_INJECTION_SHIELDED" => "#c084fc",
                     _ => "#fbbf24",
                 };
+                let (integrity_badge, integrity_style) = event_integrity_badge(ev.verified_hmac);
                 events_feed_html.push_str(&format!(
                     "<div style=\"background: var(--bg-800); padding: 10px 14px; border-radius: 6px; border-left: 4px solid {}; display: flex; justify-content: space-between; align-items: center;\">\
                      <div>\
@@ -140,7 +157,7 @@ pub async fn nexus_security_page(
                          <span style=\"color: var(--text-muted); margin-left: 12px;\">{}</span>\
                      </div>\
                      <div style=\"display: flex; align-items: center; gap: 12px;\">\
-                         <span class=\"nexus-badge\" style=\"background: rgba(52,211,153,0.15); color: #34d399;\">HMAC VERIFIED</span>\
+                         <span class=\"nexus-badge\" style=\"{}\">{}</span>\
                          <span style=\"color: var(--text-muted); font-size: 11px;\">{}</span>\
                      </div>\
                      </div>",
@@ -148,6 +165,8 @@ pub async fn nexus_security_page(
                     badge_color,
                     rullst_core::html::escape_str(&ev.event_type),
                     rullst_core::html::escape_str(&ev.details),
+                    integrity_style,
+                    integrity_badge,
                     rullst_core::html::escape_str(&ev.timestamp_str)
                 ));
             }
@@ -161,9 +180,9 @@ pub async fn nexus_security_page(
         <div>
             <h2 style="margin: 0; color: #34d399; display: flex; align-items: center; gap: 10px; font-size: 20px;">
                 <span>🛡️ Threat Radar & RASP Security SOC</span>
-                <span class="nexus-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">LIVE REAL TELEMETRY</span>
+                <span class="nexus-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">LIVE IN-PROCESS TELEMETRY</span>
             </h2>
-            <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">Real-time application self-protection (RASP), WAF active bans, AI Prompt Injection shield, and HMAC SHA-256 audit logs.</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">In-process RASP, WAF, AI prompt-filter and sanitization counters. Audit integrity is reported only when a verifier source is connected.</p>
         </div>
         <div>{ai_status_badge}</div>
     </div>
@@ -188,7 +207,7 @@ pub async fn nexus_security_page(
         <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">XSS / Sanitizations</div>
             <div style="font-size: 32px; font-weight: 800; color: #34d399; margin-top: 4px;">{sanitizations_count}</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">SHA-256 Tamper-Proof Chain Log</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">In-process sanitization counter</div>
         </div>
     </div>
 
@@ -211,8 +230,8 @@ pub async fn nexus_security_page(
                 <span style="font-size: 20px; font-weight: 700; color: #22d3ee;">{pii_masked}</span>
             </div>
             <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">HMAC Audit Chain</span>
-                <span style="font-size: 20px; font-weight: 700; color: #34d399;">100% VERIFIED</span>
+                <span style="color: var(--text-muted); font-size: 11px; display: block;">Audit Chain Source</span>
+                <span style="font-size: 20px; font-weight: 700; color: #94a3b8;">{AUDIT_CHAIN_UNAVAILABLE}</span>
             </div>
         </div>
     </div>
@@ -291,16 +310,16 @@ pub async fn nexus_security_page(
             </div>
         </div>
         <div style="background: var(--bg-900); padding: 20px; border-radius: 10px; border: 1px solid var(--border);">
-            <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">🍯 Active Honeypot Traps</h3>
+            <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">🍯 Honeypot Routes & Observed Hits</h3>
             <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-family: var(--font-mono); margin-top: 12px;">
                 {honeypot_routes_html}
             </div>
         </div>
     </div>
 
-    <!-- Live HMAC Audit Log Feed -->
+    <!-- Local security event feed; integrity badges reflect each event's actual source. -->
     <div style="background: var(--bg-900); padding: 20px; border-radius: 10px; border: 1px solid var(--border);">
-        <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">📜 HMAC SHA-256 Security Audit Trail Log Stream</h3>
+        <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">📜 Local Security Event Stream</h3>
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; margin-top: 12px; font-family: var(--font-mono);">
             {events_feed_html}
         </div>
@@ -317,5 +336,17 @@ pub async fn nexus_security_page(
             &render_sidebar(&state, Some("security")),
             &content,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn event_integrity_badge_never_promotes_unsigned_events() {
+        assert_eq!(event_integrity_badge(false).0, "UNSIGNED LOCAL EVENT");
+        assert_eq!(event_integrity_badge(true).0, "HMAC VERIFIED");
+        assert_eq!(AUDIT_CHAIN_UNAVAILABLE, "Unavailable");
     }
 }

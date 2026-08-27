@@ -20,7 +20,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 > ambition. This makes corrections visible instead of silently rewriting the
 > project's history.
 
-### Security and contract hardening
+### Release summary by user impact
+
+#### Upgrade and compatibility
+
+- Rullst v12 coordinates 15 publishable packages in one release train. Upgrade
+  direct `rullst-*` dependencies together and review the
+  [migration guides](docs/src/migration-v12.md),
+  [feature matrix](docs/src/feature-matrix.md), and
+  [compatibility policy](docs/src/compatibility-policy.md).
+- `cargo rullst upgrade` now updates standard versioned Rullst dependencies,
+  preserves path and renamed dependencies for manual review, avoids unsafe
+  global import rewrites, and returns an error when a Cargo validation step
+  fails.
+- The declared v12 MSRV is Rust 1.96.0. The default umbrella dependency enables
+  ORM and the SQLite queue; Nexus, Studio, AI, auth, security, and other domain
+  crates remain opt-in features.
+
+#### Safer application and administration boundaries
+
+- Nexus fails closed unless an access policy is selected. Its local convenience
+  policy is limited to debug builds and a verified loopback peer; generated
+  release applications require valid credentials.
+- Generated projects use explicit CORS allowlists, exact CSRF webhook
+  exemptions, ownership checks on parameterized data routes, and bounded WAF
+  body inspection. Existing generated applications must apply the
+  [CORS migration advisory](docs/src/cors-scaffold-security-advisory.md)
+  manually.
+- Session, webhook, audit-chain, OTA, DLP, RASP, Login Jail, and secret-handling
+  paths received fail-closed validation and negative-path tests. The canonical
+  [security claims ledger](docs/src/v12-security-claims.md) links each announced
+  behavior to code, tests, and a known limit. These controls are defense in
+  depth, not certification or universal attack prevention.
+
+#### AI contracts
+
+- Every built-in provider exposes machine-readable capabilities for text, chat,
+  embeddings, vision, JSON/schema, streaming, tools, deadlines, retries, and
+  cancellation. Unsupported capabilities remain explicit in the
+  [provider matrix](docs/src/ai-provider-capabilities.md).
+- Guardrail results now use `passed_heuristics`; the former `is_safe` name is a
+  deprecated compatibility alias. Passing a filter or schema does not authorize
+  tools or make model output trustworthy.
+
+#### Local development and observability
+
+- Studio Radar reports real process CPU on Windows after a sampling interval,
+  refreshes KPIs from `/api/radar`, and keeps unavailable probes visibly
+  unavailable.
+- The blog showcase's security controls execute instrumented local primitives.
+  Prompt inspections are counted once, unsigned events are not labeled HMAC
+  verified, and detector results are not presented as production guarantees.
+- Generated blueprints and representative release builds are exercised by
+  compile tests. The exact RC still requires multi-OS CI, packaged crates-only
+  reproduction, and release-tag evidence before publication.
+
+### Detailed technical inventory (preserved)
+
+The entries below retain the development-level inventory for traceability. The
+summary above is the curated user-facing release view; this inventory must not
+be read as proof that an external integration, certification, benchmark, or
+release gate has completed.
 
 - Made Nexus fail closed without an explicit access policy and added server-side
   role, field, batch, TLS-boundary, constant-time credential, and rate-limit
@@ -38,6 +98,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Corrected Studio telemetry to display `Unavailable` for unconnected probes and
   aligned README, audit, compliance, example, and roadmap language with actual
   implementation boundaries.
+- Added delta-based Windows process CPU sampling and two-second Radar KPI refresh
+  through the local JSON endpoint; unsupported probes still remain visibly
+  unavailable.
+- Corrected prompt-inspection telemetry to count each prompt once and stopped
+  Nexus from presenting unsigned local events or an unconnected audit source as
+  HMAC verified.
+- Replaced the blog security sandbox's display-only RASP, Login Jail, and
+  honeypot actions with instrumented local primitives and tests; corrected the
+  page copy so a detector decision is not presented as a production HTTP block,
+  provider call, universal side-channel guarantee, or scanner grade.
+- Published the v12 compatibility policy covering Rust 1.96.0 MSRV changes,
+  SemVer, deprecation, prereleases, and the supported release window.
+- Published the v12 Cargo feature matrix for the umbrella package and every
+  independently released crate, including defaults and compatibility boundaries.
+- Added evidence-scoped v5, v6, and v11-era migration guides and corrected
+  `cargo rullst upgrade`: every standard release-train dependency now follows
+  the target version, path/renamed dependencies remain manual, unsafe global
+  import codemods were removed, and Cargo gate failures are returned as errors.
+- Added machine-readable AI provider capabilities plus a public provider matrix
+  covering JSON/schema, vision, embeddings, streaming, tools, deadlines,
+  retries, and cancellation without promoting unsupported paths.
+- Replaced the misleading `GuardrailReport::is_safe` recommendation with
+  `passed_heuristics` and rewrote the AI integration guide around the guarded
+  v12 client, explicit capability/error handling, and untrusted-output limits.
 - Published a [CORS scaffold migration advisory](docs/src/cors-scaffold-security-advisory.md)
   for applications generated before the fail-closed origin allowlist. Updating
   the CLI alone does not rewrite middleware already copied into an application.

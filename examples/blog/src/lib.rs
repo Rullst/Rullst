@@ -362,6 +362,7 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
         .with_brand("Rullst Sovereign Publisher")
         .register::<Post>()
         .try_build()?;
+    rullst_security::register_deception_trap("/wp-admin");
 
     Ok(routes![
         get("/" => index),
@@ -389,7 +390,10 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     .nest_axum("/nexus", nexus_router)
     .layer(axum::middleware::map_response(set_security_headers))
     .layer(rullst::tenant_layer(config))
-    .layer(axum::Extension(demo_membership)))
+    .layer(axum::Extension(demo_membership))
+    .layer(axum::middleware::from_fn(
+        rullst_security::deception_trap_middleware,
+    )))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -402,5 +406,41 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
             eprintln!("Nexus startup configuration error: {error}");
             std::ptr::null_mut()
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use axum::body::Body;
+    use axum::extract::ConnectInfo;
+    use axum::http::{Request, StatusCode};
+    use std::net::SocketAddr;
+    use std::sync::atomic::Ordering;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn honeypot_button_hits_the_real_deception_middleware() {
+        let store = rullst_security::SecurityStore::global();
+        let before = store.honeypot_traps_count.load(Ordering::Relaxed);
+        let app = super::router().expect("blog router").into_axum();
+        let mut request = Request::get("/wp-admin")
+            .body(Body::empty())
+            .expect("honeypot request");
+        request.extensions_mut().insert(ConnectInfo(
+            "192.0.2.45:4242"
+                .parse::<SocketAddr>()
+                .expect("test peer address"),
+        ));
+
+        let response = app.oneshot(request).await.expect("honeypot response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert!(store.honeypot_traps_count.load(Ordering::Relaxed) > before);
+        let events = store.live_events.lock().expect("security event lock");
+        assert!(events.iter().any(|event| {
+            event.event_type == "HONEYPOT_TRAP_TRIGGERED"
+                && event.client_ip == "192.0.2.45"
+                && event.details.contains("/wp-admin")
+                && !event.verified_hmac
+        }));
     }
 }

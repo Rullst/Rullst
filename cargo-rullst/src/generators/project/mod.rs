@@ -175,8 +175,22 @@ pub fn create_new_project_with_options(
     name_arg: Option<&str>,
     options: ProjectScaffoldOptions,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let wizard_opts =
-        run_project_wizard(name_arg, options.api, options.use_defaults, options.turso)?;
+    create_new_project_with_cli_options(name_arg, options, None, false)
+}
+
+pub(crate) fn create_new_project_with_cli_options(
+    name_arg: Option<&str>,
+    options: ProjectScaffoldOptions,
+    blueprint_override: Option<usize>,
+    skip_initial_migration: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wizard_opts = wizard::run_project_wizard_with_blueprint(
+        name_arg,
+        options.api,
+        options.use_defaults,
+        options.turso,
+        blueprint_override,
+    )?;
 
     let identity = ProjectIdentity::from_destination(&wizard_opts.name)?;
     let project_name = identity.package_name();
@@ -249,7 +263,7 @@ pub fn create_new_project_with_options(
         env_config::generate_nix_files(path)?;
     }
 
-    if db_needed {
+    if db_needed && !skip_initial_migration {
         println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
         let migrate_success = crate::ui::components::with_spinner(
             "Running initial migrations (this may take a moment to compile)...",

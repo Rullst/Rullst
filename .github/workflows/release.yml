@@ -51,10 +51,8 @@ jobs:
       - name: Run Clippy (strict)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Verify minimal Core and umbrella feature boundaries
-        run: |
-          cargo check -p rullst-core --all-targets --no-default-features
-          cargo check -p rullst --all-targets --no-default-features
+      - name: Verify public minimal and isolated feature boundaries
+        run: bash .github/check-feature-boundaries.sh
 
       - name: Run all workspace tests
         run: cargo test --workspace --all-features
@@ -89,6 +87,11 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: bash .github/audit-packages.sh "${RELEASE_TAG#v}"
+
+      - name: Test crates-only consumer and installed CLI blueprints
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash .github/test-packaged-distribution.sh "${RELEASE_TAG#v}"
 
       - name: Generate tag-bound SBOM, audit, and bounded compliance evidence
         env:

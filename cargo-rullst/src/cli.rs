@@ -3,7 +3,7 @@
 // This is the nerve center of the CLI: defines every subcommand and routes
 // each one to its corresponding generator function.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 
 use crate::generators::{
@@ -22,7 +22,7 @@ use crate::generators::{
     migration::create_new_migration,
     model::create_new_model,
     openapi::generate_openapi_spec,
-    project::{ProjectScaffoldOptions, create_new_project_with_options},
+    project::{ProjectScaffoldOptions, create_new_project_with_cli_options},
     resource::create_new_resource,
     worker::create_new_worker,
 };
@@ -50,6 +50,31 @@ pub enum DocsCommand {
     },
 }
 
+/// Stable blueprint names accepted by non-interactive project generation.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BlueprintChoice {
+    Blank,
+    Lms,
+    Saas,
+    Blog,
+    Portfolio,
+    Erp,
+}
+
+impl BlueprintChoice {
+    pub const fn id(self) -> usize {
+        match self {
+            Self::Blank => crate::blueprints::BLANK_BLUEPRINT_ID,
+            Self::Lms => crate::blueprints::LMS_BLUEPRINT_ID,
+            Self::Saas => crate::blueprints::SAAS_BLUEPRINT_ID,
+            Self::Blog => crate::blueprints::BLOG_BLUEPRINT_ID,
+            Self::Portfolio => crate::blueprints::PORTFOLIO_BLUEPRINT_ID,
+            Self::Erp => crate::blueprints::ERP_BLUEPRINT_ID,
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Creates a new Rullst application
@@ -71,6 +96,12 @@ pub enum Commands {
         /// Optional: skips interactive prompts and uses default values (useful for CI)
         #[arg(long)]
         default: bool,
+        /// Selects a starter blueprint in deterministic/CI generation mode
+        #[arg(long, value_enum, requires = "default")]
+        blueprint: Option<BlueprintChoice>,
+        /// Skips the best-effort initial database migration after scaffolding
+        #[arg(long)]
+        skip_initial_migration: bool,
         /// Optional: Scaffolds Turso/libSQL sidecar (sqld) for edge replication
         #[arg(long)]
         turso: bool,
@@ -353,9 +384,11 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             buildah,
             nix,
             default,
+            blueprint,
+            skip_initial_migration,
             turso,
         } => {
-            create_new_project_with_options(
+            create_new_project_with_cli_options(
                 name.as_deref(),
                 ProjectScaffoldOptions {
                     api: *api,
@@ -365,6 +398,8 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     use_defaults: *default,
                     turso: *turso,
                 },
+                blueprint.as_ref().map(|choice| choice.id()),
+                *skip_initial_migration,
             )?;
         }
         Commands::Docs { command } => match command {
@@ -679,5 +714,41 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn parses_deterministic_blueprint_generation_flags() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "release-consumer",
+            "--default",
+            "--blueprint",
+            "erp",
+            "--skip-initial-migration",
+        ])
+        .expect("deterministic blueprint CLI");
+
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Erp),
+                skip_initial_migration: true,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn explicit_blueprint_requires_non_interactive_defaults() {
+        let error =
+            Cli::try_parse_from(["rullst", "new", "release-consumer", "--blueprint", "saas"])
+                .err()
+                .expect("blueprint without deterministic defaults must be rejected");
+
+        assert_eq!(
+            error.kind(),
+            clap::error::ErrorKind::MissingRequiredArgument
+        );
     }
 }

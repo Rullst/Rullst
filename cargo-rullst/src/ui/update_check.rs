@@ -1,6 +1,23 @@
 // src/ui/update_check.rs — Background version check and update banner.
 
 use colored::*;
+use semver::Version;
+
+fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
+    value
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            )
+        })
+}
+
+fn update_check_disabled() -> bool {
+    enabled_env_flag(std::env::var_os("RULLST_DISABLE_UPDATE_CHECK").as_deref())
+        || enabled_env_flag(std::env::var_os("CARGO_NET_OFFLINE").as_deref())
+}
 
 fn get_cache_path() -> std::path::PathBuf {
     let mut dir = std::env::temp_dir();
@@ -9,19 +26,10 @@ fn get_cache_path() -> std::path::PathBuf {
 }
 
 fn is_version_newer(current: &str, latest: &str) -> bool {
-    let current_parts: Vec<u32> = current.split('.').filter_map(|p| p.parse().ok()).collect();
-    let latest_parts: Vec<u32> = latest.split('.').filter_map(|p| p.parse().ok()).collect();
-
-    if current_parts.len() == 3 && latest_parts.len() == 3 {
-        for i in 0..3 {
-            if latest_parts[i] > current_parts[i] {
-                return true;
-            } else if latest_parts[i] < current_parts[i] {
-                return false;
-            }
-        }
+    match (Version::parse(current), Version::parse(latest)) {
+        (Ok(current), Ok(latest)) => latest > current,
+        _ => false,
     }
-    false
 }
 
 pub fn check_update_available() -> Option<String> {
@@ -39,6 +47,10 @@ pub fn check_update_available() -> Option<String> {
 }
 
 pub fn trigger_background_update_check() {
+    if update_check_disabled() {
+        return;
+    }
+
     std::thread::spawn(|| {
         let cache_path = get_cache_path();
         let needs_refresh = if cache_path.exists() {
@@ -106,13 +118,13 @@ pub fn print_update_banner(latest_version: &str) {
         "│".cyan().bold()
     );
     println!(
-        "{}  Run {} to update safely with              {}",
+        "{}  Run {} to update dependencies with        {}",
         "│".cyan().bold(),
         "'cargo rullst upgrade'".magenta().bold(),
         "│".cyan().bold()
     );
     println!(
-        "{}  automatic code fixes (codemods).                         {}",
+        "{}  compiler fixes and a cargo check gate.                   {}",
         "│".cyan().bold(),
         "│".cyan().bold()
     );
@@ -123,4 +135,27 @@ pub fn print_update_banner(latest_version: &str) {
             .bold()
     );
     println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{enabled_env_flag, is_version_newer};
+    use std::ffi::OsStr;
+
+    #[test]
+    fn offline_flag_parser_is_explicit() {
+        assert!(enabled_env_flag(Some(OsStr::new("true"))));
+        assert!(enabled_env_flag(Some(OsStr::new("1"))));
+        assert!(enabled_env_flag(Some(OsStr::new("YES"))));
+        assert!(!enabled_env_flag(Some(OsStr::new("false"))));
+        assert!(!enabled_env_flag(None));
+    }
+
+    #[test]
+    fn update_comparison_supports_prereleases_without_accepting_invalid_versions() {
+        assert!(is_version_newer("12.0.0-rc.1", "12.0.0-rc.2"));
+        assert!(is_version_newer("12.0.0-rc.2", "12.0.0"));
+        assert!(!is_version_newer("12.0.0", "12.0.0-rc.2"));
+        assert!(!is_version_newer("12.0.0", "not-a-version"));
+    }
 }

@@ -4,6 +4,34 @@ use std::path::Path;
 
 use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 
+fn dependency_source(
+    current_dir: &Path,
+    crate_name: &str,
+    crate_version: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let sibling = current_dir.join(crate_name);
+    if sibling.exists() {
+        let absolute_path = sibling
+            .canonicalize()?
+            .display()
+            .to_string()
+            .replace(r"\\?\", "")
+            .replace('\\', "/");
+        Ok(format!("path = \"{absolute_path}\""))
+    } else {
+        Ok(format!("version = \"{crate_version}\""))
+    }
+}
+
+fn dependency_line(
+    current_dir: &Path,
+    crate_name: &str,
+    crate_version: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let source = dependency_source(current_dir, crate_name, crate_version)?;
+    Ok(format!("{crate_name} = {{ {source} }}\n"))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_cargo_toml(
     package_name: &str,
@@ -19,18 +47,8 @@ pub fn build_cargo_toml(
     let mut cargo_toml = String::new();
 
     let crate_version = env!("CARGO_PKG_VERSION");
-    let sibling_rullst = current_dir.join("rullst");
-    let rullst_dep = if sibling_rullst.exists() {
-        let absolute_path = sibling_rullst
-            .canonicalize()?
-            .display()
-            .to_string()
-            .replace(r"\\?\", "")
-            .replace("\\", "/");
-        format!("rullst = {{ path = \"{}\"", absolute_path)
-    } else {
-        format!("rullst = {{ version = \"{}\"", crate_version)
-    };
+    let rullst_source = dependency_source(current_dir, "rullst", crate_version)?;
+    let rullst_dep = format!("rullst = {{ {rullst_source}");
 
     let mut rullst_features = Vec::new();
     if db_needed {
@@ -108,18 +126,7 @@ edition = "2021"
             sqlx_driver_feature
         );
 
-        let sibling_orm = current_dir.join("rullst-orm");
-        let orm_dep = if sibling_orm.exists() {
-            let absolute_path = sibling_orm
-                .canonicalize()?
-                .display()
-                .to_string()
-                .replace(r"\\?\", "")
-                .replace("\\", "/");
-            format!("rullst-orm = {{ path = \"{}\" }}\n", absolute_path)
-        } else {
-            "rullst-orm = \"12.0.0\"\n".to_string()
-        };
+        let orm_dep = dependency_line(current_dir, "rullst-orm", crate_version)?;
 
         cargo_toml.push_str(&format!(
             r#"{orm_dep}sqlx = {{ version = "0.9", default-features = false, features = [{sqlx_features}] }}
@@ -130,64 +137,17 @@ edition = "2021"
     }
 
     if blueprint_selection == SAAS_BLUEPRINT_ID {
-        let sibling_auth = current_dir.join("rullst-auth");
-        let auth_dep = if sibling_auth.exists() {
-            let absolute_path = sibling_auth
-                .canonicalize()?
-                .display()
-                .to_string()
-                .replace(r"\\?\", "")
-                .replace("\\", "/");
-            format!("rullst-auth = {{ path = \"{}\" }}\n", absolute_path)
-        } else {
-            "rullst-auth = \"12.0.0\"\n".to_string()
-        };
+        let auth_dep = dependency_line(current_dir, "rullst-auth", crate_version)?;
         cargo_toml.push_str(&auth_dep);
 
-        let sibling_capital = current_dir.join("rullst-capital");
-        let capital_dep = if sibling_capital.exists() {
-            let absolute_path = sibling_capital
-                .canonicalize()?
-                .display()
-                .to_string()
-                .replace(r"\\?\", "")
-                .replace("\\", "/");
-            format!("rullst-capital = {{ path = \"{}\" }}\n", absolute_path)
-        } else {
-            "rullst-capital = \"12.0.0\"\n".to_string()
-        };
+        let capital_dep = dependency_line(current_dir, "rullst-capital", crate_version)?;
         cargo_toml.push_str(&capital_dep);
 
-        let sibling_path = current_dir.join("rullst-connect");
-        let connect_dep = if sibling_path.exists() {
-            let absolute_path = sibling_path
-                .canonicalize()?
-                .display()
-                .to_string()
-                .replace(r"\\?\", "")
-                .replace("\\", "/");
-            format!("rullst-connect = {{ path = \"{}\" }}\n", absolute_path)
-        } else {
-            "rullst-connect = \"12.0.0\"\n".to_string()
-        };
+        let connect_dep = dependency_line(current_dir, "rullst-connect", crate_version)?;
         cargo_toml.push_str(&connect_dep);
     }
 
-    let sibling_security = current_dir.join("rullst-security");
-    let security_dep = if sibling_security.exists() {
-        if let Ok(canon) = sibling_security.canonicalize() {
-            let absolute_path = canon
-                .display()
-                .to_string()
-                .replace(r"\\?\", "")
-                .replace("\\", "/");
-            format!("rullst-security = {{ path = \"{}\" }}\n", absolute_path)
-        } else {
-            "rullst-security = \"12.0.0\"\n".to_string()
-        }
-    } else {
-        "rullst-security = \"12.0.0\"\n".to_string()
-    };
+    let security_dep = dependency_line(current_dir, "rullst-security", crate_version)?;
     cargo_toml.push_str(&security_dep);
 
     let fe_dep = crate::blueprints::common::frontend_cargo_dependency(frontend_engine);
@@ -265,5 +225,35 @@ mod tests {
         assert!(saas.contains("\"capital\""));
         assert!(!blog.contains("\"auth\""));
         assert!(!blog.contains("\"capital\""));
+    }
+
+    #[test]
+    fn registry_dependencies_preserve_the_cli_prerelease_version() {
+        let root = isolated_root();
+        for crate_name in [
+            "rullst",
+            "rullst-orm",
+            "rullst-auth",
+            "rullst-capital",
+            "rullst-connect",
+            "rullst-security",
+        ] {
+            let dependency =
+                dependency_line(&root, crate_name, "12.0.0-rc.7").expect("registry dependency");
+            assert_eq!(
+                dependency,
+                format!("{crate_name} = {{ version = \"12.0.0-rc.7\" }}\n")
+            );
+        }
+    }
+
+    #[test]
+    fn generated_tera_dependency_remains_available_offline() {
+        let engine = tera::Tera::default();
+        assert_eq!(engine.get_template_names().count(), 0);
+        assert_eq!(
+            crate::blueprints::common::frontend_cargo_dependency("Tera Templates"),
+            "tera = \"1.20\"\n"
+        );
     }
 }

@@ -1,5 +1,8 @@
 #![cfg(not(miri))]
-#![cfg(feature = "nexus")]
+// The suite exercises both the Nexus facade and direct ORM-backed fixtures.
+// Keep it out of isolated `nexus` feature checks where the facade intentionally
+// does not expose its optional `rullst-orm` dependency.
+#![cfg(all(feature = "nexus", feature = "orm"))]
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use base64::Engine;

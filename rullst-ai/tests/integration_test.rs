@@ -4,7 +4,10 @@
 
 use async_trait::async_trait;
 use rullst_ai::ai::rag::build_rag_prompt;
-use rullst_ai::ai::tools::{AiTool, ToolParam, ToolRegistry};
+use rullst_ai::ai::tools::{
+    AiTool, InMemoryToolAuditTrail, ToolExecutionContext, ToolExecutionPolicy, ToolParam,
+    ToolRegistry, ToolRisk,
+};
 use rullst_ai::ai::{AiError, AiProvider, ChatBuilder, FallbackProvider, Message};
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -130,6 +133,10 @@ impl AiTool for CalculatorTool {
         ]
     }
 
+    fn risk(&self) -> ToolRisk {
+        ToolRisk::ReadOnly
+    }
+
     fn execute(&self, payload: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let a = payload.get("a").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let b = payload.get("b").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -140,20 +147,33 @@ impl AiTool for CalculatorTool {
 #[test]
 fn test_tool_registry_and_execution() {
     let mut registry = ToolRegistry::new();
-    registry.register(CalculatorTool);
+    registry.register(CalculatorTool).unwrap();
+    let policy = ToolExecutionPolicy::new(["calculate_sum"]).unwrap();
+    let mut context = ToolExecutionContext::new("calculator-user", ["calculate_sum"], 1).unwrap();
+    let audit = InMemoryToolAuditTrail::new(16).unwrap();
 
     // Schema export
-    let schema = registry.export_openai_schema();
+    let schema = registry.export_openai_schema(&policy);
     assert!(schema.is_array());
     let schema_str = schema.to_string();
     assert!(schema_str.contains("calculate_sum"));
     assert!(schema_str.contains("Adds two numbers together"));
 
     // Tool execution
-    let result = registry.execute("calculate_sum", json!({ "a": 10.5, "b": 2.5 }));
+    let result = registry.execute(
+        "calculate_sum",
+        json!({ "a": 10.5, "b": 2.5 }),
+        &mut context,
+        &policy,
+        &audit,
+    );
     assert!(result.is_ok());
     assert_eq!(result.unwrap()["result"], 13.0);
 
     // Unknown tool
-    assert!(registry.execute("unknown_tool", json!({})).is_err());
+    assert!(
+        registry
+            .execute("unknown_tool", json!({}), &mut context, &policy, &audit,)
+            .is_err()
+    );
 }

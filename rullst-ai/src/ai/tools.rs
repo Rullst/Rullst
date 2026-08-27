@@ -1,9 +1,27 @@
+//! Explicitly authorized local tool dispatch for AI-assisted workflows.
+//!
+//! Provider-native tool calling is not implemented by the built-in transports.
+//! This module exposes a local registry whose execution path requires an exact
+//! allowlist, caller authorization, bounded JSON, a call budget, and an audit
+//! sink. Destructive and financial tools additionally require a one-use approval
+//! record. The application remains responsible for authenticating the principal
+//! and the human approver.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-/// Representation of a parameter for an AI Tool schema
-#[derive(Debug, Clone, Serialize, Deserialize)]
+mod audit;
+mod policy;
+mod validation;
+pub use audit::{
+    InMemoryToolAuditTrail, RecordedToolAuditEvent, ToolAuditEvent, ToolAuditOutcome, ToolAuditSink,
+};
+pub use policy::{HumanApproval, ToolExecutionContext, ToolExecutionPolicy};
+use validation::{serialized_size, validate_payload, validate_tool};
+
+/// Representation of a parameter in an AI tool's bounded JSON schema.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToolParam {
     pub name: String,
     pub param_type: String,
@@ -11,79 +29,247 @@ pub struct ToolParam {
     pub required: bool,
 }
 
-/// Trait implemented by any Rust function or struct exposed as an AI Tool
+/// Operational impact assigned by the tool implementation.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ToolRisk {
+    ReadOnly,
+    Mutating,
+    Destructive,
+    Financial,
+}
+
+impl ToolRisk {
+    const fn requires_human_approval(self) -> bool {
+        matches!(self, Self::Destructive | Self::Financial)
+    }
+}
+
+/// Trait implemented by a Rust function or struct exposed as a local AI tool.
 pub trait AiTool: Send + Sync {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
     fn parameters(&self) -> Vec<ToolParam>;
+    /// Declares the tool's operational impact. This has no permissive default.
+    fn risk(&self) -> ToolRisk;
     fn execute(&self, payload: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
 }
 
-/// Registry storing all available AI Function Calling tools
+/// Typed failures from registry configuration or guarded tool execution.
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum ToolExecutionError {
+    #[error("invalid tool policy: {0}")]
+    InvalidPolicy(String),
+    #[error("tool '{0}' is already registered")]
+    DuplicateTool(String),
+    #[error("tool '{0}' is not registered")]
+    ToolNotFound(String),
+    #[error("principal is not authorized to execute tool '{tool}'")]
+    Unauthorized { tool: String },
+    #[error("tool '{tool}' requires a one-use human approval")]
+    HumanApprovalRequired { tool: String },
+    #[error("tool call budget is exhausted")]
+    CallBudgetExhausted,
+    #[error("tool input is {actual} bytes; limit is {limit} bytes")]
+    InputTooLarge { actual: usize, limit: usize },
+    #[error("tool output is {actual} bytes; limit is {limit} bytes")]
+    OutputTooLarge { actual: usize, limit: usize },
+    #[error("invalid payload for tool '{tool}': {reason}")]
+    InvalidPayload { tool: String, reason: String },
+    #[error("tool '{tool}' execution failed")]
+    ExecutionFailed { tool: String },
+    #[error("tool audit trail is unavailable: {0}")]
+    AuditUnavailable(String),
+}
+
+/// Registry of locally implemented tools. Every execution requires a policy,
+/// authorization context, and audit sink.
 #[derive(Default)]
 pub struct ToolRegistry {
-    tools: HashMap<String, Box<dyn AiTool>>,
+    tools: BTreeMap<String, Box<dyn AiTool>>,
 }
 
 impl ToolRegistry {
     pub fn new() -> Self {
         Self {
-            tools: HashMap::new(),
+            tools: BTreeMap::new(),
         }
     }
 
-    /// Register a new tool into the AI registry
-    pub fn register<T: AiTool + 'static>(&mut self, tool: T) {
-        self.tools.insert(tool.name().to_string(), Box::new(tool));
+    pub fn register<T: AiTool + 'static>(&mut self, tool: T) -> Result<(), ToolExecutionError> {
+        validate_tool(&tool)?;
+        let name = tool.name().to_string();
+        if self.tools.contains_key(&name) {
+            return Err(ToolExecutionError::DuplicateTool(name));
+        }
+        self.tools.insert(name, Box::new(tool));
+        Ok(())
     }
 
-    /// Export OpenAI / Ollama compatible JSON Function Calling Tool Schema
-    pub fn export_openai_schema(&self) -> Value {
-        let mut tools_json = Vec::new();
-
-        for tool in self.tools.values() {
-            let mut properties = serde_json::Map::new();
-            let mut required_fields = Vec::new();
-
-            for param in tool.parameters() {
-                properties.insert(
-                    param.name.clone(),
-                    serde_json::json!({
-                        "type": param.param_type,
-                        "description": param.description
-                    }),
-                );
-                if param.required {
-                    required_fields.push(param.name);
-                }
-            }
-
-            tools_json.push(serde_json::json!({
-                "type": "function",
-                "function": {
-                    "name": tool.name(),
-                    "description": tool.description(),
-                    "parameters": {
-                        "type": "object",
-                        "properties": properties,
-                        "required": required_fields
+    /// Exports schemas only for tools selected by the exact execution policy.
+    pub fn export_openai_schema(&self, policy: &ToolExecutionPolicy) -> Value {
+        let tools_json = self
+            .tools
+            .values()
+            .filter(|tool| policy.allows(tool.name()))
+            .map(|tool| {
+                let mut properties = serde_json::Map::new();
+                let mut required_fields = Vec::new();
+                for param in tool.parameters() {
+                    properties.insert(
+                        param.name.clone(),
+                        serde_json::json!({
+                            "type": param.param_type,
+                            "description": param.description
+                        }),
+                    );
+                    if param.required {
+                        required_fields.push(param.name);
                     }
                 }
-            }));
-        }
-
+                serde_json::json!({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name(),
+                        "description": tool.description(),
+                        "parameters": {
+                            "type": "object",
+                            "properties": properties,
+                            "required": required_fields,
+                            "additionalProperties": false
+                        }
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
         Value::Array(tools_json)
     }
 
-    /// Execute a registered tool by name with arguments
-    pub fn execute(&self, name: &str, payload: Value) -> Result<Value, crate::ai::AiError> {
-        let tool = self.tools.get(name).ok_or_else(|| {
-            crate::ai::AiError::Other(format!("Tool '{}' not found in registry", name))
-        })?;
+    /// Executes a tool only after every authorization and validation gate passes.
+    pub fn execute(
+        &self,
+        name: &str,
+        payload: Value,
+        context: &mut ToolExecutionContext,
+        policy: &ToolExecutionPolicy,
+        audit: &dyn ToolAuditSink,
+    ) -> Result<Value, ToolExecutionError> {
+        let tool = match self.tools.get(name) {
+            Some(tool) => tool,
+            None => {
+                return Err(deny(
+                    audit,
+                    context,
+                    name,
+                    None,
+                    ToolExecutionError::ToolNotFound(name.to_string()),
+                ));
+            }
+        };
+        let risk = tool.risk();
+        if !policy.allows(name) || !context.is_authorized(name) {
+            return Err(deny(
+                audit,
+                context,
+                name,
+                Some(risk),
+                ToolExecutionError::Unauthorized {
+                    tool: name.to_string(),
+                },
+            ));
+        }
+        if context.remaining_calls == 0 {
+            return Err(deny(
+                audit,
+                context,
+                name,
+                Some(risk),
+                ToolExecutionError::CallBudgetExhausted,
+            ));
+        }
 
-        tool.execute(payload).map_err(|e| {
-            crate::ai::AiError::Other(format!("Execution error in tool '{}': {}", name, e))
-        })
+        let input_size = serialized_size(&payload, name)?;
+        if input_size > policy.max_input_bytes {
+            return Err(deny(
+                audit,
+                context,
+                name,
+                Some(risk),
+                ToolExecutionError::InputTooLarge {
+                    actual: input_size,
+                    limit: policy.max_input_bytes,
+                },
+            ));
+        }
+        validate_payload(name, &payload, &tool.parameters())
+            .map_err(|error| deny(audit, context, name, Some(risk), error))?;
+
+        let approval = if risk.requires_human_approval() {
+            match context.consume_approval(name) {
+                Some(approval) => Some(approval),
+                None => {
+                    return Err(deny(
+                        audit,
+                        context,
+                        name,
+                        Some(risk),
+                        ToolExecutionError::HumanApprovalRequired {
+                            tool: name.to_string(),
+                        },
+                    ));
+                }
+            }
+        } else {
+            None
+        };
+
+        audit.record(audit_event(
+            context,
+            name,
+            Some(risk),
+            approval.as_ref(),
+            ToolAuditOutcome::Authorized,
+        ))?;
+        context.remaining_calls -= 1;
+
+        let output = match tool.execute(payload) {
+            Ok(output) => output,
+            Err(_) => {
+                audit.record(audit_event(
+                    context,
+                    name,
+                    Some(risk),
+                    approval.as_ref(),
+                    ToolAuditOutcome::Failed,
+                ))?;
+                return Err(ToolExecutionError::ExecutionFailed {
+                    tool: name.to_string(),
+                });
+            }
+        };
+        let output_size = serialized_size(&output, name)?;
+        if output_size > policy.max_output_bytes {
+            audit.record(audit_event(
+                context,
+                name,
+                Some(risk),
+                approval.as_ref(),
+                ToolAuditOutcome::Failed,
+            ))?;
+            return Err(ToolExecutionError::OutputTooLarge {
+                actual: output_size,
+                limit: policy.max_output_bytes,
+            });
+        }
+        audit.record(audit_event(
+            context,
+            name,
+            Some(risk),
+            approval.as_ref(),
+            ToolAuditOutcome::Succeeded,
+        ))?;
+        Ok(output)
     }
 
     pub fn len(&self) -> usize {
@@ -95,47 +281,38 @@ impl ToolRegistry {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct EchoTool;
-    impl AiTool for EchoTool {
-        fn name(&self) -> &str {
-            "echo"
-        }
-        fn description(&self) -> &str {
-            "Echo back input"
-        }
-        fn parameters(&self) -> Vec<ToolParam> {
-            vec![ToolParam {
-                name: "message".to_string(),
-                param_type: "string".to_string(),
-                description: "Message to echo".to_string(),
-                required: true,
-            }]
-        }
-        fn execute(
-            &self,
-            payload: Value,
-        ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-            Ok(payload)
-        }
-    }
-
-    #[test]
-    fn test_tool_registry() {
-        let mut registry = ToolRegistry::new();
-        registry.register(EchoTool);
-        assert_eq!(registry.len(), 1);
-
-        let schema = registry.export_openai_schema();
-        assert!(schema.is_array());
-
-        let res = registry.execute("echo", serde_json::json!({"message": "hello"}));
-        assert!(res.is_ok());
+fn audit_event(
+    context: &ToolExecutionContext,
+    tool: &str,
+    risk: Option<ToolRisk>,
+    approval: Option<&HumanApproval>,
+    outcome: ToolAuditOutcome,
+) -> ToolAuditEvent {
+    ToolAuditEvent {
+        principal: context.principal.clone(),
+        tool: tool.to_string(),
+        risk,
+        approved_by: approval.map(|approval| approval.approver().to_string()),
+        approval_reason: approval.map(|approval| approval.reason().to_string()),
+        outcome,
     }
 }
+
+fn deny(
+    audit: &dyn ToolAuditSink,
+    context: &ToolExecutionContext,
+    tool: &str,
+    risk: Option<ToolRisk>,
+    error: ToolExecutionError,
+) -> ToolExecutionError {
+    match audit.record(audit_event(context, tool, risk, ToolAuditOutcome::Denied)) {
+        Ok(()) => error,
+        Err(audit_error) => audit_error,
+    }
+}
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
@@ -144,13 +321,13 @@ mod kani_proofs {
 
     #[kani::proof]
     fn proof_tool_param_instantiation() {
-        let req: bool = kani::any();
+        let required: bool = kani::any();
         let param = ToolParam {
             name: "param".to_string(),
             param_type: "string".to_string(),
-            description: "desc".to_string(),
-            required: req,
+            description: "description".to_string(),
+            required,
         };
-        assert_eq!(param.required, req);
+        assert_eq!(param.required, required);
     }
 }

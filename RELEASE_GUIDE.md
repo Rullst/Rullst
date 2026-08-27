@@ -64,6 +64,16 @@ Before releasing, make sure:
   `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
   `cargo test --workspace --all-features`.
 - [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
+- [ ] The [compatibility and MSRV policy](docs/src/compatibility-policy.md) still
+  matches the manifests, supported-version table, and intended release changes.
+- [ ] The [Cargo feature matrix](docs/src/feature-matrix.md) still matches every
+  publishable manifest and the feature-boundary CI matrix.
+- [ ] The [v12 migration guides](docs/src/migration-v12.md) and
+  [AI capability matrix](docs/src/ai-provider-capabilities.md) match the APIs,
+  CLI behavior, and known release-history boundaries.
+- [ ] Every current security statement matches the code, test, and limit in the
+  [v12 security claims ledger](docs/src/v12-security-claims.md); do not promote
+  an unlisted or unevidenced statement into release notes.
 - [ ] All 15 publishable crate `Cargo.toml` versions and internal requirements
   are synchronized (`12.0.0-rc.1` for the RC or `12.0.0` for stable):
   - `rullst-macros`, `rullst-orm-macros`
@@ -101,9 +111,9 @@ opt in to it explicitly with a requirement such as `12.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
-2. 📦 Foundations: `rullst-core`, `rullst-orm`
-3. 📦 Domain crates: `rullst-iot`, `rullst-mail`, `rullst-ai`, `rullst-connect`, `rullst-security`, `rullst-auth`, `rullst-capital`
-4. 📦 Dashboards: `rullst-studio`, `rullst-nexus`
+2. 📦 Foundations: `rullst-orm`, `rullst-core`
+3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`
+4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
 ---

@@ -1,158 +1,165 @@
 # Integrating AI into Rullst
 
-Building AI features like Chatbots, Retrieval-Augmented Generation (RAG), or generative workflows is seamless in Rullst. Since Rullst is built on async Rust, it provides the perfect backend performance to stream AI responses to clients effortlessly.
+`rullst-ai` provides guarded adapters for OpenAI, Anthropic, Gemini, DeepSeek,
+and Ollama. The high-level `AiClient` applies prompt-injection heuristics and PII
+masking before dispatch. Those controls reduce known risks; passing them does
+not prove that a prompt or model response is safe or correct.
 
-This tutorial covers the standard approach to integrating LLMs (Large Language Models) such as OpenAI, Anthropic, or Gemini into your Rullst application.
+Start with the [provider capability matrix](ai-provider-capabilities.md). It
+separates implemented transport paths from model-dependent behavior and lists
+unsupported streaming, tool, timeout, retry, and cancellation boundaries.
 
-## Prerequisites
-
-Rullst does not force any specific AI vendor on you. The standard way to integrate AI in Rust is by using the `async-openai` or `reqwest` crate for making API calls.
-
-To get started, add the following to your `Cargo.toml`:
+## 1. Enable the AI facade
 
 ```toml
 [dependencies]
-async-openai = "0.23.0"
-tokio-stream = "0.1" # For streaming responses
+rullst = {
+    version = "12.0.0-rc.1",
+    default-features = false,
+    features = ["ai"]
+}
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 ```
 
-## 1. Creating the AI Service
+Use the exact published v12 version being evaluated. The RC value above is a
+planned prerelease and must not be used before it exists on crates.io.
 
-The best practice in Rullst is to isolate your third-party integrations into a `Service` struct to keep your controllers clean. Let's create `src/services/ai_service.rs`:
+## 2. Create a guarded client
 
 ```rust
-use async_openai::{
-    types::{ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs},
-    Client,
-};
-use rullst::AppError;
+use rullst::ai::{AiClient, providers::openai::OpenAiProvider};
 
-pub struct AiService;
-
-impl AiService {
-    /// Generates a static response from the AI
-    pub async fn generate_response(prompt: &str) -> Result<String, AppError> {
-        let client = Client::new(); // Automatically reads OPENAI_API_KEY from environment
-
-        let request = CreateChatCompletionRequestArgs::default()
-            .model("gpt-4o")
-            .messages([
-                ChatCompletionRequestSystemMessageArgs::default()
-                    .content("You are a helpful assistant integrated into a Rullst application.")
-                    .build()
-                    .unwrap()
-                    .into(),
-                ChatCompletionRequestUserMessageArgs::default()
-                    .content(prompt)
-                    .build()
-                    .unwrap()
-                    .into(),
-            ])
-            .build()
-            .map_err(|e| AppError::Internal(format!("Failed to build request: {}", e)))?;
-
-        let response = client
-            .chat()
-            .create(request)
-            .await
-            .map_err(|e| AppError::Internal(format!("OpenAI API Error: {}", e)))?;
-
-        let text = response.choices.first()
-            .and_then(|c| c.message.content.clone())
-            .unwrap_or_default();
-
-        Ok(text)
-    }
+fn ai_client() -> Result<AiClient, std::env::VarError> {
+    let api_key = std::env::var("OPENAI_API_KEY")?;
+    Ok(AiClient::new(OpenAiProvider::new(api_key)))
 }
 ```
 
-## 2. Using the AI in a Controller
+Empty and `mock_*` keys intentionally select deterministic offline behavior.
+Requiring the environment variable, as above, prevents a live deployment from
+silently becoming a demo. Tests can construct `OpenAiProvider::new("")`
+explicitly when offline behavior is desired.
 
-Now that the service is ready, you can expose it via a REST endpoint. In your `src/controllers/ai_controller.rs`:
+Other built-in constructors are available under:
+
+- `providers::anthropic::AnthropicProvider`;
+- `providers::gemini::GeminiProvider`;
+- `providers::deepseek::DeepSeekProvider`;
+- `providers::ollama::OllamaProvider`.
+
+## 3. Call it from an Axum handler
+
+This bounded handler rejects oversized input before invoking the client and does
+not expose the provider's full error details to the HTTP caller:
 
 ```rust
-use rullst::{Controller, HttpMethod, Route, AppError, Context};
-use crate::services::ai_service::AiService;
-use serde::Deserialize;
+use rullst::{Server, ai::AiClient};
+use rullst::web::axum::{
+    Json, Router,
+    extract::State,
+    http::StatusCode,
+    routing::post,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 struct ChatPrompt {
     prompt: String,
 }
 
-pub struct AiController;
-
-#[rullst::async_trait]
-impl Controller for AiController {
-    fn routes(&self) -> Vec<Route> {
-        rullst::routes![
-            (HttpMethod::POST, "/api/chat", Self::handle_chat),
-        ]
-    }
+#[derive(Serialize)]
+struct ChatResponse {
+    answer: String,
 }
 
-impl AiController {
-    async fn handle_chat(ctx: Context) -> Result<String, AppError> {
-        // Parse incoming JSON
-        let body: ChatPrompt = ctx.json().await?;
-        
-        // Call our AI Service
-        let response = AiService::generate_response(&body.prompt).await?;
-        
-        // Return the text response
-        Ok(response)
+async fn chat(
+    State(client): State<AiClient>,
+    Json(body): Json<ChatPrompt>,
+) -> Result<Json<ChatResponse>, (StatusCode, &'static str)> {
+    if body.prompt.len() > 8_192 {
+        return Err((StatusCode::PAYLOAD_TOO_LARGE, "prompt is too large"));
     }
+
+    let answer = client
+        .prompt(&body.prompt)
+        .await
+        .map_err(|_| (StatusCode::BAD_GATEWAY, "AI request failed"))?;
+    Ok(Json(ChatResponse { answer }))
+}
+
+async fn serve(client: AiClient) -> Result<(), rullst::ServerError> {
+    let app = Router::new()
+        .route("/api/chat", post(chat))
+        .with_state(client);
+    Server::new(app.into()).run(3000).await
 }
 ```
 
-## 3. Streaming AI Responses (Server-Sent Events)
+Production applications should authenticate and rate-limit this route, bind
+tenant identity from authenticated state, cap response sizes, and record an
+audit event without logging prompts or secrets verbatim.
 
-Modern AI apps feel fast because they **stream** the response token-by-token. Rullst supports SSE (Server-Sent Events) natively via `rullst::Response::sse()`.
-
-Here is how you stream the OpenAI output directly to your Rullst frontend:
+## 4. Inspect capabilities before optional operations
 
 ```rust
-// Inside AiController...
-use async_openai::types::CreateChatCompletionRequestArgs;
-use futures::StreamExt;
-use rullst::Response;
+let capabilities = client.capabilities();
 
-async fn stream_chat(ctx: Context) -> Result<Response, AppError> {
-    let body: ChatPrompt = ctx.json().await?;
-    let client = async_openai::Client::new();
-    
-    // Notice the `.stream(true)` configuration
-    let request = CreateChatCompletionRequestArgs::default()
-        .model("gpt-4o")
-        .messages([...]) // Add messages as before
-        .stream(true)
-        .build()
-        .unwrap();
-
-    let mut stream = client.chat().create_stream(request).await.unwrap();
-
-    // Map the OpenAI stream into an SSE stream compatible with Rullst
-    let sse_stream = async_stream::stream! {
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(response) => {
-                    if let Some(content) = &response.choices[0].delta.content {
-                        yield Ok(rullst::sse::Event::default().data(content));
-                    }
-                }
-                Err(e) => {
-                    yield Ok(rullst::sse::Event::default().data(format!("Error: {}", e)));
-                }
-            }
-        }
-    };
-
-    Ok(Response::sse(sse_stream))
+if capabilities.vision {
+    let response = client.prompt_with_image("Describe this image", bytes).await?;
+    // Use the response according to the application's trust policy.
 }
 ```
 
-## Next Steps
+Capability inspection prevents avoidable requests but is not a substitute for
+handling `UnsupportedCapability` and upstream model errors. Configuration can
+select a model that supports less than its provider transport.
 
-With these foundations, you can build advanced features:
-- Use **SQLx (Rullst ORM)** to load context from PostgreSQL, converting it into JSON and sending it as Context to your prompt (building an instant RAG).
-- Serve a frontend using **HTMX**, which has built-in SSE support to easily render the streaming text chunks without writing complex Javascript.
+## 5. Request structured output
+
+`json_prompt` requests parseable JSON. It does not claim JSON Schema
+enforcement. Use `structured_prompt_with_schema` only when the reported provider
+capability and configured model support it:
+
+```rust
+use rullst::ai::StructuredOutputSchema;
+
+let schema = StructuredOutputSchema::new(
+    "answer",
+    serde_json::json!({
+        "type": "object",
+        "properties": {"answer": {"type": "string"}},
+        "required": ["answer"],
+        "additionalProperties": false
+    }),
+)?;
+
+let answer: serde_json::Value = client
+    .structured_prompt_with_schema("Summarize the incident", &schema)
+    .await?;
+```
+
+Validate business rules after deserialization. Schema-conforming model output
+can still be false, malicious, stale, or unauthorized.
+
+## 6. Streaming and tools
+
+The built-in v12 provider transports do not expose token streaming. Rullst can
+host ordinary Axum SSE responses, but an application that uses a third-party
+streaming SDK owns its authentication, guardrails, backpressure, deadlines,
+cancellation, error mapping, and dependency lifecycle. Do not present that
+escape hatch as native `rullst-ai` streaming.
+
+`ToolRegistry` stores local tools and can export a schema, but it is not wired to
+provider function calling and does not implement the authorization/approval and
+durable audit boundary required for autonomous actions. Treat model output as
+untrusted input and keep destructive or financial operations behind explicit
+human approval.
+
+## 7. RAG boundary
+
+Rullst supplies prompt construction and an in-memory vector index. Applications
+must still enforce document authorization before retrieval, prevent SSRF in any
+fetcher, bound document and prompt sizes, identify tenant provenance, and avoid
+sending secrets to a provider. Similarity is a ranking signal, not an access
+control decision.

@@ -6,7 +6,10 @@ use rullst_ai::ai::providers::gemini::GeminiProvider;
 use rullst_ai::ai::providers::ollama::OllamaProvider;
 use rullst_ai::ai::providers::openai::OpenAiProvider;
 use rullst_ai::ai::rag::build_rag_prompt;
-use rullst_ai::ai::tools::{AiTool, ToolParam, ToolRegistry};
+use rullst_ai::ai::tools::{
+    AiTool, InMemoryToolAuditTrail, ToolExecutionContext, ToolExecutionPolicy, ToolParam,
+    ToolRegistry, ToolRisk,
+};
 use rullst_ai::ai::{AiClient, AiProvider};
 use serde_json::Value;
 
@@ -25,6 +28,9 @@ impl AiTool for WeatherTool {
             description: "Target city name".into(),
             required: true,
         }]
+    }
+    fn risk(&self) -> ToolRisk {
+        ToolRisk::ReadOnly
     }
     fn execute(&self, payload: Value) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let city = payload
@@ -73,13 +79,22 @@ fn test_rag_and_tools_helpers() {
 
     // Tool registry
     let mut registry = ToolRegistry::new();
-    registry.register(WeatherTool);
+    registry.register(WeatherTool).unwrap();
+    let policy = ToolExecutionPolicy::new(["get_weather"]).unwrap();
+    let mut context = ToolExecutionContext::new("weather-user", ["get_weather"], 1).unwrap();
+    let audit = InMemoryToolAuditTrail::new(16).unwrap();
 
-    let schema = registry.export_openai_schema();
+    let schema = registry.export_openai_schema(&policy);
     assert!(schema.is_array());
     assert_eq!(schema.as_array().unwrap().len(), 1);
 
-    let res = registry.execute("get_weather", serde_json::json!({ "city": "Curitiba" }));
+    let res = registry.execute(
+        "get_weather",
+        serde_json::json!({ "city": "Curitiba" }),
+        &mut context,
+        &policy,
+        &audit,
+    );
     assert!(res.is_ok());
     assert_eq!(res.unwrap().get("temp_c").unwrap().as_i64(), Some(22));
 }

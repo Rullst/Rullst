@@ -39,8 +39,11 @@ queue views are enabled with `with_openapi` and `with_horizon`.
 ## Current views
 
 - `/studio`: data browser and dashboard shell.
-- `/studio/radar`: runtime probes and recorded spans. Unsupported probes display
-  `Unavailable`; Studio does not synthesize a healthy value.
+- `/studio/radar`: runtime probes and recorded spans. Process CPU sampling is
+  implemented for Linux and Windows and the KPI cards refresh from `/api/radar`
+  every two seconds. The first delta-based CPU sample, unsupported platforms,
+  and disconnected probes display `Unavailable`; Studio does not synthesize a
+  healthy value.
 - `/studio/security`: counters and events emitted by the in-process security
   store. Audit-chain integrity displays `Unavailable` until a verifier is
   connected.

@@ -1,8 +1,8 @@
 //! Mandatory-guardrail high-level client and chat builder.
 
 use super::{
-    AiError, AiGuardrails, AiProvider, FallbackProvider, Message, StructuredOutputSchema,
-    guardrails::prepare_messages, structured::clean_json_markdown,
+    AiError, AiGuardrails, AiProvider, FallbackProvider, Message, ProviderCapabilities,
+    StructuredOutputSchema, guardrails::prepare_messages, structured::clean_json_markdown,
 };
 use std::sync::Arc;
 
@@ -58,6 +58,11 @@ impl AiClient {
         Self {
             provider: Arc::new(provider),
         }
+    }
+
+    /// Returns the machine-readable capability contract of the configured provider.
+    pub fn capabilities(&self) -> ProviderCapabilities {
+        self.provider.capabilities()
     }
 
     /// Selects configured providers, falling back to a deterministic offline provider.
@@ -264,6 +269,14 @@ mod tests {
         let client = AiClient::auto().expect("auto client init");
         let res = client.prompt("Hello").await;
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn client_exposes_the_provider_capability_contract() {
+        let client = AiClient::new(SpyProvider {
+            seen: Arc::new(Mutex::new(Vec::new())),
+        });
+        assert_eq!(client.capabilities(), ProviderCapabilities::PORTABLE);
     }
 
     #[tokio::test]

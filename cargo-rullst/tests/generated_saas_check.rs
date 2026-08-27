@@ -11,7 +11,7 @@ use cargo_rullst::blueprints::{
     PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path, path::PathBuf, process::Command};
 
 #[derive(Clone, Copy)]
 struct GeneratedCase {
@@ -188,6 +188,9 @@ fn start_generated_workers(
 }
 
 fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
+    let target_root = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| workspace.join("target"));
     let mut command = Command::new(env!("CARGO"));
     command.arg("check").arg("--offline").arg("--all-targets");
     if case.release {
@@ -198,7 +201,7 @@ fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
         .arg(project_dir.join("Cargo.toml"))
         .env(
             "CARGO_TARGET_DIR",
-            workspace.join("target/generated-scaffold-check"),
+            target_root.join("generated-scaffold-check"),
         )
         .output()
         .unwrap_or_else(|error| panic!("{}: run cargo check: {error}", case.name));

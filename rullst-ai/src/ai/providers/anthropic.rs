@@ -1,6 +1,6 @@
 use super::support::{endpoint, image_mime_type, success_response};
 use crate::ai::{
-    AiError, AiGuardrails, AiProvider, Message,
+    AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     guardrails::prepare_messages,
     mock::{self, ProviderMode},
 };
@@ -100,6 +100,22 @@ impl AnthropicProvider {
 impl AiProvider for AnthropicProvider {
     fn provider_name(&self) -> &'static str {
         "Anthropic"
+    }
+
+    fn capabilities(&self) -> ProviderCapabilities {
+        ProviderCapabilities {
+            text: true,
+            chat: true,
+            embeddings: false,
+            vision: true,
+            json: JsonCapability::PromptOnly,
+            json_schema: false,
+            streaming: false,
+            tools: false,
+            request_timeout: false,
+            retries: false,
+            explicit_cancellation: false,
+        }
     }
 
     async fn prompt(&self, text: &str) -> Result<String, AiError> {

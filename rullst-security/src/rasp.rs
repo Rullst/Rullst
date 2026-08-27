@@ -169,24 +169,11 @@ fn plain_response(status: StatusCode, message: &'static str) -> Response<Body> {
 }
 
 fn record_interception(uri_bad: bool, headers_bad: bool, body_bad: bool) {
-    let store = crate::telemetry::SecurityStore::global();
-    if let Ok(mut events) = store.live_events.lock() {
-        events.insert(
-            0,
-            crate::telemetry::LiveSecurityEvent {
-                event_type: "RASP_PAYLOAD_INTERCEPTED".to_string(),
-                details: format!(
-                    "Rejected request (uri={uri_bad}, headers={headers_bad}, body={body_bad})"
-                ),
-                client_ip: "unknown".to_string(),
-                timestamp_str: crate::telemetry::current_timestamp_str(),
-                verified_hmac: false,
-            },
-        );
-        if events.len() > 50 {
-            events.truncate(50);
-        }
-    }
+    crate::telemetry::SecurityStore::global().record_rasp_interception(
+        uri_bad,
+        headers_bad,
+        body_bad,
+    );
 }
 
 fn forbidden_response(uri_bad: bool, headers_bad: bool, body_bad: bool) -> Response<Body> {
