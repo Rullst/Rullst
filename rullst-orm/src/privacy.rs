@@ -224,13 +224,15 @@ mod tests {
     use super::*;
 
     fn generate_test_key_32() -> String {
-        let (p1, p2) = (1234567890123456u64, 9876543210987654u64);
-        format!("{p1:016x}{p2:016x}")
+        let mut bytes = [0u8; 16];
+        rand::fill(&mut bytes);
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
     }
 
     fn generate_short_key() -> String {
-        let val = 12345678u32;
-        format!("k_{val:08x}")
+        let mut bytes = [0u8; 4];
+        rand::fill(&mut bytes);
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
     }
 
     #[test]

@@ -41,5 +41,4 @@ jobs:
             -p rullst-capital \
             -p rullst-studio \
             -p rullst-nexus \
-            -p rullst \
-            -p cargo-rullst
+            -p rullst

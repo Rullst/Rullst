@@ -122,6 +122,12 @@ fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
     };
     fs::write(project_dir.join("Cargo.toml"), manifest)
         .unwrap_or_else(|error| panic!("{}: write Cargo.toml: {error}", case.name));
+
+    let workspace_lock = workspace.join("Cargo.lock");
+    if workspace_lock.exists() {
+        let _ = fs::copy(&workspace_lock, project_dir.join("Cargo.lock"));
+    }
+
     blueprints::apply(
         case.blueprint,
         project_dir,

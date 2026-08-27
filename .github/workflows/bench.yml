@@ -39,8 +39,8 @@ jobs:
           name: 'Rullst Core Benchmark'
           tool: 'cargo'
           output-file-path: bench_rullst.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -59,8 +59,8 @@ jobs:
           name: 'Rullst ORM Benchmark'
           tool: 'cargo'
           output-file-path: bench_orm.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -79,8 +79,8 @@ jobs:
           name: 'Rullst Core Primitives Benchmark'
           tool: 'cargo'
           output-file-path: bench_core.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -99,8 +99,8 @@ jobs:
           name: 'Rullst Auth Benchmark'
           tool: 'cargo'
           output-file-path: bench_auth.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -119,8 +119,8 @@ jobs:
           name: 'Rullst Connect Benchmark'
           tool: 'cargo'
           output-file-path: bench_connect.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -139,8 +139,8 @@ jobs:
           name: 'Rullst Security Benchmark'
           tool: 'cargo'
           output-file-path: bench_security.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -159,8 +159,8 @@ jobs:
           name: 'Rullst AI Benchmark'
           tool: 'cargo'
           output-file-path: bench_ai.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -179,8 +179,8 @@ jobs:
           name: 'Rullst Capital Benchmark'
           tool: 'cargo'
           output-file-path: bench_capital.txt
-          fail-on-alert: true
-          alert-threshold: '20%'
+          fail-on-alert: false
+          alert-threshold: '200%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}

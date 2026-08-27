@@ -38,10 +38,8 @@ impl MailDriver for LogDriver {
             message.body_html.as_deref().unwrap_or("")
         );
         println!(
-            "[MAIL LOGGED] {} | To: {} | Subject: {} | Target: {}",
+            "[MAIL LOGGED] {} | Target: {}",
             chrono::Local::now().to_rfc3339(),
-            message.to,
-            message.subject,
             log_path.display()
         );
 
