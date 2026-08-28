@@ -10,13 +10,11 @@ impl HtmlSanitizer {
         if cleaned != dirty_html {
             let store = crate::telemetry::SecurityStore::global();
             store.inc_sanitizations();
-            store.push_local_event(crate::telemetry::LiveSecurityEvent {
-                event_type: "XSS_SANITIZED".to_string(),
-                details: "Sanitized unsafe HTML/SVG tags or attributes".to_string(),
-                client_ip: "unknown".to_string(),
-                timestamp_str: crate::telemetry::current_timestamp_str(),
-                verified_hmac: false,
-            });
+            store.push_local_event(crate::telemetry::LiveSecurityEvent::local(
+                "XSS_SANITIZED",
+                "Sanitized unsafe HTML/SVG tags or attributes",
+                "unknown",
+            ));
         }
         cleaned
     }

@@ -150,11 +150,13 @@ streaming SDK owns its authentication, guardrails, backpressure, deadlines,
 cancellation, error mapping, and dependency lifecycle. Do not present that
 escape hatch as native `rullst-ai` streaming.
 
-`ToolRegistry` stores local tools and can export a schema, but it is not wired to
-provider function calling and does not implement the authorization/approval and
-durable audit boundary required for autonomous actions. Treat model output as
-untrusted input and keep destructive or financial operations behind explicit
-human approval.
+`ToolRegistry` stores local tools but is not wired to provider function calling.
+Its [guarded execution API](ai-tool-security.md) requires an exact allowlist,
+principal authorization, closed JSON validation, size/call limits and an audit
+sink. `Destructive` and `Financial` tools additionally require a one-use human
+approval bound to the exact JSON payload. Treat model output as untrusted input;
+the application still authenticates the principal/approver, enforces domain
+ownership and supplies durable production auditing.
 
 ## 7. RAG boundary
 

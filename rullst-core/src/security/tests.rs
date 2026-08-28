@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-use super::csrf::{extract_token_from_body, generate_csrf_token, is_csrf_exempt_path};
+use super::csrf::{CsrfToken, extract_token_from_body, generate_csrf_token, is_csrf_exempt_path};
 use super::headers::headers_middleware;
 use super::pii::{mask_pii, pii_masking_middleware};
 use super::waf::waf_middleware;
@@ -295,6 +295,65 @@ fn test_generate_csrf_token() {
     assert_eq!(token1.len(), 32);
     assert_eq!(token2.len(), 32);
     assert_ne!(token1, token2);
+}
+
+#[tokio::test]
+async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
+    use axum::{Extension, body::Body, http::Request, routing::get};
+    use tower::ServiceExt;
+
+    let app = axum::Router::new()
+        .route(
+            "/form",
+            get(|Extension(token): Extension<CsrfToken>| async move { token.as_str().to_owned() }),
+        )
+        .layer(axum::middleware::from_fn(super::csrf::csrf_middleware));
+
+    let first = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/form")
+                .body(Body::empty())
+                .expect("valid first request"),
+        )
+        .await
+        .expect("first response");
+    let cookie = first
+        .headers()
+        .get(axum::http::header::SET_COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .expect("CSRF cookie")
+        .to_owned();
+    let first_body = axum::body::to_bytes(first.into_body(), 128)
+        .await
+        .expect("first body");
+    let first_token = std::str::from_utf8(&first_body).expect("UTF-8 token");
+    assert!(cookie.starts_with(&format!("rullst_csrf={first_token};")));
+
+    let second = app
+        .oneshot(
+            Request::builder()
+                .uri("/form")
+                .header(
+                    axum::http::header::COOKIE,
+                    format!("rullst_csrf={first_token}"),
+                )
+                .body(Body::empty())
+                .expect("valid second request"),
+        )
+        .await
+        .expect("second response");
+    assert!(
+        second
+            .headers()
+            .get(axum::http::header::SET_COOKIE)
+            .is_none()
+    );
+    let second_body = axum::body::to_bytes(second.into_body(), 128)
+        .await
+        .expect("second body");
+    assert_eq!(second_body.as_ref(), first_token.as_bytes());
 }
 
 #[test]

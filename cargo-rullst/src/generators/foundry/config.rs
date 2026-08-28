@@ -54,7 +54,7 @@ extra_directives = ""
 [env]
 # Environment variables injected into the container at runtime.
 # Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
-APP_ENV = "production"
+RULLST_ENV = "production"
 APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
 DATABASE_URL = "sqlite:///app/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""
@@ -203,5 +203,22 @@ pub fn validate_foundry_config(cfg: &FoundryConfig) {
             );
             std::process::exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn template_uses_the_canonical_environment_name() {
+        let generated = generate_foundry_toml_template("demo");
+        let parsed = parse_foundry_config(&generated);
+        assert!(
+            parsed
+                .env_vars
+                .contains(&("RULLST_ENV".to_string(), "production".to_string()))
+        );
+        assert!(!parsed.env_vars.iter().any(|(name, _)| name == "APP_ENV"));
     }
 }

@@ -69,6 +69,8 @@ pub enum ToolExecutionError {
     Unauthorized { tool: String },
     #[error("tool '{tool}' requires a one-use human approval")]
     HumanApprovalRequired { tool: String },
+    #[error("human approval for tool '{tool}' does not match the exact payload")]
+    ApprovalPayloadMismatch { tool: String },
     #[error("tool call budget is exhausted")]
     CallBudgetExhausted,
     #[error("tool input is {actual} bytes; limit is {limit} bytes")]
@@ -206,9 +208,9 @@ impl ToolRegistry {
             .map_err(|error| deny(audit, context, name, Some(risk), error))?;
 
         let approval = if risk.requires_human_approval() {
-            match context.consume_approval(name) {
-                Some(approval) => Some(approval),
-                None => {
+            match context.consume_matching_approval(name, &payload) {
+                Ok(Some(approval)) => Some(approval),
+                Ok(None) => {
                     return Err(deny(
                         audit,
                         context,
@@ -218,6 +220,9 @@ impl ToolRegistry {
                             tool: name.to_string(),
                         },
                     ));
+                }
+                Err(error) => {
+                    return Err(deny(audit, context, name, Some(risk), error));
                 }
             }
         } else {

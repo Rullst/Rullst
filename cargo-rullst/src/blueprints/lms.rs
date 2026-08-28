@@ -2,6 +2,11 @@
 
 use super::common;
 
+mod access;
+mod auth;
+mod learning;
+mod routes;
+
 pub fn file_manifest(
     project_name_safe: &str,
     hot_reload: bool,
@@ -10,150 +15,14 @@ pub fn file_manifest(
 ) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
     let is_repo = common::is_repo_mode(orm_pattern);
-    let _ = (project_name_safe, frontend_engine);
-
-    // 1. main.rs
-    if hot_reload {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let lib_rs = format!(
-            r##"use rullst::{{routes, Router}};
-
-pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
-        .with_brand("LMS Admin")
-        .register::<models::category::Category>()
-        .register::<models::course::Course>()
-        .register::<models::lesson::Lesson>()
-        .try_build()?;
-
-    Ok(routes![
-        get("/" => controllers::lms_controller::index),
-        // rullst-access: public — the starter catalog is public by design.
-        get("/courses/{{id}}" => controllers::lms_controller::show_course),
-        // rullst-access: public — demo lessons are public; add entitlement checks before protected video.
-        get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
-    ].nest_axum("/nexus", nexus))
-}}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = match router() {{
-        Ok(router) => router,
-        Err(error) => {{
-            eprintln!("Nexus startup configuration error: {{error}}");
-            Router::new()
-        }}
-    }};
-    Box::into_raw(Box::new(router))
-}}
-"##,
-            repo_decl = repo_decl
-        );
-        manifest.push(("src/lib.rs", lib_rs));
-
-        let main_rs = format!(
-            r##"pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    rullst::artisan!(crate::migrations::get_migrations());
-
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
-    println!("🚀 LMS server starting on port 3000...");
-    let is_hot = std::env::var("HOT_RELOAD").is_ok();
-
-    let server = if is_hot {{
-        let lib_path = if cfg!(target_os = "windows") {{
-            format!("target/debug/{{}}", "{project_name_safe}")
-        }} else {{
-            format!("target/debug/lib{{}}", "{project_name_safe}")
-        }};
-        rullst::Server::new_hot(&lib_path)
-    }} else {{
-        let router = {project_name_safe}::router()?;
-        rullst::Server::new(router)
-    }};
-
-    server.run(3000).await?;
-
-    Ok(())
-}}
-"##,
-            repo_decl = repo_decl,
-            project_name_safe = project_name_safe
-        );
-        manifest.push(("src/main.rs", main_rs));
-    } else {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let main_rs = format!(
-            r##"use rullst::{{routes, Server}};
-
-pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    // Run migrations on startup
-    rullst::artisan!(crate::migrations::get_migrations());
-
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
-        .with_brand("LMS Admin")
-        .register::<models::category::Category>()
-        .register::<models::course::Course>()
-        .register::<models::lesson::Lesson>()
-        .try_build()?;
-
-    let router = routes![
-        get("/" => controllers::lms_controller::index),
-        // rullst-access: public — the starter catalog is public by design.
-        get("/courses/{{id}}" => controllers::lms_controller::show_course),
-        // rullst-access: public — demo lessons are public; add entitlement checks before protected video.
-        get("/lessons/{{id}}/play" => controllers::lms_controller::play_lesson),
-    ].nest_axum("/nexus", nexus);
-
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
-    println!("🚀 LMS server starting on port 3000...");
-    Server::new(router)
-        .run(3000)
-        .await?;
-
-    Ok(())
-}}
-"##,
-            repo_decl = repo_decl
-        );
-        manifest.push(("src/main.rs", main_rs));
-    }
+    manifest.extend(routes::get_routes(
+        project_name_safe,
+        hot_reload,
+        orm_pattern,
+    ));
+    manifest.extend(learning::get_files());
+    manifest.extend(access::get_files());
+    manifest.extend(auth::get_files());
 
     // 2. Migration
     let migration = r##"use rullst::db::schema::{Schema, Migration};
@@ -239,10 +108,12 @@ impl Migration for MigrationImpl {
 
     let migrations_mod = r##"// Generated by Rullst.
 pub mod m20260601000000_create_lms_tables;
+pub mod m20260827000000_add_learning_access;
 
 pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
     vec![
         Box::new(m20260601000000_create_lms_tables::MigrationImpl),
+        Box::new(m20260827000000_add_learning_access::MigrationImpl),
     ]
 }
 "##;
@@ -335,41 +206,56 @@ impl NexusModel for Lesson {
 
     let models_mod = r##"pub mod category;
 pub mod course;
+pub mod enrollment;
 pub mod lesson;
+pub mod lesson_progress;
+pub mod user;
 "##;
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
     // 4. Controller
-    let lms_controller = r##"use rullst::server::{Path, IntoResponse};
+    let lms_controller = r##"use rullst::server::{Extension, IntoResponse, Path, Response, StatusCode};
 use rullst::response::Html;
 use crate::models::category::Category;
 use crate::models::course::Course;
 use crate::models::lesson::Lesson;
 use crate::pages::lms;
 
-pub async fn index() -> impl IntoResponse {
-    let categories = Category::all().await.unwrap_or_default();
-    let courses = Course::all().await.unwrap_or_default();
-    Html(lms::index_page(categories, courses))
+fn database_error(error: rullst_orm::Error) -> Response {
+    eprintln!("LMS catalog query failed: {error}");
+    (StatusCode::SERVICE_UNAVAILABLE, "Catalog temporarily unavailable").into_response()
 }
 
-pub async fn show_course(Path(id): Path<i32>) -> impl IntoResponse {
-    let course = match Course::find(id).await.unwrap_or(None) {
-        Some(c) => c,
-        None => return Html("<h1>404 Course Not Found</h1>".to_string()).into_response(),
+pub async fn index() -> Response {
+    let categories = match Category::all().await {
+        Ok(categories) => categories,
+        Err(error) => return database_error(error),
     };
-    let all_lessons = Lesson::all().await.unwrap_or_default();
-    let course_lessons: Vec<Lesson> = all_lessons.into_iter().filter(|l| l.course_id == id).collect();
-    
-    Html(lms::course_detail_page(course, course_lessons)).into_response()
+    let courses = match Course::all().await {
+        Ok(courses) => courses,
+        Err(error) => return database_error(error),
+    };
+    Html(lms::index_page(categories, courses)).into_response()
 }
 
-pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
-    let lesson = match Lesson::find(id).await.unwrap_or(None) {
-        Some(l) => l,
-        None => return Html("<h1>404 Lesson Not Found</h1>".to_string()).into_response(),
+pub async fn show_course(
+    Path(id): Path<i32>,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+) -> Response {
+    let course = match Course::find(id).await {
+        Ok(Some(course)) => course,
+        Ok(None) => return (StatusCode::NOT_FOUND, "Course not found").into_response(),
+        Err(error) => return database_error(error),
     };
-    Html(lms::video_player_snippet(&lesson.title, &lesson.video_url)).into_response()
+    let lessons = match Lesson::query().where_eq("course_id", id).get().await {
+        Ok(lessons) => lessons,
+        Err(error) => return database_error(error),
+    };
+    let csrf_token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .unwrap_or_default();
+    Html(lms::course_detail_page(course, lessons, csrf_token)).into_response()
 }
 "##;
     manifest.push((
@@ -377,7 +263,9 @@ pub async fn play_lesson(Path(id): Path<i32>) -> impl IntoResponse {
         lms_controller.to_string(),
     ));
 
-    let controllers_mod = r##"pub mod lms_controller;
+    let controllers_mod = r##"pub mod auth_controller;
+pub mod learning_controller;
+pub mod lms_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
@@ -459,7 +347,7 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
     }
 }
 
-pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
+pub fn course_detail_page(course: Course, lessons: Vec<Lesson>, csrf_token: &str) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
@@ -496,6 +384,10 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                     <div class="sidebar-header">
                         <a class="back-btn" href="/">"&larr; Back to Academy"</a>
                         <h2>{&course.title}</h2>
+                        <form method="post" action={format!("/courses/{}/enroll", course.id)} style="margin-top: 1rem;">
+                            <input type="hidden" name="_token" value={csrf_token} />
+                            <button type="submit" style="width: 100%; padding: .75rem; border: 0; border-radius: .5rem; background: #10b981; font-weight: 700; cursor: pointer;">"Enroll / Resume"</button>
+                        </form>
                     </div>
                     <ul class="lessons-list">
                         { rullst::html::RawHtml(lessons.iter().map(|l| html! {
@@ -508,11 +400,10 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
                 </div>
                 <div class="main-content">
                     <div class="video-wrapper" id="video-panel">
-                        { if let Some(first_lesson) = lessons.first() {
-                            rullst::html::RawHtml(video_player_snippet(&first_lesson.title, &first_lesson.video_url))
-                        } else {
-                            rullst::html::RawHtml("<div style=\"color: #64748b;\">No lessons available</div>".to_string())
-                        } }
+                        <div style="color: #94a3b8; text-align: center; max-width: 32rem;">
+                            <h3 style="color: #f8fafc; margin-bottom: .75rem;">"Protected lesson area"</h3>
+                            <p>"Register, enroll, then select a lesson. The server verifies the authenticated enrollment before returning the development media fixture."</p>
+                        </div>
                     </div>
                 </div>
             </body>
@@ -520,21 +411,43 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>) -> String {
     }
 }
 
-pub fn video_player_snippet(title: &str, video_url: &str) -> String {
+pub fn video_player_snippet(
+    title: &str,
+    video_url: &str,
+    lesson_id: i32,
+    progress_percent: i32,
+    csrf_token: &str,
+) -> String {
     html! {
         <div class="video-container">
             <video class="player" controls="controls" autoplay="autoplay" src={video_url}></video>
             <div class="info-bar">
                 <h3>{title}</h3>
-                <p style="color: #94a3b8; font-size: 0.9rem;">"Now playing from Rullst Cloud CDN."</p>
+                <p style="color: #94a3b8; font-size: 0.9rem;">"Development media fixture; signed production media remains separate roadmap work."</p>
+                <div id="progress-status">{rullst::html::RawHtml(progress_badge(progress_percent))}</div>
+                <form method="post" action={format!("/lessons/{lesson_id}/progress")} hx-post={format!("/lessons/{lesson_id}/progress")} hx-target="#progress-status" hx-swap="innerHTML" style="display: flex; gap: .5rem; margin-top: 1rem;">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <button type="submit" name="progress_percent" value="25">"25%"</button>
+                    <button type="submit" name="progress_percent" value="50">"50%"</button>
+                    <button type="submit" name="progress_percent" value="100">"Complete"</button>
+                </form>
             </div>
         </div>
+    }
+}
+
+pub fn progress_badge(progress_percent: i32) -> String {
+    html! {
+        <p style="color: #34d399; margin-top: .75rem;">
+            "Saved progress: "{progress_percent.to_string()}"%"
+        </p>
     }
 }
 "##;
     manifest.push(("src/pages/lms.rs", lms_page.to_string()));
 
-    let pages_mod = r##"pub mod lms;
+    let pages_mod = r##"pub mod auth;
+pub mod lms;
 "##;
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
 
@@ -553,8 +466,27 @@ pub fn video_player_snippet(title: &str, video_url: &str) -> String {
             common::generate_repository("Category", "categories"),
         ));
         manifest.push((
+            "src/repositories/enrollment_repository.rs",
+            common::generate_repository("Enrollment", "enrollments"),
+        ));
+        manifest.push((
+            "src/repositories/lesson_progress_repository.rs",
+            common::generate_repository("LessonProgress", "lesson_progress"),
+        ));
+        manifest.push((
+            "src/repositories/user_repository.rs",
+            common::generate_repository("User", "users"),
+        ));
+        manifest.push((
             "src/repositories/mod.rs",
-            common::generate_repositories_mod(&["Course", "Lesson", "Category"]),
+            common::generate_repositories_mod(&[
+                "Course",
+                "Lesson",
+                "Category",
+                "Enrollment",
+                "LessonProgress",
+                "User",
+            ]),
         ));
     }
 

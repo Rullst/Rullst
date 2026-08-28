@@ -14,6 +14,11 @@ For runtime LLM integrations, consult the machine-readable and documented
 tools, built-in deadlines/retries, and explicit cancellation are not implied by
 the existence of a provider adapter.
 
+Local Rust tools use a separate [guarded execution boundary](ai-tool-security.md)
+with an exact allowlist, principal authorization, closed JSON schema, payload
+limits, call budget and mandatory audit sink. Destructive and financial calls
+also require a one-use approval bound to the exact payload.
+
 ## 1. The Agent Manifesto (`AGENTS.md`)
 
 Every Rullst project generated via `cargo rullst new` automatically includes two vital files in the root: `.ai-rules` and `AGENTS.md`.

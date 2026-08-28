@@ -46,16 +46,14 @@ impl RbacGuard {
         } else {
             let store = crate::telemetry::SecurityStore::global();
             store.inc_rbac_denials();
-            store.push_local_event(crate::telemetry::LiveSecurityEvent {
-                event_type: "RBAC_DENIAL".to_string(),
-                details: format!(
+            store.push_local_event(crate::telemetry::LiveSecurityEvent::local(
+                "RBAC_DENIAL",
+                format!(
                     "User {} denied access requiring role '{}'",
                     ctx.user_id, required_role
                 ),
-                client_ip: "unknown".to_string(),
-                timestamp_str: crate::telemetry::current_timestamp_str(),
-                verified_hmac: false,
-            });
+                "unknown",
+            ));
             Err(SecurityError::Forbidden(format!(
                 "Access Denied: Required role '{}'",
                 required_role
@@ -76,16 +74,14 @@ impl RbacGuard {
         } else {
             let store = crate::telemetry::SecurityStore::global();
             store.inc_rbac_denials();
-            store.push_local_event(crate::telemetry::LiveSecurityEvent {
-                event_type: "RBAC_DENIAL".to_string(),
-                details: format!(
+            store.push_local_event(crate::telemetry::LiveSecurityEvent::local(
+                "RBAC_DENIAL",
+                format!(
                     "User {} denied ownership/role access for resource owner {}",
                     ctx.user_id, resource_owner_id
                 ),
-                client_ip: "unknown".to_string(),
-                timestamp_str: crate::telemetry::current_timestamp_str(),
-                verified_hmac: false,
-            });
+                "unknown",
+            ));
             Err(SecurityError::Forbidden(
                 "Access Denied: Insufficient permissions or ownership".to_string(),
             ))

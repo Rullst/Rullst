@@ -1,7 +1,7 @@
 //! Anti-Bruteforce Tarpit & Login Jail Security Engine.
 //! Provides progressive async delay (tarpit) and temporary in-memory jail bans for repeated auth failures.
 
-use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
+use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use dashmap::DashMap;
 use sha2::{Digest, Sha256};
 use std::sync::{Mutex, OnceLock};
@@ -128,25 +128,15 @@ impl LoginGuard {
             let store = SecurityStore::global();
             store.inc_login_jail_bans();
 
-            if let Ok(mut events) = store.live_events.lock() {
-                events.insert(
-                    0,
-                    LiveSecurityEvent {
-                        event_type: "LOGIN_JAIL_TRIGGERED".to_string(),
-                        details: format!(
-                            "Identity/IP '{}' placed in 15min jail after {} failed login attempts",
-                            bounded_identity_for_log(identity),
-                            current_count
-                        ),
-                        client_ip: bounded_identity_for_log(identity),
-                        timestamp_str: current_timestamp_str(),
-                        verified_hmac: false,
-                    },
-                );
-                if events.len() > 50 {
-                    events.truncate(50);
-                }
-            }
+            store.push_local_event(LiveSecurityEvent::local(
+                "LOGIN_JAIL_TRIGGERED",
+                format!(
+                    "Identity/IP '{}' placed in 15min jail after {} failed login attempts",
+                    bounded_identity_for_log(identity),
+                    current_count
+                ),
+                bounded_identity_for_log(identity),
+            ));
 
             return Duration::from_secs(5);
         }

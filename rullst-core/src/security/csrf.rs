@@ -14,6 +14,22 @@ pub fn generate_csrf_token() -> String {
     Alphanumeric.sample_string(&mut rand::rng(), 32)
 }
 
+/// Request-scoped CSRF token made available to handlers rendering forms.
+///
+/// On the first safe request this is the same token that the middleware writes
+/// to the response cookie. Exposing it through request extensions avoids
+/// rendering an empty hidden field before the browser has received that cookie.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CsrfToken(String);
+
+impl CsrfToken {
+    /// Returns the token that must be echoed in an `X-CSRF-Token` header or
+    /// `_token` form field.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct CsrfForm {
     _token: Option<String>,
@@ -83,20 +99,25 @@ pub(crate) fn is_csrf_exempt_path(path: &str) -> bool {
         || path.ends_with(".wasm")
 }
 
-async fn handle_csrf_get(req: Request, next: Next) -> Response {
+async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
     if is_csrf_exempt_path(req.uri().path()) {
         return next.run(req).await;
     }
 
-    let has_cookie = req
+    let cookie_token = req
         .headers()
         .get(header::COOKIE)
         .and_then(|v| v.to_str().ok())
-        .map(|cookie_str| cookie_str.contains("rullst_csrf="))
-        .unwrap_or(false);
+        .and_then(csrf_token_from_cookie_header);
 
-    if !has_cookie {
-        let token = generate_csrf_token();
+    if let Some(token) = cookie_token {
+        req.extensions_mut().insert(CsrfToken(token));
+        return next.run(req).await;
+    }
+
+    let token = generate_csrf_token();
+    req.extensions_mut().insert(CsrfToken(token.clone()));
+    {
         let same_site = req
             .extensions()
             .get::<crate::config::SecurityConfig>()
@@ -126,8 +147,16 @@ async fn handle_csrf_get(req: Request, next: Next) -> Response {
         }
         return response;
     }
+}
 
-    next.run(req).await
+fn csrf_token_from_cookie_header(cookie_header: &str) -> Option<String> {
+    cookie_header.split(';').find_map(|cookie| {
+        cookie
+            .trim()
+            .strip_prefix("rullst_csrf=")
+            .filter(|token| !token.is_empty())
+            .map(ToOwned::to_owned)
+    })
 }
 
 #[cfg_attr(mutants, mutants::skip)]

@@ -266,6 +266,13 @@ mod tests {
     fn generated_billing_binds_signed_events_to_authenticated_owners() {
         let source = render_billing_controller("workspace_id");
         syn::parse_file(&source).expect("billing controller must parse");
+        let canonical_environment = source
+            .find("std::env::var(\"RULLST_ENV\")")
+            .expect("canonical environment lookup");
+        let legacy_environment = source
+            .find("std::env::var(\"APP_ENV\")")
+            .expect("legacy environment fallback");
+        assert!(canonical_environment < legacy_environment);
         assert!(source.contains("workspace_id: identity.owner_id"));
         assert!(source.contains("Extension(identity): Extension<BillingIdentity>"));
         assert!(source.contains("rullst-capital's mandatory signature/replay middleware"));

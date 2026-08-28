@@ -195,8 +195,14 @@ fn financial_approval_is_exact_and_consumed_once() {
         Err(ToolExecutionError::HumanApprovalRequired { .. })
     ));
 
-    let approval =
-        HumanApproval::new("issue_refund", "reviewer-9", "ticket FIN-42").expect("valid approval");
+    let approved_payload = serde_json::json!({"amount": 10.0});
+    let approval = HumanApproval::for_payload(
+        "issue_refund",
+        &approved_payload,
+        "reviewer-9",
+        "ticket FIN-42",
+    )
+    .expect("valid approval");
     assert_eq!(approval.approver(), "reviewer-9");
     assert_eq!(approval.reason(), "ticket FIN-42");
     context.approve(approval);
@@ -209,6 +215,17 @@ fn financial_approval_is_exact_and_consumed_once() {
             &audit,
         )
         .expect("approved refund");
+    let approved = audit
+        .entries()
+        .expect("audit entries")
+        .into_iter()
+        .find(|entry| entry.event.outcome == ToolAuditOutcome::Authorized)
+        .expect("authorized event");
+    assert_eq!(approved.event.approved_by.as_deref(), Some("reviewer-9"));
+    assert_eq!(
+        approved.event.approval_reason.as_deref(),
+        Some("ticket FIN-42")
+    );
 
     let replay = registry.execute(
         "issue_refund",
@@ -221,6 +238,40 @@ fn financial_approval_is_exact_and_consumed_once() {
         replay,
         Err(ToolExecutionError::HumanApprovalRequired { .. })
     ));
+}
+
+#[test]
+fn financial_approval_cannot_be_reused_with_different_arguments() {
+    let mut registry = ToolRegistry::new();
+    registry
+        .register(FinancialTool)
+        .expect("valid financial tool");
+    let policy = ToolExecutionPolicy::new(["issue_refund"]).expect("valid policy");
+    let mut context = ToolExecutionContext::new("finance-user", ["issue_refund"], 1)
+        .expect("valid authorization");
+    let audit = InMemoryToolAuditTrail::new(16).expect("valid audit trail");
+    context.approve(
+        HumanApproval::for_payload(
+            "issue_refund",
+            &serde_json::json!({"amount": 10.0}),
+            "reviewer-9",
+            "ticket FIN-42",
+        )
+        .expect("valid approval"),
+    );
+
+    let changed = registry.execute(
+        "issue_refund",
+        serde_json::json!({"amount": 1000.0}),
+        &mut context,
+        &policy,
+        &audit,
+    );
+    assert!(matches!(
+        changed,
+        Err(ToolExecutionError::ApprovalPayloadMismatch { .. })
+    ));
+    assert_eq!(context.remaining_calls(), 1);
 }
 
 #[test]

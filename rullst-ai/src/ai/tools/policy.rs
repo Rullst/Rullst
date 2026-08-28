@@ -1,4 +1,6 @@
 use super::{ToolExecutionError, validation};
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Exact registry-level allowlist and input/output limits.
@@ -56,11 +58,14 @@ pub struct HumanApproval {
     tool: String,
     approver: String,
     reason: String,
+    payload_sha256: [u8; 32],
 }
 
 impl HumanApproval {
-    pub fn new(
+    /// Creates an approval bound to the exact serialized JSON payload.
+    pub fn for_payload(
         tool: impl Into<String>,
+        payload: &Value,
         approver: impl Into<String>,
         reason: impl Into<String>,
     ) -> Result<Self, ToolExecutionError> {
@@ -74,6 +79,7 @@ impl HumanApproval {
             tool,
             approver,
             reason,
+            payload_sha256: payload_digest(payload),
         })
     }
 
@@ -143,7 +149,25 @@ impl ToolExecutionContext {
         self.authorized_tools.contains(tool)
     }
 
-    pub(super) fn consume_approval(&mut self, tool: &str) -> Option<HumanApproval> {
-        self.approvals.remove(tool)
+    pub(super) fn consume_matching_approval(
+        &mut self,
+        tool: &str,
+        payload: &Value,
+    ) -> Result<Option<HumanApproval>, ToolExecutionError> {
+        let Some(approval) = self.approvals.get(tool) else {
+            return Ok(None);
+        };
+        if approval.payload_sha256 != payload_digest(payload) {
+            return Err(ToolExecutionError::ApprovalPayloadMismatch {
+                tool: tool.to_string(),
+            });
+        }
+        Ok(self.approvals.remove(tool))
     }
+}
+
+fn payload_digest(payload: &Value) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(payload.to_string().as_bytes());
+    hasher.finalize().into()
 }

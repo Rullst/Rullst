@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::blueprints::{BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 
 fn dependency_source(
     current_dir: &Path,
@@ -65,8 +65,10 @@ pub fn build_cargo_toml(
     if blueprint_selection != BLANK_BLUEPRINT_ID || db_needed {
         rullst_features.push("nexus");
     }
-    if blueprint_selection == SAAS_BLUEPRINT_ID {
+    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
         rullst_features.push("auth");
+    }
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         rullst_features.push("capital");
     }
 
@@ -136,10 +138,12 @@ edition = "2021"
         ));
     }
 
-    if blueprint_selection == SAAS_BLUEPRINT_ID {
+    if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
         let auth_dep = dependency_line(current_dir, "rullst-auth", crate_version)?;
         cargo_toml.push_str(&auth_dep);
+    }
 
+    if blueprint_selection == SAAS_BLUEPRINT_ID {
         let capital_dep = dependency_line(current_dir, "rullst-capital", crate_version)?;
         cargo_toml.push_str(&capital_dep);
 
@@ -172,7 +176,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blueprints::{BLOG_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+    use crate::blueprints::{BLOG_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 
     fn isolated_root() -> std::path::PathBuf {
         std::env::temp_dir().join(format!("rullst-manifest-{}", rand::random::<u64>()))
@@ -196,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn stable_saas_id_alone_enables_auth_and_capital() {
+    fn stable_blueprint_ids_enable_only_their_required_domain_features() {
         let saas = build_cargo_toml(
             "saas",
             false,
@@ -221,8 +225,22 @@ mod tests {
             &isolated_root(),
         )
         .expect("Blog manifest");
+        let lms = build_cargo_toml(
+            "lms",
+            false,
+            true,
+            "Sqlite",
+            false,
+            false,
+            LMS_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("LMS manifest");
         assert!(saas.contains("\"auth\""));
         assert!(saas.contains("\"capital\""));
+        assert!(lms.contains("\"auth\""));
+        assert!(!lms.contains("\"capital\""));
         assert!(!blog.contains("\"auth\""));
         assert!(!blog.contains("\"capital\""));
     }

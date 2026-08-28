@@ -1,4 +1,4 @@
-use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str, normalize_ip};
+use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -22,8 +22,26 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
 
     format!(
         "CEF:0|RullstSecurity|Framework|12.0.0|{}|{}|{}|src={} msg={}",
-        event.event_type, event.event_type, severity, event.client_ip, event.details
+        event.event_type,
+        event.event_type,
+        severity,
+        escape_cef_extension(&event.client_ip),
+        escape_cef_extension(&event.details)
     )
+}
+
+fn escape_cef_extension(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '\\' => escaped.push_str("\\\\"),
+            '=' => escaped.push_str("\\="),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            _ => escaped.push(character),
+        }
+    }
+    escaped
 }
 
 /// Records a SIEM-candidate alert in the bounded local telemetry store.
@@ -33,14 +51,7 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
 /// transport, retry, dead-letter handling and delivery acknowledgement remain
 /// application-owned until a real sink contract is implemented.
 pub fn dispatch_siem_alert(event_type: &str, details: &str, client_ip: &str) {
-    let now = current_timestamp_str();
-    let event = LiveSecurityEvent {
-        event_type: event_type.to_string(),
-        details: details.to_string(),
-        client_ip: normalize_ip(client_ip),
-        timestamp_str: now,
-        verified_hmac: false,
-    };
+    let event = LiveSecurityEvent::local(event_type, details, client_ip);
 
     SecurityStore::global().inc_siem_dispatches();
 
@@ -53,16 +64,27 @@ mod tests {
 
     #[test]
     fn test_format_cef_event() {
-        let ev = LiveSecurityEvent {
-            event_type: "HONEYPOT_TRAP_TRIGGERED".to_string(),
-            details: "IP 10.0.0.1 accessed /.env".to_string(),
-            client_ip: "10.0.0.1".to_string(),
-            timestamp_str: "2026-08-20T12:00:00.000Z".to_string(),
-            verified_hmac: false,
-        };
+        let ev = LiveSecurityEvent::local(
+            "HONEYPOT_TRAP_TRIGGERED",
+            "IP 10.0.0.1 accessed /.env",
+            "10.0.0.1",
+        );
 
         let cef = format_cef_event(&ev);
         assert!(cef.starts_with("CEF:0|RullstSecurity|Framework|12.0.0|HONEYPOT_TRAP_TRIGGERED"));
         assert!(cef.contains("src=10.0.0.1"));
+    }
+
+    #[test]
+    fn cef_extension_values_cannot_inject_fields_or_lines() {
+        let event = LiveSecurityEvent::local(
+            "SECURITY_EVENT",
+            "first=value\\second\nnext=field\r",
+            "192.0.2.8",
+        );
+        let cef = format_cef_event(&event);
+        assert!(cef.contains(r"msg=first\=value\\second\nnext\=field\r"));
+        assert!(!cef.contains('\n'));
+        assert!(!cef.contains('\r'));
     }
 }

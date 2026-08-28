@@ -41,8 +41,8 @@ impl fmt::Display for BillingConfigError {
 impl std::error::Error for BillingConfigError {}
 
 fn is_production() -> bool {
-    std::env::var("APP_ENV")
-        .or_else(|_| std::env::var("RULLST_ENV"))
+    std::env::var("RULLST_ENV")
+        .or_else(|_| std::env::var("APP_ENV"))
         .is_ok_and(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "prod" | "production"))
 }
 

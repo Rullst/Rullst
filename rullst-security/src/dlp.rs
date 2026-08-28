@@ -1,7 +1,7 @@
 //! Data Loss Prevention (DLP) Response Interceptor.
 //! Intercepts HTTP response streams to prevent accidental leaks of private keys, AWS credentials, and database secrets.
 
-use crate::telemetry::{LiveSecurityEvent, SecurityStore, current_timestamp_str};
+use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use axum::{
     body::{Body, HttpBody},
     http::{
@@ -183,22 +183,11 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
         let store = SecurityStore::global();
         store.inc_dlp_masked();
 
-        if let Ok(mut events) = store.live_events.lock() {
-            events.insert(
-                0,
-                LiveSecurityEvent {
-                    event_type: "DLP_SECRET_LEAK_PREVENTED".to_string(),
-                    details: "Neutralized secret credentials/key from outgoing HTTP response"
-                        .to_string(),
-                    client_ip: "unknown".to_string(),
-                    timestamp_str: current_timestamp_str(),
-                    verified_hmac: false,
-                },
-            );
-            if events.len() > 50 {
-                events.truncate(50);
-            }
-        }
+        store.push_local_event(LiveSecurityEvent::local(
+            "DLP_SECRET_LEAK_PREVENTED",
+            "Neutralized secret credentials/key from outgoing HTTP response",
+            "unknown",
+        ));
         (sanitized.into_bytes(), true)
     } else {
         (input.to_vec(), false)

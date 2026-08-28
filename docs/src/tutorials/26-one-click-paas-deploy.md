@@ -72,7 +72,7 @@ ssh_key = "~/.ssh/id_ed25519"
 deploy_path = "/var/www/my_rullst_app"
 
 [env]
-APP_ENV = "production"
+RULLST_ENV = "production"
 PORT = "3000"
 DATABASE_URL = "postgres://user:password@localhost:5432/production_db"
 JWT_SECRET = "super_secure_production_jwt_secret_key"

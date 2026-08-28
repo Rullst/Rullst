@@ -82,7 +82,7 @@ kind: ConfigMap
 metadata:
   name: {app_name}-config
 data:
-  APP_ENV: "production"
+  RULLST_ENV: "production"
   PORT: "{port}"
   RUST_LOG: "info"
 "###,
@@ -157,4 +157,16 @@ pub fn all_in_one_yaml(app_name: &str, port: u16) -> String {
         hpa_yaml(app_name),
         ingress_yaml(app_name)
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn configmap_uses_the_canonical_environment_name() {
+        let manifest = configmap_yaml("demo", 3000);
+        assert!(manifest.contains("RULLST_ENV: \"production\""));
+        assert!(!manifest.contains("APP_ENV:"));
+    }
 }

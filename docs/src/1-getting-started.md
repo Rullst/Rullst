@@ -121,7 +121,8 @@ both control surfaces during local development:
 - **Studio** starts as a separate debug-only service at
   `http://127.0.0.1:5555`.
 
-This convenience cannot be enabled in a release binary through `APP_ENV`. A
+This convenience cannot be enabled in a release binary through `RULLST_ENV` or
+the legacy `APP_ENV` alias. A
 release build does not start the generated Studio task and requires unique
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` values before Nexus can be
 constructed. Put production Nexus behind a verified TLS boundary and explicit

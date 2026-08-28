@@ -50,7 +50,8 @@ pub use schema_guard::{inspect_json_payload, schema_guard_middleware};
 pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
 pub use sri::{compute_sri_hash, sri_link_tag, sri_script_tag};
 pub use telemetry::{
-    LiveSecurityEvent, SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
+    LIVE_SECURITY_EVENT_V1_JSON_SCHEMA, LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION,
+    SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
     get_real_rss_memory_mb, normalize_ip,
 };
 pub use timing_guard::{

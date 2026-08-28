@@ -5,21 +5,17 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
+mod event;
+pub use event::{
+    LIVE_SECURITY_EVENT_V1_JSON_SCHEMA, LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION,
+};
+
 static GLOBAL_SECURITY_STORE: OnceLock<SecurityStore> = OnceLock::new();
 
 const MAX_LIVE_EVENTS: usize = 50;
 const MAX_TELEMETRY_BANS: usize = 10_000;
 const MAX_HONEYPOT_ROUTES: usize = 1_024;
 const DEFAULT_HONEYPOT_BAN_TTL: Duration = Duration::from_secs(15 * 60);
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LiveSecurityEvent {
-    pub event_type: String,
-    pub details: String,
-    pub client_ip: String,
-    pub timestamp_str: String,
-    pub verified_hmac: bool,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BannedIpRecord {
@@ -153,49 +149,39 @@ impl SecurityStore {
                 .fetch_add(1, Ordering::Relaxed);
         }
 
-        self.push_live_event(LiveSecurityEvent {
-            event_type: "HONEYPOT_TRAP_TRIGGERED".to_string(),
-            details: format!("Peer {normalized_ip} accessed trap route {path}"),
-            client_ip: normalized_ip,
-            timestamp_str: now_str,
-            verified_hmac: false,
-        });
+        self.push_live_event(LiveSecurityEvent::local(
+            "HONEYPOT_TRAP_TRIGGERED",
+            format!("Peer {normalized_ip} accessed trap route {path}"),
+            normalized_ip,
+        ));
     }
 
     pub fn record_sanitization(&self, details: &str) {
         self.inc_sanitizations();
-        self.push_live_event(LiveSecurityEvent {
-            event_type: "XSS_PAYLOAD_NEUTRALIZED".to_string(),
-            details: details.to_string(),
-            client_ip: "unknown".to_string(),
-            timestamp_str: current_timestamp_str(),
-            verified_hmac: false,
-        });
+        self.push_live_event(LiveSecurityEvent::local(
+            "XSS_PAYLOAD_NEUTRALIZED",
+            details,
+            "unknown",
+        ));
     }
 
     /// Records a RASP rejection emitted by an actual inspector or middleware path.
     pub fn record_rasp_interception(&self, uri_bad: bool, headers_bad: bool, body_bad: bool) {
-        self.push_live_event(LiveSecurityEvent {
-            event_type: "RASP_PAYLOAD_INTERCEPTED".to_string(),
-            details: format!(
-                "Rejected request (uri={uri_bad}, headers={headers_bad}, body={body_bad})"
-            ),
-            client_ip: "unknown".to_string(),
-            timestamp_str: current_timestamp_str(),
-            verified_hmac: false,
-        });
+        self.push_live_event(LiveSecurityEvent::local(
+            "RASP_PAYLOAD_INTERCEPTED",
+            format!("Rejected request (uri={uri_bad}, headers={headers_bad}, body={body_bad})"),
+            "unknown",
+        ));
     }
 
     pub fn record_prompt_injection_blocked(&self, ip: &str, prompt_snippet: &str) {
         self.prompt_injections_blocked_count
             .fetch_add(1, Ordering::Relaxed);
-        self.push_live_event(LiveSecurityEvent {
-            event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
-            details: format!("Blocked malicious prompt snippet: {prompt_snippet}"),
-            client_ip: normalize_ip(ip),
-            timestamp_str: current_timestamp_str(),
-            verified_hmac: false,
-        });
+        self.push_live_event(LiveSecurityEvent::local(
+            "AI_PROMPT_INJECTION_SHIELDED",
+            format!("Blocked malicious prompt snippet: {prompt_snippet}"),
+            ip,
+        ));
     }
 
     pub fn record_prompt_inspected(&self) {
@@ -209,13 +195,11 @@ impl SecurityStore {
 
     pub fn record_rbac_denial(&self, actor: &str, resource: &str) {
         self.inc_rbac_denials();
-        self.push_live_event(LiveSecurityEvent {
-            event_type: "RBAC_ACCESS_DENIED".to_string(),
-            details: format!("User {actor} denied access to {resource}"),
-            client_ip: "unknown".to_string(),
-            timestamp_str: current_timestamp_str(),
-            verified_hmac: false,
-        });
+        self.push_live_event(LiveSecurityEvent::local(
+            "RBAC_ACCESS_DENIED",
+            format!("User {actor} denied access to {resource}"),
+            "unknown",
+        ));
     }
 
     /// Removes expired display records and returns the current active-ban count.
@@ -243,7 +227,7 @@ impl SecurityStore {
 
     fn push_live_event(&self, event: LiveSecurityEvent) {
         if let Ok(mut events) = self.live_events.lock() {
-            events.insert(0, event);
+            events.insert(0, event.normalized());
             if events.len() > MAX_LIVE_EVENTS {
                 events.truncate(MAX_LIVE_EVENTS);
             }
@@ -397,13 +381,9 @@ mod tests {
     #[test]
     fn local_events_cannot_claim_hmac_verification_or_fake_ips() {
         let store = SecurityStore::new();
-        store.push_local_event(LiveSecurityEvent {
-            event_type: "TEST".to_string(),
-            details: "local event".to_string(),
-            client_ip: normalize_ip("attacker-controlled"),
-            timestamp_str: current_timestamp_str(),
-            verified_hmac: true,
-        });
+        let mut event = LiveSecurityEvent::local("TEST", "local event", "attacker-controlled");
+        event.verified_hmac = true;
+        store.push_local_event(event);
 
         let events = store.live_events.lock().expect("telemetry lock");
         assert_eq!(events.len(), 1);

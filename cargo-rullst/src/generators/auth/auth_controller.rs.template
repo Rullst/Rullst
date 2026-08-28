@@ -1,7 +1,7 @@
 use crate::models::user::User;
 use crate::pages::auth;
 use rullst::auth as rullst_auth;
-use rullst::server::{Form, HeaderMap, IntoResponse, Redirect, Response, StatusCode};
+use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Redirect, Response, StatusCode};
 use serde::Deserialize;
 
 const DUMMY_PASSWORD_HASH: &str =
@@ -59,8 +59,16 @@ fn redirect_with_cookie(target: &'static str, cookie: &str) -> Response {
     response
 }
 
-pub async fn login_view(headers: HeaderMap) -> impl IntoResponse {
-    auth::login_page(&get_csrf_token(&headers), None)
+pub async fn login_view(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+) -> impl IntoResponse {
+    let token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| get_csrf_token(&headers));
+    auth::login_page(&token, None)
 }
 
 pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> Response {
@@ -95,8 +103,16 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
     }
 }
 
-pub async fn register_view(headers: HeaderMap) -> impl IntoResponse {
-    auth::register_page(&get_csrf_token(&headers), None)
+pub async fn register_view(
+    headers: HeaderMap,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+) -> impl IntoResponse {
+    let token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| get_csrf_token(&headers));
+    auth::register_page(&token, None)
 }
 
 pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto>) -> Response {

@@ -130,13 +130,13 @@ csrf_signed_webhook_paths = ["/billing/webhook"]
     let mut env_content = format!(
         r#"# Rullst Application Environment Configuration
 APP_KEY={app_key}
-APP_ENV=development
+RULLST_ENV=development
 "#,
         app_key = app_key
     );
 
     let mut env_example_content = r#"APP_KEY=REPLACE_WITH_YOUR_32_CHAR_RANDOM_KEY
-APP_ENV=development
+RULLST_ENV=development
 "#
     .to_string();
 
@@ -302,6 +302,31 @@ mod tests {
         let script = fs::read_to_string(root.join("build_buildah.sh")).expect("Buildah source");
         assert!(script.contains("buildah bud"));
         assert!(script.contains("demo-app:latest"));
+
+        fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn generated_environment_uses_the_canonical_rullst_name() {
+        let root = std::env::temp_dir().join(format!("rullst-env-name-{}", rand::random::<u64>()));
+        fs::create_dir_all(&root).expect("temporary project");
+
+        generate_env_and_configs(
+            &root,
+            false,
+            "Sqlite",
+            false,
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+
+        for filename in [".env", ".env.example"] {
+            let generated =
+                fs::read_to_string(root.join(filename)).expect("generated environment file");
+            assert!(generated.contains("RULLST_ENV=development"));
+            assert!(!generated.contains("APP_ENV="));
+        }
 
         fs::remove_dir_all(root).expect("temporary project cleanup");
     }

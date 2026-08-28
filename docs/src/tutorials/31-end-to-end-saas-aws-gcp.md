@@ -26,7 +26,7 @@ This scaffolds:
 In `.env`:
 
 ```dotenv
-APP_ENV=production
+RULLST_ENV=production
 DATABASE_URL=postgres://saas_user:secure_pass@rds-instance.aws.com:5432/saas_db
 BILLING_PROVIDER=stripe
 BILLING_API_KEY=sk_live_...

@@ -290,13 +290,11 @@ async fn test_rasp_inspector_and_layer() {
 fn test_siem_alerting_and_cef_formatting() {
     use rullst_security::{LiveSecurityEvent, dispatch_siem_alert, format_cef_event};
 
-    let event = LiveSecurityEvent {
-        event_type: "AI_PROMPT_INJECTION_SHIELDED".to_string(),
-        details: "Blocked system override attempt".to_string(),
-        client_ip: "203.0.113.195".to_string(),
-        timestamp_str: "2026-08-20T12:00:00Z".to_string(),
-        verified_hmac: false,
-    };
+    let event = LiveSecurityEvent::local(
+        "AI_PROMPT_INJECTION_SHIELDED",
+        "Blocked system override attempt",
+        "203.0.113.195",
+    );
 
     let cef = format_cef_event(&event);
     assert!(cef.contains("CEF:0|RullstSecurity|Framework|12.0.0|AI_PROMPT_INJECTION_SHIELDED"));

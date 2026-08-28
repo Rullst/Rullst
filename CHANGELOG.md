@@ -62,6 +62,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Guardrail results now use `passed_heuristics`; the former `is_safe` name is a
   deprecated compatibility alias. Passing a filter or schema does not authorize
   tools or make model output trustworthy.
+- Local `ToolRegistry` dispatch now requires an exact allowlist, authenticated
+  principal authorization supplied by the application, closed bounded JSON, a
+  call budget, and a mandatory audit sink. Destructive/financial approvals are
+  one-use and bound to the exact payload; durable production auditing and domain
+  authorization remain application responsibilities.
 
 #### Local development and observability
 
@@ -71,6 +76,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The blog showcase's security controls execute instrumented local primitives.
   Prompt inspections are counted once, unsigned events are not labeled HMAC
   verified, and detector results are not presented as production guarantees.
+- Local security telemetry now has a frozen `LiveSecurityEvent` v1 envelope, a
+  packaged JSON Schema, bounded normalized fields, and CEF extension escaping.
+  It is explicitly process-local and does not claim durable SIEM delivery.
+- Newly generated `.env`, Kubernetes and Foundry configurations now use
+  `RULLST_ENV`; generated billing follows the same canonical-first precedence.
+  Existing `APP_ENV` configurations remain supported as a legacy fallback.
 - Generated blueprints and representative release builds are exercised by
   compile tests. The exact RC still requires multi-OS CI, packaged crates-only
   reproduction, and release-tag evidence before publication.

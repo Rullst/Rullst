@@ -59,12 +59,16 @@ that an interrupted provider request was never processed.
 
 ### Tools
 
-`ToolRegistry` can register local Rust tools, export an OpenAI-compatible schema,
-and dispatch a registered name. It is not connected to any built-in provider
-transport and does not yet supply the v12 authorization, argument validation,
-resource limits, approval, or durable audit policy. Consequently the provider
-tools column remains `no`, and tool execution must not be advertised as an
-autonomous safe agent boundary.
+`ToolRegistry` is a separate [guarded local execution
+boundary](ai-tool-security.md). Dispatch requires an exact policy allowlist,
+principal authorization, closed JSON validation, payload limits, a call budget
+and an audit sink. Destructive and financial calls additionally consume a
+one-use approval bound to the exact payload. The bundled in-memory audit sink is
+not durable and the application owns principal/approver authentication.
+
+The registry is not connected to any built-in provider transport. Consequently
+the provider tools column remains `no`, and local guarded execution must not be
+advertised as provider-native function calling or an autonomous safe agent.
 
 ## Portable custom-provider default
 

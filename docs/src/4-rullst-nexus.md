@@ -44,7 +44,7 @@ let router = router.nest_axum("/nexus", nexus);
 The helper is intentionally asymmetric: debug builds allow only requests whose
 `ConnectInfo` peer is loopback; release builds load and validate
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`. Missing connection metadata
-is denied, and `APP_ENV` cannot turn credential-free access on in a release
+is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 

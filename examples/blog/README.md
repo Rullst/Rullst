@@ -38,7 +38,7 @@ From the workspace root, create `examples/blog/.env` with an application key
 and database URL:
 
 ```dotenv
-APP_ENV=development
+RULLST_ENV=development
 APP_KEY=replace-with-at-least-32-random-bytes
 DATABASE_URL=sqlite://blog.db
 ```

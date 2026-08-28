@@ -11,7 +11,7 @@ authorization, TLS, and network policy.
 
 Generated Blog, Portfolio, LMS, ERP, and SaaS applications start the standalone
 server only in debug builds and link to `http://127.0.0.1:5555`. Release builds
-do not start it; a runtime `APP_ENV` value cannot override that compile-time
+do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values cannot override that compile-time
 boundary.
 
 ## Running Studio
