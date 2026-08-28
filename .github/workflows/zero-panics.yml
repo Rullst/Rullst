@@ -5,6 +5,11 @@ on:
     branches: [ main, dev ]
   pull_request:
     branches: [ main, dev ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -16,6 +21,7 @@ jobs:
   check-panics:
     name: Enforce Zero Panics (published runtime targets)
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

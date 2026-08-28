@@ -3,7 +3,12 @@ name: Mutation Testing (manual informational)
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,6 +19,7 @@ jobs:
       contents: read
     name: cargo-mutants informational shard ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
+    timeout-minutes: 330
     strategy:
       fail-fast: false
       matrix:

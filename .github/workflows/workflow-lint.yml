@@ -1,0 +1,50 @@
+name: GitHub Actions Lint
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  actionlint:
+    name: Validate workflow syntax and expressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Enforce immutable third-party Action references
+        shell: bash
+        run: |
+          unpinned="$(
+            grep -REn '^[[:space:]]*uses:' .github/workflows |
+              grep -Ev 'uses:[[:space:]]+\./|@[0-9a-f]{40}([[:space:]]|$)' || true
+          )"
+          if [ -n "$unpinned" ]; then
+            echo "Remote GitHub Actions must use a full 40-character commit SHA:"
+            printf '%s\n' "$unpinned"
+            exit 1
+          fi
+
+      - name: Run actionlint 1.7.7
+        run: |
+          docker run --rm \
+            --volume "$PWD:/repo" \
+            --workdir /repo \
+            rhysd/actionlint:1.7.7@sha256:1d74bfc9fd1963af8f89a7c22afaaafd42f49aad711a09951d02cb996398f61d \
+            -color

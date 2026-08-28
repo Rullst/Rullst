@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -15,6 +19,7 @@ jobs:
   pr-security-audit:
     name: Bounded static audit and SBOM
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,16 +33,18 @@ jobs:
 
       - name: Summarize the evidence boundary
         run: |
-          echo "### Rullst PR security evidence" > pr_audit_comment.md
-          echo "" >> pr_audit_comment.md
-          echo "| Check | Status | Details |" >> pr_audit_comment.md
-          echo "| :--- | :---: | :--- |" >> pr_audit_comment.md
-          echo "| **Bounded source heuristics** | EXECUTED | See SECURITY_COMPLIANCE.md for findings, errors, and checks that were not run. |" >> pr_audit_comment.md
-          echo "| **CycloneDX SBOM** | GENERATED | See sbom-cyclonedx.json; generation is not a supply-chain certification. |" >> pr_audit_comment.md
-          echo "| **Zero-panic policy** | NOT EVALUATED HERE | Enforced separately by zero-panics.yml. |" >> pr_audit_comment.md
-          echo "| **TLS / deployment controls** | NOT EVALUATED HERE | Require deployed-system evidence. |" >> pr_audit_comment.md
-          echo "" >> pr_audit_comment.md
-          echo "> This workflow produces bounded evidence; it does not certify OWASP, SOC 2, ISO 27001, FedRAMP, or a cryptographic supply chain." >> pr_audit_comment.md
+          {
+            echo "### Rullst PR security evidence"
+            echo ""
+            echo "| Check | Status | Details |"
+            echo "| :--- | :---: | :--- |"
+            echo "| **Bounded source heuristics** | EXECUTED | See SECURITY_COMPLIANCE.md for findings, errors, and checks that were not run. |"
+            echo "| **CycloneDX SBOM** | GENERATED | See sbom-cyclonedx.json; generation is not a supply-chain certification. |"
+            echo "| **Zero-panic policy** | NOT EVALUATED HERE | Enforced separately by zero-panics.yml. |"
+            echo "| **TLS / deployment controls** | NOT EVALUATED HERE | Require deployed-system evidence. |"
+            echo ""
+            echo "> This workflow produces bounded evidence; it does not certify OWASP, SOC 2, ISO 27001, FedRAMP, or a cryptographic supply chain."
+          } > pr_audit_comment.md
 
       - name: Upload bounded audit artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1

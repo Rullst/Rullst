@@ -5,6 +5,10 @@ on:
     - cron: '0 2 * * 0' # Weekly on Sunday at 02:00 UTC
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -16,6 +20,7 @@ jobs:
   cmin-corpus:
     name: Minimize & Sync Fuzz Corpus
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -5,6 +5,11 @@ on:
     branches: [ main, dev ]
   pull_request:
     branches: [ main, dev ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -23,6 +28,7 @@ jobs:
   check:
     name: Code Quality & Format
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,6 +47,7 @@ jobs:
   test:
     name: Run Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +63,29 @@ jobs:
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres
         # simultaneously, which correctly cfg-excludes the DB matrix tests (those
         # run in the dedicated step below with the proper feature combination).
-        run: cargo test --workspace --all-features
+        shell: bash
+        run: |
+          set +e
+          cargo test --workspace --all-features --no-fail-fast 2>&1 | tee workspace-tests.log
+          test_status="${PIPESTATUS[0]}"
+          set -e
+          if [ "$test_status" -ne 0 ]; then
+            grep -E '^test .* \.\.\. FAILED$|^    [^[:space:]].* - should panic \.\.\. FAILED$' \
+              workspace-tests.log |
+              while IFS= read -r failure; do
+                echo "::error title=Workspace test failure::${failure}"
+              done
+            exit "$test_status"
+          fi
+
+      - name: Upload failed workspace test log
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workspace-tests-${{ matrix.os }}
+          path: workspace-tests.log
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Run Matrix DB Tests (Testcontainers — PostgreSQL & MySQL)
         # Docker testcontainers are supported on Linux runners.
@@ -71,6 +100,7 @@ jobs:
   strict-database-features:
     name: ORM ${{ matrix.feature }}
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       TESTCONTAINERS_RYUK_DISABLED: "true"
     strategy:
@@ -113,6 +143,7 @@ jobs:
   redis-rate-limit:
     name: Redis distributed rate-limit contract
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     services:
       redis:
         image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
@@ -138,6 +169,7 @@ jobs:
   feature-boundaries:
     name: Public no-default and isolated feature boundaries
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -151,6 +183,7 @@ jobs:
   threat-model-release-minimum:
     name: TM-12.2 release-negative minimum
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -164,6 +197,7 @@ jobs:
   versioned-ai-evals:
     name: Versioned deterministic AI evals
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -177,6 +211,7 @@ jobs:
   generated-release-access:
     name: Generated release access boundaries
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -193,6 +228,7 @@ jobs:
   msrv:
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

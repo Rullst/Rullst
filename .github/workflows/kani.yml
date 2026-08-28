@@ -3,6 +3,10 @@ name: Kani Verifier (manual informational)
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -13,6 +17,7 @@ jobs:
   kani:
     name: kani informational (${{ matrix.package }})
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -23,12 +28,6 @@ jobs:
 
       - name: Install Kani
         run: cargo install kani-verifier && cargo kani setup
-
-      - name: Bypass MSRV globally in the Cargo Registry
-        run: |
-          cargo fetch
-          find . -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
-          find $HOME/.cargo/registry/src/ -name Cargo.toml -exec sed -i 's/^rust-version.*//g' {} +
 
       - name: Verify with Kani (non-blocking research harnesses)
         working-directory: ${{ matrix.package }}

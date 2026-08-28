@@ -175,18 +175,21 @@ fn preflight_hook(hook: &Path) -> Result<(), HookInstallError> {
     Ok(())
 }
 
+#[cfg(unix)]
 fn make_executable(path: &Path) -> Result<(), HookInstallError> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::PermissionsExt;
 
-        let metadata =
-            fs::metadata(path).map_err(|error| io_error("read hook permissions", path, error))?;
-        let mut permissions = metadata.permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions)
-            .map_err(|error| io_error("set executable hook permissions", path, error))?;
-    }
+    let metadata =
+        fs::metadata(path).map_err(|error| io_error("read hook permissions", path, error))?;
+    let mut permissions = metadata.permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions)
+        .map_err(|error| io_error("set executable hook permissions", path, error))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) -> Result<(), HookInstallError> {
     Ok(())
 }
 

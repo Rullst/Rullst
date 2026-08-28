@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (weekly scheduled invariant audit)
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -15,6 +19,7 @@ jobs:
   proptest:
     name: Run Proptests
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -47,4 +52,3 @@ jobs:
         env:
           PROPTEST_CASES: 10000
         run: cargo test -p rullst-security -p rullst-auth --release
-

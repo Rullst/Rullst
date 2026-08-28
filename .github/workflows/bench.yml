@@ -7,7 +7,12 @@ on:
   schedule:
     - cron: '0 4 * * 1'  # Every Monday at 04:00 UTC (weekly regression audit)
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,6 +22,7 @@ jobs:
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     permissions:
       contents: write
     steps:
@@ -40,7 +46,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_rullst.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -60,7 +66,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_orm.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -80,7 +86,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_core.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -100,7 +106,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_auth.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -120,7 +126,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_connect.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -140,7 +146,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_security.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -160,7 +166,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_ai.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}
@@ -180,7 +186,7 @@ jobs:
           tool: 'cargo'
           output-file-path: bench_capital.txt
           fail-on-alert: false
-          alert-threshold: '200%'
+          alert-threshold: '120%'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           auto-push: ${{ github.event_name != 'pull_request' }}

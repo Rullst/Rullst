@@ -22,6 +22,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,46 +64,54 @@ jobs:
           git fetch origin gh-pages || true
 
           # ── rullst core bench ──────────────────────────────────────────────────
-          git checkout origin/gh-pages -- benches/data.js 2>/dev/null \
-            && mv benches/data.js public_site/benches/data.js || true
+          if git checkout origin/gh-pages -- benches/data.js 2>/dev/null; then
+            mv benches/data.js public_site/benches/data.js
+          fi
           cp docs/benches_template.html public_site/benches/index.html
 
           # ── rullst-orm bench ───────────────────────────────────────────────────
-          git checkout origin/gh-pages -- benches-orm/data.js 2>/dev/null \
-            && mv benches-orm/data.js public_site/benches/orm/data.js || true
+          if git checkout origin/gh-pages -- benches-orm/data.js 2>/dev/null; then
+            mv benches-orm/data.js public_site/benches/orm/data.js
+          fi
           cp docs/benches_orm_template.html public_site/benches/orm/index.html
 
           # ── rullst-core primitives bench ───────────────────────────────────────
-          git checkout origin/gh-pages -- benches-core/data.js 2>/dev/null \
-            && mv benches-core/data.js public_site/benches/core/data.js || true
+          if git checkout origin/gh-pages -- benches-core/data.js 2>/dev/null; then
+            mv benches-core/data.js public_site/benches/core/data.js
+          fi
           cp docs/benches_core_template.html public_site/benches/core/index.html
 
           # ── rullst-auth bench ──────────────────────────────────────────────────
-          git checkout origin/gh-pages -- benches-auth/data.js 2>/dev/null \
-            && mv benches-auth/data.js public_site/benches/auth/data.js || true
+          if git checkout origin/gh-pages -- benches-auth/data.js 2>/dev/null; then
+            mv benches-auth/data.js public_site/benches/auth/data.js
+          fi
           cp docs/benches_auth_template.html public_site/benches/auth/index.html
 
           # ── rullst-connect bench ───────────────────────────────────────────────
-          git checkout origin/gh-pages -- benches-connect/data.js 2>/dev/null \
-            && mv benches-connect/data.js public_site/benches/connect/data.js || true
+          if git checkout origin/gh-pages -- benches-connect/data.js 2>/dev/null; then
+            mv benches-connect/data.js public_site/benches/connect/data.js
+          fi
           cp docs/benches_connect_template.html public_site/benches/connect/index.html
 
           # ── rullst-security bench ──────────────────────────────────────────────
           mkdir -p public_site/benches/security
-          git checkout origin/gh-pages -- benches-security/data.js 2>/dev/null \
-            && mv benches-security/data.js public_site/benches/security/data.js || true
+          if git checkout origin/gh-pages -- benches-security/data.js 2>/dev/null; then
+            mv benches-security/data.js public_site/benches/security/data.js
+          fi
           cp docs/benches_security_template.html public_site/benches/security/index.html
 
           # ── rullst-ai bench ────────────────────────────────────────────────────
           mkdir -p public_site/benches/ai
-          git checkout origin/gh-pages -- benches-ai/data.js 2>/dev/null \
-            && mv benches-ai/data.js public_site/benches/ai/data.js || true
+          if git checkout origin/gh-pages -- benches-ai/data.js 2>/dev/null; then
+            mv benches-ai/data.js public_site/benches/ai/data.js
+          fi
           cp docs/benches_ai_template.html public_site/benches/ai/index.html
 
           # ── rullst-capital bench ───────────────────────────────────────────────
           mkdir -p public_site/benches/capital
-          git checkout origin/gh-pages -- benches-capital/data.js 2>/dev/null \
-            && mv benches-capital/data.js public_site/benches/capital/data.js || true
+          if git checkout origin/gh-pages -- benches-capital/data.js 2>/dev/null; then
+            mv benches-capital/data.js public_site/benches/capital/data.js
+          fi
           cp docs/benches_capital_template.html public_site/benches/capital/index.html
 
       - name: Upload artifact
@@ -115,6 +124,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build
     steps:
       - name: Deploy to GitHub Pages

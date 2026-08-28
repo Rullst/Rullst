@@ -3,6 +3,10 @@ name: Miri UB Detection (manual informational)
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

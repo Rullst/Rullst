@@ -23,6 +23,7 @@ jobs:
   verify:
     name: Verify and attest release artifacts
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     services:
       redis:
         image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
@@ -195,6 +196,7 @@ jobs:
     name: Publish verified crates
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     environment: crates-io
     permissions:
       id-token: write
