@@ -82,28 +82,10 @@ pub fn parse_live_component(item: TokenStream) -> TokenStream {
                     #mount_tokens
 
                     async fn handle_event(&mut self, payload: serde_json::Value) {
-                        let event_name_opt = payload.get("rullst_event")
-                            .or_else(|| payload.get("action"))
-                            .or_else(|| payload.get("event"))
-                            .and_then(|v| v.as_str());
-
-                        if let Some(event_name) = event_name_opt {
+                        if let Some(event_name) = payload.get("rullst_event").and_then(|v| v.as_str()) {
                             match event_name {
                                 #(#handlers)*
                                 _ => {}
-                            }
-                        } else if let Some(obj) = payload.as_object() {
-                            for (key, val) in obj {
-                                match key.as_str() {
-                                    #(#handlers)*
-                                    _ => {}
-                                }
-                                if let Some(v_str) = val.as_str() {
-                                    match v_str {
-                                        #(#handlers)*
-                                        _ => {}
-                                    }
-                                }
                             }
                         }
                     }

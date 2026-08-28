@@ -5,7 +5,6 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
-#[cfg_attr(mutants, mutants::skip)]
 pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         println!(
@@ -75,7 +74,8 @@ pub fn generate_ts_sdk() -> Result<(), Box<dyn std::error::Error>> {
         let mut js_path = path.clone();
 
         for segment in path.split('/') {
-            if let Some(arg_name) = segment.strip_prefix(':') {
+            if segment.starts_with(':') {
+                let arg_name = &segment[1..];
                 path_args.push(format!("{}: string | number", arg_name));
                 js_path = js_path.replace(segment, &format!("${{{}}}", arg_name));
             }

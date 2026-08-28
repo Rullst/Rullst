@@ -1,191 +1,9 @@
 // src/generators/cors_jwt.rs — CORS & JWT Middleware generator.
-#![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
-use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
-
-const CORS_MIDDLEWARE_TEMPLATE: &str = include_str!("cors_middleware.rs.template");
-const JWT_MIDDLEWARE_TEMPLATE: &str = include_str!("jwt_middleware.rs.template");
-const TOWER_HTTP_CORS_DEPENDENCY: &str = r#"tower-http = { version = "0.7", features = ["cors"] }"#;
-
-fn dependency_is_declared(cargo_toml: &str, dependency: &str) -> bool {
-    cargo_toml.lines().any(|line| {
-        let declaration = line.split_once('#').map_or(line, |(value, _)| value).trim();
-        declaration
-            .split_once('=')
-            .is_some_and(|(key, _)| key.trim().trim_matches(['\'', '"']) == dependency)
-    })
-}
-
-/// Adds the direct dependencies required by the exact generated JWT template.
-#[doc(hidden)]
-pub fn ensure_jwt_dependencies(cargo_toml: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let Some(dependencies_start) = cargo_toml.find("[dependencies]") else {
-        return Err(IoError::new(
-            ErrorKind::InvalidData,
-            "Cargo.toml does not contain a [dependencies] table",
-        )
-        .into());
-    };
-    let mut missing = Vec::new();
-    if !dependency_is_declared(cargo_toml, "jsonwebtoken") {
-        missing.push(
-            "jsonwebtoken = { version = \"10\", default-features = false, features = [\"rust_crypto\"] }",
-        );
-    }
-    if !dependency_is_declared(cargo_toml, "chrono") {
-        missing.push("chrono = { version = \"0.4\", features = [\"serde\"] }");
-    }
-    if !dependency_is_declared(cargo_toml, "serde") {
-        missing.push("serde = { version = \"1\", features = [\"derive\"] }");
-    }
-    if missing.is_empty() {
-        return Ok(cargo_toml.to_string());
-    }
-
-    let mut updated = cargo_toml.to_string();
-    updated.insert_str(
-        dependencies_start + "[dependencies]".len(),
-        &format!("\n{}", missing.join("\n")),
-    );
-    Ok(updated)
-}
-
-/// Returns the exact JWT middleware source emitted by this generator.
-#[doc(hidden)]
-pub fn jwt_middleware_template() -> &'static str {
-    JWT_MIDDLEWARE_TEMPLATE
-}
-
-fn ensure_tower_http_cors_dependency(
-    cargo_toml: &str,
-) -> Result<(String, bool), Box<dyn std::error::Error>> {
-    let Some(dependencies_start) = cargo_toml.find("[dependencies]") else {
-        return Err(IoError::new(
-            ErrorKind::InvalidData,
-            "Cargo.toml does not contain a [dependencies] table",
-        )
-        .into());
-    };
-
-    let table_content_start = dependencies_start + "[dependencies]".len();
-    let dependencies_end = cargo_toml[table_content_start..]
-        .find("\n[")
-        .map_or(cargo_toml.len(), |offset| table_content_start + offset + 1);
-    let dependencies = &cargo_toml[table_content_start..dependencies_end];
-
-    let mut relative_line_start = 0usize;
-    for line in dependencies.split_inclusive('\n') {
-        let line_without_newline = line.strip_suffix('\n').unwrap_or(line);
-        let declaration = line_without_newline
-            .split_once('#')
-            .map_or(line_without_newline, |(value, _)| value)
-            .trim();
-        let Some((key, value)) = declaration.split_once('=') else {
-            relative_line_start += line.len();
-            continue;
-        };
-        if key.trim().trim_matches(['\'', '"']) != "tower-http" {
-            relative_line_start += line.len();
-            continue;
-        }
-
-        if value.contains("\"cors\"") || value.contains("'cors'") {
-            return Ok((cargo_toml.to_string(), false));
-        }
-
-        let line_start = table_content_start + relative_line_start;
-        let line_end = line_start + line.len();
-        let updated_line = add_cors_feature_to_dependency(line_without_newline)?;
-        let mut updated = cargo_toml.to_string();
-        updated.replace_range(
-            line_start..line_end,
-            &format!(
-                "{}{}",
-                updated_line,
-                if line.ends_with('\n') { "\n" } else { "" }
-            ),
-        );
-        return Ok((updated, true));
-    }
-
-    let mut updated = cargo_toml.to_string();
-    updated.insert_str(
-        table_content_start,
-        &format!("\n{}", TOWER_HTTP_CORS_DEPENDENCY),
-    );
-    Ok((updated, true))
-}
-
-fn add_cors_feature_to_dependency(line: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let (declaration, comment) = line
-        .split_once('#')
-        .map_or((line, None), |(value, comment)| (value, Some(comment)));
-    let Some((key, value)) = declaration.split_once('=') else {
-        return Err(IoError::new(
-            ErrorKind::InvalidData,
-            "invalid tower-http dependency declaration",
-        )
-        .into());
-    };
-    let indentation = &line[..line.len() - line.trim_start().len()];
-    let value = value.trim();
-    let updated_value = if (value.starts_with('"') && value.ends_with('"'))
-        || (value.starts_with('\'') && value.ends_with('\''))
-    {
-        format!("{{ version = {value}, features = [\"cors\"] }}")
-    } else if value.starts_with('{') && value.ends_with('}') {
-        if let Some(features_start) = value.find("features") {
-            let Some(relative_end) = value[features_start..].find(']') else {
-                return Err(IoError::new(
-                    ErrorKind::InvalidData,
-                    "tower-http features must use an inline array",
-                )
-                .into());
-            };
-            let features_end = features_start + relative_end;
-            let features = &value[features_start..features_end];
-            let features_are_empty = features
-                .split_once('[')
-                .is_some_and(|(_, items)| items.trim().is_empty());
-            let separator = if features_are_empty { "" } else { ", " };
-            format!(
-                "{}{}\"cors\"{}",
-                &value[..features_end],
-                separator,
-                &value[features_end..]
-            )
-        } else {
-            let closing_brace = value.len() - 1;
-            let separator = if value[..closing_brace].trim_end().ends_with('{') {
-                ""
-            } else {
-                ", "
-            };
-            format!(
-                "{}{}features = [\"cors\"]{}",
-                &value[..closing_brace],
-                separator,
-                &value[closing_brace..]
-            )
-        }
-    } else {
-        return Err(IoError::new(
-            ErrorKind::InvalidData,
-            "tower-http must use a version string or single-line inline table",
-        )
-        .into());
-    };
-
-    let comment = comment.map_or(String::new(), |comment| format!(" #{comment}"));
-    Ok(format!(
-        "{indentation}{} = {updated_value}{comment}",
-        key.trim()
-    ))
-}
 
 pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
@@ -199,17 +17,6 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("{}", "🛠️ Generating CORS middleware...".cyan().bold());
-
-    let cargo_toml_path = Path::new("Cargo.toml");
-    let cargo_toml = fs::read_to_string(cargo_toml_path)?;
-    let (cargo_toml, dependency_added) = ensure_tower_http_cors_dependency(&cargo_toml)?;
-    if dependency_added {
-        fs::write(cargo_toml_path, cargo_toml)?;
-        println!(
-            "{}",
-            "  ✨ Enabled tower-http's tested CORS implementation in Cargo.toml.".green()
-        );
-    }
 
     let middlewares_dir = Path::new("src/middlewares");
     if !middlewares_dir.exists() {
@@ -238,7 +45,65 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        fs::write(&middleware_path, CORS_MIDDLEWARE_TEMPLATE)?;
+        let template = r#"use rullst::server::{
+    Request,
+    Next,
+    Response,
+    header, Method, StatusCode,
+    Body,
+};
+
+/// Middleware CORS robusto e de alta performance.
+/// Gerencia cabeçalhos de compartilhamento de recursos de origem cruzada e requisições preflight (OPTIONS).
+pub async fn cors_middleware(req: Request, next: Next) -> Response {
+    let origin = req.headers()
+        .get(header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("*")
+        .to_string();
+
+    // Lida com requisições preflight OPTIONS
+    if req.method() == Method::OPTIONS {
+        // ATENÇÃO: Nunca permita credenciais se a origem for '*'
+        let allow_credentials = if origin == "*" { "false" } else { "true" };
+        
+        return Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &origin)
+            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+            .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
+            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, allow_credentials)
+            .header(header::ACCESS_CONTROL_MAX_AGE, "86400")
+            .body(Body::empty())
+            .unwrap();
+    }
+
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+
+    let allow_credentials = if origin == "*" { "false" } else { "true" };
+
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        header::HeaderValue::from_str(&origin).unwrap_or_else(|_| header::HeaderValue::from_static("*")),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        header::HeaderValue::from_static("GET, POST, PUT, DELETE, PATCH, OPTIONS"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        header::HeaderValue::from_static("Content-Type, Authorization, X-Requested-With, X-CSRF-Token"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        header::HeaderValue::from_str(allow_credentials).unwrap(),
+    );
+
+    response
+}
+"#;
+        fs::write(&middleware_path, template)?;
     }
 
     // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
@@ -275,16 +140,7 @@ pub fn create_cors_middleware() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         "How to register in your main router (src/main.rs):".cyan()
     );
-    println!(
-        "{}",
-        "  1. Set CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com".cyan()
-    );
-    println!(
-        "{}",
-        "  2. Build the layer: 'let cors = middlewares::cors_middleware::cors_layer_from_env()?;'"
-            .cyan()
-    );
-    println!("{}", "  3. Register it: '.layer(cors)'".cyan());
+    println!("{}", "  1. Add: '.layer(rullst::server::from_fn(middlewares::cors_middleware::cors_middleware))'".cyan());
 
     Ok(())
 }
@@ -302,13 +158,28 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", "🛠️ Generating JWT middleware...".cyan().bold());
 
-    // Keep the generated middleware's direct dependencies explicit and version-aligned.
+    // 1. Injetar jsonwebtoken e chrono no Cargo.toml do usuário
     let cargo_toml_path = Path::new("Cargo.toml");
     if cargo_toml_path.exists() {
-        let cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
-        let updated = ensure_jwt_dependencies(&cargo_toml_content)?;
-        if updated != cargo_toml_content {
-            fs::write(cargo_toml_path, updated)?;
+        let mut cargo_toml_content = fs::read_to_string(cargo_toml_path)?;
+        let mut modified = false;
+        if !cargo_toml_content.contains("jsonwebtoken") {
+            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
+                cargo_toml_content.insert_str(pos + 14, "jsonwebtoken = \"9.3\"\n");
+                modified = true;
+            }
+        }
+        if !cargo_toml_content.contains("chrono") {
+            if let Some(pos) = cargo_toml_content.find("[dependencies]") {
+                cargo_toml_content.insert_str(
+                    pos + 14,
+                    "chrono = { version = \"0.4\", features = [\"serde\"] }\n",
+                );
+                modified = true;
+            }
+        }
+        if modified {
+            fs::write(cargo_toml_path, cargo_toml_content)?;
             println!(
                 "{}",
                 "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml.".green()
@@ -343,7 +214,77 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
                 .yellow()
         );
     } else {
-        fs::write(&middleware_path, jwt_middleware_template())?;
+        let template = r#"use rullst::server::{
+    Request,
+    Next,
+    Response, IntoResponse,
+    header, StatusCode,
+};
+use serde::{Deserialize, Serialize};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String, // Subject (id do usuário)
+    pub exp: usize,  // Timestamp de expiração
+}
+
+/// JWT Authentication Middleware.
+/// Extrai o cabeçalho 'Authorization: Bearer <token>', valida e injeta os claims nas extensões da requisição.
+pub async fn jwt_middleware(mut req: Request, next: Next) -> Response {
+    let auth_header = req.headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+
+    let Some(auth_str) = auth_header else {
+        return (StatusCode::UNAUTHORIZED, "Missing Authorization Header").into_response();
+    };
+
+    if !auth_str.starts_with("Bearer ") {
+        return (StatusCode::UNAUTHORIZED, "Invalid Authorization Header Format").into_response();
+    }
+
+    let token = &auth_str["Bearer ".len()..];
+    let secret = match std::env::var("JWT_SECRET") {
+        Ok(s) => s,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "JWT_SECRET must be set").into_response(),
+    };
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        Ok(token_data) => {
+            // Insere os claims nas extensões da requisição para acesso nos controllers
+            req.extensions_mut().insert(token_data.claims);
+            next.run(req).await
+        }
+        Err(_) => (StatusCode::UNAUTHORIZED, "Invalid or Expired Token").into_response(),
+    }
+}
+
+/// Helper para gerar um novo token JWT com duração de 1 dia.
+pub fn generate_token(user_id: &str) -> Result<String, String> {
+    let secret = std::env::var("JWT_SECRET").map_err(|_| "JWT_SECRET must be set".to_string())?;
+    let expiration = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::days(1))
+        .expect("valid timestamp")
+        .timestamp() as usize;
+
+    let claims = Claims {
+        sub: user_id.to_string(),
+        exp: expiration,
+    };
+
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    ).map_err(|e| e.to_string())
+}
+"#;
+        fs::write(&middleware_path, template)?;
     }
 
     // Attempt to inject "pub mod middlewares;" into src/main.rs if needed
@@ -389,84 +330,4 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "     pub async fn meu_endpoint(rullst::server::Extension(claims): rullst::server::Extension<Claims>) -> impl IntoResponse".cyan());
 
     Ok(())
-}
-
-#[cfg(test)]
-mod cors_tests {
-    use super::*;
-
-    #[test]
-    fn injects_cors_dependency_idempotently() {
-        let original = r#"[package]
-name = "demo"
-
-[dependencies]
-rullst = "12.0.0"
-
-[workspace]
-"#;
-
-        let (updated, changed) = ensure_tower_http_cors_dependency(original).unwrap();
-        assert!(changed);
-        assert!(updated.contains(TOWER_HTTP_CORS_DEPENDENCY));
-
-        let (unchanged, changed_again) = ensure_tower_http_cors_dependency(&updated).unwrap();
-        assert!(!changed_again);
-        assert_eq!(unchanged, updated);
-        assert_eq!(unchanged.matches("tower-http").count(), 1);
-    }
-
-    #[test]
-    fn enables_cors_on_an_existing_tower_http_dependency() {
-        let version_only = "[dependencies]\ntower-http = \"0.7\"\n";
-        let (updated, changed) = ensure_tower_http_cors_dependency(version_only).unwrap();
-        assert!(changed);
-        assert!(updated.contains("tower-http = { version = \"0.7\", features = [\"cors\"] }"));
-
-        let inline_table =
-            "[dependencies]\ntower-http = { version = \"0.7\", features = [\"trace\"] }\n";
-        let (updated, changed) = ensure_tower_http_cors_dependency(inline_table).unwrap();
-        assert!(changed);
-        assert!(updated.contains("features = [\"trace\", \"cors\"]"));
-
-        let empty_features = "[dependencies]\ntower-http = { version = \"0.7\", features = [ ] }\n";
-        let (updated, changed) = ensure_tower_http_cors_dependency(empty_features).unwrap();
-        assert!(changed);
-        assert!(updated.contains("features = [ \"cors\"]"));
-    }
-
-    #[test]
-    fn generated_cors_template_is_valid_rust_without_panic_paths() {
-        syn::parse_file(CORS_MIDDLEWARE_TEMPLATE).unwrap();
-        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
-        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains(".expect("));
-        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains("panic!("));
-        assert!(!CORS_MIDDLEWARE_TEMPLATE.contains("mirror_request"));
-        assert!(CORS_MIDDLEWARE_TEMPLATE.contains("CORS_ALLOWED_ORIGINS"));
-        assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".allow_credentials(self.allow_credentials)"));
-        assert!(CORS_MIDDLEWARE_TEMPLATE.contains(".vary([header::ORIGIN])"));
-    }
-
-    #[test]
-    fn generated_jwt_validates_secret_issuer_and_audience() {
-        syn::parse_file(JWT_MIDDLEWARE_TEMPLATE).unwrap();
-        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("MIN_SECRET_BYTES"));
-        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("set_issuer"));
-        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("set_audience"));
-        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("JWT_ISSUER"));
-        assert!(JWT_MIDDLEWARE_TEMPLATE.contains("JWT_AUDIENCE"));
-        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains(".unwrap("));
-        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains(".expect("));
-        assert!(!JWT_MIDDLEWARE_TEMPLATE.contains("panic!("));
-    }
-
-    #[test]
-    fn jwt_dependencies_are_current_and_idempotent() {
-        let original = "[package]\nname = \"demo\"\n\n[dependencies]\nrullst = \"12\"\n";
-        let updated = ensure_jwt_dependencies(original).unwrap();
-        let repeated = ensure_jwt_dependencies(&updated).unwrap();
-        assert_eq!(updated, repeated);
-        assert!(updated.contains("jsonwebtoken = { version = \"10\""));
-        assert!(!updated.contains("jsonwebtoken = \"9.3\""));
-    }
 }

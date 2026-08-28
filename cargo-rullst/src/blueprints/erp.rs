@@ -1,82 +1,50 @@
 // src/blueprints/erp.rs — ERP Pocket blueprint templates.
 
-use super::common;
-
-pub fn file_manifest(
-    project_name_safe: &str,
-    hot_reload: bool,
-    orm_pattern: &str,
-    frontend_engine: &str,
-) -> Vec<(&'static str, String)> {
+pub fn file_manifest(project_name_safe: &str, hot_reload: bool) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
-    let is_repo = common::is_repo_mode(orm_pattern);
-    let _ = (project_name_safe, frontend_engine);
 
     if hot_reload {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let lib_rs = format!(
-            r##"use rullst::{{routes, Router}};
+        let lib_rs = r##"use rullst::{routes, Router};
 
 pub mod migrations;
 pub mod models;
-{repo_decl}pub mod controllers;
+pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(admin_access.clone())
+        .with_auth("admin", "password")
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
-        .try_build()?;
+        .build();
 
-    let admin_routes = routes![
-        post("/products" => controllers::erp_controller::store_product),
-        // rullst-access: admin — protected by admin_access.protect_router below.
-        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
-        post("/orders" => controllers::erp_controller::store_order),
-    ];
-    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
-
-    Ok(routes![
+    let router = routes![
         get("/" => controllers::erp_controller::index),
-    ].merge_axum(admin_routes).nest_axum("/nexus", nexus))
-}}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = match router() {{
-        Ok(router) => router,
-        Err(error) => {{
-            eprintln!("Nexus startup configuration error: {{error}}");
-            Router::new()
-        }}
-    }};
+        post("/products" => controllers::erp_controller::store_product),
+        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
+        post("/orders" => controllers::erp_controller::store_order),
+    ].nest_axum("/nexus", nexus);
     Box::into_raw(Box::new(router))
-}}
-"##,
-            repo_decl = repo_decl
-        );
+}
+"##
+        .to_string();
         manifest.push(("src/lib.rs", lib_rs));
 
         let main_rs = format!(
             r##"pub mod migrations;
 pub mod models;
-{repo_decl}pub mod controllers;
+pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     rullst::artisan!(crate::migrations::get_migrations());
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {{
+        rullst::runtime::spawn(async {{ let _ = rullst::studio::run_studio("").await; }});
+        println!("📊 Rullst Studio running on port 5555");
     }}
     println!("🚀 ERP Pocket server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
@@ -89,7 +57,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router()?;
+        let router_ptr = {project_name_safe}::rullst_router_init();
+        let router = unsafe {{ *Box::from_raw(router_ptr) }};
         rullst::Server::new(router)
     }};
 
@@ -98,64 +67,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
-            repo_decl = repo_decl,
             project_name_safe = project_name_safe
         );
         manifest.push(("src/main.rs", main_rs));
     } else {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let main_rs = format!(
-            r##"use rullst::{{routes, Server}};
+        let main_rs = r##"use rullst::{routes, Server};
 
 pub mod migrations;
 pub mod models;
-{repo_decl}pub mod controllers;
+pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations on startup
     rullst::artisan!(crate::migrations::get_migrations());
 
-    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(admin_access.clone())
+        .with_auth("admin", "password")
         .with_brand("ERP Admin")
         .register::<models::product::Product>()
         .register::<models::order::Order>()
-        .try_build()?;
-
-    let admin_routes = routes![
-        post("/products" => controllers::erp_controller::store_product),
-        // rullst-access: admin — protected by admin_access.protect_router below.
-        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
-        post("/orders" => controllers::erp_controller::store_order),
-    ];
-    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
+        .build();
 
     let router = routes![
         get("/" => controllers::erp_controller::index),
-    ].merge_axum(admin_routes).nest_axum("/nexus", nexus);
+        post("/products" => controllers::erp_controller::store_product),
+        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
+        post("/orders" => controllers::erp_controller::store_order),
+    ].nest_axum("/nexus", nexus);
 
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
+    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string()) != "production";
+    if is_dev {
+        rullst::runtime::spawn(async { let _ = rullst::studio::run_studio("").await; });
+        println!("📊 Rullst Studio running on port 5555");
+    }
     println!("🚀 ERP Pocket server starting on port 3000...");
     Server::new(router)
         .run(3000)
         .await?;
 
     Ok(())
-}}
-"##,
-            repo_decl = repo_decl
-        );
+}
+"##
+        .to_string();
         manifest.push(("src/main.rs", main_rs));
     }
 
@@ -206,7 +161,7 @@ impl Migration for MigrationImpl {
         }).await?;
 
         // Seed initial products and orders
-        let pool = rullst::db::Orm::pool()?;
+        let pool = rullst::db::Orm::pool();
         
         rullst::db::sqlx::query(
             "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
@@ -409,12 +364,9 @@ pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoRe
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
 
     // 10. ERP Page View
-    let fe_imports = common::frontend_page_imports(frontend_engine);
-    let erp_page = format!(
-        r##"{fe_imports}use crate::models::product::Product;
-use crate::models::order::Order;"##,
-        fe_imports = fe_imports
-    ) + r##"
+    let erp_page = r##"use rullst::html;
+use crate::models::product::Product;
+use crate::models::order::Order;
 
 pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
     let total_sales: f64 = orders.iter()
@@ -427,7 +379,7 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
     html! {
         <html lang="pt-BR" class="dark">
             <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+            <link rel="icon" type="image/png" href="data:image/png;base64,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" />
                 <meta charset="UTF-8" />
                 <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -471,9 +423,9 @@ fn render_header() -> String {
             <div class="flex flex-col items-end gap-1">
                 <div class="flex gap-3">
                     <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
-                    <a href="http://127.0.0.1:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio (local)"</a>
+                    <a href="http://localhost:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio"</a>
                 </div>
-                <span class="text-[10px] text-slate-500 mr-2">"Nexus: local in debug; credentials in release"</span>
+                <span class="text-[10px] text-slate-500 mr-2">"(Login: admin / password)"</span>
             </div>
         </header>
     }
@@ -647,22 +599,6 @@ fn render_forms(products: &[Product]) -> String {
 }
 "##;
     manifest.push(("src/pages/erp.rs", erp_page.to_string()));
-
-    // Repository layer (if applicable)
-    if is_repo {
-        manifest.push((
-            "src/repositories/product_repository.rs",
-            common::generate_repository("Product", "products"),
-        ));
-        manifest.push((
-            "src/repositories/order_repository.rs",
-            common::generate_repository("Order", "orders"),
-        ));
-        manifest.push((
-            "src/repositories/mod.rs",
-            common::generate_repositories_mod(&["Product", "Order"]),
-        ));
-    }
 
     manifest
 }

@@ -5,32 +5,25 @@ on:
     branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main", "dev" ]
-  workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0' # Run weekly
 
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
         with:
           toolchain: stable
         
       - name: Install cargo-audit
-        uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
-        with:
-          tool: cargo-audit
+        run: cargo install cargo-audit
         
       - name: Run cargo-audit
-        # Every exception is time-bounded in docs/src/security-advisory-exceptions.md.
-        run: cargo audit --ignore RUSTSEC-2023-0071
+        run: cargo audit --ignore RUSTSEC-2026-0099 --ignore RUSTSEC-2026-0098 --ignore RUSTSEC-2026-0104 --ignore RUSTSEC-2026-0002 --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0173

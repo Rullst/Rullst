@@ -1,85 +1,74 @@
 [package]
 name = "rullst"
-version = "12.0.0"
+version = "5.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
-rust-version = "1.96.0"
-description = "The AI-Native Full-Stack, SaaS & Edge/IoT Framework for Rust"
+description = "The Full-Stack Web Framework for Rust Language"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-homepage = "https://rullst.github.io"
-documentation = "https://docs.rs/rullst"
-keywords = ["framework", "web", "async", "tokio", "fullstack"]
-categories = ["web-programming::http-server", "asynchronous"]
-exclude = ["tests/*", "benches/*", "storage/*", "*.db", ".env*"]
+exclude = ["tests/*", "benches/*", "storage/*", "*.db"]
+rust-version = "1.96.0"
 [features]
-default = ["orm", "queue-sqlite"]
-orm = ["dep:rullst-orm", "rullst-core/orm"]
-queue-sqlite = ["rullst-core/queue-sqlite"]
-nexus = ["dep:rullst-nexus"]
-studio = ["dep:rullst-studio", "rullst-core/studio"]
-auth = ["dep:rullst-auth"]
-auth-jwt = ["auth", "rullst-auth/jwt"]
+default = []
+nexus = []
+studio = []
+auth = []
 mailer = ["mail-smtp"]
-redis = ["queue-redis", "cache-redis"]
-queue-redis = ["dep:redis", "rullst-core/queue-redis"]
-cache-redis = ["dep:redis", "rullst-core/cache-redis"]
-mail-smtp = ["dep:rullst-mail", "rullst-mail/mail-smtp"]
+queue-redis = ["dep:redis"]
+cache-redis = ["dep:redis"]
+mail-smtp = ["dep:lettre"]
 oauth = ["dep:rullst-connect"]
-ai = ["dep:rullst-ai"]
-capital = ["dep:rullst-capital"]
-security = ["dep:rullst-security"]
-security-redis = ["security", "rullst-security/redis-rate-limit"]
-iot = ["dep:rullst-iot"]
-telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "rullst-core/telemetry"]
-strict-postgres = ["orm", "rullst-core/strict-postgres"]
-strict-mysql = ["orm", "rullst-core/strict-mysql"]
-strict-sqlite = ["orm", "rullst-core/strict-sqlite"]
+telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
-toml = { workspace = true }
-rullst-macros = { workspace = true }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+toml = "1.1.2"
+rullst-macros = { version = "5.0.0", path = "../rullst-macros" }
 # Optional features dependencies
-redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
-rullst-connect = { workspace = true, optional = true }
-rullst-iot = { workspace = true, optional = true }
-urlencoding = { workspace = true }
-subtle = { workspace = true }
-tracing-opentelemetry = { workspace = true, optional = true }
-opentelemetry = { workspace = true, optional = true }
-opentelemetry-otlp = { workspace = true, optional = true, features = ["reqwest-client", "http-proto", "reqwest-rustls"] }
-opentelemetry_sdk = { workspace = true, optional = true, features = ["rt-tokio"] }
+redis = { version = "1.2.2", features = ["tokio-comp", "aio"], optional = true }
+lettre = { version = "0.11.22", optional = true, default-features = false, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
+rullst-connect = { version = "11.0.0", optional = true }
+urlencoding = "2.1.3"
+subtle = "2.6.1"
+tracing-opentelemetry = { version = "0.33.0", optional = true }
+opentelemetry = { version = "0.32.0", optional = true }
+opentelemetry-otlp = { version = "0.32.0", optional = true, features = ["reqwest-client", "http-proto", "reqwest-rustls"] }
+opentelemetry_sdk = { version = "0.32.1", optional = true, features = ["rt-tokio"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum = { workspace = true, features = ["macros", "ws"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
-rullst-orm = { workspace = true, optional = true }
-tower = { workspace = true, features = ["util"] }
-tower-http = { workspace = true, features = ["fs", "trace", "cors"] }
-tower-layer = { workspace = true }
-tower-service = { workspace = true }
-async-trait = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
-chrono = { workspace = true, features = ["clock"] }
-validator = { workspace = true, features = ["derive"] }
-rullst-core = { workspace = true }
-rullst-auth = { workspace = true, optional = true }
-rullst-mail = { workspace = true, optional = true }
-rullst-ai = { workspace = true, optional = true }
-rullst-nexus = { workspace = true, optional = true }
-rullst-capital = { workspace = true, optional = true }
-rullst-studio = { workspace = true, optional = true }
-rullst-security = { workspace = true, optional = true }
-
-tracing = { workspace = true }
-tracing-core = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
+axum = { version = "0.8.9", features = ["macros", "ws"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time", "fs", "io-util"] }
+rullst-orm = "=6.1.1"
+sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio", "macros"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.7.0", features = ["fs", "trace", "cors"] }
+tower-layer = "0.3.3"
+tower-service = "0.3.3"
+async-trait = "0.1.89"
+argon2 = "0.5.3"
+rand = "0.10.1"
+aes-gcm = "0.10.3"
+sha2 = "0.11.0"
+base64 = "0.22.1"
+subtle = "2.6.1"
+serde_urlencoded = "0.7"
+uuid = { version = "1.23.3", features = ["v4"] }
+dashmap = "6.2.1"
+cron = "0.17.0"
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+validator = { version = "0.20.0", features = ["derive"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
+libloading = "0.9.0"
+notify = "8.2.0"
+ring = { version = "0.17.14", features = ["std"] }
+tracing = "0.1"
+tracing-core = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -92,19 +81,12 @@ console_error_panic_hook = "0.1.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 futures-util = "0.3.32"
 tokio-tungstenite = "0.29.0"
 criterion = { version = "0.8.2", features = ["html_reports", "async_tokio"] }
 proptest = "1.11.0"
 insta = { version = "1.41", features = ["yaml"] }
-reqwest = "0.13.4"
-base64 = "0.23.0"
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
 
 [[bench]]
 name = "rullst_bench"
 harness = false
-
-[package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

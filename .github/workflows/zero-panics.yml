@@ -4,96 +4,35 @@ on:
   push:
     branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+defaults:
+  run:
+    working-directory: Rullst
 
 jobs:
   check-panics:
-    name: Enforce Zero Panics (published runtime targets)
+    name: Enforce Zero Panics
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout Rullst
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          path: Rullst
+
+      - name: Checkout rullst-orm
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: venelouis/rullst-orm
+          path: rullst-orm
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
         with:
           components: clippy
-          target: wasm32-unknown-unknown
 
-      - name: Run Clippy (Deny Panics) — native libraries and macro engines
-        # Both procedural-macro crates are included because they generate
-        # application runtime code. Tests are intentionally excluded here:
-        # assertion helpers may panic by design and are covered by `cargo test`.
-        # rullst-core::testing is downstream assertion support; its explicit
-        # assertion-failure panics are test semantics, not an application path.
-        run: |
-          cargo clippy \
-            -p rullst \
-            -p rullst-core \
-            -p rullst-security \
-            -p rullst-orm \
-            -p rullst-orm-macros \
-            -p rullst-macros \
-            -p rullst-connect \
-            -p rullst-auth \
-            -p rullst-mail \
-            -p rullst-ai \
-            -p rullst-nexus \
-            -p rullst-capital \
-            -p rullst-studio \
-            -p rullst-iot \
-            --lib --all-features \
-            -- \
-            -D clippy::unwrap_used \
-            -D clippy::expect_used \
-            -D clippy::panic \
-            -D clippy::todo \
-            -D clippy::unimplemented
-
-      - name: Run Clippy (Deny Panics) — cargo-rullst production targets
-        # `--lib --bins` covers the CLI engine and every shipped executable
-        # without compiling `#[cfg(test)]` modules under the panic-deny lints.
-        run: |
-          cargo clippy \
-            -p cargo-rullst \
-            --lib --bins --all-features \
-            -- \
-            -D clippy::unwrap_used \
-            -D clippy::expect_used \
-            -D clippy::panic \
-            -D clippy::todo \
-            -D clippy::unimplemented
-
-      - name: Verify zero-panic CLI runtime templates
-        # Runtime Rust embedded in scaffold strings is not visible to Clippy;
-        # generator regression tests parse and inspect the emitted source.
-        run: |
-          cargo test \
-            -p cargo-rullst --lib \
-            generators::
-
-      - name: Verify zero-panic ORM runtime expansion
-        # Clippy checks the proc-macro engine; this regression test separately
-        # inspects the runtime token stream emitted by #[derive(Orm)].
-        run: |
-          cargo test \
-            -p rullst-orm-macros --lib \
-            generated_runtime_code_has_no_panicking_calls
-
-      - name: Run Clippy (Deny Panics) — Wasm client path
-        run: |
-          cargo clippy \
-            -p rullst-core \
-            --lib --target wasm32-unknown-unknown --no-default-features \
-            -- \
-            -D clippy::unwrap_used \
-            -D clippy::expect_used \
-            -D clippy::panic \
-            -D clippy::todo \
-            -D clippy::unimplemented
+      - name: Run Clippy (Deny Panics)
+        run: cargo clippy -p rullst --lib --all-features -- -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented

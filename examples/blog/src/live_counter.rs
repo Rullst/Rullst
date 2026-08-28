@@ -1,7 +1,7 @@
 use rullst::html;
 use rullst::live_component;
 
-/// Our Rullst Live component. All state lives on and is managed by the server!
+/// Nosso componente Rullst Live. Todo o estado vive e é operado pelo servidor!
 #[live_component]
 #[derive(Default)]
 pub struct CounterComponent {
@@ -11,7 +11,7 @@ pub struct CounterComponent {
 #[live_component]
 impl CounterComponent {
     pub fn mount(&mut self) {
-        // Initialize state. You could even fetch things from the DB here using rullst-orm!
+        // Inicializa o estado. Você poderia até buscar coisas do DB aqui usando o rullst-orm!
         self.count = 0;
     }
 
@@ -37,29 +37,26 @@ impl CounterComponent {
                     {self.count}
                 </div>
 
-                <form ws-send="true" style="display: flex; gap: 1rem; justify-content: center; margin: 0;">
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+
                     <button
-                        type="submit"
-                        name="rullst_event"
-                        value="decrement"
+                        hx-vals=r#"{"rullst_event": "decrement"}"#
                         aria-label="Decrease counter"
                         style="padding: 0.75rem 1.5rem; background: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
-                        "- Decrease"
+                        "- Diminuir"
                     </button>
                     <button
-                        type="submit"
-                        name="rullst_event"
-                        value="increment"
+                        hx-vals=r#"{"rullst_event": "increment"}"#
                         aria-label="Increase counter"
                         style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;"
                     >
-                        "+ Increase"
+                        "+ Aumentar"
                     </button>
-                </form>
+                </div>
 
                 <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem;">
-                    "✨ Rust Magic: Zero JS files created. All state is maintained on the server and re-renders are sent via WebSockets by Rullst!"
+                    "✨ Mágica do Rust: Nenhum arquivo JS criado. Todo o estado é mantido no servidor e as re-renderizações são feitas e enviadas via WebSockets pelo Rullst!"
                 </p>
             </div>
         }

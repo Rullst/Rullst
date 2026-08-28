@@ -48,7 +48,7 @@ extra_directives = ""
 [env]
 # Environment variables injected into the container at runtime.
 # Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
-RULLST_ENV = "production"
+APP_ENV = "production"
 APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
 DATABASE_URL = "sqlite:///app/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""

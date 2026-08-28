@@ -1,5 +1,3 @@
-#![cfg(feature = "queue-sqlite")]
-
 use rullst::queue::{Queue, Worker};
 use serde_json::json;
 

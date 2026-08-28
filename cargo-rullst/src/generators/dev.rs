@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 use crate::generators::is_rullst_project;
 use axum::{
     Router,
@@ -59,7 +58,12 @@ struct AppState {
     tx: broadcast::Sender<String>,
 }
 
-use crate::ui::dash_tui::LogMsg;
+#[derive(Debug)]
+pub enum LogMsg {
+    AppStdout(String),
+    AppStderr(String),
+    System(String),
+}
 
 #[tokio::main]
 pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -91,12 +95,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(3000);
-    let ws_port = port.checked_add(1).ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "PORT must be lower than 65535 so the HMR socket can use the next port",
-        )
-    })?;
+    let ws_port = port + 1;
 
     let ws_app = Router::new()
         .route("/_rullst_hmr", get(ws_handler))
@@ -133,14 +132,8 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let mut app_child = cmd.spawn()?;
 
     if is_dash {
-        let stdout = app_child
-            .stdout
-            .take()
-            .ok_or_else(|| std::io::Error::other("cargo stdout was not piped for the dashboard"))?;
-        let stderr = app_child
-            .stderr
-            .take()
-            .ok_or_else(|| std::io::Error::other("cargo stderr was not piped for the dashboard"))?;
+        let stdout = app_child.stdout.take().unwrap();
+        let stderr = app_child.stderr.take().unwrap();
         let tx1 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
@@ -162,37 +155,19 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
     let watcher_task = tokio::spawn(async move {
         let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
         let mut watcher =
-            match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
                     let _ = notify_tx.blocking_send(event);
                 }
-            }) {
-                Ok(watcher) => watcher,
-                Err(error) => {
-                    let message = format!("❌ Failed to initialize the file watcher: {error}");
-                    if is_dash {
-                        let _ = log_tx_watcher.send(LogMsg::System(message));
-                    } else {
-                        eprintln!("{message}");
-                    }
-                    return;
-                }
-            };
+            })
+            .unwrap();
 
-        for (path, mode) in [
-            (Path::new("src"), RecursiveMode::Recursive),
-            (Path::new("Cargo.toml"), RecursiveMode::NonRecursive),
-        ] {
-            if let Err(error) = watcher.watch(path, mode) {
-                let message = format!("❌ Failed to watch {}: {error}", path.display());
-                if is_dash {
-                    let _ = log_tx_watcher.send(LogMsg::System(message));
-                } else {
-                    eprintln!("{message}");
-                }
-                return;
-            }
-        }
+        watcher
+            .watch(Path::new("src"), RecursiveMode::Recursive)
+            .unwrap();
+        watcher
+            .watch(Path::new("Cargo.toml"), RecursiveMode::NonRecursive)
+            .unwrap();
 
         let m = "✨ Watching for file changes... (Press Ctrl+C to stop)"
             .green()
@@ -212,9 +187,10 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         {
             if entry.path().is_file()
                 && entry.path().extension().and_then(|e| e.to_str()) == Some("rs")
-                && let Ok(content) = fs::read_to_string(entry.path())
             {
-                file_cache.insert(entry.path().to_path_buf(), content);
+                if let Ok(content) = fs::read_to_string(entry.path()) {
+                    file_cache.insert(entry.path().to_path_buf(), content);
+                }
             }
         }
 
@@ -251,7 +227,19 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                 }
             }
 
-            if html_changed || logic_changed {
+            if html_changed && !logic_changed {
+                let m = "🎨 UI change detected. Sending HTML fragment via WebSocket..."
+                    .magenta()
+                    .to_string();
+                if is_dash {
+                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                } else {
+                    println!("{}", m);
+                }
+                let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
+            }
+
+            if logic_changed {
                 let m = "🔄 File change detected. Recompiling library for Hot-Swap..."
                     .yellow()
                     .to_string();
@@ -283,8 +271,6 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                                 } else {
                                     println!("{}", m);
                                 }
-                                // Notify browser via WebSocket to morph DOM with updated server response
-                                let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
                             }
                             Err(_) => {
                                 let m =
@@ -299,7 +285,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                             }
                         }
                     } else {
-                        let m = "❌ Build failed. Please fix compilation errors to Hot-Swap."
+                        let m = "❌ Build failed. Please fix errors to Hot-Swap."
                             .red()
                             .to_string();
                         if is_dash {
@@ -372,13 +358,11 @@ fn build_and_migrate() {
         }
     }
 
-    if std::path::Path::new("src/migrations").exists() {
-        println!("{}", "📦 Executing pending database migrations...".yellow());
-        let _ = Command::new("cargo")
-            .arg("run")
-            .arg("-q")
-            .arg("--")
-            .arg("db:migrate")
-            .status();
-    }
+    println!("{}", "📦 Executing pending database migrations...".yellow());
+    let _ = Command::new("cargo")
+        .arg("run")
+        .arg("-q")
+        .arg("--")
+        .arg("db:migrate")
+        .status();
 }

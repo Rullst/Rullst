@@ -1,7 +1,7 @@
 # Rullst Blueprints Roadmap 🗺️
 ### *"The Ultimate High-Performance Blueprints Collection for Rullst"*
 
-This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide reviewable application starting points with explicit production checklists and capability boundaries.
+This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide developers and agencies with complete, "production-ready" solutions that highlight the performance, security, and productivity advantages of the Rust + Rullst ecosystem.
 
 ---
 
@@ -9,7 +9,7 @@ This document maps the expansion plan for the Rullst **Starter Blueprints** ecos
 Every blueprint added to the CLI must meet three fundamental principles:
 1. **Immediate Wow Factor:** Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.
 2. **Native Rust/Rullst Features:** Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).
-3. **Production-minded defaults:** Generate `.env.example`, database configuration, and a conservative `.gitignore`; deployment readiness remains an application-level review.
+3. **Production-Ready:** Automatically generate `.env.example`, database configurations with concurrency locks, and a bulletproof `.gitignore`.
 
 ---
 
@@ -18,7 +18,8 @@ Every blueprint added to the CLI must meet three fundamental principles:
 | ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|
 | **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/Medium businesses with an offline-first, crash-immune system. |
-| **5** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
+| **5** | 📡 Uptime Monitoring Service | Asynchronous Workers (`rullst::queue`) + Health Checks | Uptime Kuma alternative running on a $5 VPS with zero memory usage. |
+| **6** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
 | **7** | 🤖 AI Agent & RAG Boilerplate | `rullst::ai` (Ollama/Gemini/OpenAI) + Local Vector Embedding | Intelligent parsing of local and private PDF/TXT documents. |
 | **8** | 🪙 AI Credit-Based SaaS | Streaming (SSE) + `rullst-orm` (Concurrency Lock) + Stripe | AI SaaS platforms with token consumption secured against race conditions. |
 | **9** | 🏥 Scheduling & Clinics | HTMX Calendar + Cron Scheduler + Double-Booking Locks | Barbershops, doctors, and freelancers with duplicate reservation prevention. |

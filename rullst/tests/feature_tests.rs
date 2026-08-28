@@ -1,12 +1,9 @@
-#[cfg(feature = "orm")]
-use rullst::feature::DbFeatureDriver;
 use rullst::feature::{
-    self, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
+    self, DbFeatureDriver, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver,
+    TomlFeatureDriver,
 };
-#[cfg(feature = "orm")]
 use rullst_orm::Orm;
 use std::fs;
-#[cfg(feature = "orm")]
 use std::time::Duration;
 
 #[tokio::test]
@@ -157,24 +154,15 @@ invalid-split = "variant:not-a-number,variant2:50"
     let _ = fs::remove_file("Rullst.toml");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[cfg(feature = "orm")]
-#[cfg_attr(
-    any(miri, test),
-    ignore = "Disabled in workspace tests due to sqlx AnyPool resolving to PgPool under --all-features"
-)]
+#[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_database_feature_driver() {
-    // 1. Initialize SQLite in-memory database (pool size 1 to avoid sqlx connection pool timeouts)
-    // We use a private memory database (`sqlite::memory:`) with a single connection.
-    // This avoids any file locking or shared memory lock contention under llvm-cov.
-    Orm::init_with_options("sqlite::memory:", 1, 10)
-        .await
-        .expect("Failed to init ORM in test");
-    let pool = Orm::pool().expect("ORM should be initialized");
+    // 1. Initialize SQLite in-memory database
+    let _ = Orm::init("sqlite:file:memdb1?mode=memory&cache=shared").await;
+    let pool = Orm::pool();
 
-    let _ = sqlx::query("DROP TABLE IF EXISTS rullst_feature_flags")
-        .execute(pool)
-        .await;
+    // Acquire and hold a connection to keep the in-memory database alive
+    let _conn = pool.acquire().await.unwrap();
 
     // 2. Create the table schema
     sqlx::query(
@@ -229,12 +217,6 @@ async fn test_database_feature_driver() {
 
     // Cache has expired; should query the DB and fetch the new state (`false`)
     assert_eq!(db_driver.enabled("db-dashboard").await, Some(false));
-
-    // 6. Cleanup
-    pool.close().await;
-    let _ = std::fs::remove_file("feature_db_test_1.db");
-    let _ = std::fs::remove_file("feature_db_test_1.db-shm");
-    let _ = std::fs::remove_file("feature_db_test_1.db-wal");
 }
 
 #[tokio::test]

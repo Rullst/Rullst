@@ -7,20 +7,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Open Graph / Thumbnail Meta Tags -->
-  <meta property="og:title" content="Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework" />
+  <meta property="og:title" content="Rullst - Rust Fullstack Web Framework" />
   <meta property="og:description"
-    content="The AI-Native full-stack Rust web framework designed for maximum performance, security, and developer productivity. Ditch the boilerplate and ship your startup today." />
+    content="The developer-first full-stack web framework designed obsessively for emotional productivity. Ditch the boilerplate and ship your startup today." />
   <meta property="og:image" content="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
   <meta property="og:type" content="website" />
 
   <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework" />
+  <meta name="twitter:title" content="Rullst - Rust Fullstack Web Framework" />
   <meta name="twitter:description"
-    content="The AI-Native full-stack Rust web framework designed for maximum performance, security, and developer productivity. Ditch the boilerplate and ship your startup today." />
+    content="The developer-first full-stack web framework designed obsessively for emotional productivity. Ditch the boilerplate and ship your startup today." />
   <meta name="twitter:image" content="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
 
-  <title>Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework</title>
+  <title>Rullst - Rust Fullstack Web Framework</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -36,8 +36,7 @@
   <nav class="navbar">
     <div class="nav-content">
       <div class="logo">
-        <span>📜🦀🌐 Rullst <small
-            style="font-size: 0.6em; color: #10b981; font-family: 'JetBrains Mono', monospace;">v12.0.0</small></span>
+        <span>📜🦀🌐 Rullst</span>
       </div>
       <div class="hamburger" id="hamburger">
         <span class="bar"></span>
@@ -46,19 +45,17 @@
       </div>
       <div class="nav-links" id="nav-links">
         <a href="https://github.com/Rullst/Rullst" target="_blank" class="btn btn-outline">⭐ GitHub</a>
-
+        
         <a href="/Rullst/book/" class="btn btn-outline"
-          style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📖
-          mdBook</a>
+          style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📖 mdBook</a>
+          
+        <a href="https://github.com/Rullst/Rullst/tree/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
+          style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub Docs</a>
 
-        <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
-          style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub
-          Docs</a>
-
-        <a href="#benches" class="btn btn-outline"
+        <a href="/Rullst/benches/" class="btn btn-outline"
           style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05);">📊
           Interactive Benches</a>
-
+          
         <a href="https://github.com/Rullst/Benchmarks" target="_blank" class="btn btn-outline"
           style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05);">📈
           CI Benchmarks</a>
@@ -69,8 +66,8 @@
   <header class="hero">
     <div class="hero-content">
       <h1 class="hero-title">Rust for those who want to <span class="text-gradient">build</span>, not suffer.</h1>
-      <p class="hero-subtitle">The AI-Native, developer-first full-stack Rust web framework designed for ultimate
-        productivity, zero-panic runtime safety, and seamless LLM agent collaboration.</p>
+      <p class="hero-subtitle">The developer-first full-stack web framework designed obsessively for emotional
+        productivity. Ditch the boilerplate and ship your startup today.</p>
 
       <div class="hero-cta">
         <button class="btn btn-primary" id="copy-install">cargo install cargo-rullst</button>
@@ -80,150 +77,46 @@
       <div class="badges">
         <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io">
         <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-        <img src="https://img.shields.io/badge/Release-v12.0.0-emerald.svg?style=for-the-badge" alt="Version 12.0.0">
       </div>
     </div>
   </header>
 
-  <section id="philosophy" style="padding: 6rem 1rem 2rem 1rem; max-width: 850px; margin: 0 auto;">
-    <div class="glass"
-      style="padding: 3rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: left; background: rgba(15, 23, 42, 0.6);">
+  <section id="philosophy" style="padding: 6rem 1rem 2rem 1rem; max-width: 800px; margin: 0 auto;">
+    <div class="glass" style="padding: 3rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: left; background: rgba(15, 23, 42, 0.6);">
       <h2 class="section-title" style="margin-bottom: 1.5rem; text-align: left;">💡 The Rullst Philosophy</h2>
       <p style="color: #cbd5e1; line-height: 1.8; margin-bottom: 1.5rem; font-size: 1.05rem;">
-        Unlike other frameworks, Rullst strives to be <strong>simultaneously simple and complete</strong>, with a
-        relentless focus on <strong>security</strong>, <strong>AI-native architecture</strong>, and <strong>developer
-          experience (DX)</strong>.
+        Unlike other frameworks, Rullst strives to be <strong>simultaneously simple and complete</strong>, with a relentless focus on <strong>security</strong> and <strong>developer experience (DX)</strong>.
       </p>
       <p style="color: #cbd5e1; line-height: 1.8; margin-bottom: 1.5rem; font-size: 1.05rem;">
-        The origins of this philosophy can be traced back to the creation of Rust by Graydon Hoare, who sought memory
-        safety to eliminate runtime elevator crashes. Rullst carries this exact mindset into web development:
-        eliminating runtime panics, hidden reflection magic, and framework guesswork.
+        The origins of this philosophy can be traced back to the very creation of the Rust programming language. Graydon Hoare, the original creator of Rust, lived in a building with an elevator that kept crashing due to software bugs in its underlying C/C++ code. Frustrated by having to climb the stairs because of memory safety vulnerabilities, he set out to create a language that was incredibly fast, yet guaranteed memory safety by design.
+      </p>
+      <p style="color: #cbd5e1; line-height: 1.8; margin-bottom: 1.5rem; font-size: 1.05rem;">
+        Rullst was forged with this exact mindset. We believe that web development shouldn't be a constant struggle against the framework, the language, or runtime bugs. 
       </p>
       <h3 style="color: #38bdf8; margin-bottom: 1rem; margin-top: 2rem; font-size: 1.25rem;">Our Core Tenets</h3>
       <ul style="color: #94a3b8; font-size: 1rem; line-height: 1.8; padding-left: 1.5rem;">
-        <li style="margin-bottom: 1rem;"><strong>Simple yet Complete:</strong> Batteries included out-of-the-box:
-          Parameterized ORM, JWT & Session Auth, RASP Security Shield, Local/Cloud AI Client, SaaS Billing, and
-          Real-Time Telemetry.</li>
-        <li style="margin-bottom: 1rem;"><strong>AI-Native & Token Efficient:</strong> Strongly typed static dispatch
-          (`impl Trait`) and macro delimiters (`routes!`, `html!`) save up to 70% in LLM prompt token context when
-          building with Cursor, Claude, or Copilot.</li>
-        <li><strong>Zero-Panic Production Guarantee:</strong> All runtime paths use typed `AppError` enums. No
-          unexpected panics in production.</li>
+        <li style="margin-bottom: 1rem;"><strong>Simple yet Complete:</strong> We solve the hardest web development problems out-of-the-box securely, without sacrificing simplicity or completeness.</li>
+        <li><strong>Built for Humans and AIs:</strong> Rullst is architected to be highly legible. It empowers both human developers and AI coding agents to collaborate and build production-ready systems rapidly, even without deep prior framework knowledge.</li>
       </ul>
     </div>
   </section>
 
-  <!-- How to build a SaaS with Rullst -->
-  <section id="video-demo" style="padding: 4rem 1rem 2rem 1rem; text-align: center; max-width: 850px; margin: 0 auto;">
+  <section id="video-demo" style="padding: 6rem 1rem 2rem 1rem; text-align: center; max-width: 650px; margin: 0 auto;">
     <h2 class="section-title" style="margin-bottom: 2rem;">How to build a SaaS with Rullst</h2>
     <div
-      style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); margin-bottom: 3rem;">
+      style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
       <iframe src="https://www.youtube.com/embed/nDXLeNM327g?si=WNhDumJlkfj3VkNG" title="YouTube video player"
         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
       </iframe>
     </div>
-
-    <div class="docs-tabs-container glass" style="border-radius: 16px; overflow: hidden; text-align: left;">
-      <div class="docs-tabs-header"
-        style="display: flex; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
-        <button class="doc-tab active" data-tab="orm"
-          style="padding: 1rem 1.5rem; color: #38bdf8; background: transparent; border: none; border-bottom: 2px solid #38bdf8; font-weight: 600; cursor: pointer; white-space: nowrap;">🗄️
-          ORM & Models</button>
-        <button class="doc-tab" data-tab="ssr"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🎨
-          html! Macro</button>
-        <button class="doc-tab" data-tab="routing"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🛡️
-          Security & Auth</button>
-        <button class="doc-tab" data-tab="ai"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🤖
-          AI & Guardrails</button>
-      </div>
-
-      <div class="docs-tabs-content" style="padding: 2rem;">
-        <!-- Tab 1: ORM -->
-        <div id="tab-orm" class="doc-tab-pane" style="display: block;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Active Record & Parameterized SQLx ORM</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Declare models with type-safe macros,
-            transparent field encryption, and zero SQL injection vulnerability.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #a78bfa; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_orm::Orm;
-use rullst::db::FromRow;
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "users")]
-pub struct User {
-    pub id: i32,
-    pub email: String,
-    #[orm(encrypted)] // Transparent Vault field encryption
-    pub ssn: String,
-}
-
-// Simple Active Record queries
-let user = User::find(1).await?;
-let all_users = User::all().await?;</code></pre>
-        </div>
-
-        <!-- Tab 2: SSR -->
-        <div id="tab-ssr" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Native html! Macro & Zero-Bundle SSR</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Blazing-fast JSX-like syntax in pure
-            Rust that compiles directly into optimized static strings without runtime Virtual DOM overhead.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #34d399; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst::html;
-
-fn dashboard_view(user: &User) -> String {
-    html! {
-        <div class="p-8 bg-slate-900 text-white rounded-2xl shadow-xl">
-            <h1 class="text-2xl font-bold text-emerald-400">"Welcome back, " { &user.email }</h1>
-            <p class="text-slate-400 mt-2">"Your account is protected by RASP and Argon2id."</p>
-        </div>
-    }
-}</code></pre>
-        </div>
-
-        <!-- Tab 3: Routing & Security -->
-        <div id="tab-routing" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">RASP Protection & Granular RBAC</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Pre-controller threat shield,
-            Passkeys/WebAuthn, and ownership-based BOLA protection.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_security::{RbacGuard, HtmlSanitizer};
-use rullst_core::AppError;
-
-pub async fn update_document(user: User, doc_owner_id: i32) -> Result<(), AppError> {
-    // Ensures current user owns resource or has 'admin' role
-    RbacGuard::authorize_owner_or_role(&user, doc_owner_id, "admin")
-        .map_err(|e| AppError::Forbidden(e))?;
-
-    let safe_content = HtmlSanitizer::sanitize("<b>User Content</b>");
-    Ok(())
-}</code></pre>
-        </div>
-
-        <!-- Tab 4: AI -->
-        <div id="tab-ai" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Provider-Agnostic AI Client (`rullst-ai`)</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Connect to ANY local runner (Ollama, LM
-            Studio, vLLM, LocalAI) or commercial cloud (Gemini, Claude, OpenAI, DeepSeek) with prompt injection filters
-            and PII masking.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #06b6d4; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_ai::ai::{AiClient, AiGuardrails, Message};
-
-let client = AiClient::auto()?; // Detects Ollama / LM Studio / Gemini / OpenAI credentials
-let clean_prompt = AiGuardrails::sanitize_prompt(&user_prompt);
-
-let response = client.prompt(&clean_prompt).await?;</code></pre>
-        </div>
-      </div>
-    </div>
   </section>
 
-  <!-- The Full-Stack Feature Matrix (Identical to README) -->
-  <section id="feature-matrix" style="padding: 4rem 1rem; max-width: 950px; margin: 0 auto;">
+  <section id="feature-matrix" style="padding: 4rem 1rem; max-width: 900px; margin: 0 auto;">
     <h2 class="section-title" style="text-align: center; margin-bottom: 2rem;">The Full-Stack Feature Matrix</h2>
-    <div
-      style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-      <table
-        style="width: 100%; border-collapse: collapse; text-align: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px);">
+    <div style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+      <table style="width: 100%; border-collapse: collapse; text-align: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px);">
         <thead>
           <tr style="background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
             <th style="padding: 1rem; text-align: left; font-weight: 600;">Feature</th>
@@ -236,255 +129,88 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
         </thead>
         <tbody style="color: #cbd5e1;">
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">HTTP & High-Performance Routing
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Axum Engine)</span></td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">HTTP & Routing</td>
+            <td style="padding: 1rem;">✅</td>
             <td style="padding: 1rem;">✅</td>
             <td style="padding: 1rem;">✅</td>
             <td style="padding: 1rem;">✅ (SSR)</td>
             <td style="padding: 1rem;">✅</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Active Record & Data Mapper ORM
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-orm)</span></td>
-            <td style="padding: 1rem;">✅ (SeaORM)</td>
-            <td style="padding: 1rem;">✅ (Toasty)</td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Built-in ORM</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Rullst-ORM)</span></td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(SeaORM)</span></td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Toasty)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Compile-Time Zero-Cost DI
-              Container</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::di &
-                Inject&lt;T&gt;)</span></td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Interactive CLI Dashboard</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Rullst Studio)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">1-Click PaaS Cloud Deployment
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst deploy)</span>
-            </td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Auto-Generated Admin Panel</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Rullst Nexus)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">RASP Security Layer
-              (Pre-Controller)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-security)</span></td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Wasm Islands (Frontend)</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Pure Rust)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Core focus)</span></td>
+            <td style="padding: 1rem;">❌</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Reactive SSR (No-JS)</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Pure Rust)</span></td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Signals)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Passkeys & WebAuthn (FIDO2)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-auth::passkey)</span>
-            </td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Mobile/Desktop Apps</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Tauri Integration)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Granular RBAC & Permission
-              Matrix</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-auth::rbac)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Dioxus)</span></td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Zero-Trust Device Fingerprinting
-            </td>
-            <td style="padding: 1rem;">✅ <span
-                style="font-size: 0.85em; color: #10b981;">(rullst-security::zero_trust)</span></td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Hybrid Hot-Reloading</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Built-in)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Rullst Vault & Field Encryption
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(#[orm(encrypted)] +
-                Zeroize)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Synthetic Honeypots & Bot Ban
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-honey)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">HMAC Cryptographic Audit Log
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-audit-log)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Visual Threat Radar (SOC
-              Dashboard)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(/studio/security)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Air-Gapped Local & Multi-Cloud
-              AI</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Ollama, LM Studio, vLLM,
-                OpenAI, Claude, Gemini)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">LiveView Reactive UI</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::live +
-                make:live)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">✅ (Signals)</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">gRPC Microservices & Protobuf
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-grpc / Tonic)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Kubernetes Native Manifests &
-              Probes</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(make:k8s + /health)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Interactive Scalar API Docs</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Built-in /docs)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Web-based Database Studio</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Rullst Studio :5555)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Auto-Generated Admin Panel (CMS)
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Rullst Nexus /nexus)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Kernel Telemetry & Prometheus
-              Exporter</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::radar +
-                /metrics)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">IoT Data & Frame Helpers
-              (#![no_std])</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-iot;
-                transports and hardware adapters are roadmap work)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">SaaS Revenue Dashboard & Stripe
-              Billing</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-capital)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Background Workers & Redis
-              Queues</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::queue)</span></td>
-            <td style="padding: 1rem;">✅ (Task worker)</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Wasm Islands & Hybrid SSR</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(#[client_component])</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">✅ (Core focus)</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">TypeScript AST SDK Generator
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst
-                generate:ts)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Zero-Panics Policy Enforced</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Typed AppError &
-                Lints)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Dioxus)</span></td>
             <td style="padding: 1rem;">❌</td>
           </tr>
           <tr>
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Framework Escape Hatch (Zero
-              Lock-in)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst eject)</span>
-            </td>
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Zero-Panics Policy</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Enforced)</span></td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+          </tr>
+          <tr style="border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">TypeScript SDK Generator</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Built-in)</span></td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+            <td style="padding: 1rem;">❌</td>
+          </tr>
+          <tr style="border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">OpenTelemetry Integration</td>
+            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #94a3b8;">(Built-in)</span></td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
             <td style="padding: 1rem;">❌</td>
@@ -495,12 +221,11 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
     </div>
   </section>
 
-  <!-- The Interactive CLI Experience -->
-  <section id="cli-demo" class="cli-demo-section" style="padding: 4rem 1rem;">
-    <h2 class="section-title">The Interactive CLI Experience</h2>
+  <section id="cli-demo" class="cli-demo-section">
+    <h2 class="section-title">The Interactive Experience</h2>
     <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Stop memorizing flags.
-      The Rullst CLI guides you through project setup, database migrations, authentication, AI configuration, and cloud
-      deployment interactively.</p>
+      The Rullst CLI guides you through project setup, database migrations, authentication, and cloud deployment
+      interactively.</p>
 
     <div class="code-container glass" style="max-width: 800px; margin: 0 auto;">
       <div class="code-header">
@@ -509,44 +234,49 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
           <span class="dot yellow"></span>
           <span class="dot green"></span>
         </div>
-        <span class="filename">bash — cargo rullst</span>
+        <span class="filename">bash</span>
       </div>
       <div class="terminal-body"
         style="padding: 1.5rem; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.6; color: #f8fafc; overflow-x: auto;">
         <pre style="margin: 0; color: #fef08a; font-weight: bold; line-height: 1.2; text-shadow: 2px 2px 0 #a16207;">
-  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗
-  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝
-  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   
-  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   
-  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   
-  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   
+██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗
+██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝
+██████╔╝██║   ██║██║     ██║     ███████╗   ██║   
+██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   
+██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   
 </pre>
         <div style="margin-top: 1.5rem;">
-          The <span style="color: #06b6d4;">Ultimate Full-Stack Rust Framework</span> <span
-            style="color: #fef08a; font-weight: bold;">v12.0.0</span><br>
+          The <span style="color: #06b6d4;">Ultimate Full-Stack Rust Framework</span>          <span
+            style="color: #fef08a;">v5.0.0</span><br>
           ⚡ <span style="color: #d946ef;">Security</span> · <span style="color: #d946ef;">Speed</span> · <span
             style="color: #d946ef;">Developer Experience</span> ⚡<br><br>
           <span style="color: #fef08a; font-weight: bold;">?</span> Navigate with ↑↓, confirm with Enter<br>
+          <span style="color: #64748b; font-weight: bold;">&gt;</span><br>
           <span style="color: #22c55e; font-weight: bold;">&gt; ✨ <span style="color: #38bdf8;">Create New
-              Project</span></span> <span style="color: #64748b;">(API, Fullstack or SaaS Blueprint)</span><br>
+              Project</span></span> <span style="color: #64748b;">(API, Fullstack or Dockerized)</span><br>
           &nbsp;&nbsp;📁 Already have a project? <span style="color: #64748b;">(Dev, Scaffold, DB, Auth,
             Deploy...)</span><br>
           &nbsp;&nbsp;💡 View Help & Commands <span style="color: #64748b;">(Framework Reference)</span><br>
-          &nbsp;&nbsp;❌ <span style="color: #94a3b8;">Exit</span>
+          &nbsp;&nbsp;❌ <span style="color: #94a3b8;">Exit</span> <span style="color: #64748b;">(Close interactive
+            menu)</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Official Benchmarks & Performance -->
-  <section class="benchmarks" style="padding: 4rem 1rem;">
+  <section id="benchmarks" class="benchmarks" style="padding: 6rem 1rem;">
     <h2 class="section-title">Official Benchmarks & Performance</h2>
     <p class="section-subtitle"
-      style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 800px; margin-inline: auto;">Rullst
-      delivers high throughput and low latencies comparable to raw Axum, but provides a fully furnished fullstack
-      experience out-of-the-box.</p>
+      style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 800px; margin-inline: auto;">Rullst is
+      designed to offer a "Best of Both Worlds" approach: the extreme productivity and feature-rich environment of
+      full-stack frameworks combined with the memory safety and high throughput of Rust.</p>
+    
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <a href="https://github.com/Rullst/Benchmarks" target="_blank" class="btn btn-primary">✨ View New Benchmarks ✨</a>
+    </div>
 
-    <!-- Bar charts -->
+    <!-- Bar charts for visual impact -->
     <div class="features-grid"
       style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto 3rem auto;">
 
@@ -613,7 +343,7 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
               <div class="bar-track">
                 <div class="bar-fill" style="width: 12%; background: var(--gradient-primary);"></div>
               </div>
-              <span class="bar-text">1.07 µs</span>
+              <span class="bar-text">1.11 µs</span>
             </div>
           </div>
           <div class="bar-row">
@@ -647,29 +377,199 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
       </div>
     </div>
 
-    <!-- The Honest Conclusion on Throughput -->
-    <div
-      style="max-width: 1000px; margin: 0 auto 3rem auto; padding: 2rem; background: rgba(15, 23, 42, 0.4); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); text-align: left;">
-      <h3 style="color: #38bdf8; margin-bottom: 1rem; font-size: 1.2rem;">The Honest Conclusion on Throughput</h3>
-      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-        Rullst is built directly on top of <strong>Axum</strong> and <strong>Tokio</strong>. As the data clearly shows,
-        adding a complete full-stack framework layer (Active Record ORM, CSRF protection, RASP runtime inspection, and
-        structured error boundaries) still comfortably handles <strong>over 10,000 requests per second</strong> with
-        sub-millisecond latency.
+    <!-- Full HTTP Load Tests Table -->
+    <div style="max-width: 1000px; margin: 0 auto 3rem auto; overflow-x: auto;">
+      <h3 style="color: #f8fafc; margin-bottom: 0.5rem; font-size: 1.5rem; text-align: center;">Black-Box HTTP Load
+        Tests (Tier 1)</h3>
+      <p
+        style="text-align: center; color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem; max-width: 700px; margin-inline: auto;">
+        Official <code>bombardier v2.0.2</code> load test suite running containerized applications under massive
+        concurrent load (125 connections, 10s duration).
       </p>
-      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-        Compared to dynamic ecosystems (Node.js, Python, PHP, Ruby), Rullst delivers <strong>10x to 50x higher
-          throughput</strong> and <strong>orders of magnitude lower memory consumption</strong>.
-      </p>
-      <p style="color: #38bdf8; font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; font-style: italic;">
-        If your goal is to build a full-fledged, secure, and maintainable SaaS product with databases, queues, AI
-        integrations, Hot-Reloading, and an Auto-CMS in a matter of days—while still enjoying bare-metal
-        speed—<strong>Rullst</strong> is your framework.
-      </p>
+      <table
+        style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.6); border-radius: 12px; overflow: hidden; text-align: right; font-size: 0.9rem;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.05);">
+            <th
+              style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left;">
+              Framework</th>
+            <th
+              style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left;">
+              Language</th>
+            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">Plaintext
+              (Reqs/s)</th>
+            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">Plaintext Latency
+            </th>
+            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">JSON (Reqs/s)
+            </th>
+            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">JSON Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Fiber (Go)</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Go</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">114,878.31</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">1.08ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">110,825.31</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">1.12ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Loco</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Rust</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">90,338.83</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">1.38ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">103,706.65</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">1.20ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Leptos</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Rust</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">43,919.60</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">2.86ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">61,585.17</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">2.03ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Gin (Go)</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Go</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">34,484.73</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">3.61ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">35,856.79</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">3.48ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Zap (Zig)</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Zig</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">29,933.82</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">4.17ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">25,616.38</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">4.87ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Axum</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Rust</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">27,418.26</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">4.55ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">19,468.15</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">6.46ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Actix-web</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Rust</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">25,250.49</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">5.00ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">21,216.37</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">6.03ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(16, 185, 129, 0.05);">
+            <td style="padding: 0.75rem 1rem; color: #10b981; font-weight: bold; text-align: left;">Rullst</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Rust</td>
+            <td style="padding: 0.75rem 1rem; color: #10b981;">13,063.31</td>
+            <td style="padding: 0.75rem 1rem; color: #10b981;">9.71ms</td>
+            <td style="padding: 0.75rem 1rem; color: #10b981;">10,847.17</td>
+            <td style="padding: 0.75rem 1rem; color: #10b981;">11.58ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Spring Boot</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Java</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">7,483.75</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">16.74ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">3,480.63</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">37.72ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Ruby on Rails</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Ruby</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">5,084.95</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">34.94ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">62.88</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">2.00s</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">NestJS</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">JavaScript</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">1,084.24</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">116.34ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">1,565.11</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">82.38ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Laravel Octane</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">PHP</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">566.08</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">218.65ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">536.45</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">233.78ms</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Django</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">Python</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">489.30</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">254.28ms</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">692.12</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">179.23ms</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc; font-weight: bold; text-align: left;">Next.js</td>
+            <td style="padding: 0.75rem 1rem; color: #94a3b8; text-align: left;">JavaScript</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">82.00</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">1.39s</td>
+            <td style="padding: 0.75rem 1rem; color: #f8fafc;">190.91</td>
+            <td style="padding: 0.75rem 1rem; color: #cbd5e1;">799.50ms</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Performance vs. DX Scorecard -->
-    <div style="max-width: 1000px; margin: 0 auto 4rem auto; overflow-x: auto;">
+    <!-- The Honest Conclusion -->
+    <div
+      style="max-width: 1000px; margin: 0 auto 3rem auto; padding: 2rem; background: rgba(15, 23, 42, 0.4); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05);">
+      <h3 style="color: #38bdf8; margin-bottom: 1rem; font-size: 1.2rem;">The Honest Conclusion on Throughput</h3>
+      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
+        Rullst is built on top of <strong>Axum</strong> and <strong>Tokio</strong>. As the data clearly shows, adding a
+        massive suite of developer tools (dynamic routing macros, security middlewares, resilience shields, database
+        ORMs) introduces a measurable "Framework Tax."
+      </p>
+      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1.5rem; font-size: 0.95rem;">
+        Under raw load, Rullst caps out at around <strong>~13,000 Reqs/s for Plaintext</strong> and <strong>~10,800
+          Reqs/s for JSON</strong>. While it does not beat the raw micro-framework speeds of pure Axum, Actix-web, or
+        Fiber, it still delivers <strong>massive performance</strong> compared to mainstream industry standards.
+      </p>
+
+      <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        <div>
+          <h4 style="color: #f8fafc; margin-bottom: 0.5rem; font-size: 1rem;">How Rullst Compares (JSON)</h4>
+          <ul style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem; padding-left: 1.2rem;">
+            <li><strong>~3x faster</strong> than Spring Boot</li>
+            <li><strong>~7x faster</strong> than NestJS</li>
+            <li><strong>~15x faster</strong> than Django</li>
+            <li><strong>~20x faster</strong> than Laravel Octane</li>
+            <li><strong>~57x faster</strong> than Next.js</li>
+            <li><strong>~172x faster</strong> than Ruby on Rails</li>
+          </ul>
+          <p style="color: #64748b; font-size: 0.8rem; font-style: italic; margin-top: 0.5rem;">
+            *Note: Laravel Octane was benchmarked with Swoole. Ruby on Rails struggled heavily in JSON serialization
+            under 125 concurrent connections, leading to deadlocks/timeouts similar to PHP workers under heavy load.
+          </p>
+        </div>
+        <div>
+          <h4 style="color: #f8fafc; margin-bottom: 0.5rem; font-size: 1rem;">Final Verdict</h4>
+          <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6;">
+            If your goal is to build an API that does absolutely nothing but return a string 120,000 times per second,
+            use <strong>Axum</strong>, <strong>Actix-web</strong>, or <strong>Fiber</strong>.
+          </p>
+          <p style="color: #38bdf8; font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; font-style: italic;">
+            If your goal is to build a full-fledged, secure, and maintainable SaaS product with databases, queues, AI
+            integrations, Hot-Reloading, and an Auto-CMS in a matter of days—while still comfortably supporting over
+            10,000 requests per second—<strong>Rullst</strong> is your framework.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance vs DX Scorecard -->
+    <div style="max-width: 1000px; margin: 0 auto; overflow-x: auto;">
       <h3 style="color: #f8fafc; margin-bottom: 1rem; font-size: 1.5rem; text-align: center;">Performance vs. DX
         Scorecard</h3>
       <table
@@ -688,45 +588,45 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
           </tr>
         </thead>
         <tbody>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(16, 185, 129, 0.05);">
-            <td style="padding: 1rem; color: #10b981; font-weight: bold;">Rullst</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">High-level fullstack APIs, ORM, Studio, Passkeys, RASP, and
-              Hot-Reloading with Rust memory safety.</td>
-          </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Axum / Actix</td>
             <td style="padding: 1rem; color: #94a3b8;">Rust</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Absolute maximum raw speed, but you must manually configure ORMs,
-              Auth, and background jobs.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Loco</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rails-like experience in Rust, good generators, but steeper
-              learning curve.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Leptos / Dioxus</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Great for fullstack WASM frontend, but backend API patterns are
-              tightly coupled to SSR.</td>
+            <td style="padding: 1rem; color: #94a3b8;">Absolute maximum speed, but you must build everything from
+              scratch.</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Fiber / Gin</td>
             <td style="padding: 1rem; color: #94a3b8;">Go</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Fast and simple, but lacks built-in fullstack features (Studio,
-              Admin Panel, Vault).</td>
+            <td style="padding: 1rem; color: #94a3b8;">Very fast and simple, but lacks the massive built-in features of
+              a true fullstack framework.</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(16, 185, 129, 0.05);">
+            <td style="padding: 1rem; color: #10b981; font-weight: bold;">Rullst</td>
+            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #94a3b8;">High-level fullstack APIs, ORM, Auth, and Hot-Reloading with
+              Rust's memory safety.</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 1rem; color: #f8fafc;">Loco</td>
+            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #94a3b8;">Rails-like experience in Rust, excellent speed but slightly
+              steeper learning curve.</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 1rem; color: #f8fafc;">Leptos</td>
+            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #94a3b8;">The king of Rust fullstack WASM frontend, but backend API
+              patterns are tied to SSR.</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Spring Boot</td>
@@ -734,265 +634,360 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
             <td style="padding: 1rem; color: #94a3b8;">Enterprise standard, decent speed, but heavy memory footprint and
-              extensive boilerplate.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">NestJS</td>
-            <td style="padding: 1rem; color: #94a3b8;">JS/TS</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Good architecture, but single-threaded event loop bottlenecks
-              under high load.</td>
+              boilerplate.</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Ruby on Rails</td>
             <td style="padding: 1rem; color: #94a3b8;">Ruby</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Pioneered batteries-included DX, but throughput is limited under
-              heavy concurrent traffic.</td>
+            <td style="padding: 1rem; color: #94a3b8;">The original "batteries included" framework. Beautiful DX, but
+              scales poorly under high load.</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 1rem; color: #f8fafc;">NestJS</td>
+            <td style="padding: 1rem; color: #94a3b8;">JS/TS</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #94a3b8;">Beautiful architecture, but heavily bottlenecked by Node.js
+              single thread under load.</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Laravel</td>
             <td style="padding: 1rem; color: #94a3b8;">PHP</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Incredible ecosystem and DX, but higher server costs to handle
-              equivalent load.</td>
+            <td style="padding: 1rem; color: #94a3b8;">Incredible ecosystem and DX, but poor raw throughput under high
+              concurrency.</td>
           </tr>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Django</td>
             <td style="padding: 1rem; color: #94a3b8;">Python</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Great batteries included framework, but CPU-bound operations
-              suffer from GIL bottlenecks.</td>
+            <td style="padding: 1rem; color: #94a3b8;">Great "batteries included" framework, but heavily bottlenecks
+              under high load.</td>
           </tr>
-          <tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 1rem; color: #f8fafc;">Next.js</td>
             <td style="padding: 1rem; color: #94a3b8;">JS/TS</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
             <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Popular for frontend SSR, but backend serverless functions
-              introduce cold starts and latency.</td>
+            <td style="padding: 1rem; color: #94a3b8;">Fantastic for frontend SSR, but backend API routes are very slow
+              under load.</td>
+          </tr>
+          <tr>
+            <td style="padding: 1rem; color: #f8fafc;">Zap</td>
+            <td style="padding: 1rem; color: #94a3b8;">Zig</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
+            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
+            <td style="padding: 1rem; color: #94a3b8;">Extremely low-level C-like performance, but almost non-existent
+              ecosystem/DX for web.</td>
           </tr>
         </tbody>
       </table>
     </div>
+  </section>
 
-    <!-- Why Rullst? Key Architectural Benefits -->
-    <div style="max-width: 1000px; margin: 0 auto 4rem auto;">
-      <h3 style="color: #f8fafc; margin-bottom: 2rem; font-size: 1.8rem; text-align: center;">Why Rullst? Key
-        Architectural Benefits</h3>
+  <section id="architecture" style="padding: 6rem 1rem; max-width: 1000px; margin: 0 auto;">
+    <h2 class="section-title">Why Rullst? Key Architectural Benefits</h2>
+    <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem;">
+      While Rullst competes closely in performance with bare-metal Rust frameworks like Axum and Actix-web, it stands
+      out due to its unique architectural choices designed for modern software development and AI collaboration:
+    </p>
 
-      <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; text-align: left;">
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Enterprise-Grade Security Shield
-          </h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst is "Secure by Design", shipping
-            natively with pre-controller RASP AST inspection, Passkeys/WebAuthn FIDO2 authentication, Double-Submit
-            CSRF, and synthetic bot honeypots.</p>
-        </div>
+    <div style="display: grid; gap: 1.5rem; grid-template-columns: 1fr;">
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🚀 Hybrid Hot-Reloading</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Sub-millisecond UI updates via WebSockets for your <code>html!</code> views, paired with Zero-downtime Dynamic Library (<code>.dll</code>/<code>.so</code>) hot-swapping for backend business logic. Enjoy Vite-like DX with a stateful Rust backend.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔐 Enterprise Vault & Zeroization</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Field-level transparent encryption
-            (<code>#[orm(encrypted)]</code>) paired with cryptographic memory wiping (<code>Zeroize</code>) ensuring
-            zero memory leak vulnerabilities.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Enterprise-Grade Security Matrix</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst is "Secure by Design", natively shipping
+          with OWASP ZAP DAST scanning, OSSF Scorecards, cargo-fuzz, cargo-mutants, and hardcore mitigations against
+          Timing Attacks, WAF bypasses, and CSRF DoS vectors out-of-the-box.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">⚡ Auto-Migrations in Dev Server</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Experience unmatched Developer Experience.
-            <code>cargo rullst dev</code> automatically and silently runs pending migrations before hot-reloading your
-            application.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">⚡ Auto-Migrations in Dev Server</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Experience unmatched Developer Experience (DX).
+          <code>cargo rullst dev</code> now automatically and silently runs your database migrations before
+          hot-reloading your application, ensuring your schema is always perfectly synced with your code.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🤖 Provider-Agnostic AI Integration
-          </h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Connect seamlessly to <strong>ANY local
-              LLM</strong> (Ollama, LM Studio, vLLM, LocalAI) or commercial cloud (Gemini, Claude, OpenAI) with prompt
-            injection filters and PII masking.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🤖 AI-Native & Code-Reasoning
+          Optimization</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst is architected to be highly readable and
+          predictable. By avoiding runtime magic, implicit reflection, or dynamic dependency injection, AI coding
+          assistants (like Gemini/Claude) and developers can easily parse, trace, and modify the application without
+          fear of runtime bugs.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Zero-Panic Production Policy</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">All runtime paths use strongly typed
-            <code>AppError</code> enums. Zero runtime panics or hidden unwraps in production code.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Compile-Time Guarantees</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst prioritizes catching structural bugs,
+          route definition issues, and middleware mismatches at compile time rather than relying on runtime failures or
+          comprehensive test suites.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔒 Strict Type Safety (No Dynamic
-            Traits)</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst avoids heavy usage of
-            <code>dyn Trait</code> in favor of static dispatch. This guarantees maximum compiler optimizations,
-            monomorphization, and smaller binaries.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔒 Strict Type Safety (No Dynamic Traits)
+        </h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst avoids heavy usage of
+          <code>dyn Trait</code> in favor of static dispatch and strong typing. This leads to better compiler
+          optimizations (monomorphization), smaller binaries, and robust memory/concurrency safety guarantees.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🗺️ Explicit API Design</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">No hidden magic or unexpected middleware
-            sequencing. Routes, state, and filters are explicitly declared for maximum maintainability.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🗺️ Explicit API Design</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">There is no hidden state or magical middleware
+          sequencing. Everything (routes, shared state, filters, extensions) is explicitly declared and wired,
+          preventing side effects and making codebase maintainability simple.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🌍 Edge Fusion & Replication</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Compile to WebAssembly for Cloudflare Workers
-            globally, backed by built-in Turso/libsql replication for sub-millisecond database read latencies worldwide.
-          </p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">⚖️ Balanced DX & Performance</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst delivers high throughput and low
+          latencies comparable to microframeworks like Axum, but provides a structured scaffold reminiscent of
+          full-stack frameworks (like Loco or NestJS) without sacrificing performance.</p>
+      </div>
 
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">📱 Omni-Frontend Wasm & Tauri</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Write interactive client components strictly
-            in Rust (<code>#[client_component]</code>) and package desktop/mobile apps natively with Tauri.</p>
-        </div>
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔄 Autonomous Upgrades</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Never fear breaking changes again.
+          <code>cargo rullst upgrade</code> performs AST-based codemods in the background to automatically update your
+          syntax when the framework evolves.</p>
+      </div>
+
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🌍 Edge Fusion & Replication</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Compile to WebAssembly for Cloudflare Workers
+          globally, backed by built-in Turso/libsql replication for 1ms database read latency worldwide.</p>
+      </div>
+
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">📱 Omni-Frontend Wasm</h3>
+        <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Write frontend interactive components strictly
+          in Rust (<code>#[client_component]</code>). They compile to lightweight Wasm, eliminating the need to write
+          JavaScript for SPAs or Desktop apps.</p>
       </div>
     </div>
   </section>
 
-  <!-- Performance CI Dashboards -->
-  <section id="benches" style="padding: 2rem 1rem 4rem; max-width: 1000px; margin: 0 auto; scroll-margin-top: 5rem;">
-    <h2 style="text-align: center; font-size: 1.8rem; margin-bottom: 2rem; color: #f8fafc;">📈 Performance CI Dashboards
-    </h2>
-    <p style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Track automated microsecond regression
-      benchmarks updated on every commit across all crates.</p>
+  <section id="docs" class="docs-section" style="padding: 6rem 1rem; max-width: 1000px; margin: 0 auto;">
+    <h2 class="section-title">Documentation</h2>
+    <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 3rem;">Getting started is
+      simple. Explore Rullst's batteries-included features below or visit our GitHub for the full guide.</p>
 
-    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
-      <a href="/Rullst/benches/" class="btn btn-outline"
-        style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05); flex: 1 1 200px; text-align: center;">⚡
-        Core Framework</a>
-      <a href="/Rullst/benches/orm/" class="btn btn-outline"
-        style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05); flex: 1 1 200px; text-align: center;">🗄️
-        ORM Queries</a>
-      <a href="/Rullst/benches/auth/" class="btn btn-outline"
-        style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05); flex: 1 1 200px; text-align: center;">🔐
-        Auth Crypto</a>
-      <a href="/Rullst/benches/connect/" class="btn btn-outline"
-        style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05); flex: 1 1 200px; text-align: center;">🔗
-        OAuth PKCE</a>
-      <a href="/Rullst/benches/security/" class="btn btn-outline"
-        style="border-color: rgba(245, 158, 11, 0.3); color: #f59e0b; background: rgba(245, 158, 11, 0.05); flex: 1 1 200px; text-align: center;">🛡️
-        Security RASP</a>
-      <a href="/Rullst/benches/ai/" class="btn btn-outline"
-        style="border-color: rgba(6, 182, 212, 0.3); color: #06b6d4; background: rgba(6, 182, 212, 0.05); flex: 1 1 200px; text-align: center;">🤖
-        AI Guardrails</a>
-      <a href="/Rullst/benches/capital/" class="btn btn-outline"
-        style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05); flex: 1 1 200px; text-align: center;">💳
-        Capital Billing</a>
+    <div class="docs-tabs-container glass" style="border-radius: 16px; overflow: hidden;">
+      <div class="docs-tabs-header"
+        style="display: flex; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
+        <button class="doc-tab active" data-tab="orm"
+          style="padding: 1rem 1.5rem; color: #38bdf8; background: transparent; border: none; border-bottom: 2px solid #38bdf8; font-weight: 600; cursor: pointer; white-space: nowrap;">🗄️
+          ORM & Models</button>
+        <button class="doc-tab" data-tab="ssr"
+          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🎨
+          html! Macro</button>
+        <button class="doc-tab" data-tab="routing"
+          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🛣️
+          Routing & Auth</button>
+        <button class="doc-tab" data-tab="live"
+          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">⚡
+          Live Components</button>
+      </div>
+
+      <div class="docs-tabs-content" style="padding: 2rem;">
+
+        <!-- Tab 1: ORM -->
+        <div id="tab-orm" class="doc-tab-pane" style="display: block;">
+          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Declarative Active Record ORM</h3>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Define your models with simple macros.
+            No need for separate schema files or manual SQL queries. Features built-in multitenancy support.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #a78bfa; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_orm::Orm;
+use rullst::db::FromRow;
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "posts", global_scope = "apply_tenant_scope")]
+pub struct Post {
+    pub id: i32,
+    pub tenant_id: String,
+    pub title: String,
+    pub body: String,
+}
+
+// Global scopes apply automatically to all queries!
+impl PostQueryBuilder {
+    pub fn apply_tenant_scope(self) -> Self {
+        if let Some(tid) = rullst::multitenant::current_tenant_id() {
+            self.where_eq("tenant_id", tid)
+        } else {
+            self
+        }
+    }
+}</code></pre>
+        </div>
+
+        <!-- Tab 2: SSR -->
+        <div id="tab-ssr" class="doc-tab-pane" style="display: none;">
+          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Blazing Fast SSR with html!</h3>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Write type-safe HTML directly in Rust.
+            It compiles to zero-allocation String concatenation, beating traditional templating engines by 2x-5x.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #34d399; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst::html;
+
+fn render_post_list(posts: &[Post]) -> String {
+    if posts.is_empty() {
+        html! {
+            &lt;div class="empty-state"&gt;
+                "No posts published yet. Be the first to share a story!"
+            &lt;/div&gt;
+        }
+    } else {
+        posts.iter().rev().map(|post| {
+            html! {
+                &lt;div class="post-card"&gt;
+                    &lt;h3 class="post-title"&gt;{&amp;post.title}&lt;/h3&gt;
+                    &lt;p class="post-body"&gt;{&amp;post.body}&lt;/p&gt;
+                &lt;/div&gt;
+            }
+        }).collect()
+    }
+}</code></pre>
+        </div>
+
+        <!-- Tab 3: Routing -->
+        <div id="tab-routing" class="doc-tab-pane" style="display: none;">
+          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Intuitive Routing & Middleware</h3>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Declare your routes elegantly. Wrap your
+            entire application with tenant-aware context, auth layers, and more using an Axum-compatible foundation.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst::routes;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
+    // Configure multitenancy by HTTP header
+    let config = rullst::TenantConfig::new(rullst::TenantStrategy::Header)
+        .with_header_name("X-Tenant-ID");
+
+    // Define routes
+    let router = routes![
+        get("/" => index_handler),
+        post("/posts" => store_post_handler),
+        get("/api/health" => health_check),
+    ]
+    .layer(rullst::tenant_layer(config));
+
+    Box::into_raw(Box::new(router))
+}</code></pre>
+        </div>
+
+        <!-- Tab 4: Live -->
+        <div id="tab-live" class="doc-tab-pane" style="display: none;">
+          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">WebSockets & Live Components</h3>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Build reactive components (like Phoenix
+            LiveView) directly in Rust, powered by WebSockets. State stays on the server, UI updates seamlessly.</p>
+          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #f472b6; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">pub async fn live_demo() -> impl IntoResponse {
+    let component = rullst::live::Live::mount::&lt;CounterComponent&gt;("/_live").await;
+    
+    Html(html! {
+        &lt;html lang="en"&gt;
+        &lt;head&gt;
+            &lt;script src="https://unpkg.com/htmx.org@1.9.11"&gt;&lt;/script&gt;
+            &lt;script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"&gt;&lt;/script&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+            { rullst::html::RawHtml(component) }
+        &lt;/body&gt;
+        &lt;/html&gt;
+    })
+}
+
+pub async fn live_ws(ws: axum::extract::ws::WebSocketUpgrade) -> impl IntoResponse {
+    rullst::live::live_ws_handler::&lt;CounterComponent&gt;(ws).await
+}</code></pre>
+        </div>
+
+      </div>
     </div>
+
+    <div style="text-align: center; margin-top: 3rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="/Rullst/book/" class="btn btn-primary"
+        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block;">📖 Read on mdBook</a>
+      <a href="https://github.com/Rullst/Rullst/tree/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-secondary"
+        style="padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none; display: inline-block; background: rgba(255,255,255,0.05); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1);">📝 Read on GitHub</a>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const tabs = document.querySelectorAll('.doc-tab');
+        const panes = document.querySelectorAll('.doc-tab-pane');
+
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            tabs.forEach(t => {
+              t.classList.remove('active');
+              t.style.color = '#94a3b8';
+              t.style.borderBottomColor = 'transparent';
+            });
+
+            panes.forEach(p => p.style.display = 'none');
+
+            tab.classList.add('active');
+            tab.style.color = '#38bdf8';
+            tab.style.borderBottomColor = '#38bdf8';
+
+            const targetId = 'tab-' + tab.getAttribute('data-tab');
+            document.getElementById(targetId).style.display = 'block';
+          });
+        });
+      });
+    </script>
   </section>
 
   <footer class="footer">
     <p>Built with ❤️ by the Rullst Community.</p>
-    <div
-      style="margin-top: 1rem; display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; font-size: 0.95rem;">
-      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" style="color: #10b981; text-decoration: none;">💬 Join the
-        Discord</a>
+    <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" class="text-emerald">💬 Join the Discord</a>
       <a href="https://github.com/Rullst/Rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">⭐ GitHub
         Repo</a>
       <a href="https://x.com/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">🐦 Twitter/X</a>
       <a href="https://youtube.com/@Rullst_Official" target="_blank" style="color: #94a3b8; text-decoration: none;">📺
         YouTube</a>
       <a href="https://dev.to/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📝 Dev.to</a>
-      <a href="https://hashnode.com/@venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📓
+      <a href="https://hashnode.com/@rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">📓
         Hashnode</a>
-      <a href="https://instagram.com/rullst.framework" target="_blank" style="color: #94a3b8; text-decoration: none;">📸
+      <a href="https://instagram.com/rullst_official" target="_blank" style="color: #94a3b8; text-decoration: none;">📸
         Instagram</a>
-      <a href="https://tiktok.com/@rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">🎵 TikTok</a>
-      <a href="mailto:officialrullst@gmail.com" style="color: #38bdf8; text-decoration: none; font-weight: 500;">✉️
-        officialrullst@gmail.com</a>
-      <a href="javascript:void(0)" id="open-privacy-link"
-        style="color: #38bdf8; text-decoration: none; font-weight: 500;">🔒 Privacy Policy</a>
+      <a href="https://www.tiktok.com/@venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">🎵
+        TikTok</a>
     </div>
-    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem; font-style: italic;">
-      All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).
-    </p>
+    <p style="font-size: 0.8rem; color: #64748b; margin-top: 1.5rem;"><a href="/privacy"
+        style="color: #64748b; text-decoration: underline;">Privacy Policy</a></p>
   </footer>
 
-  <!-- Cookie Consent Modal (Appears automatically on page load) -->
+  <!-- Cookie Consent Modal -->
   <div id="cookie-banner"
-    style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); opacity: 0; width: 90%; max-width: 440px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 2.25rem; display: flex; flex-direction: column; gap: 1.5rem; z-index: 1000; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); pointer-events: none;">
+    style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); opacity: 0; width: 90%; max-width: 400px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; z-index: 1000; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); pointer-events: none;">
     <div style="text-align: center;">
-      <div style="font-size: 2.75rem; margin-bottom: 1rem;">🍪</div>
-      <h3 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1.35rem; color: #f8fafc;">Privacy & Cookie
-        Preferences</h3>
-      <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0; line-height: 1.6;">
-        We use essential cookies and zero-trust session safeguards to ensure optimal security, telemetry diagnostics,
-        and developer productivity.
+      <div style="font-size: 2.5rem; margin-bottom: 1rem;">🍪</div>
+      <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.25rem; color: #f8fafc;">Privacy & Cookies</h3>
+      <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0; line-height: 1.5;">
+        We use cookies and similar technologies to ensure you get the best experience on our platform. By continuing to
+        browse, you agree to our <a href="/privacy"
+          style="color: #38bdf8; text-decoration: underline; font-weight: 500;">Privacy Policy</a>.
       </p>
     </div>
     <div style="display: flex; gap: 1rem; justify-content: center; width: 100%;">
       <button id="decline-cookies" class="btn btn-outline"
-        style="flex: 1; padding: 0.75rem; font-size: 0.95rem; cursor: pointer; text-align: center; justify-content: center;">Decline</button>
+        style="flex: 1; padding: 0.6rem; font-size: 0.9rem; cursor: pointer; text-align: center; justify-content: center;">Decline</button>
       <button id="accept-cookies" class="btn btn-primary"
-        style="flex: 1; padding: 0.75rem; font-size: 0.95rem; cursor: pointer; text-align: center; justify-content: center;">Accept
+        style="flex: 1; padding: 0.6rem; font-size: 0.9rem; cursor: pointer; text-align: center; justify-content: center;">Accept
         All</button>
     </div>
   </div>
 
-  <!-- Full Privacy Policy Reader Modal (Opened from Footer) -->
-  <div id="privacy-modal"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 1.5rem; box-sizing: border-box;">
-    <div class="glass"
-      style="max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 2.5rem; border-radius: 20px; text-align: left; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h2 style="margin: 0; font-size: 1.5rem; color: #f8fafc;">🔒 Privacy Policy & Data Protections</h2>
-        <button id="close-privacy-modal"
-          style="background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 6px;">✕</button>
-      </div>
-      <div style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.8;">
-        <p><strong>1. Privacy by Architecture:</strong> The Rullst Framework is architected for zero data tracking.
-          Open-source local installations never transmit your codebase, database records, or credentials to third-party
-          telemetry servers.</p>
-        <p><strong>2. Local & Air-Gapped AI:</strong> When utilizing <code>rullst-ai</code> with local runners (Ollama,
-          LM Studio, vLLM, LocalAI), prompts and vector embeddings remain 100% on your local machine with zero external
-          network leakage.</p>
-        <p><strong>3. Transparent Vault & Memory Safety:</strong> Sensitive fields decorated with
-          <code>#[orm(encrypted)]</code> are encrypted with AES-256-GCM and purged from RAM upon drop via
-          <code>Zeroize</code>.</p>
-        <p><strong>4. Cookies & Session Storage:</strong> Web cookies used by the framework are configured with
-          <code>HttpOnly</code>, <code>SameSite=Lax</code>, and cryptographic HMAC session binding.</p>
-        <p><strong>5. Official Inquiries & Disclosures:</strong> For questions, privacy assessments, or coordinated
-          security disclosure, contact: <strong><a href="mailto:officialrullst@gmail.com"
-              style="color: #38bdf8;">officialrullst@gmail.com</a></strong>.</p>
-      </div>
-      <div style="margin-top: 2rem; text-align: right;">
-        <button id="dismiss-privacy-modal" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // Tab switching logic
-    document.addEventListener('DOMContentLoaded', () => {
-      const tabs = document.querySelectorAll('.doc-tab');
-      const panes = document.querySelectorAll('.doc-tab-pane');
-
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          tabs.forEach(t => {
-            t.classList.remove('active');
-            t.style.color = '#94a3b8';
-            t.style.borderBottomColor = 'transparent';
-          });
-
-          panes.forEach(p => p.style.display = 'none');
-
-          tab.classList.add('active');
-          tab.style.color = '#38bdf8';
-          tab.style.borderBottomColor = '#38bdf8';
-
-          const targetId = 'tab-' + tab.getAttribute('data-tab');
-          const targetPane = document.getElementById(targetId);
-          if (targetPane) {
-            targetPane.style.display = 'block';
-          }
-        });
-      });
-    });
+    // We removed main.js because the terminal is now an awesome static ASCII art display.
 
     // Mobile Navbar Logic
     const hamburger = document.getElementById('hamburger');
@@ -1005,6 +1000,7 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
         navLinks.classList.toggle('active');
       });
 
+      // Close menu when a link is clicked
       navItems.forEach(item => {
         item.addEventListener('click', () => {
           hamburger.classList.remove('active');
@@ -1013,24 +1009,19 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
       });
     }
 
-    // Privacy Consent Banner & Full Privacy Modal Logic
+    // Privacy Consent Banner Logic
     document.addEventListener("DOMContentLoaded", function () {
       const banner = document.getElementById('cookie-banner');
       const acceptBtn = document.getElementById('accept-cookies');
       const declineBtn = document.getElementById('decline-cookies');
 
-      const privacyModal = document.getElementById('privacy-modal');
-      const openPrivacyLink = document.getElementById('open-privacy-link');
-      const closePrivacyModal = document.getElementById('close-privacy-modal');
-      const dismissPrivacyModal = document.getElementById('dismiss-privacy-modal');
-
-      // Pop-up banner appears automatically on page load if not already answered
       if (!localStorage.getItem('rullst_privacy_accepted')) {
+        // Fade in and scale up the modal after a short delay
         setTimeout(() => {
           banner.style.opacity = '1';
           banner.style.transform = 'translate(-50%, -50%) scale(1)';
           banner.style.pointerEvents = 'auto';
-        }, 600);
+        }, 800);
       }
 
       const closeBanner = (accepted) => {
@@ -1042,25 +1033,6 @@ let response = client.prompt(&clean_prompt).await?;</code></pre>
 
       acceptBtn.addEventListener('click', () => closeBanner(true));
       declineBtn.addEventListener('click', () => closeBanner(false));
-
-      // Open full Privacy Policy reader modal from footer link
-      if (openPrivacyLink && privacyModal) {
-        openPrivacyLink.addEventListener('click', () => {
-          privacyModal.style.display = 'flex';
-        });
-      }
-
-      const hidePrivacyModal = () => {
-        if (privacyModal) privacyModal.style.display = 'none';
-      };
-
-      if (closePrivacyModal) closePrivacyModal.addEventListener('click', hidePrivacyModal);
-      if (dismissPrivacyModal) dismissPrivacyModal.addEventListener('click', hidePrivacyModal);
-      if (privacyModal) {
-        privacyModal.addEventListener('click', (e) => {
-          if (e.target === privacyModal) hidePrivacyModal();
-        });
-      }
     });
   </script>
 </body>

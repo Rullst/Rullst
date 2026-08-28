@@ -1,312 +1,337 @@
-# Rullst Master Roadmap 🗺️
-### *"The Path to the Ultimate Full-Stack Rust Framework" — an aspiration, not a guarantee*
+# Rullst Roadmap 🗺️
+### *"The Path to the Ultimate Full-Stack Rust Framework"*
 
-Rullst's ambition is an asset. This roadmap preserves that ambition while
-separating what exists today from what is only a prototype, a research program,
-or a vision. An idea is never deleted merely because it is unfinished.
+This roadmap outlines the milestones required to transition **Rullst** from its current MVP (v0.1.0) into a dominant, production-ready, full-stack framework focused on **Emotional Productivity** and **AI-Native Engineering**.
 
-Our philosophy: **"Security, Developer Experience and Performance, Architected
-for Humans and AI."**
-
-> **Single roadmap source:** `ROADMAP.md` is canonical.
-> `docs/src/roadmap.md` embeds it directly in mdBook instead of maintaining a
-> divergent copy. The deeper evidence and decision record is
-> `docs/src/capability-ledger.md`. The release gates and executable checklist
-> for the next major version live in [`docs/src/v12.md`](docs/src/v12.md).
-
-## Status language
-
-- `[x] Implemented`: a bounded, testable implementation exists. This never means
-  that every imaginable provider or production environment is covered.
-- `[~] Partial`: useful foundations exist, and the parenthetical says whether the
-  remaining work is worthwhile and why.
-- `[ ] Not implemented`: the idea is preserved, and the parenthetical says
-  whether it is worth pursuing and under which conditions.
-- `[!] Do not promise`: the absolute wording cannot be an honest framework
-  guarantee; a narrower measurable goal is retained when useful.
-
-Target windows are planning intentions, not release guarantees. Promotion to
-`[x]` requires code, focused tests, truthful documentation, and the release gates
-at the end of this document.
-
-## Audit of the detailed crate roadmaps
-
-The per-crate roadmaps are intentionally preserved as detailed design backlogs.
-Some predate this status policy, so an old `[x]` can record the original author's
-milestone claim rather than today's verified end-to-end contract. This table is
-the current interpretation; the [capability ledger](docs/src/capability-ledger.md)
-contains the evidence boundary and recommendation for the highest-risk claims.
-
-| Detailed roadmap | What is verifiably implemented now | Partial, experimental, or not implemented |
-| :--- | :--- | :--- |
-| [`rullst-ai`](rullst-ai/ROADMAP.md) | Guarded high-level client; OpenAI/Gemini/Anthropic/DeepSeek/Ollama adapters; deterministic offline chat/vision/embedding paths; JSON/schema distinction; local fallback/RAG/vector/tool foundations. | Streaming/cancellation, derived JSON Schema, provider-native authorized tool loop, durable memory/ORM hooks, external vector adapters, and versioned safety evals are not implemented. |
-| [`rullst-auth`](rullst-auth/ROADMAP.md) | Argon2/local sessions, RBAC middleware, declarative `Gate`, OAuth/OIDC re-exports, and a substantial custom ES256 passkey foundation. | WebAuthn is partial until normative conformance; first-class application JWT, TOTP with recovery codes inside Auth, magic links, and device/session management are not implemented. They are worthwhile, with WebAuthn first. |
-| [`rullst-capital`](rullst-capital/ROADMAP.md) | Provider trait/adapters, explicit offline mocks, fail-closed webhook verification, bounded local replay protection, billing scaffolding, analytics, and unsigned NFS-e preview. | Live method coverage varies by gateway; durable cross-instance idempotency, Alipay RSA2, full tax/proration contracts, and homologated live NFS-e are not implemented. NFS-e is extraordinary and worthwhile only as a dedicated homologation program. |
-| [`rullst-connect`](rullst-connect/ROADMAP.md) | OAuth2/OIDC/social providers, PKCE/state, fallible credential modes, pluggable HTTP client, refresh/revoke foundations, discovery/JWKS validation, retry, mocks, and Axum extraction. | Some checked DX/provider conveniences are narrower than their wording; SAML/SCIM/DPoP/JWE/mTLS/risk ML and all Phase 9 message queues are not implemented. Messaging is worthwhile in a separate crate, not the OAuth-focused Connect. |
-| [`rullst-iot`](rullst-iot/ROADMAP.md) | `no_std` frames/telemetry and the Ed25519 OTA manifest/hash/target/version/anti-rollback verification gate. | Download, durable counter, flash/boot/rollback, MQTT/CoAP/LoRaWAN, real hardware, HSM and PQC are not implemented; deterministic `Simulated*` types are experimental fixtures only. Keep the vision, but require target hardware and interoperability programs. |
-| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, attachments/scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories and background worker integration. | A checked item does not prove universal provider/deliverability behavior. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME, Studio Mail Radar and extra gateways are not implemented; add providers only with a shared contract suite. |
-| [`rullst-nexus`](rullst-nexus/ROADMAP.md) | Fail-closed authenticated admin construction, server-side CRUD/search/pagination/sorting, field policies/type-aware forms, bounded batch operations, threat radar and AI assistant surfaces. | Custom dashboard injection and a visual SQL builder are not implemented; AI/data mutation remains host-policy-bound. Both ideas are useful if authorization, query limits, preview and audit remain server-side. |
-| [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, strict DB modes, transactions, relations/scopes/soft-delete foundations, audit/privacy, raw SQL mapping, admin/resource helpers and focused tooling. | Several historical `[x]` entries are only foundations or are unsupported end to end: transparent Turso/edge replication, external search/vector stores, autonomous indexing/migrations, complete graph traversal, NoSQL, Wasm drivers and PQC. Preserve them, but promote each only after backend/runtime contract tests. |
-| [`rullst-security`](rullst-security/ROADMAP.md) | Bounded honeypot, sanitizer/CSP, RBAC, HMAC audit chain, RASP/DLP, AES-GCM vault, headers, login guard, TOTP, CSWSH, schema/log guards, SRI, CEF formatting, timing/prompt filters and evidence-oriented CLI audit/SBOM tools. | “Autonomous”, live reputation/SIEM delivery, A+ guarantees, zero-leak/zero-latency, certification and total OWASP/memory-safety claims are not established. Distributed rate limits/audit sinks, KMS/rotation, adaptive WAF, SQL firewall and all PQC/kernel/Wasm containment items remain partial or absent. |
-| [`rullst-studio`](rullst-studio/ROADMAP.md) | Real DB browser, API playground, jobs monitor, ER diagram, feature flags, redacted environment view and local telemetry/radar/trace surfaces with unavailable states. | N+1 profiling and Cache/Redis inspection are not implemented; request/trace views are local bounded observability, not a complete distributed profiler. Both missing tools are worthwhile after a canonical telemetry contract. |
-
-This audit does not downgrade ambitious ideas merely because they are difficult.
-Capabilities that require continuous operations, homologation, hardware, or a
-separate release lifecycle can follow the
-[Maybe SaaS incubation strategy](docs/src/maybesaas.md) instead of being forced
-into the framework core.
-It prevents a checkbox from becoming a production promise before the necessary
-code, tests, provider/hardware environment, and operational semantics exist.
-
-## Executive milestone tracker
-
-| ID | Pillar and capability | Honest status and recommendation | Target window |
-| :---: | :--- | :--- | :---: |
-| **M1** | DX: CLI empowerment and `make:*` generators | `[~] Partial` *(worth finishing — the commands exist, but every generator/blueprint combination still needs a compiling temp-project matrix)* | v12 hardening |
-| **M2** | DX: fast linkers, build tuning, and the sub-100ms aspiration | `[~] Partial` *(worth benchmarking — linker/build settings are useful, but sub-100ms depends on the machine and dependency graph and must not be guaranteed)* | Continuous |
-| **M3** | DX: Axum/SQLx escape hatches, granular features, proc-macro diagnostics, and ejection | `[~] Partial` *(worth improving as migration tooling — bare Core is now runtime-only, ORM/SQLite queues are explicit features, and the umbrella maps them; universal “zero lock-in” is still not worth promising because optional subsystems carry migration cost)* | Next SemVer cycle |
-| **M4** | DX: `make:resource` and Ignition-style error console | `[x] Implemented (scoped)` — resource scaffolding and a local developer error console exist; autonomous mutation is evaluated separately in M37 | v12 hardening |
-| **M5** | DX: documentation hub (mdBook), OpenAPI, and AST TypeScript generation | `[~] Partial` *(worth finishing — generators exist, but generated-project and serialization contract tests are still needed; AST inference is not a complete API contract)* | v12.1 |
-| **M6** | ORM: Active Record, repository pattern, seeders, and Turso/libSQL vision | `[~] Partial` *(worth finishing selectively — ORM/repository/seeder foundations exist, while live Turso/libSQL support needs an explicit driver and integration suite)* | v12.1 |
-| **M7** | Edge/data: portable Wasm request/response runtime, distributed data, and autonomous upgrades | `[~] Partial` *(worth the portable edge runtime; distributed replication should use vendor-specific semantics, and autonomous upgrades are not worth enabling without signed artifacts, rollback, and operator approval)* | v13 research |
-| **M8** | ORM/AI: intent-based modeling and self-optimizing production indexes | `[ ] Not implemented` *(worth an advisory, explain-and-approve implementation — automatic production DDL without review is not worth the operational risk)* | v12.1 research |
-| **M9** | Auth: local auth, OAuth/OIDC, TOTP, passkeys, and WebAuthn | `[~] Partial` *(worth completing at high priority — useful auth pieces exist, but normative WebAuthn conformance and a first-class application JWT policy remain incomplete)* | v12.1 |
-| **M10** | Security utilities: mail, DTO validation, rate limiting, and Shield | `[~] Partial` *(worth completing — local controls and mail transports exist, while distributed rate limiting and some provider invariants require real backends and conformance tests)* | v12.1 |
-| **M11** | SaaS: hardened Nexus, Omni vision, billing, and entitlements | `[~] Partial` *(worth building in bounded modules — Nexus and billing foundations exist, but Omni, uniform live gateway coverage, and declarative entitlements are not complete)* | v12.1+ |
-| **M12** | Defense in depth: RASP/WAF, Vault, honeypots, HMAC audit, secure headers, Login Jail, DLP, TOTP, fingerprinting, CLI inspection, and Threat Radar | `[~] Partial` *(worth continuous hardening — concrete controls exist, but they do not prove universal OWASP coverage, zero leakage, external intelligence, or certification)* | Continuous |
-| **M13** | Post-quantum web architecture, `rullst-quantum`, NIST PQC, and sandboxed Wasm plugins | `[ ] Not implemented` *(worth later only for a concrete protocol and threat model, using audited primitives; home-grown “quantum-safe” crypto is not worth implementing)* | v13 research |
-| **M14** | Frontend: HTMX-first SSR and Leptos/Dioxus interoperability | `[~] Partial` *(worth improving — HTMX/HTML support is real, while the current Leptos/Dioxus types are compatibility wrappers rather than full framework integrations; “zero bundle” is a selectable architecture, not a universal guarantee)* | v12.1 |
-| **M15** | Runtime: queues, cache, scheduler, and multi-stage Docker | `[~] Partial` *(worth finishing through backend contracts — bounded Memory/SQLite/Redis foundations exist; RabbitMQ, Kafka, Redis Streams, NATS, SQS/SNS, and GCP Pub/Sub are not implemented)* | v12.1+ |
-| **M16** | Wasm islands and `#[client_component]` | `[~] Partial` *(worth finishing — macros now preserve typed function signatures and generated native examples compile, but argument serialization, server-side RPC registration, browser hydration, packaging, and Wasm end-to-end compatibility still need a versioned protocol and proof)* | v12.1 |
-| **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(worth modular expansion — WebSocket/SSE and local storage foundations exist; S3/R2, image processing, and a production package-registry contract do not)* | v12.1+ |
-| **M18** | LiveView-style server-driven UI and `make:live` | `[~] Partial` *(worth hardening — a WebSocket component loop exists, but auth, reconnect, backpressure, diff semantics, and browser E2E coverage remain)* | v12.1 |
-| **M19** | AI/telemetry: Radar, agent tool schemas, spans, and Prometheus `/metrics` | `[x] Implemented (bounded)` — local telemetry and export surfaces exist; unavailable sources must remain unavailable rather than becoming invented values | v12 hardening |
-| **M20** | Persistence: zero-copy event streaming and immutable ledger engine | `[ ] Not implemented` *(interesting but lower priority — worth implementing only after defining persistence, consistency, recovery, and verification semantics; the HMAC audit chain is not a distributed ledger)* | v12.1 research |
-| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[ ] Not implemented` *(worth pursuing only with a real mobile client and versioned protocol contract; a universal frontend claim without interoperability tests is not worthwhile)* | v12.1 research |
-| **M22** | Agentic DevOps and autonomous infrastructure provisioning | `[~] Partial` *(worth keeping as human-reviewed recommendations — telemetry advice exists; unattended infrastructure mutation is not worth enabling by default without preview, scoped credentials, audit, rollback, and policy)* | v13 |
-| **M23** | Polymorphic core and auto-healing runtime/database | `[~] Partial` *(worth keeping as diagnostics — a schema-error suggestion helper exists; automatic code/schema mutation is not worth enabling by default without validated plans, approval, and rollback)* | v13 |
-| **M24** | Embedded IoT: `no_std` frames and an Ed25519 OTA manifest gate | `[~] Partial` *(worth expanding after target selection — the verification foundation exists; download, persistent anti-rollback, flashing, boot slots, HSM/PQC, and transport interoperability do not)* | v12 foundation / v13 integrations |
-| **M25** | Async embedded IoT with Embassy | `[ ] Not implemented` *(worth implementing after transport and hardware traits stabilize, because executor integration before those boundaries would create churn)* | v12.1+ |
-| **M26** | Guided PaaS/VPS deploy for Fly, Railway, Render, and Caddy | `[~] Partial` *(worth hardening — scaffolding and helpers exist, but “one click” and zero downtime are not framework guarantees because credentials, DNS, migrations, health, and rollback remain operator concerns)* | v12.1 |
-| **M27** | Kubernetes manifest scaffolding and `/health`/`/ready` probes | `[x] Implemented (scaffolding scope)` — generated manifests remain deployment inputs that operators must review | v12 hardening |
-| **M28** | Compile-time DI and `Inject<T>` | `[x] Implemented (foundation)` — the typed container exists; “zero cost” remains a benchmarkable goal rather than a guarantee | v12 hardening |
-| **M29** | Scalar playground at `/docs` and OpenAPI generation | `[~] Partial` *(worth finishing — the UI/router/generator exist, but full OpenAPI fidelity requires typed schemas and validation rather than syntax inference)* | v12.1 |
-| **M30** | Tonic/gRPC and Protobuf scaffolding | `[~] Partial` *(worth finishing — `make:grpc` emits a starting service, but a distinct supported `rullst-grpc` crate and generated-project conformance matrix do not yet exist)* | v12.1 |
-| **M31** | Aerospace, autonomous vehicles, robotics, and defense (`rullst-orbit` / `rullst-auto`) | `[ ] Not implemented` *(extraordinary, but not worth placing inside the web-framework Core; consider a separate safety-critical project only after hardware, standards, certification, and governance exist)* | Separate future program |
-| **M32** | Architecture: first-class Axum/Tower escape hatches and precise proc-macro diagnostics | `[x] Implemented (bounded)` — router conversion/interoperability and `syn::Error` diagnostics exist; continue compatibility tests | v12 hardening |
-| **M33** | SaaS: `#[rullst::gate]` and `GateGuard` declarative entitlements | `[ ] Not implemented` *(worth implementing for SaaS only if enforcement is server-side, tenant-bound, auditable, and independent of hidden UI controls)* | v12.1 |
-| **M34** | Multi-target SDK generator for TypeScript, React, Dart, and Swift | `[ ] Not implemented` *(worth implementing from one canonical typed API schema; multiplying AST heuristics across languages is not worth the drift)* | v12.1+ |
-| **M35** | Distributed OpenTelemetry trace-waterfall visualizer in Studio | `[~] Partial` *(worth implementing — Studio has trace surfaces, but a distributed OTel waterfall needs real ingestion, clock/skew handling, sampling metadata, and unavailable states)* | v12.1+ |
-| **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v12.1 research |
-| **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v12.1 |
-| **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
-
-## AI-native vision, without absolutes
-
-The original goal of becoming the first **AI-Native Web Framework** is preserved
-as a design ambition, not a historically provable “first” claim.
-
-1. **“Zero Runtime Magic, Pure Compilation”:** derives, typed routes, and compiler
-   diagnostics can make AI-assisted changes easier to inspect. *(Partial and
-   worth pursuing as an architectural preference; literal zero magic, “zero
-   hallucinations,” and instant correction are not promises any framework can
-   make.)*
-2. **Context-rich scaffolding:** generated projects should receive a maintained
-   `AGENTS.md`/AI ruleset describing the actual selected blueprint. *(Partial and
-   worth implementing; do not document `.ai-rules` or `.cursorrules` as generated
-   until the generator and snapshots prove it.)*
-3. **Structured system discovery:** a versioned schema should expose active
-   routes, controllers, models, policies, and source locations. *(Partial and
-   worth completing; the CLI can inspect `rullst-schema.json`, but generation and
-   freshness must become an end-to-end contract.)*
-
-## Preserved extraordinary capability decisions
-
-These items were previously easy to mistake for shipped functionality. They are
-kept deliberately, with the opinion requested for each gap. The capability ledger
-contains the more detailed evidence and acceptance boundaries.
-
-### Architecture and product-contract ambitions
-
-- **Runtime-only Core with optional ORM** *(implemented in current hardening —
-  bare Core no longer selects SQLx/ORM, `orm` and `queue-sqlite` are independent,
-  Studio/Nexus opt in explicitly, and the application umbrella retains ergonomic
-  database defaults).*
-- **One canonical security stack** *(partial — worth treating as high priority;
-  keep policy/middleware in `rullst-security` and only minimal bootstrap contracts
-  in Core so WAF, headers, and telemetry cannot drift).*
-- **Static dispatch everywhere** *(partial — not worth forcing absolutely;
-  generic fast paths are valuable, but runtime-selected providers legitimately
-  need a documented dynamic-dispatch boundary).*
-- **Every production source file below 500 lines** *(partial — worth continuous
-  responsibility-based refactoring, but it is a design target rather than a
-  release claim and large test fixtures may need a looser limit).*
-- **Uniform `#[non_exhaustive]`, fallible builders, and `impl Into<String>`**
-  *(partial — worth completing incrementally under SemVer review; a mechanical
-  mass rewrite is not worth breaking consumers).*
-- **Zero lock-in, zero panic/crash, zero latency/allocation, 100% memory safety,
-  and 100% Pure-Rustls** *(`[!] Do not promise as absolutes` — migration tools,
-  scoped zero-panic linting, benchmarks, a tiny documented unsafe allowlist, and a
-  feature-specific transport inventory are all worth maintaining).*
-- **Framework-wide “production-ready” badge** *(`[!] Do not promise as one
-  boolean` — worth publishing stability per crate/capability because routing can
-  be stable while live fiscal and hardware integrations remain unavailable).*
-- **Static competitor matrix claiming other frameworks lack capabilities**
-  *(`[!] Do not maintain without dated sources` — comparative research and a
-  reproducible benchmark repository are worthwhile; timeless absence claims are
-  not).*
-
-### Security, identity, and compliance
-
-- **Full WebAuthn/FIDO2 conformance** *(partial — absolutely worth completing
-  before a stable passkey claim, preferably with an audited library or normative
-  conformance suite).*
-- **Zero-downtime key rotation and Cloud KMS** *(not implemented end to end —
-  worth implementing through provider-neutral envelope/key-version contracts and
-  named KMS adapters, not by embedding custody in the framework).*
-- **Adaptive WAF and eBPF kernel threat containment** *(not implemented — worth
-  research only as opt-in, platform-specific defense in depth; not worth making a
-  portability or complete-protection promise).*
-- **Anti-timing user-enumeration guard and Prompt Shield v2** *(implemented
-  foundations — worth keeping and testing, but timing equalization and heuristic
-  prompt filtering cannot guarantee elimination of every side channel or
-  injection technique).*
-- **External reputation feeds, verified audit feeds, and SIEM delivery for Threat
-  Radar** *(partial — worth pluggable connectors; never render a source as healthy
-  or verified unless it is connected and current).*
-- **Studio automatically stripped from every release at zero cost** *(`[!] Do not
-  promise` — explicit feature selection and route mounting are worth documenting;
-  a universal debug/release assumption is not).*
-- **Distributed rate limiting and durable tamper-evident audit storage**
-  *(partial/not implemented — worth pluggable Redis and append-only sink backends
-  with atomicity, tenant namespacing, retention, and verification tests).*
-- **Automated SBOM, SPDX/CycloneDX, `cargo-vet`, signed provenance, and advisory
-  governance** *(partial — worth making release gates; not equivalent to SLSA
-  Level 3 or organizational certification without independent evaluation).*
-- **Loom/Shuttle, Kani/Miri, mutation, fuzz, and unsafe governance** *(partial —
-  worth scoped blocking suites plus a reviewed `cargo-geiger` inventory; a full
-  mathematical proof of the whole framework is not worth claiming).*
-- **An IDOR scanner that proves authorization** *(`[!] Do not promise proof` —
-  the AST scanner is worth keeping as a heuristic warning tool, paired with
-  route-level ownership and cross-tenant negative tests).*
-- **DevSecOps git-hook installer** *(partial — `hook:install` writes pre-commit
-  and Conventional Commit hooks; worth adding backup/idempotency/permission
-  tests, while CI remains authoritative because local hooks are bypassable).*
-- **Automatic SOC 2/ISO/FedRAMP PASS reports** *(`[!] Do not implement as an
-  unconditional verdict` — evidence export is worthwhile; certification covers
-  an organization and deployment, not a crate).*
-
-### Fiscal, payments, messaging, storage, and mail
-
-- **Live NFS-e Nacional with PKCS#12, XML C14N/XMLDSig, XSD validation, mTLS,
-  official rejection parsing, and SEFIN homologation** *(not implemented — an
-  extraordinary and worthwhile Brazilian-market program, but only as a dedicated
-  maintained fiscal workstream with official homologation and independent crypto
-  validation).*
-- **Alipay RSA2 and uniform live support across every advertised gateway** *(not
-  implemented/partial — worth only with provider sandbox access, demand, and a
-  method-by-method capability matrix; adapter names must not imply every payment,
-  subscription, payout, portal, tax, and webhook method exists).*
-- **Static fee/settlement/tax tables and “zero-cost invoicing”** *(`[!] Do not
-  promise` — transparent links to current provider terms are worthwhile, but
-  framework docs cannot erase certificate, accounting, infrastructure, support,
-  compliance, or changing commercial costs).*
-- **Durable cross-instance webhook replay/idempotency** *(partial — worth a
-  pluggable database/Redis uniqueness contract before multi-instance production
-  billing).*
-- **RabbitMQ, Kafka, Redis Streams, NATS JetStream, SQS/SNS, and GCP Pub/Sub**
-  *(not implemented — worth demand-driven adapters after defining one queue
-  conformance suite, preferably in `rullst-messaging` rather than the OAuth-focused
-  Connect crate).*
-- **S3, Cloudflare R2, and image resizing** *(not implemented — worth isolated
-  optional storage/media crates with official signing, multipart/retry semantics,
-  strict path/pixel limits, deterministic mocks, and fuzzing).*
-- **Mailgun, Brevo, MailerSend, Plunk, and Scaleway transports** *(not implemented
-  — worth demand-driven adapters only when each has a maintainer and passes the
-  shared offline/live mail contract suite).*
-
-### IoT, edge, AI, and critical systems
-
-- **MQTT 5, CoAP, Sparkplug B, CAN/J1939, LoRaWAN, GPIO/I2C, real firmware
-  download/flashing/rollback, and hardware-in-the-loop CI** *(not implemented —
-  worth separate transport and target-hardware packages after named boards and
-  interoperability environments are selected).*
-- **Hardware HSM/secure-element and NIST ML-KEM/PQC backends** *(not implemented;
-  simulators are experimental — worth audited adapters for named hardware and
-  protocols, never home-grown crypto presented as secure hardware).*
-- **Autonomous AI admin, NL-SQL writes, self-healing code/schema, and DevOps
-  mutation** *(not implemented as a safe production contract — read-only advice,
-  dry runs, and human-approved changes are worthwhile; default autonomous
-  production mutation is not).*
-- **Native JSON Schema enforcement on every LLM** *(partial — capability-typed
-  support is worth completing; parseable JSON must remain distinct and providers
-  that cannot enforce a schema should return `UnsupportedCapability`).*
-- **Any local model over any arbitrary HTTP API** *(`[!] Do not promise` — named
-  Ollama and OpenAI-compatible protocols are worthwhile, while arbitrary APIs
-  differ in authentication, streaming, schema, and error semantics).*
-- **Automatically air-gapped/zero-leak AI** *(`[!] Do not promise` — local
-  endpoints can be useful, but the host network, logs, model runtime, and
-  telemetry determine the real data boundary).*
-- **Aerospace/autonomous/defense framework** *(not implemented — the research is
-  inspiring, but it is not worth conflating safety certification with web
-  framework quality; incubate it independently if expertise, hardware, and
-  governance become available).*
-
-## Execution plan aligned with `gpt.md` §15
-
-### Phase 0 — containment and truthful boundaries
-
-- Keep live Fiscal, unfinished IoT integrations, S3/R2, Alipay, and other absent
-  provider paths fail-closed with typed `Unsupported` results.
-- Keep Nexus fail-closed, generated credentials absent, production configuration
-  validated, webhook secrets mandatory, local storage confined, and the release
-  workflow blocked until its dependency order and evidence agree.
-- Label every capability implemented, partial, experimental, not implemented, or
-  intentionally unsupported; never delete the vision to obtain truthful docs.
-
-### Phase 1 — kernel security and reliability
-
-- Complete environment precedence, atomic/fallible DB initialization, APP_KEY
-  policy, WebAuthn conformance, content-aware DLP/PII, signed-webhook composition,
-  trusted proxies, tenant isolation, CSWSH, bounded workers, scheduler shutdown,
-  and the production-path zero-panic policy.
-
-### Phase 2 — product integrity and scaffolding
-
-- Compile all generated projects in temp directories; enforce server-side Nexus
-  policy; use real or explicitly unavailable Studio telemetry; and keep offline
-  mocks deterministic without allowing live endpoints to fail open.
-
-### Phase 3 — architecture and contract
-
-- Keep the new Core/ORM feature boundary regression-tested, consolidate the
-  canonical security stack, standardize public API evolution, and split OAuth
-  identity from future messaging adapters. The umbrella feature map is now
-  complete and must remain covered by its powerset test.
-- Implement ambitious providers only where a maintainer, conformance suite, and
-  real interoperability environment exist.
-
-### Phase 4 — release engineering
-
-- Require formatting, strict Clippy, full workspace tests, exclusive DB-feature
-  checks, generated-project checks, fuzz tiers, unsafe review, package preflight,
-  SBOM/advisory evidence, provenance, and topological publishing for the exact tag.
-
-## Release strategy
-
-| Version | Status | Honest scope |
-| :--- | :---: | :--- |
-| **v12.0.0** | `[ ] Unreleased hardening` | Close the audited P0/P1/P2 regressions and prove the implemented foundations. Version numbers in manifests do not make a release complete. |
-| **v12.1.x** | `[ ] Candidate window, not a promise` | Generated-project matrix, WebAuthn/JWT consolidation, typed SDK/entitlement foundations, OTel trace ingestion, safe Studio assistants, and selected demand-backed adapters. |
-| **v13.x** | `[ ] Research/major-architecture window` | The remaining security-stack consolidation, audited PQC protocols, human-governed agentic operations, vendor-backed edge replication, and any independently governed critical-systems project. |
-
-The framework may call a milestone implemented only when the same commit passes
-the repository's formatting, strict lint, full-test, feature-matrix, security, and
-packaging gates. Performance numbers must cite a reproducible benchmark; security
-and compliance claims must state their threat model and evidence scope.
+Our development strategy follows the **"Developer Experience like Laravel, Performance like Rust, Architected for Humans and AI"** philosophy.
 
 ---
 
-<div align="center">
-  <p><i>"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</i></p>
-</div>
+## 🤖 The AI-Native Paradigm (Designed for Humans & AI)
+
+Almost every modern web framework (Laravel, Ruby on Rails, Next.js) was built before the era of LLMs and AI Agents. They rely heavily on runtime magic, dynamic reflection, and complex implicitness that confuses AI coders and leads to hallucinations.
+
+**Rullst is built from the ground up to be the first AI-Native web framework:**
+1. **Zero Runtime Magic, Pure Compilation:** High-level declarative macros (`#[derive(Orm)]`, `routes!`) and strict Rust type safety give AI coding assistants extremely explicit structures, resulting in zero API hallucinations and instant compiler self-correction.
+2. **Context-Rich Scaffolding:** `cargo rullst new` will automatically scaffold optimized `.ai-rules` / `.cursorrules` files. Any AI agent opening the project instantly learns Rullst's exact conventions, code style, and API standards, achieving 100% productive pair-programming immediately.
+3. **Structured System Discovery:** In dev mode, Rullst will generate a local structural schema (`rullst-schema.json`) detailing all active routes, controllers, and models. This lets AI agents map out the entire project structure in milliseconds.
+
+---
+
+## 🚀 The Next Generation Architecture (Integrated in v5.0.0)
+
+To completely obliterate the competition and overcome the heavy constraints of monolithic Wasm frameworks, Rullst is actively evolving into its next major architectural phase:
+
+1. **Islands Architecture (Goodbye Monolithic Wasm):** Rullst will serve HTML 100% statically by default. Only components explicitly marked with `#[island]` will be compiled to lightweight Wasm or JS for client-side hydration, solving the heavy initial load problem.
+2. **Server Functions (Transparent RPC):** Eliminate manual `fetch` calls. Write a Rust function on the frontend, and the framework will automatically generate the RPC bridge to the database.
+3. **Dual-Target Routes (Web + Mobile):** A single route definition generates both the HTML/Wasm render endpoint for the browser and a clean JSON API for mobile apps natively.
+4. **Intelligent Caching (`#[memoize]`):** A framework-level macro that caches in-memory component renders and database queries per request scope automatically.
+---
+
+## 🌍 The Ecosystem Hegemony (Community & Deployment)
+
+To truly dominate the global web development market, Rullst will expand beyond a framework into a full deployment ecosystem:
+
+1. **"Zero-Code" Extensible Admin:** Rullst Nexus will not just read the database. Product managers will be able to alter views and permissions visually from the panel, and the framework will autonomously open a GitHub Pull Request with the underlying Rust code changes.
+2. **Dynamic Plugin Marketplace:** Leveraging Rullst's hot-swapping (`.dll`/`.so`) capabilities, developers will be able to install community plugins (forums, chat modules) dynamically in production without recompiling or restarting the core server.
+3. **Rullst Cloud (The Vercel for Rust):** The ultimate multiplier. A globally distributed Edge infrastructure where a single `cargo rullst deploy` command builds, compresses, and distributes the application globally in seconds, abstracting all DevOps friction.
+4. **Automated Compliance & Data Governance (GDPR/LGPD) [Rullst-ORM]:** A `#[derive(PersonalData)]` macro that guarantees sensitive user data (CPF, emails) is automatically encrypted at rest in the database, masked in all telemetry logs, and able to generate automated privacy reports out-of-the-box.
+
+---
+
+## 🚀 The Rullst Master Plan
+
+```mermaid
+graph TD
+    M0["🤖 Pillar: AI-Native Design"] --> M1["🛠️ M1: CLI Generator Power"]
+    M1 --> M2["🗄️ M2: Database Supremacy"]
+    M2 --> M3["🔒 M3: Auth & Security"]
+    M3 --> M4["⚡ M4: HTMX & Frontend"]
+    M4 --> M5["📦 M5: Production Utilities"]
+    M5 --> M6["🏢 M6: Enterprise Features"]
+    M6 --> M7["🚀 M7: The Unfair Advantage"]
+    M7 --> M8["🌍 M8: Edge Fusion & Auto-Upgrade"]
+    M8 --> M9["🆓 M9: The Free Enterprise Revolution"]
+    M9 --> M10["🛠️ M10: Incremental Compilation"]
+    M10 --> M11["📊 M11: Telemetry & Radar"]
+    M11 --> M12["💎 M12: Zero-Copy Streaming"]
+    M12 --> M13["🔮 M13: Omni-Frontend & AI"]
+    M13 --> M14["🤖 M14: Agentic DevOps"]
+    M14 --> M15["🌐 M15: Intent-Based DB"]
+    M15 --> M16["🧬 M16: Self-Evolving Core"]
+    M16 --> M17["🔬 M17: Quantum-Ready"]
+
+    style M0  fill:#ffecd2,stroke:#ff9a00,stroke-width:3px,color:#000
+    style M1  fill:#00f2fe,stroke:#fff,stroke-width:2px,color:#000
+    style M2  fill:#4facfe,stroke:#fff,stroke-width:2px,color:#000
+    style M3  fill:#a18cd1,stroke:#fff,stroke-width:2px,color:#000
+    style M4  fill:#fbc2eb,stroke:#fff,stroke-width:2px,color:#000
+    style M5  fill:#ff9a9e,stroke:#fff,stroke-width:2px,color:#000
+    style M6  fill:#b5ffd9,stroke:#fff,stroke-width:2px,color:#000
+    style M7  fill:#ffe57f,stroke:#fff,stroke-width:2px,color:#000
+    style M8  fill:#e1bee7,stroke:#fff,stroke-width:2px,color:#000
+    style M9  fill:#b3e5fc,stroke:#fff,stroke-width:2px,color:#000
+    style M10 fill:#ffccbc,stroke:#fff,stroke-width:2px,color:#000
+    style M11 fill:#c8e6c9,stroke:#fff,stroke-width:2px,color:#000
+    style M12 fill:#f8bbd0,stroke:#fff,stroke-width:2px,color:#000
+    style M13 fill:#dcedc8,stroke:#fff,stroke-width:2px,color:#000
+    style M14 fill:#fff9c4,stroke:#fff,stroke-width:2px,color:#000
+    style M15 fill:#b2ebf2,stroke:#fff,stroke-width:2px,color:#000
+    style M16 fill:#a5d6a7,stroke:#fff,stroke-width:3px,color:#000
+    style M17 fill:#e0f7fa,stroke:#fff,stroke-width:3px,color:#000
+```
+
+---
+
+## 🛠️ Milestone 1: CLI Empowerment (`cargo-rullst`)
+**Goal:** Enable lightning-fast scaffolding. Developers should never create boilerplate files manually.
+
+- [x] **Code Generators:**
+  - [x] `cargo rullst make:controller <Name>` - Generates a controller with standard CRUD actions.
+  - [x] `cargo rullst make:model <Name> [-m]` - Generates an Active Record model and optionally an associated migration.
+  - [x] `cargo rullst make:middleware <Name>` - Generates Axum-compatible custom middleware.
+  - [x] `cargo rullst make:cors` & `make:jwt` - Scaffold essential boilerplate middlewares directly into your project.
+  - [x] `cargo rullst generate:openapi` - AI-Driven OpenAPI/Swagger generator without heavy macros.
+  - [x] `cargo rullst make:worker` - Scaffold background task workers.
+- [x] **Workspace Ergonomics:**
+  - [x] Improve compilation speeds for CLI runs.
+  - [x] Support `--api` flag for scaffolding headless REST APIs instead of full HTML apps.
+
+---
+
+## 🗄️ Milestone 2: Database Supremacy (Migrations & Relationships)
+**Goal:** Empower `rullst-orm` and `Rullst` to handle enterprise-grade relational schemas seamlessly.
+
+> [!NOTE]
+> **Division of Responsibilities:**
+> The heavy lifting (database schema parsers, migration execution, and relationship macro builders) will be developed directly inside the **`rullst-orm`** repository to keep the ORM modular.
+> **Rullst** will wrap these features with CLI commands and smooth dependency injection.
+
+- [x] **Migration Engine (in `rullst-orm`):**
+  - [x] SQL-based or DSL-based migration definitions.
+  - [x] CLI runner inside Rullst:
+    - [x] `cargo rullst db:migrate` - Runs pending migrations.
+    - [x] `cargo rullst db:rollback` - Reverts the last migration batch.
+    - [x] `cargo rullst db:status` - Shows the migration history.
+- [x] **Active Record Relationships (in `rullst-orm`):**
+  - [x] `HasMany` / `BelongsTo` declarative macros.
+  - [x] `BelongsToMany` (Many-to-Many) association resolvers.
+  - [x] Lazy and Eager loading mechanisms to prevent N+1 query problems.
+- [x] **Seeders and Factories:**
+  - [x] `cargo rullst db:seed` - Populate databases using pre-configured mock data.
+  - [x] Integrated factory pattern for mock entity generation.
+
+---
+
+## 🔒 Milestone 3: Authentication & Security (Social, Local & Passkeys)
+**Goal:** Implement robust, secure, and instant authentication. Developers should be able to authenticate users securely in minutes.
+
+- [x] **Social Authentication via `rullst-connect`:**
+  - [x] Leverage the custom **[`rullst-connect`](https://crates.io/crates/rullst-connect)** crate as the official OAuth engine.
+  - [x] Out-of-the-box configurations for Google, GitHub, Facebook, Twitter, and custom providers.
+  - [x] Seamless flow: redirect to provider, parse callbacks, and login/register users via Active Record.
+- [x] **Local Authentication:**
+  - [x] Secure password hashing via Argon2/Bcrypt built-in helpers.
+  - [x] Custom session-based cookie middleware and token-based (JWT) auth middleware.
+- [x] **Passkeys & Biometrics First (`rullst::auth::passkey`):** Native WebAuthn abstraction for biometric authentication (FaceID, TouchID, Windows Hello) bundled into `cargo rullst auth`. Passwordless signups and logins using public-key cryptography via HTMX/WebAuthn with smooth security key fallbacks.
+- [x] **The "Auth Magic" Command:**
+  - [x] `cargo rullst auth` - Instantly scaffold a full-fledged authentication system containing:
+    - Login/Registration/Password Reset controllers.
+    - Beautiful UI screens (`html!` templates) pre-configured with CSS.
+    - SQL database migration for the `users` table.
+- [x] **Security Defaults:**
+  - [x] Automatic CSRF protection for HTML form submissions.
+  - [x] Default security headers middleware (CORS, HSTS, X-Content-Type-Options).
+
+---
+
+## ⚡ Milestone 4: HTMX & Interactivity
+**Goal:** Combine the simplicity of Server-Side Rendering (SSR) with the snappy feeling of modern Single-Page Applications (SPAs).
+
+- [x] **Native Reactive SSR (HTMX Live State):** A declarative macro engine (`#[htmx]`) that automatically manages WebSocket connections, evaluates server-side state, and pushes minimal DOM patches instantly to the client—achieving Phoenix LiveView-like interactivity without writing JavaScript or WebAssembly.
+- [x] **HTMX First-Class Support:**
+  - [x] Built-in response helpers for checking HTMX headers (`rullst::htmx::is_htmx(req)`).
+  - [x] Native support for partial template rendering (rendering only the requested component, not the full page layout).
+  - [x] TailwindCSS auto-integration during project setup.
+
+---
+
+## 📦 Milestone 5: Production Utilities (Queues, Cache, Scheduler & Assets)
+**Goal:** Provide the tools needed to scale applications in production environment.
+
+- [x] **Docker & Containerization:**
+  - [x] `cargo rullst new <name> --docker` flag to generate a production-ready `Dockerfile`.
+  - [x] Auto-generated `docker-compose.yml` for local development (App + DB + Redis).
+  - [x] Optimized multi-stage builds (`scratch` / `distroless`) for ultra-small, fast, and secure Rust deployments.
+- [x] **Queues & Background Workers:**
+  - [x] `rullst::queue` API supporting SQLite (for local dev) and Redis (for production).
+  - [x] Asynchronous task workers executing jobs in the background.
+- [x] **Caching Layer:**
+  - [x] `rullst::cache` unified driver API supporting In-Memory and Redis adapters.
+- [x] **Task Scheduler:**
+  - [x] Declarative Cron-like job scheduler directly in `main.rs` (e.g. `.schedule("0 0 * * *", nightly_cleanup)`).
+- [x] **Edge-Optimized Assets & Compression Tuning:** Automatically generate pre-compiled assets compressed via **Brotli (level 11)** and **Zstandard** during `cargo rullst build --release`. Zero-copy static file serving via Axum using `sendfile` system calls directly at the kernel level, outperforming standalone Nginx serving speeds.
+
+---
+
+## 🏢 Milestone 6: Enterprise Features (Validation, Mail, Storage & Protection)
+**Goal:** Deliver the classic robust features expected from enterprise-grade frameworks.
+
+- [x] **Declarative Validation:** A `#[derive(Validate)]` macro for DTOs/structs that automatically returns 422 JSON for APIs or HTML error partials for HTMX when validation fails.
+- [x] **Mailer System (`rullst::mail`):** Fluent API for sending emails with drivers for SMTP, Resend, and SendGrid, supporting native `html!` templates.
+- [x] **Storage Abstraction (`rullst::storage`):** Unified API for file uploads and management with drivers for Local (Disk), AWS S3, and Cloudflare R2.
+- [x] **WebSockets & Real-Time:** Built-in router support for WebSockets, perfectly integrated with HTMX (`hx-ext="ws"`).
+- [x] **Rullst Zenith:** A beautiful built-in web dashboard to monitor queues, see failed jobs, and retry them visually.
+- [x] **Adaptive Backpressure & Resilient Traffic Shielding:** Router-level protection middleware that tracks async Tokio thread pools and database response timings. Smoothly degrades traffic or queues excessive loads when database exhaustion or CPU saturation is imminent, preventing out-of-memory (OOM) crashes.
+- [x] **Token-Bucket Rate Limiting:** Native rate limiting attributes (e.g., `#[route(get, "/api", rate_limit = "100/m")]`) with Shared-Memory (`DashMap`) or Redis engines.
+
+---
+
+## 🚀 Milestone 7: The "Unfair Advantage" (Industry Dominance)
+**Goal:** Push Rullst beyond what is possible in other languages, making it the undeniable king of modern web development.
+
+- [x] **Rullst Live (Server-Driven UI):** Write stateful Rust components that automatically sync with the browser via WebSockets. SPA interactivity without writing a single line of JavaScript.
+- [x] **AI-Native Core (`rullst::ai`):** Built-in declarative abstractions for LLMs (OpenAI, Gemini, Anthropic, Ollama), Vector Databases, and Agents. Build RAG apps and AI agents in minutes.
+- [x] **Rullst Studio:** A built-in visual GUI to inspect, filter, and edit your database records locally. Triggered via `cargo rullst studio`.
+- [x] **Declarative E2E Testing:** A fluent testing API: `app.get("/login").assert_status(200).assert_see("Welcome");`.
+- [x] **Built-in Feature Flags:** Native support for toggling features and running A/B tests with zero external dependencies.
+- [x] **Wasm Islands (`#[client_component]`):** Write frontend interactive components directly in Rust. Rullst will automatically compile these specific components to lightweight WebAssembly and hydrate them on the client side, eliminating the need to write any JavaScript!
+- [x] **AI-Powered "Self-Healing" Error Console:** An interactive development error page with integrated local AI assistants. When a runtime or compilation error occurs, you will have an "Auto-Fix with Rullst AI" button that patches the correct code directly on your file system.
+- [x] **Native SaaS Multi-Tenancy (`rullst::multitenant`):** Out-of-the-box tenant isolation (multi-tenancy by subdomain, header, or DB schema) configured declaratively with a single decorator/macro.
+- [x] **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing):** The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? **Sub-millisecond layout updates** (like Vite/Dioxus) with a stateful Rust backend.
+
+---
+
+## 🌍 Milestone 8: Distributed Data & Edge Fusion
+**Goal:** Run Rullst on modern Edge infrastructure with zero rewrites and ultra-low latency globally.
+
+- [x] **Rullst Edge Runtime (`rullst::edge`):** Native support for compiling and running Rullst apps in WebAssembly infrastructure (Cloudflare Workers, Fastly Compute, AWS Lambda@Edge) abstracting Tokio/WASI differences.
+- [x] **Zero-Config SQLite Replication:** Native drivers for edge-distributed databases (Turso/libsql, Cloudflare D1) integrated into `rullst-orm`. Read/write locally at 1ms latency while the framework syncs globally in the background.
+
+### 🔄 Autonomous Upgrade System (`cargo rullst upgrade`)
+
+> One of the biggest DX challenges in any full-stack framework is keeping dependencies updated without breaking user code. Rust makes this even more critical — minor/patch version bumps in low-level crates can cause hard compile-time errors. This system makes Rullst upgrades nearly invisible.
+
+- [x] **Non-Intrusive Background Version Check:** Every time the user runs frequent commands like `cargo rullst new` or `cargo rullst dev`, the CLI performs a lightweight async HTTP request (in a background thread, never blocking the terminal) to the Crates.io public API (`https://crates.io/api/v1/crates/rullst`) and compares the latest remote version with the version pinned in the user's `Cargo.toml`. The result is cached in a local temp file and refreshed at most once per day, so there is zero network overhead on repeated commands.
+
+- [x] **Elegant Terminal Notification Box:** If a new version is detected, the CLI renders a non-blocking info box directly in the terminal output — styled with `colored` — immediately after the command completes:
+  ```
+  ┌────────────────────────────────────────────────────────────┐
+  │  🚀 New Rullst version available: 1.0.5 → 1.1.0            │
+  │  Run 'cargo rullst upgrade' to update safely with           │
+  │  automatic code fixes (codemods).                           │
+  └────────────────────────────────────────────────────────────┘
+  ```
+
+- [x] **Automated Codemods (Zero-Breaking Upgrades):** Expand `cargo rullst upgrade` into a full autonomous refactoring pipeline:
+  1. **Manifest update:** The CLI rewrites the `rullst`, `rullst-macros`, and `rullst-orm` version strings in the user's `Cargo.toml` to the latest release.
+  2. **Codemod execution:** A versioned registry of regex-based (or lightweight AST) search-and-replace rules is shipped with each CLI release. If a public API changed between versions (e.g., `.render()` renamed to `.render_page()`), the CLI automatically rewrites all matching occurrences inside `src/**/*.rs` before the user even sees a compile error.
+  3. **Validation gate (`cargo check`):** After applying codemods, the CLI runs `cargo check` in background. If the compiler exits cleanly, the user sees: `"✅ Rullst updated successfully. No breaking changes detected."` If errors remain, a diff of the codemod changes is shown so the developer can review.
+
+- [x] **Dependency Shielding (Internal Abstraction Casca):** Enforce the architectural rule that all heavy transitive dependencies (e.g. `sqlx`, `axum`, `tokio`, `lettre`) are always re-exported or wrapped inside Rullst's own public API surface. User code must never `use sqlx::*` directly — only `use rullst::db::*`. This shields user apps from upstream breakage: when `sqlx` releases a breaking version, only Rullst's internal adapter changes, and the user's code compiles untouched.
+
+
+---
+
+## 🆓 Milestone 9: The "Free Enterprise" Revolution
+**Goal:** Disrupt the web framework ecosystem by providing premium SaaS and Enterprise tools 100% free and open-source, democratizing the tools to build million-dollar companies.
+
+- [x] **Rullst Nexus Panel (Auto-Generated CMS):** A beautiful, out-of-the-box admin panel that reads your `rullst-orm` models and auto-generates a complete CMS. Implemented via `rullst::nexus` with `NexusModel` reflection trait, dynamic HTMX CRUD, live search, and an AI chat interface at `/nexus/chat` for natural language database queries.
+- [x] **Dual-Engine Frontend Architecture:** Two new CLI generators empower developers to choose the right rendering engine:
+  - **Rullst Omni (Desktop & Mobile):** `cargo rullst make:omni` scaffolds a full Tauri v2 `omni-app/` wrapper. A background process orchestrator manages the Rullst Axum server, polls port 3000, and gracefully terminates it on window close. Supports targeting desktop (Windows, macOS, Linux) and mobile (Android, iOS) platforms with custom network configurations. Includes smart binary icon generation (PNG/ICO/ICNS) to prevent compiler errors.
+- [x] **Rullst Capital (SaaS Billing Boilerplate):** `cargo rullst make:billing` generates complete Stripe/LemonSqueezy integration — database migrations for subscriptions, webhook processors for subscription lifecycle events, and styled checkout views.
+- [x] **Rullst Shield (Wasm WAF & Bot Management):** Enterprise-grade security middleware compiled to WebAssembly for edge deployments. Includes behavioral rate limiting, AI scraper blocking, and automatic PII masking in response payloads.
+- [x] **Rullst Foundry CLI (DevOps Tooling):** Built-in CLI commands to provision and deploy infrastructure automatically via a declarative `Foundry.toml` file, forming the open-source foundation for a future hosted 1-click cloud service. Supported providers:
+  - **AWS** (EC2 + RDS + S3 + CloudFront)
+  - **Hetzner Cloud** (VPS + Volumes + Floating IPs)
+  - **Google Cloud Platform** (Compute Engine + Cloud SQL + Cloud Storage)
+  - **Microsoft Azure** (Virtual Machines + Azure SQL + Blob Storage)
+  - **Oracle Cloud Infrastructure** (OCI Compute + Autonomous DB + Object Storage)
+  - **DigitalOcean** (Droplets + Managed Databases + Spaces)
+  
+  Each provider target provisions the server via SSH, installs Docker, deploys the Rullst binary inside a container, and automatically configures an HTTPS reverse proxy via Caddy with automatic SSL certificate management.
+
+---
+
+## 🛠️ Milestone 10: Instant Incremental Compilation & Linker Hacking
+**Goal:** Eradicate compile-time friction in Rust and achieve interpreted-language feedback loop speeds.
+
+- [x] **Rullst Mold/Cranelift Deep Integration:** Configure the framework's scaffolding to force ultra-fast linkers (like `mold`) and use the `Cranelift` compilation backend during development.
+- [x] **Sub-100ms Feedback Loop:** Ensure that any business logic change isolates into a micro-module in memory, bringing the instant feedback of PHP/JS into strictly-typed Rust.
+
+---
+
+## 📊 Milestone 11: Hardware Telemetry & Radar
+**Goal:** Make asynchronous debugging and performance profiling effortless without relying on complex external setups.
+
+- [ ] **Rullst Radar (Kernel-Level Telemetry):** Real-time visual dashboard for hardware/software metrics. Detect CPU bottlenecks, Mutex contention, memory leaks, and I/O query bottlenecks with zero overhead.
+- [ ] **Time-Travel Debugging in Error Console:** Add a state history of the last 50 events, HTMX clicks, and SQL queries to the "Self-Healing" console. Replay the exact scenario that caused a server panic.
+- [x] **Native OpenTelemetry:** Zero-config abstraction to export traces and logs to Datadog, Grafana Loki, or Prometheus.
+
+---
+
+## 📚 Milestone 12: Developer Ecosystem & Interoperability
+**Goal:** Make Rullst the easiest framework to integrate with frontend ecosystems and provide world-class documentation.
+
+- [x] **Documentation Hub:** A premium, hyper-fast VitePress documentation portal with modern dark-mode aesthetics to lower the learning curve for new developers.
+- [x] **TypeScript SDK Generator (`generate:ts`):** AST-based CLI command that parses Rullst routes and generates a strictly-typed TypeScript client SDK for seamless React/Vue/Svelte integration.
+
+---
+
+## 💎 Milestone 12: Zero-Copy Event Streaming & Time-Travel Architecture
+**Goal:** Natively unify the data lifecycle and eliminate the need for heavy external message brokers.
+
+- [ ] **Rullst Ledger (`rullst::ledger`):** An Event Sourcing engine integrated directly into `rullst-orm`. Instead of just updating the state, the framework saves the immutable history of events by default using Zero-Copy persistence (memory-mapped files).
+- [ ] **Built-in Event Streaming:** The Rullst binary itself acts as a distributed async message micro-broker across instances via WebSockets/QUIC, replacing the need for Kafka or RabbitMQ for internal data communication.
+
+---
+
+## 🔮 Milestone 13: Omni-Frontend Protocol & AI Expansion
+**Goal:** Solidify Rullst as the ultimate backend for AI agents, SPAs, and Native Mobile apps.
+
+- [ ] **Automatic TypeScript SDK Generation:** For routes exposed as REST/JSON or WebSockets, auto-generate a 100% typed TS client, eliminating tRPC or manual OpenAPI.
+- [ ] **Hyper-Media Mobile Bridge:** A protocol allowing hybrid iOS/Android apps to consume partial HTMX/JSON responses and render native screens instantly (Server-Driven UI for mobile).
+- [ ] **AI Agent Tool-Calling:** Automatically expose Rullst routes/controllers as executable "Tools" for external LLMs with auto-generated schemas (`rullst-schema.json`).
+- [ ] **Dynamic Context Injection:** A secure `/_rullst/ai-context` endpoint providing real-time API documentation for client-integration AI agents.
+- [ ] **AI-Powered DB Seeding:** `cargo rullst db:seed --ai` leverages local LLMs to generate ultra-realistic, context-aware mock data.
+
+---
+
+## 🤖 Milestone 14: Agentic DevOps & Autonomous Infrastructure
+**Goal:** Leverage the Rullst compiler's deep understanding of the project schema to manage not just code, but production infrastructure and CI/CD.
+
+- [ ] **Autonomous Provisioning (`cargo rullst deploy --autonomous`):** The compiler analyzes your code (e.g., if you use `rullst::storage::S3`, it provisions a bucket) and talks to cloud providers directly, eliminating complex Terraform files.
+- [ ] **AI-Driven CI/CD Bottleneck Analysis:** Automated testing pipelines that use local LLMs to evaluate performance regressions. If a commit slows a route, the AI profiles the Tokio stack and suggests the exact line causing the bottleneck.
+
+---
+
+## 🌐 Milestone 15: AI-Generated Autonomous Migrations & Intent-Based DB
+**Goal:** Invert the database design flow by having AI generate optimized schemas and indices based on plain text intentions.
+
+- [ ] **Intent-Based Modeling:** Describe your entity using rich Rust comments. The Rullst AI CLI understands the business intent, calculates the best indexing strategy, and generates a perfectly optimized migration automatically.
+- [ ] **Self-Optimizing Indexes:** In production, Rullst monitors slow queries in real-time (using Radar Telemetry) and autonomously suggests or safely applies secondary indices to eliminate slow table scans.
+
+---
+
+## 🧬 Milestone 16: The Self-Evolving & Polymorphic Core
+**Goal:** Transform the framework from a static tool into a living software organism that adapts, optimizes, and heals itself in production.
+
+- [ ] **Polymorphic Code Generation:** Deep telemetry and local AI analyze production traffic. If a route receives millions of requests with a specific data pattern, the framework rewrites and recompiles its own internal logic in the background (via Dynamic Linking) to create an ultra-optimized execution path.
+- [ ] **Autonomous Error Auto-Healing in Production:** If the system detects a novel panic in production, the AI analyzes the log, writes a corrective patch, runs the test suite in the background, and hot-swaps the router in under 1 second—all without human intervention. The developer just wakes up to a report saying the bug was fixed.
+
+---
+
+## 🔬 Milestone 17: Quantum-Ready Web Architecture (The Post-Quantum Era)
+**Goal:** Future-proof the framework's security and compute layers against the rise of commercial quantum computing.
+
+- [ ] **Native Post-Quantum Cryptography (PQC):** Gradually replace standard encryption algorithms (JWT, Cookies, Sessions) with quantum-resistant algorithms (like Kyber and Dilithium) based on NIST standards.
+- [ ] **Hybrid Security Abstraction:** Implement a hybrid transport layer (Classical TLS + Quantum TLS) by default, ensuring the app is shielded against "Harvest Now, Decrypt Later" attacks.
+- [ ] **Rullst QLink (`rullst::quantum`):** A driver abstraction layer to communicate with cloud Quantum Processing Units (QPUs like IBM Quantum, AWS Braket). Easily dispatch complex logistics or molecular simulation tasks to quantum computers natively in Rust.
+
+---
+
+## 🗺️ Execution Strategy
+
+We will proceed **milestone by milestone**, starting with **Milestone 1** to polish our CLI generators. 
+
+If you are ready to begin, select a task or suggest which component to build next! 🚀

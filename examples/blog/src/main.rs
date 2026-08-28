@@ -1,26 +1,18 @@
 #![allow(unexpected_cfgs)]
-#![cfg_attr(mutants, mutants::skip)]
 use rullst::{Server, multitenant};
 use rullst_blog_example::app::Post;
 use rullst_orm::Orm;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Intercept Artisan and Studio CLI commands
+    // Intercept Artisan and Studio commands
     rullst::artisan!(vec![]);
 
-    #[cfg(debug_assertions)]
-    tokio::spawn(async {
-        if let Err(error) = rullst_studio::run_studio(5555).await {
-            eprintln!("Rullst Studio could not start: {error}");
-        }
-    });
-
-    // Initialize SQLite database
+    // Initialize SQLite file database
     Orm::init("sqlite://blog.db").await?;
 
     // Create table schema
-    let pool = Orm::pool()?;
+    let pool = Orm::pool();
     rullst::db::sqlx::query(
         "CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,44 +24,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .execute(pool)
     .await?;
 
-    // Clean old startup/enterprise seeds if migrating
-    let _ = rullst::db::sqlx::query(
-        "DELETE FROM posts WHERE title LIKE 'Enterprise Architecture%' OR title LIKE 'High-Velocity MVP%' OR title LIKE 'Architecture Deep Dive%' OR body LIKE '%Topcoat%'"
-    )
-    .execute(pool)
-    .await;
-
-    // Seed Sovereign SaaS Blog Posts
-    let _ = multitenant::TENANT_CONTEXT
-        .scope(std::cell::RefCell::new(Some("community".to_string())), async {
-            // 1. Unified Welcome & Overview Post
-            let welcome_exists = Post::query()
-                .where_eq("title", "Welcome to The Sovereign SaaS Blog & Publisher")
-                .first()
-                .await
-                .unwrap_or(None)
-                .is_some();
-
-            if !welcome_exists {
-                let mut post1 = Post {
-                    id: 0,
-                    tenant_id: "community".to_string(),
-                    title: "Welcome to The Sovereign SaaS Blog & Publisher".to_string(),
-                    body: "Welcome to The Sovereign SaaS Blog & Publisher. Explore the top navigation bar to test the available front-end foundations, the Hybrid ORM, local Rullst Studio (http://127.0.0.1:5555), Nexus CMS (/nexus), Capital Billing, and Security RASP demonstrations.\n\nThe example uses task-local tenant scoping as a development fixture. Production applications must derive membership from authenticated identity and keep cross-tenant negative tests in their own authorization model.".to_string(),
-                };
-                let _ = post1.save().await;
-            }
-
-            // 2. Architecture Comparison: The 5 Frontend Paradigms in Rullst
-            let mut post2 = Post {
+    // Seed post for tenant1
+    let _ = multitenant::TENANT_CONTEXT.scope(std::cell::RefCell::new(Some("tenant1".to_string())), async {
+        if Post::all().await.unwrap_or_default().is_empty() {
+            let mut post = Post {
                 id: 0,
-                tenant_id: "community".to_string(),
-                title: "Architecture Deep Dive: The 5 Frontend Paradigms in Rullst".to_string(),
-                body: "Here is an in-depth breakdown of how Rullst unifies all 5 web paradigms natively, eliminating framework lock-in:\n\n1. ⚡ Zero-Bundle HTMX SSR (Rullst Native Standard):\n- Paradigm: Declarative HTML5 attributes with compile-time `html!` macro.\n- Footprint: 0 KB JavaScript bundle. Sub-millisecond TTFB.\n- Ideal For: SEO landing pages, SaaS dashboards, and CRUD apps.\n\n2. 🔴 LiveView Server-Driven UI (`rullst::live` — Phoenix & Dioxus pattern):\n- Paradigm: Bidirectional WebSocket state synchronization over Tokio.\n- Footprint: Zero client-side logic. State lives in server RAM; DOM diffs are pushed to the browser in real-time.\n- Ideal For: Live feeds, chats, reactive counters, and notifications.\n\n3. 🏝️ Reactive Wasm Islands (`rullst::island` — Leptos & Yew WASM/Signals pattern):\n- Paradigm: Client-side WebAssembly micro-frontends mounted pontually.\n- Footprint: Isolated WASM bytecode running in the browser VM.\n- Ideal For: Rich Markdown editors, canvas games, offline calculations, and charting.\n\n4. 🎨 Zero-Build Semantic CSS (Pico.css v2 Engine — `/pico-demo`):\n- Paradigm: Classless semantic HTML5 styling with automatic OS Dark/Light theme detection.\n- Footprint: 0 KB JS, 0 Node.js / NPM build step, instant styling for pure HTML tags.\n- Ideal For: Backend developers wanting clean, accessible UIs with zero JS toolchains.\n\n5. 📄 File-Based Classic Templates (Jinja2 / Tera Engine — Loco & Rails pattern — `/templates-demo`):\n- Paradigm: External HTML files located in `templates/*.html` with layout inheritance.\n- Footprint: Decoupled presentation layer for frontend designers.\n- Ideal For: Teams migrating from Django, Laravel, Rails, or Loco.rs.".to_string(),
+                tenant_id: "tenant1".to_string(),
+                title: "Story of Tenant 1".to_string(),
+                body: "This is exclusive content for tenant 1. Under Rullst SaaS Multi-tenancy, other tenants cannot view this record!".to_string(),
             };
-            let _ = post2.save().await;
-        })
-        .await;
+            let _ = post.save().await;
+        }
+    }).await;
+
+    // Seed post for tenant2
+    let _ = multitenant::TENANT_CONTEXT.scope(std::cell::RefCell::new(Some("tenant2".to_string())), async {
+        if Post::all().await.unwrap_or_default().is_empty() {
+            let mut post = Post {
+                id: 0,
+                tenant_id: "tenant2".to_string(),
+                title: "Exclusive for Tenant 2".to_string(),
+                body: "Only developers authenticated or scoped under tenant 2 will ever load this record.".to_string(),
+            };
+            let _ = post.save().await;
+        }
+    }).await;
 
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
@@ -91,14 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         Server::new_hot(lib_path)
     } else {
-        let router = rullst_blog_example::router()?;
+        let router_ptr = rullst_blog_example::rullst_router_init();
+        let router = unsafe { *Box::from_raw(router_ptr) };
         Server::new(router)
     };
-
-    println!("🚀 Rullst Sovereign SaaS Showcase running at http://127.0.0.1:3000");
-    #[cfg(debug_assertions)]
-    println!("   - Studio Developer Control Room: http://127.0.0.1:5555");
-    println!("   - Nexus Admin CMS: http://127.0.0.1:3000/nexus");
 
     server.run(3000).await?;
 

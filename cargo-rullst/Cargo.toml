@@ -1,74 +1,44 @@
 [package]
 name = "cargo-rullst"
-version = "12.0.0"
+version = "5.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
-rust-version = "1.96.0"
-description = "The official command-line interface (CLI) for managing and scaffolding Rullst applications."
+description = "The official command-line interface (CLI) for managing Rullst applications."
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-homepage = "https://rullst.github.io"
-documentation = "https://docs.rs/cargo-rullst"
-keywords = ["rullst", "cli", "scaffold", "generator", "devtools"]
-categories = ["command-line-utilities", "development-tools"]
-
-[lib]
-name = "cargo_rullst"
-path = "src/lib.rs"
+rust-version = "1.96.0"
 
 [[bin]]
 name = "cargo-rullst"
-path = "src/bin/cargo-rullst.rs"
-doc = false
-
-[[bin]]
-name = "rullst"
-path = "src/bin/rullst.rs"
-doc = false
+path = "src/main.rs"
 
 [[bin]]
 name = "sync-badges"
 path = "src/bin/sync_badges.rs"
-doc = false
 
 [dependencies]
-rullst-core = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
-chrono = { workspace = true, features = ["clock"] }
+chrono = "0.4.45"
 dialoguer = "0.12.0"
 ratatui = "0.30.2"
 crossterm = "0.29.0"
 regex = "1.12.4"
-serde = { workspace = true }
-serde_json = { workspace = true }
-semver = "1.0.28"
-thiserror = { workspace = true }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
 walkdir = "2.5.0"
-axum = { workspace = true, features = ["ws"] }
-notify = { workspace = true }
+axum = { version = "0.8.9", features = ["ws"] }
+notify = "8"
 syn = { version = "3", features = ["full", "visit", "visit-mut"] }
-tokio = { workspace = true, features = ["full"] }
+tokio = { version = "1.52.3", features = ["full"] }
 brotli = "8.0.3"
 zstd = "0.13.3"
-reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
-rand = { workspace = true }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "blocking"] }
+rand = "0.10.1"
 quote = "1.0.47"
 proc-macro2 = "1.0.107"
-sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql", "any"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql"] }
 
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
-# Keeps the generated Tera blueprint dependency locked and cached for the
-# packaged-distribution compile gate without adding it to the CLI runtime graph.
-tera = "1.20"
-toml = { workspace = true }
-tower = { workspace = true, features = ["util"] }
-tower-http = { workspace = true, features = ["cors"] }
-
-[package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }

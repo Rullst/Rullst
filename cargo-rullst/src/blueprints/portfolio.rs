@@ -1,85 +1,35 @@
-// src/blueprints/portfolio.rs — Dynamic Full-Stack Portfolio supporting Active Record, Repository, and Hybrid ORM patterns.
-use super::common;
+// src/blueprints/portfolio.rs — Portfolio / Showcase blueprint templates.
 
-pub fn file_manifest(
-    project_name_safe: &str,
-    hot_reload: bool,
-    orm_pattern: &str,
-    frontend_engine: &str,
-) -> Vec<(&'static str, String)> {
+pub fn file_manifest(project_name_safe: &str, hot_reload: bool) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
 
-    let is_repo_mode = orm_pattern.contains("Repository") || orm_pattern.contains("Hybrid");
-    let repo_mod_decl = if is_repo_mode {
-        "pub mod repositories;\n"
-    } else {
-        ""
-    };
-
-    // 1. Router & Main Entrypoints
+    // 1. src/main.rs
     if hot_reload {
-        let lib_rs = format!(
-            r##"use rullst::{{routes, Router}};
+        let lib_rs = r##"use rullst::{routes, Router};
 
-pub mod migrations;
-pub mod models;
-{repo_mod_decl}pub mod controllers;
+pub mod controllers;
 pub mod pages;
 
-pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
-        .with_brand("Portfolio CMS Admin")
-        .register::<models::profile::Profile>()
-        .register::<models::project::Project>()
-        .register::<models::experience::Experience>()
-        .register::<models::skill::Skill>()
-        .try_build()?;
-
-    Ok(routes![
-        get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus))
-}}
-
 #[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = match router() {{
-        Ok(router) => router,
-        Err(error) => {{
-            eprintln!("Nexus startup configuration error: {{error}}");
-            Router::new()
-        }}
-    }};
+pub extern "C" fn rullst_router_init() -> *mut Router {
+    let router = routes![
+        get("/" => controllers::portfolio_controller::index),
+    ];
     Box::into_raw(Box::new(router))
-}}
-"##,
-            repo_mod_decl = repo_mod_decl
-        );
+}
+"##
+        .to_string();
         manifest.push(("src/lib.rs", lib_rs));
 
         let main_rs = format!(
-            r##"pub mod migrations;
-pub mod models;
-{repo_mod_decl}pub mod controllers;
+            r##"pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    rullst::artisan!(crate::migrations::get_migrations());
 
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
 
-    println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
+    println!("🚀 AI Portfolio server starting on port 3000...");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
     let server = if is_hot {{
@@ -90,7 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         rullst::Server::new_hot(&lib_path)
     }} else {{
-        let router = {project_name_safe}::router()?;
+        let router_ptr = {project_name_safe}::rullst_router_init();
+        let router = unsafe {{ *Box::from_raw(router_ptr) }};
         rullst::Server::new(router)
     }};
 
@@ -99,389 +50,374 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     Ok(())
 }}
 "##,
-            project_name_safe = project_name_safe,
-            frontend_engine = frontend_engine,
-            orm_pattern = orm_pattern,
-            repo_mod_decl = repo_mod_decl
+            project_name_safe = project_name_safe
         );
         manifest.push(("src/main.rs", main_rs));
     } else {
-        let main_rs = format!(
-            r##"use rullst::{{routes, Server}};
+        let main_rs = r##"use rullst::{routes, Server};
 
-pub mod migrations;
-pub mod models;
-{repo_mod_decl}pub mod controllers;
+pub mod controllers;
 pub mod pages;
 
 #[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    rullst::artisan!(crate::migrations::get_migrations());
-
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
-
-    let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(nexus_auth)
-        .with_brand("Portfolio CMS Admin")
-        .register::<models::profile::Profile>()
-        .register::<models::project::Project>()
-        .register::<models::experience::Experience>()
-        .register::<models::skill::Skill>()
-        .try_build()?;
-
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let router = routes![
         get("/" => controllers::portfolio_controller::index),
-    ].nest_axum("/nexus", nexus);
+    ];
 
-    println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
+    println!("🚀 AI Portfolio server starting on port 3000...");
     Server::new(router)
         .run(3000)
         .await?;
 
     Ok(())
-}}
-"##,
-            frontend_engine = frontend_engine,
-            orm_pattern = orm_pattern,
-            repo_mod_decl = repo_mod_decl
-        );
+}
+"##
+        .to_string();
         manifest.push(("src/main.rs", main_rs));
     }
 
-    // 2. Migrations
-    let migrations_mod = r##"pub mod m20260701000000_create_portfolio_tables;
+    // 2. Controller
+    let portfolio_controller = r##"use rullst::server::IntoResponse;
+use rullst::response::Html;
+use crate::pages::home;
 
-pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
-    vec![
-        Box::new(m20260701000000_create_portfolio_tables::CreatePortfolioTables),
-    ]
-}
-"##;
-    manifest.push(("src/migrations/mod.rs", migrations_mod.to_string()));
-
-    let migration_impl = r##"use rullst::db::schema::{Schema, Migration};
-use rullst::db::async_trait;
-
-pub struct CreatePortfolioTables;
-
-#[async_trait]
-impl Migration for CreatePortfolioTables {
-    fn name(&self) -> &'static str {
-        "m20260701000000_create_portfolio_tables"
-    }
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::create("profiles", |table| {
-            table.id();
-            table.string("name").not_null();
-            table.string("title").not_null();
-            table.string("subtitle").not_null();
-            table.string("email").not_null();
-            table.string("website").not_null();
-            table.string("avatar_url").not_null();
-            table.string("github_url").not_null();
-            table.string("linkedin_url").not_null();
-            table.timestamps();
-        }).await?;
-
-        Schema::create("projects", |table| {
-            table.id();
-            table.string("title").not_null();
-            table.string("description").not_null();
-            table.string("url").not_null();
-            table.string("tags").not_null();
-            table.integer("is_featured").not_null();
-            table.timestamps();
-        }).await?;
-
-        Schema::create("experiences", |table| {
-            table.id();
-            table.string("role").not_null();
-            table.string("company").not_null();
-            table.string("period").not_null();
-            table.string("description").not_null();
-            table.timestamps();
-        }).await?;
-
-        Schema::create("skills", |table| {
-            table.id();
-            table.string("name").not_null();
-            table.string("category").not_null();
-            table.timestamps();
-        }).await?;
-
-        let pool = rullst::db::Orm::pool()?;
-
-        rullst::db::sqlx::query(
-            "INSERT INTO profiles (id, name, title, subtitle, email, website, avatar_url, github_url, linkedin_url, created_at, updated_at) VALUES 
-             (1, 'Vene Light', 'Senior Rust & AI Systems Engineer', 'Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.', 'rullst@veneloius.de', 'https://rullst.github.io/', 'https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png', 'https://github.com/Rullst', 'https://linkedin.com', datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        rullst::db::sqlx::query(
-            "INSERT INTO projects (id, title, description, url, tags, is_featured, created_at, updated_at) VALUES 
-             (1, 'Rullst AI Engine', 'High-performance Rust AI inference engine leveraging hyper-optimized matrix operations.', 'https://github.com/Rullst/Rullst', 'Rust, AI, Tokio', 1, datetime('now'), datetime('now')),
-             (2, 'Nexus Auto-CMS', 'Zero-config auto-generated Admin CMS for Rust ORM models.', 'https://github.com/Rullst/Rullst', 'Rust, HTMX, Axum', 1, datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        rullst::db::sqlx::query(
-            "INSERT INTO experiences (id, role, company, period, description, created_at, updated_at) VALUES 
-             (1, 'Senior Rust Engineer', 'TechNova AI', '2024 - Present', 'Architected a highly concurrent distributed task queue in Rust processing 10k+ jobs per second.', datetime('now'), datetime('now')),
-             (2, 'Full-Stack Developer', 'Quantum Systems', '2021 - 2024', 'Built scalable SaaS applications and high-throughput backend services using Rust and TypeScript.', datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        rullst::db::sqlx::query(
-            "INSERT INTO skills (id, name, category, created_at, updated_at) VALUES 
-             (1, 'Rust', 'Languages', datetime('now'), datetime('now')),
-             (2, 'Python', 'Languages', datetime('now'), datetime('now')),
-             (3, 'Rullst Framework', 'Frameworks', datetime('now'), datetime('now')),
-             (4, 'SQLite / SQLx', 'Database', datetime('now'), datetime('now')),
-             (5, 'Docker & K8s', 'DevOps', datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        Ok(())
-    }
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::drop_if_exists("skills").await?;
-        Schema::drop_if_exists("experiences").await?;
-        Schema::drop_if_exists("projects").await?;
-        Schema::drop_if_exists("profiles").await?;
-        Ok(())
-    }
-}
-"##;
-    manifest.push((
-        "src/migrations/m20260701000000_create_portfolio_tables.rs",
-        migration_impl.to_string(),
-    ));
-
-    // 3. Models
-    let models_mod = r##"pub mod profile;
-pub mod project;
-pub mod experience;
-pub mod skill;
-"##;
-    manifest.push(("src/models/mod.rs", models_mod.to_string()));
-
-    let profile_model = r##"use rullst::db::{Orm, FromRow, Nexus};
-
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
-#[orm(table = "profiles")]
-pub struct Profile {
-    pub id: i32,
-    pub name: String,
-    pub title: String,
-    pub subtitle: String,
-    pub email: String,
-    pub website: String,
-    pub avatar_url: String,
-    pub github_url: String,
-    pub linkedin_url: String,
-}
-"##;
-    manifest.push(("src/models/profile.rs", profile_model.to_string()));
-
-    let project_model = r##"use rullst::db::{Orm, FromRow, Nexus};
-
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
-#[orm(table = "projects")]
-pub struct Project {
-    pub id: i32,
-    pub title: String,
-    pub description: String,
-    pub url: String,
-    pub tags: String,
-    pub is_featured: i32,
-}
-"##;
-    manifest.push(("src/models/project.rs", project_model.to_string()));
-
-    let experience_model = r##"use rullst::db::{Orm, FromRow, Nexus};
-
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
-#[orm(table = "experiences")]
 pub struct Experience {
-    pub id: i32,
-    pub role: String,
-    pub company: String,
-    pub period: String,
-    pub description: String,
+    pub role: &'static str,
+    pub company: &'static str,
+    pub period: &'static str,
+    pub description: &'static str,
 }
-"##;
-    manifest.push(("src/models/experience.rs", experience_model.to_string()));
 
-    let skill_model = r##"use rullst::db::{Orm, FromRow, Nexus};
-
-#[derive(Debug, Clone, FromRow, Orm, Nexus)]
-#[orm(table = "skills")]
-pub struct Skill {
-    pub id: i32,
-    pub name: String,
-    pub category: String,
+pub struct Education {
+    pub degree: &'static str,
+    pub institution: &'static str,
+    pub year: &'static str,
 }
-"##;
-    manifest.push(("src/models/skill.rs", skill_model.to_string()));
 
-    // 4. Repositories (if Repository Pattern or Hybrid Mode selected)
-    if is_repo_mode {
-        let repo_mod = r##"pub mod profile_repository;
-pub mod project_repository;
-pub mod experience_repository;
-pub mod skill_repository;
-"##;
-        manifest.push(("src/repositories/mod.rs", repo_mod.to_string()));
-
-        let profile_repo = r##"use crate::models::profile::Profile;
-
-pub struct ProfileRepository;
-
-impl ProfileRepository {
-    pub async fn get() -> Profile {
-        Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
-            id: 1,
-            name: "Vene Light".to_string(),
-            title: "Senior Rust & AI Systems Engineer".to_string(),
-            subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
-            email: "rullst@veneloius.de".to_string(),
-            website: "https://rullst.github.io/".to_string(),
-            avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
-            github_url: "https://github.com/Rullst".to_string(),
-            linkedin_url: "https://linkedin.com".to_string(),
-        })
-    }
+pub struct SkillGroup {
+    pub category: &'static str,
+    pub skills: Vec<&'static str>,
 }
-"##;
-        manifest.push((
-            "src/repositories/profile_repository.rs",
-            profile_repo.to_string(),
-        ));
 
-        let project_repo = r##"use crate::models::project::Project;
-
-pub struct ProjectRepository;
-
-impl ProjectRepository {
-    pub async fn all() -> Vec<Project> {
-        Project::all().await.unwrap_or_default()
-    }
+pub struct Project {
+    pub title: &'static str,
+    pub description: &'static str,
+    pub tags: Vec<&'static str>,
+    pub link: &'static str,
 }
-"##;
-        manifest.push((
-            "src/repositories/project_repository.rs",
-            project_repo.to_string(),
-        ));
 
-        let exp_repo = r##"use crate::models::experience::Experience;
-
-pub struct ExperienceRepository;
-
-impl ExperienceRepository {
-    pub async fn all() -> Vec<Experience> {
-        Experience::all().await.unwrap_or_default()
-    }
+pub struct CvData {
+    pub name: &'static str,
+    pub title: &'static str,
+    pub email: &'static str,
+    pub github: &'static str,
+    pub linkedin: &'static str,
+    pub summary: &'static str,
+    pub experiences: Vec<Experience>,
+    pub education: Vec<Education>,
+    pub skill_groups: Vec<SkillGroup>,
+    pub projects: Vec<Project>,
 }
-"##;
-        manifest.push((
-            "src/repositories/experience_repository.rs",
-            exp_repo.to_string(),
-        ));
-
-        let skill_repo = r##"use crate::models::skill::Skill;
-
-pub struct SkillRepository;
-
-impl SkillRepository {
-    pub async fn all() -> Vec<Skill> {
-        Skill::all().await.unwrap_or_default()
-    }
-}
-"##;
-        manifest.push((
-            "src/repositories/skill_repository.rs",
-            skill_repo.to_string(),
-        ));
-    }
-
-    // 5. Controller
-    let portfolio_controller = if is_repo_mode {
-        r##"use rullst::server::IntoResponse;
-use rullst::response::Html;
-use crate::repositories::profile_repository::ProfileRepository;
-use crate::repositories::project_repository::ProjectRepository;
-use crate::repositories::experience_repository::ExperienceRepository;
-use crate::repositories::skill_repository::SkillRepository;
-use crate::pages::home;
 
 pub async fn index() -> impl IntoResponse {
-    let profile = ProfileRepository::get().await;
-    let projects = ProjectRepository::all().await;
-    let experiences = ExperienceRepository::all().await;
-    let skills = SkillRepository::all().await;
-
-    Html(home::render(&profile, &projects, &experiences, &skills))
-}
-"##
-        .to_string()
-    } else {
-        r##"use rullst::server::IntoResponse;
-use rullst::response::Html;
-use crate::models::profile::Profile;
-use crate::models::project::Project;
-use crate::models::experience::Experience;
-use crate::models::skill::Skill;
-use crate::pages::home;
-
-pub async fn index() -> impl IntoResponse {
-    let profile = Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
-        id: 1,
-        name: "Vene Light".to_string(),
-        title: "Senior Rust & AI Systems Engineer".to_string(),
-        subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
-        email: "rullst@veneloius.de".to_string(),
-        website: "https://rullst.github.io/".to_string(),
-        avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
-        github_url: "https://github.com/Rullst".to_string(),
-        linkedin_url: "https://linkedin.com".to_string(),
-    });
-    let projects = Project::all().await.unwrap_or_default();
-    let experiences = Experience::all().await.unwrap_or_default();
-    let skills = Skill::all().await.unwrap_or_default();
-
-    Html(home::render(&profile, &projects, &experiences, &skills))
-}
-"##.to_string()
+    let data = CvData {
+        name: "Rullst Developer",
+        title: "Senior AI & Rust Engineer",
+        email: "hello@example.com",
+        github: "github.com/Rullst",
+        linkedin: "linkedin.com/in/Rullst",
+        summary: "Specialized in high-performance fullstack systems, agentic AI frameworks, and immersive web experiences powered by Rust. I build reliable distributed systems that scale effortlessly.",
+        experiences: vec![
+            Experience {
+                role: "Senior Rullst Engineer",
+                company: "TechNova AI",
+                period: "2024 - Present",
+                description: "Architected a highly concurrent distributed task queue in Rust processing 10k+ jobs per second. Migrated legacy microservices to Rullst framework, reducing memory footprint by 80%.",
+            },
+            Experience {
+                role: "Junior Rullst Developer",
+                company: "Quantum Startup",
+                period: "2021 - 2024",
+                description: "Built end-to-end SAAS products using modern web technologies. Led a team of 4 engineers and implemented CI/CD pipelines.",
+            },
+        ],
+        education: vec![
+            Education {
+                degree: "Rullst School",
+                institution: "Tech University",
+                year: "2021",
+            },
+            Education {
+                degree: "Rullst College",
+                institution: "State College",
+                year: "2019",
+            },
+        ],
+        skill_groups: vec![
+            SkillGroup {
+                category: "Languages",
+                skills: vec!["Rust", "TypeScript", "Python", "Go"],
+            },
+            SkillGroup {
+                category: "Frameworks & Tools",
+                skills: vec!["Rullst", "Axum", "Tokio", "Docker", "PostgreSQL"],
+            },
+        ],
+        projects: vec![
+            Project {
+                title: "Rullst SAAS",
+                description: "A high-performance Rust AI inference engine leveraging hyper-optimized matrix multiplications.",
+                tags: vec!["Rust", "AI", "CUDA"],
+                link: "#",
+            },
+            Project {
+                title: "Rullst LMS",
+                description: "Distributed autonomous agents communicating via WebSockets for collaborative task execution.",
+                tags: vec!["WebSockets", "Axum", "Rullst"],
+                link: "#",
+            },
+        ],
     };
-
+    
+    Html(home::render(data))
+}
+"##;
     manifest.push((
         "src/controllers/portfolio_controller.rs",
-        portfolio_controller,
+        portfolio_controller.to_string(),
     ));
 
     let controllers_mod = r##"pub mod portfolio_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
-    // 6. Pages View
-    let engine_badge = common::frontend_engine_badge(frontend_engine);
-    let engine_imports = "use rullst::html;";
-    let render_fn_code = r#"pub fn render(profile: &Profile, projects: &[Project], experiences: &[Experience], skills: &[Skill]) -> String {
+    let home_page = r##"use rullst::html;
+use crate::controllers::portfolio_controller::{CvData, Experience, Education, SkillGroup, Project};
+
+fn cv_styles() -> String {
+    r#"
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    
+    :root {
+        --bg-color: #050505;
+        --sidebar-bg: rgba(15, 15, 20, 0.6);
+        --accent: #00ffcc;
+        --accent-glow: rgba(0, 255, 204, 0.2);
+        --text-main: #f3f4f6;
+        --text-muted: #9ca3af;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --glass-bg: rgba(25, 25, 30, 0.4);
+    }
+
+    body { background: var(--bg-color); color: var(--text-main); line-height: 1.6; }
+    
+    /* Cyber Grid Background */
+    .bg-grid {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -3;
+        background-image: 
+            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(circle at center, black, transparent 80%);
+        -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        animation: gridMove 20s linear infinite;
+    }
+    
+    @keyframes gridMove {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(40px); }
+    }
+
+    /* Scanlines */
+    .scanlines {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+        background-size: 100% 4px; pointer-events: none;
+    }
+
+    .glow-blob { position: fixed; border-radius: 50%; filter: blur(120px); z-index: -2; animation: pulseGlow 8s infinite alternate; }
+    .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(0, 255, 204, 0.08); }
+    .glow-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vh; background: rgba(138, 43, 226, 0.08); }
+    
+    @keyframes pulseGlow {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .layout { display: flex; min-height: 100vh; max-width: 1400px; margin: 0 auto; padding: 2rem; gap: 3rem; }
+    
+    /* Sidebar */
+    .sidebar {
+        width: 350px; flex-shrink: 0; position: sticky; top: 2rem; height: calc(100vh - 4rem);
+        background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 24px;
+        padding: 2.5rem; display: flex; flex-direction: column; gap: 2rem;
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow-y: auto;
+    }
+    
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    .profile-img { width: 160px; height: auto; max-height: 120px; border-radius: 12px; margin-bottom: 1rem; object-fit: contain; }
+    h1 { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h2.role { color: var(--accent); font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .summary { color: var(--text-muted); font-size: 0.95rem; }
+
+    .contact-info { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+    .contact-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: var(--text-muted); transition: color 0.2s; }
+    .contact-item:hover { color: var(--accent); cursor: pointer; }
+    .contact-icon { width: 20px; height: 20px; opacity: 0.8; }
+
+    .skill-cat { font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tag { background: rgba(255, 255, 255, 0.05); color: #ddd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid var(--border-color); transition: all 0.3s; }
+    .tag:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-glow); }
+
+    /* Main Content */
+    .content { flex-grow: 1; display: flex; flex-direction: column; gap: 4rem; padding-bottom: 4rem; }
+    
+    .section-title { font-size: 2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+    .section-title::after { content: ''; flex-grow: 1; height: 1px; background: linear-gradient(90deg, var(--border-color), transparent); }
+
+    /* Timeline */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--border-color); }
+    
+    .timeline-item { position: relative; margin-bottom: 3rem; }
+    .timeline-item::before {
+        content: ''; position: absolute; left: -2.35rem; top: 0.3rem; width: 12px; height: 12px;
+        border-radius: 50%; background: var(--bg-color); border: 2px solid var(--accent);
+        transition: all 0.3s ease; box-shadow: 0 0 0 4px var(--bg-color);
+    }
+    .timeline-item:hover::before { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+    
+    .exp-period { display: inline-block; font-size: 0.85rem; color: var(--accent); background: var(--accent-glow); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; margin-bottom: 0.5rem; }
+    .exp-role { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .exp-company { font-size: 1rem; color: #bbb; font-weight: 500; margin-bottom: 1rem; }
+    .exp-desc { color: var(--text-muted); font-size: 1rem; }
+
+    /* Project Cards */
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .project-card { 
+        background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; 
+        padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .project-card::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        transform: translateX(-100%); transition: transform 0.6s ease;
+    }
+    .project-card:hover { transform: translateY(-5px); border-color: rgba(0, 255, 204, 0.3); background: rgba(25, 25, 30, 0.6); }
+    .project-card:hover::before { transform: translateX(100%); }
+    
+    .project-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .project-desc { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .project-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-main); text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.2s; }
+    .project-link:hover { color: var(--accent); }
+
+    @media (max-width: 900px) {
+        .layout { flex-direction: column; padding: 1rem; gap: 2rem; }
+        .sidebar { width: 100%; position: relative; height: auto; top: 0; }
+    }
+    "#.to_string()
+}
+
+fn render_sidebar(data: &CvData) -> String {
+    html! {
+        <aside class="sidebar">
+            <div style="text-align: center;">
+                <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" class="profile-img" />
+                <h1>{data.name}</h1>
+                <h2 class="role">{data.title}</h2>
+                <p class="summary">{data.summary}</p>
+            </div>
+            
+            <div class="contact-info">
+                <div class="contact-item">
+                    <svg class="contact-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    {data.email}
+                </div>
+                <div class="contact-item">
+                    <svg class="contact-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    {data.github}
+                </div>
+            </div>
+
+            <div>
+                { rullst::html::RawHtml::new(data.skill_groups.iter().map(|g| format!(
+                    "<div>\
+                        <div class=\"skill-cat\">{}</div>\
+                        <div class=\"tags\">{}</div>\
+                    </div>",
+                    g.category,
+                    g.skills.iter().map(|s| format!("<span class=\"tag\">{}</span>", s)).collect::<Vec<_>>().join("")
+                )).collect::<Vec<_>>().join("")) }
+            </div>
+        </aside>
+    }
+}
+
+fn render_content(data: &CvData) -> String {
+    html! {
+        <main class="content">
+            <section>
+                <h2 class="section-title">"Experience"</h2>
+                <div class="timeline">
+                    { rullst::html::RawHtml::new(data.experiences.iter().map(|e| format!(
+                        "<div class=\"timeline-item\">\
+                            <div class=\"exp-period\">{}</div>\
+                            <h3 class=\"exp-role\">{}</h3>\
+                            <div class=\"exp-company\">{}</div>\
+                            <p class=\"exp-desc\">{}</p>\
+                        </div>", e.period, e.role, e.company, e.description
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">"Education"</h2>
+                <div class="timeline">
+                    { rullst::html::RawHtml::new(data.education.iter().map(|edu| format!(
+                        "<div class=\"timeline-item\">\
+                            <div class=\"exp-period\">{}</div>\
+                            <h3 class=\"exp-role\">{}</h3>\
+                            <div class=\"exp-company\">{}</div>\
+                        </div>", edu.year, edu.degree, edu.institution
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">"Projects"</h2>
+                <div class="projects-grid">
+                    { rullst::html::RawHtml::new(data.projects.iter().map(|p| format!(
+                        "<div class=\"project-card\">\
+                            <h3 class=\"project-title\">{}</h3>\
+                            <p class=\"project-desc\">{}</p>\
+                            <div class=\"tags\">{}</div>\
+                            <a href=\"{}\" class=\"project-link\">\
+                                View Project\
+                                <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M5 12h14M12 5l7 7-7 7\"/></svg>\
+                            </a>\
+                        </div>",
+                        p.title, p.description,
+                        p.tags.iter().map(|t| format!("<span class=\"tag\">{}</span>", t)).collect::<Vec<_>>().join(""),
+                        p.link
+                    )).collect::<Vec<_>>().join("")) }
+                </div>
+            </section>
+        </main>
+    }
+}
+
+pub fn render(data: CvData) -> String {
     html! {
         <html lang="en">
             <head>
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>"Rullst Developer — AI & Rust Portfolio"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <title>{data.name} " - CV"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
                 <style>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>
@@ -492,195 +428,15 @@ pub async fn index() -> impl IntoResponse {
                 <div class="glow-blob glow-2"></div>
                 
                 <div class="layout">
-                    { rullst::html::RawHtml(render_sidebar(profile, skills)) }
-                    { rullst::html::RawHtml(render_content(projects, experiences)) }
+                    { rullst::html::RawHtml(render_sidebar(&data)) }
+                    { rullst::html::RawHtml(render_content(&data)) }
                 </div>
             </body>
         </html>
     }
-}"#;
-
-    let home_page = format!(
-        r##"// Frontend Adapter: {frontend_engine}
-{engine_imports}
-use crate::models::profile::Profile;
-use crate::models::project::Project;
-use crate::models::experience::Experience;
-use crate::models::skill::Skill;
-
-fn cv_styles() -> String {{
-    r#"
-    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }}
-    
-    :root {{
-        --bg-color: #050505;
-        --sidebar-bg: rgba(15, 15, 20, 0.6);
-        --accent: #00ffcc;
-        --accent-glow: rgba(0, 255, 204, 0.2);
-        --text-main: #f3f4f6;
-        --text-muted: #9ca3af;
-        --border-color: rgba(255, 255, 255, 0.08);
-        --glass-bg: rgba(25, 25, 30, 0.4);
-    }}
-
-    body {{ background: var(--bg-color); color: var(--text-main); line-height: 1.6; }}
-    
-    .bg-grid {{
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -3;
-        background-image: 
-            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
-        background-size: 40px 40px;
-        mask-image: radial-gradient(circle at center, black, transparent 80%);
-        -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
-        animation: gridMove 20s linear infinite;
-    }}
-    
-    @keyframes gridMove {{
-        0% {{ transform: translateY(0); }}
-        100% {{ transform: translateY(40px); }}
-    }}
-
-    .scanlines {{
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
-        background-size: 100% 4px; pointer-events: none;
-    }}
-
-    .glow-blob {{ position: fixed; border-radius: 50%; filter: blur(120px); z-index: -2; animation: pulseGlow 8s infinite alternate; }}
-    .glow-1 {{ top: -10%; left: -10%; width: 50vw; height: 50vh; background: rgba(0, 255, 204, 0.08); }}
-    .glow-2 {{ bottom: -10%; right: -10%; width: 50vw; height: 50vh; background: rgba(138, 43, 226, 0.08); }}
-    
-    @keyframes pulseGlow {{
-        0% {{ transform: scale(1); opacity: 0.8; }}
-        100% {{ transform: scale(1.1); opacity: 1; }}
-    }}
-
-    .layout {{ display: flex; min-height: 100vh; max-width: 1400px; margin: 0 auto; padding: 2rem; gap: 3rem; }}
-    
-    .sidebar {{
-        width: 350px; flex-shrink: 0; position: sticky; top: 2rem; height: calc(100vh - 4rem);
-        background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 24px;
-        padding: 2.5rem; display: flex; flex-direction: column; gap: 2rem;
-        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow-y: auto;
-    }}
-    
-    .profile-img {{ width: 140px; height: auto; max-height: 120px; border-radius: 12px; margin-bottom: 1rem; object-fit: contain; }}
-    h1 {{ font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
-    h2.role {{ color: var(--accent); font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }}
-    .summary {{ color: var(--text-muted); font-size: 0.95rem; }}
-
-    .contact-info {{ display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }}
-    .contact-item {{ display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: var(--text-muted); }}
-
-    .skill-cat {{ font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }}
-    .tags {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }}
-    .tag {{ background: rgba(255, 255, 255, 0.05); color: #ddd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; border: 1px solid var(--border-color); }}
-
-    .content {{ flex-grow: 1; display: flex; flex-direction: column; gap: 4rem; padding-bottom: 4rem; }}
-    .section-title {{ font-size: 2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }}
-
-    .timeline {{ position: relative; padding-left: 2rem; }}
-    .timeline::before {{ content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--border-color); }}
-    
-    .timeline-item {{ position: relative; margin-bottom: 3rem; }}
-    .timeline-item::before {{
-        content: ''; position: absolute; left: -2.35rem; top: 0.3rem; width: 12px; height: 12px;
-        border-radius: 50%; background: var(--bg-color); border: 2px solid var(--accent);
-    }}
-    
-    .exp-period {{ display: inline-block; font-size: 0.85rem; color: var(--accent); background: var(--accent-glow); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; margin-bottom: 0.5rem; }}
-    .exp-role {{ font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; }}
-    .exp-company {{ font-size: 1rem; color: #bbb; font-weight: 500; margin-bottom: 1rem; }}
-    .exp-desc {{ color: var(--text-muted); font-size: 1rem; }}
-
-    .projects-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }}
-    .project-card {{ background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; }}
-    .project-title {{ font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }}
-    .project-desc {{ font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; }}
-    .project-link {{ display: inline-flex; align-items: center; gap: 0.5rem; color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: 600; }}
-
-    .cms-btn {{ display: inline-block; margin-top: 1rem; background: #10b981; color: #000; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.9rem; }}
-    .cms-btn:hover {{ background: #34d399; }}
-
-    .engine-badge {{ display: inline-block; background: rgba(0, 255, 204, 0.1); border: 1px solid rgba(0, 255, 204, 0.3); color: #00ffcc; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 20px; margin-top: 0.5rem; }}
-    "#.to_string()
-}}
-
-fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
-    html! {{
-        <aside class="sidebar">
-            <div style="text-align: center;">
-                <img src={{&profile.avatar_url}} alt={{&profile.name}} class="profile-img" />
-                <h1>{{&profile.name}}</h1>
-                <h2 class="role">{{&profile.title}}</h2>
-                <div class="engine-badge">"{engine_badge}"</div>
-                <p class="summary">{{&profile.subtitle}}</p>
-                <a href="/nexus" target="_blank" class="cms-btn">"⚙️ Manage via Nexus CMS"</a>
-                <a href="http://127.0.0.1:5555" target="_blank" class="cms-btn">"📊 Open local Studio"</a>
-            </div>
-            
-            <div class="contact-info">
-                <div class="contact-item">"📧 "{{&profile.email}}</div>
-                <div class="contact-item">"🌐 "<a href={{&profile.website}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
-                <div class="contact-item">"💻 "<a href={{&profile.github_url}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
-                <div class="contact-item">"💼 "<a href={{&profile.linkedin_url}} target="_blank" style="color: var(--text-muted);">{{&profile.linkedin_url}}</a></div>
-            </div>
-
-            <div>
-                <div class="skill-cat">"Technical Skills"</div>
-                <div class="tags">
-                    {{ rullst::html::RawHtml::new(skills.iter().map(|s| format!("<span class=\"tag\">{{}}</span>", s.name)).collect::<Vec<_>>().join("")) }}
-                </div>
-            </div>
-        </aside>
-    }}
-}}
-
-fn render_content(projects: &[Project], experiences: &[Experience]) -> String {{
-    html! {{
-        <main class="content">
-            <section>
-                <h2 class="section-title">"Experience"</h2>
-                <div class="timeline">
-                    {{ rullst::html::RawHtml::new(experiences.iter().map(|e| format!(
-                        "<div class=\"timeline-item\">\
-                            <div class=\"exp-period\">{{}}</div>\
-                            <h3 class=\"exp-role\">{{}}</h3>\
-                            <div class=\"exp-company\">{{}}</div>\
-                            <p class=\"exp-desc\">{{}}</p>\
-                        </div>", e.period, e.role, e.company, e.description
-                    )).collect::<Vec<_>>().join("")) }}
-                </div>
-            </section>
-
-            <section>
-                <h2 class="section-title">"Projects Showcase"</h2>
-                <div class="projects-grid">
-                    {{ rullst::html::RawHtml::new(projects.iter().map(|p| format!(
-                        "<div class=\"project-card\">\
-                            <h3 class=\"project-title\">{{}}</h3>\
-                            <p class=\"project-desc\">{{}}</p>\
-                            <div class=\"tags\"><span class=\"tag\">{{}}</span></div>\
-                            <a href=\"{{}}\" target=\"_blank\" class=\"project-link\">View Project &rarr;</a>\
-                        </div>",
-                        p.title, p.description, p.tags, p.url
-                    )).collect::<Vec<_>>().join("")) }}
-                </div>
-            </section>
-        </main>
-    }}
-}}
-
-{render_fn_code}
-"##,
-        frontend_engine = frontend_engine,
-        engine_imports = engine_imports,
-        engine_badge = engine_badge,
-        render_fn_code = render_fn_code
-    );
-    manifest.push(("src/pages/home.rs", home_page));
+}
+"##;
+    manifest.push(("src/pages/home.rs", home_page.to_string()));
 
     let pages_mod = r##"pub mod home;
 "##;

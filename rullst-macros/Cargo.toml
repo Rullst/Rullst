@@ -1,17 +1,13 @@
 [package]
 name = "rullst-macros"
-version = "12.0.0"
+version = "5.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
-rust-version = "1.96.0"
-description = "Procedural and JSX-like compilation macros for the Rullst framework"
+description = "JSX-like compilation macros for Rullst framework"
 license = "MIT"
 readme = "../README.md"
 repository = "https://github.com/Rullst/Rullst"
-homepage = "https://rullst.github.io"
-documentation = "https://docs.rs/rullst-macros"
-keywords = ["rullst", "macros", "proc-macro", "jsx", "html"]
-categories = ["development-tools::procedural-macro-helpers"]
+rust-version = "1.96.0"
 
 [lib]
 proc-macro = true
@@ -22,10 +18,4 @@ quote = "1.0.45"
 proc-macro2 = "1.0.106"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(mutants)'] }
-
-[dev-dependencies]
-trybuild = "1.0"
-
-[package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 permissions:
   contents: read
@@ -17,192 +17,61 @@ env:
 
 defaults:
   run:
-    working-directory: .
+    working-directory: Rullst
 
 jobs:
   check:
     name: Code Quality & Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout Rullst
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          path: Rullst
 
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+      - name: Checkout rullst-orm
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: venelouis/rullst-orm
+          path: rullst-orm
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
         with:
           components: rustfmt, clippy
 
-      - name: Check formatting (Workspace)
-        run: cargo fmt --all -- --check
+      - name: Check formatting
+        run: cargo fmt --package rullst --package rullst-macros --package cargo-rullst --package rullst-blog-example -- --check
 
-      - name: Run Clippy (Workspace)
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # Run clippy with default features (no feature-exclusive conflicts)
+      - name: Run Clippy (default features)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Separately lint optional redis features
+      - name: Run Clippy (redis features)
+        run: cargo clippy -p rullst --all-targets --features cache-redis,queue-redis -- -D warnings
+
+      # Separately lint optional mail-smtp feature
+      - name: Run Clippy (mail-smtp feature)
+        run: cargo clippy -p rullst --all-targets --features mail-smtp -- -D warnings
 
   test:
-    name: Run Tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Run all workspace tests (Unit & Integration, all-features)
-        # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres
-        # simultaneously, which correctly cfg-excludes the DB matrix tests (those
-        # run in the dedicated step below with the proper feature combination).
-        run: cargo test --workspace --all-features
-
-      - name: Run Matrix DB Tests (Testcontainers — PostgreSQL & MySQL)
-        # Docker testcontainers are supported on Linux runners.
-        # Run without strict-* features so the matrix_postgres/matrix_mysql cfg
-        # gates are satisfied. --test-threads=1 prevents parallel tests from
-        # overwriting the global Orm::init() connection pool.
-        if: runner.os == 'Linux'
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-        run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
-
-  strict-database-features:
-    name: ORM ${{ matrix.feature }}
-    runs-on: ubuntu-latest
-    env:
-      TESTCONTAINERS_RYUK_DISABLED: "true"
-    strategy:
-      fail-fast: false
-      matrix:
-        feature: [strict-postgres, strict-mysql, strict-sqlite]
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Compile ORM feature in isolation
-        run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
-
-      - name: Exercise the selected strict pool and dialect
-        env:
-          STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
-        run: |
-          case "$STRICT_DATABASE_FEATURE" in
-            strict-postgres)
-              cargo test -p rullst-orm --no-default-features \
-                --features strict-postgres --test matrix_postgres -- --test-threads=1
-              ;;
-            strict-mysql)
-              cargo test -p rullst-orm --no-default-features \
-                --features strict-mysql --test matrix_mysql -- --test-threads=1
-              ;;
-            strict-sqlite)
-              cargo test -p rullst-orm --no-default-features \
-                --features strict-sqlite --test matrix_sqlite -- --test-threads=1
-              ;;
-            *)
-              echo "Unknown strict database feature: $STRICT_DATABASE_FEATURE"
-              exit 1
-              ;;
-          esac
-
-  redis-rate-limit:
-    name: Redis distributed rate-limit contract
-    runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Prove independent clients share one atomic budget
-        env:
-          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
-
-  feature-boundaries:
-    name: Public no-default and isolated feature boundaries
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Compile all public minimal and isolated feature boundaries
-        run: bash .github/check-feature-boundaries.sh
-
-  threat-model-release-minimum:
-    name: TM-12.2 release-negative minimum
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Run the explicit threat-model release-negative minimum
-        run: bash .github/check-threat-model-release-minimum.sh
-
-  versioned-ai-evals:
-    name: Versioned deterministic AI evals
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Validate and run the versioned offline eval suite
-        run: bash .github/check-ai-evals.sh
-
-  generated-release-access:
-    name: Generated release access boundaries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Rust toolchain (with native cache)
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
-      - name: Prove Nexus never selects credential-free release access
-        run: cargo test --release -p rullst-nexus ergonomic_policy_never_selects_loopback_in_release_builds
-
-      - name: Prove Studio rejects its local capability in release builds
-        run: cargo test --release -p rullst-studio protected_router_accepts_only_a_verified_loopback_peer
-
-  msrv:
-    name: Check MSRV (Rust 1.96.0)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Monorepo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Rust 1.96.0 (declared MSRV)
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+      - name: Checkout Rullst
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          toolchain: "1.96.0"
+          path: Rullst
 
-      - name: Check workspace compiles on MSRV
-        # Use `cargo check` (no linking) to validate the MSRV without full build time.
-        # If any crate uses a stabilized API newer than 1.96.0, this will fail.
-        run: cargo check --workspace --all-features
+      - name: Checkout rullst-orm
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: venelouis/rullst-orm
+          path: rullst-orm
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1
+
+      - name: Run all workspace tests
+        run: cargo test --workspace

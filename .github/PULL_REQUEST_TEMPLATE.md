@@ -23,8 +23,9 @@
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings (run `cargo clippy --workspace --all-targets -- -D warnings`)
+- [ ] My changes generate no new warnings (run `cargo clippy --workspace --all-targets --all-features -- -D warnings`)
 - [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes (run `cargo test --workspace`)
+- [ ] New and existing unit tests pass locally with my changes (run `cargo test --workspace --all-features`)
+- [ ] Formatting is current (run `cargo fmt --all`)
 - [ ] I have checked my code and corrected any misspellings
-- [ ] I am submitting my PR to the `dev` branch (PRs to `main` will be rejected)
+- [ ] I am submitting normal development to `dev`; a PR to `main` is an explicitly approved release promotion or legacy v5 maintenance change

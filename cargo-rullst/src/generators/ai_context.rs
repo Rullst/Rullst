@@ -31,12 +31,12 @@ pub fn generate_ai_context(base_path: Option<&Path>) -> Result<(), Box<dyn std::
         if full_dir.exists() {
             context.push_str(&format!("## {}\n\n", title));
             for entry in WalkDir::new(&full_dir).into_iter().filter_map(|e| e.ok()) {
-                if entry.path().is_file()
-                    && entry.path().extension().is_some_and(|e| e == "rs")
-                    && let Ok(content) = fs::read_to_string(entry.path())
-                {
-                    let rel_path = entry.path().display().to_string().replace("\\", "/");
-                    context.push_str(&format!("### {}\n```rust\n{}\n```\n\n", rel_path, content));
+                if entry.path().is_file() && entry.path().extension().is_some_and(|e| e == "rs") {
+                    if let Ok(content) = fs::read_to_string(entry.path()) {
+                        let rel_path = entry.path().display().to_string().replace("\\", "/");
+                        context
+                            .push_str(&format!("### {}\n```rust\n{}\n```\n\n", rel_path, content));
+                    }
                 }
             }
         }

@@ -1,12 +1,15 @@
 # cargo-deny configuration for Rullst Framework
 
 [advisories]
-# Temporary exceptions must have an owner, compensating control, and expiry in
-# docs/src/security-advisory-exceptions.md. Patched or absent advisories are not ignored.
+# Ignore some vulnerabilities if we can't update them yet.
+# Same list as cargo audit in security-audit.yml
 ignore = [
+    "RUSTSEC-2026-0099",
+    "RUSTSEC-2026-0098",
+    "RUSTSEC-2026-0104",
+    "RUSTSEC-2026-0002",
     "RUSTSEC-2023-0071",
     "RUSTSEC-2026-0173",
-    "RUSTSEC-2024-0436",
 ]
 
 [licenses]

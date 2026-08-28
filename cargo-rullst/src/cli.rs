@@ -1,11 +1,8 @@
 // src/cli.rs — Clap command definitions and the central dispatch function.
-#![cfg_attr(mutants, mutants::skip)]
 // This is the nerve center of the CLI: defines every subcommand and routes
 // each one to its corresponding generator function.
 
-use clap::{Parser, Subcommand, ValueEnum};
-use colored::Colorize;
-use std::path::PathBuf;
+use clap::{Parser, Subcommand};
 
 use crate::generators::{
     auth::scaffold_auth_system,
@@ -16,78 +13,23 @@ use crate::generators::{
     db::run_project_db_command,
     desktop::{run_omni_app, scaffold_omni_system},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
-    inspect::inspect_project,
     introspect::generate_models_from_db,
-    mail::create_new_mailable,
     middleware::create_new_middleware,
     migration::create_new_migration,
     model::create_new_model,
     openapi::generate_openapi_spec,
-    project::{ProjectScaffoldOptions, create_new_project_with_cli_options},
-    resource::create_new_resource,
+    project::create_new_project,
     worker::create_new_worker,
 };
 
 // ─── Clap Structs ─────────────────────────────────────────────────────────────
 
 #[derive(Parser)]
-#[command(name = "rullst")]
-#[command(version)]
-#[command(about = "Official CLI for the Rullst Framework", long_about = None)]
+#[command(name = "cargo-rullst")]
+#[command(about = "CLI oficial do Rullst Framework", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-}
-
-/// Stable blueprint names accepted by non-interactive project generation.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum BlueprintChoice {
-    Blank,
-    Lms,
-    Saas,
-    Blog,
-    Portfolio,
-    Erp,
-}
-
-impl BlueprintChoice {
-    pub const fn id(self) -> usize {
-        match self {
-            Self::Blank => crate::blueprints::BLANK_BLUEPRINT_ID,
-            Self::Lms => crate::blueprints::LMS_BLUEPRINT_ID,
-            Self::Saas => crate::blueprints::SAAS_BLUEPRINT_ID,
-            Self::Blog => crate::blueprints::BLOG_BLUEPRINT_ID,
-            Self::Portfolio => crate::blueprints::PORTFOLIO_BLUEPRINT_ID,
-            Self::Erp => crate::blueprints::ERP_BLUEPRINT_ID,
-        }
-    }
-}
-
-/// Selectable modules for the bounded LMS scaffold profiles.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LmsModuleChoice {
-    Auth,
-    Learning,
-    Assessment,
-    Gamification,
-    Automation,
-    Realtime,
-    Billing,
-}
-
-impl From<LmsModuleChoice> for crate::blueprints::lms::LmsModule {
-    fn from(module: LmsModuleChoice) -> Self {
-        match module {
-            LmsModuleChoice::Auth => Self::Auth,
-            LmsModuleChoice::Learning => Self::Learning,
-            LmsModuleChoice::Assessment => Self::Assessment,
-            LmsModuleChoice::Gamification => Self::Gamification,
-            LmsModuleChoice::Automation => Self::Automation,
-            LmsModuleChoice::Realtime => Self::Realtime,
-            LmsModuleChoice::Billing => Self::Billing,
-        }
-    }
 }
 
 #[derive(Subcommand)]
@@ -102,27 +44,9 @@ pub enum Commands {
         /// Optional: generates Dockerfile, docker-compose.yml, and .dockerignore for production
         #[arg(long)]
         docker: bool,
-        /// Optional: generates rootless OCI build.sh script via Buildah
-        #[arg(long)]
-        buildah: bool,
         /// Optional: generates Nix flake and direnv setup for reproducible environments
         #[arg(long)]
         nix: bool,
-        /// Optional: skips interactive prompts and uses default values (useful for CI)
-        #[arg(long)]
-        default: bool,
-        /// Selects a starter blueprint in deterministic/CI generation mode
-        #[arg(long, value_enum, requires = "default")]
-        blueprint: Option<BlueprintChoice>,
-        /// Selects a detached LMS module profile; currently `auth,learning`
-        #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
-        lms_modules: Vec<LmsModuleChoice>,
-        /// Skips the best-effort initial database migration after scaffolding
-        #[arg(long)]
-        skip_initial_migration: bool,
-        /// Optional: Scaffolds Turso/libSQL sidecar (sqld) for edge replication
-        #[arg(long)]
-        turso: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -141,15 +65,6 @@ pub enum Commands {
         /// Optional: creates a corresponding database migration for the table
         #[arg(short, long)]
         migration: bool,
-    },
-    /// Creates a new Resource (Model, Migration, Controller, Views) in one command
-    #[command(name = "make:resource")]
-    MakeResource {
-        /// Name of the Resource (e.g. Product or product)
-        name: String,
-        /// Optional: generates JSON API controller instead of HTML views
-        #[arg(long)]
-        api: bool,
     },
     /// Creates a new Middleware in the src/middlewares/ folder
     #[command(name = "make:middleware")]
@@ -175,45 +90,14 @@ pub enum Commands {
         /// Name of the migration (e.g. create_users_table)
         name: String,
     },
-    /// Automatically generates a migration by diffing Rust structs against the current database schema
-    #[command(name = "make:migration:auto")]
-    MakeMigrationAuto,
     /// Scaffolds authentication (login, registration, User model, migrations, middlewares, and HTML views)
     Auth,
     /// Scaffolds SaaS Billing (Stripe / LemonSqueezy database migrations, webhooks, checkout views)
     #[command(name = "make:billing")]
-    MakeBilling {
-        /// The primary Billable model (e.g. User, Team, Workspace)
-        #[arg(long, default_value = "User")]
-        model: String,
-    },
+    MakeBilling,
     /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
     MakeOmni,
-    /// Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway)
-    #[command(name = "make:iot")]
-    MakeIot {
-        /// Name of the IoT edge device (e.g. TemperatureSensor, MqttGateway)
-        name: String,
-    },
-    /// Scaffolds a strongly-typed Mailable email template in src/mail/
-    #[command(name = "make:mail")]
-    MakeMail {
-        /// Name of the Mailable struct (e.g. WelcomeEmail, PasswordReset, InvoiceReceipt)
-        name: String,
-        /// Optional: generate a Welcome & Onboarding email template
-        #[arg(long)]
-        welcome: bool,
-        /// Optional: generate a Password Reset email template
-        #[arg(long)]
-        reset: bool,
-        /// Optional: generate a 2FA OTP Token email template
-        #[arg(long)]
-        otp: bool,
-        /// Optional: generate a SaaS Invoice Receipt email template
-        #[arg(long)]
-        invoice: bool,
-    },
     /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
     #[command(name = "foundry:init")]
     FoundryInit,
@@ -222,9 +106,6 @@ pub enum Commands {
     FoundryDeploy,
     /// Generates Dockerfile and docker-compose.yml for the project
     Dockerize,
-    /// Generates a rootless OCI image build script via Buildah
-    #[command(name = "generate:buildah")]
-    GenerateBuildah,
     /// Generates Nix environment files (flake.nix, .envrc)
     Nixify,
     /// Scaffolds and configures CORS middleware
@@ -243,7 +124,7 @@ pub enum Commands {
     #[command(name = "generate:diagram")]
     GenerateDiagram,
     /// Connects to an existing database and generates Rullst ORM models
-    #[command(name = "generate:models", alias = "make:models-from-db")]
+    #[command(name = "generate:models")]
     GenerateModels {
         /// The database type (sqlite, postgres, mysql)
         #[arg(short, long)]
@@ -270,52 +151,10 @@ pub enum Commands {
         /// Name of the Island component (e.g. Counter or user_profile)
         name: String,
     },
-    /// Scaffolds ChatSession and ChatMessage models for Conversational AI memory
-    #[command(name = "make:chat-session")]
-    MakeChatSession,
-    /// Scaffolds Kubernetes manifest files (Deployment, Service, ConfigMap, HPA, Ingress) in k8s/
-    #[command(name = "make:k8s")]
-    MakeK8s,
-    /// Scaffolds a complete 2FA TOTP authentication system in src/controllers/mfa.rs
-    #[command(name = "make:mfa")]
-    MakeMfa,
-    /// Scaffolds interactive Scalar API documentation router at /docs
-    #[command(name = "make:scalar")]
-    MakeScalar,
-    /// Scaffolds a new LiveView-style reactive server component in src/live/
-    #[command(name = "make:live")]
-    MakeLive {
-        /// Name of the LiveComponent (e.g. Counter or UserFeed)
-        name: String,
-    },
-    /// Scaffolds a new gRPC service and Protobuf schema in proto/ and src/grpc/
-    #[command(name = "make:grpc")]
-    MakeGrpc {
-        /// Name of the gRPC service (e.g. UserService or OrderService)
-        name: String,
-    },
-    /// Deploys application to PaaS cloud providers (Fly.io, Railway, Render, VPS)
-    Deploy {
-        /// Target deployment platform (fly, railway, render, vps)
-        #[arg(short, long)]
-        platform: Option<String>,
-    },
     /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
     Upgrade,
     /// Starts the Rullst development server with neon spinners
-    Dev {
-        /// Optional: Automatically sync TypeScript SDK (sdk.ts) on file changes
-        #[arg(long = "ts-sync")]
-        ts_sync: bool,
-    },
-    /// Manages community extensions and RullstPackage dependencies
-    #[command(name = "pkg")]
-    Pkg {
-        /// Action to perform (add, list)
-        action: String,
-        /// Package name to add
-        name: Option<String>,
-    },
+    Dev,
     /// Starts the interactive Ratatui Development Dashboard
     Dash,
     /// Opens the Rullst Studio dashboard to inspect the database
@@ -339,60 +178,6 @@ pub enum Commands {
         /// Target platform (desktop, android, ios)
         target: Option<String>,
     },
-    /// Expands and inspects macro code or structural definitions for debugging
-    Inspect {
-        /// Target item to inspect (e.g. routes, models, schema, or file path)
-        target: Option<String>,
-    },
-    /// Runs AI-assisted security audit for secret leaks, CVEs, IDOR/BOLA routes, unsafe code, SBOM and network posture
-    Audit {
-        /// Optional: Enable AI Sentinel analysis suggestions
-        #[arg(long)]
-        ai: bool,
-        /// Optional: Export SECURITY_COMPLIANCE.md report evaluating OWASP Top 10, SOC2, and ISO 27001
-        #[arg(long)]
-        compliance: bool,
-        /// Optional: Run static IDOR / BOLA vulnerability scanner on parameterized routes
-        #[arg(long)]
-        idor: bool,
-        /// Optional: Run Cargo Geiger dependency tree and AST unsafe memory safety analysis
-        #[arg(long)]
-        geiger: bool,
-        /// Optional: Export CycloneDX 1.5 JSON Software Bill of Materials (sbom-cyclonedx.json)
-        #[arg(long)]
-        sbom: bool,
-        /// Optional: Scan local network surface and interface bindings (inspired by RustScan)
-        #[arg(long)]
-        network: bool,
-    },
-    /// Installs automated Git pre-commit quality and security hook in .git/hooks/pre-commit
-    #[command(name = "hook:install")]
-    HookInstall,
-    /// Runs full system diagnostics and toolchain health checks (Rust MSRV, Docker, linters, security tools)
-    Doctor {
-        /// Automatically attempt to install missing components or fix environment configurations
-        #[arg(long)]
-        fix: bool,
-    },
-    /// Evaluates the Academy production-boundary contract without claiming certification
-    #[command(name = "academy:doctor")]
-    AcademyDoctor {
-        /// JSON evidence declarations; omitted requirements remain NOT_EVALUATED
-        #[arg(long)]
-        evidence: Option<PathBuf>,
-        /// Emits the normalized diagnostic as machine-readable JSON
-        #[arg(long)]
-        json: bool,
-    },
-    /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
-    Eject {
-        /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs
-        #[arg(long)]
-        force: bool,
-        /// Optional: Custom output path for ejected file
-        #[arg(long)]
-        output: Option<String>,
-    },
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
@@ -404,49 +189,15 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             name,
             api,
             docker,
-            buildah,
             nix,
-            default,
-            blueprint,
-            lms_modules,
-            skip_initial_migration,
-            turso,
         } => {
-            if !lms_modules.is_empty() && !matches!(blueprint, Some(BlueprintChoice::Lms)) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "--lms-modules requires --blueprint lms",
-                )
-                .into());
-            }
-            let lms_modules = lms_modules
-                .iter()
-                .copied()
-                .map(crate::blueprints::lms::LmsModule::from)
-                .collect::<Vec<_>>();
-            create_new_project_with_cli_options(
-                name.as_deref(),
-                ProjectScaffoldOptions {
-                    api: *api,
-                    docker: *docker,
-                    buildah: *buildah,
-                    nix: *nix,
-                    use_defaults: *default,
-                    turso: *turso,
-                },
-                blueprint.as_ref().map(|choice| choice.id()),
-                *skip_initial_migration,
-                (!lms_modules.is_empty()).then_some(lms_modules.as_slice()),
-            )?;
+            create_new_project(name.as_deref(), *api, *docker, *nix)?;
         }
         Commands::MakeController { name, api } => {
             create_new_controller(name, *api)?;
         }
         Commands::MakeModel { name, migration } => {
             create_new_model(name, *migration)?;
-        }
-        Commands::MakeResource { name, api } => {
-            create_new_resource(name, *api)?;
         }
         Commands::MakeMiddleware { name } => {
             create_new_middleware(name)?;
@@ -466,33 +217,14 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeMigration { name } => {
             create_new_migration(name)?;
         }
-        Commands::MakeMigrationAuto => {
-            tokio::runtime::Runtime::new()?
-                .block_on(crate::generators::migration::create_auto_migration())?;
-        }
         Commands::Auth => {
             scaffold_auth_system()?;
         }
-        Commands::MakeBilling { model } => {
-            scaffold_billing_system(model)?;
-        }
-        Commands::MakeChatSession => {
-            crate::generators::chat::scaffold_chat_session()?;
+        Commands::MakeBilling => {
+            scaffold_billing_system()?;
         }
         Commands::MakeOmni => {
             scaffold_omni_system()?;
-        }
-        Commands::MakeIot { name } => {
-            crate::generators::iot::run_make_iot(name)?;
-        }
-        Commands::MakeMail {
-            name,
-            welcome,
-            reset,
-            otp,
-            invoice,
-        } => {
-            create_new_mailable(name, *welcome, *reset, *otp, *invoice)?;
         }
         Commands::FoundryInit => {
             scaffold_foundry_config()?;
@@ -519,25 +251,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 &proj_name,
                 None,
                 None,
-            )?;
-        }
-        Commands::GenerateBuildah => {
-            let mut proj_name = "app".to_string();
-            if let Ok(toml_content) = std::fs::read_to_string("Cargo.toml") {
-                for line in toml_content.lines() {
-                    if line.starts_with("name = ") {
-                        proj_name = line
-                            .replace("name = ", "")
-                            .replace("\"", "")
-                            .trim()
-                            .to_string();
-                        break;
-                    }
-                }
-            }
-            crate::generators::project::generate_buildah_script(
-                std::path::Path::new("."),
-                &proj_name,
             )?;
         }
         Commands::Nixify => {
@@ -579,30 +292,9 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Upgrade => {
             run_upgrade()?;
         }
-        Commands::Dev { ts_sync } => {
-            if *ts_sync {
-                let _ = crate::generators::ts::generate_ts_sdk();
-            }
+        Commands::Dev => {
             crate::generators::dev::run_dev_server(false)?;
         }
-        Commands::Pkg { action, name } => match action.as_str() {
-            "add" => {
-                if let Some(pkg_name) = name {
-                    crate::pkg::pkg_add(pkg_name)?;
-                } else {
-                    println!("{}", "❌ Please specify a package name (e.g. 'cargo rullst pkg add rullst-auth')".red());
-                }
-            }
-            "list" => {
-                crate::pkg::pkg_list()?;
-            }
-            _ => {
-                println!(
-                    "{}",
-                    format!("❌ Unknown pkg action '{}'. Use 'add' or 'list'.", action).red()
-                );
-            }
-        },
         Commands::Dash => {
             crate::generators::dev::run_dev_server(true)?;
         }
@@ -618,56 +310,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::Omni { target } => {
             run_omni_app(target.as_deref())?;
         }
-        Commands::Inspect { target } => {
-            inspect_project(target.as_deref())?;
-        }
-        Commands::Audit {
-            ai,
-            compliance,
-            idor,
-            geiger,
-            sbom,
-            network,
-        } => {
-            crate::generators::audit::run_security_audit(
-                *ai,
-                *compliance,
-                *idor,
-                *geiger,
-                *sbom,
-                *network,
-            )?;
-        }
-        Commands::HookInstall => {
-            crate::generators::hook::install_git_pre_commit_hook()?;
-        }
-        Commands::Doctor { fix } => {
-            crate::generators::doctor::run_doctor(*fix)?;
-        }
-        Commands::AcademyDoctor { evidence, json } => {
-            crate::generators::academy_doctor::run_academy_doctor(evidence.as_deref(), *json)?;
-        }
-        Commands::Eject { force, output } => {
-            crate::generators::eject::run_eject_project(*force, output.as_deref())?;
-        }
-        Commands::MakeK8s => {
-            crate::generators::k8s::generate_k8s_manifests()?;
-        }
-        Commands::MakeMfa => {
-            crate::generators::auth::mfa::scaffold_mfa_system()?;
-        }
-        Commands::MakeScalar => {
-            crate::generators::scalar::generate_scalar_docs()?;
-        }
-        Commands::MakeLive { name } => {
-            crate::generators::live::create_new_live_component(name)?;
-        }
-        Commands::MakeGrpc { name } => {
-            crate::generators::grpc::create_new_grpc_service(name)?;
-        }
-        Commands::Deploy { platform } => {
-            crate::generators::deploy::run_deploy(platform.as_deref())?;
-        }
     }
 
     // Automatically generate AI Context for scaffolding commands so it stays up to date
@@ -678,7 +320,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeWorker { .. }
         | Commands::MakeIsland { .. }
         | Commands::Auth
-        | Commands::MakeBilling { .. }
+        | Commands::MakeBilling
         | Commands::MakeCors
         | Commands::MakeJwt => {
             crate::generators::ai_context::generate_ai_context(None).ok();
@@ -688,115 +330,4 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_nix_and_buildah_flags_without_swapping_them() {
-        let nix =
-            Cli::try_parse_from(["rullst", "new", "demo", "--default", "--nix"]).expect("Nix CLI");
-        assert!(matches!(
-            nix.command,
-            Commands::New {
-                nix: true,
-                buildah: false,
-                ..
-            }
-        ));
-
-        let buildah = Cli::try_parse_from(["rullst", "new", "demo", "--default", "--buildah"])
-            .expect("Buildah CLI");
-        assert!(matches!(
-            buildah.command,
-            Commands::New {
-                nix: false,
-                buildah: true,
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn parses_deterministic_blueprint_generation_flags() {
-        let cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "release-consumer",
-            "--default",
-            "--blueprint",
-            "erp",
-            "--skip-initial-migration",
-        ])
-        .expect("deterministic blueprint CLI");
-
-        assert!(matches!(
-            cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Erp),
-                skip_initial_migration: true,
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn parses_bounded_lms_module_profile() {
-        let auth_cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "academy-identity",
-            "--default",
-            "--blueprint",
-            "lms",
-            "--lms-modules",
-            "auth",
-        ])
-        .expect("bounded LMS auth CLI");
-        assert!(matches!(
-            auth_cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![LmsModuleChoice::Auth]
-        ));
-
-        let cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "academy-foundation",
-            "--default",
-            "--blueprint",
-            "lms",
-            "--lms-modules",
-            "auth,learning",
-            "--skip-initial-migration",
-        ])
-        .expect("bounded LMS module CLI");
-
-        assert!(matches!(
-            cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![LmsModuleChoice::Auth, LmsModuleChoice::Learning]
-        ));
-    }
-
-    #[test]
-    fn explicit_blueprint_requires_non_interactive_defaults() {
-        let error =
-            Cli::try_parse_from(["rullst", "new", "release-consumer", "--blueprint", "saas"])
-                .err()
-                .expect("blueprint without deterministic defaults must be rejected");
-
-        assert_eq!(
-            error.kind(),
-            clap::error::ErrorKind::MissingRequiredArgument
-        );
-    }
 }

@@ -1,6 +1,5 @@
 [examine]
 exclude = [
-    # Core façade — integration-only, covered by higher-level tests
     "rullst/src/testing.rs",
     "rullst/src/validation.rs",
     "rullst/src/ai/mod.rs",
@@ -8,58 +7,5 @@ exclude = [
     "rullst/src/nexus.rs",
     "rullst/src/server.rs",
     "rullst/src/cache.rs",
-    "rullst/src/feature.rs",
-
-    # CLI / scaffold tools — interactive I/O, no unit-testable mutations
-    "cargo-rullst/src/bin/sync_badges.rs",
-    "cargo-rullst/src/generators/dev.rs",
-    "cargo-rullst/src/generators/project.rs",
-
-    # Example crate — not a production library
-    "examples/blog/src/lib.rs",
-
-    # Auth policy/RBAC — trait defaults and Axum middleware, verified by integration tests
-    "rullst-auth/src/policy.rs",
-    "rullst-auth/src/rbac.rs",
-
-    # AI provider — external HTTP client (OpenAI), not unit-testable in CI
-    "rullst-ai/src/ai/providers/openai.rs",
-
-    # Core — edge task spawner and feature hash bucket (I/O bound)
-    "rullst-core/src/edge.rs",
-    "rullst-core/src/html.rs",
-    "rullst-core/src/feature.rs",
-
-    # OAuth providers — external network calls, verified by integration tests
-    "rullst-connect/src/providers/oidc.rs",
-    "rullst-connect/src/providers/google.rs",
-    "rullst-connect/src/providers/auth0.rs",
-
-    # Proc-macros — TokenStream outputs, verified by macro expansion tests
-    "rullst-orm-macros/src/nexus.rs",
-    "rullst-macros/src/html_parser.rs",
-
-    # ORM schema diffing — SQL AST parser, verified by schema migration tests
-    "rullst-orm/src/schema_diff.rs",
-
-    # CLI commands and generators - interactive or I/O bound
-    "cargo-rullst/src/cli.rs",
-    "cargo-rullst/src/blueprints/mod.rs",
-    "cargo-rullst/src/generators/cors_jwt.rs",
-    "cargo-rullst/src/generators/model.rs",
-    "cargo-rullst/src/generators/migration.rs",
-
-    # Feature modules verified primarily via integration tests
-    "rullst-capital/src/billable.rs",
-    "rullst-ai/src/ai/rag.rs",
-    "rullst-ai/src/ai/mod.rs",
-    "rullst-connect/src/mock_idp.rs",
-    "rullst-connect/src/extractors.rs",
-    "rullst-connect/src/client.rs",
-    "rullst-core/src/testing.rs",
-    "rullst-core/src/server.rs",
-    "rullst-core/src/security.rs",
-    "rullst-core/src/resilience.rs",
-    "rullst-core/src/live.rs",
-    "rullst-nexus/src/nexus.rs",
+    "rullst/src/feature.rs"
 ]

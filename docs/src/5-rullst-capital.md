@@ -1,90 +1,30 @@
-# Rullst Capital: billing and fiscal boundaries
+# Rullst Capital: SaaS Billing Made Easy
 
-> **Vision preserved:** capabilities removed from the usable-today contract are
-> still evaluated item by item in the [capability ledger](capability-ledger.md#capital-billing-and-fiscal-vision),
-> including whether each one is worth implementing and why.
+**Rullst Capital** is the billing and subscription orchestration layer for Rullst SaaS applications.
 
-`rullst-capital` provides billing abstractions, revenue metrics, payment-provider
-adapters, payout helpers, and verified webhook plumbing. Provider capabilities
-are not uniform: consult the adapter API and its tests before depending on a
-particular checkout, refund, payout, or webhook operation.
+If you generated your project using the `SaaS` blueprint (`cargo rullst new` -> Select `SaaS Starter`), your application already comes wired with Capital, allowing you to charge your users from day one.
 
-## Payment providers
+## Core Features
 
-Initialize only the provider required by the application and treat credentials
-as deployment secrets. Empty credentials are configuration errors for live
-operations. Credentials deliberately prefixed with `mock_` select deterministic
-offline behavior where that adapter documents support for it.
+- **Multi-Provider Support:** Rullst Capital currently supports `Stripe` and `LemonSqueezy`. You can swap between them by simply changing the `BILLING_PROVIDER` environment variable. No code changes required!
+- **Webhook Handling:** Secure webhook endpoints are automatically set up to listen to subscription updates, payment successes, and cancellations.
+- **Database Synchronization:** When a payment succeeds, Capital automatically updates the `subscriptions` table in your local database via the `rullst-orm`, keeping user access in sync with their payment status.
 
-Webhook endpoints must use the Capital verification middleware. For supported
-protocols it performs cryptographic verification, freshness checks, and bounded
-replay protection before the application receives a normalized event. A webhook
-route may receive a narrowly scoped CSRF exemption only when this verifier remains
-mandatory on that exact route.
+## Configuration
 
-```rust,no_run
-use axum::{routing::post, Router};
-use rullst_capital::verify_webhook;
+In your `.env` file, configure your keys:
 
-async fn billing_webhook() {
-    // Read the verified event inserted by the middleware in real handlers.
-}
-
-let router = Router::new()
-    .route("/webhooks/billing", post(billing_webhook))
-    .layer(axum::middleware::from_fn(verify_webhook));
+```env
+BILLING_PROVIDER=stripe # or lemonsqueezy
+BILLING_API_KEY=sk_test_...
+BILLING_WEBHOOK_SECRET=whsec_...
 ```
 
-## NFS-e Nacional: contained offline preview
+## How It Works in Your App
 
-The current fiscal module can construct an escaped DPS XML fixture. It does not
-claim a valid XMLDSig signature or an authorization from the Brazilian national
-NFS-e service.
+The generated `billing_controller.rs` provides two primary endpoints:
 
-- `NfseEnvironment::Mock` returns `FiscalResponseKind::OfflineMock`, status
-  `MOCK_NOT_AUTHORIZED`, and `is_officially_authorized() == false`.
-- `NfseEnvironment::Homologation` and `NfseEnvironment::Production` fail closed
-  with `FiscalError::Unsupported`.
-- `sign_dps_xml` also fails closed; it never fabricates a `<Signature>` element.
+1. **Checkout Redirect:** When a user clicks "Upgrade to Pro", they hit `/billing/checkout?plan=price_pro`. Rullst Capital instantly communicates with Stripe/LemonSqueezy to create a secure checkout session and redirects the user.
+2. **Webhook Listener:** The `/billing/webhook` route securely verifies the signature of the incoming request and delegates it to the `webhook_handler`. The handler then updates the user's `plan_id` and `ends_at` timestamp in your local database.
 
-```rust,no_run
-use rullst_capital::fiscal::{
-    issue_nfse_direct, FiscalCertificate, FiscalCustomer, FiscalEmitter,
-    FiscalResponseKind, NfseDps, NfseEnvironment,
-};
-
-async fn offline_preview(
-    emitter: &FiscalEmitter,
-    customer: &FiscalCustomer,
-    dps: &NfseDps,
-) -> Result<(), rullst_capital::fiscal::FiscalError> {
-    let unused_certificate = FiscalCertificate::from_base64("", "");
-    let response = issue_nfse_direct(
-        emitter,
-        customer,
-        dps,
-        &unused_certificate,
-        NfseEnvironment::Mock,
-    )
-    .await?;
-
-    assert_eq!(response.kind, FiscalResponseKind::OfflineMock);
-    assert!(!response.is_officially_authorized());
-    Ok(())
-}
-```
-
-Live issuance remains roadmap work until PKCS#12 private-key handling, XML
-C14N/XMLDSig, XSD validation, mTLS, strict response parsing, rejection handling,
-and official end-to-end homologation are independently verified. Do not account
-an offline fixture as an issued invoice.
-
-## Operational checklist
-
-- Derive tenant identity from an authenticated context, not an arbitrary client
-  header.
-- Keep webhook secrets non-empty, rotate them, and retain replay state according
-  to the provider contract.
-- Reconcile provider events idempotently in the application database.
-- Treat Studio revenue panels as observability views, not an accounting ledger.
-- Verify every adapter capability in a sandbox before enabling live traffic.
+This architecture ensures your application stays extremely fast and never stores sensitive payment data on your servers.

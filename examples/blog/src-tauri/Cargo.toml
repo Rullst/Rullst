@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "rullst-desktop"
 version = "0.1.0"
 description = "Rullst Desktop Application"
@@ -10,6 +10,3 @@ tauri-build = { version = "1.5" }
 
 [dependencies]
 tauri = { version = "1.5", features = ["shell-open"] }
-
-[package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

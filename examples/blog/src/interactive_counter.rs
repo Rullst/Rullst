@@ -10,7 +10,7 @@ pub fn InteractiveCounter(initial_count: i32) -> String {
         html! {
             <div style="background: #1e293b; padding: 2.5rem; border-radius: 1rem; text-align: center; max-width: 420px; margin: 3rem auto; color: white; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
                 <h2 style="margin-top: 0; font-size: 1.5rem; color: #818cf8;">"Rullst Wasm Island 🏝️"</h2>
-                <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;">"Natively compiled to WebAssembly. 100% transparent hydration!"</p>
+                <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;">"Compilado nativamente para WebAssembly. Hidratação 100% transparente!"</p>
 
                 <div style="font-size: 4rem; font-weight: 800; margin: 1.5rem 0; color: #fff; font-family: monospace;">
                     <span id="counter-value">{initial_count}</span>
@@ -18,25 +18,12 @@ pub fn InteractiveCounter(initial_count: i32) -> String {
 
                 <div style="display: flex; gap: 1rem; justify-content: center;">
                     <button id="counter-dec" aria-label="Decrease counter" style="padding: 0.75rem 1.75rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
-                        "- Decrease"
+                        "- Diminuir"
                     </button>
                     <button id="counter-inc" aria-label="Increase counter" style="padding: 0.75rem 1.75rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: background 0.2s;">
-                        "+ Increase"
+                        "+ Aumentar"
                     </button>
                 </div>
-
-                <script>
-                    {rullst::html::RawHtml(r#"(function() {
-                        var dec = document.getElementById("counter-dec");
-                        var inc = document.getElementById("counter-inc");
-                        var val = document.getElementById("counter-value");
-                        if (dec && inc && val) {
-                            var count = parseInt(val.innerText || "0", 10);
-                            dec.onclick = function() { count--; val.innerText = count; };
-                            inc.onclick = function() { count++; val.innerText = count; };
-                        }
-                    })();"#.to_string())}
-                </script>
             </div>
         }
     }

@@ -1,90 +1,68 @@
 name: OWASP ZAP (Dynamic Application Security Testing)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 2 * * 0' # Run weekly
 
 permissions: read-all
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   zap_scan:
     name: ZAP Baseline Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Hard cap: build(60) + server start(5) + ZAP scan(60) = ~125min max
     permissions:
       issues: write
       pull-requests: write
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
         with:
           toolchain: stable
 
-      - name: Cache Cargo registry and build artifacts
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-zap-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-zap-
+      - name: Install cargo-rullst
+        run: cargo install --path cargo-rullst
 
-      - name: Configure environment for Blog Example
-        working-directory: examples/blog
+      - name: Scaffold Rullst SaaS Blueprint
         run: |
-          echo "APP_KEY=12345678901234567890123456789012" >> .env
-          echo "APP_ENV=production" >> .env
-          echo "DATABASE_URL=sqlite://db.sqlite3" >> .env
-          touch db.sqlite3
-          touch blog.db
+          cargo rullst new zap_test
+          # Configure dummy keys to allow server start
+          echo "APP_KEY=12345678901234567890123456789012" >> zap_test/.env
+          echo "APP_ENV=production" >> zap_test/.env
+          echo "DATABASE_URL=sqlite://db.sqlite3" >> zap_test/.env
 
-      - name: Build Rullst Server (Blog Example)
-        timeout-minutes: 60
-        run: cargo build --release -p rullst-blog-example
+      - name: Build Rullst Server
+        working-directory: zap_test
+        run: cargo build
 
       - name: Run Rullst Server in background
-        working-directory: examples/blog
+        working-directory: zap_test
         run: |
-          # Run the pre-compiled release binary directly (no recompilation)
-          ../../target/release/rullst-blog-example &
+          # We use cargo run to start the backend (compilation is already done)
+          cargo run &
           # Wait for the server to be ready on port 3000
-          sleep 3
-          curl -s --retry 15 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
-          echo "Server is up at http://localhost:3000"
+          sleep 5
+          curl -s --retry 10 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
 
       - name: Generate ZAP Rules to Ignore CDN False Positives
         run: |
           mkdir -p .zap
           # 10055 = CSP unsafe-inline / unsafe-eval (required for Tailwind/HTMX CDNs)
-          # 90003 = Sub Resource Resource Integrity Attribute Missing (dynamic CDN versions)
+          # 90003 = Sub Resource Integrity Attribute Missing (dynamic CDN versions)
           # 10017 = Cross-Domain JavaScript (CDN scripts)
           # 10109 = Modern Web Application (Informational)
           # 90004 = Cross-Origin-Embedder-Policy (Handled by production middleware)
           # 10049 = Storable and Cacheable Content (Handled by production middleware)
-          # 10202 = Absence of Anti-CSRF Tokens (False positive on GET routes in example app)
-          # 10063 = Permissions Policy Header Not Set (Not required for simple example)
-          # 10010 = Cookie No HttpOnly Flag (Double-Submit CSRF token is intentionally readable by frontend scripts)
-          # 10112 = Session Management Response Identified (Informational alert for session responses)
-          # 10099 = Source Code Disclosure - SQL (Informational / False positive on SQL query telemetry & RASP sandbox demos)
-          # 2 = Private IP Disclosure (Documentation / Example IPs in demo pages)
-          # 10024 = Sensitive Information in URL (Query params on demo sandbox GET endpoints)
-          # 10031 = User Controllable HTML Element Attribute (Safe reflected query params in search & table sort)
-          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)\n10202\tIGNORE\t(CSRF)\n10063\tIGNORE\t(Permissions-Policy)\n10010\tIGNORE\t(HttpOnly-CSRF)\n10112\tIGNORE\t(Session-Management)\n10099\tIGNORE\t(SQL-Telemetry)\n2\tIGNORE\t(Private-IP)\n10024\tIGNORE\t(URL-Params)\n10031\tIGNORE\t(HTML-Attr-Reflection)" > .zap/rules.tsv
+          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)" > .zap/rules.tsv
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
-        timeout-minutes: 60
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
         with:
           target: 'http://localhost:3000'
           rules_file_name: '.zap/rules.tsv'
           fail_action: false # Only warn for now, avoid breaking CI on first run
-

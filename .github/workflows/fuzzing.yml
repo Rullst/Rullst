@@ -1,118 +1,29 @@
 name: Fuzzing (cargo-fuzz)
 
 on:
-  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+  workflow_dispatch: # Manual trigger only
 
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   fuzz:
-    name: Fuzz ${{ matrix.target }}
+    name: Run Fuzzers (${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Rullst Core
-          - dir: rullst/fuzz
-            target: mask_pii
-          - dir: rullst/fuzz
-            target: html_escape
-          - dir: rullst/fuzz
-            target: routing
-          - dir: rullst/fuzz
-            target: validation_json
-          - dir: rullst/fuzz
-            target: auth_crypto
-          - dir: rullst/fuzz
-            target: auth_session
-          - dir: rullst/fuzz
-            target: security_csrf
-          - dir: rullst/fuzz
-            target: security_waf
-          - dir: rullst/fuzz
-            target: htmx_headers
-          - dir: rullst/fuzz
-            target: config_parser
-          - dir: rullst/fuzz
-            target: multitenant_resolver
-          - dir: rullst/fuzz
-            target: ws_payload
-          # Rullst ORM
-          - dir: rullst-orm/fuzz
-            target: fuzz_audit
-          - dir: rullst-orm/fuzz
-            target: fuzz_builder
-          - dir: rullst-orm/fuzz
-            target: fuzz_parser
-          - dir: rullst-orm/fuzz
-            target: fuzz_schema
-          - dir: rullst-orm/fuzz
-            target: fuzz_scout
-          # Rullst Connect
-          - dir: rullst-connect/fuzz
-            target: default_target
-          - dir: rullst-connect/fuzz
-            target: fuzz_token_response
-          - dir: rullst-connect/fuzz
-            target: fuzz_user_json
-          - dir: rullst-ai/fuzz
-            target: fuzz_message_serde
-          # Rullst Security
-          - dir: rullst-security/fuzz
-            target: fuzz_rasp
-          - dir: rullst-security/fuzz
-            target: fuzz_schema_guard
-          - dir: rullst-security/fuzz
-            target: fuzz_vault
-          - dir: rullst-security/fuzz
-            target: fuzz_totp
-          - dir: rullst-security/fuzz
-            target: fuzz_log_redactor
-          - dir: rullst-security/fuzz
-            target: fuzz_dlp
-          - dir: rullst-security/fuzz
-            target: fuzz_sanitizer
-          # Rullst IoT
-          - dir: rullst-iot/fuzz
-            target: fuzz_modbus
-          - dir: rullst-iot/fuzz
-            target: fuzz_ota
-          - dir: rullst-iot/fuzz
-            target: fuzz_anomaly
-          # Rullst AI
-          - dir: rullst-ai/fuzz
-            target: fuzz_ai_tools
-          - dir: rullst-ai/fuzz
-            target: fuzz_rag
-          # Rullst Capital
-          - dir: rullst-capital/fuzz
-            target: fuzz_invoice
-          # Rullst Nexus
-          - dir: rullst-nexus/fuzz
-            target: fuzz_nexus_crud
-          # Rullst Studio
-          - dir: rullst-studio/fuzz
-            target: fuzz_studio_db
-          # Rullst Mail
-          - dir: rullst-mail/fuzz
-            target: fuzz_mail
-          - dir: rullst-mail/fuzz
-            target: fuzz_email_validator
-          - dir: rullst-mail/fuzz
-            target: fuzz_email_tracking
-          - dir: rullst-mail/fuzz
-            target: fuzz_email_security
-
+        target: [
+          mask_pii, html_escape, routing,
+          validation_json, auth_crypto, auth_session,
+          security_csrf, security_waf, htmx_headers,
+          config_parser, multitenant_resolver, ws_payload
+        ]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Install Rust Nightly
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
+        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly
         with:
           toolchain: nightly
 
@@ -120,7 +31,7 @@ jobs:
         run: cargo install cargo-fuzz
 
       - name: Run Fuzzer for ~6 hours (${{ matrix.target }})
-        working-directory: ${{ matrix.dir }}
+        working-directory: rullst/fuzz
         # We run the fuzzer for a maximum of 21000 seconds (5 hours 50 minutes)
         # to ensure it completes before the 6h GitHub Actions hard limit.
         run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=21000

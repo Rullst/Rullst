@@ -1,9 +1,4 @@
-#[derive(Debug)]
-pub enum LogMsg {
-    AppStdout(String),
-    AppStderr(String),
-    System(String),
-}
+use crate::generators::dev::LogMsg;
 use crossterm::{
     event::{Event, KeyCode},
     execute,
@@ -29,59 +24,6 @@ struct App {
     start_time: Instant,
     tick_count: usize,
     port: u16,
-    db_provider: String,
-}
-
-fn open_browser_url(url: &str) {
-    let url_str = url.to_string();
-    std::thread::spawn(move || {
-        #[cfg(target_os = "windows")]
-        let _ = std::process::Command::new("cmd")
-            .arg("/c")
-            .arg("start")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-
-        #[cfg(target_os = "macos")]
-        let _ = std::process::Command::new("open")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-
-        #[cfg(target_os = "linux")]
-        let _ = std::process::Command::new("xdg-open")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-    });
-}
-
-fn detect_db_provider() -> String {
-    if let Ok(env_str) = std::fs::read_to_string(".env") {
-        for line in env_str.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("DATABASE_URL=") {
-                let url = trimmed
-                    .trim_start_matches("DATABASE_URL=")
-                    .trim_matches('"')
-                    .trim_matches('\'');
-                if url.contains("turso") || url.starts_with("libsql") {
-                    return " Turso / libSQL (Connected)".to_string();
-                } else if url.starts_with("postgres") || url.starts_with("postgresql") {
-                    return " PostgreSQL (Connected)".to_string();
-                } else if url.starts_with("mysql") || url.starts_with("mariadb") {
-                    return " MySQL / MariaDB (Connected)".to_string();
-                } else if url.starts_with("sqlite") {
-                    return " SQLite (Connected)".to_string();
-                }
-            }
-        }
-    }
-    " SQLite / Turso / MySQL / MariaDB / PG (Connected)".to_string()
 }
 
 impl App {
@@ -94,18 +36,13 @@ impl App {
             start_time: Instant::now(),
             tick_count: 0,
             port,
-            db_provider: detect_db_provider(),
         }
     }
 }
 
 fn strip_ansi(s: &str) -> String {
-    static ANSI_ESCAPE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
-        std::sync::OnceLock::new();
-    match ANSI_ESCAPE.get_or_init(|| regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]")) {
-        Ok(regex) => regex.replace_all(s, "").into_owned(),
-        Err(_) => s.to_owned(),
-    }
+    let re = regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]").unwrap();
+    re.replace_all(s, "").to_string()
 }
 
 pub async fn run(
@@ -121,11 +58,12 @@ pub async fn run(
     let (key_tx, mut key_rx) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         loop {
-            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150))
-                && let Ok(event) = crossterm::event::read()
-                && key_tx.send(event).is_err()
-            {
-                break;
+            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150)) {
+                if let Ok(event) = crossterm::event::read() {
+                    if key_tx.send(event).is_err() {
+                        break;
+                    }
+                }
             }
         }
     });
@@ -175,44 +113,12 @@ pub async fn run(
                         KeyCode::Char('o') => {
                             app.sys_logs.push("🌐 Launching application in browser...".to_string());
                             let url = format!("http://127.0.0.1:{}", app.port);
-                            open_browser_url(&url);
-                        }
-                        KeyCode::Char('s') => {
-                            app.sys_logs.push("📊 Launching Rullst Studio service in background...".to_string());
-                            let cargo_cmd = std::env::args().next().unwrap_or_default();
-                            let _ = std::process::Command::new(cargo_cmd)
-                                .arg("studio")
-                                .stdout(std::process::Stdio::null())
-                                .stderr(std::process::Stdio::null())
-                                .spawn();
-                            app.sys_logs.push("🌐 Opening http://127.0.0.1:5555 in 1.5s...".to_string());
-                            std::thread::spawn(move || {
-                                std::thread::sleep(std::time::Duration::from_millis(1500));
-                                open_browser_url("http://127.0.0.1:5555");
-                            });
-                        }
-                        KeyCode::Char('d') => {
-                            let openapi_path = std::path::Path::new("openapi.json");
-                            if !openapi_path.exists() {
-                                app.sys_logs.push("⚙️ Auto-generating openapi.json specification...".to_string());
-                                if let Err(e) = crate::generators::openapi::generate_openapi_spec() {
-                                    app.sys_logs.push(format!("⚠️ Failed to generate openapi.json: {}", e));
-                                } else {
-                                    app.sys_logs.push("✅ openapi.json generated successfully!".to_string());
-                                }
-                            }
-                            let docs_path = std::path::Path::new("src/controllers/docs_controller.rs");
-                            if !docs_path.exists() {
-                                app.sys_logs.push("⚙️ Auto-scaffolding Scalar API Docs (src/controllers/docs_controller.rs)...".to_string());
-                                if let Err(e) = crate::generators::scalar::generate_scalar_docs() {
-                                    app.sys_logs.push(format!("⚠️ Failed to scaffold docs: {}", e));
-                                } else {
-                                    app.sys_logs.push("✅ Scalar API Docs generated successfully!".to_string());
-                                }
-                            }
-                            app.sys_logs.push("📜 Opening Scalar API Docs (/docs)...".to_string());
-                            let url = format!("http://127.0.0.1:{}/docs", app.port);
-                            open_browser_url(&url);
+                            #[cfg(target_os = "windows")]
+                            let _ = std::process::Command::new("cmd").arg("/c").arg("start").arg(&url).spawn();
+                            #[cfg(target_os = "macos")]
+                            let _ = std::process::Command::new("open").arg(&url).spawn();
+                            #[cfg(target_os = "linux")]
+                            let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
                         }
                         KeyCode::Char('m') => {
                             app.sys_logs.push("⏳ Running db:migrate...".to_string());
@@ -424,23 +330,10 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
         ]),
         Line::from(vec![
             Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)),
-            Span::styled(&app.db_provider, Style::default().fg(Color::Yellow)),
-        ]),
-        Line::from(vec![
-            Span::styled("  🔑 Nexus CMS:", Style::default().fg(Color::DarkGray)),
-            Span::styled(" credentials from .env", Style::default().fg(Color::Cyan)),
             Span::styled(
-                format!(" (http://127.0.0.1:{}/nexus)", app.port),
-                Style::default().fg(Color::DarkGray),
+                " SQLite / MySQL / PG (Connected)",
+                Style::default().fg(Color::Yellow),
             ),
-        ]),
-        Line::from(vec![
-            Span::styled("  🛡️ Studio Guard:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                " Loopback 127.0.0.1:5555",
-                Style::default().fg(Color::Green),
-            ),
-            Span::styled(" (Press [s])", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![Span::raw("")]),
         Line::from(vec![
@@ -475,35 +368,28 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Open App  │  "),
-        Span::styled(
-            "[s]",
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" DB Studio  │  "),
-        Span::styled(
-            "[d]",
-            Style::default()
-                .fg(Color::Blue)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" API Docs  │  "),
+        Span::raw(" Open in Browser  │  "),
         Span::styled(
             "[m]",
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Migrate  │  "),
+        Span::raw(" Run db:migrate  │  "),
         Span::styled(
             "[c]",
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" Clear  │  "),
+        Span::raw(" Clear Logs  │  "),
+        Span::styled(
+            "[↑/↓]",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" Scroll  │  "),
         Span::styled(
             "[q/Esc]",
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),

@@ -29,8 +29,8 @@ fn extract_description_from_handler(handler_path: &str) -> Option<String> {
             while j > 0 {
                 j -= 1;
                 let prev_line = lines[j].trim();
-                if let Some(stripped) = prev_line.strip_prefix("///") {
-                    comments.push(stripped.trim().to_string());
+                if prev_line.starts_with("///") {
+                    comments.push(prev_line["///".len()..].trim().to_string());
                 } else if prev_line.starts_with("#[") || prev_line.is_empty() {
                     // skip decorators and empty lines
                     continue;
@@ -65,27 +65,13 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    let mut main_content = String::new();
-    if Path::new("src/main.rs").exists()
-        && let Ok(c) = fs::read_to_string("src/main.rs")
-    {
-        main_content.push_str(&c);
-        main_content.push('\n');
-    }
-    if Path::new("src/lib.rs").exists()
-        && let Ok(c) = fs::read_to_string("src/lib.rs")
-    {
-        main_content.push_str(&c);
-        main_content.push('\n');
-    }
-
-    if main_content.is_empty() {
-        println!(
-            "{}",
-            "❌ Error: Neither src/main.rs nor src/lib.rs found.".red()
-        );
+    let main_path = Path::new("src/main.rs");
+    if !main_path.exists() {
+        println!("{}", "❌ Error: File src/main.rs not found.".red());
         std::process::exit(1);
     }
+
+    let main_content = fs::read_to_string(main_path)?;
 
     // Parses Axum get/post/put/delete routing patterns
     let route_regex = regex::Regex::new(
@@ -104,8 +90,8 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         let openapi_path = path
             .split('/')
             .map(|segment| {
-                if let Some(stripped) = segment.strip_prefix(':') {
-                    format!("{{{}}}", stripped)
+                if segment.starts_with(':') {
+                    format!("{{{}}}", &segment[1..])
                 } else {
                     segment.to_string()
                 }
@@ -114,21 +100,13 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             .join("/");
 
         let description = extract_description_from_handler(&handler_path)
-            .unwrap_or_else(|| format!("Action '{}' executed by handler.", handler_path));
+            .unwrap_or_else(|| format!("Ação '{}' executada pelo handler.", handler_path));
 
-        let mut parameters = Vec::new();
+        let mut parameters = serde_json::json!([]);
         for segment in path.split('/') {
-            let param_name = if let Some(stripped) = segment.strip_prefix(':') {
-                Some(stripped)
-            } else {
-                segment
-                    .strip_prefix('{')
-                    .and_then(|s| s.strip_suffix('}'))
-                    .filter(|s| !s.is_empty())
-            };
-            if let Some(p) = param_name {
-                parameters.push(serde_json::json!({
-                    "name": p,
+            if segment.starts_with(':') {
+                parameters.as_array_mut().unwrap().push(serde_json::json!({
+                    "name": &segment[1..],
                     "in": "path",
                     "required": true,
                     "schema": {
@@ -147,27 +125,23 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-        if !parameters.is_empty()
-            && let Some(op_obj) = operation.as_object_mut()
-        {
-            op_obj.insert(
-                "parameters".to_string(),
-                serde_json::Value::Array(parameters),
-            );
+        if !parameters.as_array().unwrap().is_empty() {
+            operation
+                .as_object_mut()
+                .unwrap()
+                .insert("parameters".to_string(), parameters);
         }
 
         let path_item = paths_map
             .entry(openapi_path)
             .or_insert_with(|| serde_json::json!({}));
-        if let Some(item_obj) = path_item.as_object_mut() {
-            item_obj.insert(method, operation);
-        }
+        path_item.as_object_mut().unwrap().insert(method, operation);
     }
 
     let openapi = serde_json::json!({
         "openapi": "3.0.0",
         "info": {
-            "title": "Rullst API Specification",
+            "title": "Especificação da API Rullst",
             "description": "Specification automatically generated via the cargo-rullst static analyzer.",
             "version": "1.0.0"
         },
@@ -187,18 +161,4 @@ pub fn generate_openapi_spec() -> Result<(), Box<dyn std::error::Error>> {
         .bold()
     );
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_description_from_handler() {
-        assert_eq!(extract_description_from_handler("single_part"), None);
-        assert_eq!(
-            extract_description_from_handler("crate::non_existent::action"),
-            None
-        );
-    }
 }

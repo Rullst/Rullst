@@ -1,45 +1,40 @@
-name: Mutation Testing (manual informational)
+name: Mutation Testing (cargo-mutants)
 
 on:
-  workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+  workflow_dispatch: # Manual trigger only
 
-permissions: read-all
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: read
 
 jobs:
   mutants:
-    permissions:
-      contents: read
-    name: cargo-mutants informational shard ${{ matrix.shard }}/8
+    name: Run cargo-mutants (Shard ${{ matrix.shard }}/${{ matrix.total }})
     runs-on: ubuntu-latest
+    # Mutation testing can take a long time, so we set a timeout
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        total: [8]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # stable
+        with:
+          toolchain: stable
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
-        with:
-          tool: cargo-mutants
+        run: cargo install cargo-mutants
 
-      - name: Run mutants shard on whole workspace
-        # We test the entire workspace, divided in 8 shards
-        # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
-        # hard-fail — results are captured in the uploaded artifact for review.
-        continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
-
-      - name: Upload shard results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.2.2
+      - name: Run cargo-mutants (Core Library)
+        # We focus mutation testing on the core 'rullst' crate to avoid mutating examples or scaffolding generators which may not have exhaustive tests
+        run: cargo mutants -p rullst -j 1 --all-features --shard ${{ matrix.shard }}/${{ matrix.total }} -v
+        
+      - name: Archive Mutants Report
         if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: mutants-out-${{ matrix.shard }}
+          name: mutants-report-shard-${{ matrix.shard }}
           path: mutants.out/

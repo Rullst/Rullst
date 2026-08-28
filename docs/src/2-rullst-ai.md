@@ -4,20 +4,7 @@ Rullst was designed from the ground up to be the first **"AI-native"** Rust fram
 
 Traditional frameworks rely heavily on runtime "magic" (reflection, dynamic string-based dependency injection, weak typing, and heavy metaprogramming). While this is great for humans writing short scripts, it is **terrible for AI Agents**, as it prevents the AI from validating whether the code is correct before running it.
 
-Rullst favors strong typing and compile-time diagnostics. The compiler catches
-type and ownership errors in generated code, but it cannot validate requirements,
-security intent, or business correctness; AI-generated changes still require
-review and tests.
-
-For runtime LLM integrations, consult the machine-readable and documented
-[provider capability matrix](ai-provider-capabilities.md). Streaming, native
-tools, built-in deadlines/retries, and explicit cancellation are not implied by
-the existence of a provider adapter.
-
-Local Rust tools use a separate [guarded execution boundary](ai-tool-security.md)
-with an exact allowlist, principal authorization, closed JSON schema, payload
-limits, call budget and mandatory audit sink. Destructive and financial calls
-also require a one-use approval bound to the exact payload.
+In Rullst, we opted for **Strong Typing and Compile-Time Guarantees**. This allows the Rust compiler to act as an "absolute supervisor" for the AI. If the AI makes a mistake, the code won't compile, and the AI can read the detailed error and fix the problem instantly, creating a perfect feedback loop.
 
 ## 1. The Agent Manifesto (`AGENTS.md`)
 

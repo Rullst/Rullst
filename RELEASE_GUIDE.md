@@ -1,222 +1,111 @@
-# 🚀 Rullst — Release & Development Workflow Guide
+# Rullst Release and Branch Workflow
 
-> This document explains the official process for developing new features, testing them safely, and releasing stable versions of Rullst to crates.io without breaking things for users.
+This document defines how development, maintenance, and releases move through
+the repository. A branch name is not a publication or a security
+certification. Official distributed artifacts are versioned crates.io packages
+and their matching immutable tags.
 
----
+## Permanent references
 
-## 🧠 The Core Concept
+| Reference | Purpose | Published directly? |
+| --- | --- | --- |
+| `main` | Promoted release or maintenance source line; currently the legacy v5 baseline | No |
+| `dev` | Active integration branch for unreleased v12 work | Never |
+| `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
+| crates.io `X.Y.Z[-pre]` | Official distributed artifact | Yes |
 
-**The golden rule: the `main` branch is ALWAYS the stable, production version.**
+The current `main` source is based on the `v5.0.0` tag. Documentation or
+repository-workflow maintenance on top of that source does **not** create
+version `5.0.1`. A new crate version exists only after the manifests and
+changelog are deliberately updated, the release gates pass, and the matching
+tag is published.
 
-We use **two permanent branches**:
+Active v12 status and gates are maintained on
+[`dev`](https://github.com/Rullst/Rullst/blob/dev/docs/src/v12.md). Until those
+gates pass, v12 is unreleased and **NO-GO**.
 
-| Branch | What it is | Published to crates.io? |
-|--------|------------|------------------------|
-| `main` | ✅ **Stable** — tested and approved | ✅ **YES**, via `git tag` |
-| `dev` | 🔧 **Work in progress** — active development | ❌ **NEVER** directly |
+## Normal development
 
----
+New v12 work starts from `dev` and returns through a pull request targeting
+`dev`:
 
-## 📋 The Full Release Cycle (Step by Step)
-
-### Phase 1 — Develop on `dev`
-
-All new work happens on the `dev` branch. Never commit directly to `main`.
-
-```powershell
-# Switch to dev before starting any new work
-git checkout dev
-git pull origin dev   # Always pull latest before starting
+```bash
+git switch dev
+git pull --ff-only origin dev
+git switch -c feat/<short-topic>
 ```
 
-Make your changes, bug fixes, new features, etc.
+Use Conventional Commits with a scope and a concise technical summary:
 
-```powershell
-# Commit your work as usual
-git add .
-git commit -m "feat: add awesome new feature"
-git push
+```bash
+git add <paths>
+git commit -m "feat(core): add typed request guard"
+git push -u origin feat/<short-topic>
 ```
 
-Every push to `dev` automatically triggers the CI (GitHub Actions), which:
-- Runs `cargo fmt --check` to validate code formatting
-- Runs `cargo clippy` to check for code quality warnings
-- Runs `cargo test` to run all unit tests
+Pushes and pull requests to `dev` run the relevant day-to-day GitHub Actions,
+including the core build, lint, test, panic, unsafe, spelling, platform, and
+smoke-test checks. Workflows that are release-only, tag-only, scheduled,
+manual, or tied to the default branch remain separate by design.
 
----
+An explicitly approved v5 maintenance fix should branch from `main`, remain
+small, and return through a pull request to `main`. Do not merge unreleased v12
+work into a v5 maintenance change.
 
-### Phase 2 — Verify Stability
+## Required local pre-flight
 
-Before releasing, make sure:
+Before a change is declared complete, run:
 
-- [ ] All CI checks on `dev` are ✅ **green** on GitHub:
-  - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS ARM64, Windows MSVC).
-  - `kani.yml`: Model checking for the explicit harnesses and configured bounds;
-    this is not a proof of every path in the workspace.
-  - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`) for
-    the targets declared by the workflow.
-  - `miri.yml`: Undefined Behavior and strict-provenance checks for its declared
-    package matrix.
-  - `fuzzing.yml`: Bounded libFuzzer runs and OSS-Fuzz packaging/readiness.
-  - `e2e-smoke.yml`: Live SSR HTML status 200 checks, CSRF, and SQLite/Postgres persistence.
-- [ ] You have manually verified the mandatory local trifecta:
-  `cargo fmt --all -- --check`,
-  `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
-  `cargo test --workspace --all-features`.
-- [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
-- [ ] The [compatibility and MSRV policy](docs/src/compatibility-policy.md) still
-  matches the manifests, supported-version table, and intended release changes.
-- [ ] The [Cargo feature matrix](docs/src/feature-matrix.md) still matches every
-  publishable manifest and the feature-boundary CI matrix.
-- [ ] The [v12 migration guides](docs/src/migration-v12.md) and
-  [AI capability matrix](docs/src/ai-provider-capabilities.md) match the APIs,
-  CLI behavior, and known release-history boundaries.
-- [ ] Every current security statement matches the code, test, and limit in the
-  [v12 security claims ledger](docs/src/v12-security-claims.md); do not promote
-  an unlisted or unevidenced statement into release notes.
-- [ ] The packaged
-  [security-event v1 JSON Schema](rullst-security/schema/security-event-v1.schema.json)
-  matches `LiveSecurityEvent`, and any incompatible event change uses a new
-  schema version instead of silently changing v1.
-- [ ] All 15 publishable crate `Cargo.toml` versions and internal requirements
-  are synchronized (`12.0.0-rc.1` for the RC or `12.0.0` for stable):
-  - `rullst-macros`, `rullst-orm-macros`
-  - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
-  - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
-  - `rullst-studio`, `rullst-nexus`
-  - `cargo-rullst`, `rullst`
-
----
-
-### Phase 3 — Release (Merge to `main` + Create a Tag)
-
-Once everything is stable and verified:
-
-```powershell
-# 1. Switch to main
-git checkout main
-
-# 2. Merge the stable dev branch into main
-git merge dev
-
-# 3. Push main
-git push origin main
-
-# 4. Create a version tag (v12.0.0-rc.1 for the RC; v12.0.0 for stable)
-git tag v12.0.0-rc.1
-
-# 5. Push the tag — THIS triggers the automatic crates.io publish pipeline!
-git push origin v12.0.0-rc.1
+```bash
+cargo test --workspace --all-features
+cargo clippy --workspace --all-features -- -D warnings
+cargo fmt --all
 ```
 
-The RC is a real public crates.io release. It can be yanked but never
-overwritten; inspect and test every `.crate` before pushing the tag. Users must
-opt in to it explicitly with a requirement such as `12.0.0-rc.1`.
+Before a release candidate, also run the stricter all-target lint and every
+release gate documented for that version:
 
-GitHub Actions will automatically execute the topological crate publish pipeline:
-1. ✅ `rullst-macros` & `rullst-orm-macros`
-2. 📦 Foundations: `rullst-orm`, `rullst-core`
-3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`
-4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
-5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
-
----
-
-### Phase 4 — Start the Next Version on `dev`
-
-After the release, immediately start the next development cycle on `dev`:
-
-```powershell
-# Switch back to dev
-git checkout dev
-
-# Update versions to next iteration (e.g., 12.1.0-dev)
-# Add new [Unreleased] section to CHANGELOG.md
-
-git add .
-git commit -m "chore: bump version to 12.1.0-dev"
-git push
+```bash
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
 ```
 
----
+Unimplemented roadmap behavior must remain explicitly identified and tracked.
+It must not appear as an unexplained ordinary test failure or be described as a
+completed capability.
 
-## 🔄 Visual Summary
+## Promotion and release
 
-```
-                        YOU WORK HERE
-                              │
-                              ▼
-dev ──────────────────────────────────────────────────▶
-     commit commit commit    │ cargo sync, version bump
-                             │ git merge dev
-                             ▼
-main ────────────────────────●────────────────────────▶
-                             │ git tag v1.0.5
-                             ▼
-                   🤖 GitHub Actions CI
-                   runs all tests...
-                             │ if ✅ all green
-                             ▼
-                   📦 cargo publish (automatic)
-                       crates.io v1.0.5
-```
+1. Freeze feature work and synchronize crate versions and the changelog in
+   `dev`.
+2. Run all required local and GitHub release gates on the exact candidate SHA.
+3. Open a reviewed promotion pull request from `dev` to `main`.
+4. If the merge produces a different SHA, rerun the required gates on the final
+   `main` SHA.
+5. Create the release or prerelease tag only on that approved SHA:
 
----
-
-## ⚠️ Important Rules
-
-> [!CAUTION]
-> **Never** run `cargo publish` manually from your machine anymore. Let the GitHub Actions automation do it. This ensures tests ALWAYS pass before publishing.
-
-> [!WARNING]
-> **Never** commit directly to `main`. Always work on `dev` and merge via the process above.
-
-> [!IMPORTANT]
-> The automatic publishing only triggers when you push a **version tag** (e.g., `v1.0.5`). A regular `git push` to `main` does **NOT** publish to crates.io.
-
----
-
-## 🔑 One-time GitHub Setup Required
-
-For the automatic publishing to work, you need to add your crates.io API token as a GitHub secret:
-
-1. Go to **[crates.io](https://crates.io)** → Account Settings → **API Tokens** → Generate a new token
-2. Go to your **GitHub repository** → **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Set:
-   - **Name:** `CARGO_REGISTRY_TOKEN`
-   - **Value:** *(paste your crates.io token)*
-5. Click **Add secret**
-
----
-
-## 📌 Quick Reference Commands
-
-```powershell
-# Start new work
-git checkout dev && git pull origin dev
-
-# Sync README badges after bumping version
-cargo sync
-
-# Check status before releasing
-git status
-
-# Release a new stable version
-git checkout main
-git merge dev
-git push origin main
+```bash
+git switch main
+git pull --ff-only origin main
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
----
+A regular push to `main` or `dev` does not publish crates. Do not run a manual
+multi-crate `cargo publish` sequence when the release workflow is available.
+The tag workflow uses crates.io Trusted Publishing through short-lived OIDC
+credentials; each published crate must have the repository workflow registered
+as a trusted publisher. No permanent `CARGO_REGISTRY_TOKEN` is required for
+that configured path.
 
-## 🗺️ Current State
+## Current repository state
 
-| Item | Version |
-|------|---------|
-| `rullst` | Check `rullst/Cargo.toml` |
-| `rullst-macros` | Check `rullst-macros/Cargo.toml` |
-| `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Active dev branch | `dev` |
+| Reference | State |
+| --- | --- |
+| `main` | Legacy v5 maintenance baseline; manifests remain `5.0.0` |
+| `dev` | Active, unreleased v12 development; **NO-GO** |
+| `v5.0.0` | Existing immutable historical tag; unchanged |
+
+For production dependencies, prefer an exact crates.io version. If a Git
+dependency is unavoidable, pin an immutable tag or exact commit rather than a
+moving branch.

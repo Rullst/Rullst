@@ -11,10 +11,7 @@ fuzz_target!(|data: &[u8]| {
             }
         }
         
-        // We only test needs_rehash for random strings, because verify_password
-        // will attempt to allocate memory based on the `m=` parameter parsed from the
-        // arbitrary fuzzer string, leading to trivial OOMs. In reality, the hash comes
-        // from the database, not user input.
+        let _ = verify_password("dummy_password", s);
         let _ = needs_rehash(s);
     }
 });

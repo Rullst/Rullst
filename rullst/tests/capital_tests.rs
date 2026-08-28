@@ -1,7 +1,4 @@
-#![cfg(feature = "capital")]
-
 use rullst::capital::{BillingProvider, StripeProvider, SubscriptionStatus};
-use std::string::ToString;
 
 #[tokio::test]
 async fn test_subscription_status_parsing() {
@@ -65,7 +62,7 @@ async fn test_stripe_provider_mock_checkout() {
 
 #[tokio::test]
 async fn test_stripe_provider_webhook_parsing() {
-    let provider = StripeProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    let provider = StripeProvider::new("mock_key".to_string(), "".to_string());
 
     let payload = serde_json::json!({
         "type": "customer.subscription.updated",
@@ -86,8 +83,8 @@ async fn test_stripe_provider_webhook_parsing() {
     })
     .to_string();
 
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("stripe-signature".to_string(), "mock_secret".to_string());
+    let headers = std::collections::HashMap::new();
+    // With empty secret, it skips signature verification
     let event = provider
         .handle_webhook(payload.as_bytes(), &headers)
         .unwrap();
@@ -99,17 +96,16 @@ async fn test_stripe_provider_webhook_parsing() {
 
 #[tokio::test]
 async fn test_stripe_provider_webhook_uninteresting() {
-    let provider = StripeProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    let provider = StripeProvider::new("mock_key".to_string(), "".to_string());
     let payload = serde_json::json!({
         "type": "invoice.paid"
     })
     .to_string();
 
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("stripe-signature".to_string(), "mock_secret".to_string());
+    let headers = std::collections::HashMap::new();
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
+    assert!(res.unwrap_err().contains("Uninteresting"));
 }
 
 #[tokio::test]
@@ -134,7 +130,7 @@ async fn test_lemonsqueezy_provider_mock_checkout() {
 #[tokio::test]
 async fn test_lemonsqueezy_provider_webhook_parsing() {
     use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "".to_string());
 
     let payload = serde_json::json!({
         "meta": {
@@ -153,8 +149,7 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
     })
     .to_string();
 
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("x-signature".to_string(), "mock_secret".to_string());
+    let headers = std::collections::HashMap::new();
     let event = provider
         .handle_webhook(payload.as_bytes(), &headers)
         .unwrap();
@@ -168,7 +163,7 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
 #[tokio::test]
 async fn test_lemonsqueezy_webhook_uninteresting() {
     use rullst::capital::LemonSqueezyProvider;
-    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "mock_secret".to_string());
+    let provider = LemonSqueezyProvider::new("mock_key".to_string(), "".to_string());
     let payload = serde_json::json!({
         "meta": {
             "event_name": "order_created"
@@ -176,11 +171,10 @@ async fn test_lemonsqueezy_webhook_uninteresting() {
     })
     .to_string();
 
-    let mut headers = std::collections::HashMap::new();
-    headers.insert("x-signature".to_string(), "mock_secret".to_string());
+    let headers = std::collections::HashMap::new();
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
+    assert!(res.unwrap_err().contains("Uninteresting"));
 }
 
 #[tokio::test]
@@ -194,10 +188,7 @@ async fn test_stripe_signature_verification_failure() {
     );
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(
-        err.to_string().contains("Invalid")
-            || matches!(err, rullst::capital::CapitalError::InvalidSignature(_))
-    );
+    assert!(err.contains("Invalid hex"));
 }
 
 #[tokio::test]
@@ -209,33 +200,5 @@ async fn test_lemonsqueezy_signature_verification_failure() {
     headers.insert("x-signature".to_string(), "badhex".to_string());
 
     let err = provider.handle_webhook(payload, &headers).unwrap_err();
-    assert!(
-        err.to_string().contains("Invalid")
-            || matches!(err, rullst::capital::CapitalError::InvalidSignature(_))
-    );
-}
-
-#[tokio::test]
-async fn test_invoice_to_dps_conversion() {
-    use chrono::Utc;
-    use rullst::capital::{Invoice, InvoiceItem};
-
-    let invoice = Invoice {
-        invoice_id: "inv_123456".to_string(),
-        customer_email: "cliente@empresa.com.br".to_string(),
-        date: Utc::now(),
-        items: vec![InvoiceItem {
-            description: "Assinatura Pro Mensal".to_string(),
-            amount: 99.00,
-        }],
-        total: 99.00,
-        currency: "BRL".to_string(),
-    };
-
-    let dps = invoice.to_dps("1.03.01", "3550308", 2.0);
-    assert_eq!(dps.id, "DPSinv123456");
-    assert_eq!(dps.amount, 99.00);
-    assert_eq!(dps.service_code, "1.03.01");
-    assert_eq!(dps.service_city_ibge, "3550308");
-    assert_eq!(dps.description, "Assinatura Pro Mensal");
+    assert!(err.contains("Invalid hex"));
 }

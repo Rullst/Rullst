@@ -1,50 +1,24 @@
 name: Property Testing
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * 0'  # Every Sunday at 06:00 UTC (weekly scheduled invariant audit)
+  workflow_dispatch: # Manual trigger only
 
 permissions:
   contents: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   proptest:
     name: Run Proptests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Install Rust Stable
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
 
-      - name: Run Proptests — all features (unit + integration)
-        # --all-features activates strict-* flags simultaneously, which correctly
-        # excludes the rullst-orm proptest_builder (it uses sqlite and needs no
-        # strict features). That test is covered in the dedicated step below.
+      - name: Run Proptests (10,000 cases)
         env:
           PROPTEST_CASES: 10000
-        run: cargo test --workspace --all-features --release
-
-      - name: Run Proptests — ORM query builder (sqlite, no strict features)
-        # proptest_builder.rs has #![cfg(not(any(feature = "strict-postgres",
-        # feature = "strict-mysql")))] so it must run without those features.
-        env:
-          PROPTEST_CASES: 10000
-        run: cargo test -p rullst-orm --test proptest_builder --release
-
-      - name: Run Proptests — rullst-connect PKCE (embedded unit test)
-        env:
-          PROPTEST_CASES: 10000
-        run: cargo test -p rullst-connect --lib --release
-
-      - name: Run Proptests — Security & Auth (AES-GCM, Vault, CSRF, Token)
-        env:
-          PROPTEST_CASES: 10000
-        run: cargo test -p rullst-security -p rullst-auth --release
-
+        run: cargo test --release

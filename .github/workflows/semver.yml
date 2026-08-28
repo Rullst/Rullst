@@ -9,36 +9,18 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   semver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
       - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2.85.13
+        uses: taiki-e/install-action@bffeee26d4db9be238a4ea78d8826604ebcb594d # v2.82.5
         with:
           tool: cargo-semver-checks
-      - name: Check every published Rust API for SemVer regressions
-        run: |
-          cargo semver-checks check-release \
-            -p rullst-macros \
-            -p rullst-orm-macros \
-            -p rullst-core \
-            -p rullst-orm \
-            -p rullst-iot \
-            -p rullst-mail \
-            -p rullst-ai \
-            -p rullst-connect \
-            -p rullst-security \
-            -p rullst-auth \
-            -p rullst-capital \
-            -p rullst-studio \
-            -p rullst-nexus \
-            -p rullst
+      - name: Run SemVer checks
+        run: cargo semver-checks check-release

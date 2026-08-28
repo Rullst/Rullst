@@ -1,5 +1,0 @@
-error: Mismatched closing tag: expected </span>, found </div>
- --> tests/ui/mismatched_tag.rs:6:28
-  |
-6 |             <span>"Hello"</div>
-  |                            ^^^

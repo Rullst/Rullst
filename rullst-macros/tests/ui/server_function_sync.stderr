@@ -1,5 +1,0 @@
-error: #[server_function] requires an async function
- --> tests/ui/server_function_sync.rs:4:1
-  |
-4 | fn sum(left: u32, right: u32) -> u32 {
-  | ^^

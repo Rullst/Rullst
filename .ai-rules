@@ -1,16 +1,6 @@
-# Rullst AI Context & Execution Rules
- 
-- **SST Compliance:** Read `docs/src/spec.md` before initiating any architectural refactors or file scaffolding.
-- **Modular Code Size Standard:** Keep source files concise and modular (target max 500 lines per file). Decompose large monolithic files (> 500 lines) into dedicated sub-module directories using Rust's `mod` system.
-- **Error Handling:** Enforce zero-panic policy in production code using typed error enums (`AppError`, `CapitalError`, `OrmError`, etc.); no `unwrap()`, `expect()`, or `panic!()` in non-test paths.
-- **Dispatch Pattern & Ergonomics:** Prefer static dispatch (`impl Trait` or generics) over `dyn Trait`. Public constructors and string helpers must accept `impl Into<String>`.
-- **HTML Macros:** Boolean attributes in `html!` macros must be explicitly quoted (e.g., `required="true"`, `disabled="true"`).
-- **Security First:** Parameterize all dynamic SQL inputs; sanitize identifiers with `sanitize_identifier()`. WAF, CSRF, and OWASP Secure Headers middleware are mandatory for production endpoints.
-- **IDOR / BOLA Guard:** Parameterized routes (`/:id`, `/{id}`) must enforce ownership/RBAC validation via `RbacGuard::authorize_owner_or_role`.
-- **Zero-Leak DLP & Constant-Time:** Responses and logs must not leak secrets (use `rullst_security::dlp`). Webhook signatures must use constant-time comparisons.
-- **Mock Fallback:** External service providers (Payments, OAuth2, Mail, LLMs) must support offline execution with empty or `mock_*` credentials.
-- **No Unsafe Code:** Avoid introducing new `unsafe` blocks unless strictly necessary for OS/C FFI with documented safety bounds.
-- **Studio Standards:** Use clean URLs (`/studio/*` without `/tools/`), dark glassmorphic `studio_layout` design, and 100% real non-mocked probes (`RadarSnapshot` & `SpanCollector`).
-- **Scaffolding:** Use CLI scaffolding commands (`cargo rullst make:*`) for structural consistency across models, controllers, migrations, LiveView, and gRPC.
-- **Verification Trifecta:** Always verify changes with `cargo test --workspace --all-features`, `cargo clippy --workspace --all-features -- -D warnings`, and `cargo fmt --all`.
-- **Official Contact:** Official framework email is `officialrullst@gmail.com`.
+- Read `docs/spec.md` before architectural refactors.
+- Prefer compile-time `html!` macros over runtime template engines (like Tera/Askama).
+- Keep dependencies updated using `cargo update`.
+- WAF and CSRF middleware are mandatory for all production endpoints.
+- Avoid introducing new `unsafe` blocks.
+- Ensure all dynamic SQL inputs use parameterization or strict alphanumeric sanitization.

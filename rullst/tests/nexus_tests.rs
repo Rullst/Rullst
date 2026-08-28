@@ -1,9 +1,5 @@
 #![cfg(not(miri))]
-// The suite exercises both the Nexus facade and direct ORM-backed fixtures.
-// Keep it out of isolated `nexus` feature checks where the facade intentionally
-// does not expose its optional `rullst-orm` dependency.
-#![cfg(all(feature = "nexus", feature = "orm"))]
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+#![cfg(feature = "nexus")]
 
 use base64::Engine;
 use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
@@ -127,12 +123,8 @@ static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 
 async fn init_test_db() {
     INIT_DB.get_or_init(|| async {
-        let db_path = "sqlite:file:nexus_test.db?mode=rwc";
-        if let Err(e) = rullst_orm::Orm::init(db_path).await
-            && !e.to_string().contains("already been initialized")
-        {
-            panic!("Orm::init failed: {:?}", e);
-        }
+        let db_path = "sqlite:file:nexus_integration_test_db?mode=memory&cache=shared";
+        let _ = rullst_orm::Orm::init(db_path).await;
         let pool = rullst::db::safe_pool().expect("pool should be initialized");
 
         // Clean up tables just in case
@@ -171,9 +163,9 @@ async fn test_nexus_full_flow() {
     let nexus = Nexus::new()
         .register::<TestUser>()
         .with_brand("Nexus Custom App")
-        .with_auth("admin", "unique-test-secret-42");
+        .with_auth("admin", "secret");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = TestApp::new(nexus.build());
 
     // 1. UNAUTHORIZED access without auth headers
     let res_unauth = app.get("/").await;
@@ -182,7 +174,7 @@ async fn test_nexus_full_flow() {
     // 2. AUTHORIZED dashboard
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
+        base64::engine::general_purpose::STANDARD.encode("admin:secret")
     );
     let res_dash = app.get("/").header("Authorization", &auth_header).await;
     res_dash.assert_status(200);
@@ -197,8 +189,6 @@ async fn test_nexus_full_flow() {
     res_table.assert_status(200);
     res_table.assert_see("Alice");
     res_table.assert_see("bob@example.com");
-    res_table.assert_see("id=\"row-1\"");
-    res_table.assert_see("id=\"row-2\"");
 
     // 4. Search view
     let res_search = app
@@ -207,7 +197,6 @@ async fn test_nexus_full_flow() {
         .await;
     res_search.assert_status(200);
     res_search.assert_see("Alice");
-    res_search.assert_see("id=\"row-1\"");
     res_search.assert_dont_see("Bob");
 
     // 5. New Form rendering
@@ -243,7 +232,7 @@ async fn test_nexus_full_flow() {
         .header("Authorization", &auth_header)
         .await;
     res_edit.assert_status(200);
-    res_edit.assert_see("Save Record");
+    res_edit.assert_see("Save Changes");
 
     // 8. Update record PUT
     let update_data = [("name", "Bobby"), ("email", "bobby@example.com")];
@@ -280,12 +269,12 @@ async fn test_nexus_foreign_key_and_kinds() {
     let nexus = Nexus::new()
         .register::<TestUser>()
         .register::<TestPost>()
-        .with_auth("admin", "unique-test-secret-42");
+        .with_auth("admin", "secret");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = TestApp::new(nexus.build());
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
+        base64::engine::general_purpose::STANDARD.encode("admin:secret")
     );
 
     // 1. Table list view for nexus_posts (should render foreign key relationship)
@@ -303,14 +292,15 @@ async fn test_nexus_foreign_key_and_kinds() {
         .await;
     res_form.assert_status(200);
     res_form.assert_see("New Nexus Post");
-    // Should have field for Author user_id
-    res_form.assert_see("name=\"user_id\"");
+    // Should contain options for Alice and Bob
+    res_form.assert_see("Alice");
+    res_form.assert_see("Bob");
     // Should have textarea for LongText
     res_form.assert_see("<textarea");
     // Should have checkbox for Boolean
     res_form.assert_see("type=\"checkbox\"");
-    // Should have Save button
-    res_form.assert_see("Save Record");
+    // Avatar is rendered as a text input
+    res_form.assert_see("Enter Avatar...");
 
     // 3. Edit Form rendering
     let res_edit = app
@@ -318,7 +308,7 @@ async fn test_nexus_foreign_key_and_kinds() {
         .header("Authorization", &auth_header)
         .await;
     res_edit.assert_status(200);
-    res_edit.assert_see("Save Record");
+    res_edit.assert_see("Save Changes");
     res_edit.assert_see("Hello World");
 
     let form_data = [
@@ -357,12 +347,12 @@ async fn test_nexus_invalid_tables_and_errors() {
 
     let nexus = Nexus::new()
         .register::<TestUser>()
-        .with_auth("admin", "unique-test-secret-42");
+        .with_auth("admin", "secret");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = TestApp::new(nexus.build());
     let auth_header = format!(
         "Basic {}",
-        base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
+        base64::engine::general_purpose::STANDARD.encode("admin:secret")
     );
 
     // 1. Invalid Table Read

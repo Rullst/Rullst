@@ -1,7 +1,8 @@
+use rullst::html;
 use rullst::server::Html;
 
 pub fn pricing_page() -> Html<String> {
-    Html(r##"
+    Html(html! {
         <html lang="en" class="dark">
         <head>
             <meta charset="UTF-8" />
@@ -50,19 +51,17 @@ pub fn pricing_page() -> Html<String> {
             <div class="glow-bg-right"></div>
             <div class="container">
                 <div class="setup-banner">
-                    <div class="setup-banner-icon">🚀</div>
+                    <div class="setup-banner-icon">"🚀"</div>
                     <div class="setup-banner-content">
-                        <h4>Stripe Setup Required</h4>
-                        <p>To enable real checkouts, create a <code>.env</code> file in your project root with your API keys:</p>
-                        <pre><code>BILLING_PROVIDER=stripe
-BILLING_API_KEY=sk_test_...
-BILLING_WEBHOOK_SECRET=whsec_...</code></pre>
+                        <h4>"Stripe Setup Required"</h4>
+                        <p>"To enable real checkouts, create a " <code>".env"</code> " file in your project root with your API keys:"</p>
+                        <pre><code>"BILLING_PROVIDER=stripe\nBILLING_API_KEY=sk_test_...\nBILLING_WEBHOOK_SECRET=whsec_..."</code></pre>
                     </div>
                 </div>
                 <div class="header">
-                    <span class="badge">Rullst Capital</span>
-                    <h1>Simple, Transparent Pricing</h1>
-                    <p class="subtitle">Choose the perfect plan to boost your application with next-gen fullstack performance.</p>
+                    <span class="badge">"Rullst Capital"</span>
+                    <h1>"Simple, Transparent Pricing"</h1>
+                    <p class="subtitle">"Choose the perfect plan to boost your application with next-gen fullstack performance."</p>
                 </div>
                 <div class="pricing-grid">
                     <!-- Starter Plan -->
@@ -124,5 +123,5 @@ BILLING_WEBHOOK_SECRET=whsec_...</code></pre>
             </div>
         </body>
         </html>
-    "##.to_string())
+    })
 }
