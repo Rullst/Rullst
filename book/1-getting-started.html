@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1a0a94e2.js";
+            window.path_to_searchindex_js = "searchindex-bec0cfeb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-3a119751.js"></script>
+        <script src="toc-8c38a868.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -270,20 +270,6 @@ A complete back-office suite out of the box. It features:</p>
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
 <p><strong>Blueprint Evolution:</strong> We are constantly refining our Blueprints. In version 2.0.1, all Blueprints were rigorously audited to ensure 100% macro syntax compliance (<code>routes!</code> and <code>html!</code>) and perfect database initialization order. You can build upon them with absolute confidence.</p>
 </blockquote>
-<h2 id="4-modular-workspace--optional-features"><a class="header" href="#4-modular-workspace--optional-features">4. Modular Workspace &amp; Optional Features</a></h2>
-<p>As of version <strong>5.1.0</strong>, Rullst features a highly-optimized <strong>Modular Workspace Architecture</strong>. To provide the fastest possible compilation times and the smallest binary sizes, Rullst’s peripheral crates are now <strong>100% optional</strong>.</p>
-<p>The main <code>rullst</code> crate acts as a facade. By default, it includes only the core HTTP and routing engines. Additional capabilities are activated via Cargo features:</p>
-<ul>
-<li><code>auth</code>: Includes <code>rullst-auth</code> (Passkeys, OAuth, Argon2, Session Management).</li>
-<li><code>ai</code>: Includes <code>rullst-ai</code> (Gemini, OpenAI, Anthropic, Ollama drivers).</li>
-<li><code>capital</code>: Includes <code>rullst-capital</code> (Stripe and LemonSqueezy billing webhooks).</li>
-<li><code>mailer</code>: Includes <code>rullst-mail</code> (SMTP integration).</li>
-<li><code>nexus</code>: Includes <code>rullst-nexus</code> (Auto-generated CMS and Admin Panels).</li>
-<li><code>studio</code>: Includes <code>rullst-studio</code> (Local Web-based Database Studio).</li>
-</ul>
-<p><strong>How it works seamlessly:</strong>
-You don’t need to manually configure these! When you run <code>cargo rullst new</code> (or simply <code>cargo rullst</code>), the interactive scaffolding wizard intelligently analyzes your chosen Blueprint and automatically injects exactly the features you need into your <code>Cargo.toml</code>.</p>
-<p>For example, if you choose the <strong>SaaS App Starter</strong>, the CLI will automatically activate <code>auth</code>, <code>capital</code>, <code>mailer</code>, <code>nexus</code>, and <code>studio</code>. It will also ask if you want to include <code>ai</code> features! If you choose a simpler template like the <strong>Blank Starter</strong>, these heavy modules are completely skipped, drastically slashing your initial compile times.</p>
 
                     </main>
 
