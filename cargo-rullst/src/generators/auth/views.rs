@@ -11,10 +11,10 @@ pub fn generate_auth_views() -> Result<(), Box<dyn std::error::Error>> {
     let pages_template = r##"use rullst::html;
 use rullst::server::Html;
 
-pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
+pub fn login_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
     let error_html = if let Some(err) = error {
         html! {
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; text-align: left;">
+            <div class="error" role="alert">
                 {err}
             </div>
         }
@@ -51,10 +51,10 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
     })
 }
 
-pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
+pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) -> Html<String> {
     let error_html = if let Some(err) = error {
         html! {
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; text-align: left;">
+            <div class="error" role="alert">
                 {err}
             </div>
         }
@@ -95,7 +95,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
     })
 }
 
-pub fn dashboard_page(user_name: &str) -> Html<String> {
+pub fn dashboard_page(user_name: &str, _csp_nonce: &str) -> Html<String> {
     Html(html! {
         <html>
             <body>

@@ -48,6 +48,13 @@ fn get_csrf_token(headers: &HeaderMap) -> String {
         .unwrap_or_default()
 }
 
+fn get_csp_nonce(nonce: &Option<Extension<rullst::security::CspNonce>>) -> &str {
+    nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default()
+}
+
 fn redirect_with_cookie(target: &'static str, cookie: &str) -> Response {
     let Ok(header_value) = rullst::server::HeaderValue::from_bytes(cookie.as_bytes()) else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid session cookie").into_response();
@@ -62,24 +69,34 @@ fn redirect_with_cookie(target: &'static str, cookie: &str) -> Response {
 pub async fn login_view(
     headers: HeaderMap,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> impl IntoResponse {
     let token = csrf
         .as_ref()
         .map(|Extension(token)| token.as_str())
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| get_csrf_token(&headers));
-    auth::login_page(&token, None)
+    auth::login_page(&token, None, get_csp_nonce(&csp_nonce))
 }
 
-pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> Response {
+pub async fn login_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Form(payload): Form<LoginDto>,
+) -> Response {
     let token = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
     let email = normalize_email(&payload.email);
     let user = match User::find_by_email(&email).await {
         Ok(user) => user,
         Err(error) => {
             eprintln!("Authentication query failed: {error}");
-            return auth::login_page(&token, Some("Authentication is temporarily unavailable"))
-                .into_response();
+            return auth::login_page(
+                &token,
+                Some("Authentication is temporarily unavailable"),
+                nonce,
+            )
+            .into_response();
         }
     };
 
@@ -91,14 +108,15 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
     let password_valid = rullst_auth::verify_password_async(payload.password, password_hash).await;
 
     let Some(user) = user.filter(|_| password_valid) else {
-        return auth::login_page(&token, Some("Incorrect email or password")).into_response();
+        return auth::login_page(&token, Some("Incorrect email or password"), nonce)
+            .into_response();
     };
 
     match rullst_auth::make_login_cookie(user.id) {
         Ok(cookie) => redirect_with_cookie("/dashboard", &cookie),
         Err(error) => {
             eprintln!("Session creation failed: {error}");
-            auth::login_page(&token, Some("Error starting session")).into_response()
+            auth::login_page(&token, Some("Error starting session"), nonce).into_response()
         }
     }
 }
@@ -106,38 +124,51 @@ pub async fn login_submit(headers: HeaderMap, Form(payload): Form<LoginDto>) -> 
 pub async fn register_view(
     headers: HeaderMap,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> impl IntoResponse {
     let token = csrf
         .as_ref()
         .map(|Extension(token)| token.as_str())
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| get_csrf_token(&headers));
-    auth::register_page(&token, None)
+    auth::register_page(&token, None, get_csp_nonce(&csp_nonce))
 }
 
-pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto>) -> Response {
+pub async fn register_submit(
+    headers: HeaderMap,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+    Form(payload): Form<RegisterDto>,
+) -> Response {
     let token = get_csrf_token(&headers);
+    let nonce = get_csp_nonce(&csp_nonce);
     let email = normalize_email(&payload.email);
     if !valid_email(&email) {
-        return auth::register_page(&token, Some("Enter a valid email address")).into_response();
+        return auth::register_page(&token, Some("Enter a valid email address"), nonce)
+            .into_response();
     }
     if !(12..=72).contains(&payload.password.len()) {
         return auth::register_page(
             &token,
             Some("Password must contain between 12 and 72 characters"),
+            nonce,
         )
         .into_response();
     }
 
     match User::find_by_email(&email).await {
         Ok(Some(_)) => {
-            return auth::register_page(&token, Some("Email already registered")).into_response();
+            return auth::register_page(&token, Some("Email already registered"), nonce)
+                .into_response();
         }
         Ok(None) => {}
         Err(error) => {
             eprintln!("Registration query failed: {error}");
-            return auth::register_page(&token, Some("Registration is temporarily unavailable"))
-                .into_response();
+            return auth::register_page(
+                &token,
+                Some("Registration is temporarily unavailable"),
+                nonce,
+            )
+            .into_response();
         }
     }
 
@@ -145,7 +176,8 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
         Ok(hash) => hash,
         Err(error) => {
             eprintln!("Password hashing failed: {error}");
-            return auth::register_page(&token, Some("Error processing password")).into_response();
+            return auth::register_page(&token, Some("Error processing password"), nonce)
+                .into_response();
         }
     };
 
@@ -161,7 +193,7 @@ pub async fn register_submit(headers: HeaderMap, Form(payload): Form<RegisterDto
     };
     if let Err(error) = user.save().await {
         eprintln!("User creation failed: {error}");
-        return auth::register_page(&token, Some("Error creating account")).into_response();
+        return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
     }
 
     match rullst_auth::make_login_cookie(user.id) {
@@ -179,9 +211,12 @@ pub async fn logout() -> Response {
 
 pub async fn dashboard(
     rullst::server::Extension(user_id): rullst::server::Extension<i32>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> Response {
     match User::find(user_id).await {
-        Ok(Some(user)) => auth::dashboard_page(&user.name).into_response(),
+        Ok(Some(user)) => {
+            auth::dashboard_page(&user.name, get_csp_nonce(&csp_nonce)).into_response()
+        }
         Ok(None) => Redirect::to("/login").into_response(),
         Err(error) => {
             eprintln!("Dashboard user query failed: {error}");

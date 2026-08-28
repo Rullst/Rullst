@@ -39,6 +39,7 @@ pub async fn play_lesson(
     Extension(user_id): Extension<i32>,
     Extension(context): Extension<UserContext>,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> Response {
     let lesson = match learning_service::authorize_lesson(&context, user_id, lesson_id).await {
         Ok(lesson) => lesson,
@@ -52,14 +53,17 @@ pub async fn play_lesson(
         Err(error) => return error_response(error.into()),
     };
     let csrf_token = csrf.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
+    let nonce = csp_nonce.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
     let progress_key = format!("progress:{user_id}:{lesson_id}:next");
-    rullst::response::Html(lms::video_player_snippet(
+    rullst::response::Html(lms::video_player_page(
         &lesson.title,
         &lesson.video_url,
+        lesson.course_id,
         lesson.id,
         progress,
         csrf_token,
         &progress_key,
+        nonce,
     )).into_response()
 }
 
@@ -76,9 +80,7 @@ pub async fn record_progress(
         form.progress_percent,
         &form.idempotency_key,
     ).await {
-        Ok(receipt) => rullst::response::Html(lms::progress_badge(
-            receipt.progress.progress_percent,
-        )).into_response(),
+        Ok(_) => Redirect::to(&format!("/lessons/{lesson_id}/play")).into_response(),
         Err(error) => error_response(error),
     }
 }

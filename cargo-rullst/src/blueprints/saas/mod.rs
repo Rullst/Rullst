@@ -90,9 +90,9 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     // 3. Pages Auth
     let pages_auth_code = r##"use rullst::response::Html;
 
-pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
+pub fn login_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Html<String> {
     let error_html = if let Some(err) = error {
-        format!("<div style=\"background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem;\">{}</div>", rullst::html::escape_str(err))
+        format!("<div class=\"error\" role=\"alert\">{}</div>", rullst::html::escape_str(err))
     } else {
         String::new()
     };
@@ -101,11 +101,9 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
         "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
          <meta charset=\"utf-8\" />\
          <title>Login &mdash; Rullst SaaS</title>\
-         <link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
-         <link href=\"https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\" />\
-         <style>\
-         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }}\
+         <style nonce=\"{}\">\
+         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }}\
          body {{ background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}\
          .card {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem; width: 100%; max-width: 420px; text-align: center; }}\
          h1 {{ font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; }}\
@@ -117,6 +115,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
          .btn-primary:hover {{ background: #34d399; }}\
          .links {{ margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }}\
          .links a {{ color: #10b981; text-decoration: none; }}\
+         .error {{ background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }}\
          </style></head><body>\
          <div class=\"card\"><h1>Welcome Back</h1>{}\
          <form method=\"POST\" action=\"/login\">\
@@ -127,14 +126,15 @@ pub fn login_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
          </form>\
          <div class=\"links\">Don't have an account? <a href=\"/register\">Register</a> | <a href=\"/\">Pricing</a></div>\
          </div></body></html>",
+        rullst::html::escape_str(csp_nonce),
         error_html,
         rullst::html::escape_str(csrf_token)
     ))
 }
 
-pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
+pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Html<String> {
     let error_html = if let Some(err) = error {
-        format!("<div style=\"background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9rem;\">{}</div>", rullst::html::escape_str(err))
+        format!("<div class=\"error\" role=\"alert\">{}</div>", rullst::html::escape_str(err))
     } else {
         String::new()
     };
@@ -143,11 +143,9 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
         "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
          <meta charset=\"utf-8\" />\
          <title>Register &mdash; Rullst SaaS</title>\
-         <link rel=\"icon\" type=\"image/png\" href=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" />\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
-         <link href=\"https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\" />\
-         <style>\
-         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }}\
+         <style nonce=\"{}\">\
+         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }}\
          body {{ background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }}\
          .card {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; padding: 2.5rem; width: 100%; max-width: 420px; text-align: center; }}\
          h1 {{ font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; }}\
@@ -159,6 +157,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
          .btn-primary:hover {{ background: #34d399; }}\
          .links {{ margin-top: 1.5rem; font-size: 0.85rem; color: #9ca3af; }}\
          .links a {{ color: #10b981; text-decoration: none; }}\
+         .error {{ background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1.5rem; font-size: .9rem; }}\
          </style></head><body>\
          <div class=\"card\"><h1>Create Account</h1>{}\
          <form method=\"POST\" action=\"/register\">\
@@ -170,20 +169,20 @@ pub fn register_page(csrf_token: &str, error: Option<&str>) -> Html<String> {
          </form>\
          <div class=\"links\">Already have an account? <a href=\"/login\">Sign In</a> | <a href=\"/\">Pricing</a></div>\
          </div></body></html>",
+        rullst::html::escape_str(csp_nonce),
         error_html,
         rullst::html::escape_str(csrf_token)
     ))
 }
 
-pub fn dashboard_page(_user_name: &str) -> Html<String> {
+pub fn dashboard_page(_user_name: &str, csp_nonce: &str) -> Html<String> {
+    let nonce = rullst::html::escape_str(csp_nonce);
     Html(r#"<!DOCTYPE html><html lang="en" class="dark"><head>
          <meta charset="utf-8" />
          <title>Dashboard — Rullst SaaS</title>
-         <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-         <style>
-         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+         <style nonce="__RULLST_CSP_NONCE__">
+         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
          body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; padding: 2rem; }
          .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; max-width: 1200px; margin: 0 auto 3rem auto; }
          .logo { font-size: 1.5rem; font-weight: 800; color: #10b981; }
@@ -192,6 +191,13 @@ pub fn dashboard_page(_user_name: &str) -> Html<String> {
          .card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 2rem; }
          .btn-logout { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
          .btn-nexus { background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; border: 1px solid #374151; margin-right: 0.75rem; }
+         .muted { color: #9ca3af; margin-top: 0.5rem; }
+         .small { font-size: 0.85rem; }
+         .metric { font-size: 1.5rem; font-weight: 700; }
+         .card h3 { margin-bottom: 0.5rem; }
+         .subscription { color: #10b981; }
+         .performance { color: #38bdf8; }
+         .security { color: #a855f7; }
          </style></head><body>
          <div class="topbar">
            <div class="logo">⚡ Rullst SaaS Dashboard</div>
@@ -203,25 +209,25 @@ pub fn dashboard_page(_user_name: &str) -> Html<String> {
          </div>
          <div class="container">
            <h1>Welcome to your Pro Dashboard</h1>
-           <p style="color: #9ca3af; margin-top: 0.5rem;">Your account is authenticated via Argon2id password hashing and encrypted session cookies.</p>
+           <p class="muted">Your account is authenticated via Argon2id password hashing and encrypted session cookies.</p>
            <div class="grid">
              <div class="card">
-               <h3 style="color: #10b981; margin-bottom: 0.5rem;">💳 Subscription</h3>
-               <p style="font-size: 1.5rem; font-weight: 700;">Pro Plan — Active</p>
-               <p style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.5rem;">Renews next month via Stripe.</p>
+               <h3 class="subscription">💳 Subscription</h3>
+               <p class="metric">Pro Plan — Active</p>
+               <p class="muted small">Renews next month via Stripe.</p>
              </div>
              <div class="card">
-               <h3 style="color: #38bdf8; margin-bottom: 0.5rem;">⚡ Performance</h3>
-               <p style="font-size: 1.5rem; font-weight: 700;">&lt; 1ms Response</p>
-               <p style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.5rem;">Zero-bundle Rust native SSR.</p>
+               <h3 class="performance">⚡ Performance</h3>
+               <p class="metric">&lt; 1ms Response</p>
+               <p class="muted small">Zero-bundle Rust native SSR.</p>
              </div>
              <div class="card">
-               <h3 style="color: #a855f7; margin-bottom: 0.5rem;">🛡️ Security Guard</h3>
-               <p style="font-size: 1.5rem; font-weight: 700;">Double-Submit CSRF</p>
-               <p style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.5rem;">Real-time RASP protection.</p>
+               <h3 class="security">🛡️ Security Guard</h3>
+               <p class="metric">Double-Submit CSRF</p>
+               <p class="muted small">Real-time RASP protection.</p>
              </div>
            </div>
-          </div></body></html>"#.to_string())
+          </div></body></html>"#.replace("__RULLST_CSP_NONCE__", &nonce))
 }
 "##.to_string();
     manifest.push(("src/pages/auth.rs", pages_auth_code));

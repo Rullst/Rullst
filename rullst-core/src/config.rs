@@ -165,6 +165,9 @@ pub struct SecurityConfig {
     /// List of allowed origins for Cross-Origin Resource Sharing (CORS).
     #[serde(default)]
     pub cors_allow_origins: Vec<String>,
+    /// Allow browser credentials only for the exact configured CORS origins.
+    #[serde(default = "default_false")]
+    pub cors_allow_credentials: bool,
     /// Content-Security-Policy (CSP) header value.
     #[serde(default = "default_csp")]
     pub csp: String,
@@ -218,6 +221,7 @@ impl Default for SecurityConfig {
         Self {
             csrf_same_site: default_same_site(),
             cors_allow_origins: vec![],
+            cors_allow_credentials: false,
             csp: default_csp(),
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
@@ -227,8 +231,48 @@ impl Default for SecurityConfig {
 }
 
 impl SecurityConfig {
-    /// Validates exact-path CSRF webhook exemptions.
+    /// Validates browser security policy and exact-path CSRF webhook exemptions.
     pub fn validate(&self) -> Result<(), ConfigError> {
+        if !matches!(self.csrf_same_site.as_str(), "Lax" | "Strict" | "None") {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "CSRF SameSite policy `{}` must be Lax, Strict, or None",
+                self.csrf_same_site
+            )));
+        }
+        let rendered_csp = self.csp.replace("{NONCE}", "validation-nonce");
+        if self.csp.trim().is_empty() || rendered_csp.parse::<axum::http::HeaderValue>().is_err() {
+            return Err(ConfigError::InvalidSecurityConfiguration(
+                "CSP must be a non-empty valid HTTP header value".to_string(),
+            ));
+        }
+        let mut unique_origins = std::collections::HashSet::new();
+        for origin in &self.cors_allow_origins {
+            let uri = origin.parse::<axum::http::Uri>().map_err(|_| {
+                ConfigError::InvalidSecurityConfiguration(format!(
+                    "CORS origin `{origin}` must be an exact HTTP(S) origin"
+                ))
+            })?;
+            let valid_scheme = uri
+                .scheme_str()
+                .is_some_and(|scheme| matches!(scheme, "http" | "https"));
+            let valid_origin = valid_scheme
+                && uri.authority().is_some()
+                && uri.path() == "/"
+                && uri.query().is_none()
+                && !origin.ends_with('/')
+                && !origin.contains(['@', '#', '*'])
+                && origin.parse::<axum::http::HeaderValue>().is_ok();
+            if !valid_origin {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "CORS origin `{origin}` must be an exact HTTP(S) origin without path, query, credentials, wildcard, or trailing slash"
+                )));
+            }
+            if !unique_origins.insert(origin) {
+                return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                    "duplicate CORS origin `{origin}`"
+                )));
+            }
+        }
         let mut unique_paths = std::collections::HashSet::new();
         for path in &self.csrf_signed_webhook_paths {
             let is_exact_absolute_path = path.starts_with('/')
@@ -344,6 +388,7 @@ cors_allow_origins = ["https://example.com"]
         assert_eq!(config.security.csrf_same_site, "Strict");
         assert_eq!(config.security.cors_allow_origins.len(), 1);
         assert_eq!(config.security.cors_allow_origins[0], "https://example.com");
+        assert!(!config.security.cors_allow_credentials);
 
         let _ = std::fs::remove_dir_all(temp_dir);
     }
@@ -425,6 +470,40 @@ cors_allow_origins = ["https://example.com"]
 
         config.csrf_signed_webhook_paths =
             vec!["/billing/webhook".to_owned(), "/billing/webhook".to_owned()];
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn browser_security_configuration_is_strict_and_exact() {
+        let mut config = SecurityConfig::default();
+        config.cors_allow_origins = vec![
+            "https://academy.example".to_string(),
+            "http://localhost:3000".to_string(),
+        ];
+        assert!(config.validate().is_ok());
+
+        for invalid in [
+            "*",
+            "academy.example",
+            "ftp://academy.example",
+            "https://academy.example/",
+            "https://academy.example/path",
+            "https://user@academy.example",
+            "https://academy.example?x=1",
+        ] {
+            config.cors_allow_origins = vec![invalid.to_string()];
+            assert!(config.validate().is_err(), "{invalid} must be rejected");
+        }
+        config.cors_allow_origins = vec![
+            "https://academy.example".to_string(),
+            "https://academy.example".to_string(),
+        ];
+        assert!(config.validate().is_err());
+        config.cors_allow_origins.clear();
+        config.csrf_same_site = "relaxed".to_string();
+        assert!(config.validate().is_err());
+        config.csrf_same_site = "Lax".to_string();
+        config.csp = "default-src 'self'\r\nx-injected: yes".to_string();
         assert!(config.validate().is_err());
     }
 }

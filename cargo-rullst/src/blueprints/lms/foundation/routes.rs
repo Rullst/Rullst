@@ -24,6 +24,7 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
 
     let public = routes![
         get("/" => controllers::lms_controller::index),
+        // rullst-access: public — bounded published course metadata forms the public catalog.
         get("/courses/{id}" => controllers::lms_controller::show_course),
         get("/login" => controllers::auth_controller::login_view),
         post("/login" => controllers::auth_controller::login_submit),
@@ -33,8 +34,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
     ];
     let learning = routes![
         get("/dashboard" => controllers::auth_controller::dashboard),
+        // rullst-access: owner — the authenticated session owns the enrollment created by the service.
         post("/courses/{id}/enroll" => controllers::learning_controller::enroll),
+        // rullst-access: owner — the handler requires the authenticated learner's active enrollment.
         get("/lessons/{id}/play" => controllers::learning_controller::play_lesson),
+        // rullst-access: owner — progress is persisted only for the authenticated learner and lesson.
         post("/lessons/{id}/progress" => controllers::learning_controller::record_progress),
     ].layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));
 

@@ -43,6 +43,12 @@ impl Migration for MigrationImpl {
             table.integer("requested_by_user_id").not_null();
             table.string("request_kind").not_null();
             table.string("status").not_null();
+            table.integer("attempts").not_null();
+            table.string("claim_key").not_null();
+            table.big_integer("claim_expires_at_epoch").not_null();
+            table.big_integer("available_at_epoch").not_null();
+            table.integer("processed_by_user_id").not_null();
+            table.string("last_error_code").not_null();
             table.big_integer("requested_at_epoch").not_null();
             table.big_integer("completed_at_epoch").not_null();
             table.string("result_digest").not_null();
@@ -57,6 +63,7 @@ impl Migration for MigrationImpl {
             "CREATE INDEX guardian_consent_school_subject_idx ON guardian_consents(school_id, subject_user_id, purpose, policy_version, status)",
             "CREATE UNIQUE INDEX privacy_request_key_unique ON privacy_requests(request_key)",
             "CREATE INDEX privacy_request_school_subject_idx ON privacy_requests(school_id, subject_user_id, status)",
+            "CREATE INDEX privacy_request_school_delivery_idx ON privacy_requests(school_id, status, available_at_epoch, requested_at_epoch)",
         ] {
             sqlx::query(sqlx::AssertSqlSafe(statement)).execute(pool).await?;
         }

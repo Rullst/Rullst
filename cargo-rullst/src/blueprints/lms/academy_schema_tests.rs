@@ -21,6 +21,9 @@ mod tests {
     use crate::services::notification_service::{
         NotificationError, list_notifications, mark_read, set_preference, subscribe_in_app,
     };
+    use crate::services::notification_template_service::{
+        NotificationTemplateError, render_notification,
+    };
     use crate::services::outbox_service::{acknowledge, claim_next_at, fail_at};
     use crate::services::progress_service::{ProgressError, correct_progress, record_progress};
     use crate::services::publication_service::{
@@ -125,6 +128,25 @@ mod tests {
             season_key: "season-2026".to_string(),
         };
         let learner = academy_context("7", vec!["student".to_string()]);
+        let localized = render_notification(
+            "pt-BR",
+            "academy.achievement.awarded",
+            r#"{"schema_version":1,"achievement_code":"memory-guardian","recorded_actor_user_id":7}"#,
+        )
+        .expect("Portuguese achievement template");
+        assert_eq!(localized.locale, "pt-BR");
+        assert_eq!(localized.title, "Nova conquista desbloqueada");
+        let fallback = render_notification(
+            "de-DE",
+            "academy.achievement.awarded",
+            r#"{"schema_version":1,"achievement_code":"memory-guardian","recorded_actor_user_id":7}"#,
+        )
+        .expect("unsupported locale fallback");
+        assert_eq!(fallback.locale, "en");
+        assert!(matches!(
+            render_notification("en", "academy.unknown", "{}"),
+            Err(NotificationTemplateError::UnsupportedKey),
+        ));
         assert!(record_score(&learner, submission.clone()).await.expect("new score").applied);
         assert!(!record_score(&learner, submission).await.expect("score replay").applied);
 
@@ -221,6 +243,11 @@ mod tests {
             .expect("realtime notification JSON");
         assert_eq!(realtime_payload["subject_user_id"], 7);
         assert_eq!(realtime_payload["localization_key"], "academy.achievement.awarded");
+        assert_eq!(realtime_payload["rendered"]["locale"], "en");
+        assert_eq!(
+            realtime_payload["rendered"]["title"],
+            "New achievement unlocked",
+        );
         assert!(fail_at(first_claim.id, &first_claim.claim_key, "offline retry", 2, 1_002, 10)
             .await
             .expect("retry transition"));
@@ -271,6 +298,16 @@ mod tests {
             .expect("in-app achievement notification");
         assert_eq!(notification_school_id, 1);
         assert_eq!(notification_status, "unread");
+        let rendered_notifications = list_notifications(&learner, 7, Some("unread"), 0, 10)
+            .await
+            .expect("localized owner notification list");
+        assert_eq!(rendered_notifications.len(), 1);
+        assert_eq!(rendered_notifications[0].rendered_locale, "en");
+        assert_eq!(rendered_notifications[0].title, "New achievement unlocked");
+        assert_eq!(
+            rendered_notifications[0].body,
+            "You unlocked the memory-guardian achievement.",
+        );
         assert!(matches!(
             mark_read(
                 &academy_context("8", vec!["student".to_string()]),

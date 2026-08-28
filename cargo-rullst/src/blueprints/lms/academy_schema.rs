@@ -9,7 +9,7 @@ pub fn get_files() -> Vec<(&'static str, String)> {
 
 pub fn migrations_module() -> String {
     format!(
-        "{MIGRATIONS_MODULE}\n{}{}{}{}{}{}{}{}{}{}",
+        "{MIGRATIONS_MODULE}\n{}{}{}{}{}{}{}{}{}{}{}",
         super::academy_schema_tests::GENERATED_TESTS_PREFIX,
         super::academy_score_quiz_tests::GENERATED_SCORE_QUIZ_TESTS_SUFFIX,
         super::academy_notification_realtime_tests::GENERATED_NOTIFICATION_REALTIME_TESTS_SUFFIX,
@@ -19,6 +19,7 @@ pub fn migrations_module() -> String {
         super::academy_http_tests::GENERATED_ASSIGNMENT_TESTS_SUFFIX,
         super::academy_tenancy_tests::GENERATED_TENANCY_TESTS_SUFFIX,
         super::academy_privacy_tests::GENERATED_PRIVACY_TESTS_SUFFIX,
+        super::academy_catalog_tests::GENERATED_CATALOG_TESTS_SUFFIX,
         super::academy_http_tests::academy_completion_tests::GENERATED_COMPLETION_TESTS_SUFFIX,
     )
 }

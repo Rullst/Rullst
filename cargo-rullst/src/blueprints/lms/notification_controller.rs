@@ -43,6 +43,10 @@ fn error_response(error: NotificationError) -> Response {
             eprintln!("Notification realtime operation failed: {error}");
             StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
+        NotificationError::Template(error) => {
+            eprintln!("Notification template rendering failed: {error}");
+            StatusCode::UNPROCESSABLE_ENTITY.into_response()
+        }
     }
 }
 

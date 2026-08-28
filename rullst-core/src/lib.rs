@@ -183,6 +183,8 @@ pub use resilience::{
     RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,
     backpressure_middleware, rate_limit_middleware,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub use security::{SecurityBaselineError, apply_security_baseline};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use async_trait::async_trait;

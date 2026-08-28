@@ -38,6 +38,28 @@ errors rather than silently becoming development.
 
 ---
 
+## Step 3: Configure the Browser Security Baseline
+
+`Server` applies the same public `apply_security_baseline` composition in
+staging and production. CORS is deny-by-omission: list exact origins without a
+trailing slash, and enable credentialed cross-origin requests only when the
+application genuinely needs them.
+
+```toml
+[security]
+csrf_same_site = "Strict"
+cors_allow_origins = ["https://academy.example"]
+cors_allow_credentials = false
+csp = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-{NONCE}'; style-src 'self' 'nonce-{NONCE}'"
+```
+
+Wildcard, path-bearing, credential-bearing, queried or duplicate CORS origins
+are configuration errors. When credentials are enabled, Core still grants them
+only to an origin in the exact allowlist. Test the final policy behind the real
+TLS proxy because an intermediary can change headers and cookie behavior.
+
+---
+
 ## 💡 Key Takeaways
 - Never hardcode credentials, database passwords, or JWT secrets in `.rs` source code.
 - Add `.env` to `.gitignore` and commit `.env.example` to document required keys for team members.

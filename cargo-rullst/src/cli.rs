@@ -744,6 +744,26 @@ mod tests {
 
     #[test]
     fn parses_bounded_lms_module_profile() {
+        let auth_cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "academy-identity",
+            "--default",
+            "--blueprint",
+            "lms",
+            "--lms-modules",
+            "auth",
+        ])
+        .expect("bounded LMS auth CLI");
+        assert!(matches!(
+            auth_cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Lms),
+                lms_modules,
+                ..
+            } if lms_modules == vec![LmsModuleChoice::Auth]
+        ));
+
         let cli = Cli::try_parse_from([
             "rullst",
             "new",

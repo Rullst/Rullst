@@ -93,6 +93,15 @@
       "marker": "TM-NEXUS-01"
     },
     {
+      "id": "NEXUS-05",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "security::baseline::tests::production_baseline_composes_nonce_cors_csrf_and_headers",
+      "source": "rullst-core/src/security/baseline.rs",
+      "marker": "TM-NEXUS-05"
+    },
+    {
       "id": "STUDIO-01",
       "crate": "rullst-studio",
       "target_kind": "lib",

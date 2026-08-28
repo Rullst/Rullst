@@ -2,6 +2,7 @@
 
 use super::common;
 
+mod academy_catalog_tests;
 mod academy_http_tests;
 mod academy_notification_realtime_tests;
 mod academy_privacy_tests;
@@ -22,11 +23,13 @@ mod automation_execution;
 mod automation_worker;
 mod availability;
 mod base_modules;
+mod catalog;
 mod curriculum;
 mod domain_events;
 mod foundation;
 mod gamification;
 mod learning;
+mod lms_player;
 mod module_selection;
 mod notifications;
 mod outbox;
@@ -78,6 +81,7 @@ pub fn file_manifest(
     manifest.extend(academy_schema::get_files());
     manifest.extend(access::get_files());
     manifest.extend(auth::get_files());
+    manifest.extend(catalog::get_files(frontend_engine));
 
     let migration = r##"use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
@@ -247,53 +251,6 @@ impl NexusModel for Lesson {
 
     manifest.push(("src/models/mod.rs", base_modules::MODELS_MODULE.to_string()));
 
-    let lms_controller = r##"use rullst::server::{Extension, IntoResponse, Path, Response, StatusCode};
-use rullst::response::Html;
-use crate::models::category::Category;
-use crate::models::course::Course;
-use crate::models::lesson::Lesson;
-use crate::pages::lms;
-fn database_error(error: rullst_orm::Error) -> Response {
-    eprintln!("LMS catalog query failed: {error}");
-    (StatusCode::SERVICE_UNAVAILABLE, "Catalog temporarily unavailable").into_response()
-}
-pub async fn index() -> Response {
-    let categories = match Category::all().await {
-        Ok(categories) => categories,
-        Err(error) => return database_error(error),
-    };
-    let courses = match Course::all().await {
-        Ok(courses) => courses,
-        Err(error) => return database_error(error),
-    };
-    Html(lms::index_page(categories, courses)).into_response()
-}
-
-pub async fn show_course(
-    Path(id): Path<i32>,
-    csrf: Option<Extension<rullst::security::CsrfToken>>,
-) -> Response {
-    let course = match Course::find(id).await {
-        Ok(Some(course)) => course,
-        Ok(None) => return (StatusCode::NOT_FOUND, "Course not found").into_response(),
-        Err(error) => return database_error(error),
-    };
-    let lessons = match Lesson::query().where_eq("course_id", id).get().await {
-        Ok(lessons) => lessons,
-        Err(error) => return database_error(error),
-    };
-    let csrf_token = csrf
-        .as_ref()
-        .map(|Extension(token)| token.as_str())
-        .unwrap_or_default();
-    Html(lms::course_detail_page(course, lessons, csrf_token)).into_response()
-}
-"##;
-    manifest.push((
-        "src/controllers/lms_controller.rs",
-        lms_controller.to_string(),
-    ));
-
     let controllers_mod = r##"pub mod auth_controller;
 pub mod assessment_controller; pub mod assignment_controller; pub mod completion_controller;
 pub mod learning_controller;
@@ -304,178 +261,6 @@ pub mod role_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
-    let fe_imports = common::frontend_page_imports(frontend_engine);
-    let lms_page = format!(
-        r##"{fe_imports}use crate::models::category::Category;
-use crate::models::course::Course;
-use crate::models::lesson::Lesson;"##,
-        fe_imports = fe_imports
-    ) + r##"pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
-    html! {
-        <html lang="en" class="dark">
-            <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
-                <meta charset="UTF-8" />
-                <title>"Rullst Academy - Courses"</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
-                <style>
-                    "
-                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-                    body { background: #080b11; color: #f1f5f9; min-height: 100vh; padding: 3rem 1.5rem; }
-                    .container { max-width: 1000px; margin: 0 auto; }
-                    header { text-align: center; margin-bottom: 4rem; }
-                    h1 { font-size: 3rem; background: linear-gradient(135deg, #10b981, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
-                    p.sub { color: #64748b; font-size: 1.15rem; margin-top: 0.5rem; }
-                    .courses-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2.5rem; }
-                    .card { background: #111827; border: 1px solid #1f2937; border-radius: 1.25rem; overflow: hidden; transition: transform 0.3s, border-color 0.3s; display: flex; flex-direction: column; }
-                    .card:hover { transform: translateY(-5px); border-color: #10b981; }
-                    .card-img { height: 180px; width: 100%; object-fit: cover; }
-                    .card-body { padding: 2rem; flex: 1; display: flex; flex-direction: column; }
-                    .card h3 { font-size: 1.4rem; margin-bottom: 0.75rem; color: #ffffff; }
-                    .card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; flex: 1; }
-                    .btn { display: inline-block; text-align: center; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; text-decoration: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; transition: opacity 0.2s; }
-                    .btn:hover { opacity: 0.9; }
-                    "
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <header style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="text-align: left;">
-                            <h1>"Rullst LMS Academy"</h1>
-                            <p class="sub">"Explore high-fidelity systems engineering with Rust"</p>
-                        </div>
-                        <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
-                            <a class="btn" href="/nexus" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"⚙️ Nexus CMS"</a>
-                            <span style="font-size: 0.7rem; color: #94a3b8;">"(local in debug; credentials in release)"</span>
-                        </div>
-                            <a class="btn" href="http://127.0.0.1:5555" target="_blank" style="background: #1e293b; border: 1px solid #334155; font-size: 0.9rem;">"📊 Rullst Studio (local)"</a>
-                        </div>
-                    </header>
-                    <div class="categories-container">
-                        { rullst::html::RawHtml(categories.into_iter().map(|cat| html! {
-                            <div style="margin-bottom: 4rem;">
-                                <h2 style="font-size: 2rem; color: #ffffff; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #1e293b;">{&cat.name}</h2>
-                                <div class="courses-grid">
-                                    { rullst::html::RawHtml(courses.iter().filter(|c| c.category_id == cat.id).map(|c| html! {
-                                        <div class="card">
-                                            <img class="card-img" src={&c.thumbnail} alt={&c.title} />
-                                            <div class="card-body">
-                                                <h3>{&c.title}</h3>
-                                                <p>{&c.description}</p>
-                                                <a class="btn" href={format!("/courses/{}", c.id)}>"Start Learning"</a>
-                                            </div>
-                                        </div>
-                                    }).collect::<Vec<_>>().join("")) }
-                                </div>
-                            </div>
-                        }).collect::<Vec<_>>().join("")) }
-                    </div>
-                </div>
-            </body>
-        </html>
-    }
-}
-pub fn course_detail_page(course: Course, lessons: Vec<Lesson>, csrf_token: &str) -> String {
-    html! {
-        <html lang="en" class="dark">
-            <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
-                <meta charset="UTF-8" />
-                <title>{&course.title}</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
-                <style>
-                    "
-                    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-                    body { background: #080b11; color: #f1f5f9; min-height: 100vh; display: flex; }
-                    .sidebar { width: 350px; background: #0f172a; border-right: 1px solid #1e293b; display: flex; flex-direction: column; }
-                    .sidebar-header { padding: 2rem; border-bottom: 1px solid #1e293b; }
-                    .sidebar-header h2 { font-size: 1.25rem; font-weight: 700; color: #ffffff; }
-                    .lessons-list { list-style: none; overflow-y: auto; flex: 1; }
-                    .lesson-item { padding: 1.5rem 2rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: background-color 0.2s; }
-                    .lesson-item:hover { background-color: #1e293b; }
-                    .lesson-item.active { background-color: #064e3b; }
-                    .lesson-item h4 { font-size: 0.95rem; font-weight: 600; color: #ffffff; margin-bottom: 0.25rem; }
-                    .lesson-item span { font-size: 0.8rem; color: #94a3b8; }
-                    .main-content { flex: 1; display: flex; flex-direction: column; background: #090d16; }
-                    .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem; }
-                    .video-container { width: 100%; max-width: 800px; background: #111827; border: 1px solid #1f2937; border-radius: 1.5rem; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-                    .player { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
-                    .info-bar { padding: 2rem; background: #0f172a; border-top: 1px solid #1e293b; }
-                    .info-bar h3 { font-size: 1.5rem; color: #ffffff; margin-bottom: 0.5rem; }
-                    .back-btn { margin-bottom: 1rem; display: inline-block; color: #f97316; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
-                    "
-                </style>
-            </head>
-            <body>
-                <div class="sidebar">
-                    <div class="sidebar-header">
-                        <a class="back-btn" href="/">"&larr; Back to Academy"</a>
-                        <h2>{&course.title}</h2>
-                        <form method="post" action={format!("/courses/{}/enroll", course.id)} style="margin-top: 1rem;">
-                            <input type="hidden" name="_token" value={csrf_token} />
-                            <button type="submit" style="width: 100%; padding: .75rem; border: 0; border-radius: .5rem; background: #10b981; font-weight: 700; cursor: pointer;">"Enroll / Resume"</button>
-                        </form>
-                    </div>
-                    <ul class="lessons-list">
-                        { rullst::html::RawHtml(lessons.iter().map(|l| html! {
-                            <li class="lesson-item" hx-get={format!("/lessons/{}/play", l.id)} hx-target="#video-panel" hx-swap="innerHTML">
-                                <h4>{&l.title}</h4>
-                                <span>{{l.duration.to_string()}}" mins"</span>
-                            </li>
-                        }).collect::<Vec<_>>().join("")) }
-                    </ul>
-                </div>
-                <div class="main-content">
-                    <div class="video-wrapper" id="video-panel">
-                        <div style="color: #94a3b8; text-align: center; max-width: 32rem;">
-                            <h3 style="color: #f8fafc; margin-bottom: .75rem;">"Protected lesson area"</h3>
-                            <p>"Register, enroll, then select a lesson. The server verifies the authenticated enrollment before returning the development media fixture."</p>
-                        </div>
-                    </div>
-                </div>
-            </body>
-        </html>
-    }
-}
-pub fn video_player_snippet(
-    title: &str,
-    video_url: &str,
-    lesson_id: i32,
-    progress_percent: i32,
-    csrf_token: &str,
-    progress_key: &str,
-) -> String {
-    html! {
-        <div class="video-container">
-            <video class="player" controls="controls" autoplay="autoplay" src={video_url}></video>
-            <div class="info-bar">
-                <h3>{title}</h3>
-                <p style="color: #94a3b8; font-size: 0.9rem;">"Development media fixture; signed production media remains separate roadmap work."</p>
-                <div id="progress-status">{rullst::html::RawHtml(progress_badge(progress_percent))}</div>
-                <form method="post" action={format!("/lessons/{lesson_id}/progress")} hx-post={format!("/lessons/{lesson_id}/progress")} hx-target="#progress-status" hx-swap="innerHTML" style="display: flex; gap: .5rem; margin-top: 1rem;">
-                    <input type="hidden" name="_token" value={csrf_token} />
-                    <input type="hidden" name="idempotency_key" value={progress_key} />
-                    <button type="submit" name="progress_percent" value="25">"25%"</button>
-                    <button type="submit" name="progress_percent" value="50">"50%"</button>
-                    <button type="submit" name="progress_percent" value="100">"Complete"</button>
-                </form>
-            </div>
-        </div>
-    }
-}
-pub fn progress_badge(progress_percent: i32) -> String {
-    html! {
-        <p style="color: #34d399; margin-top: .75rem;">
-            "Saved progress: "{progress_percent.to_string()}"%"
-        </p>
-    }
-}
-"##;
-    manifest.push(("src/pages/lms.rs", lms_page.to_string()));
     let pages_mod = r##"pub mod auth;
 pub mod lms;
 "##;

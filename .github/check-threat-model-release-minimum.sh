@@ -34,6 +34,7 @@ jq -e '
     "DEPLOY-06",
     "IOT-01",
     "NEXUS-01",
+    "NEXUS-05",
     "PAY-01",
     "PAY-06",
     "STUDIO-01",

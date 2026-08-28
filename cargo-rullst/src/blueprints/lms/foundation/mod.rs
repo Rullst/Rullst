@@ -1,5 +1,6 @@
 //! Small, compiling `auth,learning` LMS scaffold profile.
 
+mod auth_only;
 mod controller;
 mod middleware;
 mod migrations;
@@ -31,9 +32,13 @@ const RETAINED_FILES: &[&str] = &[
 pub(super) fn select(
     mut full_manifest: Vec<(&'static str, String)>,
     hot_reload: bool,
+    modules: &[super::LmsModule],
 ) -> Result<Vec<(&'static str, String)>, super::LmsModuleError> {
     if hot_reload {
         return Err(super::LmsModuleError::HotReloadUnsupported);
+    }
+    if modules.len() == 1 && modules.contains(&super::LmsModule::Auth) {
+        return Ok(auth_only::select(full_manifest));
     }
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
     full_manifest.extend([
@@ -121,6 +126,39 @@ mod tests {
         assert!(
             manifest.len() < 30,
             "foundation emitted {} files",
+            manifest.len()
+        );
+    }
+
+    #[test]
+    fn auth_manifest_contains_only_the_identity_boundary() {
+        let manifest = file_manifest_for_modules(
+            "demo",
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+            &[LmsModule::Auth],
+        )
+        .expect("detached auth manifest");
+        for required in [
+            "src/controllers/auth_controller.rs",
+            "src/migrations/m20260827000000_add_auth_identity.rs",
+            "src/models/user.rs",
+            "rullst-lms-modules.json",
+        ] {
+            assert!(manifest.iter().any(|(path, _)| *path == required));
+        }
+        for excluded in [
+            "src/models/course.rs",
+            "src/models/enrollment.rs",
+            "src/services/learning_service.rs",
+            "src/models/quiz.rs",
+        ] {
+            assert!(manifest.iter().all(|(path, _)| *path != excluded));
+        }
+        assert!(
+            manifest.len() < 15,
+            "auth profile emitted {} files",
             manifest.len()
         );
     }

@@ -1,4 +1,4 @@
-use super::{NOTIFICATION_MIGRATION, NOTIFICATION_SERVICE};
+use super::{NOTIFICATION_MIGRATION, NOTIFICATION_SERVICE, NOTIFICATION_TEMPLATE_SERVICE};
 
 #[test]
 fn notification_contract_is_claim_bound_idempotent_and_owner_readable() {
@@ -14,4 +14,7 @@ fn notification_contract_is_claim_bound_idempotent_and_owner_readable() {
     assert!(NOTIFICATION_SERVICE.contains("pub async fn subscribe_in_app"));
     assert!(NOTIFICATION_SERVICE.contains("TenantRealtime::from_context"));
     assert!(NOTIFICATION_SERVICE.contains("realtime_enabled == 1"));
+    assert!(NOTIFICATION_SERVICE.contains("render_notification"));
+    assert!(NOTIFICATION_SERVICE.contains("rendered_locale"));
+    assert!(NOTIFICATION_TEMPLATE_SERVICE.contains("academy.achievement.awarded"));
 }

@@ -1,12 +1,16 @@
 // Idempotent in-app notification templates for Academy domain events.
 
+mod migration;
 mod models;
 #[path = "notification_controller.rs"]
 mod notification_controller;
+mod templates;
 #[cfg(test)]
 mod tests;
 
+use migration::NOTIFICATION_MIGRATION;
 use models::{NOTIFICATION_MODEL, NOTIFICATION_PREFERENCE_MODEL};
+use templates::NOTIFICATION_TEMPLATE_SERVICE;
 
 pub fn get_files() -> Vec<(&'static str, String)> {
     let mut files = vec![
@@ -20,6 +24,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             NOTIFICATION_SERVICE.to_string(),
         ),
         (
+            "src/services/notification_template_service.rs",
+            NOTIFICATION_TEMPLATE_SERVICE.to_string(),
+        ),
+        (
             "src/migrations/m20260830000000_add_notifications.rs",
             NOTIFICATION_MIGRATION.to_string(),
         ),
@@ -28,7 +36,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
     files
 }
 
-const NOTIFICATION_SERVICE: &str = r##"use crate::services::school_service;
+const NOTIFICATION_SERVICE: &str = r##"use crate::services::notification_template_service::{
+    NotificationTemplateError, render_notification,
+};
+use crate::services::school_service;
 use rullst::{BroadcastManager, TenantRealtime};
 use rullst::security::TenantContext;
 use rullst_security::{RbacGuard, UserContext};
@@ -49,6 +60,9 @@ pub struct NotificationView {
     pub locale: String,
     pub localization_key: String,
     pub payload_json: String,
+    pub rendered_locale: String,
+    pub title: String,
+    pub body: String,
     pub status: String,
     pub created_at: String,
 }
@@ -67,6 +81,7 @@ pub enum NotificationError {
     ClaimNotHeld,
     Forbidden,
     Realtime(String),
+    Template(NotificationTemplateError),
     InvalidJson(serde_json::Error),
     Database(rullst_orm::Error),
 }
@@ -78,6 +93,7 @@ impl std::fmt::Display for NotificationError {
             Self::ClaimNotHeld => formatter.write_str("notification source event is not held by this claim"),
             Self::Forbidden => formatter.write_str("notification access denied"),
             Self::Realtime(error) => write!(formatter, "notification realtime error: {error}"),
+            Self::Template(error) => write!(formatter, "notification template error: {error}"),
             Self::InvalidJson(error) => write!(formatter, "invalid notification JSON: {error}"),
             Self::Database(error) => write!(formatter, "notification database error: {error}"),
         }
@@ -169,24 +185,29 @@ pub async fn list_notifications(
     if driver != "postgres" {
         query = query.bind(before_id);
     }
-    query
+    let rows = query
         .bind(limit)
         .fetch_all(rullst::db::Orm::pool()?)
         .await
-        .map(|rows| {
-            rows.into_iter()
-                .map(|row| NotificationView {
+        .map_err(|error| NotificationError::Database(error.into()))?;
+    rows.into_iter()
+        .map(|row| {
+            let rendered = render_notification(&row.2, &row.3, &row.4)
+                .map_err(NotificationError::Template)?;
+            Ok(NotificationView {
                     id: row.0,
                     channel: row.1,
                     locale: row.2,
                     localization_key: row.3,
                     payload_json: row.4,
+                    rendered_locale: rendered.locale,
+                    title: rendered.title,
+                    body: rendered.body,
                     status: row.5,
                     created_at: row.6,
                 })
-                .collect()
         })
-        .map_err(|error| NotificationError::Database(error.into()))
+        .collect()
 }
 
 pub async fn set_preference(
@@ -335,6 +356,11 @@ pub async fn deliver_claimed_achievement(
         "recorded_actor_user_id": payload.actor_user_id,
     });
     let notification_payload = notification_body.to_string();
+    let realtime_rendered = render_notification(
+        &realtime_locale,
+        "academy.achievement.awarded",
+        &notification_payload,
+    ).map_err(NotificationError::Template)?;
     let realtime_payload = serde_json::json!({
         "schema_version": 1,
         "notification_key": notification_key,
@@ -343,6 +369,7 @@ pub async fn deliver_claimed_achievement(
         "locale": realtime_locale,
         "localization_key": "academy.achievement.awarded",
         "payload": notification_body,
+        "rendered": realtime_rendered,
     }).to_string();
     let insert_sql = match driver {
         "postgres" => "INSERT INTO notifications (school_id, notification_key, user_id, channel, locale, localization_key, payload_json, status, source_event_key, read_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
@@ -426,58 +453,5 @@ fn valid_locale(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphabetic() || byte == b'-')
-}
-"##;
-
-const NOTIFICATION_MIGRATION: &str = r##"use rullst::db::{Orm, sqlx};
-use rullst::db::async_trait;
-use rullst::db::schema::{Migration, Schema};
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {
-    fn name(&self) -> &'static str { "m20260830000000_add_notifications" }
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::create("notification_preferences", |table| {
-            table.id();
-            table.integer("school_id").not_null();
-            table.integer("user_id").not_null();
-            table.string("channel").not_null();
-            table.boolean("enabled").not_null();
-            table.string("locale").not_null();
-            table.timestamps();
-        }).await?;
-        Schema::create("notifications", |table| {
-            table.id();
-            table.integer("school_id").not_null();
-            table.string("notification_key").not_null();
-            table.integer("user_id").not_null();
-            table.string("channel").not_null();
-            table.string("locale").not_null();
-            table.string("localization_key").not_null();
-            table.string("payload_json").not_null();
-            table.string("status").not_null();
-            table.string("source_event_key").not_null();
-            table.string("read_at").not_null();
-            table.timestamps();
-        }).await?;
-        let pool = Orm::pool()?;
-        for statement in [
-            "CREATE UNIQUE INDEX notification_preferences_school_user_channel_unique ON notification_preferences(school_id, user_id, channel)",
-            "CREATE UNIQUE INDEX notifications_key_unique ON notifications(notification_key)",
-            "CREATE INDEX notifications_school_user_status_idx ON notifications(school_id, user_id, status, created_at)",
-            "CREATE INDEX notifications_source_idx ON notifications(source_event_key)",
-        ] {
-            sqlx::query(sqlx::AssertSqlSafe(statement)).execute(pool).await?;
-        }
-        Ok(())
-    }
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::drop_if_exists("notifications").await?;
-        Schema::drop_if_exists("notification_preferences").await
-    }
 }
 "##;

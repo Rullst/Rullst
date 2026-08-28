@@ -3,6 +3,7 @@
 //! Provides CSRF protection, OWASP secure headers, WAF intrusion prevention,
 //! and zero-alloc PII data masking.
 
+mod baseline;
 mod csrf;
 mod headers;
 mod pii;
@@ -17,6 +18,7 @@ mod kani_proofs;
 
 // ─── Public Re-exports ──────────────────────────────────────────────────────
 
+pub use baseline::{SecurityBaselineError, apply_security_baseline};
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
 pub use headers::{CspNonce, DEFAULT_CSP_TEMPLATE, headers_middleware, render_csp_policy};
 pub use pii::{mask_pii, pii_masking_middleware};

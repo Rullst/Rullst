@@ -296,8 +296,8 @@ pub async fn request_privacy_action_at(
         return Err(PrivacyError::IdempotencyConflict);
     }
     let insert_sql = match driver {
-        "postgres" => "INSERT INTO privacy_requests (request_key, school_id, subject_user_id, requested_by_user_id, request_kind, status, requested_at_epoch, completed_at_epoch, result_digest, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        _ => "INSERT INTO privacy_requests (request_key, school_id, subject_user_id, requested_by_user_id, request_kind, status, requested_at_epoch, completed_at_epoch, result_digest, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        "postgres" => "INSERT INTO privacy_requests (request_key, school_id, subject_user_id, requested_by_user_id, request_kind, status, attempts, claim_key, claim_expires_at_epoch, available_at_epoch, processed_by_user_id, last_error_code, requested_at_epoch, completed_at_epoch, result_digest, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 0, '', 0, 0, 0, '', $7, 0, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO privacy_requests (request_key, school_id, subject_user_id, requested_by_user_id, request_kind, status, attempts, claim_key, claim_expires_at_epoch, available_at_epoch, processed_by_user_id, last_error_code, requested_at_epoch, completed_at_epoch, result_digest, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, '', 0, 0, 0, '', ?, 0, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     };
     rullst::db::sqlx::query(insert_sql).bind(request_key).bind(school_id)
         .bind(subject_user_id).bind(actor).bind(kind.as_str()).bind("pending")

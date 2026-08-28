@@ -12,7 +12,7 @@ pub fn get_files() -> Vec<(&'static str, String)> {
         ),
         (
             "src/services/mod.rs",
-            "pub mod activity_contract;\npub mod assessment_service;\npub mod assessment_timing_service;\npub mod assignment_grade_correction_service;\npub mod assignment_grading_service;\npub mod assignment_submission_service;\npub mod automation_execution_service;\npub mod automation_service;\npub mod automation_worker_event_service;\npub mod automation_worker_service;\npub mod completion_service;\npub mod learning_service;\npub mod notification_service;\npub mod outbox_service;\npub mod privacy_retention_service;\npub mod privacy_service;\npub mod progress_service;\npub mod publication_rollback_service;\npub mod publication_scheduler_service;\npub mod publication_service;\npub mod role_service;\npub mod scheduler_lease_service;\npub mod school_service;\npub mod score_correction_service;\npub mod score_service;\n"
+            "pub mod activity_contract;\npub mod assessment_service;\npub mod assessment_timing_service;\npub mod assignment_grade_correction_service;\npub mod assignment_grading_service;\npub mod assignment_submission_service;\npub mod automation_execution_service;\npub mod automation_service;\npub mod automation_worker_event_service;\npub mod automation_worker_service;\npub mod completion_service;\npub mod learning_service;\npub mod notification_service;\npub mod notification_template_service;\npub mod outbox_service;\npub mod privacy_request_executor_service;\npub mod privacy_request_worker_service;\npub mod privacy_retention_service;\npub mod privacy_service;\npub mod progress_service;\npub mod publication_rollback_service;\npub mod publication_scheduler_service;\npub mod publication_service;\npub mod role_service;\npub mod scheduler_lease_service;\npub mod school_service;\npub mod score_correction_service;\npub mod score_service;\n"
                 .to_string(),
         ),
         (
@@ -393,6 +393,7 @@ pub async fn play_lesson(
     Extension(user_id): Extension<i32>,
     Extension(context): Extension<UserContext>,
     Extension(csrf): Extension<rullst::security::CsrfToken>,
+    Extension(csp_nonce): Extension<rullst::security::CspNonce>,
 ) -> Response {
     let lesson = match learning_service::authorize_lesson(user_id, &context, lesson_id).await {
         Ok(lesson) => lesson,
@@ -409,13 +410,15 @@ pub async fn play_lesson(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    rullst::response::Html(lms::video_player_snippet(
+    rullst::response::Html(lms::video_player_page(
         &lesson.title,
         &lesson.video_url,
+        lesson.course_id,
         lesson.id,
         progress,
         csrf.as_str(),
         &progress_key,
+        csp_nonce.as_str(),
     ))
     .into_response()
 }
@@ -435,10 +438,7 @@ pub async fn record_progress(
     )
     .await
     {
-        Ok(change) => rullst::response::Html(lms::progress_badge(
-            change.progress.progress_percent,
-        ))
-        .into_response(),
+        Ok(_) => Redirect::to(&format!("/lessons/{lesson_id}/play")).into_response(),
         Err(error) => progress_error_response(error),
     }
 }

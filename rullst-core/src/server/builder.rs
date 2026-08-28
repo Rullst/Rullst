@@ -424,27 +424,6 @@ impl Server {
             },
         ));
 
-        app = app
-            .layer(axum::Extension(app_config.security.clone()))
-            .layer(axum::Extension(environment));
-
-        if !app_config.security.cors_allow_origins.is_empty() {
-            use tower_http::cors::CorsLayer;
-            let origins: Vec<axum::http::HeaderValue> = app_config
-                .security
-                .cors_allow_origins
-                .iter()
-                .map(|origin| {
-                    origin.parse().map_err(|_| {
-                        ServerError::Configuration(format!(
-                            "invalid CORS origin header value `{origin}`"
-                        ))
-                    })
-                })
-                .collect::<Result<_, _>>()?;
-            app = app.layer(CorsLayer::new().allow_origin(origins));
-        }
-
         if std::path::Path::new("static").exists() {
             app = app
                 .nest_service(
@@ -481,19 +460,8 @@ impl Server {
             }));
         }
 
-        if environment.requires_secure_defaults() {
-            if app_config.security.enable_pii_masking {
-                app = app.layer(axum::middleware::from_fn(
-                    crate::security::pii_masking_middleware,
-                ));
-            }
-            app = app
-                .layer(axum::middleware::from_fn(
-                    crate::security::headers_middleware,
-                ))
-                .layer(axum::middleware::from_fn(crate::security::csrf_middleware))
-                .layer(axum::middleware::from_fn(crate::security::waf_middleware));
-        }
+        app = crate::security::apply_security_baseline(app, app_config.security, environment)
+            .map_err(|error| ServerError::Configuration(error.to_string()))?;
 
         println!("Rullst framework serving on http://{}", addr);
         println!(
