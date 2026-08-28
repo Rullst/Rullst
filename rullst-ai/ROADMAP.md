@@ -8,10 +8,13 @@
 
 - Guarded high-level client for prompt, chat, vision, embeddings, JSON, and schema output.
 - Prompt-injection heuristics and outbound PII masking before provider dispatch.
+- Versioned deterministic offline injection, jailbreak, and PII regression corpus.
 - OpenAI, Gemini, Anthropic, DeepSeek, and Ollama provider adapters.
 - Deterministic empty/`mock_*` offline paths for supported provider capabilities.
 - Explicit separation between parseable JSON mode and provider-enforced JSON Schema output.
 - Ordered provider fallback, RAG prompt helper, vector index, and tool registry.
+- Deny-by-default HTTPS egress fetcher with exact-host allowlist, validated and
+  pinned DNS answers, manual redirects, peer verification, and streaming limits.
 
 ## Planned
 
@@ -20,7 +23,7 @@
 - Provider-native tool invocation loop with explicit authorization boundaries.
 - Durable chat-memory adapters and ORM lifecycle hooks.
 - Retrieval adapters for external vector databases.
-- Configurable, versioned guardrail policies and model-specific safety evaluations.
+- Configurable guardrail policies and adaptive/live model-specific safety evaluations.
 
 Roadmap items are not part of the current API guarantee until implemented and covered by contract
 tests.

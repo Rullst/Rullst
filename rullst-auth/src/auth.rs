@@ -526,6 +526,7 @@ mod tests {
     }
 
     #[test]
+    // TM-AUTH-01: forged, malformed, expired, legacy, or wrongly keyed sessions fail closed.
     fn test_session_encryption_error_paths() {
         let k = test_app_key();
 
@@ -554,6 +555,11 @@ mod tests {
         let bad_cipher = vec![0u8; 32];
         let bad_token = general_purpose::URL_SAFE_NO_PAD.encode(&bad_cipher);
         assert!(decrypt_session(&bad_token, &k).is_err());
+
+        let token = encrypt_session(42, &k).expect("session fixture should encrypt");
+        let mut wrong_key = k.clone();
+        wrong_key[0] ^= 0xff;
+        assert!(decrypt_session(&token, &wrong_key).is_err());
 
         // Expired session test (kills > replaced with ==)
         let cipher = derive_cipher(&k).unwrap();

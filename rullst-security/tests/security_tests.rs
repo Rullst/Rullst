@@ -96,6 +96,7 @@ fn document_request(path: &str, context: Option<UserContext>) -> Request<Body> {
 }
 
 #[tokio::test]
+// TM-TENANT-02: object IDs cannot cross the authenticated ownership boundary.
 async fn parameterized_route_denies_cross_owner_access_before_the_handler_succeeds() {
     let owners = Arc::new(HashMap::from([(
         "document-7".to_string(),

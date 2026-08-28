@@ -39,6 +39,40 @@ The guardrail blocks deterministic injection patterns and invisible Unicode cont
 classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
 a defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
+## Versioned offline evals
+
+`evals/guardrails-v1.json` is the machine-readable deterministic regression
+corpus for the implemented injection, jailbreak, and PII behaviors. Run
+`bash .github/check-ai-evals.sh` from the workspace root to validate the corpus
+and exercise every built-in provider in explicit offline mode. This corpus is
+not a safety benchmark; adaptive attacks, tool selection, hallucination, and
+live model/version evaluations remain separate work.
+
+## Strict egress policy
+
+`EgressPolicy::strict()` is deny-by-default until configured with an exact host
+allowlist. `EgressFetcher` accepts HTTPS only, blocks URL credentials and
+local/private/metadata/reserved literal or DNS answers, pins every validated
+answer into a proxy-free client, checks the connected peer, validates redirects
+manually, and enforces request-time and streaming-byte budgets.
+
+```rust,no_run
+# use rullst_ai::{EgressFetcher, EgressPolicy};
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let policy = EgressPolicy::strict()
+    .with_allowed_hosts(["docs.example.com"])?;
+let resource = EgressFetcher::new(policy)
+    .fetch_bytes("https://docs.example.com/guide.json")
+    .await?;
+# let _ = resource;
+# Ok(())
+# }
+```
+
+This fetcher is not automatically mounted around unrelated HTTP clients or
+provider transports. Applications still own tenant authorization, destination
+selection, content-type/schema validation and data minimization.
+
 ## Offline mode
 
 OpenAI, Gemini, Anthropic, and DeepSeek select deterministic offline mode when their API key is empty

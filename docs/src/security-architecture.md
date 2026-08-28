@@ -59,6 +59,42 @@ and tested. Body limits must be outer to any middleware that buffers content.
 Webhook routes may bypass browser CSRF only by exact path and only when their
 provider signature middleware is mandatory.
 
+### Academy production-boundary diagnostic
+
+`ProductionPreset::academy()` layers twelve Academy-specific integration
+requirements over the canonical middleware order. Missing observations become
+`NOT_EVALUATED`, duplicate observations are rejected, and validation succeeds
+only when every requirement has one explicit `PASS`. The contract covers
+identity, school membership, entitlements, object authorization, tenant
+isolation, assessments, score events, durable automation/audit, content safety,
+privacy and distributed abuse controls. It cannot inspect or certify a deployed
+topology by itself.
+
+`cargo rullst academy:doctor` emits the normalized contract in text or JSON and
+returns a failing exit status until all requirements pass. An evidence document
+uses the versioned `rullst.academy-evidence.v1` schema:
+
+```json
+{
+  "schema_version": "rullst.academy-evidence.v1",
+  "checks": [
+    {
+      "requirement": "authenticated_identity",
+      "status": "PASS",
+      "evidence": ["test:session_rejects_forged_identity"]
+    }
+  ]
+}
+```
+
+Run it with `cargo rullst academy:doctor --evidence academy-evidence.json
+--json`. Omitted checks remain `NOT_EVALUATED`, and a `PASS` without a non-empty
+evidence reference is invalid. Evidence strings are caller declarations rather
+than independently verified proof. The output therefore always includes
+`certification: false`; satisfying this contract is not an audit, grade or
+production-readiness claim. Process-level CLI tests cover both the incomplete
+failing report and a complete declared-evidence report.
+
 ### Parameterized-route access contract
 
 `cargo rullst audit --idor` requires every recognized parameterized route to
@@ -83,7 +119,7 @@ receives a denial before data or side effects are exposed.
 | Cryptographic storage | AES-256-GCM field encryption and zeroizing secret wrappers. | Operators own key generation, storage, rotation, separation, and recovery. |
 | Injection | SQLx binds, strict identifier validation, sanitizer and bounded RASP patterns. | Heuristics are not a complete language parser; domain validation and parameterization remain mandatory. |
 | Misconfiguration | Nonce-based CSP and a strict HTTP-header baseline. | Proxies and page content change the deployed policy; no scanner grade is guaranteed. |
-| Authentication abuse | Login jail, rate limiter, timing helpers, TOTP and WebAuthn integration. | Account recovery, RP/origin configuration, trusted peer identity, and capacity planning remain application concerns. |
+| Authentication abuse | Login jail, local limiter, optional atomic Redis limiter, timing helpers, TOTP, subject-bound recovery-code verifiers and WebAuthn integration. | Real Redis topology/failover, durable transactional recovery consumption and UX, RP/origin configuration, trusted peer identity, and capacity planning remain application concerns. |
 | Data integrity | HMAC audit records with canonical encoding and sequence verification. | Durability, deletion resistance, key protection, and independent verification require external storage and operations. |
 | Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. |
 | AI input risk | Prompt-injection heuristics and PII masking in the high-level AI client. | No heuristic can prove a prompt safe or guarantee detection of every secret. |

@@ -9,3 +9,8 @@ pub use rbac::*;
 
 pub mod policy;
 pub use policy::*;
+
+#[cfg(feature = "jwt")]
+pub mod jwt;
+#[cfg(feature = "jwt")]
+pub use jwt::*;

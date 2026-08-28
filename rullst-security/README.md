@@ -29,6 +29,12 @@
 - **Offline Integrity Checks:** `verify_record` checks one record's HMAC; `verify_sequence` additionally validates genesis, monotonic sequence IDs, and predecessor continuity.
 - **Extensible Sinks:** Provides `AuditLogger` trait for database ORM logging or Cloud-Native stdout/JSON sinks.
 
+### 🔑 5. TOTP Recovery Codes (`rullst::security::recovery_codes`)
+
+- **One-time plaintext:** 80-bit codes are returned only during enrollment and zeroized on drop.
+- **Storage-safe records:** Persist only the subject-bound salted HMAC-SHA256 verifiers.
+- **Single-use contract:** `consume_recovery_code` removes one verifier; database-backed callers must make compare-and-delete transactional.
+
 ---
 
 ## 📦 Installation

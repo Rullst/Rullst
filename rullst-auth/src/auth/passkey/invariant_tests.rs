@@ -73,6 +73,7 @@ fn relying_party_configuration_is_validated_exactly() {
 }
 
 #[test]
+// TM-AUTH-05: ceremony type, exact origin, and authenticator flags are bound.
 fn registration_rejects_wrong_ceremony_cross_origin_and_bad_flags() {
     let cases = [
         (
@@ -139,6 +140,20 @@ fn registration_rejects_unsupported_attestation_and_malformed_cose_keys() {
         ),
         (
             RegistrationOptions {
+                include_x: false,
+                ..Default::default()
+            },
+            "X coordinate missing",
+        ),
+        (
+            RegistrationOptions {
+                include_y: false,
+                ..Default::default()
+            },
+            "Y coordinate missing",
+        ),
+        (
+            RegistrationOptions {
                 invalid_curve_point: true,
                 ..Default::default()
             },
@@ -162,6 +177,7 @@ fn registration_rejects_unsupported_attestation_and_malformed_cose_keys() {
 }
 
 #[test]
+// TM-AUTH-05: pending challenges are bounded, shared, and consumed once.
 fn challenges_are_shared_bounded_and_single_use() {
     let bounded = PasskeyAuth::new(
         &PasskeyConfig::new("Test App", "localhost", "http://localhost")

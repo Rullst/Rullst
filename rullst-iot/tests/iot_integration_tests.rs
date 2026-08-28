@@ -67,6 +67,7 @@ fn test_ota_partition_manager() {
 }
 
 #[test]
+// TM-IOT-01: forged signatures and any signed-field tampering fail closed.
 fn test_ota_rejects_signature_hash_target_and_rollback_failures() {
     let firmware = b"firmware-image-A";
     let signing_key = SigningKey::from_bytes(&[17_u8; 32]);

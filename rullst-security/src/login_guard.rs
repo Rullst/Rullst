@@ -197,6 +197,7 @@ mod tests {
     use super::*;
 
     #[test]
+    // TM-AUTH-07: repeated failures receive bounded delay and temporary jailing.
     fn test_login_guard_tarpit_and_jail() {
         let guard = LoginGuard::new();
         let ip = "192.168.10.45";

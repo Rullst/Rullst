@@ -130,6 +130,7 @@ mod tests {
     }
 
     #[tokio::test]
+    // TM-PAY-06: non-mock fiscal transmission must never simulate authorization.
     async fn real_environments_fail_closed_even_with_mock_or_empty_certificate() {
         for environment in [NfseEnvironment::Homologation, NfseEnvironment::Production] {
             for certificate in [

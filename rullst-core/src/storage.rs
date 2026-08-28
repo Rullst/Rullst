@@ -2,6 +2,9 @@
 
 use std::path::{Component, Path, PathBuf};
 
+mod tenant;
+pub use tenant::TenantStorage;
+
 /// Strongly-typed error domain for Rullst Storage operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 pub enum StorageError {

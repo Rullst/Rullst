@@ -28,16 +28,50 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
+        .register::<models::course_module::CourseModule>()
+        .register::<models::course_version::CourseVersion>()
+        .register::<models::publication_rollback::PublicationRollback>()
+        .register::<models::course_completion::CourseCompletion>()
+        .register::<models::certificate::Certificate>()
+        .register::<models::role_assignment::RoleAssignment>()
+        .register::<models::domain_event::DomainEvent>()
         .register::<models::lesson::Lesson>()
         .register::<models::user::User>()
         .register::<models::enrollment::Enrollment>()
         .register::<models::lesson_progress::LessonProgress>()
+        .register::<models::lesson_progress_event::LessonProgressEvent>()
+        .register::<models::lesson_release_rule::LessonReleaseRule>()
+        .register::<models::notification::Notification>()
+        .register::<models::notification_preference::NotificationPreference>()
+        .register::<models::scheduler_lease::SchedulerLease>()
+        .register::<models::quiz::Quiz>()
+        .register::<models::quiz_question::QuizQuestion>()
+        .register::<models::quiz_option::QuizOption>()
+        .register::<models::quiz_attempt::QuizAttempt>()
+        .register::<models::quiz_attempt_session::QuizAttemptSession>()
+        .register::<models::quiz_answer::QuizAnswer>()
+        .register::<models::activity::Activity>()
+        .register::<models::assignment::Assignment>()
+        .register::<models::rubric_criterion::RubricCriterion>()
+        .register::<models::assignment_submission::AssignmentSubmission>()
+        .register::<models::assignment_grade::AssignmentGrade>()
+        .register::<models::assignment_grade_correction::AssignmentGradeCorrection>()
+        .register::<models::rubric_score::RubricScore>()
+        .register::<models::achievement::Achievement>()
+        .register::<models::leaderboard_entry::LeaderboardEntry>()
+        .register::<models::automation_rule::AutomationRule>()
+        .register::<models::automation_execution::AutomationExecution>()
+        .register::<models::user_achievement::UserAchievement>()
+        .register::<models::score_event::ScoreEvent>()
+        .register::<models::score_correction::ScoreCorrection>()
         .try_build()?;
 
     let public = routes![
         get("/" => controllers::lms_controller::index),
         // rullst-access: public — course metadata and lesson titles form the public catalog.
         get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        // rullst-access: public — an opaque certificate key reveals bounded course evidence, never learner PII.
+        get("/certificates/{{certificate_key}}" => controllers::completion_controller::verify),
         get("/login" => controllers::auth_controller::login_view),
         post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
@@ -52,6 +86,38 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         get("/lessons/{{id}}/play" => controllers::learning_controller::play_lesson),
         // rullst-access: owner — progress is written only for the authenticated enrollment owner.
         post("/lessons/{{id}}/progress" => controllers::learning_controller::record_progress),
+        // rullst-access: owner — completion is derived for the authenticated learner from pinned server state.
+        post("/courses/{{id}}/completion" => controllers::completion_controller::complete),
+        // rullst-access: owner — the session identity scopes notification listing.
+        get("/notifications" => controllers::notification_controller::index),
+        // rullst-access: owner — quiz and subject identities come from the path/session.
+        post("/quizzes/{{id}}/start" => controllers::assessment_controller::start),
+        // rullst-access: owner — answers are graded against the server-side answer key.
+        post("/quizzes/{{id}}/submit" => controllers::assessment_controller::submit),
+        // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
+        post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
+        // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.
+        post("/submissions/{{id}}/grade" => controllers::assignment_controller::grade),
+        // rullst-access: role — only admin can append a reasoned grade correction bounded by the same rubric.
+        post("/assignment-grades/{{id}}/correct" => controllers::assignment_controller::correct_grade),
+        // rullst-access: owner — the session identity scopes the notification mutation.
+        post("/notifications/{{id}}/read" => controllers::notification_controller::read),
+        // rullst-access: owner — no subject identity is accepted from the form.
+        post("/notifications/preferences" => controllers::notification_controller::update_preference),
+        // rullst-access: role — publication service requires instructor/admin from authenticated context.
+        post("/courses/{{id}}/versions" => controllers::publication_controller::draft),
+        // rullst-access: role — only the authenticated version author or admin can submit review.
+        post("/course-versions/{{id}}/submit" => controllers::publication_controller::submit),
+        // rullst-access: role — publication service requires a distinct authenticated admin reviewer.
+        post("/course-versions/{{id}}/review" => controllers::publication_controller::review),
+        // rullst-access: role — rollback creates a new immutable version and requires an authenticated admin.
+        post("/courses/{{id}}/rollback" => controllers::publication_rollback_controller::rollback),
+        // rullst-access: role — target identity is path-bound and the service enforces the grant hierarchy.
+        post("/users/{{id}}/roles" => controllers::role_controller::grant),
+        // rullst-access: role — the authenticated grant hierarchy controls durable revocation.
+        post("/role-assignments/{{assignment_key}}/revoke" => controllers::role_controller::revoke),
+        // rullst-access: role — the service requires admin and records actor, reason and server time.
+        post("/certificates/{{certificate_key}}/revoke" => controllers::completion_controller::revoke),
     ].layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));
 
     Ok(public
@@ -142,16 +208,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
+        .register::<models::course_module::CourseModule>()
+        .register::<models::course_version::CourseVersion>()
+        .register::<models::publication_rollback::PublicationRollback>()
+        .register::<models::course_completion::CourseCompletion>()
+        .register::<models::certificate::Certificate>()
+        .register::<models::role_assignment::RoleAssignment>()
+        .register::<models::domain_event::DomainEvent>()
         .register::<models::lesson::Lesson>()
         .register::<models::user::User>()
         .register::<models::enrollment::Enrollment>()
         .register::<models::lesson_progress::LessonProgress>()
+        .register::<models::lesson_progress_event::LessonProgressEvent>()
+        .register::<models::lesson_release_rule::LessonReleaseRule>()
+        .register::<models::notification::Notification>()
+        .register::<models::notification_preference::NotificationPreference>()
+        .register::<models::scheduler_lease::SchedulerLease>()
+        .register::<models::quiz::Quiz>()
+        .register::<models::quiz_question::QuizQuestion>()
+        .register::<models::quiz_option::QuizOption>()
+        .register::<models::quiz_attempt::QuizAttempt>()
+        .register::<models::quiz_attempt_session::QuizAttemptSession>()
+        .register::<models::quiz_answer::QuizAnswer>()
+        .register::<models::activity::Activity>()
+        .register::<models::assignment::Assignment>()
+        .register::<models::rubric_criterion::RubricCriterion>()
+        .register::<models::assignment_submission::AssignmentSubmission>()
+        .register::<models::assignment_grade::AssignmentGrade>()
+        .register::<models::assignment_grade_correction::AssignmentGradeCorrection>()
+        .register::<models::rubric_score::RubricScore>()
+        .register::<models::achievement::Achievement>()
+        .register::<models::leaderboard_entry::LeaderboardEntry>()
+        .register::<models::automation_rule::AutomationRule>()
+        .register::<models::automation_execution::AutomationExecution>()
+        .register::<models::user_achievement::UserAchievement>()
+        .register::<models::score_event::ScoreEvent>()
+        .register::<models::score_correction::ScoreCorrection>()
         .try_build()?;
 
     let public = routes![
         get("/" => controllers::lms_controller::index),
         // rullst-access: public — course metadata and lesson titles form the public catalog.
         get("/courses/{{id}}" => controllers::lms_controller::show_course),
+        // rullst-access: public — an opaque certificate key reveals bounded course evidence, never learner PII.
+        get("/certificates/{{certificate_key}}" => controllers::completion_controller::verify),
         get("/login" => controllers::auth_controller::login_view),
         post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
@@ -166,6 +266,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/lessons/{{id}}/play" => controllers::learning_controller::play_lesson),
         // rullst-access: owner — progress is written only for the authenticated enrollment owner.
         post("/lessons/{{id}}/progress" => controllers::learning_controller::record_progress),
+        // rullst-access: owner — completion is derived for the authenticated learner from pinned server state.
+        post("/courses/{{id}}/completion" => controllers::completion_controller::complete),
+        // rullst-access: owner — the session identity scopes notification listing.
+        get("/notifications" => controllers::notification_controller::index),
+        // rullst-access: owner — quiz and subject identities come from the path/session.
+        post("/quizzes/{{id}}/start" => controllers::assessment_controller::start),
+        // rullst-access: owner — answers are graded against the server-side answer key.
+        post("/quizzes/{{id}}/submit" => controllers::assessment_controller::submit),
+        // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
+        post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
+        // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.
+        post("/submissions/{{id}}/grade" => controllers::assignment_controller::grade),
+        // rullst-access: role — only admin can append a reasoned grade correction bounded by the same rubric.
+        post("/assignment-grades/{{id}}/correct" => controllers::assignment_controller::correct_grade),
+        // rullst-access: owner — the session identity scopes the notification mutation.
+        post("/notifications/{{id}}/read" => controllers::notification_controller::read),
+        // rullst-access: owner — no subject identity is accepted from the form.
+        post("/notifications/preferences" => controllers::notification_controller::update_preference),
+        // rullst-access: role — publication service requires instructor/admin from authenticated context.
+        post("/courses/{{id}}/versions" => controllers::publication_controller::draft),
+        // rullst-access: role — only the authenticated version author or admin can submit review.
+        post("/course-versions/{{id}}/submit" => controllers::publication_controller::submit),
+        // rullst-access: role — publication service requires a distinct authenticated admin reviewer.
+        post("/course-versions/{{id}}/review" => controllers::publication_controller::review),
+        // rullst-access: role — rollback creates a new immutable version and requires an authenticated admin.
+        post("/courses/{{id}}/rollback" => controllers::publication_rollback_controller::rollback),
+        // rullst-access: role — target identity is path-bound and the service enforces the grant hierarchy.
+        post("/users/{{id}}/roles" => controllers::role_controller::grant),
+        // rullst-access: role — the authenticated grant hierarchy controls durable revocation.
+        post("/role-assignments/{{assignment_key}}/revoke" => controllers::role_controller::revoke),
+        // rullst-access: role — the service requires admin and records actor, reason and server time.
+        post("/certificates/{{certificate_key}}/revoke" => controllers::completion_controller::revoke),
     ].layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware));
 
     let router = public

@@ -110,6 +110,31 @@ jobs:
               ;;
           esac
 
+  redis-rate-limit:
+    name: Redis distributed rate-limit contract
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Prove independent clients share one atomic budget
+        env:
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
+
   feature-boundaries:
     name: Public no-default and isolated feature boundaries
     runs-on: ubuntu-latest
@@ -122,6 +147,32 @@ jobs:
 
       - name: Compile all public minimal and isolated feature boundaries
         run: bash .github/check-feature-boundaries.sh
+
+  threat-model-release-minimum:
+    name: TM-12.2 release-negative minimum
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Run the explicit threat-model release-negative minimum
+        run: bash .github/check-threat-model-release-minimum.sh
+
+  versioned-ai-evals:
+    name: Versioned deterministic AI evals
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Validate and run the versioned offline eval suite
+        run: bash .github/check-ai-evals.sh
 
   generated-release-access:
     name: Generated release access boundaries

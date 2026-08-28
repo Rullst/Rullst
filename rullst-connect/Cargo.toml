@@ -28,7 +28,7 @@ mock = []
 [dependencies]
 async-trait = { workspace = true }
 base64 = { workspace = true }
-jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+jsonwebtoken = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true, features = ["form", "json", "rustls"] }
 serde = { workspace = true }

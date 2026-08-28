@@ -145,7 +145,7 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
                 .headers_mut()
                 .append(header::SET_COOKIE, cookie_val);
         }
-        return response;
+        response
     }
 }
 

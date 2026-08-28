@@ -1,7 +1,10 @@
 // Learning-domain persistence templates kept outside the blueprint orchestrator.
 
+#[path = "roles.rs"]
+mod roles;
+
 pub fn get_files() -> Vec<(&'static str, String)> {
-    vec![
+    let mut files = vec![
         ("src/models/user.rs", USER_MODEL.to_string()),
         ("src/models/enrollment.rs", ENROLLMENT_MODEL.to_string()),
         (
@@ -9,10 +12,16 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             LESSON_PROGRESS_MODEL.to_string(),
         ),
         (
+            "src/models/lesson_progress_event.rs",
+            LESSON_PROGRESS_EVENT_MODEL.to_string(),
+        ),
+        (
             "src/migrations/m20260827000000_add_learning_access.rs",
             LEARNING_MIGRATION.to_string(),
         ),
-    ]
+    ];
+    files.extend(roles::get_files());
+    files
 }
 
 const USER_MODEL: &str = r##"use rullst::db::{FromRow, Orm};
@@ -151,6 +160,47 @@ impl NexusModel for LessonProgress {
 }
 "##;
 
+const LESSON_PROGRESS_EVENT_MODEL: &str = r##"use rullst::db::{FromRow, Orm};
+use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "lesson_progress_events")]
+pub struct LessonProgressEvent {
+    pub id: i32,
+    pub event_key: String,
+    pub actor_user_id: i32,
+    pub subject_user_id: i32,
+    pub lesson_id: i32,
+    pub previous_percent: i32,
+    pub current_percent: i32,
+    pub event_kind: String,
+    pub reason: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl NexusModel for LessonProgressEvent {
+    fn nexus_table() -> &'static str { "lesson_progress_events" }
+    fn nexus_label() -> &'static str { "Progress Audit" }
+    fn nexus_icon() -> &'static str { "🧾" }
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
+            FieldMeta { name: "event_key", label: "Event Key", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "actor_user_id", label: "Actor", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
+            FieldMeta { name: "subject_user_id", label: "Learner", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
+            FieldMeta { name: "lesson_id", label: "Lesson", kind: FieldKind::ForeignKey { table: "lessons", label_col: "title" }, hidden: false, readonly: true },
+            FieldMeta { name: "previous_percent", label: "Previous %", kind: FieldKind::Number, hidden: false, readonly: true },
+            FieldMeta { name: "current_percent", label: "Current %", kind: FieldKind::Number, hidden: false, readonly: true },
+            FieldMeta { name: "event_kind", label: "Kind", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "reason", label: "Reason", kind: FieldKind::Textarea, hidden: false, readonly: true },
+            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::Text, hidden: false, readonly: true },
+        ]
+    }
+}
+"##;
+
 const LEARNING_MIGRATION: &str = r##"use rullst::db::{Orm, sqlx};
 use rullst::db::async_trait;
 use rullst::db::schema::{Migration, Schema};
@@ -191,6 +241,19 @@ impl Migration for MigrationImpl {
             table.timestamps();
         }).await?;
 
+        Schema::create("lesson_progress_events", |table| {
+            table.id();
+            table.string("event_key").not_null();
+            table.integer("actor_user_id").not_null();
+            table.integer("subject_user_id").not_null();
+            table.integer("lesson_id").not_null();
+            table.integer("previous_percent").not_null();
+            table.integer("current_percent").not_null();
+            table.string("event_kind").not_null();
+            table.string("reason").not_null();
+            table.timestamps();
+        }).await?;
+
         let pool = Orm::pool()?;
         for statement in [
             "CREATE UNIQUE INDEX users_email_unique ON users(email)",
@@ -198,6 +261,8 @@ impl Migration for MigrationImpl {
             "CREATE INDEX enrollments_course_status_idx ON enrollments(course_id, status)",
             "CREATE UNIQUE INDEX lesson_progress_user_lesson_unique ON lesson_progress(user_id, lesson_id)",
             "CREATE INDEX lesson_progress_lesson_idx ON lesson_progress(lesson_id)",
+            "CREATE UNIQUE INDEX lesson_progress_events_key_unique ON lesson_progress_events(event_key)",
+            "CREATE INDEX lesson_progress_events_subject_idx ON lesson_progress_events(subject_user_id, lesson_id, created_at)",
         ] {
             sqlx::query(sqlx::AssertSqlSafe(statement)).execute(pool).await?;
         }
@@ -205,6 +270,7 @@ impl Migration for MigrationImpl {
     }
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::drop_if_exists("lesson_progress_events").await?;
         Schema::drop_if_exists("lesson_progress").await?;
         Schema::drop_if_exists("enrollments").await?;
         Schema::drop_if_exists("users").await

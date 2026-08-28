@@ -150,6 +150,7 @@ fn ergonomic_policy_never_selects_loopback_in_release_builds() {
 }
 
 #[tokio::test]
+// TM-NEXUS-01: anonymous, remote and missing-peer access must fail closed.
 async fn loopback_access_allows_local_peer_and_denies_every_other_source() {
     let app = loopback_test_router();
 

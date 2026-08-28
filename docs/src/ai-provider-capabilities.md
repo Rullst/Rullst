@@ -12,11 +12,11 @@ falling back to another operation.
 
 | Provider transport | Text | Chat | Embeddings | Vision | JSON | JSON Schema | Streaming | Provider tools | Rullst timeout | Automatic retry | Explicit cancellation |
 | --- | :---: | :---: | :---: | :---: | --- | :---: | :---: | :---: | :---: | :---: | :---: |
-| OpenAI | yes | yes | yes | yes | native mode | yes | no | no | no | no | no |
-| Anthropic | yes | yes | no | yes | prompt only | no | no | no | no | no | no |
-| Gemini | yes | yes | yes | yes | native mode | yes | no | no | no | no | no |
-| DeepSeek | yes | yes | no | no | native mode | default model only | no | no | no | no | no |
-| Ollama | yes | yes | yes | yes | native mode | yes | no | no | no | no | no |
+| OpenAI | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
+| Anthropic | yes | yes | no | yes | prompt only | no | no | no | yes | no | no |
+| Gemini | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
+| DeepSeek | yes | yes | no | no | native mode | default model only | no | no | yes | no | no |
+| Ollama | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
 
 `yes` means Rullst constructs and parses that provider request. A configured
 model can still reject vision, embeddings, or schema output. In particular:
@@ -44,11 +44,13 @@ their non-streaming response shapes. Rullst exposes no token-stream API in v12.
 
 ### Timeouts and cancellation
 
-The built-in clients currently do not impose a Rullst request deadline and do
-not expose a cancellation token or abort handle. Dropping an async request
-future is the caller's only local cancellation mechanism; it is not proof that
-an upstream provider stopped work or billing. Applications should apply a
-bounded outer timeout until a provider-neutral deadline API is implemented.
+Every built-in live transport applies a 30-second request deadline by default.
+Each provider exposes `with_request_timeout(Duration)` to select a stricter or
+longer deadline, and a loopback regression proves timeout classification on the
+OpenAI-compatible transport. This bounds the local request future; it is not
+proof that an upstream provider stopped work or billing. The adapters still do
+not expose a provider-neutral cancellation token or abort handle, so dropping
+the future remains the only explicit caller cancellation mechanism.
 
 ### Retries
 

@@ -440,6 +440,7 @@ mod tests {
 
     #[cfg(feature = "axum-session")]
     #[tokio::test]
+    // TM-AUTH-04: a substituted or absent OAuth callback state is rejected.
     async fn test_axum_session_extractor_mismatch() {
         use axum::extract::FromRequestParts;
         use std::sync::Arc;

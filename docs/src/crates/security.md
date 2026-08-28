@@ -17,11 +17,12 @@ application that mounts them.
 | **Bounded RASP** | 🟢 `[Implemented: defense in depth]` | ASCII signature matching plus one decoding pass for URI, headers, and bounded textual/JSON bodies. Decoding and body inspection may allocate. |
 | **Login Guard Tarpit** | 🟢 `[Implemented: local]` | Progressive delay decisions and bounded, expiring in-memory jails keyed by a hashed identity. The caller performs the returned delay. |
 | **Sliding-Window Rate Limiter** | 🟢 `[Implemented: local]` | In-memory limiter keyed from the verified socket peer. It does not coordinate multiple processes. |
+| **Redis Rate Limiter** | 🟢 `[Implemented: feature-gated foundation]` | `redis-rate-limit` uses an atomic fixed-window Lua script, namespace validation, hashed client keys and TTL-derived retry metadata. Empty/`mock_*` URLs select an explicit process-local test mode; call `require_distributed()` at production startup. A live contract proves independent clients share one Redis budget; cluster/failover remains application evidence. |
 | **DLP & Secret Masking** | 🟢 `[Implemented: bounded]` | Masks complete private-key envelopes, AWS access-key patterns, and credentials in supported textual database URLs. Binary, compressed, streaming, unknown-size, and oversized bodies are not rewritten. |
-| **TOTP Multi-Factor Auth** | 🟢 `[Implemented: foundation]` | Six-digit SHA-1 TOTP generation/verification with a ±1 time-step window and percent-encoded `otpauth` URI builder. Enrollment, recovery, rate limits, and account policy remain application concerns. |
+| **TOTP Multi-Factor Auth** | 🟢 `[Implemented: foundation]` | Six-digit SHA-1 TOTP generation/verification with a ±1 time-step window, percent-encoded `otpauth` URI builder, and subject-bound single-use recovery-code verifiers. Enrollment, transactional persistence, rate limits, and account policy remain application concerns. |
 | **CSWSH Guard** | 🟢 `[Implemented]` | Exact normalized scheme/host/port validation for WebSocket origins, with a fail-closed default for missing origins. |
 | **Canonical Server security stack** | 🟡 `[Partial]` | CSP nonce identity is shared across Core and extended layers, but Core still owns the default Server CSRF/WAF/header/PII stack. Explicit composition is required. |
-| **Distributed Rate Limiting** | 🔵 `[Roadmap]` | Worth implementing as an optional atomic shared backend with tenant namespacing and multi-instance tests; current distributed selection returns `Unsupported`. |
+| **Distributed Rate Limiting Evidence** | 🟡 `[Partial]` | The Redis adapter is implemented, but real cross-instance, eviction/failover and trusted-proxy deployment tests remain required. The legacy no-argument distributed selector still returns `Unsupported` rather than guessing configuration. |
 
 ---
 
@@ -114,5 +115,7 @@ let current_code = generate_totp_code(&secret);
 let is_valid = verify_totp_code(&secret, "123456");
 ```
 
-The secret must be encrypted at rest, and the application must provide replay,
-attempt limiting, recovery, enrollment confirmation, and clock-monitoring policy.
+The secret must be encrypted at rest. Recovery helpers return plaintext codes
+only at enrollment and salted HMAC verifiers for storage; consume/delete must be
+one durable transaction. The application still owns replay/attempt limiting,
+enrollment confirmation, recovery UX, audit and clock-monitoring policy.

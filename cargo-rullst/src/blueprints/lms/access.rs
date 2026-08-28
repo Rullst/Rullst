@@ -8,7 +8,8 @@ pub fn get_files() -> Vec<(&'static str, String)> {
         ),
         (
             "src/services/mod.rs",
-            "pub mod learning_service;\n".to_string(),
+            "pub mod activity_contract;\npub mod assessment_service;\npub mod assessment_timing_service;\npub mod assignment_grade_correction_service;\npub mod assignment_grading_service;\npub mod assignment_submission_service;\npub mod automation_execution_service;\npub mod automation_service;\npub mod automation_worker_event_service;\npub mod automation_worker_service;\npub mod completion_service;\npub mod learning_service;\npub mod notification_service;\npub mod outbox_service;\npub mod progress_service;\npub mod publication_rollback_service;\npub mod publication_scheduler_service;\npub mod publication_service;\npub mod role_service;\npub mod scheduler_lease_service;\npub mod school_service;\npub mod score_correction_service;\npub mod score_service;\n"
+                .to_string(),
         ),
         (
             "src/controllers/learning_controller.rs",
@@ -29,13 +30,20 @@ const LEARNING_SERVICE: &str = r##"use crate::models::course::Course;
 use crate::models::enrollment::Enrollment;
 use crate::models::lesson::Lesson;
 use crate::models::lesson_progress::LessonProgress;
+use crate::services::school_service::{self, SchoolError};
 use rullst_security::{RbacGuard, UserContext};
 
 #[derive(Debug)]
 pub enum LearningError {
     NotFound(&'static str),
     Forbidden,
+    NotReleased,
+    Expired,
+    PrerequisiteNotMet,
+    InvalidAvailabilityPolicy,
+    InvalidContentVersion,
     InvalidProgress,
+    Clock,
     Database(rullst_orm::Error),
 }
 
@@ -44,7 +52,13 @@ impl std::fmt::Display for LearningError {
         match self {
             Self::NotFound(resource) => write!(formatter, "{resource} not found"),
             Self::Forbidden => formatter.write_str("learning resource access denied"),
+            Self::NotReleased => formatter.write_str("lesson is not released"),
+            Self::Expired => formatter.write_str("lesson access has expired"),
+            Self::PrerequisiteNotMet => formatter.write_str("lesson prerequisite is not met"),
+            Self::InvalidAvailabilityPolicy => formatter.write_str("lesson availability policy is invalid"),
+            Self::InvalidContentVersion => formatter.write_str("course has no unambiguous published content version"),
             Self::InvalidProgress => formatter.write_str("progress must be between 0 and 100"),
+            Self::Clock => formatter.write_str("system clock is before the Unix epoch"),
             Self::Database(error) => write!(formatter, "learning database error: {error}"),
         }
     }
@@ -63,45 +77,146 @@ fn authorize_identity(context: &UserContext, user_id: i32) -> Result<(), Learnin
         .map_err(|_| LearningError::Forbidden)
 }
 
+fn map_school_error(error: SchoolError) -> LearningError {
+    match error {
+        SchoolError::Database(error) => LearningError::Database(error),
+        SchoolError::Forbidden
+        | SchoolError::AmbiguousMembership
+        | SchoolError::InvalidField(_) => LearningError::Forbidden,
+    }
+}
+
+fn valid_key(value: &str, maximum: usize) -> bool {
+    !value.is_empty()
+        && value.len() <= maximum
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':' | b'.')
+        })
+}
+
+fn unix_now() -> Result<i64, LearningError> {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| LearningError::Clock)?;
+    i64::try_from(elapsed.as_secs()).map_err(|_| LearningError::Clock)
+}
+
 pub async fn enroll(
     user_id: i32,
     context: &UserContext,
     course_id: i32,
 ) -> Result<Enrollment, LearningError> {
     authorize_identity(context, user_id)?;
+    if user_id <= 0 || course_id <= 0 {
+        return Err(LearningError::Forbidden);
+    }
+    let school_id = school_service::authorize_course_enrollment_at(context, user_id, course_id, unix_now()?)
+        .await
+        .map_err(map_school_error)?;
     if Course::find(course_id).await?.is_none() {
         return Err(LearningError::NotFound("course"));
     }
-
-    let existing = Enrollment::query()
-        .where_eq("user_id", user_id)
-        .where_eq("course_id", course_id)
-        .first()
-        .await?;
-    if let Some(mut enrollment) = existing {
-        if enrollment.status != "active" {
-            enrollment.status = "active".to_string();
-            enrollment.save().await?;
-        }
-        return Ok(enrollment);
-    }
-
-    let mut enrollment = Enrollment {
-        id: 0,
-        user_id,
-        course_id,
-        status: "active".to_string(),
-        created_at: String::new(),
-        updated_at: String::new(),
+    let pool = rullst::db::Orm::pool()?;
+    let driver = rullst::db::Orm::driver()?;
+    let mut transaction = pool
+        .begin()
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    let upsert_sql = match driver {
+        "postgres" => "INSERT INTO enrollments (user_id, course_id, status, created_at, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id) DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP",
+        "mysql" => "INSERT INTO enrollments (user_id, course_id, status, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status = VALUES(status), updated_at = CURRENT_TIMESTAMP",
+        _ => "INSERT INTO enrollments (user_id, course_id, status, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP",
     };
-    if let Err(insert_error) = enrollment.save().await {
-        // A concurrent identical request may have won the unique-key race.
-        if let Some(winner) = Enrollment::active_for(user_id, course_id).await? {
-            return Ok(winner);
-        }
-        return Err(LearningError::Database(insert_error));
+    rullst::db::sqlx::query(upsert_sql)
+        .bind(user_id)
+        .bind(course_id)
+        .bind("active")
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    let enrollment_sql = match driver {
+        "postgres" => "SELECT id, user_id, course_id, status, created_at, updated_at FROM enrollments WHERE user_id = $1 AND course_id = $2 AND status = $3",
+        _ => "SELECT id, user_id, course_id, status, created_at, updated_at FROM enrollments WHERE user_id = ? AND course_id = ? AND status = ?",
+    };
+    let row = rullst::db::sqlx::query_as::<_, (i32, i32, i32, String, String, String)>(
+        enrollment_sql,
+    )
+    .bind(user_id)
+    .bind(course_id)
+    .bind("active")
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|error| LearningError::Database(error.into()))?;
+    let version_sql = match driver {
+        "postgres" => "SELECT id FROM course_versions WHERE course_id = $1 AND status = $2 ORDER BY revision DESC",
+        _ => "SELECT id FROM course_versions WHERE course_id = ? AND status = ? ORDER BY revision DESC",
+    };
+    let mut versions = rullst::db::sqlx::query_scalar::<_, i32>(version_sql)
+        .bind(course_id)
+        .bind("published")
+        .fetch_all(&mut *transaction)
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    if versions.len() != 1 {
+        return Err(LearningError::InvalidContentVersion);
     }
-    Ok(enrollment)
+    let version_id = versions
+        .pop()
+        .ok_or(LearningError::InvalidContentVersion)?;
+    let pin_sql = match driver {
+        "postgres" => "INSERT INTO enrollment_content_versions (enrollment_id, course_version_id, created_at, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+        "mysql" => "INSERT IGNORE INTO enrollment_content_versions (enrollment_id, course_version_id, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO enrollment_content_versions (enrollment_id, course_version_id, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+    };
+    rullst::db::sqlx::query(pin_sql)
+        .bind(row.0)
+        .bind(version_id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    let event_key = format!("enrollment:{user_id}:{course_id}");
+    let payload_json = serde_json::json!({
+        "schema_version": 1,
+        "actor_user_id": user_id,
+        "subject_user_id": user_id,
+        "course_id": course_id,
+        "enrollment_id": row.0,
+        "status": "active",
+    })
+    .to_string();
+    let event_sql = match driver {
+        "postgres" => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+        "mysql" => "INSERT IGNORE INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+    };
+    rullst::db::sqlx::query(event_sql)
+        .bind(school_id)
+        .bind(event_key)
+        .bind("enrollment_activated")
+        .bind(user_id)
+        .bind(payload_json)
+        .bind("pending")
+        .bind(0_i32)
+        .bind("")
+        .bind("")
+        .bind("")
+        .bind(0_i64)
+        .bind(0_i64)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    transaction
+        .commit()
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    Ok(Enrollment {
+        id: row.0,
+        user_id: row.1,
+        course_id: row.2,
+        status: row.3,
+        created_at: row.4,
+        updated_at: row.5,
+    })
 }
 
 pub async fn authorize_lesson(
@@ -109,73 +224,92 @@ pub async fn authorize_lesson(
     context: &UserContext,
     lesson_id: i32,
 ) -> Result<Lesson, LearningError> {
+    authorize_lesson_at(user_id, context, lesson_id, unix_now()?).await
+}
+
+pub async fn authorize_lesson_at(
+    user_id: i32,
+    context: &UserContext,
+    lesson_id: i32,
+    observed_at_epoch: i64,
+) -> Result<Lesson, LearningError> {
+    if observed_at_epoch <= 0 {
+        return Err(LearningError::Clock);
+    }
     authorize_identity(context, user_id)?;
+    let scoped_course_id = school_service::authorize_lesson(context, lesson_id)
+        .await
+        .map_err(map_school_error)?;
     let lesson = Lesson::find(lesson_id)
         .await?
         .ok_or(LearningError::NotFound("lesson"))?;
+    if lesson.course_id != scoped_course_id {
+        return Err(LearningError::Forbidden);
+    }
+    school_service::authorize_course_enrollment_at(
+        context,
+        user_id,
+        lesson.course_id,
+        observed_at_epoch,
+    )
+    .await
+    .map_err(map_school_error)?;
     let enrollment = Enrollment::active_for(user_id, lesson.course_id)
         .await?
         .ok_or(LearningError::Forbidden)?;
     RbacGuard::authorize_owner_or_role(context, &enrollment.user_id.to_string(), "admin")
         .map_err(|_| LearningError::Forbidden)?;
+
+    let driver = rullst::db::Orm::driver()?;
+    let policy_sql = match driver {
+        "postgres" => "SELECT ruleset_version, release_at_epoch, expire_at_epoch, prerequisite_lesson_id, required_progress_percent FROM lesson_release_rules WHERE lesson_id = $1 AND status = $2 ORDER BY id ASC",
+        _ => "SELECT ruleset_version, release_at_epoch, expire_at_epoch, prerequisite_lesson_id, required_progress_percent FROM lesson_release_rules WHERE lesson_id = ? AND status = ? ORDER BY id ASC",
+    };
+    let mut policies = rullst::db::sqlx::query_as::<_, (String, i64, i64, i32, i32)>(policy_sql)
+        .bind(lesson_id)
+        .bind("active")
+        .fetch_all(rullst::db::Orm::pool()?)
+        .await
+        .map_err(|error| LearningError::Database(error.into()))?;
+    if policies.len() != 1 {
+        return Err(LearningError::InvalidAvailabilityPolicy);
+    }
+    let policy = policies
+        .pop()
+        .ok_or(LearningError::InvalidAvailabilityPolicy)?;
+    let has_prerequisite = policy.3 > 0;
+    if !valid_key(&policy.0, 64)
+        || policy.1 < 0
+        || policy.2 < 0
+        || (policy.1 > 0 && policy.2 > 0 && policy.2 <= policy.1)
+        || policy.3 < 0
+        || policy.3 == lesson_id
+        || policy.4 < 0
+        || policy.4 > 100
+        || (has_prerequisite && policy.4 == 0)
+        || (!has_prerequisite && policy.4 != 0)
+    {
+        return Err(LearningError::InvalidAvailabilityPolicy);
+    }
+    if policy.1 > 0 && observed_at_epoch < policy.1 {
+        return Err(LearningError::NotReleased);
+    }
+    if policy.2 > 0 && observed_at_epoch > policy.2 {
+        return Err(LearningError::Expired);
+    }
+    if has_prerequisite {
+        let prerequisite = Lesson::find(policy.3)
+            .await?
+            .ok_or(LearningError::InvalidAvailabilityPolicy)?;
+        if prerequisite.course_id != lesson.course_id {
+            return Err(LearningError::InvalidAvailabilityPolicy);
+        }
+        let progress = LessonProgress::for_learner(user_id, policy.3).await?;
+        if progress.map_or(0, |value| value.progress_percent) < policy.4 {
+            return Err(LearningError::PrerequisiteNotMet);
+        }
+    }
     Ok(lesson)
-}
-
-pub async fn record_progress(
-    user_id: i32,
-    context: &UserContext,
-    lesson_id: i32,
-    progress_percent: i32,
-) -> Result<LessonProgress, LearningError> {
-    if !(0..=100).contains(&progress_percent) {
-        return Err(LearningError::InvalidProgress);
-    }
-    authorize_lesson(user_id, context, lesson_id).await?;
-
-    let completed = i32::from(progress_percent == 100);
-    let pool = rullst::db::Orm::pool()?;
-    match rullst::db::Orm::driver()? {
-        "postgres" => {
-            rullst::db::sqlx::query(
-                "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, lesson_id) DO UPDATE SET progress_percent = GREATEST(lesson_progress.progress_percent, EXCLUDED.progress_percent), completed = GREATEST(lesson_progress.completed, EXCLUDED.completed), updated_at = CURRENT_TIMESTAMP",
-            )
-            .bind(user_id)
-            .bind(lesson_id)
-            .bind(progress_percent)
-            .bind(completed)
-            .execute(pool)
-            .await
-            .map_err(|error| LearningError::Database(error.into()))?;
-        }
-        "mysql" => {
-            rullst::db::sqlx::query(
-                "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE progress_percent = GREATEST(progress_percent, VALUES(progress_percent)), completed = GREATEST(completed, VALUES(completed)), updated_at = CURRENT_TIMESTAMP",
-            )
-            .bind(user_id)
-            .bind(lesson_id)
-            .bind(progress_percent)
-            .bind(completed)
-            .execute(pool)
-            .await
-            .map_err(|error| LearningError::Database(error.into()))?;
-        }
-        _ => {
-            rullst::db::sqlx::query(
-                "INSERT INTO lesson_progress (user_id, lesson_id, progress_percent, completed, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, lesson_id) DO UPDATE SET progress_percent = MAX(lesson_progress.progress_percent, excluded.progress_percent), completed = MAX(lesson_progress.completed, excluded.completed), updated_at = CURRENT_TIMESTAMP",
-            )
-            .bind(user_id)
-            .bind(lesson_id)
-            .bind(progress_percent)
-            .bind(completed)
-            .execute(pool)
-            .await
-            .map_err(|error| LearningError::Database(error.into()))?;
-        }
-    }
-
-    LessonProgress::for_learner(user_id, lesson_id)
-        .await?
-        .ok_or(LearningError::NotFound("lesson progress"))
 }
 
 #[cfg(test)]
@@ -199,6 +333,7 @@ mod tests {
 const LEARNING_CONTROLLER: &str = r##"use crate::models::lesson_progress::LessonProgress;
 use crate::pages::lms;
 use crate::services::learning_service::{self, LearningError};
+use crate::services::progress_service::{self, ProgressError};
 use rullst::server::{Extension, Form, IntoResponse, Path, Redirect, Response, StatusCode};
 use rullst_security::UserContext;
 use serde::Deserialize;
@@ -206,19 +341,36 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct ProgressDto {
     pub progress_percent: i32,
+    pub idempotency_key: String,
 }
 
 fn learning_error_response(error: LearningError) -> Response {
     let status = match &error {
         LearningError::NotFound(_) => StatusCode::NOT_FOUND,
         LearningError::Forbidden => StatusCode::FORBIDDEN,
+        LearningError::NotReleased | LearningError::PrerequisiteNotMet => StatusCode::FORBIDDEN,
+        LearningError::Expired => StatusCode::GONE,
+        LearningError::InvalidAvailabilityPolicy => StatusCode::SERVICE_UNAVAILABLE,
+        LearningError::InvalidContentVersion => StatusCode::SERVICE_UNAVAILABLE,
         LearningError::InvalidProgress => StatusCode::UNPROCESSABLE_ENTITY,
+        LearningError::Clock => StatusCode::INTERNAL_SERVER_ERROR,
         LearningError::Database(_) => {
             eprintln!("Learning operation failed: {error}");
             StatusCode::SERVICE_UNAVAILABLE
         }
     };
     (status, status.canonical_reason().unwrap_or("Learning request failed")).into_response()
+}
+
+fn progress_error_response(error: ProgressError) -> Response {
+    match error {
+        ProgressError::Access(error) => learning_error_response(error),
+        ProgressError::InvalidField(_) => StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        ProgressError::Database(error) => {
+            eprintln!("Progress operation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
+    }
 }
 
 pub async fn enroll(
@@ -246,12 +398,20 @@ pub async fn play_lesson(
         Ok(progress) => progress.map_or(0, |value| value.progress_percent),
         Err(error) => return learning_error_response(LearningError::Database(error)),
     };
+    let progress_key = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(elapsed) => format!("progress-{}", elapsed.as_nanos()),
+        Err(error) => {
+            eprintln!("Progress clock unavailable: {error}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
     rullst::response::Html(lms::video_player_snippet(
         &lesson.title,
         &lesson.video_url,
         lesson.id,
         progress,
         csrf.as_str(),
+        &progress_key,
     ))
     .into_response()
 }
@@ -262,22 +422,26 @@ pub async fn record_progress(
     Extension(context): Extension<UserContext>,
     Form(payload): Form<ProgressDto>,
 ) -> Response {
-    match learning_service::record_progress(
-        user_id,
+    match progress_service::record_progress(
         &context,
+        user_id,
         lesson_id,
         payload.progress_percent,
+        &payload.idempotency_key,
     )
     .await
     {
-        Ok(progress) => rullst::response::Html(lms::progress_badge(progress.progress_percent))
-            .into_response(),
-        Err(error) => learning_error_response(error),
+        Ok(change) => rullst::response::Html(lms::progress_badge(
+            change.progress.progress_percent,
+        ))
+        .into_response(),
+        Err(error) => progress_error_response(error),
     }
 }
 "##;
 
 const AUTH_MIDDLEWARE: &str = r##"use crate::models::user::User;
+use crate::services::{role_service, school_service};
 use rullst::server::{IntoResponse, Next, Redirect, Request, Response, StatusCode};
 use rullst_security::UserContext;
 
@@ -297,11 +461,80 @@ pub async fn auth_middleware(mut request: Request, next: Next) -> Response {
     };
     match User::find(user_id).await {
         Ok(Some(_)) => {
-            request.extensions_mut().insert(user_id);
-            request.extensions_mut().insert(UserContext::new(
+            let observed_at_epoch = match std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
+            {
+                Some(value) => value,
+                None => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            };
+            let requested_school = match request.headers().get("x-school-id") {
+                Some(value) => match value.to_str() {
+                    Ok(value) => Some(value),
+                    Err(_) => return StatusCode::FORBIDDEN.into_response(),
+                },
+                None => None,
+            };
+            let resolved_school = match school_service::resolve_membership_at(
+                user_id,
+                requested_school,
+                observed_at_epoch,
+            )
+            .await
+            {
+                Ok(school) => school,
+                Err(error) => {
+                    eprintln!("Authentication school membership denied: {error}");
+                    return StatusCode::FORBIDDEN.into_response();
+                }
+            };
+            let seed_context = match UserContext::new(
                 user_id.to_string(),
                 vec!["student".to_string()],
-            ));
+            )
+            .try_with_tenant_id(resolved_school.tenant_key.clone())
+            {
+                Ok(context) => context,
+                Err(error) => {
+                    eprintln!("Authentication tenant context invalid: {error}");
+                    return StatusCode::FORBIDDEN.into_response();
+                }
+            };
+            let roles = match role_service::active_roles_at(
+                &seed_context,
+                user_id,
+                observed_at_epoch,
+            )
+            .await
+            {
+                Ok(roles) => roles,
+                Err(error) => {
+                    eprintln!("Authentication role query failed: {error}");
+                    return StatusCode::SERVICE_UNAVAILABLE.into_response();
+                }
+            };
+            let context = match UserContext::new(user_id.to_string(), roles)
+                .try_with_tenant_id(resolved_school.tenant_key.clone())
+            {
+                Ok(context) => context,
+                Err(error) => {
+                    eprintln!("Authentication tenant context invalid: {error}");
+                    return StatusCode::FORBIDDEN.into_response();
+                }
+            };
+            let tenant_context = match rullst::security::TenantContext::try_new(
+                resolved_school.tenant_key,
+            ) {
+                Ok(context) => context,
+                Err(error) => {
+                    eprintln!("Authentication tenant extension invalid: {error}");
+                    return StatusCode::FORBIDDEN.into_response();
+                }
+            };
+            request.extensions_mut().insert(user_id);
+            request.extensions_mut().insert(context);
+            request.extensions_mut().insert(tenant_context);
             next.run(request).await
         }
         Ok(None) => Redirect::to("/login").into_response(),

@@ -76,6 +76,7 @@ mod tests {
     use super::*;
 
     #[test]
+    // TM-DEPLOY-06: generated auth keeps blocking password work off the executor.
     fn generated_auth_is_async_query_bound_and_panic_free() {
         syn::parse_file(AUTH_CONTROLLER_TEMPLATE).expect("auth controller must parse");
         assert!(AUTH_CONTROLLER_TEMPLATE.contains("find_by_email"));

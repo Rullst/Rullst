@@ -165,4 +165,73 @@ fn validates_rotation_key_identifiers() {
         FieldEncryptor::encrypt_with_key_id("secret", KEY, "key:invalid", AAD),
         Err(VaultError::InvalidKeyId)
     );
+    assert_eq!(
+        FieldEncryptor::encrypt_with_key_id("secret", KEY, "k".repeat(MAX_KEY_ID_LENGTH + 1), AAD),
+        Err(VaultError::KeyIdTooLong {
+            maximum: MAX_KEY_ID_LENGTH,
+            actual: MAX_KEY_ID_LENGTH + 1
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_envelope_encodings_and_short_ciphertexts() {
+    let valid_nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_LENGTH]);
+
+    assert_eq!(
+        FieldEncryptor::decrypt("ENC:v2:default:!not-base64!:AAAA", KEY),
+        Err(VaultError::InvalidEnvelopeEncoding { component: "nonce" })
+    );
+    assert_eq!(
+        FieldEncryptor::decrypt(&format!("ENC:v2:default:{valid_nonce}:!not-base64!"), KEY),
+        Err(VaultError::InvalidEnvelopeEncoding {
+            component: "ciphertext"
+        })
+    );
+
+    let short_ciphertext = URL_SAFE_NO_PAD.encode([0_u8; TAG_LENGTH - 1]);
+    assert_eq!(
+        FieldEncryptor::decrypt(
+            &format!("ENC:v2:default:{valid_nonce}:{short_ciphertext}"),
+            KEY
+        ),
+        Err(VaultError::CiphertextTooShort {
+            minimum: TAG_LENGTH,
+            actual: TAG_LENGTH - 1
+        })
+    );
+    assert_eq!(
+        FieldEncryptor::decrypt(
+            &format!("ENC:v2:default:{valid_nonce}:{short_ciphertext}:extra"),
+            KEY
+        ),
+        Err(VaultError::InvalidEnvelope)
+    );
+}
+
+#[test]
+fn authenticated_non_utf8_plaintext_is_rejected() {
+    let nonce_bytes = [7_u8; NONCE_LENGTH];
+    let nonce = Nonce::<Aes256Gcm>::from(nonce_bytes);
+    let authenticated_data = build_authenticated_data(DEFAULT_KEY_ID, b"");
+    let ciphertext = create_cipher(KEY)
+        .expect("test key should initialize AES-GCM")
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: &[0xff, 0xfe],
+                aad: &authenticated_data,
+            },
+        )
+        .expect("non-UTF-8 bytes are valid authenticated plaintext");
+    let envelope = format!(
+        "ENC:v2:{DEFAULT_KEY_ID}:{}:{}",
+        URL_SAFE_NO_PAD.encode(nonce_bytes),
+        URL_SAFE_NO_PAD.encode(ciphertext)
+    );
+
+    assert_eq!(
+        FieldEncryptor::decrypt(&envelope, KEY),
+        Err(VaultError::InvalidPlaintextUtf8)
+    );
 }

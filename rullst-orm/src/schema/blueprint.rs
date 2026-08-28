@@ -45,6 +45,10 @@ impl Blueprint {
         self.add_column(name, "INTEGER")
     }
 
+    pub fn big_integer(&mut self, name: &str) -> &mut Column {
+        self.add_column(name, "BIGINT")
+    }
+
     pub fn float(&mut self, name: &str) -> &mut Column {
         self.add_column(name, "REAL")
     }

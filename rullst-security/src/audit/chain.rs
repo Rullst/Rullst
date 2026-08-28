@@ -305,4 +305,40 @@ mod tests {
         assert_eq!(first_durable.sequence_id, 1);
         assert_eq!(first_durable.previous_hash, GENESIS_HASH);
     }
+
+    #[tokio::test]
+    async fn sequence_verification_rejects_weak_keys_reordering_and_tampering() {
+        let secret = b"audit-key-material-with-32-plus-bytes";
+        let chain =
+            AuditChain::try_new(secret, Arc::new(StdoutAuditLogger)).expect("strong audit key");
+        let first = chain
+            .record_event("actor", "create", "course:1", "{}")
+            .await
+            .expect("first record should be durable");
+        let second = chain
+            .record_event("actor", "publish", "course:1", "{}")
+            .await
+            .expect("second record should be durable");
+        let records = vec![first.clone(), second.clone()];
+
+        assert!(AuditChain::verify_sequence(secret, &records));
+        assert!(!AuditChain::verify_record(b"weak", &first));
+        assert!(!AuditChain::verify_sequence(b"weak", &records));
+        assert!(!AuditChain::verify_sequence(
+            secret,
+            &[second.clone(), first.clone()]
+        ));
+
+        let mut broken_predecessor = second.clone();
+        broken_predecessor.previous_hash = "forged".to_string();
+        assert!(!AuditChain::verify_sequence(
+            secret,
+            &[first.clone(), broken_predecessor]
+        ));
+
+        let mut tampered = first.clone();
+        tampered.payload = "{\"role\":\"admin\"}".to_string();
+        assert!(!AuditChain::verify_record(secret, &tampered));
+        assert!(!AuditChain::verify_sequence(secret, &[tampered]));
+    }
 }

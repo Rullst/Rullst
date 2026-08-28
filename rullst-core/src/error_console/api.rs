@@ -181,3 +181,67 @@ async fn perform_autofix(
 ) -> Result<(), Box<dyn std::error::Error>> {
     Err("AI Engine offline. Auto-fix is now available via the `rullst-ai` crate.".into())
 }
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
+mod tests {
+    use super::{ExplainQuery, handle_explain};
+    use axum::{
+        body::to_bytes,
+        extract::{ConnectInfo, Query},
+        response::IntoResponse,
+    };
+    use std::net::SocketAddr;
+
+    async fn explain(peer: &str, file: impl Into<String>) -> String {
+        let response = handle_explain(
+            ConnectInfo(peer.parse::<SocketAddr>().expect("valid test peer")),
+            Query(ExplainQuery {
+                file: file.into(),
+                line: 1,
+                err: "test error".to_string(),
+            }),
+        )
+        .await
+        .into_response();
+        let body = to_bytes(response.into_body(), 4096)
+            .await
+            .expect("bounded response body");
+        String::from_utf8(body.to_vec()).expect("text response")
+    }
+
+    #[tokio::test]
+    // TM-STUDIO-04: source inspection denies remote, traversal, sensitive and unsupported paths.
+    async fn source_inspection_rejects_untrusted_file_requests() {
+        let source = std::env::current_dir()
+            .expect("workspace directory")
+            .join("src/lib.rs");
+        assert!(
+            explain("192.0.2.30:43000", source.to_string_lossy())
+                .await
+                .contains("localhost")
+        );
+        assert!(
+            explain("127.0.0.1:43000", "../Cargo.toml")
+                .await
+                .contains("Path traversal")
+        );
+
+        let manifest = std::env::current_dir()
+            .expect("workspace directory")
+            .join("Cargo.toml");
+        assert!(
+            explain("127.0.0.1:43000", manifest.to_string_lossy())
+                .await
+                .contains("sensitive configuration")
+        );
+        let unsupported_file = std::env::current_dir()
+            .expect("workspace directory")
+            .join("README.md");
+        let unsupported = explain("127.0.0.1:43000", unsupported_file.to_string_lossy()).await;
+        assert!(
+            unsupported.contains("only .rs and .toml"),
+            "unexpected response: {unsupported}"
+        );
+    }
+}

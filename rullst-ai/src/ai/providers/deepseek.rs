@@ -1,4 +1,4 @@
-use super::support::{endpoint, openai_chat_content, success_response};
+use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, openai_chat_content, success_response};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -6,6 +6,7 @@ use crate::ai::{
     mock::{self, ProviderMode},
 };
 use async_trait::async_trait;
+use std::time::Duration;
 
 /// DeepSeek's official OpenAI-compatible API provider.
 ///
@@ -18,6 +19,7 @@ pub struct DeepSeekProvider {
     base_url: String,
     mode: ProviderMode,
     client: reqwest::Client,
+    request_timeout: Duration,
 }
 
 impl DeepSeekProvider {
@@ -31,6 +33,7 @@ impl DeepSeekProvider {
             base_url: "https://api.deepseek.com".to_string(),
             mode,
             client: reqwest::Client::new(),
+            request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
 
@@ -46,10 +49,17 @@ impl DeepSeekProvider {
         self
     }
 
+    /// Sets the deadline applied to every live DeepSeek transport request.
+    pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
+        self
+    }
+
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
         let response = self
             .client
             .post(endpoint(&self.base_url, "chat/completions"))
+            .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&body)
             .send()
@@ -76,7 +86,7 @@ impl AiProvider for DeepSeekProvider {
             json_schema: self.model == "deepseek-v4-flash",
             streaming: false,
             tools: false,
-            request_timeout: false,
+            request_timeout: true,
             retries: false,
             explicit_cancellation: false,
         }
@@ -159,6 +169,7 @@ impl AiProvider for DeepSeekProvider {
         let response = self
             .client
             .post(endpoint(&self.base_url, "responses"))
+            .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&serde_json::json!({
                 "model": self.model,

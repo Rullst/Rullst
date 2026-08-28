@@ -91,6 +91,8 @@ pub mod telemetry_spans;
 /// Scaffolding tools for robust integration testing.
 pub mod testing;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod uploads;
+#[cfg(not(target_arch = "wasm32"))]
 /// Strongly-typed request validation extractors.
 pub mod validation;
 #[cfg(not(target_arch = "wasm32"))]
@@ -157,7 +159,12 @@ pub use scheduler::{Scheduler, SchedulerError, SchedulerFailurePolicy, Scheduler
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use storage::{LocalDriver, Storage, StorageDriver, StorageError};
+pub use storage::{LocalDriver, Storage, StorageDriver, StorageError, TenantStorage};
+#[cfg(not(target_arch = "wasm32"))]
+pub use uploads::{
+    OfflineMockScanner, QuarantinedUpload, ReleasedUpload, ScanVerdict, UploadError, UploadKind,
+    UploadPolicy, UploadScanner,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
 #[cfg(not(target_arch = "wasm32"))]
@@ -165,7 +172,10 @@ pub use ws::{WebSocket, WsError};
 
 // Re-export Milestone 6 Resilience Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use production::{ProductionMiddlewareStage, ProductionPreset};
+pub use production::{
+    AcademyBoundaryAssessment, AcademyCheckStatus, AcademyPresetError, AcademyProductionPreset,
+    AcademyProductionRequirement, ProductionMiddlewareStage, ProductionPreset,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use resilience::{
     RateLimitConfig, RateLimiter, TrafficShield, TrafficShieldConfig, TrafficShieldError,

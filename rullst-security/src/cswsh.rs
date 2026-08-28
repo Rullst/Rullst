@@ -221,4 +221,87 @@ mod tests {
         assert!(CswsPolicy::try_new(["https://app.example.com"]).is_ok());
         assert!(CswsPolicy::try_new(["https://app.example.com/path"]).is_err());
     }
+
+    #[tokio::test]
+    async fn explicit_policy_controls_allowlists_and_missing_origins() {
+        let policy = CswsPolicy::try_new(["https://trusted.example"])
+            .expect("trusted origin should be valid");
+        let mut allowlisted = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "internal.example")
+            .header(header::ORIGIN, "https://trusted.example")
+            .body(Body::empty())
+            .unwrap();
+        allowlisted.extensions_mut().insert(policy.clone());
+        assert_eq!(
+            guarded_app().oneshot(allowlisted).await.unwrap().status(),
+            StatusCode::OK
+        );
+
+        let mut missing_origin = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "internal.example")
+            .body(Body::empty())
+            .unwrap();
+        missing_origin.extensions_mut().insert(policy.clone());
+        assert_eq!(
+            guarded_app()
+                .oneshot(missing_origin)
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+
+        let mut explicitly_allowed = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "internal.example")
+            .body(Body::empty())
+            .unwrap();
+        explicitly_allowed
+            .extensions_mut()
+            .insert(policy.allow_missing_origin(true));
+        assert_eq!(
+            guarded_app()
+                .oneshot(explicitly_allowed)
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
+        );
+    }
+
+    #[tokio::test]
+    async fn malformed_origins_fail_closed_and_ordinary_http_passes_through() {
+        let malformed = HttpRequest::builder()
+            .uri("/")
+            .header(header::UPGRADE, "websocket")
+            .header(header::HOST, "app.example.com")
+            .header(header::ORIGIN, "not-an-origin")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            guarded_app().oneshot(malformed).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+
+        let ordinary_http = HttpRequest::builder()
+            .uri("/")
+            .header(header::ORIGIN, "https://untrusted.example")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            guarded_app().oneshot(ordinary_http).await.unwrap().status(),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn malformed_host_headers_never_match_an_origin() {
+        let origin = NormalizedOrigin::parse("https://app.example.com").unwrap();
+        assert!(!origin.matches_host("not a valid authority"));
+    }
 }

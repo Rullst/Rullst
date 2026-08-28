@@ -13,6 +13,10 @@ documentation = "https://docs.rs/rullst-security"
 keywords = ["security", "owasp", "rasp", "waf", "middleware"]
 categories = ["web-programming", "network-programming"]
 
+[features]
+default = []
+redis-rate-limit = ["dep:redis"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
@@ -38,6 +42,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true, features = ["clock"] }
 urlencoding = { workspace = true }
+redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

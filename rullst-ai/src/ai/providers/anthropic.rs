@@ -1,4 +1,4 @@
-use super::support::{endpoint, image_mime_type, success_response};
+use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, image_mime_type, success_response};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     guardrails::prepare_messages,
@@ -6,6 +6,7 @@ use crate::ai::{
 };
 use async_trait::async_trait;
 use base64::Engine;
+use std::time::Duration;
 
 /// Anthropic Claude provider with deterministic offline behavior for empty or `mock_*` keys.
 pub struct AnthropicProvider {
@@ -14,6 +15,7 @@ pub struct AnthropicProvider {
     base_url: String,
     mode: ProviderMode,
     client: reqwest::Client,
+    request_timeout: Duration,
 }
 
 impl AnthropicProvider {
@@ -27,6 +29,7 @@ impl AnthropicProvider {
             base_url: "https://api.anthropic.com/v1".to_string(),
             mode,
             client: reqwest::Client::new(),
+            request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
 
@@ -39,6 +42,12 @@ impl AnthropicProvider {
     /// Sets an Anthropic-compatible API base URL.
     pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = base_url.into();
+        self
+    }
+
+    /// Sets the deadline applied to every live Anthropic transport request.
+    pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
         self
     }
 
@@ -75,6 +84,7 @@ impl AnthropicProvider {
         let response = self
             .client
             .post(endpoint(&self.base_url, "messages"))
+            .timeout(self.request_timeout)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&body)
@@ -112,7 +122,7 @@ impl AiProvider for AnthropicProvider {
             json_schema: false,
             streaming: false,
             tools: false,
-            request_timeout: false,
+            request_timeout: true,
             retries: false,
             explicit_cancellation: false,
         }

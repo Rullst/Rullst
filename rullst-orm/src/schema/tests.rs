@@ -149,12 +149,14 @@ fn test_blueprint_build_produces_valid_sql() {
     bp.id();
     bp.string("name").not_null();
     bp.integer("age");
+    bp.big_integer("epoch_seconds");
     let sql = bp
         .build_for_driver("sqlite")
         .expect("build should succeed for valid columns");
     assert!(sql.contains("id INTEGER PRIMARY KEY"));
     assert!(sql.contains("name TEXT NOT NULL"));
     assert!(sql.contains("age INTEGER"));
+    assert!(sql.contains("epoch_seconds BIGINT"));
 }
 
 #[test]

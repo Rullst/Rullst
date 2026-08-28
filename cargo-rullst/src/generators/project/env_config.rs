@@ -340,6 +340,7 @@ mod tests {
     }
 
     #[test]
+    // TM-DEPLOY-05: validated generator inputs cannot cross into shell syntax.
     fn buildah_image_name_cannot_inject_shell_commands() {
         let root =
             std::env::temp_dir().join(format!("rullst-buildah-name-{}", rand::random::<u64>()));

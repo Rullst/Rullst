@@ -203,6 +203,7 @@ mod tests {
 
     #[test]
     #[cfg(not(miri))]
+    // TM-PAY-01: forged, malformed and stale Stripe signatures are rejected.
     fn test_stripe_signature_verification() {
         let provider = StripeProvider::new("mock".to_string(), "secret".to_string());
 

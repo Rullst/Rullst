@@ -539,6 +539,7 @@ mod negative_path_tests {
     }
 
     #[test]
+    // TM-AUTH-05: authenticator data is bound to the exact relying-party ID hash.
     fn client_authenticator_and_credential_inputs_fail_closed() {
         let auth = localhost_auth();
         assert_passkey_error(

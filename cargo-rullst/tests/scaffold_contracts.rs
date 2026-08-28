@@ -339,6 +339,7 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         .filter(|name| name != "help")
         .collect::<BTreeSet<_>>();
     let expected = [
+        "academy:doctor",
         "audit",
         "auth",
         "build",

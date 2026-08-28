@@ -263,6 +263,7 @@ mod tests {
     use super::*;
 
     #[test]
+    // TM-DEPLOY-06: generated billing binds verified events to server-owned identity.
     fn generated_billing_binds_signed_events_to_authenticated_owners() {
         let source = render_billing_controller("workspace_id");
         syn::parse_file(&source).expect("billing controller must parse");

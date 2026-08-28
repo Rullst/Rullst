@@ -2,10 +2,33 @@
 
 use super::common;
 
+mod academy_http_tests;
+mod academy_schema;
+mod academy_schema_tests;
+mod academy_tenancy_tests;
+mod academy_timed_tests;
 mod access;
+mod activity_contract;
+mod assessment;
+mod assessment_timing;
 mod auth;
+mod automation;
+mod automation_execution;
+mod automation_worker;
+mod availability;
+mod curriculum;
+mod domain_events;
+mod gamification;
 mod learning;
+mod notifications;
+mod outbox;
+mod progress;
+mod repositories;
 mod routes;
+mod scheduler_lease;
+mod score;
+mod score_corrections;
+mod tenancy;
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -20,11 +43,28 @@ pub fn file_manifest(
         hot_reload,
         orm_pattern,
     ));
+    manifest.extend(activity_contract::get_files());
+    manifest.extend(assessment::get_files());
+    manifest.extend(assessment_timing::get_files());
+    manifest.extend(automation::get_files());
+    manifest.extend(automation_execution::get_files());
+    manifest.extend(automation_worker::get_files());
+    manifest.extend(availability::get_files());
     manifest.extend(learning::get_files());
+    manifest.extend(notifications::get_files());
+    manifest.extend(curriculum::get_files());
+    manifest.extend(domain_events::get_files());
+    manifest.extend(gamification::get_files());
+    manifest.extend(outbox::get_files());
+    manifest.extend(progress::get_files());
+    manifest.extend(score::get_files());
+    manifest.extend(score_corrections::get_files());
+    manifest.extend(tenancy::get_files());
+    manifest.extend(scheduler_lease::get_files());
+    manifest.extend(academy_schema::get_files());
     manifest.extend(access::get_files());
     manifest.extend(auth::get_files());
 
-    // 2. Migration
     let migration = r##"use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
 
@@ -37,14 +77,11 @@ impl Migration for MigrationImpl {
     }
 
     async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
-        // Create categories table
         Schema::create("categories", |table| {
             table.id();
             table.string("name").not_null();
             table.timestamps();
         }).await?;
-
-        // Create courses table
         Schema::create("courses", |table| {
             table.id();
             table.integer("category_id").not_null();
@@ -53,41 +90,46 @@ impl Migration for MigrationImpl {
             table.string("thumbnail").not_null();
             table.timestamps();
         }).await?;
-
-        // Create lessons table
+        Schema::create("course_modules", |table| {
+            table.id();
+            table.integer("course_id").not_null();
+            table.string("title").not_null();
+            table.integer("position").not_null();
+            table.string("status").not_null();
+            table.timestamps();
+        }).await?;
         Schema::create("lessons", |table| {
             table.id();
             table.integer("course_id").not_null();
+            table.integer("module_id").not_null();
             table.string("title").not_null();
             table.string("video_url").not_null();
             table.integer("duration").not_null(); // in minutes
             table.timestamps();
         }).await?;
-
-        // Seed initial data
         let pool = rullst::db::Orm::pool()?;
-
-        // Seed Categories
         rullst::db::sqlx::query(
-            "INSERT INTO categories (id, name, created_at, updated_at) VALUES 
-             (1, 'Backend & Systems', datetime('now'), datetime('now')),
-             (2, 'Web Development', datetime('now'), datetime('now'))"
+            "INSERT INTO categories (id, name) VALUES
+             (1, 'Backend & Systems'),
+             (2, 'Web Development')"
         ).execute(pool).await?;
-
-        // Seed Courses
         rullst::db::sqlx::query(
-            "INSERT INTO courses (id, category_id, title, description, thumbnail, created_at, updated_at) VALUES 
-             (1, 1, 'Rust Advanced Systems Programming', 'Master threads, concurrency, async, and high-performance design.', 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?q=80&w=300', datetime('now'), datetime('now')),
-             (2, 2, 'Zero to Hero: Web Apps with Rullst', 'Build clean, high-performance web applications using Rust.', 'https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=300', datetime('now'), datetime('now'))"
+            "INSERT INTO courses (id, category_id, title, description, thumbnail) VALUES
+             (1, 1, 'Rust Advanced Systems Programming', 'Master threads, concurrency, async, and high-performance design.', 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?q=80&w=300'),
+             (2, 2, 'Zero to Hero: Web Apps with Rullst', 'Build clean, high-performance web applications using Rust.', 'https://images.unsplash.com/photo-1547082299-de196ea013d6?q=80&w=300')"
         ).execute(pool).await?;
-
+        rullst::db::sqlx::query(
+            "INSERT INTO course_modules (id, course_id, title, position, status) VALUES
+             (1, 1, 'Safe Systems Foundations', 1, 'published'),
+             (2, 2, 'Rullst Web Foundations', 1, 'published')"
+        ).execute(pool).await?;
         // Seed Lessons
         rullst::db::sqlx::query(
-            "INSERT INTO lessons (id, course_id, title, video_url, duration, created_at, updated_at) VALUES 
-             (1, 1, 'Introduction to Memory Safety', 'https://www.w3schools.com/html/mov_bbb.mp4', 15, datetime('now'), datetime('now')),
-             (2, 1, 'Deep Dive into Smart Pointers', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 25, datetime('now'), datetime('now')),
-             (3, 2, 'Setting up your first Rullst Project', 'https://www.w3schools.com/html/mov_bbb.mp4', 10, datetime('now'), datetime('now')),
-             (4, 2, 'Building Interactive UIs with HTMX', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 20, datetime('now'), datetime('now'))"
+            "INSERT INTO lessons (id, course_id, module_id, title, video_url, duration) VALUES
+             (1, 1, 1, 'Introduction to Memory Safety', 'https://www.w3schools.com/html/mov_bbb.mp4', 15),
+             (2, 1, 1, 'Deep Dive into Smart Pointers', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 25),
+             (3, 2, 2, 'Setting up your first Rullst Project', 'https://www.w3schools.com/html/mov_bbb.mp4', 10),
+             (4, 2, 2, 'Building Interactive UIs with HTMX', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 20)"
         ).execute(pool).await?;
 
         Ok(())
@@ -95,6 +137,7 @@ impl Migration for MigrationImpl {
 
     async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
         Schema::drop_if_exists("lessons").await?;
+        Schema::drop_if_exists("course_modules").await?;
         Schema::drop_if_exists("courses").await?;
         Schema::drop_if_exists("categories").await?;
         Ok(())
@@ -106,30 +149,16 @@ impl Migration for MigrationImpl {
         migration.to_string(),
     ));
 
-    let migrations_mod = r##"// Generated by Rullst.
-pub mod m20260601000000_create_lms_tables;
-pub mod m20260827000000_add_learning_access;
+    manifest.push(("src/migrations/mod.rs", academy_schema::migrations_module()));
 
-pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
-    vec![
-        Box::new(m20260601000000_create_lms_tables::MigrationImpl),
-        Box::new(m20260827000000_add_learning_access::MigrationImpl),
-    ]
-}
-"##;
-    manifest.push(("src/migrations/mod.rs", migrations_mod.to_string()));
-
-    // 3. Models
     let category_model = r##"use rullst::db::{Orm, FromRow};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "categories")]
 pub struct Category {
     pub id: i32,
     pub name: String,
 }
-
 impl NexusModel for Category {
     fn nexus_table() -> &'static str { "categories" }
     fn nexus_label() -> &'static str { "Categories" }
@@ -146,7 +175,6 @@ impl NexusModel for Category {
 
     let course_model = r##"use rullst::db::{Orm, FromRow};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "courses")]
 pub struct Course {
@@ -156,7 +184,6 @@ pub struct Course {
     pub description: String,
     pub thumbnail: String,
 }
-
 impl NexusModel for Course {
     fn nexus_table() -> &'static str { "courses" }
     fn nexus_label() -> &'static str { "Courses" }
@@ -176,17 +203,16 @@ impl NexusModel for Course {
 
     let lesson_model = r##"use rullst::db::{Orm, FromRow};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "lessons")]
 pub struct Lesson {
     pub id: i32,
     pub course_id: i32,
+    pub module_id: i32,
     pub title: String,
     pub video_url: String,
     pub duration: i32,
 }
-
 impl NexusModel for Lesson {
     fn nexus_table() -> &'static str { "lessons" }
     fn nexus_label() -> &'static str { "Lessons" }
@@ -195,6 +221,7 @@ impl NexusModel for Lesson {
         vec![
             FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
             FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: false },
+            FieldMeta { name: "module_id", label: "Module", kind: FieldKind::ForeignKey { table: "course_modules", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "video_url", label: "Video URL", kind: FieldKind::Url, hidden: false, readonly: false },
             FieldMeta { name: "duration", label: "Duration (mins)", kind: FieldKind::Number, hidden: false, readonly: false },
@@ -204,28 +231,50 @@ impl NexusModel for Lesson {
 "##;
     manifest.push(("src/models/lesson.rs", lesson_model.to_string()));
 
-    let models_mod = r##"pub mod category;
+    let models_mod = r##"pub mod achievement; pub mod assignment; pub mod assignment_grade; pub mod assignment_grade_correction;
+pub mod assignment_submission; pub mod activity; pub mod rubric_criterion; pub mod rubric_score;
+pub mod automation_execution;
+pub mod automation_rule;
+pub mod certificate; pub mod category;
+pub mod cohort; pub mod cohort_membership; pub mod course_entitlement; pub mod course_school_scope;
 pub mod course;
+pub mod course_module;
+pub mod course_completion; pub mod course_version; pub mod publication_rollback;
+pub mod role_assignment;
+pub mod domain_event;
 pub mod enrollment;
+pub mod leaderboard_entry;
 pub mod lesson;
 pub mod lesson_progress;
+pub mod lesson_progress_event;
+pub mod lesson_release_rule;
+pub mod notification;
+pub mod notification_preference;
+pub mod scheduler_lease;
+pub mod school; pub mod school_membership;
+pub mod quiz;
+pub mod quiz_answer;
+pub mod quiz_attempt;
+pub mod quiz_attempt_session;
+pub mod quiz_option;
+pub mod quiz_question;
+pub mod score_event;
+pub mod score_correction;
 pub mod user;
+pub mod user_achievement;
 "##;
     manifest.push(("src/models/mod.rs", models_mod.to_string()));
 
-    // 4. Controller
     let lms_controller = r##"use rullst::server::{Extension, IntoResponse, Path, Response, StatusCode};
 use rullst::response::Html;
 use crate::models::category::Category;
 use crate::models::course::Course;
 use crate::models::lesson::Lesson;
 use crate::pages::lms;
-
 fn database_error(error: rullst_orm::Error) -> Response {
     eprintln!("LMS catalog query failed: {error}");
     (StatusCode::SERVICE_UNAVAILABLE, "Catalog temporarily unavailable").into_response()
 }
-
 pub async fn index() -> Response {
     let categories = match Category::all().await {
         Ok(categories) => categories,
@@ -264,21 +313,22 @@ pub async fn show_course(
     ));
 
     let controllers_mod = r##"pub mod auth_controller;
+pub mod assessment_controller; pub mod assignment_controller; pub mod completion_controller;
 pub mod learning_controller;
 pub mod lms_controller;
+pub mod notification_controller;
+pub mod publication_controller; pub mod publication_rollback_controller;
+pub mod role_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
 
-    // 5. Pages
     let fe_imports = common::frontend_page_imports(frontend_engine);
     let lms_page = format!(
         r##"{fe_imports}use crate::models::category::Category;
 use crate::models::course::Course;
 use crate::models::lesson::Lesson;"##,
         fe_imports = fe_imports
-    ) + r##"
-
-pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
+    ) + r##"pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
@@ -346,7 +396,6 @@ pub fn index_page(categories: Vec<Category>, courses: Vec<Course>) -> String {
         </html>
     }
 }
-
 pub fn course_detail_page(course: Course, lessons: Vec<Lesson>, csrf_token: &str) -> String {
     html! {
         <html lang="en" class="dark">
@@ -410,13 +459,13 @@ pub fn course_detail_page(course: Course, lessons: Vec<Lesson>, csrf_token: &str
         </html>
     }
 }
-
 pub fn video_player_snippet(
     title: &str,
     video_url: &str,
     lesson_id: i32,
     progress_percent: i32,
     csrf_token: &str,
+    progress_key: &str,
 ) -> String {
     html! {
         <div class="video-container">
@@ -427,6 +476,7 @@ pub fn video_player_snippet(
                 <div id="progress-status">{rullst::html::RawHtml(progress_badge(progress_percent))}</div>
                 <form method="post" action={format!("/lessons/{lesson_id}/progress")} hx-post={format!("/lessons/{lesson_id}/progress")} hx-target="#progress-status" hx-swap="innerHTML" style="display: flex; gap: .5rem; margin-top: 1rem;">
                     <input type="hidden" name="_token" value={csrf_token} />
+                    <input type="hidden" name="idempotency_key" value={progress_key} />
                     <button type="submit" name="progress_percent" value="25">"25%"</button>
                     <button type="submit" name="progress_percent" value="50">"50%"</button>
                     <button type="submit" name="progress_percent" value="100">"Complete"</button>
@@ -435,7 +485,6 @@ pub fn video_player_snippet(
         </div>
     }
 }
-
 pub fn progress_badge(progress_percent: i32) -> String {
     html! {
         <p style="color: #34d399; margin-top: .75rem;">
@@ -445,50 +494,12 @@ pub fn progress_badge(progress_percent: i32) -> String {
 }
 "##;
     manifest.push(("src/pages/lms.rs", lms_page.to_string()));
-
     let pages_mod = r##"pub mod auth;
 pub mod lms;
 "##;
     manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
 
-    // Repository layer (if applicable)
-    if is_repo {
-        manifest.push((
-            "src/repositories/course_repository.rs",
-            common::generate_repository("Course", "courses"),
-        ));
-        manifest.push((
-            "src/repositories/lesson_repository.rs",
-            common::generate_repository("Lesson", "lessons"),
-        ));
-        manifest.push((
-            "src/repositories/category_repository.rs",
-            common::generate_repository("Category", "categories"),
-        ));
-        manifest.push((
-            "src/repositories/enrollment_repository.rs",
-            common::generate_repository("Enrollment", "enrollments"),
-        ));
-        manifest.push((
-            "src/repositories/lesson_progress_repository.rs",
-            common::generate_repository("LessonProgress", "lesson_progress"),
-        ));
-        manifest.push((
-            "src/repositories/user_repository.rs",
-            common::generate_repository("User", "users"),
-        ));
-        manifest.push((
-            "src/repositories/mod.rs",
-            common::generate_repositories_mod(&[
-                "Course",
-                "Lesson",
-                "Category",
-                "Enrollment",
-                "LessonProgress",
-                "User",
-            ]),
-        ));
-    }
+    repositories::extend_manifest(&mut manifest, is_repo);
 
     manifest
 }

@@ -9,6 +9,7 @@ use axum::{
 
 /// Represents an active tenant selected by trusted authentication middleware.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TenantContext {
     /// The unique identifier of the tenant or organization.
     pub tenant_id: String,

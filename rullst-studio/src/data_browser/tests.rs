@@ -11,6 +11,7 @@ fn test_escape_html_attr() {
 }
 
 #[test]
+// TM-STUDIO-03: hostile dynamic identifiers are reduced to the bounded allowlist.
 fn test_sanitize_identifier() {
     assert_eq!(sanitize_identifier("valid_table_123"), "valid_table_123");
     assert_eq!(sanitize_identifier("invalid-table!@#"), "invalidtable");

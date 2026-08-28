@@ -51,8 +51,10 @@ rullst-connect|retry
 rullst-connect|axum-session
 rullst-iot|std
 rullst-iot|experimental-simulators
+rullst-security|redis-rate-limit
 rullst-capital|axum
 rullst-mail|mail-smtp
+rullst-auth|jwt
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
@@ -60,10 +62,12 @@ rullst|queue-sqlite
 rullst|queue-redis
 rullst|cache-redis
 rullst|mail-smtp
+rullst|auth-jwt
 rullst|oauth
 rullst|ai
 rullst|capital
 rullst|security
+rullst|security-redis
 rullst|iot
 rullst|telemetry
 rullst|nexus

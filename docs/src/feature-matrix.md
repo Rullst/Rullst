@@ -35,6 +35,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `nexus` | no | The generated Nexus administration interface |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
+| `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `mail-smtp` | no | `rullst-mail` with its SMTP transport |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
@@ -44,6 +45,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `capital` | no | Payment, payout, analytics, and offline fiscal-preview APIs from `rullst-capital` |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
+| `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
 | `telemetry` | no | OpenTelemetry dependencies and Core's OTLP integration |
 | `strict-postgres` | no | `orm` with the concrete PostgreSQL pool/backend selected |
@@ -153,6 +155,20 @@ Default features: none.
 | Feature | Enables |
 | --- | --- |
 | `oauth` | Optional `rullst-connect` OAuth2/OIDC integration and re-exports |
+| `jwt` | Application-issued JWT claims, key rotation, and revocation-store policy |
+
+The umbrella crate exposes this as `auth-jwt`, which also enables `auth`.
+
+### `rullst-security`
+
+Default features: none.
+
+| Feature | Enables |
+| --- | --- |
+| `redis-rate-limit` | Atomic namespaced Redis fixed-window limiter plus its explicit offline mock mode; CI/release run the independent-client contract against a digest-pinned Redis service |
+
+The umbrella crate exposes this as `security-redis`, which also enables
+`security`.
 
 ## Dashboard crates
 
@@ -177,7 +193,6 @@ These packages have no public optional Cargo features in v12:
 | Package | Always-available scope |
 | --- | --- |
 | `rullst-macros` | Core procedural macros |
-| `rullst-security` | RASP/WAF, DLP, Login Jail, honeypots, and security telemetry |
 | `rullst-ai` | Provider clients, prompt inspection, and PII masking |
 | `cargo-rullst` | CLI commands, generators, auditing, and deployment helpers |
 

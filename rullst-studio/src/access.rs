@@ -90,6 +90,7 @@ mod tests {
     }
 
     #[tokio::test]
+    // TM-STUDIO-01: the built-in local boundary rejects remote and unknown peers.
     async fn protected_router_accepts_only_a_verified_loopback_peer() {
         let access = LocalStudioAccess::loopback_only();
         let protected =

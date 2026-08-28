@@ -28,7 +28,7 @@ mod capability_tests {
         json_schema: true,
         streaming: false,
         tools: false,
-        request_timeout: false,
+        request_timeout: true,
         retries: false,
         explicit_cancellation: false,
     };

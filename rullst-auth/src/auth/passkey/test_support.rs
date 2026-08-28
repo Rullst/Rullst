@@ -101,6 +101,8 @@ pub(super) struct RegistrationOptions {
     pub(super) raw_id: Option<Vec<u8>>,
     pub(super) coordinate_length: usize,
     pub(super) invalid_curve_point: bool,
+    pub(super) include_x: bool,
+    pub(super) include_y: bool,
 }
 
 impl Default for RegistrationOptions {
@@ -117,6 +119,8 @@ impl Default for RegistrationOptions {
             raw_id: None,
             coordinate_length: 32,
             invalid_curve_point: false,
+            include_x: true,
+            include_y: true,
         }
     }
 }
@@ -159,8 +163,12 @@ pub(super) fn registration_fixture(
         x.fill(0);
         y.fill(0);
     }
-    cose.insert(CborKey::Integer(-2), CborValue::ByteString(x));
-    cose.insert(CborKey::Integer(-3), CborValue::ByteString(y));
+    if options.include_x {
+        cose.insert(CborKey::Integer(-2), CborValue::ByteString(x));
+    }
+    if options.include_y {
+        cose.insert(CborKey::Integer(-3), CborValue::ByteString(y));
+    }
 
     let credential_id = vec![10, 20, 30, 40];
     let mut auth_data = sha2::Sha256::digest(rp_id.as_bytes()).to_vec();

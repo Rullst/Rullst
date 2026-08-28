@@ -14,6 +14,48 @@ never tries to overwrite an accepted version.
 - Assign an incident owner and record times, commands, registry responses and
   affected package versions.
 
+## Name ownership and first-publication credentials
+
+The machine-readable policy in `.github/crates-ownership-policy.json` separates
+the expected crates.io owner (`venelouis`) from the GitHub identity trusted to
+run the release (`Rullst/Rullst`). The bootstrap allowlist is not an ownership
+claim: it is the reviewed set of names that may still return `404` before their
+first publication.
+
+`.github/check-crates-ownership.sh` runs once in the verification job and again
+immediately before publication. Every registered package must include
+`venelouis` among its owners. Every unregistered package must be present in the
+bootstrap allowlist. A name registered by another owner, an unexpected missing
+name, an API error, or a malformed policy stops the release.
+
+Before the first v12 RC:
+
+1. Protect the GitHub `crates-io` environment with required review and tag
+   deployment rules.
+2. Configure Trusted Publishing for every already-registered package using
+   GitHub owner `Rullst`, repository `Rullst`, workflow `release.yml`, and
+   environment `crates-io`.
+3. Create a shortest-lived crates.io token with the `publish-new` endpoint
+   scope. Restrict its crate-name scope to the reviewed bootstrap names if the
+   crates.io UI permits that combination. It does not need `publish-update`:
+   registered packages are published with the OIDC credential.
+4. Store it only as the `CRATES_IO_BOOTSTRAP_TOKEN` secret in the protected
+   `crates-io` environment. Never put it in repository secrets, logs, command
+   history, documentation, or a local Cargo credentials file.
+5. Start the tag workflow only after reviewing the generated ownership evidence.
+   The publish loop selects the bootstrap token only for packages classified as
+   `unregistered-reviewed-bootstrap`; registered packages use the short-lived
+   Trusted Publishing token.
+6. After all new packages are indexed, configure the same Trusted Publisher for
+   each of them, enable crates.io's trusted-publishing-only protection, revoke
+   the bootstrap token, delete the GitHub environment secret, and remove the
+   names from the bootstrap allowlist in a reviewed change.
+
+Trusted Publishing cannot be configured before a crate's first release. The
+one-time token is therefore an explicit, bounded exception, not a permanent
+fallback. See the official [crates.io Trusted Publishing announcement](https://blog.rust-lang.org/2025/07/11/crates-io-development-update-2025-07/)
+and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishing.html).
+
 ## Determine the exact state
 
 For each package in §.github/release-order.json§:

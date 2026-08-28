@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+pub mod academy_doctor;
 pub mod ai_context;
 pub mod audit;
 mod audit_compliance;

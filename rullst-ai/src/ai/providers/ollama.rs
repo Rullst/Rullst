@@ -1,4 +1,4 @@
-use super::support::{embedding_values, endpoint, success_response};
+use super::support::{DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, success_response};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -7,6 +7,7 @@ use crate::ai::{
 };
 use async_trait::async_trait;
 use base64::Engine;
+use std::time::Duration;
 
 /// Ollama local provider. Empty and `mock_*` hosts select deterministic offline mode.
 pub struct OllamaProvider {
@@ -15,6 +16,7 @@ pub struct OllamaProvider {
     embedding_model: String,
     mode: ProviderMode,
     client: reqwest::Client,
+    request_timeout: Duration,
 }
 
 impl OllamaProvider {
@@ -28,6 +30,7 @@ impl OllamaProvider {
             embedding_model: "nomic-embed-text".to_string(),
             mode,
             client: reqwest::Client::new(),
+            request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
 
@@ -37,10 +40,17 @@ impl OllamaProvider {
         self
     }
 
+    /// Sets the deadline applied to every live Ollama transport request.
+    pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
+        self
+    }
+
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
         let response = self
             .client
             .post(endpoint(&self.host, "api/chat"))
+            .timeout(self.request_timeout)
             .json(&body)
             .send()
             .await?;
@@ -69,7 +79,7 @@ impl AiProvider for OllamaProvider {
             json_schema: true,
             streaming: false,
             tools: false,
-            request_timeout: false,
+            request_timeout: true,
             retries: false,
             explicit_cancellation: false,
         }
@@ -123,6 +133,7 @@ impl AiProvider for OllamaProvider {
         let response = self
             .client
             .post(endpoint(&self.host, "api/embed"))
+            .timeout(self.request_timeout)
             .json(&serde_json::json!({
                 "model": self.embedding_model,
                 "input": text,

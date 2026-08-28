@@ -2,7 +2,9 @@
 //!
 //! The structural suite covers all 270 combinations. This slower suite selects
 //! the smallest set that crosses every public blueprint plus the distinct ORM,
-//! frontend, API, database, hot-reload and release-build boundaries.
+//! frontend, API, database, hot-reload and release-build boundaries. The LMS
+//! case runs its generated tests as well, so template-only authorization
+//! regressions cannot hide behind a successful `cargo check`.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
@@ -193,12 +195,20 @@ fn start_generated_workers(
     .expect("register generated worker lifecycle smoke");
 }
 
-fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
+fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
     let target_root = std::env::var_os("CARGO_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| workspace.join("target"));
     let mut command = Command::new(env!("CARGO"));
-    command.arg("check").arg("--offline").arg("--all-targets");
+    let cargo_operation = if case.blueprint == LMS_BLUEPRINT_ID {
+        "test"
+    } else {
+        "check"
+    };
+    command
+        .arg(cargo_operation)
+        .arg("--offline")
+        .arg("--all-targets");
     if case.release {
         command.arg("--release");
     }
@@ -214,8 +224,9 @@ fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 
     if !output.status.success() {
         panic!(
-            "{} failed cargo check\nstdout:\n{}\nstderr:\n{}",
+            "{} failed cargo {}\nstdout:\n{}\nstderr:\n{}",
             case.name,
+            cargo_operation,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
@@ -223,7 +234,14 @@ fn cargo_check(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 }
 
 #[test]
-fn every_blueprint_and_distinct_generated_boundary_passes_cargo_check() {
+// TM-ACADEMY-02: the materialized LMS executes its owner/cross-user denial test.
+// TM-ACADEMY-03: it fails closed on prerequisite, release, expiry and policy conflicts.
+// TM-ACADEMY-04: authenticated school membership scopes database and HTTP mutations.
+// TM-ACADEMY-05: it grades server-side and rejects cross-user/tampered quiz submissions.
+// TM-ACADEMY-06: it also executes score identity/schema/bounds negative tests.
+// TM-ACADEMY-07: its outbox payload drives a strict, side-effect-free automation plan.
+// TM-ACADEMY-08: independent review and enrollment pins prevent silent content promotion.
+fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");
 
@@ -234,7 +252,7 @@ fn every_blueprint_and_distinct_generated_boundary_passes_cargo_check() {
             rand::random::<u64>()
         ));
         materialize(case, &project_dir, workspace);
-        cargo_check(case, &project_dir, workspace);
+        cargo_verify(case, &project_dir, workspace);
         fs::remove_dir_all(&project_dir)
             .unwrap_or_else(|error| panic!("{}: temporary cleanup: {error}", case.name));
     }

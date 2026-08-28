@@ -127,6 +127,7 @@ fn guarded_execution_validates_schema_budget_and_records_audit() {
 }
 
 #[test]
+// TM-AI-03: unknown, invalid and unauthorized tool calls fail before execution.
 fn policy_context_and_schema_all_fail_closed_and_are_audited() {
     let (registry, policy, mut context, audit) = guarded_echo();
     let unknown = registry.execute(

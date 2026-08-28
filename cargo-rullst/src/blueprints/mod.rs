@@ -100,6 +100,20 @@ mod tests {
         let blog = blog::file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
 
         assert!(lms.iter().any(|(path, _)| *path == "src/models/course.rs"));
+        for academy_path in [
+            "src/models/course_module.rs",
+            "src/models/quiz.rs",
+            "src/models/activity.rs",
+            "src/models/achievement.rs",
+            "src/models/leaderboard_entry.rs",
+            "src/models/automation_rule.rs",
+            "src/models/score_event.rs",
+            "src/models/score_correction.rs",
+            "src/models/domain_event.rs",
+        ] {
+            assert!(lms.iter().any(|(path, _)| *path == academy_path));
+        }
+        assert!(lms.iter().all(|(_, source)| !source.contains("datetime(")));
         assert!(
             saas.iter()
                 .any(|(path, _)| *path == "src/models/subscription.rs")

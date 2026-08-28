@@ -1,4 +1,6 @@
-use super::support::{embedding_values, endpoint, image_mime_type, success_response};
+use super::support::{
+    DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, success_response,
+};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -7,6 +9,7 @@ use crate::ai::{
 };
 use async_trait::async_trait;
 use base64::Engine;
+use std::time::Duration;
 
 /// Google Gemini provider with deterministic offline behavior for empty or `mock_*` keys.
 pub struct GeminiProvider {
@@ -16,6 +19,7 @@ pub struct GeminiProvider {
     base_url: String,
     mode: ProviderMode,
     client: reqwest::Client,
+    request_timeout: Duration,
 }
 
 impl GeminiProvider {
@@ -30,6 +34,7 @@ impl GeminiProvider {
             base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
             mode,
             client: reqwest::Client::new(),
+            request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
 
@@ -48,6 +53,12 @@ impl GeminiProvider {
     /// Sets a Gemini-compatible API base URL.
     pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = base_url.into();
+        self
+    }
+
+    /// Sets the deadline applied to every live Gemini transport request.
+    pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
         self
     }
 
@@ -90,6 +101,7 @@ impl GeminiProvider {
                 &self.base_url,
                 &format!("models/{}:generateContent", self.model),
             ))
+            .timeout(self.request_timeout)
             .header("x-goog-api-key", &self.api_key)
             .json(&body)
             .send()
@@ -120,7 +132,7 @@ impl AiProvider for GeminiProvider {
             json_schema: true,
             streaming: false,
             tools: false,
-            request_timeout: false,
+            request_timeout: true,
             retries: false,
             explicit_cancellation: false,
         }
@@ -176,6 +188,7 @@ impl AiProvider for GeminiProvider {
                 &self.base_url,
                 &format!("models/{}:embedContent", self.embedding_model),
             ))
+            .timeout(self.request_timeout)
             .header("x-goog-api-key", &self.api_key)
             .json(&serde_json::json!({
                 "model": format!("models/{}", self.embedding_model),

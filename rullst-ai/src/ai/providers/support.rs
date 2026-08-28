@@ -1,4 +1,7 @@
 use crate::ai::AiError;
+use std::time::Duration;
+
+pub(super) const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) fn endpoint(base_url: &str, path: &str) -> String {
     format!(

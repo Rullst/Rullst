@@ -14,6 +14,7 @@ pub mod mfa;
 pub mod rasp;
 pub mod rate_limit;
 pub mod rbac;
+pub mod recovery_codes;
 pub mod sanitizer;
 pub mod schema_guard;
 pub mod siem;
@@ -44,7 +45,13 @@ pub use rasp::{RaspInspector, RaspSecurityLayer, RaspSecurityService};
 pub use rate_limit::{
     RateLimitBackend, RateLimitError, RateLimiter, is_rate_limited, rate_limit_middleware,
 };
+#[cfg(feature = "redis-rate-limit")]
+pub use rate_limit::{RateLimitDecision, RedisRateLimitMode, RedisRateLimiter};
 pub use rbac::{RbacGuard, UserContext};
+pub use recovery_codes::{
+    GeneratedRecoveryCodes, RecoveryCodeError, RecoveryCodeVerifier, consume_recovery_code,
+    generate_recovery_codes, verify_recovery_code,
+};
 pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
 pub use schema_guard::{inspect_json_payload, schema_guard_middleware};
 pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};

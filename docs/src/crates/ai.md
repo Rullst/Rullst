@@ -47,6 +47,26 @@ outbound transmission. This is a bounded heuristic control, not proof that arbit
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
 
+## Versioned offline evals
+
+The packaged `evals/guardrails-v1.json` corpus freezes deterministic injection,
+jailbreak, and PII regressions. The repository gate validates unique IDs and
+required categories, then runs every case across all five built-in transports in
+offline mode. It is deliberately not presented as a safety benchmark:
+adaptive attacks, tool selection, hallucination, and live provider/model
+versions require separate eval suites.
+
+## Strict egress policy
+
+`EgressPolicy::strict()` starts with no permitted destination. After an exact
+host allowlist is configured, `EgressFetcher` permits HTTPS and explicit ports,
+blocks credentials/local/private/metadata/reserved addresses, validates every
+DNS answer, pins those answers in a proxy-free reqwest client, verifies the
+connected peer, follows redirects only after repeating policy, and bounds time
+and streamed bytes. The fetcher is opt-in: it cannot protect arbitrary
+application/provider HTTP clients, and tenant authorization, content schema and
+data minimization remain caller contracts.
+
 ## Offline mode
 
 OpenAI, Gemini, Anthropic, and DeepSeek use deterministic offline mode when their API key is empty

@@ -4,6 +4,9 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 mod client;
+mod egress;
+mod egress_fetch;
+mod egress_host;
 /// Mandatory prompt-injection detection and outbound PII masking.
 pub mod guardrails;
 mod mock;
@@ -17,6 +20,10 @@ pub mod tools;
 mod vector;
 
 pub use client::{AiClient, ChatBuilder};
+pub use egress::{EgressPolicy, EgressPolicyError, ValidatedEgressUrl};
+pub use egress_fetch::{
+    EgressFetchError, EgressFetcher, EgressResolver, FetchedResource, SystemEgressResolver,
+};
 pub use guardrails::{AiGuardrails, GuardrailReport, PromptThreat};
 pub use structured::StructuredOutputSchema;
 pub use tools::*;

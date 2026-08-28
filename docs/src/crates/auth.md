@@ -1,10 +1,11 @@
 # Rullst Auth
 
 `rullst-auth` provides Argon2id password hashing, versioned AES-GCM cookie sessions,
-role-based authorization middleware, and WebAuthn/passkey ceremony verification.
+role-based authorization middleware, WebAuthn/passkey ceremony verification, and
+an opt-in application JWT policy.
 
-The crate does not currently issue application JWTs. OAuth2/OIDC providers are available by
-enabling the `oauth` feature, which re-exports `rullst-connect`.
+Application JWTs are enabled with `jwt`; OAuth2/OIDC providers remain a separate
+trust boundary enabled with `oauth`, which re-exports `rullst-connect`.
 
 ## Passwords
 
@@ -49,6 +50,16 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
 credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
 accepted. Applications must persist the returned counter atomically with the credential record.
+
+## Application JWTs
+
+The `jwt` feature provides `ApplicationJwtPolicy`, versioned HS256 claims, strong
+key validation, required issuer/audience/subject/time/JTI claims, bounded TTL and
+scope policy, and `kid`-based key rotation. Every verification receives a
+`JwtRevocationStore`. Production policies reject the bundled bounded in-memory
+store because it is process-local; applications must supply a shared durable
+implementation for cross-instance token/session-version revocation. This API does
+not verify third-party OAuth/OIDC tokens.
 
 ## RBAC
 

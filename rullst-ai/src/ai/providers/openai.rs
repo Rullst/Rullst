@@ -1,5 +1,6 @@
 use super::support::{
-    embedding_values, endpoint, image_mime_type, openai_chat_content, success_response,
+    DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, openai_chat_content,
+    success_response,
 };
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
@@ -9,6 +10,7 @@ use crate::ai::{
 };
 use async_trait::async_trait;
 use base64::Engine;
+use std::time::Duration;
 
 /// OpenAI API provider with deterministic offline behavior for empty or `mock_*` keys.
 pub struct OpenAiProvider {
@@ -18,6 +20,7 @@ pub struct OpenAiProvider {
     base_url: String,
     mode: ProviderMode,
     client: reqwest::Client,
+    request_timeout: Duration,
 }
 
 impl OpenAiProvider {
@@ -32,6 +35,7 @@ impl OpenAiProvider {
             base_url: "https://api.openai.com/v1".to_string(),
             mode,
             client: reqwest::Client::new(),
+            request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
 
@@ -53,10 +57,17 @@ impl OpenAiProvider {
         self
     }
 
+    /// Sets the deadline applied to every live OpenAI transport request.
+    pub fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
+        self
+    }
+
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
         let response = self
             .client
             .post(endpoint(&self.base_url, "chat/completions"))
+            .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&body)
             .send()
@@ -83,7 +94,7 @@ impl AiProvider for OpenAiProvider {
             json_schema: true,
             streaming: false,
             tools: false,
-            request_timeout: false,
+            request_timeout: true,
             retries: false,
             explicit_cancellation: false,
         }
@@ -148,6 +159,7 @@ impl AiProvider for OpenAiProvider {
         let response = self
             .client
             .post(endpoint(&self.base_url, "embeddings"))
+            .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&serde_json::json!({
                 "model": self.embedding_model,
@@ -215,6 +227,12 @@ impl AiProvider for OpenAiProvider {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use std::{
+        io::ErrorKind,
+        net::TcpListener,
+        thread,
+        time::{Duration, Instant},
+    };
 
     #[tokio::test]
     async fn mock_mode_covers_every_supported_capability_without_http() {
@@ -252,5 +270,42 @@ mod tests {
             .await
             .unwrap();
         assert!(!response.contains("alice@example.com"));
+    }
+
+    #[tokio::test]
+    // TM-AI-06: live provider requests have a configurable bounded deadline.
+    async fn live_request_uses_the_configured_timeout() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
+        listener
+            .set_nonblocking(true)
+            .expect("test listener should become nonblocking");
+        let address = listener.local_addr().expect("test address should resolve");
+        let server = thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while Instant::now() < deadline {
+                match listener.accept() {
+                    Ok((_stream, _peer)) => {
+                        thread::sleep(Duration::from_millis(150));
+                        return true;
+                    }
+                    Err(error) if error.kind() == ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(_) => return false,
+                }
+            }
+            false
+        });
+
+        let provider = OpenAiProvider::new("live-test-key")
+            .with_base_url(format!("http://{address}"))
+            .with_request_timeout(Duration::from_millis(25));
+        let error = provider
+            .prompt("hello")
+            .await
+            .expect_err("the live request should reach its configured deadline");
+
+        assert!(matches!(error, AiError::RequestError(error) if error.is_timeout()));
+        assert!(server.join().expect("test server should finish"));
     }
 }

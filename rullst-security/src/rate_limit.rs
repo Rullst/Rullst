@@ -10,6 +10,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "redis-rate-limit")]
+mod redis;
+#[cfg(feature = "redis-rate-limit")]
+pub use redis::{RateLimitDecision, RedisRateLimitMode, RedisRateLimiter};
+
 static RATE_LIMIT_STORE: OnceLock<DashMap<String, (Instant, AtomicU64)>> = OnceLock::new();
 
 pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
@@ -49,6 +54,18 @@ pub enum RateLimitError {
     /// No distributed backend is implemented in this release.
     #[error("distributed rate limiting is not implemented; configure a real shared backend")]
     DistributedBackendUnsupported,
+    /// A distributed limiter configuration is invalid.
+    #[error("invalid distributed rate-limit configuration: {0}")]
+    InvalidConfiguration(&'static str),
+    /// A shared backend operation failed.
+    #[error("distributed rate-limit backend failed: {0}")]
+    Backend(String),
+    /// The backend returned a value outside the versioned protocol.
+    #[error("distributed rate-limit backend returned an invalid response")]
+    InvalidBackendResponse,
+    /// A deterministic offline mock was used where a shared backend is required.
+    #[error("offline rate-limit mock is process-local and not distributed")]
+    OfflineMockIsNotDistributed,
 }
 
 /// Configurable builder for application rate limiters.

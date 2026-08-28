@@ -343,7 +343,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 **Explore the Monorepo Ecosystem:**
 - 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
 - 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record ORM, automated migrations, and multi-tenancy.
-- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, and RBAC authorization.
+- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
 - 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: RASP deep inspection, Honeypot bot traps, XSS/CSP sanitization, and HMAC audit log.
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
