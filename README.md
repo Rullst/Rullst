@@ -2,6 +2,15 @@
   <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>
 </div>
 
+> [!IMPORTANT]
+> **Release channels:** The `main` branch contains active, unreleased development
+> and may change without release-level compatibility guarantees. Official Rullst
+> release artifacts are the packages published on [crates.io](https://crates.io/crates/rullst),
+> with the matching immutable `vX.Y.Z` tag as the canonical source snapshot.
+> For production, use a versioned crates.io dependency. If a Git dependency is
+> unavoidable, pin an exact `rev` instead of tracking `main`. See the
+> [compatibility and support policy](docs/src/compatibility-policy.md).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
