@@ -38,7 +38,8 @@ jq -e '
     "STUDIO-01",
     "STUDIO-03",
     "STUDIO-04",
-    "TENANT-02"
+    "TENANT-02",
+    "TENANT-04"
   ])
 ' "$manifest_path" >/dev/null || {
   echo "Threat-model release-minimum manifest is malformed or incomplete."

@@ -27,7 +27,7 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 30 abuse-case IDs to 28 exact
+`.github/threat-model-release-minimum.json` binds 31 abuse-case IDs to 29 exact
 tests across ten crates. The gate rejects missing markers, missing tests and
 zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
 Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
@@ -99,7 +99,7 @@ keys, jobs, files, logs and exports.
 | `TENANT-01` trusted client header | Never accept tenant/role solely from an arbitrary header; bind to authenticated membership or a trusted gateway. | Strict tenant guard rejects absent context; gateway policy is application-owned. |
 | `TENANT-02` object ID crosses tenant | Query with tenant/owner predicate and authorize the returned object server-side. | `UserContext` carries a validated optional tenant and `RbacGuard::authorize_tenant[_owner_or_role]` requires an exact match that even admin cannot bypass. The materialized LMS test exercises bounded school-scoped IDs; general route coverage remains open. |
 | `TENANT-03` bulk/list/export leakage | Apply tenant predicate before pagination/count/export and validate every bulk member. | Must be proven per generated/application route. |
-| `TENANT-04` cache/queue/storage collision | Include canonical tenant identity in keys, jobs and storage roots; validate again in workers. | Storage traversal protections exist; cross-subsystem tenancy tests remain open. |
+| `TENANT-04` cache/queue/storage collision | Include canonical tenant identity in keys, jobs and storage roots; validate again in workers. | Core's `TenantStorage` can only be constructed from a validated `TenantContext`, applies an immutable `tenants/<tenant>/` root after relative-path validation and has an exact same-key non-interference test. The Academy outbox/worker additionally persists and validates `school_id`. Cache, realtime, search, metrics, exports, remote bucket policy and application-wide integration remain open. |
 | `TENANT-05` confused-deputy background work | Persist actor/tenant/authorization intent and revalidate sensitive execution. | Shared durable job authorization contract remains open. |
 
 Trust boundaries are identity ↔ membership, route ID ↔ object and application ↔

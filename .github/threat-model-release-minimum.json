@@ -129,6 +129,15 @@
       "marker": "TM-TENANT-02"
     },
     {
+      "id": "TENANT-04",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "storage::tenant::tests::identical_keys_are_isolated_by_authenticated_tenant_context",
+      "source": "rullst-core/src/storage/tenant.rs",
+      "marker": "TM-TENANT-04"
+    },
+    {
       "id": "PAY-01",
       "crate": "rullst-capital",
       "target_kind": "lib",
