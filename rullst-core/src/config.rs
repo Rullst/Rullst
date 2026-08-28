@@ -240,14 +240,14 @@ impl SecurityConfig {
             )));
         }
         let rendered_csp = self.csp.replace("{NONCE}", "validation-nonce");
-        if self.csp.trim().is_empty() || rendered_csp.parse::<axum::http::HeaderValue>().is_err() {
+        if self.csp.trim().is_empty() || rendered_csp.parse::<http::HeaderValue>().is_err() {
             return Err(ConfigError::InvalidSecurityConfiguration(
                 "CSP must be a non-empty valid HTTP header value".to_string(),
             ));
         }
         let mut unique_origins = std::collections::HashSet::new();
         for origin in &self.cors_allow_origins {
-            let uri = origin.parse::<axum::http::Uri>().map_err(|_| {
+            let uri = origin.parse::<http::Uri>().map_err(|_| {
                 ConfigError::InvalidSecurityConfiguration(format!(
                     "CORS origin `{origin}` must be an exact HTTP(S) origin"
                 ))
@@ -261,7 +261,7 @@ impl SecurityConfig {
                 && uri.query().is_none()
                 && !origin.ends_with('/')
                 && !origin.contains(['@', '#', '*'])
-                && origin.parse::<axum::http::HeaderValue>().is_ok();
+                && origin.parse::<http::HeaderValue>().is_ok();
             if !valid_origin {
                 return Err(ConfigError::InvalidSecurityConfiguration(format!(
                     "CORS origin `{origin}` must be an exact HTTP(S) origin without path, query, credentials, wildcard, or trailing slash"

@@ -34,6 +34,7 @@ serde = { workspace = true }
 toml = { workspace = true }
 rullst-macros = { workspace = true }
 thiserror = { workspace = true }
+http = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 serde_json = { workspace = true, features = ["std"] }

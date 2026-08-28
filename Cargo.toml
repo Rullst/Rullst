@@ -42,6 +42,7 @@ cargo-rullst = { version = "12.0.0", path = "cargo-rullst" }
 # Shared external dependencies
 tokio = { version = "1.52.3", default-features = false }
 axum = { version = "0.8.9", features = ["macros", "ws"] }
+http = "1.5.0"
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.150", default-features = false }
 sqlx = { version = "0.9.0", default-features = false }
