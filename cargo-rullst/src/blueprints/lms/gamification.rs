@@ -49,7 +49,7 @@ impl NexusModel for Achievement {
 const LEADERBOARD_ENTRY: &str = r##"use rullst::db::{FromRow, Orm};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Debug, Clone, FromRow, Orm, serde::Serialize, serde::Deserialize)]
 #[orm(table = "leaderboard_entries")]
 pub struct LeaderboardEntry {
     pub id: i32,

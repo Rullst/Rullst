@@ -147,13 +147,15 @@ pub use htmx::{HtmxRequest, HtmxResponse, render_page};
 
 // Re-export Milestone 5: Production Utilities
 #[cfg(not(target_arch = "wasm32"))]
-pub use cache::Cache;
+pub use cache::{Cache, TenantCache};
 #[cfg(not(target_arch = "wasm32"))]
 pub use di::{Container, DiError, Inject, Injectable};
 #[cfg(not(target_arch = "wasm32"))]
 pub use queue::{Queue, QueuedJobDetail, Worker, WorkerHandle};
 #[cfg(not(target_arch = "wasm32"))]
-pub use realtime::{BroadcastManager, Channel, RealtimeError, RealtimeMessage};
+pub use realtime::{
+    BroadcastManager, Channel, RealtimeError, RealtimeMessage, TenantPresence, TenantRealtime,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use scheduler::{Scheduler, SchedulerError, SchedulerFailurePolicy, SchedulerHandle};
 

@@ -241,6 +241,7 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 // TM-ACADEMY-06: it also executes score identity/schema/bounds negative tests.
 // TM-ACADEMY-07: its outbox payload drives a strict, side-effect-free automation plan.
 // TM-ACADEMY-08: independent review and enrollment pins prevent silent content promotion.
+// TM-ACADEMY-10: the materialized LMS exercises minimized school-scoped privacy lifecycle state.
 fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");

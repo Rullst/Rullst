@@ -25,6 +25,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--buildah`: Adds rootless Buildah container-build files where supported.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
+  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts exactly `auth,learning`; unsupported/duplicate combinations and the profile's not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
 For example, the release gate can generate a SaaS starter without prompts or
@@ -32,6 +33,14 @@ network-dependent bootstrap work:
 
 ```bash
 cargo rullst new packaged-saas --default --blueprint saas --skip-initial-migration
+```
+
+The bounded LMS foundation omits assessment, gamification, automation and
+notification files while retaining authenticated catalog/enrollment/progress:
+
+```bash
+cargo rullst new academy-foundation --default --blueprint lms \
+  --lms-modules auth,learning --skip-initial-migration
 ```
 
 ### `cargo rullst upgrade`

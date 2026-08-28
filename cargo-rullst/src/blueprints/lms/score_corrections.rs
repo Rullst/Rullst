@@ -59,7 +59,7 @@ impl NexusModel for ScoreCorrection {
 "##;
 
 const SCORE_CORRECTION_SERVICE: &str = r##"use crate::services::school_service;
-use crate::services::score_service::{ScoreError, ScoreReceipt};
+use crate::services::score_service::{ScoreError, ScoreReceipt, invalidate_leaderboard_cache};
 use rullst_security::{RbacGuard, UserContext};
 
 fn valid_key(value: &str, maximum: usize) -> bool {
@@ -166,6 +166,9 @@ pub async fn correct_score(
         .commit()
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
+    if applied {
+        let _ = invalidate_leaderboard_cache(context, course_id, season_key).await;
+    }
     Ok(ScoreReceipt {
         idempotency_key: correction_key.to_string(),
         applied,

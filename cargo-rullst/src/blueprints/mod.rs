@@ -34,6 +34,40 @@ pub fn apply(
     orm_pattern: &str,
     frontend_engine: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    apply_with_lms_modules(
+        id,
+        path,
+        project_name,
+        project_name_safe,
+        api,
+        hot_reload,
+        db_needed,
+        orm_pattern,
+        frontend_engine,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn apply_with_lms_modules(
+    id: usize,
+    path: &Path,
+    project_name: &str,
+    project_name_safe: &str,
+    api: bool,
+    hot_reload: bool,
+    db_needed: bool,
+    orm_pattern: &str,
+    frontend_engine: &str,
+    lms_modules: Option<&[lms::LmsModule]>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if id != LMS_BLUEPRINT_ID && lms_modules.is_some() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "LMS modules may only be selected with the LMS blueprint",
+        )
+        .into());
+    }
     let manifest = match id {
         BLANK_BLUEPRINT_ID => blank::file_manifest(
             project_name,
@@ -44,9 +78,16 @@ pub fn apply(
             orm_pattern,
             frontend_engine,
         ),
-        LMS_BLUEPRINT_ID => {
-            lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
-        }
+        LMS_BLUEPRINT_ID => match lms_modules {
+            Some(modules) => lms::file_manifest_for_modules(
+                project_name_safe,
+                hot_reload,
+                orm_pattern,
+                frontend_engine,
+                modules,
+            )?,
+            None => lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
+        },
         SAAS_BLUEPRINT_ID => {
             saas::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
         }

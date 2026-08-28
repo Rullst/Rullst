@@ -19,7 +19,7 @@ mod tests {
     };
     use crate::services::learning_service::{LearningError, authorize_lesson_at, enroll};
     use crate::services::notification_service::{
-        NotificationError, list_notifications, mark_read, set_preference,
+        NotificationError, list_notifications, mark_read, set_preference, subscribe_in_app,
     };
     use crate::services::outbox_service::{acknowledge, claim_next_at, fail_at};
     use crate::services::progress_service::{ProgressError, correct_progress, record_progress};
@@ -189,6 +189,9 @@ mod tests {
             .expect("first automation execution");
         assert!(first_execution.execution_recorded);
         assert!(first_execution.action_applied);
+        let mut notification_realtime = subscribe_in_app(&learner, 7)
+            .await
+            .expect("tenant-scoped notification subscription");
         let notification_outcome = run_once_at(
             "worker-notification",
             "claim-notification",
@@ -206,6 +209,18 @@ mod tests {
                 planned_actions: 1,
             }
         );
+        let realtime_message = notification_realtime
+            .try_recv()
+            .expect("tenant-scoped realtime notification");
+        assert_eq!(
+            realtime_message.channel,
+            "tenants:academy-demo:notifications/user/7"
+        );
+        assert_eq!(realtime_message.event, "notification.created");
+        let realtime_payload: serde_json::Value = serde_json::from_str(&realtime_message.payload)
+            .expect("realtime notification JSON");
+        assert_eq!(realtime_payload["subject_user_id"], 7);
+        assert_eq!(realtime_payload["localization_key"], "academy.achievement.awarded");
         assert!(fail_at(first_claim.id, &first_claim.claim_key, "offline retry", 2, 1_002, 10)
             .await
             .expect("retry transition"));
@@ -328,6 +343,13 @@ mod tests {
             .expect("leaderboard query");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].score, 80);
+        assert!(crate::services::score_service::leaderboard_cache_contains(
+            &learner,
+            1,
+            "season-2026",
+        )
+        .await
+        .expect("tenant leaderboard cache state"));
 
         let admin = academy_context("1", vec!["admin".to_string()]);
         let correction = correct_score(
@@ -343,6 +365,13 @@ mod tests {
         .await
         .expect("score correction");
         assert!(correction.applied);
+        assert!(!crate::services::score_service::leaderboard_cache_contains(
+            &learner,
+            1,
+            "season-2026",
+        )
+        .await
+        .expect("score correction invalidates leaderboard cache"));
         let replay = correct_score(
             &admin,
             "correction-sqlite-1",
@@ -361,6 +390,13 @@ mod tests {
             .await
             .expect("corrected leaderboard");
         assert_eq!(corrected[0].score, 90);
+        assert!(crate::services::score_service::leaderboard_cache_contains(
+            &learner,
+            1,
+            "season-2026",
+        )
+        .await
+        .expect("corrected leaderboard recaches"));
 
         let first_progress = record_progress(&learner, 7, 1, 40, "progress-sqlite-1")
             .await
@@ -437,102 +473,4 @@ mod tests {
         .expect("progress audit history");
         assert_eq!(progress_audit_count, 3);
 
-        let quiz_submission = QuizSubmission {
-            attempt_key: "quiz-attempt-sqlite-1".to_string(),
-            quiz_id: 1,
-            subject_user_id: 7,
-            ruleset_version: "memory-rules-v1".to_string(),
-            answers: vec![QuizAnswerInput {
-                question_id: 1,
-                option_id: 1,
-            }],
-        };
-        let quiz_grade = grade_quiz_at(&learner, quiz_submission.clone(), 3_000)
-            .await
-            .expect("authoritative quiz grade");
-        assert!(quiz_grade.applied);
-        assert!(quiz_grade.passed);
-        assert_eq!(quiz_grade.score_percent, 100);
-        let quiz_replay = grade_quiz_at(&learner, quiz_submission.clone(), 3_001)
-            .await
-            .expect("quiz replay");
-        assert!(!quiz_replay.applied);
-        assert!(matches!(
-            grade_quiz_at(
-                &academy_context("8", vec!["student".to_string()]),
-                quiz_submission,
-                3_002,
-            )
-            .await,
-            Err(AssessmentError::Access(_))
-        ));
-
-        let tampered = QuizSubmission {
-            attempt_key: "quiz-attempt-tampered".to_string(),
-            quiz_id: 1,
-            subject_user_id: 7,
-            ruleset_version: "memory-rules-v1".to_string(),
-            answers: vec![QuizAnswerInput {
-                question_id: 1,
-                option_id: 999,
-            }],
-        };
-        assert!(matches!(
-            grade_quiz_at(&learner, tampered, 3_003).await,
-            Err(AssessmentError::InvalidField("unknown option"))
-        ));
-        for number in 2..=3 {
-            let incorrect = QuizSubmission {
-                attempt_key: format!("quiz-attempt-sqlite-{number}"),
-                quiz_id: 1,
-                subject_user_id: 7,
-                ruleset_version: "memory-rules-v1".to_string(),
-                answers: vec![QuizAnswerInput {
-                    question_id: 1,
-                    option_id: 2,
-                }],
-            };
-            let grade = grade_quiz_at(&learner, incorrect, 3_000 + i64::from(number))
-                .await
-                .expect("bounded quiz attempt");
-            assert_eq!(grade.score_percent, 0);
-        }
-        let over_limit = QuizSubmission {
-            attempt_key: "quiz-attempt-sqlite-4".to_string(),
-            quiz_id: 1,
-            subject_user_id: 7,
-            ruleset_version: "memory-rules-v1".to_string(),
-            answers: vec![QuizAnswerInput {
-                question_id: 1,
-                option_id: 1,
-            }],
-        };
-        assert!(matches!(
-            grade_quiz_at(&learner, over_limit, 3_004).await,
-            Err(AssessmentError::AttemptLimit)
-        ));
-        let (attempt_count, answer_count, quiz_event_count, quiz_score_count, score_event_count) =
-            rullst::db::sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(
-                "SELECT (SELECT COUNT(*) FROM quiz_attempts), (SELECT COUNT(*) FROM quiz_answers), (SELECT COUNT(*) FROM academy_outbox WHERE event_kind = ?), (SELECT COUNT(*) FROM score_events WHERE origin = ?), (SELECT COUNT(*) FROM academy_outbox WHERE event_kind = ?)",
-            )
-            .bind("quiz_graded")
-            .bind("quiz")
-            .bind("score_recorded")
-            .fetch_one(Orm::pool().expect("Academy pool"))
-            .await
-            .expect("quiz persistence counts");
-        assert_eq!(
-            (
-                attempt_count,
-                answer_count,
-                quiz_event_count,
-                quiz_score_count,
-                score_event_count,
-            ),
-            (3, 3, 3, 3, 4)
-        );
-        let quiz_ranked = leaderboard(&learner, 1, "season-2026", 10)
-            .await
-            .expect("quiz-updated leaderboard");
-        assert_eq!(quiz_ranked[0].score, 190);
 "##;

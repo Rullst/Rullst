@@ -138,6 +138,24 @@
       "marker": "TM-TENANT-04"
     },
     {
+      "id": "TENANT-04",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "cache::tenant::tests::identical_keys_are_isolated_by_authenticated_tenant_context",
+      "source": "rullst-core/src/cache/tenant.rs",
+      "marker": "TM-TENANT-04"
+    },
+    {
+      "id": "TENANT-04",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "realtime::tests::identical_channels_are_isolated_by_authenticated_tenant_context",
+      "source": "rullst-core/src/realtime.rs",
+      "marker": "TM-TENANT-04"
+    },
+    {
       "id": "PAY-01",
       "crate": "rullst-capital",
       "target_kind": "lib",
@@ -316,6 +334,15 @@
       "test_filter": "uploads::tests::upload_policy_rejects_spoofing_active_content_and_unsafe_names",
       "source": "rullst-core/src/uploads.rs",
       "marker": "TM-ACADEMY-09"
+    },
+    {
+      "id": "ACADEMY-10",
+      "crate": "cargo-rullst",
+      "target_kind": "integration",
+      "target": "generated_saas_check",
+      "test_filter": "every_blueprint_and_distinct_generated_boundary_passes_cargo_verification",
+      "source": "cargo-rullst/tests/generated_saas_check.rs",
+      "marker": "TM-ACADEMY-10"
     },
     {
       "id": "ACADEMY-12",

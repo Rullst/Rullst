@@ -64,6 +64,32 @@ impl BlueprintChoice {
     }
 }
 
+/// Selectable modules for the bounded LMS scaffold profiles.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LmsModuleChoice {
+    Auth,
+    Learning,
+    Assessment,
+    Gamification,
+    Automation,
+    Realtime,
+    Billing,
+}
+
+impl From<LmsModuleChoice> for crate::blueprints::lms::LmsModule {
+    fn from(module: LmsModuleChoice) -> Self {
+        match module {
+            LmsModuleChoice::Auth => Self::Auth,
+            LmsModuleChoice::Learning => Self::Learning,
+            LmsModuleChoice::Assessment => Self::Assessment,
+            LmsModuleChoice::Gamification => Self::Gamification,
+            LmsModuleChoice::Automation => Self::Automation,
+            LmsModuleChoice::Realtime => Self::Realtime,
+            LmsModuleChoice::Billing => Self::Billing,
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Creates a new Rullst application
@@ -88,6 +114,9 @@ pub enum Commands {
         /// Selects a starter blueprint in deterministic/CI generation mode
         #[arg(long, value_enum, requires = "default")]
         blueprint: Option<BlueprintChoice>,
+        /// Selects a detached LMS module profile; currently `auth,learning`
+        #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
+        lms_modules: Vec<LmsModuleChoice>,
         /// Skips the best-effort initial database migration after scaffolding
         #[arg(long)]
         skip_initial_migration: bool,
@@ -379,9 +408,22 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             nix,
             default,
             blueprint,
+            lms_modules,
             skip_initial_migration,
             turso,
         } => {
+            if !lms_modules.is_empty() && !matches!(blueprint, Some(BlueprintChoice::Lms)) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "--lms-modules requires --blueprint lms",
+                )
+                .into());
+            }
+            let lms_modules = lms_modules
+                .iter()
+                .copied()
+                .map(crate::blueprints::lms::LmsModule::from)
+                .collect::<Vec<_>>();
             create_new_project_with_cli_options(
                 name.as_deref(),
                 ProjectScaffoldOptions {
@@ -394,6 +436,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 },
                 blueprint.as_ref().map(|choice| choice.id()),
                 *skip_initial_migration,
+                (!lms_modules.is_empty()).then_some(lms_modules.as_slice()),
             )?;
         }
         Commands::MakeController { name, api } => {
@@ -696,6 +739,31 @@ mod tests {
                 skip_initial_migration: true,
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn parses_bounded_lms_module_profile() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "academy-foundation",
+            "--default",
+            "--blueprint",
+            "lms",
+            "--lms-modules",
+            "auth,learning",
+            "--skip-initial-migration",
+        ])
+        .expect("bounded LMS module CLI");
+
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Lms),
+                lms_modules,
+                ..
+            } if lms_modules == vec![LmsModuleChoice::Auth, LmsModuleChoice::Learning]
         ));
     }
 

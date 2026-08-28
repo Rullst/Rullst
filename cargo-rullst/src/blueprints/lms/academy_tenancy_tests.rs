@@ -79,9 +79,10 @@ pub const GENERATED_TENANCY_TESTS_SUFFIX: &str = r##"
             .expect("rival school notification preference")
             .applied);
         let scoped_preferences = rullst::db::sqlx::query_as::<_, (i32, i32, String)>(
-            "SELECT school_id, enabled, locale FROM notification_preferences WHERE user_id = ? ORDER BY school_id ASC",
+            "SELECT school_id, enabled, locale FROM notification_preferences WHERE user_id = ? AND channel = ? ORDER BY school_id ASC",
         )
         .bind(7_i32)
+        .bind("in_app")
         .fetch_all(Orm::pool().expect("Academy pool"))
         .await
         .expect("school-scoped notification preferences");

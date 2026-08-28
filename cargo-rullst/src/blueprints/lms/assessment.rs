@@ -7,9 +7,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
     )]
 }
 
-const ASSESSMENT_SERVICE: &str = r##"use crate::services::assessment_timing_service::presentation_matches;
+pub(super) const ASSESSMENT_SERVICE: &str = r##"use crate::services::assessment_timing_service::presentation_matches;
 use crate::services::learning_service::{LearningError, authorize_lesson};
 use crate::services::school_service;
+use crate::services::score_service::invalidate_leaderboard_cache;
 use rullst_security::UserContext;
 use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -478,6 +479,7 @@ pub async fn grade_quiz_at(
         .commit()
         .await
         .map_err(|error| AssessmentError::Database(error.into()))?;
+    let _ = invalidate_leaderboard_cache(context, quiz.6, &quiz.8).await;
     Ok(QuizGrade {
         applied: true,
         passed: score_percent >= quiz.1,
@@ -487,22 +489,3 @@ pub async fn grade_quiz_at(
     })
 }
 "##;
-
-#[cfg(test)]
-mod tests {
-    use super::ASSESSMENT_SERVICE;
-
-    #[test]
-    fn quiz_grading_is_server_authoritative_and_transactional() {
-        assert!(ASSESSMENT_SERVICE.contains("correct option invariant"));
-        assert!(ASSESSMENT_SERVICE.contains("option ownership"));
-        assert!(ASSESSMENT_SERVICE.contains("AttemptLimit"));
-        assert!(ASSESSMENT_SERVICE.contains("AttemptNotStarted"));
-        assert!(ASSESSMENT_SERVICE.contains("AttemptExpired"));
-        assert!(ASSESSMENT_SERVICE.contains("quiz_graded"));
-        assert!(ASSESSMENT_SERVICE.contains("score_recorded"));
-        assert!(ASSESSMENT_SERVICE.contains("INSERT INTO score_events"));
-        assert!(ASSESSMENT_SERVICE.contains("INSERT INTO leaderboard_entries"));
-        assert!(!ASSESSMENT_SERVICE.contains("format!(\"SELECT"));
-    }
-}

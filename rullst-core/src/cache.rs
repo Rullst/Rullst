@@ -34,6 +34,9 @@ use std::sync::{
 };
 use std::time::Instant;
 
+mod tenant;
+pub use tenant::TenantCache;
+
 // ─── Error Types ────────────────────────────────────────────────────────────
 
 /// Errors that can occur during cache operations.
@@ -44,6 +47,8 @@ pub enum CacheError {
     Driver(String),
     /// Serialization or deserialization failed.
     Serialization(String),
+    /// A tenant-scoped cache key was empty, oversized, or contained unsafe bytes.
+    InvalidKey(String),
 }
 
 impl std::fmt::Display for CacheError {
@@ -51,6 +56,7 @@ impl std::fmt::Display for CacheError {
         match self {
             CacheError::Driver(msg) => write!(f, "Cache driver error: {}", msg),
             CacheError::Serialization(msg) => write!(f, "Cache serialization error: {}", msg),
+            CacheError::InvalidKey(msg) => write!(f, "Invalid cache key: {}", msg),
         }
     }
 }
@@ -364,6 +370,7 @@ pub mod redis_driver {
 /// # Thread Safety
 /// The `Cache` is `Send + Sync` and can be safely shared across async tasks
 /// and Axum handlers via `Arc` or Axum's `State`.
+#[derive(Clone)]
 pub struct Cache {
     driver: Arc<Box<dyn CacheDriver>>,
 }
@@ -466,175 +473,5 @@ impl Cache {
     }
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────────────
-
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cache_error_display() {
-        assert_eq!(
-            CacheError::Driver("failed".into()).to_string(),
-            "Cache driver error: failed"
-        );
-        assert_eq!(
-            CacheError::Serialization("bad json".into()).to_string(),
-            "Cache serialization error: bad json"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_put_get() {
-        let cache = Cache::memory();
-        cache.put("key1", "value1", None).await.unwrap();
-        let result = cache.get("key1").await.unwrap();
-        assert_eq!(result, Some(Arc::new("value1".to_string())));
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_miss() {
-        let cache = Cache::memory();
-        let result = cache.get("nonexistent").await.unwrap();
-        assert!(result.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_forget() {
-        let cache = Cache::memory();
-        cache.put("key1", "value1", None).await.unwrap();
-        cache.forget("key1").await.unwrap();
-        let result = cache.get("key1").await.unwrap();
-        assert!(result.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_flush() {
-        let cache = Cache::memory();
-        cache.put("a", "1", None).await.unwrap();
-        cache.put("b", "2", None).await.unwrap();
-        cache.flush().await.unwrap();
-        assert!(cache.get("a").await.unwrap().is_none());
-        assert!(cache.get("b").await.unwrap().is_none());
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_has() {
-        let cache = Cache::memory();
-        assert!(!cache.has("key1").await.unwrap());
-        cache.put("key1", "value1", None).await.unwrap();
-        assert!(cache.has("key1").await.unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_remember_miss() {
-        let cache = Cache::memory();
-        let value = cache
-            .remember("computed", 60, || async { Ok("hello".to_string()) })
-            .await
-            .unwrap();
-        assert_eq!(*value, "hello");
-        // Should be cached now
-        let cached = cache.get("computed").await.unwrap();
-        assert_eq!(cached, Some(Arc::new("hello".to_string())));
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_remember_hit() {
-        let cache = Cache::memory();
-        cache
-            .put("existing", "already_cached", Some(300))
-            .await
-            .unwrap();
-        let value = cache
-            .remember("existing", 60, || async {
-                panic!("This closure should NOT be called on cache hit");
-            })
-            .await
-            .unwrap();
-        assert_eq!(*value, "already_cached");
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_overwrite() {
-        let cache = Cache::memory();
-        cache.put("key", "v1", None).await.unwrap();
-        cache.put("key", "v2", None).await.unwrap();
-        assert_eq!(
-            cache.get("key").await.unwrap(),
-            Some(Arc::new("v2".to_string()))
-        );
-    }
-
-    #[tokio::test]
-    async fn test_memory_cache_remember_error() {
-        let cache = Cache::memory();
-        let result = cache
-            .remember("error_key", 60, || async {
-                Err(CacheError::Driver("computation failed".to_string()))
-            })
-            .await;
-
-        assert!(result.is_err());
-        if let Err(CacheError::Driver(msg)) = result {
-            assert_eq!(msg, "computation failed");
-        }
-
-        // Ensure nothing was cached
-        let cached = cache.get("error_key").await.unwrap();
-        assert!(cached.is_none());
-    }
-
-    struct MockDriver;
-    #[async_trait]
-    impl CacheDriver for MockDriver {
-        async fn get(&self, _key: &str) -> Result<Option<Arc<String>>, CacheError> {
-            Ok(Some(Arc::new("mocked".to_string())))
-        }
-        async fn put(&self, _k: &str, _v: &str, _t: Option<u64>) -> Result<(), CacheError> {
-            Ok(())
-        }
-        async fn forget(&self, _k: &str) -> Result<(), CacheError> {
-            Ok(())
-        }
-        async fn flush(&self) -> Result<(), CacheError> {
-            Ok(())
-        }
-        async fn has(&self, _k: &str) -> Result<bool, CacheError> {
-            Ok(true)
-        }
-    }
-
-    #[tokio::test]
-    async fn test_custom_cache_driver() {
-        let cache = Cache::custom(Box::new(MockDriver));
-        let result = cache.get("anything").await.unwrap();
-        assert_eq!(result, Some(Arc::new("mocked".to_string())));
-    }
-
-    #[cfg(feature = "cache-redis")]
-    #[test]
-    fn test_redis_cache_initialization() {
-        // Just verify that the constructor exists and returns a Result
-        // We use an invalid URL so it fails parsing the connection string
-        let result = Cache::redis("invalid-url-format://host:9999");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_memory_cache() {
-        memory::set("test_mem_key", "test_mem_val");
-        assert_eq!(memory::get("test_mem_key").unwrap(), "test_mem_val");
-        assert_eq!(memory::get("non_existent_mem_key"), None);
-    }
-
-    #[tokio::test]
-    async fn global_memoize_cache_is_safe_inside_a_tokio_runtime() {
-        memory::set("runtime_mem_key", "runtime_mem_val");
-        assert_eq!(
-            memory::get("runtime_mem_key").as_deref(),
-            Some("runtime_mem_val")
-        );
-    }
-}
+mod tests;

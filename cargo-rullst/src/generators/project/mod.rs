@@ -175,7 +175,7 @@ pub fn create_new_project_with_options(
     name_arg: Option<&str>,
     options: ProjectScaffoldOptions,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    create_new_project_with_cli_options(name_arg, options, None, false)
+    create_new_project_with_cli_options(name_arg, options, None, false, None)
 }
 
 pub(crate) fn create_new_project_with_cli_options(
@@ -183,6 +183,7 @@ pub(crate) fn create_new_project_with_cli_options(
     options: ProjectScaffoldOptions,
     blueprint_override: Option<usize>,
     skip_initial_migration: bool,
+    lms_modules: Option<&[crate::blueprints::lms::LmsModule]>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let wizard_opts = wizard::run_project_wizard_with_blueprint(
         name_arg,
@@ -202,6 +203,17 @@ pub(crate) fn create_new_project_with_cli_options(
     let blueprint_selection = wizard_opts.blueprint_selection;
     let wants_ai = wizard_opts.wants_ai;
     let wants_redis = wizard_opts.wants_redis;
+
+    if let Some(modules) = lms_modules {
+        if blueprint_selection != crate::blueprints::LMS_BLUEPRINT_ID {
+            return Err(IoError::new(
+                ErrorKind::InvalidInput,
+                "LMS modules may only be selected with the LMS blueprint",
+            )
+            .into());
+        }
+        crate::blueprints::lms::validate_module_selection(modules, hot_reload)?;
+    }
 
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         db_needed = true;
@@ -243,7 +255,7 @@ pub(crate) fn create_new_project_with_cli_options(
     )?;
 
     // Apply Blueprint templates
-    crate::blueprints::apply(
+    crate::blueprints::apply_with_lms_modules(
         blueprint_selection,
         path,
         project_name,
@@ -253,6 +265,7 @@ pub(crate) fn create_new_project_with_cli_options(
         db_needed,
         &wizard_opts.orm_pattern,
         &wizard_opts.frontend_engine,
+        lms_modules,
     )?;
 
     if options.docker || options.buildah {

@@ -58,7 +58,9 @@ impl NexusModel for ScoreEvent {
 
 const SCORE_SERVICE: &str = r##"use crate::models::leaderboard_entry::LeaderboardEntry;
 use crate::services::school_service;
+use rullst::{Cache, TenantCache};
 use rullst_security::{RbacGuard, UserContext};
+use std::sync::OnceLock;
 
 pub const SCORE_EVENT_SCHEMA_VERSION: i32 = 1;
 
@@ -89,6 +91,7 @@ pub enum ScoreError {
     InvalidIdentity,
     InvalidField(&'static str),
     UnsupportedSchemaVersion(i32),
+    Cache(String),
     Database(rullst_orm::Error),
 }
 
@@ -99,6 +102,7 @@ impl std::fmt::Display for ScoreError {
             Self::InvalidIdentity => formatter.write_str("authenticated actor is not a numeric LMS user"),
             Self::InvalidField(field) => write!(formatter, "invalid score field: {field}"),
             Self::UnsupportedSchemaVersion(version) => write!(formatter, "unsupported score schema version: {version}"),
+            Self::Cache(error) => write!(formatter, "score cache error: {error}"),
             Self::Database(error) => write!(formatter, "score database error: {error}"),
         }
     }
@@ -124,6 +128,65 @@ fn valid_key(value: &str, maximum: usize) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':' | b'.'))
+}
+
+fn leaderboard_cache(context: &UserContext) -> Result<TenantCache, ScoreError> {
+    static CACHE: OnceLock<Cache> = OnceLock::new();
+    let tenant_id = context.tenant_id().ok_or(ScoreError::Forbidden)?;
+    let tenant_context = rullst::security::TenantContext::try_new(tenant_id)
+        .map_err(|_| ScoreError::Forbidden)?;
+    Ok(TenantCache::from_context(
+        CACHE.get_or_init(Cache::memory).clone(),
+        &tenant_context,
+    ))
+}
+
+fn leaderboard_cache_key(course_id: i32, season_key: &str) -> String {
+    format!("leaderboard:course:{course_id}:season:{season_key}")
+}
+
+fn valid_cached_leaderboard(
+    entries: &[LeaderboardEntry],
+    course_id: i32,
+    season_key: &str,
+) -> bool {
+    entries.len() <= 100
+        && entries.iter().all(|entry| {
+            entry.id > 0
+                && entry.user_id > 0
+                && entry.course_id == course_id
+                && entry.season_key == season_key
+                && entry.score >= 0
+        })
+}
+
+pub async fn invalidate_leaderboard_cache(
+    context: &UserContext,
+    course_id: i32,
+    season_key: &str,
+) -> Result<(), ScoreError> {
+    if course_id <= 0 || !valid_key(season_key, 64) {
+        return Err(ScoreError::InvalidField("leaderboard cache key"));
+    }
+    leaderboard_cache(context)?
+        .forget(&leaderboard_cache_key(course_id, season_key))
+        .await
+        .map_err(|error| ScoreError::Cache(error.to_string()))
+}
+
+#[cfg(test)]
+pub async fn leaderboard_cache_contains(
+    context: &UserContext,
+    course_id: i32,
+    season_key: &str,
+) -> Result<bool, ScoreError> {
+    if course_id <= 0 || !valid_key(season_key, 64) {
+        return Err(ScoreError::InvalidField("leaderboard cache key"));
+    }
+    leaderboard_cache(context)?
+        .has(&leaderboard_cache_key(course_id, season_key))
+        .await
+        .map_err(|error| ScoreError::Cache(error.to_string()))
 }
 
 fn validate(
@@ -183,22 +246,42 @@ pub async fn leaderboard(
     if course_id <= 0 || !valid_key(season_key, 64) || !(1..=100).contains(&limit) {
         return Err(ScoreError::InvalidField("leaderboard query"));
     }
+    let limit = usize::try_from(limit)
+        .map_err(|_| ScoreError::InvalidField("leaderboard query"))?;
     school_service::authorize_course(context, course_id).await
         .map_err(|error| match error {
             school_service::SchoolError::Database(error) => ScoreError::Database(error),
             _ => ScoreError::Forbidden,
         })?;
+    let cache = leaderboard_cache(context)?;
+    let cache_key = leaderboard_cache_key(course_id, season_key);
+    if let Some(payload) = cache
+        .get(&cache_key)
+        .await
+        .map_err(|error| ScoreError::Cache(error.to_string()))?
+    {
+        if let Ok(mut entries) = serde_json::from_str::<Vec<LeaderboardEntry>>(&payload) {
+            if valid_cached_leaderboard(&entries, course_id, season_key) {
+                entries.truncate(limit);
+                return Ok(entries);
+            }
+        }
+    }
     let query = match rullst::db::Orm::driver()? {
-        "postgres" => "SELECT * FROM leaderboard_entries WHERE course_id = $1 AND season_key = $2 ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT $3",
-        _ => "SELECT * FROM leaderboard_entries WHERE course_id = ? AND season_key = ? ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT ?",
+        "postgres" => "SELECT * FROM leaderboard_entries WHERE course_id = $1 AND season_key = $2 ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT 100",
+        _ => "SELECT * FROM leaderboard_entries WHERE course_id = ? AND season_key = ? ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT 100",
     };
-    rullst::db::sqlx::query_as::<_, LeaderboardEntry>(query)
+    let mut entries = rullst::db::sqlx::query_as::<_, LeaderboardEntry>(query)
         .bind(course_id)
         .bind(season_key)
-        .bind(i64::from(limit))
         .fetch_all(rullst::db::Orm::pool()?)
         .await
-        .map_err(|error| ScoreError::Database(error.into()))
+        .map_err(|error| ScoreError::Database(error.into()))?;
+    if let Ok(payload) = serde_json::to_string(&entries) {
+        let _ = cache.put(&cache_key, &payload, Some(30)).await;
+    }
+    entries.truncate(limit);
+    Ok(entries)
 }
 
 pub async fn record_score(
@@ -314,6 +397,9 @@ pub async fn record_score(
         .commit()
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
+    if applied {
+        let _ = invalidate_leaderboard_cache(context, value.course_id, &value.season_key).await;
+    }
     Ok(ScoreReceipt {
         idempotency_key: value.idempotency_key.clone(),
         applied,

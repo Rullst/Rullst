@@ -17,6 +17,7 @@ jq -e '
     "ACADEMY-07",
     "ACADEMY-08",
     "ACADEMY-09",
+    "ACADEMY-10",
     "ACADEMY-12",
     "AI-01",
     "AI-02",

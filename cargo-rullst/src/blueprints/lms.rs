@@ -3,25 +3,34 @@
 use super::common;
 
 mod academy_http_tests;
+mod academy_notification_realtime_tests;
+mod academy_privacy_tests;
 mod academy_schema;
 mod academy_schema_tests;
+mod academy_score_quiz_tests;
 mod academy_tenancy_tests;
 mod academy_timed_tests;
 mod access;
 mod activity_contract;
 mod assessment;
+#[cfg(test)]
+mod assessment_tests;
 mod assessment_timing;
 mod auth;
 mod automation;
 mod automation_execution;
 mod automation_worker;
 mod availability;
+mod base_modules;
 mod curriculum;
 mod domain_events;
+mod foundation;
 mod gamification;
 mod learning;
+mod module_selection;
 mod notifications;
 mod outbox;
+mod privacy;
 mod progress;
 mod repositories;
 mod routes;
@@ -29,6 +38,10 @@ mod scheduler_lease;
 mod score;
 mod score_corrections;
 mod tenancy;
+
+pub use module_selection::{
+    LmsModule, LmsModuleError, file_manifest_for_modules, validate_module_selection,
+};
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -57,6 +70,7 @@ pub fn file_manifest(
     manifest.extend(gamification::get_files());
     manifest.extend(outbox::get_files());
     manifest.extend(progress::get_files());
+    manifest.extend(privacy::get_files());
     manifest.extend(score::get_files());
     manifest.extend(score_corrections::get_files());
     manifest.extend(tenancy::get_files());
@@ -231,39 +245,7 @@ impl NexusModel for Lesson {
 "##;
     manifest.push(("src/models/lesson.rs", lesson_model.to_string()));
 
-    let models_mod = r##"pub mod achievement; pub mod assignment; pub mod assignment_grade; pub mod assignment_grade_correction;
-pub mod assignment_submission; pub mod activity; pub mod rubric_criterion; pub mod rubric_score;
-pub mod automation_execution;
-pub mod automation_rule;
-pub mod certificate; pub mod category;
-pub mod cohort; pub mod cohort_membership; pub mod course_entitlement; pub mod course_school_scope;
-pub mod course;
-pub mod course_module;
-pub mod course_completion; pub mod course_version; pub mod publication_rollback;
-pub mod role_assignment;
-pub mod domain_event;
-pub mod enrollment;
-pub mod leaderboard_entry;
-pub mod lesson;
-pub mod lesson_progress;
-pub mod lesson_progress_event;
-pub mod lesson_release_rule;
-pub mod notification;
-pub mod notification_preference;
-pub mod scheduler_lease;
-pub mod school; pub mod school_membership;
-pub mod quiz;
-pub mod quiz_answer;
-pub mod quiz_attempt;
-pub mod quiz_attempt_session;
-pub mod quiz_option;
-pub mod quiz_question;
-pub mod score_event;
-pub mod score_correction;
-pub mod user;
-pub mod user_achievement;
-"##;
-    manifest.push(("src/models/mod.rs", models_mod.to_string()));
+    manifest.push(("src/models/mod.rs", base_modules::MODELS_MODULE.to_string()));
 
     let lms_controller = r##"use rullst::server::{Extension, IntoResponse, Path, Response, StatusCode};
 use rullst::response::Html;

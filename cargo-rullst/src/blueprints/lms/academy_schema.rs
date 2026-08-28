@@ -9,13 +9,16 @@ pub fn get_files() -> Vec<(&'static str, String)> {
 
 pub fn migrations_module() -> String {
     format!(
-        "{MIGRATIONS_MODULE}\n{}{}{}{}{}{}{}",
+        "{MIGRATIONS_MODULE}\n{}{}{}{}{}{}{}{}{}{}",
         super::academy_schema_tests::GENERATED_TESTS_PREFIX,
+        super::academy_score_quiz_tests::GENERATED_SCORE_QUIZ_TESTS_SUFFIX,
+        super::academy_notification_realtime_tests::GENERATED_NOTIFICATION_REALTIME_TESTS_SUFFIX,
         super::academy_timed_tests::GENERATED_TESTS_SUFFIX,
         super::academy_http_tests::GENERATED_HTTP_TESTS_SUFFIX,
         super::academy_http_tests::GENERATED_ROLLBACK_TESTS_SUFFIX,
         super::academy_http_tests::GENERATED_ASSIGNMENT_TESTS_SUFFIX,
         super::academy_tenancy_tests::GENERATED_TENANCY_TESTS_SUFFIX,
+        super::academy_privacy_tests::GENERATED_PRIVACY_TESTS_SUFFIX,
         super::academy_http_tests::academy_completion_tests::GENERATED_COMPLETION_TESTS_SUFFIX,
     )
 }
@@ -305,6 +308,7 @@ pub mod m20260902000000_add_education_roles;
 pub mod m20260903000000_add_course_completion;
 pub mod m20260904000000_add_publication_rollbacks;
 pub mod m20260905000000_add_assignments;
+pub mod m20260906000000_add_privacy_lifecycle;
 
 pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
     vec![
@@ -320,6 +324,7 @@ pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
         Box::new(m20260903000000_add_course_completion::MigrationImpl),
         Box::new(m20260904000000_add_publication_rollbacks::MigrationImpl),
         Box::new(m20260905000000_add_assignments::MigrationImpl),
+        Box::new(m20260906000000_add_privacy_lifecycle::MigrationImpl),
     ]
 }
 

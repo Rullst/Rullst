@@ -39,6 +39,10 @@ fn error_response(error: NotificationError) -> Response {
             eprintln!("Notification operation failed: {error}");
             StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
+        NotificationError::Realtime(error) => {
+            eprintln!("Notification realtime operation failed: {error}");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
+        }
     }
 }
 

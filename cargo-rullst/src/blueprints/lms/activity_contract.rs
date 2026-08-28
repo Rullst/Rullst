@@ -18,6 +18,112 @@ pub enum ActivityKind {
     Game,
 }
 
+/// Explicit client boundary for one activity.
+///
+/// `SsrHtmx` is the zero-bundle default. `CanvasWasm` is an opt-in rich client
+/// whose same-origin artifact identity and bounded size must be supplied by the
+/// application; neither variant makes the client authoritative for results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivityClientKind {
+    SsrHtmx,
+    CanvasWasm,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivityClientManifest {
+    pub schema_version: i32,
+    pub kind: ActivityClientKind,
+    pub launch_path: String,
+    pub wasm_path: Option<String>,
+    pub wasm_sha256: Option<String>,
+    pub artifact_size_bytes: u64,
+}
+
+impl ActivityClientManifest {
+    /// Creates the zero-bundle default for forms, navigation and simple activities.
+    pub fn ssr_htmx(launch_path: impl Into<String>) -> Result<Self, ActivityContractError> {
+        let manifest = Self {
+            schema_version: ACTIVITY_SCHEMA_VERSION,
+            kind: ActivityClientKind::SsrHtmx,
+            launch_path: launch_path.into(),
+            wasm_path: None,
+            wasm_sha256: None,
+            artifact_size_bytes: 0,
+        };
+        manifest.validate()?;
+        Ok(manifest)
+    }
+
+    /// Creates an explicitly opted-in Canvas/WebAssembly client manifest.
+    pub fn canvas_wasm(
+        launch_path: impl Into<String>,
+        wasm_path: impl Into<String>,
+        wasm_sha256: impl Into<String>,
+        artifact_size_bytes: u64,
+    ) -> Result<Self, ActivityContractError> {
+        let manifest = Self {
+            schema_version: ACTIVITY_SCHEMA_VERSION,
+            kind: ActivityClientKind::CanvasWasm,
+            launch_path: launch_path.into(),
+            wasm_path: Some(wasm_path.into()),
+            wasm_sha256: Some(wasm_sha256.into()),
+            artifact_size_bytes,
+        };
+        manifest.validate()?;
+        Ok(manifest)
+    }
+
+    /// Validates schema, same-origin paths and the bounded rich-client artifact identity.
+    pub fn validate(&self) -> Result<(), ActivityContractError> {
+        if self.schema_version != ACTIVITY_SCHEMA_VERSION {
+            return Err(ActivityContractError::UnsupportedSchemaVersion(
+                self.schema_version,
+            ));
+        }
+        if !valid_same_origin_path(&self.launch_path) {
+            return Err(ActivityContractError::InvalidField("launch_path"));
+        }
+        match self.kind {
+            ActivityClientKind::SsrHtmx
+                if self.wasm_path.is_none()
+                    && self.wasm_sha256.is_none()
+                    && self.artifact_size_bytes == 0 =>
+            {
+                Ok(())
+            }
+            ActivityClientKind::CanvasWasm => {
+                let path = self
+                    .wasm_path
+                    .as_deref()
+                    .ok_or(ActivityContractError::InvalidField("wasm_path"))?;
+                let digest = self
+                    .wasm_sha256
+                    .as_deref()
+                    .ok_or(ActivityContractError::InvalidField("wasm_sha256"))?;
+                if !valid_same_origin_path(path) || !path.ends_with(".wasm") {
+                    return Err(ActivityContractError::InvalidField("wasm_path"));
+                }
+                if digest.len() != 64
+                    || !digest
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+                {
+                    return Err(ActivityContractError::InvalidField("wasm_sha256"));
+                }
+                if !(1..=16 * 1024 * 1024).contains(&self.artifact_size_bytes) {
+                    return Err(ActivityContractError::InvalidField(
+                        "artifact_size_bytes",
+                    ));
+                }
+                Ok(())
+            }
+            ActivityClientKind::SsrHtmx => {
+                Err(ActivityContractError::InvalidField("ssr_htmx_bundle"))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityAttempt {
     pub schema_version: i32,
@@ -77,6 +183,19 @@ fn valid_key(value: &str, maximum: usize) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':' | b'.'))
+}
+
+fn valid_same_origin_path(value: &str) -> bool {
+    value.starts_with('/')
+        && !value.starts_with("//")
+        && value.len() <= 256
+        && !value.contains(['\\', '?', '#'])
+        && value
+            .split('/')
+            .all(|segment| !matches!(segment, "." | ".."))
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'/' | b'-' | b'_' | b'.' | b':')
+        })
 }
 
 pub fn validate_activity_result(
@@ -190,6 +309,42 @@ mod tests {
             Err(ActivityContractError::InvalidField("score bounds"))
         ));
     }
+
+    #[test]
+    fn client_boundary_defaults_to_zero_bundle_and_bounds_opt_in_wasm() {
+        let simple = ActivityClientManifest::ssr_htmx("/activities/2/play")
+            .expect("same-origin SSR activity");
+        assert_eq!(simple.kind, ActivityClientKind::SsrHtmx);
+        assert!(simple.wasm_path.is_none());
+
+        let rich = ActivityClientManifest::canvas_wasm(
+            "/activities/3/play",
+            "/assets/games/borrow-checker.wasm",
+            "a".repeat(64),
+            512_000,
+        )
+        .expect("bounded same-origin Wasm activity");
+        assert_eq!(rich.kind, ActivityClientKind::CanvasWasm);
+
+        assert!(matches!(
+            ActivityClientManifest::canvas_wasm(
+                "/activities/3/play",
+                "https://attacker.example/game.wasm",
+                "a".repeat(64),
+                512_000,
+            ),
+            Err(ActivityContractError::InvalidField("wasm_path"))
+        ));
+        assert!(matches!(
+            ActivityClientManifest::canvas_wasm(
+                "/activities/3/play",
+                "/assets/game.wasm",
+                "A".repeat(64),
+                17 * 1024 * 1024,
+            ),
+            Err(ActivityContractError::InvalidField("wasm_sha256"))
+        ));
+    }
 }
 "##;
 
@@ -205,6 +360,10 @@ mod tests {
             "state_json",
             "evidence_sha256",
             "finished_at_epoch_seconds",
+            "ActivityClientManifest",
+            "SsrHtmx",
+            "CanvasWasm",
+            "artifact_size_bytes",
         ] {
             assert!(ACTIVITY_CONTRACT.contains(field));
         }

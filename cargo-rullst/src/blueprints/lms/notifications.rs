@@ -1,7 +1,12 @@
 // Idempotent in-app notification templates for Academy domain events.
 
+mod models;
 #[path = "notification_controller.rs"]
 mod notification_controller;
+#[cfg(test)]
+mod tests;
+
+use models::{NOTIFICATION_MODEL, NOTIFICATION_PREFERENCE_MODEL};
 
 pub fn get_files() -> Vec<(&'static str, String)> {
     let mut files = vec![
@@ -23,85 +28,12 @@ pub fn get_files() -> Vec<(&'static str, String)> {
     files
 }
 
-const NOTIFICATION_MODEL: &str = r##"use rullst::db::{FromRow, Orm};
-use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "notifications")]
-pub struct Notification {
-    pub id: i32,
-    pub school_id: i32,
-    pub notification_key: String,
-    pub user_id: i32,
-    pub channel: String,
-    pub locale: String,
-    pub localization_key: String,
-    pub payload_json: String,
-    pub status: String,
-    pub source_event_key: String,
-    pub read_at: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-impl NexusModel for Notification {
-    fn nexus_table() -> &'static str { "notifications" }
-    fn nexus_label() -> &'static str { "Notifications" }
-    fn nexus_icon() -> &'static str { "🔔" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "school_id", label: "School", kind: FieldKind::ForeignKey { table: "schools", label_col: "name" }, hidden: false, readonly: true },
-            FieldMeta { name: "notification_key", label: "Notification Key", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "user_id", label: "Learner", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
-            FieldMeta { name: "channel", label: "Channel", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "locale", label: "Locale", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "localization_key", label: "Localization Key", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "payload_json", label: "Payload", kind: FieldKind::Json, hidden: false, readonly: true },
-            FieldMeta { name: "status", label: "Status", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "source_event_key", label: "Source Event", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "read_at", label: "Read At", kind: FieldKind::Text, hidden: false, readonly: true },
-        ]
-    }
-}
-"##;
-
-const NOTIFICATION_PREFERENCE_MODEL: &str = r##"use rullst::db::{FromRow, Orm};
-use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "notification_preferences")]
-pub struct NotificationPreference {
-    pub id: i32,
-    pub school_id: i32,
-    pub user_id: i32,
-    pub channel: String,
-    pub enabled: i32,
-    pub locale: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-impl NexusModel for NotificationPreference {
-    fn nexus_table() -> &'static str { "notification_preferences" }
-    fn nexus_label() -> &'static str { "Notification Preferences" }
-    fn nexus_icon() -> &'static str { "⚙️" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "school_id", label: "School", kind: FieldKind::ForeignKey { table: "schools", label_col: "name" }, hidden: false, readonly: true },
-            FieldMeta { name: "user_id", label: "Learner", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
-            FieldMeta { name: "channel", label: "Channel", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "enabled", label: "Enabled", kind: FieldKind::Boolean, hidden: false, readonly: true },
-            FieldMeta { name: "locale", label: "Locale", kind: FieldKind::Text, hidden: false, readonly: true },
-        ]
-    }
-}
-"##;
-
 const NOTIFICATION_SERVICE: &str = r##"use crate::services::school_service;
+use rullst::{BroadcastManager, TenantRealtime};
+use rullst::security::TenantContext;
 use rullst_security::{RbacGuard, UserContext};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NotificationReceipt {
@@ -134,6 +66,7 @@ pub enum NotificationError {
     InvalidField(&'static str),
     ClaimNotHeld,
     Forbidden,
+    Realtime(String),
     InvalidJson(serde_json::Error),
     Database(rullst_orm::Error),
 }
@@ -144,6 +77,7 @@ impl std::fmt::Display for NotificationError {
             Self::InvalidField(field) => write!(formatter, "invalid notification field: {field}"),
             Self::ClaimNotHeld => formatter.write_str("notification source event is not held by this claim"),
             Self::Forbidden => formatter.write_str("notification access denied"),
+            Self::Realtime(error) => write!(formatter, "notification realtime error: {error}"),
             Self::InvalidJson(error) => write!(formatter, "invalid notification JSON: {error}"),
             Self::Database(error) => write!(formatter, "notification database error: {error}"),
         }
@@ -169,6 +103,34 @@ struct AchievementAwardedV1 {
 fn authorize_subject(context: &UserContext, subject_user_id: i32) -> Result<(), NotificationError> {
     RbacGuard::authorize_owner_or_role(context, &subject_user_id.to_string(), "admin")
         .map_err(|_| NotificationError::Forbidden)
+}
+
+fn realtime_manager() -> Arc<BroadcastManager> {
+    static MANAGER: OnceLock<Arc<BroadcastManager>> = OnceLock::new();
+    Arc::clone(MANAGER.get_or_init(|| Arc::new(BroadcastManager::new())))
+}
+
+fn tenant_realtime(tenant_key: &str) -> Result<TenantRealtime, NotificationError> {
+    let tenant_context = TenantContext::try_new(tenant_key)
+        .map_err(|error| NotificationError::Realtime(error.to_string()))?;
+    Ok(TenantRealtime::from_context(realtime_manager(), &tenant_context))
+}
+
+pub async fn subscribe_in_app(
+    context: &UserContext,
+    subject_user_id: i32,
+) -> Result<tokio::sync::broadcast::Receiver<rullst::RealtimeMessage>, NotificationError> {
+    if subject_user_id <= 0 { return Err(NotificationError::InvalidField("subscription")); }
+    authorize_subject(context, subject_user_id)?;
+    school_service::context_school_id(context).await
+        .map_err(|error| match error {
+            school_service::SchoolError::Database(error) => NotificationError::Database(error),
+            _ => NotificationError::Forbidden,
+        })?;
+    let tenant_key = context.tenant_id().ok_or(NotificationError::Forbidden)?;
+    tenant_realtime(tenant_key)?
+        .subscribe(&format!("notifications/user/{subject_user_id}"))
+        .map_err(|error| NotificationError::Realtime(error.to_string()))
 }
 
 pub async fn list_notifications(
@@ -312,10 +274,10 @@ pub async fn deliver_claimed_achievement(
         .await
         .map_err(|error| NotificationError::Database(error.into()))?;
     let event_sql = match driver {
-        "postgres" => "SELECT school_id, subject_user_id, payload_json FROM academy_outbox WHERE event_key = $1 AND event_kind = $2 AND status = $3 AND claim_key = $4",
-        _ => "SELECT school_id, subject_user_id, payload_json FROM academy_outbox WHERE event_key = ? AND event_kind = ? AND status = ? AND claim_key = ?",
+        "postgres" => "SELECT ao.school_id, ao.subject_user_id, ao.payload_json, s.tenant_key FROM academy_outbox ao INNER JOIN schools s ON s.id = ao.school_id AND s.status = 'active' WHERE ao.event_key = $1 AND ao.event_kind = $2 AND ao.status = $3 AND ao.claim_key = $4",
+        _ => "SELECT ao.school_id, ao.subject_user_id, ao.payload_json, s.tenant_key FROM academy_outbox ao INNER JOIN schools s ON s.id = ao.school_id AND s.status = 'active' WHERE ao.event_key = ? AND ao.event_kind = ? AND ao.status = ? AND ao.claim_key = ?",
     };
-    let event = rullst::db::sqlx::query_as::<_, (i32, i32, String)>(event_sql)
+    let event = rullst::db::sqlx::query_as::<_, (i32, i32, String, String)>(event_sql)
         .bind(event_key)
         .bind("achievement_awarded")
         .bind("processing")
@@ -336,6 +298,7 @@ pub async fn deliver_claimed_achievement(
     {
         return Err(NotificationError::InvalidField("achievement event"));
     }
+    let realtime = tenant_realtime(&event.3)?;
     let preference_sql = match driver {
         "postgres" => "SELECT enabled, locale FROM notification_preferences WHERE school_id = $1 AND user_id = $2 AND channel = $3",
         _ => "SELECT enabled, locale FROM notification_preferences WHERE school_id = ? AND user_id = ? AND channel = ?",
@@ -351,14 +314,36 @@ pub async fn deliver_claimed_achievement(
     if !matches!(enabled, 0 | 1) || !valid_locale(&locale) {
         return Err(NotificationError::InvalidField("preference"));
     }
+    let realtime_preference =
+        rullst::db::sqlx::query_as::<_, (i32, String)>(preference_sql)
+            .bind(event.0)
+            .bind(payload.subject_user_id)
+            .bind("realtime")
+            .fetch_optional(&mut *transaction)
+            .await
+            .map_err(|error| NotificationError::Database(error.into()))?;
+    let (realtime_enabled, realtime_locale) =
+        realtime_preference.unwrap_or((1, locale.clone()));
+    if !matches!(realtime_enabled, 0 | 1) || !valid_locale(&realtime_locale) {
+        return Err(NotificationError::InvalidField("realtime preference"));
+    }
     let status = if enabled == 1 { "unread" } else { "suppressed" };
     let notification_key = format!("notification:{event_key}:in_app");
-    let notification_payload = serde_json::json!({
+    let notification_body = serde_json::json!({
         "schema_version": 1,
         "achievement_code": payload.achievement_code,
         "recorded_actor_user_id": payload.actor_user_id,
-    })
-    .to_string();
+    });
+    let notification_payload = notification_body.to_string();
+    let realtime_payload = serde_json::json!({
+        "schema_version": 1,
+        "notification_key": notification_key,
+        "subject_user_id": payload.subject_user_id,
+        "channel": "in_app",
+        "locale": realtime_locale,
+        "localization_key": "academy.achievement.awarded",
+        "payload": notification_body,
+    }).to_string();
     let insert_sql = match driver {
         "postgres" => "INSERT INTO notifications (school_id, notification_key, user_id, channel, locale, localization_key, payload_json, status, source_event_key, read_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
         "mysql" => "INSERT IGNORE INTO notifications (school_id, notification_key, user_id, channel, locale, localization_key, payload_json, status, source_event_key, read_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
@@ -369,9 +354,9 @@ pub async fn deliver_claimed_achievement(
         .bind(&notification_key)
         .bind(payload.subject_user_id)
         .bind("in_app")
-        .bind(locale)
+        .bind(&locale)
         .bind("academy.achievement.awarded")
-        .bind(notification_payload)
+        .bind(&notification_payload)
         .bind(status)
         .bind(event_key)
         .bind("")
@@ -380,6 +365,13 @@ pub async fn deliver_claimed_achievement(
         .map_err(|error| NotificationError::Database(error.into()))?
         .rows_affected() == 1;
     transaction.commit().await.map_err(|error| NotificationError::Database(error.into()))?;
+    if applied && status == "unread" && realtime_enabled == 1 {
+        let _ = realtime.publish(
+            &format!("notifications/user/{}", payload.subject_user_id),
+            "notification.created",
+            &realtime_payload,
+        );
+    }
     Ok(NotificationReceipt {
         notification_key,
         applied,
@@ -489,20 +481,3 @@ impl Migration for MigrationImpl {
     }
 }
 "##;
-
-#[cfg(test)]
-mod tests {
-    use super::{NOTIFICATION_MIGRATION, NOTIFICATION_SERVICE};
-
-    #[test]
-    fn notification_contract_is_claim_bound_idempotent_and_owner_readable() {
-        assert!(NOTIFICATION_MIGRATION.contains("notifications_key_unique"));
-        assert!(
-            NOTIFICATION_SERVICE.contains("event_kind = $2 AND status = $3 AND claim_key = $4")
-        );
-        assert!(NOTIFICATION_SERVICE.contains("academy.achievement.awarded"));
-        assert!(NOTIFICATION_SERVICE.contains("authorize_owner_or_role"));
-        assert!(NOTIFICATION_SERVICE.contains("pub async fn list_notifications"));
-        assert!(NOTIFICATION_SERVICE.contains("pub async fn set_preference"));
-    }
-}
