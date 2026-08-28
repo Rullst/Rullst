@@ -4675,7 +4675,7 @@ name = "rullst-ai"
 version = "12.0.0"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.0",
  "criterion",
  "futures-util",
  "reqwest",
@@ -4695,7 +4695,7 @@ dependencies = [
  "argon2",
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "criterion",
  "dotenvy",
  "futures-util",
@@ -4748,7 +4748,7 @@ version = "12.0.0"
 dependencies = [
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "chrono",
  "criterion",
  "hex",
@@ -4769,7 +4769,7 @@ dependencies = [
  "actix-web",
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "criterion",
  "jsonwebtoken",
  "loom",
@@ -4799,7 +4799,7 @@ version = "12.0.0"
 dependencies = [
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "chrono",
  "console_error_panic_hook",
  "criterion",
@@ -4867,7 +4867,7 @@ name = "rullst-mail"
 version = "12.0.0"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.0",
  "chrono",
  "hmac 0.13.0",
  "lettre",
@@ -4886,7 +4886,7 @@ version = "12.0.0"
 dependencies = [
  "ammonia",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "dotenvy",
  "rullst-ai",
  "rullst-auth",
@@ -4909,7 +4909,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "criterion",
  "futures",
  "mutants",
@@ -4947,7 +4947,7 @@ dependencies = [
  "aes-gcm 0.11.0",
  "ammonia",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.0",
  "chrono",
  "criterion",
  "dashmap",

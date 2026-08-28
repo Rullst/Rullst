@@ -52,7 +52,7 @@ tower-service = "0.3.3"
 async-trait = "0.1.89"
 rand = "0.10.1"
 subtle = "2.6.1"
-base64 = "0.22.1"
+base64 = "0.23.0"
 uuid = { version = "1.23.3", default-features = false, features = ["v4"] }
 chrono = { version = "0.4.45", default-features = false }
 tracing = "0.1.44"
