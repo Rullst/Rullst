@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787866328192,
+  "lastUpdate": 1787881611859,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2365,6 +2365,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 499,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d2e5580ab99bf2078b7dbc752de9fb7ff0203f79",
+          "message": "feat(v12): harden security contracts and LMS scaffold",
+          "timestamp": "2026-08-27T22:35:19-03:00",
+          "tree_id": "fb43353d9afdf868f1926e5c3854df7dc8ef8e8e",
+          "url": "https://github.com/Rullst/Rullst/commit/d2e5580ab99bf2078b7dbc752de9fb7ff0203f79"
+        },
+        "date": 1787881611375,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 538,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
