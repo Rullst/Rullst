@@ -21,7 +21,7 @@ fn update_check_disabled() -> bool {
 
 fn get_cache_path() -> std::path::PathBuf {
     let mut dir = std::env::temp_dir();
-    dir.push("rullst_version_cache.txt");
+    dir.push("cargo_rullst_version_cache.txt");
     dir
 }
 
@@ -77,8 +77,8 @@ pub fn trigger_background_update_check() {
                 .build();
             if let Ok(client) = client {
                 let response = client
-                    .get("https://crates.io/api/v1/crates/rullst")
-                    .header("User-Agent", "cargo-rullst-updater/1.0.5")
+                    .get("https://crates.io/api/v1/crates/cargo-rullst")
+                    .header("User-Agent", "cargo-rullst-update-check/12")
                     .send();
                 if let Ok(res) = response {
                     #[derive(serde::Deserialize)]
@@ -111,21 +111,21 @@ pub fn print_update_banner(latest_version: &str) {
     println!(
         "{}  🚀 {} {:<19} {}",
         "│".cyan().bold(),
-        "New Rullst version available:".bold().yellow(),
+        "New cargo-rullst available:".bold().yellow(),
         format!("{} → {}", current_version, latest_version)
             .green()
             .bold(),
         "│".cyan().bold()
     );
     println!(
-        "{}  Run {} to update dependencies with        {}",
+        "{}  Install that exact CLI, then run                     {}",
         "│".cyan().bold(),
-        "'cargo rullst upgrade'".magenta().bold(),
         "│".cyan().bold()
     );
     println!(
-        "{}  compiler fixes and a cargo check gate.                   {}",
+        "{}  {} to migrate the project transactionally. {}",
         "│".cyan().bold(),
+        "'cargo rullst upgrade'".magenta().bold(),
         "│".cyan().bold()
     );
     println!(

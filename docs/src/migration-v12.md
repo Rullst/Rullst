@@ -22,24 +22,40 @@ The guides state these evidence limits instead of inventing release history.
 3. Run the old application's tests and save any known failures.
 4. Install the exact v12 CLI version only after that RC or stable version is
    published. Do not use an unversioned install in a reproducible migration.
-5. Run `cargo rullst upgrade` from the application root.
-6. Review `Cargo.toml`, `Cargo.lock`, and every compiler-provided edit.
-7. Apply the baseline-specific manual changes below.
-8. Run migrations against a disposable copy of production-shaped data.
-9. Execute the application's tests, authorization negatives, and deployment
+5. Run `cargo rullst upgrade --dry-run` from the application root and resolve
+   every `BLOCKER`; use `--dry-run --json` when CI or other tooling consumes the
+   versioned plan.
+6. Run `cargo rullst upgrade` to execute the backed-up transaction.
+7. Review `Cargo.toml`, `Cargo.lock`, every compiler-provided edit, and the
+   Markdown/JSON reports under `target/rullst-upgrades/`.
+8. Apply the baseline-specific manual changes below.
+9. Run migrations against a disposable copy of production-shaped data.
+10. Execute the application's tests, authorization negatives, and deployment
    smoke tests before merging.
 
 The v12 upgrade command has deliberately bounded behavior:
 
-- it updates standard versioned dependency entries for the Rullst release-train
-  packages, including inline tables;
-- it leaves path-only and renamed dependencies untouched for manual review;
+- it discovers exact Cargo workspace members and updates standard, inline,
+  workspace, target-specific and renamed versioned Rullst dependencies while
+  preserving TOML comments and relative order;
+- it leaves unversioned path/git dependencies untouched and reports them;
 - it never rewrites valid Axum, SQLx, or Tokio imports;
-- it runs `cargo update`, compiler-provided `cargo fix`, and `cargo check`;
-- it returns failure when any gate fails and never reports “100% stable”.
+- it selects source checks from a versioned migration-rule catalog and can emit
+  the versioned `rullst.upgrade-plan.v1` JSON envelope;
+- it snapshots manifests, the root lockfile and Rust sources before applying
+  compiler-provided `cargo fix`, then runs `cargo check` for the workspace's
+  selected features;
+- it restores the snapshot when a gate fails unless `--keep-on-failure` was
+  explicitly selected; an interrupted run can be recovered with
+  `cargo rullst upgrade --restore <backup-directory>`;
+- it returns failure when any gate fails and never reports “100% stable” or
+  production readiness.
 
 It does not install a new CLI globally, change application secrets, run database
 migrations, prove runtime behavior, or replace the full test suite.
+
+See the complete [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md)
+for the v5 workflow, recovery examples, JSON contract and future-major policy.
 
 ## Version placeholder
 

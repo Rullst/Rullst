@@ -3,6 +3,8 @@
 Baseline: the repository tag `v5.0.0` and the compatible v5 line. This is a
 multi-major migration. Use a branch and follow the common
 [safe upgrade procedure](migration-v12.md) before applying these changes.
+The [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md)
+shows the complete CLI transaction and recovery flow.
 
 ## 1. Replace the dependency graph
 
@@ -59,7 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 Direct Axum escape hatches remain supported through `rullst::web::axum` or a
-normal direct dependency. The upgrade command does not rewrite those imports.
+normal direct dependency. The upgrade command does not rewrite those imports;
+its versioned scanner reports the known v5 routing/server markers for manual,
+semantic conversion.
 
 ## 3. Review ORM and migrations
 

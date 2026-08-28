@@ -29,10 +29,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   [migration guides](docs/src/migration-v12.md),
   [feature matrix](docs/src/feature-matrix.md), and
   [compatibility policy](docs/src/compatibility-policy.md).
-- `cargo rullst upgrade` now updates standard versioned Rullst dependencies,
-  preserves path and renamed dependencies for manual review, avoids unsafe
-  global import rewrites, and returns an error when a Cargo validation step
-  fails.
+- `cargo rullst upgrade` is now a transactional, version-aware assistant. It
+  offers human or versioned JSON dry runs, updates the exact Cargo workspace
+  release train while preserving TOML formatting, recognizes renamed
+  dependencies, scans known v5 source risks, snapshots manifests/lock/Rust
+  sources, applies compiler fixes, validates with Cargo, and rolls back on
+  failure. Path/git-only dependencies and application-owned data/security work
+  remain explicit review items; the command never declares production
+  readiness.
 - The declared v12 MSRV is Rust 1.96.0. The default umbrella dependency enables
   ORM and the SQLite queue; Nexus, Studio, AI, auth, security, and other domain
   crates remain opt-in features.
@@ -123,10 +127,16 @@ release gate has completed.
   SemVer, deprecation, prereleases, and the supported release window.
 - Published the v12 Cargo feature matrix for the umbrella package and every
   independently released crate, including defaults and compatibility boundaries.
-- Added evidence-scoped v5, v6, and v11-era migration guides and corrected
-  `cargo rullst upgrade`: every standard release-train dependency now follows
-  the target version, path/renamed dependencies remain manual, unsafe global
-  import codemods were removed, and Cargo gate failures are returned as errors.
+- Added evidence-scoped v5, v6, and v11-era migration guides and rebuilt
+  `cargo rullst upgrade` around the versioned `rullst-upgrade-rules-v1` catalog
+  and `rullst.upgrade-plan.v1` JSON schema. The CLI scopes edits through Cargo
+  metadata, preserves TOML comments/order, updates normal/renamed/workspace and
+  target-specific release-train dependencies, reports unversioned path/git
+  entries, stores review artifacts under `target/rullst-upgrades`, restores
+  automatically after failed Cargo gates, and exposes a path-validated
+  `--restore` recovery command. Process-level fixtures prove dry-run, JSON,
+  successful apply and rollback; databases, secrets, authorization and runtime
+  compatibility remain outside the automatic boundary.
 - Added machine-readable AI provider capabilities plus a public provider matrix
   covering JSON/schema, vision, embeddings, streaming, tools, deadlines,
   retries, and cancellation without promoting unsupported paths.

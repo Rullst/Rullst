@@ -44,6 +44,7 @@ regex = "1.12.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
 semver = "1.0.28"
+toml_edit = "0.25.13"
 thiserror = { workspace = true }
 walkdir = "2.5.0"
 axum = { workspace = true, features = ["ws"] }

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use crate::generators::{
     auth::scaffold_auth_system,
     billing::scaffold_billing_system,
-    build::{run_build_client, run_production_build, run_upgrade},
+    build::{UpgradeOptions, run_build_client, run_production_build, run_upgrade},
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
@@ -300,8 +300,28 @@ pub enum Commands {
         #[arg(short, long)]
         platform: Option<String>,
     },
-    /// Executes a safe upgrade of the Rullst dependency using cargo fix codemods
-    Upgrade,
+    /// Plans or applies a transactional Rullst project upgrade
+    Upgrade {
+        /// Exact target version; defaults to the installed cargo-rullst version
+        #[arg(long, value_name = "VERSION")]
+        to: Option<String>,
+        /// Prints dependency changes and v5 source findings without writing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Emits the dry-run plan as versioned JSON for automation
+        #[arg(long, requires = "dry_run", conflicts_with = "restore")]
+        json: bool,
+        /// Leaves edits in place when a Cargo gate fails instead of restoring the backup
+        #[arg(long, conflicts_with = "restore")]
+        keep_on_failure: bool,
+        /// Restores a backup previously created under target/rullst-upgrades
+        #[arg(
+            long,
+            value_name = "BACKUP_DIR",
+            conflicts_with_all = ["to", "dry_run", "json", "keep_on_failure"]
+        )]
+        restore: Option<PathBuf>,
+    },
     /// Starts the Rullst development server with neon spinners
     Dev {
         /// Optional: Automatically sync TypeScript SDK (sdk.ts) on file changes
@@ -576,8 +596,20 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeIsland { name } => {
             crate::generators::island::create_new_island(name)?;
         }
-        Commands::Upgrade => {
-            run_upgrade()?;
+        Commands::Upgrade {
+            to,
+            dry_run,
+            json,
+            keep_on_failure,
+            restore,
+        } => {
+            run_upgrade(UpgradeOptions {
+                target: to.clone(),
+                dry_run: *dry_run,
+                json: *json,
+                keep_on_failure: *keep_on_failure,
+                restore: restore.clone(),
+            })?;
         }
         Commands::Dev { ts_sync } => {
             if *ts_sync {
@@ -846,5 +878,30 @@ mod tests {
             error.kind(),
             clap::error::ErrorKind::MissingRequiredArgument
         );
+    }
+
+    #[test]
+    fn parses_transactional_upgrade_options() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "upgrade",
+            "--to",
+            "12.0.0-rc.1",
+            "--dry-run",
+            "--json",
+            "--keep-on-failure",
+        ])
+        .expect("upgrade CLI");
+
+        assert!(matches!(
+            cli.command,
+            Commands::Upgrade {
+                to: Some(ref target),
+                dry_run: true,
+                json: true,
+                keep_on_failure: true,
+                restore: None,
+            } if target == "12.0.0-rc.1"
+        ));
     }
 }

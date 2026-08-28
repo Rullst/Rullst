@@ -16,7 +16,10 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "cargo rullst pkg add <name>",
                     "Install RullstPackage community extension",
                 ),
-                ("cargo rullst upgrade", "Upgrade Rullst with safe codemods"),
+                (
+                    "cargo rullst upgrade",
+                    "Plan/apply a transactional framework upgrade",
+                ),
                 (
                     "cargo rullst eject",
                     "Zero lock-in framework escape hatch to pure Axum",

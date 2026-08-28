@@ -221,3 +221,35 @@ let session = provider.create_checkout_session(plan_id, customer_email).await?;
 2. **Deprecation Policy (`#[deprecated]`):** Public APIs will never be removed without at least one minor release cycle marked with `#[deprecated]`.
 3. **Ergonomic String Constructors:** Public constructors accept `impl Into<String>` to support both `&str` literals and owned `String` parameters without boilerplate.
 4. **Zero-Panic Invariant:** Production paths must never call `panic!()`, `unwrap()`, or `expect()`; domain errors must return typed `Result<T, AppError>`.
+
+---
+
+## 🔄 12. Assisted Framework Upgrade Contract
+
+`cargo rullst upgrade` is the canonical application-upgrade boundary. It is an
+assistant, not a claim that compilation proves production compatibility.
+
+* 🟢 **`[Implemented / Bounded]` Planning:** `--dry-run` enumerates only Cargo
+  workspace manifests, preserves TOML comments/order, understands normal,
+  inline-table, workspace, target-specific and renamed Rullst dependencies, and
+  reports path/git dependencies that have no version instead of guessing.
+  `--dry-run --json` emits the versioned `rullst.upgrade-plan.v1` envelope.
+* 🟢 **`[Implemented / Bounded]` Versioned Rules:** source findings are selected
+  from a versioned rule catalog using detected source majors and the exact
+  target major. Every future major release must extend that catalog, migration
+  documentation, negative tests and process-level fixtures for its supported
+  upgrade paths.
+* 🟢 **`[Implemented / Bounded]` Transaction:** the default target is the exact
+  installed `cargo-rullst` version; `--to` accepts only the same major train as
+  that CLI. Before writes, the command snapshots workspace manifests, the root
+  lockfile and Rust sources under `target/rullst-upgrades`. It applies only
+  dependency edits and compiler-provided `cargo fix` changes, then requires
+  `cargo check --workspace --all-targets` to pass. A failed gate restores the
+  snapshot by default; `--keep-on-failure` is explicit, and `--restore` can
+  recover a persisted, path-validated snapshot after an interruption.
+* 🟠 **`[Manual Application Boundary]`** the command never installs a CLI,
+  changes secrets, executes database migrations, invents authorization or
+  tenant policy, exposes Nexus/Studio, validates providers, or declares an
+  application production-ready. Database restore/migration/rollback, the full
+  test suite, authorization negatives and deployment smoke tests remain
+  mandatory human-owned gates.

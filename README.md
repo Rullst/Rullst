@@ -252,6 +252,23 @@ Open **`http://localhost:3000`** in your browser to see your high-performance we
   <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
 </p>
 
+### 🔄 Assisted framework upgrades (v12 preview)
+
+The v12 CLI can plan and apply a backed-up framework upgrade from the
+application root:
+
+```bash
+cargo rullst upgrade --dry-run
+cargo rullst upgrade
+```
+
+It updates the coordinated Rullst dependency train, scans known source risks,
+applies compiler fixes, runs a Cargo check gate, and restores controlled files
+after a failure. It does not migrate production data or invent application
+security policy. See the
+[assisted upgrade tutorial](docs/src/tutorials/36-assisted-framework-upgrades.md)
+and the [v5 → v12 guide](docs/src/migration-v5-to-v12.md).
+
 ### 📚 Documentation & Community
 
 We've rewritten our entire documentation from scratch into a beautiful, high-performance website. Discover everything Rullst can do, read the benchmarks, and master the framework:

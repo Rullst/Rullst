@@ -8,8 +8,8 @@ never tries to overwrite an accepted version.
 ## Preconditions
 
 - Freeze merges and deployments that consume the affected prerelease.
-- Preserve the release workflow run, tag, commit, §checksums.txt§, attestation,
-  SBOM, audit output and every §.crate§ archive.
+- Preserve the release workflow run, tag, commit, `checksums.txt`, attestation,
+  SBOM, audit output and every `.crate` archive.
 - Revoke a registry token immediately if credential compromise is suspected.
 - Assign an incident owner and record times, commands, registry responses and
   affected package versions.
@@ -58,16 +58,16 @@ and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishin
 
 ## Determine the exact state
 
-For each package in §.github/release-order.json§:
+For each package in `.github/release-order.json`:
 
-1. query §https://crates.io/api/v1/crates/<crate>/<version>§;
+1. query `https://crates.io/api/v1/crates/<crate>/<version>`;
 2. classify it as not indexed, indexed with the expected checksum, or indexed
    with an unexpected checksum;
 3. compare the registry checksum to the retained verified archive;
 4. verify that every already-published internal dependency precedes its
    dependent in the release order.
 
-Do not infer success only from the exit status of §cargo publish§. Registry
+Do not infer success only from the exit status of `cargo publish`. Registry
 indexing is asynchronous, so poll with a bounded timeout. The release workflow
 performs this check after each package.
 
@@ -76,7 +76,7 @@ performs this check after each package.
 ### Nothing was accepted
 
 Correct the failure on a new commit. If the tag or package content must change,
-use a new prerelease version such as §12.0.0-rc.2§. Never move a published or
+use a new prerelease version such as `12.0.0-rc.2`. Never move a published or
 publicly attested tag to unrelated content.
 
 ### A prefix was accepted with matching checksums

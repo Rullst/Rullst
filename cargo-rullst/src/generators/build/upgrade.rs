@@ -1,215 +1,359 @@
-// src/generators/build/upgrade.rs — Validated project dependency upgrade pipeline.
+// src/generators/build/upgrade.rs — Transactional, reviewable project upgrades.
 
-use crate::generators::is_rullst_project;
+mod backup;
+mod manifest;
+mod scan;
+
 use crate::ui::spinner::with_spinner;
-use colored::*;
+use colored::Colorize;
+use manifest::ManifestUpgradePlan;
+use scan::SourceFinding;
 use semver::Version;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const RULLST_DEPENDENCIES: &[&str] = &[
-    "rullst",
-    "rullst-ai",
-    "rullst-auth",
-    "rullst-capital",
-    "rullst-connect",
-    "rullst-core",
-    "rullst-iot",
-    "rullst-macros",
-    "rullst-mail",
-    "rullst-nexus",
-    "rullst-orm",
-    "rullst-orm-macros",
-    "rullst-security",
-    "rullst-studio",
-];
+#[derive(Debug, Clone, Default)]
+pub struct UpgradeOptions {
+    pub target: Option<String>,
+    pub dry_run: bool,
+    pub json: bool,
+    pub keep_on_failure: bool,
+    pub restore: Option<PathBuf>,
+}
 
 #[derive(Debug, thiserror::Error)]
 enum UpgradeError {
     #[error("this command must be executed at the root of a Rullst project")]
     NotRullstProject,
-    #[error("the installed cargo-rullst version is invalid: {0}")]
-    InvalidInstalledVersion(String),
-    #[error("Cargo.toml does not contain a standard versioned Rullst dependency")]
+    #[error("invalid target version `{0}`; use an exact SemVer version")]
+    InvalidTargetVersion(String),
+    #[error(
+        "target {target} is incompatible with cargo-rullst {cli}; install the CLI from the same major release train"
+    )]
+    IncompatibleCli { target: Version, cli: Version },
+    #[error("no Rullst dependencies were found in the Cargo workspace manifests")]
     NoManagedDependencies,
-    #[error("{command} failed; the upgrade stopped and its diagnostics must be reviewed")]
-    CommandFailed { command: &'static str },
+    #[error("{command} failed; {recovery}")]
+    CommandFailed {
+        command: &'static str,
+        recovery: String,
+    },
 }
 
-fn get_cache_path() -> std::path::PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push("rullst_version_cache.txt");
-    dir
-}
-
-pub fn run_upgrade() -> Result<(), Box<dyn std::error::Error>> {
-    if !is_rullst_project() {
-        return Err(UpgradeError::NotRullstProject.into());
-    }
-
-    println!(
-        "{}",
-        "\n🚀 Starting the validated Rullst project upgrade...\n"
-            .cyan()
-            .bold()
-    );
-
-    let latest_version = target_version()?;
-
-    // Step 1: Update Cargo.toml
-    update_cargo_toml(&latest_version.to_string())?;
-
-    // Step 2: Run cargo update
-    let update_success = with_spinner("Refreshing dependencies and lockfile...", || {
-        Command::new("cargo")
-            .arg("update")
-            .arg("-q")
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    });
-
-    if !update_success {
-        return Err(UpgradeError::CommandFailed {
-            command: "cargo update",
-        }
-        .into());
-    }
-
-    // Step 3: Apply compiler-provided migrations only. Rullst deliberately does
-    // not rewrite valid Axum, SQLx, or Tokio imports: those are public escape
-    // hatches and global text replacement can silently break application code.
-    let fix_success = with_spinner("Applying additional code fixes via cargo fix...", || {
-        Command::new("cargo")
-            .arg("fix")
-            .arg("--allow-no-vcs")
-            .arg("--allow-dirty")
-            .arg("-q")
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    });
-
-    if !fix_success {
-        return Err(UpgradeError::CommandFailed {
-            command: "cargo fix",
-        }
-        .into());
-    }
-
-    // Step 4: Compiler validation gate
-    let check_success = with_spinner(
-        "Running validation gate (cargo check) to confirm health status...",
-        || {
-            Command::new("cargo")
-                .arg("check")
-                .arg("-q")
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-        },
-    );
-
-    if !check_success {
-        return Err(UpgradeError::CommandFailed {
-            command: "cargo check",
-        }
-        .into());
-    }
-
-    println!(
-        "{}",
-        "\n✅ Dependencies were updated and the project passed cargo check. Run the project's full test suite before committing.\n"
+pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::env::current_dir()?.canonicalize()?;
+    if let Some(backup_path) = options.restore.as_deref() {
+        let restored = backup::UpgradeBackup::restore_from(&root, backup_path)?;
+        println!(
+            "{}",
+            format!(
+                "Restored the Rullst upgrade backup from {}. Review the working tree before continuing.",
+                restored.display()
+            )
             .green()
             .bold()
-    );
+        );
+        return Ok(());
+    }
+    if !root.join("Cargo.toml").is_file() {
+        return Err(UpgradeError::NotRullstProject.into());
+    }
+    let target = target_version(options.target.as_deref())?;
+    let plans = manifest::plan_workspace(&root, &target.to_string())?;
+    let matched = plans.iter().map(|plan| plan.matched).sum::<usize>();
+    let changed = plans.iter().map(|plan| plan.changes.len()).sum::<usize>();
+    let source_majors = plans
+        .iter()
+        .flat_map(|plan| plan.source_majors.iter().copied())
+        .collect::<std::collections::BTreeSet<_>>();
+    let mut package_roots = plans
+        .iter()
+        .filter(|plan| plan.is_package)
+        .filter_map(|plan| plan.path.parent().map(Path::to_path_buf))
+        .collect::<Vec<_>>();
+    package_roots.sort();
+    package_roots.dedup();
 
-    Ok(())
-}
+    if matched == 0 {
+        return Err(UpgradeError::NoManagedDependencies.into());
+    }
 
-fn target_version() -> Result<Version, UpgradeError> {
-    let installed_text = env!("CARGO_PKG_VERSION");
-    let installed = Version::parse(installed_text)
-        .map_err(|_| UpgradeError::InvalidInstalledVersion(installed_text.to_string()))?;
+    let findings = scan::scan_workspace(&package_roots, &source_majors, target.major)?;
+    let json_report = render_json_report(&root, &target, &plans, &findings)?;
+    if options.json {
+        println!("{json_report}");
+    } else {
+        print_plan(&root, &target, &plans, &findings, options.dry_run);
+    }
 
-    let cached = std::fs::read_to_string(get_cache_path())
-        .ok()
-        .and_then(|value| Version::parse(value.trim()).ok());
+    if options.dry_run {
+        if !options.json {
+            println!(
+                "{}",
+                "\nDry run complete: no files or lockfile were changed."
+                    .green()
+                    .bold()
+            );
+        }
+        return Ok(());
+    }
 
-    Ok(cached
-        .filter(|candidate| candidate > &installed)
-        .unwrap_or(installed))
-}
+    if changed == 0 {
+        println!(
+            "{}",
+            "\nNo version edits are required. Review any path/git warnings while the current graph is validated."
+                .cyan()
+        );
+    }
 
-fn update_cargo_toml(latest_version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let backup = backup::UpgradeBackup::create(&root, &plans)?;
+    let report_path = backup.write_reports(
+        &render_report(&root, &target, &plans, &findings),
+        &json_report,
+    )?;
+
+    if let Err(error) = manifest::apply_plans(&plans) {
+        let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
+        return Err(UpgradeError::CommandFailed {
+            command: "writing Cargo.toml",
+            recovery: format!("{recovery}; original error: {error}"),
+        }
+        .into());
+    }
+
+    let fix_ok = with_spinner("Applying compiler-provided migrations...", || {
+        cargo_command(
+            &root,
+            &[
+                "fix",
+                "--workspace",
+                "--all-targets",
+                "--allow-no-vcs",
+                "--allow-dirty",
+            ],
+        )
+    });
+    if !fix_ok {
+        let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
+        return Err(UpgradeError::CommandFailed {
+            command: "cargo fix --workspace --all-targets",
+            recovery,
+        }
+        .into());
+    }
+
+    let check_ok = with_spinner("Validating the migrated feature selection...", || {
+        cargo_command(&root, &["check", "--workspace", "--all-targets"])
+    });
+    if !check_ok {
+        let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
+        return Err(UpgradeError::CommandFailed {
+            command: "cargo check --workspace --all-targets",
+            recovery,
+        }
+        .into());
+    }
+
     println!(
         "{}",
         format!(
-            "📦 Updating Rullst dependency versions to {} in Cargo.toml...",
-            latest_version
+            "\nUpgrade transaction completed and cargo check passed.\nBackup and review report: {}\nRun the full application tests, database restore/migration rehearsal, and deployment smoke tests before merging.",
+            report_path.display()
         )
-        .yellow()
+        .green()
+        .bold()
     );
-    let cargo_path = Path::new("Cargo.toml");
-    if cargo_path.exists() {
-        let cargo_content = std::fs::read_to_string(cargo_path)?;
-        let (updated, matched, changed) = update_manifest_content(&cargo_content, latest_version)?;
-        if matched == 0 {
-            return Err(UpgradeError::NoManagedDependencies.into());
-        }
-        if changed > 0 {
-            std::fs::write(cargo_path, updated)?;
-        }
-        println!(
-            "  {} matched, {} changed; path-only and renamed dependencies were left untouched.",
-            matched, changed
-        );
-    }
     Ok(())
 }
 
-fn update_manifest_content(
-    cargo_content: &str,
-    latest_version: &str,
-) -> Result<(String, usize, usize), regex::Error> {
-    let names = RULLST_DEPENDENCIES.join("|");
-    let inline = regex::Regex::new(&format!(
-        r#"(?m)^([ \t]*(?:{names})[ \t]*=[ \t]*\{{[^\r\n}}]*?\bversion[ \t]*=[ \t]*)"([^"]*)""#
-    ))?;
-    let quoted = regex::Regex::new(&format!(
-        r#"(?m)^([ \t]*(?:{names})[ \t]*=[ \t]*)"([^"]*)""#
-    ))?;
+fn target_version(requested: Option<&str>) -> Result<Version, UpgradeError> {
+    let cli_text = env!("CARGO_PKG_VERSION");
+    let cli = Version::parse(cli_text)
+        .map_err(|_| UpgradeError::InvalidTargetVersion(cli_text.to_string()))?;
+    let target_text = requested.unwrap_or(cli_text);
+    let target = Version::parse(target_text)
+        .map_err(|_| UpgradeError::InvalidTargetVersion(target_text.to_string()))?;
 
-    let inline_matches = inline.find_iter(cargo_content).count();
-    let inline_changed = inline
-        .captures_iter(cargo_content)
-        .filter(|captures| {
-            captures
-                .get(2)
-                .is_some_and(|value| value.as_str() != latest_version)
-        })
-        .count();
-    let after_inline = inline
-        .replace_all(cargo_content, format!(r#"${{1}}"{latest_version}""#))
-        .into_owned();
-    let quoted_matches = quoted.find_iter(&after_inline).count();
-    let quoted_changed = quoted
-        .captures_iter(&after_inline)
-        .filter(|captures| {
-            captures
-                .get(2)
-                .is_some_and(|value| value.as_str() != latest_version)
-        })
-        .count();
-    let updated = quoted
-        .replace_all(&after_inline, format!(r#"${{1}}"{latest_version}""#))
-        .into_owned();
+    if target.major != cli.major {
+        return Err(UpgradeError::IncompatibleCli { target, cli });
+    }
+    Ok(target)
+}
 
-    Ok((
-        updated,
-        inline_matches + quoted_matches,
-        inline_changed + quoted_changed,
-    ))
+fn cargo_command(root: &Path, args: &[&str]) -> bool {
+    Command::new("cargo")
+        .args(args)
+        .current_dir(root)
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+fn recover_after_failure(
+    backup: &backup::UpgradeBackup,
+    keep_on_failure: bool,
+) -> Result<String, Box<dyn std::error::Error>> {
+    if keep_on_failure {
+        Ok(format!(
+            "edited files were kept by request; recover with `cargo rullst upgrade --restore {}`",
+            backup.root().display()
+        ))
+    } else {
+        backup.restore()?;
+        Ok(format!(
+            "the original manifests, lockfile, and Rust sources were restored; diagnostic report: {}; the persisted snapshot can be restored again with `cargo rullst upgrade --restore {}`",
+            backup.report_path().display(),
+            backup.root().display()
+        ))
+    }
+}
+
+fn print_plan(
+    root: &Path,
+    target: &Version,
+    plans: &[ManifestUpgradePlan],
+    findings: &[SourceFinding],
+    dry_run: bool,
+) {
+    let mode = if dry_run { "DRY RUN" } else { "APPLY" };
+    println!(
+        "{}",
+        format!("\nRullst assisted upgrade — {mode} — target {target}")
+            .cyan()
+            .bold()
+    );
+    println!("Project: {}", root.display());
+
+    for plan in plans {
+        let relative = plan.path.strip_prefix(root).unwrap_or(&plan.path);
+        for change in &plan.changes {
+            println!(
+                "  {}: {} ({}) {} -> {}",
+                relative.display(),
+                change.key,
+                change.package,
+                change.from,
+                change.to
+            );
+        }
+        for warning in &plan.warnings {
+            println!("  REVIEW {}: {}", relative.display(), warning);
+        }
+    }
+
+    for finding in findings {
+        let relative = finding.path.strip_prefix(root).unwrap_or(&finding.path);
+        println!(
+            "  {} {}:{} [{}] {}",
+            finding.severity,
+            relative.display(),
+            finding.line,
+            finding.code,
+            finding.message
+        );
+    }
+}
+
+fn render_report(
+    root: &Path,
+    target: &Version,
+    plans: &[ManifestUpgradePlan],
+    findings: &[SourceFinding],
+) -> String {
+    let mut report = format!(
+        "# Rullst assisted upgrade report\n\n- Project: `{}`\n- Target: `{target}`\n- Scope: dependency manifests, Cargo.lock and compiler-provided Rust fixes\n\n",
+        root.display()
+    );
+    report.push_str("## Dependency plan\n\n");
+    for plan in plans {
+        let relative = plan.path.strip_prefix(root).unwrap_or(&plan.path);
+        for change in &plan.changes {
+            report.push_str(&format!(
+                "- `{}`: `{}` (`{}`) `{}` → `{}`\n",
+                relative.display(),
+                change.key,
+                change.package,
+                change.from,
+                change.to
+            ));
+        }
+        for warning in &plan.warnings {
+            report.push_str(&format!("- REVIEW `{}`: {}\n", relative.display(), warning));
+        }
+    }
+    report.push_str("\n## Source review\n\n");
+    if findings.is_empty() {
+        report.push_str(
+            "No applicable source markers from the current rule catalog were detected. This is not proof of runtime compatibility.\n",
+        );
+    } else {
+        for finding in findings {
+            let relative = finding.path.strip_prefix(root).unwrap_or(&finding.path);
+            report.push_str(&format!(
+                "- **{}** `{}` line {} (`{}`): {}\n",
+                finding.severity,
+                relative.display(),
+                finding.line,
+                finding.code,
+                finding.message
+            ));
+        }
+    }
+    report.push_str(
+        "\n## Mandatory manual gates\n\n- Review every diff and the v5 → v12 migration guide.\n- Restore a database backup into a disposable environment and rehearse migrations and rollback.\n- Run formatting, Clippy, the complete application tests, authorization negatives and a production-profile smoke test.\n- Revalidate Nexus, Studio, providers, proxy trust, CSRF/CORS and secrets.\n",
+    );
+    report
+}
+
+fn render_json_report(
+    root: &Path,
+    target: &Version,
+    plans: &[ManifestUpgradePlan],
+    findings: &[SourceFinding],
+) -> Result<String, serde_json::Error> {
+    let manifests = plans
+        .iter()
+        .map(|plan| {
+            serde_json::json!({
+                "path": plan.path.strip_prefix(root).unwrap_or(&plan.path),
+                "matched_dependencies": plan.matched,
+                "source_majors": plan.source_majors,
+                "changes": plan.changes,
+                "warnings": plan.warnings,
+            })
+        })
+        .collect::<Vec<_>>();
+    let findings = findings
+        .iter()
+        .map(|finding| {
+            serde_json::json!({
+                "path": finding.path.strip_prefix(root).unwrap_or(&finding.path),
+                "line": finding.line,
+                "code": finding.code,
+                "severity": finding.severity,
+                "message": finding.message,
+            })
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_string_pretty(&serde_json::json!({
+        "schema_version": "rullst.upgrade-plan.v1",
+        "rule_catalog": scan::RULE_CATALOG_VERSION,
+        "target": target.to_string(),
+        "manifests": manifests,
+        "source_findings": findings,
+        "automatic_scope": [
+            "workspace dependency manifests",
+            "Cargo.lock resolution",
+            "compiler-provided Rust fixes",
+            "cargo check for the selected features"
+        ],
+        "manual_gates": [
+            "review the complete diff",
+            "rehearse database restore, migration and rollback",
+            "run the full application tests and authorization negatives",
+            "validate providers, proxy trust, Nexus, Studio, CSRF/CORS and secrets"
+        ],
+        "production_ready": false
+    }))
 }
 
 #[cfg(test)]
@@ -218,33 +362,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn updates_all_standard_rullst_dependency_forms_without_rewriting_escape_hatches() {
-        let manifest = r#"[dependencies]
-rullst = "5.1"
-rullst-core = { version = "6", default-features = false }
-rullst-ai = { path = "../rullst-ai" }
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-"#;
-
-        let (updated, matched, changed) =
-            update_manifest_content(manifest, "12.0.0-rc.1").expect("valid regex");
-        assert_eq!(matched, 2);
-        assert_eq!(changed, 2);
-        assert!(updated.contains("rullst = \"12.0.0-rc.1\""));
-        assert!(updated.contains("rullst-core = { version = \"12.0.0-rc.1\""));
-        assert!(updated.contains("rullst-ai = { path = \"../rullst-ai\" }"));
-        assert!(updated.contains("axum = \"0.8\""));
-        assert!(updated.contains("tokio = { version = \"1\""));
+    fn target_must_match_the_installed_cli_major() {
+        let cli = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+        let incompatible = format!("{}.0.0", cli.major + 1);
+        assert!(matches!(
+            target_version(Some(&incompatible)),
+            Err(UpgradeError::IncompatibleCli { .. })
+        ));
     }
 
     #[test]
-    fn already_current_dependencies_are_matched_without_a_rewrite() {
-        let manifest = "[dependencies]\nrullst = \"12.0.0\"\n";
-        let (updated, matched, changed) =
-            update_manifest_content(manifest, "12.0.0").expect("valid regex");
-        assert_eq!(updated, manifest);
-        assert_eq!(matched, 1);
-        assert_eq!(changed, 0);
+    fn target_accepts_an_exact_prerelease_in_the_cli_train() {
+        let cli = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+        let prerelease = format!("{}.1.0-rc.2", cli.major);
+        assert_eq!(
+            target_version(Some(&prerelease)).unwrap().to_string(),
+            prerelease
+        );
     }
 }

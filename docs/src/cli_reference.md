@@ -55,16 +55,40 @@ does not pull in scoring, leaderboards, achievements, automation, outbox, or
 notification modules.
 
 ### `cargo rullst upgrade`
-Updates standard versioned `rullst-*` dependencies in the current project's
-`Cargo.toml` to the newer cached version, or to the installed CLI version when
-no newer valid cache entry exists. It then runs `cargo update`, compiler-provided
-`cargo fix`, and `cargo check`.
+Plans or applies a transactional application upgrade. The target defaults to
+the exact installed `cargo-rullst` version; `--to <VERSION>` accepts an exact
+version in the same major release train as that CLI.
+
+```bash
+# Human-readable plan; no writes or dependency resolution
+cargo rullst upgrade --dry-run
+
+# Versioned machine-readable plan
+cargo rullst upgrade --dry-run --json
+
+# Backed-up apply + cargo fix + cargo check
+cargo rullst upgrade
+
+# Deliberately inspect a failed partial migration instead of auto-rollback
+cargo rullst upgrade --keep-on-failure
+
+# Recover a persisted snapshot, including after interruption
+cargo rullst upgrade --restore target/rullst-upgrades/<run-id>
+```
+
+The CLI uses Cargo metadata to scope workspace manifests, preserves TOML
+comments/order, updates normal, inline, workspace, target-specific and renamed
+Rullst dependencies, and reports unversioned path/git entries. Before applying,
+it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
+`target/rullst-upgrades/`; a failed Cargo gate restores them by default. The
+reports use the `rullst.upgrade-plan.v1` schema and include version-selected
+source findings.
 
 The command does not install the CLI globally, rewrite Axum/SQLx/Tokio imports,
-change path-only or renamed dependencies, run database migrations, or replace
-the project's test suite. A failed Cargo command makes the upgrade fail instead
-of reporting success. Commit first and follow the relevant
-[v12 migration guide](migration-v12.md).
+run database migrations, modify secrets or authorization, validate live
+providers, or replace the project's test suite. Follow the
+[assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md) and the
+relevant [v12 migration guide](migration-v12.md).
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

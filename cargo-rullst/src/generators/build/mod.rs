@@ -5,5 +5,5 @@ mod upgrade;
 mod wasm;
 
 pub use production::run_production_build;
-pub use upgrade::run_upgrade;
+pub use upgrade::{UpgradeOptions, run_upgrade};
 pub use wasm::run_build_client;

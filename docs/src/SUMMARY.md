@@ -58,6 +58,7 @@
 - [33. Multi-Tenant B2B Enterprise Architecture](tutorials/33-multi-tenant-b2b-saas.md)
 - [34. Live Analytics Dashboard & WebSockets](tutorials/34-realtime-dashboard-liveview-websockets.md)
 - [35. Sub-Microsecond Tuning & High-Availability](tutorials/35-high-performance-benchmarking.md)
+- [36. Assisted Framework Upgrades](tutorials/36-assisted-framework-upgrades.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)
