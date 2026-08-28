@@ -62,7 +62,7 @@ sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", 
 insta = { version = "1.41", features = ["yaml"] }
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
-tera = "1.20"
+tera = "2.2"
 toml = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }
