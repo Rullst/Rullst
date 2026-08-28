@@ -49,7 +49,7 @@ jq -e '
 }
 
 model_version="$(jq -er '.model_version' "$manifest_path")"
-rg -Fq "**Model version:** ${model_version}" "$model_path" || {
+grep -Fq -- "**Model version:** ${model_version}" "$model_path" || {
   echo "Threat-model version ${model_version} is not declared by ${model_path}."
   exit 1
 }
@@ -73,11 +73,11 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
     exit 1
   fi
   case_reference="\`${case_id}\`"
-  rg -Fq "$case_reference" "$model_path" || {
+  grep -Fq -- "$case_reference" "$model_path" || {
     echo "Threat-model case ${case_id} is not declared by ${model_path}."
     exit 1
   }
-  rg -Fq "$marker" "$source" || {
+  grep -Fq -- "$marker" "$source" || {
     echo "Evidence source ${source} does not reference ${marker}."
     exit 1
   }
@@ -100,7 +100,7 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
   case "$target_kind" in
     lib)
       test_list="$(cargo test -p "$crate" --all-features --lib -- --list)"
-      if ! rg -Fxq "${test_filter}: test" <<<"$test_list"; then
+      if ! grep -Fxq -- "${test_filter}: test" <<<"$test_list"; then
         echo "Threat-model evidence test does not exist: ${test_filter}."
         exit 1
       fi
@@ -112,7 +112,7 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
         exit 1
       fi
       test_list="$(cargo test -p "$crate" --all-features --test "$target" -- --list)"
-      if ! rg -Fxq "${test_filter}: test" <<<"$test_list"; then
+      if ! grep -Fxq -- "${test_filter}: test" <<<"$test_list"; then
         echo "Threat-model evidence test does not exist: ${test_filter}."
         exit 1
       fi

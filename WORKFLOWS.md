@@ -143,9 +143,12 @@ should not be made.**
 
 ### Supply chain and release provenance
 
-All third-party GitHub Actions references are pinned to full commit SHAs. RustSec
-exceptions are limited by `deny.toml` and documented with owners, controls, and
-expiry dates in `docs/src/security-advisory-exceptions.md`.
+All direct third-party GitHub Actions references in this repository's workflow
+files are pinned to full commit SHAs. A pinned composite action can still carry
+its own transitive downloads or references, so blocking integrations must also
+be reviewed for that behavior. RustSec exceptions are limited by `deny.toml`
+and documented with owners, controls, and expiry dates in
+`docs/src/security-advisory-exceptions.md`.
 
 `release.yml` is tag-only. It verifies source, validates the exact semantic tag
 against every publishable crate, packages before the first publish, and creates
