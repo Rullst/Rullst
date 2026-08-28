@@ -64,7 +64,7 @@ checks the declared MSRV, Rust 1.96.0.
 Require every job emitted by the following workflows before merging into
 `dev`: Rust CI, GitHub Actions Lint, End-to-End Smoke Tests, Cargo Audit,
 Security Audit, Cargo Deny, CodeQL, Test Coverage, Cargo Machete, SemVer Checks,
-Spellcheck, TangleGuard, TruffleHog, Unsafe Policy, WebAssembly Matrix, Zero
+Spellcheck, Crate Architecture Policy, TruffleHog, Unsafe Policy, WebAssembly Matrix, Zero
 Panics, no-std Build, IoT Integration, and PR Security Evidence.
 
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
@@ -161,6 +161,13 @@ embedded shell with Actionlint 1.7.7. Its container is pinned to an immutable
 linux/amd64 digest, just like third-party GitHub Actions are pinned to full
 commit SHAs.
 
+`architecture.yml` is repository-owned and deterministic. It rejects any
+internal dependency edge or optionality change that is not reflected in the
+reviewed `crate-architecture-policy.json`. The earlier TangleGuard integration
+was removed because its composite action downloaded an unversioned `latest`
+binary without a repository-pinned checksum, which was unsuitable for a
+blocking supply-chain gate.
+
 ## Workflow inventory (33 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
@@ -169,6 +176,7 @@ dependency graph make static estimates unreliable.
 | Workflow | Trigger | Mode | Actual scope |
 | :--- | :--- | :--- | :--- |
 | [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
+| [`architecture.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/architecture.yml) | main/dev push and PR, manual | Blocking | Compares Cargo's publishable internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed edges, removals, or optionality changes fail. |
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/audit.yml) | main/dev push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight benchmark groups with non-blocking 20% regression alerts and gh-pages history. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/cargo-deny.yml) | main/dev push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
@@ -194,7 +202,6 @@ dependency graph make static estimates unreliable.
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/security-audit.yml) | main/dev push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
 | [`semver.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/semver.yml) | main/dev push and PR, manual | Blocking | SemVer checks for publishable libraries; see the workflow for the exact package list. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/spellcheck.yml) | main/dev push and PR, manual | Blocking | Repository typo scan. |
-| [`tangleguard.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/tangleguard.yml) | main/dev push and PR, manual | Blocking | Architecture findings fail the run. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/trufflehog.yml) | main/dev push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/udeps.yml) | weekly, manual | Informational | Nightly cargo-udeps signal; command failures are tolerated. |
 | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/unsafe-policy.yml) | main/dev push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |
