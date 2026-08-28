@@ -6,4 +6,6 @@ title = "Rullst Framework Documentation"
 
 [output.html]
 git-repository-url = "https://github.com/Rullst/Rullst"
-edit-url-template = "https://github.com/Rullst/Rullst/edit/main/docs/src/{path}"
+edit-url-template = "https://github.com/Rullst/Rullst/edit/dev/docs/{path}"
+additional-css = ["theme/release-status.css"]
+additional-js = ["theme/release-status.js"]

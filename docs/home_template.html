@@ -3,33 +3,57 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Open Graph / Thumbnail Meta Tags -->
-  <meta property="og:title" content="Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework" />
+  <meta property="og:title" content="Rullst v12 Development Preview - NO-GO" />
   <meta property="og:description"
-    content="The AI-Native full-stack Rust web framework designed for maximum performance, security, and developer productivity. Ditch the boilerplate and ship your startup today." />
-  <meta property="og:image" content="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+    content="Unreleased Rullst v12 development preview. The main branch is the legacy v5 baseline; active v12 work remains NO-GO until its release gates pass." />
+  <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
   <meta property="og:type" content="website" />
 
   <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework" />
+  <meta name="twitter:title" content="Rullst v12 Development Preview - NO-GO" />
   <meta name="twitter:description"
-    content="The AI-Native full-stack Rust web framework designed for maximum performance, security, and developer productivity. Ditch the boilerplate and ship your startup today." />
-  <meta name="twitter:image" content="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+    content="Unreleased Rullst v12 development preview. The main branch is the legacy v5 baseline; active v12 work remains NO-GO until its release gates pass." />
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
 
-  <title>Rullst v12.0.0 - AI-Native Full-Stack Rust Web Framework</title>
+  <title>Rullst v12 Development Preview - NO-GO</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://rullst.github.io/src/style.css">
+  <style>
+    body > .navbar {
+      position: sticky;
+      top: 0;
+    }
+  </style>
 </head>
 
 <body>
+  <aside aria-label="Rullst release status"
+    style="position: relative; z-index: 1000; padding: 1rem; border-bottom: 1px solid rgba(251, 191, 36, 0.55); background: rgba(69, 26, 3, 0.97); color: #fef3c7; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);">
+    <div style="max-width: 1180px; margin: 0 auto; line-height: 1.55; text-align: center;">
+      <strong style="display: block; margin-bottom: 0.25rem; color: #fbbf24; font-size: 1.05rem;">
+        ⚠️ Release status: v5 legacy / v12 development preview
+      </strong>
+      <span>
+        The <a href="https://github.com/Rullst/Rullst/tree/main"
+          style="color: #fde68a; font-weight: 700; text-decoration: underline;">main branch</a> is the
+        end-of-life v5 baseline and no longer receives maintenance. Active v12 work lives on
+        <a href="https://github.com/Rullst/Rullst/tree/dev"
+          style="color: #fde68a; font-weight: 700; text-decoration: underline;">dev</a>, is unreleased, and remains
+        <strong>NO-GO for production</strong> until its documented tests, audits, package checks, and release gates
+        pass. Use versioned crates.io releases and matching immutable tags for published artifacts.
+      </span>
+    </div>
+  </aside>
+
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
 
@@ -37,7 +61,7 @@
     <div class="nav-content">
       <div class="logo">
         <span>📜🦀🌐 Rullst <small
-            style="font-size: 0.6em; color: #10b981; font-family: 'JetBrains Mono', monospace;">v12.0.0</small></span>
+            style="font-size: 0.6em; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">v12 dev</small></span>
       </div>
       <div class="hamburger" id="hamburger">
         <span class="bar"></span>
@@ -51,7 +75,7 @@
           style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📖
           mdBook</a>
 
-        <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
+        <a href="https://github.com/Rullst/Rullst/blob/dev/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
           style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub
           Docs</a>
 
@@ -80,7 +104,7 @@
       <div class="badges">
         <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io">
         <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-        <img src="https://img.shields.io/badge/Release-v12.0.0-emerald.svg?style=for-the-badge" alt="Version 12.0.0">
+        <img src="https://img.shields.io/badge/v12-development%20NO--GO-f59e0b.svg?style=for-the-badge" alt="Version 12 development NO-GO">
       </div>
     </div>
   </header>
