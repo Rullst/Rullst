@@ -2,17 +2,18 @@
   <p><i>All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</i></p>
 </div>
 
-> [!IMPORTANT]
-> **Release channels:** The `main` branch contains active, unreleased development
-> and may change without release-level compatibility guarantees. Official Rullst
-> release artifacts are the packages published on [crates.io](https://crates.io/crates/rullst),
-> with the matching immutable `vX.Y.Z` tag as the canonical source snapshot.
-> For production, use a versioned crates.io dependency. If a Git dependency is
-> unavoidable, pin an exact `rev` instead of tracking `main`. See the
-> [compatibility and support policy](docs/src/compatibility-policy.md).
+> [!WARNING]
+> **Rullst v12 development snapshot:** this `dev` branch contains active,
+> unreleased work and remains **NO-GO** for a stable `12.0.0` release. It will be
+> promoted only after the documented tests, audits, package checks, and release
+> candidate gates pass on the exact commit. Use a versioned
+> [crates.io](https://crates.io/crates/rullst) release or its matching immutable
+> tag in production; do not track `dev`. See the
+> [v12 release program](docs/src/v12.md) and
+> [compatibility policy](docs/src/compatibility-policy.md).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
 <h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
@@ -81,9 +82,9 @@
 
 </div>
 
-> 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**
+> 📖 **[Read the detailed breakdown of all our CI/CD Security Workflows here](https://github.com/Rullst/Rullst/blob/dev/WORKFLOWS.md)**
 >
-> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
+> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/dev/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
 <br>
 
 ## 💡 The Rullst Philosophy
@@ -215,7 +216,7 @@ Open **`http://localhost:3000`** in your browser to see your high-performance we
 
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -232,10 +233,10 @@ Open **`http://localhost:3000`** in your browser to see your high-performance we
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>
@@ -244,11 +245,11 @@ Open **`http://localhost:3000`** in your browser to see your high-performance we
 <br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
 </p>
 
 ### 📚 Documentation & Community
@@ -319,7 +320,7 @@ Rullst is built on **Axum**, **Tokio**, **Tower**, and **SQLx**, and exposes sta
 - **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Use the CLI eject output as a migration starting point and review the generated code before deployment.
-- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/dev/docs/src/axum-sqlx-migration.md).
 
 ---
 
@@ -350,18 +351,18 @@ Evaluate only the features you intend to enable. In particular:
 Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are versioned and tested together so compatibility regressions can be caught in one workspace; consumers should still follow SemVer notes and the release matrix for the exact version they use.
 
 **Explore the Monorepo Ecosystem:**
-- 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
-- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record ORM, automated migrations, and multi-tenancy.
-- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
-- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: RASP deep inspection, Honeypot bot traps, XSS/CSP sanitization, and HMAC audit log.
-- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
-- 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
-- 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
-- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
-- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email delivery engine with anti-phishing and DLP secret scanning.
-- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
-- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Auto-generated Admin CMS (`/nexus`) and SOC Threat Radar.
-- 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
+- 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/dev/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record ORM, automated migrations, and multi-tenancy.
+- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/dev/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
+- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/dev/rullst-security)**: RASP deep inspection, Honeypot bot traps, XSS/CSP sanitization, and HMAC audit log.
+- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/dev/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
+- 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/dev/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
+- 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/dev/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
+- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/dev/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
+- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/dev/rullst-mail)**: Transactional email delivery engine with anti-phishing and DLP secret scanning.
+- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/dev/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
+- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/dev/rullst-nexus)**: Auto-generated Admin CMS (`/nexus`) and SOC Threat Radar.
+- 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/dev/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
 
 ---
 

@@ -25,7 +25,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--buildah`: Adds rootless Buildah container-build files where supported.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
-  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth` or `auth,learning`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
+  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
 For example, the release gate can generate a SaaS starter without prompts or
@@ -44,7 +44,15 @@ cargo rullst new academy-identity --default --blueprint lms \
 
 cargo rullst new academy-foundation --default --blueprint lms \
   --lms-modules auth,learning --skip-initial-migration
+
+cargo rullst new academy-assessment --default --blueprint lms \
+  --lms-modules auth,learning,assessment --skip-initial-migration
 ```
+
+The assessment foundation adds owner-only quiz presentation and
+server-authoritative, idempotent grading with bounded attempts. It deliberately
+does not pull in scoring, leaderboards, achievements, automation, outbox, or
+notification modules.
 
 ### `cargo rullst upgrade`
 Updates standard versioned `rullst-*` dependencies in the current project's
@@ -288,7 +296,14 @@ route, dependency, and local network patterns.
   * `--network`: Checks a bounded list of local ports/bindings for potentially exposed services; it is not a comprehensive network scan.
 
 ### `cargo rullst hook:install`
-Installs an automated pre-commit hook into `.git/hooks/pre-commit` that runs `cargo fmt -- --check`, `cargo clippy -D warnings`, and `cargo rullst audit --idor` before every commit.
+Installs managed `pre-commit` and `commit-msg` wrappers. The first runs
+`cargo fmt --all -- --check`, strict workspace Clippy, and
+`cargo rullst audit --idor`; the second enforces Conventional Commits. Existing
+active hooks are moved to explicit `.rullst-original` backups and invoked first,
+while reinstalling the managed wrappers is idempotent. The command supports
+linked worktrees, fails clearly outside a Git worktree, and refuses a backup
+collision instead of overwriting it. These local hooks are bypassable by design;
+protected CI remains authoritative.
 
 ### `cargo rullst doctor`
 Runs comprehensive system and toolchain diagnostics, verifying Rust MSRV (>= 1.96.0), linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`, `cargo-mutants`, `kani-verifier`, and Docker Engine with instant actionable recommendations.

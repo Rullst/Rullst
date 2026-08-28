@@ -20,7 +20,9 @@ This section guides you through submitting an enhancement suggestion for Rullst,
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
   - Example: `fix(auth): offload password hashing to spawn_blocking`.
 - **Zero "Smoke/AI" Commit Fluff**: Never use AI-generated paragraphs, marketing buzzwords, or verbose descriptions in commit titles. Keep messages concise, technical, and accurate to the exact diff.
-- Run `cargo fmt` and `cargo clippy --workspace --all-features -- -D warnings` before committing.
+- Run `cargo fmt --all`,
+  `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
+  `cargo test --workspace --all-features` before declaring a change complete.
 - Fill in the required Pull Request template.
 - End files with a newline.
 
@@ -28,15 +30,17 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 
 1. Fork the repo and create your branch from `dev`.
 2. Configure git hooks: `git config core.hooksPath .githooks`.
-3. Run `cargo build` to build the framework.
-4. Run `cargo test --workspace` to ensure all tests pass.
+3. Run `cargo build --workspace --all-features` to build the framework.
+4. Run `cargo test --workspace --all-features` to exercise implemented behavior.
 5. Run `cargo fmt --all` to format your code.
 6. If you've added code that should be tested, add tests.
 7. If you've changed APIs, update the documentation.
 8. Ensure the full test suite passes.
 
 ## Branching Model
-- `main`: Contains the stable, production-ready code.
-- `dev`: Active development branch. All PRs must target this branch!
+- `main`: Promoted release and maintenance source line. It is not itself a
+  crates.io publication or security certification.
+- `dev`: Active integration branch. Normal pull requests must target this
+  branch; only reviewed release promotion targets `main`.
 
 Thank you for your interest in making Rullst better!

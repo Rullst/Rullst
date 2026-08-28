@@ -35,7 +35,7 @@ pub enum LmsModuleError {
     #[error("LMS module `{0}` was selected more than once")]
     Duplicate(&'static str),
     #[error(
-        "unsupported LMS module combination `{0}`; currently use `auth`, `auth,learning`, or omit --lms-modules for the complete starter"
+        "unsupported LMS module combination `{0}`; currently use `auth`, `auth,learning`, `auth,learning,assessment`, `auth,learning,gamification`, or omit --lms-modules for the complete starter"
     )]
     UnsupportedCombination(String),
     #[error("detached LMS module profiles do not yet support hot reload")]
@@ -48,7 +48,16 @@ pub(super) fn validate_foundation(modules: &[LmsModule]) -> Result<(), LmsModule
     if let Some(duplicate) = selected.windows(2).find(|pair| pair[0] == pair[1]) {
         return Err(LmsModuleError::Duplicate(duplicate[0].as_str()));
     }
-    if selected == [LmsModule::Auth] || selected == [LmsModule::Auth, LmsModule::Learning] {
+    if selected == [LmsModule::Auth]
+        || selected == [LmsModule::Auth, LmsModule::Learning]
+        || selected == [LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment]
+        || selected
+            == [
+                LmsModule::Auth,
+                LmsModule::Learning,
+                LmsModule::Gamification,
+            ]
+    {
         return Ok(());
     }
     Err(LmsModuleError::UnsupportedCombination(
@@ -96,6 +105,18 @@ mod tests {
     fn selector_accepts_detached_auth_profiles_without_duplicates() {
         assert!(validate_foundation(&[LmsModule::Auth]).is_ok());
         assert!(validate_foundation(&[LmsModule::Learning, LmsModule::Auth]).is_ok());
+        assert!(
+            validate_foundation(&[LmsModule::Assessment, LmsModule::Auth, LmsModule::Learning,])
+                .is_ok()
+        );
+        assert!(
+            validate_foundation(&[
+                LmsModule::Gamification,
+                LmsModule::Auth,
+                LmsModule::Learning,
+            ])
+            .is_ok()
+        );
         assert_eq!(
             validate_foundation(&[LmsModule::Auth, LmsModule::Auth]),
             Err(LmsModuleError::Duplicate("auth"))

@@ -115,3 +115,53 @@ fn selected_auth_learning_profile_passes_generated_cargo_tests() {
         &["src/models/quiz.rs", "src/models/achievement.rs"],
     );
 }
+
+#[test]
+fn selected_auth_learning_assessment_profile_passes_generated_cargo_tests() {
+    materialize_and_test(
+        "assessment-foundation",
+        &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
+        &[
+            "rullst-lms-modules.json",
+            "src/models/quiz.rs",
+            "src/controllers/assessment_controller.rs",
+            "src/services/assessment_service.rs",
+            "src/migrations/m20260828000000_add_assessment.rs",
+        ],
+        &[
+            "src/models/achievement.rs",
+            "src/models/leaderboard_entry.rs",
+            "src/services/automation_worker_service.rs",
+            "src/services/notification_service.rs",
+            "src/services/outbox_service.rs",
+        ],
+    );
+}
+
+#[test]
+fn selected_auth_learning_gamification_profile_passes_generated_cargo_tests() {
+    materialize_and_test(
+        "gamification-foundation",
+        &[
+            LmsModule::Auth,
+            LmsModule::Learning,
+            LmsModule::Gamification,
+        ],
+        &[
+            "rullst-lms-modules.json",
+            "src/models/activity.rs",
+            "src/models/score_event.rs",
+            "src/models/leaderboard_entry.rs",
+            "src/controllers/gamification_controller.rs",
+            "src/services/gamification_service.rs",
+            "src/migrations/m20260828000000_add_gamification.rs",
+        ],
+        &[
+            "src/models/quiz.rs",
+            "src/models/achievement.rs",
+            "src/services/automation_worker_service.rs",
+            "src/services/notification_service.rs",
+            "src/services/outbox_service.rs",
+        ],
+    );
+}

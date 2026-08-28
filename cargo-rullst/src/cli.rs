@@ -114,7 +114,7 @@ pub enum Commands {
         /// Selects a starter blueprint in deterministic/CI generation mode
         #[arg(long, value_enum, requires = "default")]
         blueprint: Option<BlueprintChoice>,
-        /// Selects a detached LMS module profile; currently `auth,learning`
+        /// Selects a detached LMS module profile; assessment or gamification foundation
         #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
         lms_modules: Vec<LmsModuleChoice>,
         /// Skips the best-effort initial database migration after scaffolding
@@ -784,6 +784,54 @@ mod tests {
                 lms_modules,
                 ..
             } if lms_modules == vec![LmsModuleChoice::Auth, LmsModuleChoice::Learning]
+        ));
+
+        let assessment_cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "academy-assessment",
+            "--default",
+            "--blueprint",
+            "lms",
+            "--lms-modules",
+            "auth,learning,assessment",
+        ])
+        .expect("bounded LMS assessment CLI");
+        assert!(matches!(
+            assessment_cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Lms),
+                lms_modules,
+                ..
+            } if lms_modules == vec![
+                LmsModuleChoice::Auth,
+                LmsModuleChoice::Learning,
+                LmsModuleChoice::Assessment,
+            ]
+        ));
+
+        let gamification_cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "academy-game",
+            "--default",
+            "--blueprint",
+            "lms",
+            "--lms-modules",
+            "auth,learning,gamification",
+        ])
+        .expect("bounded LMS gamification CLI");
+        assert!(matches!(
+            gamification_cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Lms),
+                lms_modules,
+                ..
+            } if lms_modules == vec![
+                LmsModuleChoice::Auth,
+                LmsModuleChoice::Learning,
+                LmsModuleChoice::Gamification,
+            ]
         ));
     }
 

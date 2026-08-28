@@ -1,7 +1,9 @@
-//! Small, compiling `auth,learning` LMS scaffold profile.
+//! Small, compiling detached LMS scaffold profiles.
 
+mod assessment;
 mod auth_only;
 mod controller;
+mod gamification;
 mod middleware;
 mod migrations;
 mod routes;
@@ -87,6 +89,11 @@ pub(super) fn select(
                 .to_string(),
         ),
     ]);
+    if modules.contains(&super::LmsModule::Assessment) {
+        assessment::extend(&mut full_manifest);
+    } else if modules.contains(&super::LmsModule::Gamification) {
+        gamification::extend(&mut full_manifest);
+    }
     full_manifest.sort_unstable_by_key(|(path, _)| *path);
     Ok(full_manifest)
 }
@@ -159,6 +166,79 @@ mod tests {
         assert!(
             manifest.len() < 15,
             "auth profile emitted {} files",
+            manifest.len()
+        );
+    }
+
+    #[test]
+    fn assessment_manifest_is_bounded_and_excludes_unselected_verticals() {
+        let manifest = file_manifest_for_modules(
+            "demo",
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+            &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
+        )
+        .expect("detached assessment manifest");
+        for required in [
+            "src/controllers/assessment_controller.rs",
+            "src/migrations/m20260828000000_add_assessment.rs",
+            "src/models/quiz.rs",
+            "src/services/assessment_service.rs",
+        ] {
+            assert!(manifest.iter().any(|(path, _)| *path == required));
+        }
+        for excluded in [
+            "src/models/achievement.rs",
+            "src/models/leaderboard_entry.rs",
+            "src/services/automation_worker_service.rs",
+            "src/services/notification_service.rs",
+            "src/services/outbox_service.rs",
+        ] {
+            assert!(manifest.iter().all(|(path, _)| *path != excluded));
+        }
+        assert!(
+            manifest.len() < 40,
+            "assessment profile emitted {} files",
+            manifest.len()
+        );
+    }
+
+    #[test]
+    fn gamification_manifest_is_bounded_and_excludes_unselected_verticals() {
+        let manifest = file_manifest_for_modules(
+            "demo",
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+            &[
+                LmsModule::Auth,
+                LmsModule::Learning,
+                LmsModule::Gamification,
+            ],
+        )
+        .expect("detached gamification manifest");
+        for required in [
+            "src/controllers/gamification_controller.rs",
+            "src/migrations/m20260828000000_add_gamification.rs",
+            "src/models/score_event.rs",
+            "src/models/leaderboard_entry.rs",
+            "src/services/gamification_service.rs",
+        ] {
+            assert!(manifest.iter().any(|(path, _)| *path == required));
+        }
+        for excluded in [
+            "src/models/quiz.rs",
+            "src/models/achievement.rs",
+            "src/services/automation_worker_service.rs",
+            "src/services/notification_service.rs",
+            "src/services/outbox_service.rs",
+        ] {
+            assert!(manifest.iter().all(|(path, _)| *path != excluded));
+        }
+        assert!(
+            manifest.len() < 40,
+            "gamification profile emitted {} files",
             manifest.len()
         );
     }
