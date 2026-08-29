@@ -20,7 +20,7 @@ pub enum ActivityKind {
 
 /// Explicit client boundary for one activity.
 ///
-/// `SsrHtmx` is the zero-bundle default. `CanvasWasm` is an opt-in rich client
+/// `SsrHtmx` is the server-rendered default. `CanvasWasm` is an opt-in rich client
 /// whose same-origin artifact identity and bounded size must be supplied by the
 /// application; neither variant makes the client authoritative for results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,7 +40,7 @@ pub struct ActivityClientManifest {
 }
 
 impl ActivityClientManifest {
-    /// Creates the zero-bundle default for forms, navigation and simple activities.
+    /// Creates the server-rendered default for forms, navigation and simple activities.
     pub fn ssr_htmx(launch_path: impl Into<String>) -> Result<Self, ActivityContractError> {
         let manifest = Self {
             schema_version: ACTIVITY_SCHEMA_VERSION,

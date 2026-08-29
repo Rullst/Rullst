@@ -98,15 +98,15 @@ pub fn generate_repositories_mod(models: &[&str]) -> String {
 /// Used in generated page files as a header comment.
 pub fn frontend_engine_badge(frontend_engine: &str) -> &'static str {
     if frontend_engine.contains("LiveView") {
-        "⚡ Rullst LiveView Server-Driven UI Active"
+        "Rullst LiveView compatibility profile selected"
     } else if frontend_engine.contains("Wasm") || frontend_engine.contains("Island") {
-        "🏝️ Rullst Reactive Wasm Island Engine Active"
+        "Rullst Wasm Island compatibility profile selected"
     } else if frontend_engine.contains("Pico") || frontend_engine.contains("Topcoat") {
-        "🎨 Rullst Zero-Build Semantic CSS (Pico.css) Active"
+        "Rullst Pico.css compatibility profile selected"
     } else if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
-        "📄 Rullst File-Based Classic Templates (Tera) Active"
+        "Rullst Tera compatibility profile selected"
     } else {
-        "🔥 Rullst Zero-Bundle HTMX + Tailwind Engine Active"
+        "Rullst HTMX + Tailwind SSR profile selected"
     }
 }
 

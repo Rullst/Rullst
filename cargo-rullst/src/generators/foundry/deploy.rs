@@ -3,7 +3,18 @@
 use super::config::FoundryConfig;
 use colored::*;
 use std::fs;
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
+
+fn expand_ssh_key(path: &str) -> String {
+    let Some(relative) = path.strip_prefix("~/") else {
+        return path.to_string();
+    };
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(|home| format!("{home}/{relative}"))
+        .unwrap_or_else(|_| path.to_string())
+}
 
 pub fn get_ssh_base_args(cfg: &FoundryConfig) -> Vec<String> {
     let mut args = Vec::new();
@@ -15,10 +26,7 @@ pub fn get_ssh_base_args(cfg: &FoundryConfig) -> Vec<String> {
     args.push("-p".to_string());
     args.push(ssh_port_num.to_string());
 
-    let ssh_key_expanded = cfg.ssh_key.replace(
-        "~",
-        &std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default()),
-    );
+    let ssh_key_expanded = expand_ssh_key(&cfg.ssh_key);
     if !ssh_key_expanded.is_empty() {
         args.push("-i".to_string());
         args.push(ssh_key_expanded);
@@ -37,6 +45,23 @@ pub fn run_ssh(cmd: &str, base_args: &[String]) -> Result<bool, Box<dyn std::err
     Ok(status.success())
 }
 
+fn run_ssh_script(script: &str, base_args: &[String]) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut child = Command::new("ssh")
+        .args(base_args)
+        .arg(
+            "if [ \"$(id -u)\" -eq 0 ]; then exec sh -s; elif command -v sudo >/dev/null 2>&1; then exec sudo -n sh -s; else echo 'root or passwordless sudo is required' >&2; exit 1; fi",
+        )
+        .stdin(Stdio::piped())
+        .spawn()?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| std::io::Error::other("could not open SSH script input"))?;
+    stdin.write_all(script.as_bytes())?;
+    drop(stdin);
+    Ok(child.wait()?.success())
+}
+
 pub fn execute_build_step(cfg: &FoundryConfig) -> Result<String, Box<dyn std::error::Error>> {
     println!(
         "{}",
@@ -52,8 +77,7 @@ pub fn execute_build_step(cfg: &FoundryConfig) -> Result<String, Box<dyn std::er
     }
 
     if !Command::new("cargo").args(&build_args).status()?.success() {
-        println!("{}", "❌ Build failed. Aborting deployment.".red().bold());
-        std::process::exit(1);
+        return Err(std::io::Error::other("release build failed; deployment aborted").into());
     }
     println!("{}", "  ✅ Build successful.".green());
 
@@ -75,48 +99,63 @@ pub fn execute_build_step(cfg: &FoundryConfig) -> Result<String, Box<dyn std::er
         )
     };
 
-    let cargo_toml_content = fs::read_to_string("Cargo.toml").unwrap_or_default();
-    let bin_name = cargo_toml_content
-        .lines()
-        .find(|l| l.trim_start().starts_with("name"))
-        .and_then(|l| l.split('=').nth(1))
-        .map(|s| s.trim().trim_matches('"').to_string())
-        .unwrap_or_else(|| cfg.app_name.clone());
+    let cargo_toml_content = fs::read_to_string("Cargo.toml")?;
+    let cargo_manifest = toml::from_str::<toml::Value>(&cargo_toml_content)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+    let bin_name = cargo_manifest
+        .get("package")
+        .and_then(|package| package.get("name"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Cargo.toml must contain a string package.name",
+            )
+        })?
+        .to_string();
 
     Ok(format!("target/{}/{}", bin_subdir, bin_name))
 }
 
-pub fn execute_provision_step(ssh_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute_provision_step(
+    cfg: &FoundryConfig,
+    ssh_args: &[String],
+) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         "🖥️  [2/5] Provisioning server environment..."
             .bold()
             .yellow()
     );
-    let provision_cmd = r#"set -e
-apt-get update -qq
-apt-get install -y -qq docker.io curl wget || yum install -y docker curl wget || true
-systemctl enable docker --now || true
-mkdir -p /app/data /app/bin /app/config
-echo "✅ Server environment ready.""#
-        .to_string();
+    let provision_cmd = render_provision_command(cfg);
 
-    if !run_ssh(&provision_cmd, ssh_args)? {
-        println!(
-            "{}",
-            "⚠️  Server provisioning had warnings (continuing anyway)...".yellow()
-        );
-    } else {
-        println!("{}", "  ✅ Server provisioned.".green());
+    if !run_ssh_script(&provision_cmd, ssh_args)? {
+        return Err(std::io::Error::other(
+            "remote provisioning failed; deployment state must be inspected before retrying",
+        )
+        .into());
     }
+    println!("{}", "  ✅ Server provisioned.".green());
     Ok(())
+}
+
+fn render_provision_command(cfg: &FoundryConfig) -> String {
+    format!(
+        r#"set -e
+command -v curl > /dev/null 2>&1
+command -v systemctl > /dev/null 2>&1
+command -v caddy > /dev/null 2>&1
+install -d -m 0755 /opt/rullst /opt/rullst/{app_name} /opt/rullst/{app_name}/data /opt/rullst/{app_name}/bin /var/log/caddy
+install -d -m 0700 /opt/rullst/{app_name}/config
+echo "✅ Server environment ready.""#,
+        app_name = cfg.app_name
+    )
 }
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn execute_upload_step(
     cfg: &FoundryConfig,
     local_bin: &str,
-    _ssh_args: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
@@ -131,10 +170,7 @@ pub fn execute_upload_step(
     scp_args.push("-P".to_string());
     scp_args.push(ssh_port_num.to_string());
 
-    let ssh_key_expanded = cfg.ssh_key.replace(
-        "~",
-        &std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default()),
-    );
+    let ssh_key_expanded = expand_ssh_key(&cfg.ssh_key);
     if !ssh_key_expanded.is_empty() {
         scp_args.push("-i".to_string());
         scp_args.push(ssh_key_expanded);
@@ -164,18 +200,21 @@ pub fn execute_upload_step(
     }
     scp_args.push("--".to_string());
     scp_args.push(local_bin.to_string());
-    scp_args.push(format!("{}@{}:/app/bin/{}", cfg.user, cfg.host, bin_name));
+    scp_args.push(format!(
+        "{}@{}:/tmp/rullst_{}.upload",
+        cfg.user, cfg.host, cfg.app_name
+    ));
 
     if !Command::new("scp").args(&scp_args).status()?.success() {
-        println!(
-            "{}",
-            "❌ Failed to upload binary via SCP. Check SSH access and try again."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(std::io::Error::other(
+            "binary upload failed; check SSH access and remote partial state",
+        )
+        .into());
     }
-    println!("{}", "  ✅ Binary uploaded to /app/bin/.".green());
+    println!(
+        "{}",
+        "  ✅ Binary uploaded to a remote staging path.".green()
+    );
     Ok(())
 }
 
@@ -187,10 +226,23 @@ pub fn execute_configure_step(
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
-        "⚙️  [4/5] Configuring services (env, Caddy, container)..."
+        "⚙️  [4/5] Configuring the systemd service and Caddy..."
             .bold()
             .yellow()
     );
+    let configure_cmd = render_configure_command(cfg, bin_name);
+
+    if !run_ssh_script(&configure_cmd, ssh_args)? {
+        return Err(std::io::Error::other(
+            "remote service configuration failed; deployment is incomplete",
+        )
+        .into());
+    }
+    println!("{}", "  ✅ Services configured and started.".green());
+    Ok(())
+}
+
+fn render_configure_command(cfg: &FoundryConfig, bin_name: &str) -> String {
     let app_port = if cfg.port.is_empty() {
         "3000"
     } else {
@@ -217,7 +269,7 @@ pub fn execute_configure_step(
         )
     } else {
         format!(
-            ":{app_port} {{\n    reverse_proxy localhost:{app_port}\n}}",
+            ":80 {{\n    reverse_proxy localhost:{app_port}\n}}",
             app_port = app_port
         )
     };
@@ -225,33 +277,37 @@ pub fn execute_configure_step(
     let env_lines = cfg
         .env_vars
         .iter()
-        .map(|(k, v)| format!("{}={}", k, v))
+        .map(|(key, value)| format!("{key}=\"{}\"", escape_systemd_env_value(value)))
         .collect::<Vec<_>>()
         .join("\n");
-    let configure_cmd = format!(
+    format!(
         r#"set -e
-cat > /app/config/.env << 'ENVEOF'
+umask 077
+staged_binary=/tmp/rullst_{app_name}.upload
+test -f "$staged_binary"
+command -v systemctl > /dev/null 2>&1
+if ! command -v caddy > /dev/null 2>&1; then
+    echo "Caddy is required but was not found; install it from a reviewed package source before retrying" >&2
+    exit 1
+fi
+cat > /opt/rullst/{app_name}/config/.env.next << 'ENVEOF'
 {env_lines}
 ENVEOF
-cat > /etc/caddy/Caddyfile << 'CADDYEOF'
+chmod 600 /opt/rullst/{app_name}/config/.env.next
+cat > /etc/caddy/Caddyfile.rullst-next << 'CADDYEOF'
 {caddy_site}
 CADDYEOF
-if ! command -v caddy &> /dev/null; then
-    curl -fsSL https://caddyserver.com/install.sh | bash -s -- --
-fi
-chmod +x /app/bin/{bin_name}
-docker rm -f rullst_{app_name} 2>/dev/null || true
-pkill -f "/app/bin/{bin_name}" 2>/dev/null || true
-cat > /etc/systemd/system/rullst_{app_name}.service << 'SVCEOF'
+caddy validate --config /etc/caddy/Caddyfile.rullst-next
+cat > /etc/systemd/system/rullst_{app_name}.service.next << 'SVCEOF'
 [Unit]
 Description=Rullst App: {app_name}
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/app/bin/{bin_name}
-WorkingDirectory=/app/data
-EnvironmentFile=/app/config/.env
+ExecStart=/opt/rullst/{app_name}/bin/{bin_name}
+WorkingDirectory=/opt/rullst/{app_name}/data
+EnvironmentFile=/opt/rullst/{app_name}/config/.env
 Restart=always
 RestartSec=5
 
@@ -259,28 +315,40 @@ RestartSec=5
 WantedBy=multi-user.target
 SVCEOF
 
+install -m 0755 "$staged_binary" /opt/rullst/{app_name}/bin/{bin_name}.next
+rm -f "$staged_binary"
+if [ -f /opt/rullst/{app_name}/bin/{bin_name} ]; then
+    mv -f /opt/rullst/{app_name}/bin/{bin_name} /opt/rullst/{app_name}/bin/{bin_name}.previous
+fi
+if [ -f /opt/rullst/{app_name}/config/.env ]; then
+    cp -p /opt/rullst/{app_name}/config/.env /opt/rullst/{app_name}/config/.env.previous
+fi
+if [ -f /etc/caddy/Caddyfile ]; then
+    cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.previous
+fi
+if [ -f /etc/systemd/system/rullst_{app_name}.service ]; then
+    cp -p /etc/systemd/system/rullst_{app_name}.service /etc/systemd/system/rullst_{app_name}.service.previous
+fi
+mv -f /opt/rullst/{app_name}/bin/{bin_name}.next /opt/rullst/{app_name}/bin/{bin_name}
+mv -f /opt/rullst/{app_name}/config/.env.next /opt/rullst/{app_name}/config/.env
+mv -f /etc/caddy/Caddyfile.rullst-next /etc/caddy/Caddyfile
+mv -f /etc/systemd/system/rullst_{app_name}.service.next /etc/systemd/system/rullst_{app_name}.service
 systemctl daemon-reload
 systemctl enable rullst_{app_name}
 systemctl restart rullst_{app_name}
-systemctl enable caddy 2>/dev/null || true
-systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || caddy reload 2>/dev/null || true
+systemctl enable caddy
+systemctl reload caddy || systemctl restart caddy
 echo "✅ Services configured and started."
 "#,
         env_lines = env_lines,
         caddy_site = caddy_site,
         bin_name = bin_name,
         app_name = cfg.app_name
-    );
+    )
+}
 
-    if !run_ssh(&configure_cmd, ssh_args)? {
-        println!(
-            "{}",
-            "⚠️  Service configuration had warnings. Verify on the server.".yellow()
-        );
-    } else {
-        println!("{}", "  ✅ Services configured and started.".green());
-    }
-    Ok(())
+fn escape_systemd_env_value(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -342,7 +410,7 @@ pub fn print_deployment_success(cfg: &FoundryConfig) {
     );
     println!(
         "{}",
-        "│  🎉  Rullst Foundry — Deployment Complete!                  │"
+        "│  Rullst Foundry — Local health check passed                 │"
             .green()
             .bold()
     );
@@ -361,7 +429,7 @@ pub fn print_deployment_success(cfg: &FoundryConfig) {
     };
     println!(
         "  {} {}://{}",
-        "🌐 Your app is live at:".bold(),
+        "Candidate public URL (verify DNS, TLS, and external reachability):".bold(),
         url_protocol,
         cfg.domain.cyan().bold()
     );
@@ -375,3 +443,6 @@ pub fn print_deployment_success(cfg: &FoundryConfig) {
     );
     println!();
 }
+
+#[cfg(test)]
+mod tests;

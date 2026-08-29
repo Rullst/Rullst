@@ -45,6 +45,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 semver = "1.0.28"
 toml_edit = "0.25.13"
+toml = { workspace = true }
 thiserror = { workspace = true }
 walkdir = "2.5.0"
 axum = { workspace = true, features = ["ws"] }
@@ -64,12 +65,11 @@ insta = { version = "1.41", features = ["yaml"] }
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
 tera = "2.2"
-toml = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }

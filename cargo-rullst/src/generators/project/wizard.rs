@@ -193,7 +193,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
 
     if db_needed {
         let orm_options = &[
-            "Active Record Mode (Recommended — User::find(id), fastest development & rapid CRUD)",
+            "Active Record Mode (Recommended — User::find(id), concise model-oriented CRUD)",
             "Data Mapper / Repository (For Enterprise DDD — UserRepository::find(), decoupled domain structs)",
             "Hybrid Architecture (Active Record for simple models + Repository Pattern for complex domain entities)",
         ];
@@ -211,11 +211,11 @@ pub(crate) fn run_project_wizard_with_blueprint(
 
     if !api && blueprint_selection != BLANK_BLUEPRINT_ID {
         let fe_options = &[
-            "Zero-Bundle HTMX + Tailwind (Recommended — 0KB JS bundle, instant page loads & pure Rust html! macro)",
-            "LiveView Server-Driven UI (rullst::live — Real-time WebSockets state sync, 0 JS)",
-            "Reactive Wasm Islands (rullst::island — Client-side WebAssembly micro-frontends)",
-            "Zero-Build Semantic CSS (Pico.css — Classless HTML, auto Dark Mode, 0 Node.js / 0 NPM)",
-            "File-Based Classic Templates (Tera / Askama — Jinja2 style templates in templates/*.html)",
+            "HTMX + Tailwind SSR (Recommended — html! views; HTMX remains a browser dependency)",
+            "LiveView compatibility profile (rullst::live primitives; wire routes and client transport)",
+            "Wasm Island compatibility profile (rullst::island; build and load generated artifacts)",
+            "Pico.css compatibility profile (semantic HTML; add and serve the stylesheet)",
+            "Tera compatibility profile (adds Tera; application templates remain explicit)",
         ];
         let fe_selection = dialoguer::Select::with_theme(&theme)
             .with_prompt("🎨 Select Frontend Engine")
@@ -237,7 +237,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
         .interact()?;
 
     let wants_redis = dialoguer::Confirm::with_theme(&theme)
-        .with_prompt("🚀 Enable Redis? (Ultra-fast in-memory cache & distributed jobs; auto-falls back to RAM if offline)")
+        .with_prompt("Enable Redis adapters? (Requires explicit configuration; no automatic production fallback)")
         .default(false)
         .interact()?;
 

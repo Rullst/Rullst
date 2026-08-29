@@ -22,7 +22,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst eject",
-                    "Zero lock-in framework escape hatch to pure Axum",
+                    "Generate a reviewable Axum/Tokio entry-point snapshot",
                 ),
             ],
         ),
@@ -137,7 +137,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
             vec![
                 (
                     "cargo rullst deploy [--platform=...]",
-                    "1-Click PaaS deploy (Fly, Railway, Render, VPS Caddy)",
+                    "Guided PaaS deploy (Fly, Railway, Render, VPS Caddy)",
                 ),
                 ("cargo rullst dockerize", "Generate Docker files"),
                 (

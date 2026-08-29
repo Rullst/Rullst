@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     }}
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
+    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (local loopback access in debug; environment credentials in release)");
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
     let server = if is_hot {{
@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ].nest_axum("/nexus", nexus);
 
     println!("🚀 AI Portfolio server starting on port 3000 (Engine: {frontend_engine}, ORM: {orm_pattern})...");
-    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (one-click loopback in debug; environment credentials in release)");
+    println!("⚙️  Nexus CMS: http://127.0.0.1:3000/nexus (local loopback access in debug; environment credentials in release)");
     Server::new(router)
         .run(3000)
         .await?;

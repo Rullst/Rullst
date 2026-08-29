@@ -31,7 +31,7 @@ fn print_neon_logo() {
     println!(
         "\n  {} {} {}",
         "The".white(),
-        "Ultimate Full-Stack Rust Framework".bright_cyan().bold(),
+        "Explicit Full-Stack Rust Toolkit".bright_cyan().bold(),
         format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow()
     );
     println!(
@@ -214,7 +214,7 @@ fn handle_deploy(
     theme: &dialoguer::theme::ColorfulTheme,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let choices = [
-        "🚀  One-Click PaaS Deploy      (cargo rullst deploy)",
+        "🚀  Guided PaaS Deploy         (cargo rullst deploy)",
         "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
         "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
     ];
@@ -273,7 +273,7 @@ fn handle_existing_project(
         ),
         format!(
             "🚀  Deploy to Cloud          {}",
-            "(1-Click PaaS: Fly, Railway, Render, VPS)".dimmed()
+            "(Guided PaaS: Fly, Railway, Render, VPS)".dimmed()
         ),
         format!(
             "🔄  Safe Upgrade             {}",

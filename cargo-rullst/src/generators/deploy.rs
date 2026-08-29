@@ -10,7 +10,7 @@ use crate::blueprints::deploy::{
 pub fn run_deploy(platform_arg: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
-        "🚀 Rullst 1-Click Cloud Deployment Wizard".bold().cyan()
+        "🚀 Rullst Guided Cloud Deployment Wizard".bold().cyan()
     );
 
     let platform = match platform_arg {

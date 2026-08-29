@@ -79,13 +79,11 @@ pub(crate) fn render_island(name: &str) -> (String, String, String) {
 
 pub fn create_new_island(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(IoError::new(
+            ErrorKind::NotFound,
+            "make:island must be executed in the root of a Rullst project",
+        )
+        .into());
     }
 
     let (module_name, type_name, source) = render_island(name);

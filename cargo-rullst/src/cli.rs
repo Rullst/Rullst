@@ -214,7 +214,7 @@ pub enum Commands {
         #[arg(long)]
         invoice: bool,
     },
-    /// Initializes a Foundry.toml deployment manifest for 1-click cloud provisioning
+    /// Initializes a Foundry.toml manifest for a reviewed SSH deployment
     #[command(name = "foundry:init")]
     FoundryInit,
     /// Deploys the Rullst application to the cloud provider configured in Foundry.toml
@@ -404,7 +404,7 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
-    /// Ejects the framework abstractions into 100% pure Axum/Tokio Rust code
+    /// Writes an inspectable Axum/Tokio-oriented migration entry point
     Eject {
         /// Optional: Overwrite src/main.rs directly instead of creating src/ejected_main.rs
         #[arg(long)]

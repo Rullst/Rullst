@@ -1,6 +1,12 @@
 // src/generators/foundry/config.rs — Foundry.toml template, parsing, and validation.
 
-use colored::*;
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum FoundryConfigError {
+    #[error("Foundry.toml is not valid TOML: {0}")]
+    Parse(String),
+    #[error("invalid Foundry configuration: {0}")]
+    Invalid(String),
+}
 
 pub fn generate_foundry_toml_template(project_name: &str) -> String {
     format!(
@@ -11,9 +17,9 @@ pub fn generate_foundry_toml_template(project_name: &str) -> String {
 # └──────────────────────────────────────────────────────────────┘
 
 [app]
-# The name of your application (used for container and systemd service naming)
+# The name of your application (used for binary and systemd service naming)
 name = "{project_name}"
-# The public domain that will serve your app (Caddy will get SSL automatically)
+# The public domain that will serve your app (Caddy may manage HTTPS after DNS and network validation)
 domain = "yourdomain.com"
 # The internal port your Rullst server binds to
 port = 3000
@@ -25,7 +31,7 @@ provider = "hetzner"
 [server]
 # Public IP or hostname of the target server
 host = "1.2.3.4"
-# SSH login user (typically root for fresh VPS, or a sudo user for managed VMs)
+# SSH login user (root, or a user with passwordless non-interactive sudo)
 user = "root"
 # Path to your SSH private key (leave empty to use SSH agent)
 ssh_key = "~/.ssh/id_rsa"
@@ -43,20 +49,17 @@ target = ""
 # Database type: "sqlite" | "postgres" | "mysql"
 type = "sqlite"
 # SQLite: path relative to the deployed binary  |  Postgres/MySQL: full connection URL
-url = "sqlite:///app/data/db.sqlite"
+url = "sqlite:///opt/rullst/{project_name}/data/db.sqlite"
 
 [caddy]
 # Enable automatic HTTPS via Caddy (strongly recommended for production)
 auto_https = true
-# Optional: add extra Caddyfile directives (e.g., rate_limit, header, etc.)
-extra_directives = ""
-
 [env]
-# Environment variables injected into the container at runtime.
+# Environment variables loaded by the systemd service at runtime.
 # Add your application secrets here (they will NOT be committed if you gitignore Foundry.toml).
 RULLST_ENV = "production"
 APP_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_KEY"
-DATABASE_URL = "sqlite:///app/data/db.sqlite"
+DATABASE_URL = "sqlite:///opt/rullst/{project_name}/data/db.sqlite"
 # STRIPE_SECRET_KEY = ""
 # AWS_ACCESS_KEY_ID = ""
 "#,
@@ -80,130 +83,192 @@ pub struct FoundryConfig {
     pub env_vars: Vec<(String, String)>,
 }
 
-pub fn parse_foundry_config(content: &str) -> FoundryConfig {
-    let get_value = |key: &str| -> String {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with(key) && trimmed.contains('=') {
-                return trimmed
-                    .split_once('=')
-                    .map(|x| x.1)
-                    .unwrap_or("")
-                    .trim()
-                    .trim_matches('"')
-                    .to_string();
-            }
-        }
-        String::new()
+pub fn parse_foundry_config(content: &str) -> Result<FoundryConfig, FoundryConfigError> {
+    let document = toml::from_str::<toml::Value>(content)
+        .map_err(|error| FoundryConfigError::Parse(error.to_string()))?;
+    let value = |section: &str, key: &str| {
+        document
+            .get(section)
+            .and_then(|table| table.get(key))
+            .map(toml_scalar_to_string)
+            .transpose()
+            .map(|value| value.unwrap_or_default())
     };
+    let env_vars = document
+        .get("env")
+        .and_then(toml::Value::as_table)
+        .map(|table| {
+            table
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), toml_scalar_to_string(value)?)))
+                .collect::<Result<Vec<_>, FoundryConfigError>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
 
-    let mut env_vars = Vec::new();
-    let mut in_env = false;
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed == "[env]" {
-            in_env = true;
-            continue;
-        }
-        if trimmed.starts_with('[') && trimmed != "[env]" {
-            in_env = false;
-        }
-        if in_env && trimmed.contains('=') && !trimmed.starts_with('#') {
-            let mut parts = trimmed.splitn(2, '=');
-            if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
-                env_vars.push((k.trim().to_string(), v.trim().trim_matches('"').to_string()));
-            }
-        }
-    }
-
-    FoundryConfig {
-        app_name: get_value("name"),
-        domain: get_value("domain"),
-        port: get_value("port"),
-        host: get_value("host"),
-        user: get_value("user"),
-        ssh_key: get_value("ssh_key"),
-        ssh_port: get_value("ssh_port"),
-        provider: get_value("provider"),
-        db_type: get_value("type"),
-        profile: get_value("profile"),
-        target_triple: get_value("target"),
-        auto_https: get_value("auto_https"),
+    Ok(FoundryConfig {
+        app_name: value("app", "name")?,
+        domain: value("app", "domain")?,
+        port: value("app", "port")?,
+        host: value("server", "host")?,
+        user: value("server", "user")?,
+        ssh_key: value("server", "ssh_key")?,
+        ssh_port: value("server", "ssh_port")?,
+        provider: value("deploy", "provider")?,
+        db_type: value("database", "type")?,
+        profile: value("build", "profile")?,
+        target_triple: value("build", "target")?,
+        auto_https: value("caddy", "auto_https")?,
         env_vars,
+    })
+}
+
+fn toml_scalar_to_string(value: &toml::Value) -> Result<String, FoundryConfigError> {
+    match value {
+        toml::Value::String(value) => Ok(value.clone()),
+        toml::Value::Integer(value) => Ok(value.to_string()),
+        toml::Value::Float(value) => Ok(value.to_string()),
+        toml::Value::Boolean(value) => Ok(value.to_string()),
+        _ => Err(FoundryConfigError::Invalid(
+            "configuration values must be TOML scalars".to_string(),
+        )),
     }
 }
 
-pub fn validate_foundry_config(cfg: &FoundryConfig) {
+fn valid_domain(domain: &str) -> bool {
+    !domain.is_empty()
+        && domain.len() <= 253
+        && domain.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        })
+}
+
+fn valid_port(port: &str) -> bool {
+    port.parse::<u16>().is_ok_and(|port| port > 0)
+}
+
+pub fn validate_foundry_config(cfg: &FoundryConfig) -> Result<(), FoundryConfigError> {
     if cfg.app_name.is_empty()
+        || cfg.app_name.len() > 64
+        || !cfg
+            .app_name
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphanumeric())
         || !cfg
             .app_name
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
     {
-        println!("{}", "❌ Error: Invalid app name in Foundry.toml. Only alphanumeric, dashes and underscores are allowed.".red().bold());
-        std::process::exit(1);
+        return Err(FoundryConfigError::Invalid(
+            "app.name must start with an ASCII alphanumeric character and contain at most 64 alphanumeric, dash, or underscore characters".to_string(),
+        ));
     }
-    if !cfg.domain.is_empty()
-        && !cfg
-            .domain
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
-    {
-        println!("{}", "❌ Error: Invalid domain in Foundry.toml. Only alphanumeric, dots and dashes are allowed.".red().bold());
-        std::process::exit(1);
+    if !matches!(cfg.auto_https.as_str(), "true" | "false" | "") {
+        return Err(FoundryConfigError::Invalid(
+            "caddy.auto_https must be true or false".to_string(),
+        ));
     }
-    if cfg.ssh_key.starts_with('-') {
-        println!(
-            "{}",
-            "❌ Error: Invalid SSH key path in Foundry.toml. Path cannot start with a dash."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+    if !valid_domain(&cfg.domain) {
+        return Err(FoundryConfigError::Invalid(
+            "app.domain must be a valid DNS hostname or IPv4 address".to_string(),
+        ));
+    }
+    if cfg.ssh_key.starts_with('-') || cfg.ssh_key.chars().any(char::is_control) {
+        return Err(FoundryConfigError::Invalid(
+            "server.ssh_key cannot start with a dash or contain control characters".to_string(),
+        ));
     }
     if cfg.user.is_empty()
+        || cfg.user.len() > 64
         || !cfg
             .user
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
     {
-        println!("{}", "❌ Error: Invalid SSH user in Foundry.toml. Only alphanumeric, dashes and underscores are allowed.".red().bold());
-        std::process::exit(1);
+        return Err(FoundryConfigError::Invalid(
+            "server.user must contain only ASCII alphanumeric, dash, or underscore characters"
+                .to_string(),
+        ));
     }
-    if cfg.host.is_empty()
+    if !valid_domain(&cfg.host) {
+        return Err(FoundryConfigError::Invalid(
+            "server.host must be a DNS hostname or IPv4 address; IPv6 SCP targets are not supported"
+                .to_string(),
+        ));
+    }
+    if (!cfg.ssh_port.is_empty() && !valid_port(&cfg.ssh_port))
+        || (!cfg.port.is_empty() && !valid_port(&cfg.port))
+    {
+        return Err(FoundryConfigError::Invalid(
+            "application and SSH ports must be integers from 1 through 65535".to_string(),
+        ));
+    }
+    if cfg.provider.is_empty()
+        || cfg.provider.len() > 64
         || !cfg
-            .host
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == ':')
+            .provider
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
     {
-        println!("{}", "❌ Error: Invalid SSH host in Foundry.toml. Only alphanumeric, dots, colons and dashes are allowed.".red().bold());
-        std::process::exit(1);
+        return Err(FoundryConfigError::Invalid(
+            "deploy.provider must be a bounded ASCII identifier".to_string(),
+        ));
     }
-    if (!cfg.ssh_port.is_empty() && !cfg.ssh_port.chars().all(|c| c.is_ascii_digit()))
-        || (!cfg.port.is_empty() && !cfg.port.chars().all(|c| c.is_ascii_digit()))
+    if !matches!(cfg.db_type.as_str(), "sqlite" | "postgres" | "mysql") {
+        return Err(FoundryConfigError::Invalid(
+            "database.type must be sqlite, postgres, or mysql".to_string(),
+        ));
+    }
+    if !matches!(cfg.profile.as_str(), "" | "debug" | "release") {
+        return Err(FoundryConfigError::Invalid(
+            "build.profile must be debug or release".to_string(),
+        ));
+    }
+    if cfg.target_triple.len() > 128
+        || (!cfg.target_triple.is_empty()
+            && (cfg.target_triple.starts_with('-')
+                || !cfg.target_triple.bytes().all(|byte| {
+                    byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
+                })))
     {
-        println!(
-            "{}",
-            "❌ Error: Invalid port in Foundry.toml. Only digits are allowed."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(FoundryConfigError::Invalid(
+            "build.target contains unsupported characters".to_string(),
+        ));
+    }
+    if cfg.env_vars.len() > 256 {
+        return Err(FoundryConfigError::Invalid(
+            "env may contain at most 256 entries".to_string(),
+        ));
     }
     for (k, v) in &cfg.env_vars {
-        if !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-            || v.contains('\n')
-            || v.contains('\r')
+        if k.is_empty()
+            || k.len() > 128
+            || !k
+                .bytes()
+                .next()
+                .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
+            || !k
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+            || v.len() > 16_384
+            || v.contains("CHANGE_ME")
+            || v.contains("REPLACE_WITH")
+            || v.chars()
+                .any(|character| matches!(character, '\n' | '\r' | '\0'))
         {
-            println!(
-                "{}",
-                "❌ Error: Invalid environment variable in Foundry.toml. Keys must be alphanumeric/underscores and values cannot contain newlines."
-                    .red()
-                    .bold()
-            );
-            std::process::exit(1);
+            return Err(FoundryConfigError::Invalid(
+                "environment keys must be shell identifiers of at most 128 bytes; values must be bounded, single-line, NUL-free, and must not retain generated secret placeholders".to_string(),
+            ));
         }
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -213,12 +278,35 @@ mod tests {
     #[test]
     fn template_uses_the_canonical_environment_name() {
         let generated = generate_foundry_toml_template("demo");
-        let parsed = parse_foundry_config(&generated);
+        let parsed = parse_foundry_config(&generated).expect("template should parse");
+        assert!(matches!(
+            validate_foundry_config(&parsed),
+            Err(FoundryConfigError::Invalid(_))
+        ));
         assert!(
             parsed
                 .env_vars
                 .contains(&("RULLST_ENV".to_string(), "production".to_string()))
         );
         assert!(!parsed.env_vars.iter().any(|(name, _)| name == "APP_ENV"));
+    }
+
+    #[test]
+    fn parser_is_section_aware_and_validation_returns_typed_errors() {
+        let content = generate_foundry_toml_template("demo").replace(
+            "APP_KEY = \"CHANGE_ME_TO_A_SECURE_RANDOM_KEY\"",
+            "APP_KEY = \"safe=value with spaces\"",
+        );
+        let parsed = parse_foundry_config(&content).expect("valid TOML");
+        assert_eq!(parsed.app_name, "demo");
+        assert!(validate_foundry_config(&parsed).is_ok());
+
+        let invalid = content.replace("port = 3000", "port = 70000");
+        let parsed = parse_foundry_config(&invalid).expect("valid TOML shape");
+        assert!(matches!(
+            validate_foundry_config(&parsed),
+            Err(FoundryConfigError::Invalid(_))
+        ));
+        assert!(parse_foundry_config("[app\nname = 1").is_err());
     }
 }

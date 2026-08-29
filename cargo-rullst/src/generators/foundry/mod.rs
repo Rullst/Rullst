@@ -6,11 +6,12 @@ mod deploy;
 use crate::generators::is_rullst_project;
 use colored::*;
 use std::fs;
+use std::io::{Error as IoError, ErrorKind};
 
 fn add_foundry_to_gitignore() -> Result<(), Box<dyn std::error::Error>> {
     let gitignore_path = std::path::Path::new(".gitignore");
     if gitignore_path.exists() {
-        let content = fs::read_to_string(gitignore_path).unwrap_or_default();
+        let content = fs::read_to_string(gitignore_path)?;
         if !content.contains("Foundry.toml") {
             let mut new_content = content;
             if !new_content.ends_with('\n') {
@@ -28,32 +29,26 @@ fn add_foundry_to_gitignore() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn ensure_is_rullst_project() {
+fn ensure_is_rullst_project() -> Result<(), IoError> {
     if !is_rullst_project() {
-        println!(
-            "{}{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold(),
-            "\nMake sure the current folder contains a 'Cargo.toml' file with a 'rullst' dependency."
-                .yellow()
-        );
-        std::process::exit(1);
+        return Err(IoError::new(
+            ErrorKind::NotFound,
+            "Foundry commands must run at a Rullst project root containing a Cargo.toml Rullst dependency",
+        ));
     }
+    Ok(())
 }
 
 pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
-    ensure_is_rullst_project();
+    ensure_is_rullst_project()?;
 
     let foundry_path = std::path::Path::new("Foundry.toml");
     if foundry_path.exists() {
-        println!(
-            "{}",
-            "⚠️  Foundry.toml already exists. Delete it first to re-initialize."
-                .yellow()
-                .bold()
-        );
-        std::process::exit(0);
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            "Foundry.toml already exists; review or move it before re-initializing",
+        )
+        .into());
     }
 
     println!(
@@ -63,15 +58,25 @@ pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
             .bold()
     );
 
-    let cargo_content = fs::read_to_string("Cargo.toml").unwrap_or_default();
-    let project_name = cargo_content
-        .lines()
-        .find(|l| l.trim_start().starts_with("name"))
-        .and_then(|l| l.split('=').nth(1))
-        .map(|s| s.trim().trim_matches('"').to_string())
-        .unwrap_or_else(|| "my-rullst-app".to_string());
+    let cargo_content = fs::read_to_string("Cargo.toml")?;
+    let cargo_manifest = toml::from_str::<toml::Value>(&cargo_content).map_err(|error| {
+        IoError::new(
+            ErrorKind::InvalidData,
+            format!("Cargo.toml is not valid TOML: {error}"),
+        )
+    })?;
+    let project_name = cargo_manifest
+        .get("package")
+        .and_then(|package| package.get("name"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| {
+            IoError::new(
+                ErrorKind::InvalidData,
+                "Cargo.toml must contain a string package.name",
+            )
+        })?;
 
-    let foundry_toml = config::generate_foundry_toml_template(&project_name);
+    let foundry_toml = config::generate_foundry_toml_template(project_name);
     fs::write(foundry_path, &foundry_toml)?;
 
     println!(
@@ -98,29 +103,27 @@ pub fn scaffold_foundry_config() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
-    ensure_is_rullst_project();
+    ensure_is_rullst_project()?;
 
     let foundry_path = std::path::Path::new("Foundry.toml");
     if !foundry_path.exists() {
-        println!(
-            "{}",
-            "❌ Foundry.toml not found. Run 'cargo rullst foundry:init' first."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(IoError::new(
+            ErrorKind::NotFound,
+            "Foundry.toml not found; run `cargo rullst foundry:init` first",
+        )
+        .into());
     }
 
     let content = fs::read_to_string(foundry_path)?;
-    let cfg = config::parse_foundry_config(&content);
-    config::validate_foundry_config(&cfg);
+    let cfg = config::parse_foundry_config(&content)?;
+    config::validate_foundry_config(&cfg)?;
 
     deploy::print_deployment_summary(&cfg);
 
     let ssh_base_args = deploy::get_ssh_base_args(&cfg);
 
     let local_bin = deploy::execute_build_step(&cfg)?;
-    deploy::execute_provision_step(&ssh_base_args)?;
+    deploy::execute_provision_step(&cfg, &ssh_base_args)?;
 
     let bin_name = std::path::Path::new(&local_bin)
         .file_name()
@@ -131,7 +134,7 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
             )
         })?
         .to_string_lossy();
-    deploy::execute_upload_step(&cfg, &local_bin, &ssh_base_args)?;
+    deploy::execute_upload_step(&cfg, &local_bin)?;
     deploy::execute_configure_step(&cfg, &bin_name, &ssh_base_args)?;
 
     println!(
@@ -146,9 +149,14 @@ pub fn run_foundry_deploy() -> Result<(), Box<dyn std::error::Error>> {
         &cfg.port
     };
     let health_cmd = format!(
-        "sleep 3 && curl -sf http://localhost:{app_port} > /dev/null && echo '✅ App is responding!' || echo '⚠️  App may still be starting...'"
+        "attempt=0; while [ \"$attempt\" -lt 10 ]; do if curl -fsS --max-time 5 http://localhost:{app_port}/health > /dev/null; then exit 0; fi; attempt=$((attempt + 1)); sleep 2; done; exit 1"
     );
-    let _ = deploy::run_ssh(&health_cmd, &ssh_base_args);
+    if !deploy::run_ssh(&health_cmd, &ssh_base_args)? {
+        return Err(std::io::Error::other(
+            "remote /health probe did not become ready after 10 bounded attempts; deployment not declared successful",
+        )
+        .into());
+    }
 
     deploy::print_deployment_success(&cfg);
     Ok(())

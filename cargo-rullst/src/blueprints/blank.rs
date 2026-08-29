@@ -115,7 +115,7 @@ pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                 </h1>
                 
                 <p class="text-slate-400 text-lg">
-                    "The ultimate full-stack framework for Rust. Focused on Security, Maintainability, and Speed."
+                    "A full-stack Rust framework focused on explicit security boundaries, maintainability, and measured speed."
                 </p>
 
                 <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
@@ -313,7 +313,7 @@ async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                 </h1>
                 
                 <p class="text-slate-400 text-lg">
-                    "The ultimate full-stack framework for Rust. Focused on Security, Maintainability, and Speed."
+                    "A full-stack Rust framework focused on explicit security boundaries, maintainability, and measured speed."
                 </p>
 
                 <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
