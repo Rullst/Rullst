@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(engine.get_template_names().count(), 0);
         assert_eq!(
             crate::blueprints::common::frontend_cargo_dependency("Tera Templates"),
-            "tera = \"1.20\"\n"
+            "tera = \"2.2\"\n"
         );
     }
 }

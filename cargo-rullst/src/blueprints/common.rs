@@ -118,7 +118,7 @@ pub fn frontend_adapter_comment(frontend_engine: &str) -> String {
 /// Returns the cargo dependency line for the chosen frontend engine.
 pub fn frontend_cargo_dependency(frontend_engine: &str) -> String {
     if frontend_engine.contains("Tera") || frontend_engine.contains("Template") {
-        "tera = \"1.20\"\n".to_string()
+        "tera = \"2.2\"\n".to_string()
     } else {
         String::new()
     }
