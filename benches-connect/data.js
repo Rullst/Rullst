@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787984610690,
+  "lastUpdate": 1787985808604,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2425,6 +2425,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 392,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "51922e63c965882224f78bb4c77860f3eac9acd2",
+          "message": "fix(ci): restore clean cross-platform verification",
+          "timestamp": "2026-08-29T03:36:37-03:00",
+          "tree_id": "f51b5ca6a41e32641b087ddab2d57c5288cad470",
+          "url": "https://github.com/Rullst/Rullst/commit/51922e63c965882224f78bb4c77860f3eac9acd2"
+        },
+        "date": 1787985808236,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 569,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
