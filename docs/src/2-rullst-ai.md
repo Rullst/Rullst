@@ -19,11 +19,18 @@ with an exact allowlist, principal authorization, closed JSON schema, payload
 limits, call budget and mandatory audit sink. Destructive and financial calls
 also require a one-use approval bound to the exact payload.
 
-## 1. The Agent Manifesto (`AGENTS.md`)
+## 1. Repository instructions for coding agents
 
-Every Rullst project generated via `cargo rullst new` automatically includes two vital files in the root: `.ai-rules` and `AGENTS.md`.
+The Rullst repository maintains a root `AGENTS.md` for contributors. The current
+`cargo rullst new` scaffold does **not** copy `AGENTS.md`, `.ai-rules`, or
+tool-specific instruction files into an application. Add reviewed project-local
+instructions yourself when using an autonomous coding tool; do not assume the
+framework's repository policy applies to generated application code.
 
-These are the heart of AI-assisted development. The `AGENTS.md` file acts as the "Bible" of your project for any autonomous agent (like Cursor, Github Copilot, Gemini, or Claude). It tells the AI exactly how it should behave in your codebase.
+`cargo rullst generate:ai-context` can generate `.llms.txt` from recognized
+project dependencies and source directories. That snapshot can help a coding
+assistant navigate the application, but it is not an instruction-policy file
+and should be regenerated and reviewed after structural changes.
 
 Example of the default content:
 ```markdown
@@ -44,6 +51,7 @@ Rullst's API was designed so that the AI rarely hallucinates:
 ## 3. How to Get the Best Results
 
 When instructing an AI to add a feature in Rullst:
-1. Ask it to **read** the `docs/spec.md` and `AGENTS.md` files first.
+1. Ask it to read the instruction files that actually exist in your application
+   and consult the matching version of the Rullst documentation.
 2. Say: "Create a new Controller following the pattern established in `auth_controller.rs`". Today's AIs are brilliant at pattern matching. Rullst provides the skeleton, the AI fills in the meat.
 3. Use the generators! Ask the AI to use `cargo rullst make:controller` in the terminal (if it's an autonomous agent), ensuring the correct file structure.

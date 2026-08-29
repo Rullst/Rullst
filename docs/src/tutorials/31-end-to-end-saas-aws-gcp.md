@@ -1,74 +1,65 @@
-# Tutorial 31: Full-Stack SaaS Enterprise End-to-End (AWS & GCP) 💎
+# Tutorial 31: SaaS deployment preparation for AWS or GCP
 
-This master capstone tutorial guides you step-by-step through building a complete production SaaS application from scratch to deployment on AWS or Google Cloud Platform (GCP).
+This guide prepares a generated SaaS application for a cloud deployment. It is
+not an end-to-end production certification: identity, network policy, database
+operation, secrets, billing and recovery remain deployment responsibilities.
 
----
+## 1. Materialize and verify the SaaS starter
 
-## 🏗️ Step 1: Scaffold the SaaS Application
-
-Generate the project using the SaaS blueprint:
+While v12 is unreleased, use a reviewed dev checkout. After a prerelease ships,
+install the matching versioned CLI and generate deterministically:
 
 ```bash
-cargo rullst new my_cloud_saas
+cargo rullst new my_cloud_saas --default --blueprint saas --docker
 cd my_cloud_saas
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-features
 ```
 
-This scaffolds:
-- Auth System (`cargo rullst auth`)
-- SaaS Billing (`rullst-capital`)
-- Database ORM Models (`rullst-orm`)
-- RASP Security Layer (`rullst-security`)
+Review every generated route, access policy, migration and environment
+placeholder before supplying live credentials.
 
----
+## 2. Supply secrets outside source control
 
-## 🔐 Step 2: Configure Production Environment & Vault
+Use AWS Secrets Manager, Google Secret Manager or an equivalent deployment
+boundary for values such as `DATABASE_URL`, provider keys, webhook secrets and
+the Rullst field-encryption key. Do not bake `.env` into an image.
 
-In `.env`:
+Set `RULLST_ENV=production` and make startup fail when a required production
+adapter or credential is missing. Empty and `mock_*` provider credentials are
+for deterministic offline development, not live operation.
 
-```dotenv
-RULLST_ENV=production
-DATABASE_URL=postgres://saas_user:secure_pass@rds-instance.aws.com:5432/saas_db
-BILLING_PROVIDER=stripe
-BILLING_API_KEY=sk_live_...
-BILLING_WEBHOOK_SECRET=whsec_...
-```
-
----
-
-## ☁️ Step 3: Deploy to AWS (App Runner / ECS & RDS)
-
-Scaffold Dockerfile and production infrastructure:
+## 3. Build and scan the exact image
 
 ```bash
-cargo rullst deploy --platform=vps
+docker build --pull --tag my-cloud-saas:<git-sha> .
+docker inspect my-cloud-saas:<git-sha>
 ```
 
-### AWS App Runner Deployment:
-1. Push Docker image to AWS ECR:
-   ```bash
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com
-   docker build -t saas-app .
-   docker tag saas-app:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/saas-app:latest
-   docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/saas-app:latest
-   ```
-2. Create App Runner service targeting port `3000` with health check path `/health`.
+Pin the deployed image by digest. Run the application's tests and a container
+scanner against the exact candidate. The CLI's `deploy` command scaffolds or
+invokes Fly.io, Railway, Render and VPS paths; AWS App Runner/ECS and Google
+Cloud Run configuration remains explicit cloud work.
 
----
+## 4. Configure the cloud boundary
 
-## ☁️ Step 4: Deploy to Google Cloud Platform (GCP Cloud Run)
+For AWS or GCP, define and review:
 
-```bash
-gcloud builds submit --tag gcr.io/<gcp_project_id>/saas-app
-gcloud run deploy saas-app \
-  --image gcr.io/<gcp_project_id>/saas-app \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 3000
-```
+- private database connectivity, TLS and least-privilege credentials;
+- trusted proxy handling and the application's external origin policy;
+- ingress authentication, rate limits, body limits and request timeouts;
+- readiness/liveness behavior and a bounded shutdown grace period;
+- immutable image rollout and a tested rollback procedure;
+- logs, metrics and alerts that avoid secrets and unnecessary PII.
 
----
+Managed services have provider-specific scaling floors, quotas, cold starts and
+costs. Verify current provider documentation and load-test your selected region
+and topology rather than assuming scale-to-zero or a request rate.
 
-## 💡 Key Takeaways
-- Cloud Run and AWS App Runner scale automatically to 0 when idle and burst to thousands of requests instantly.
-- Built-in `/health` and `/ready` probes manage Zero-Downtime rolling updates.
+## 5. Exercise stateful recovery
+
+Before production traffic, rehearse migrations, backup, restore, webhook replay,
+field-encryption key rotation, a failed rollout and database unavailability.
+Health endpoints only report the checks implemented by the application; they do
+not create zero-downtime deployment by themselves.

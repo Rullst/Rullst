@@ -45,7 +45,7 @@
     <header>
       <div class="badge">🛡️ rullst-core</div>
       <h1>Core Primitives Benchmarks</h1>
-      <p class="sub">Three hot-path functions that run on <em>every single request</em> — HTML escaping, PII masking, and CSRF token generation. Measured in <strong>nanoseconds</strong>.</p>
+      <p class="sub">Criterion measurements for HTML escaping, PII masking, and CSRF token generation. Each applies only when its corresponding rendering or middleware path is used.</p>
       <div class="links">
         <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
         <a href="/Rullst/benches/" class="btn btn-o">⚡ Core Bench</a>
@@ -55,8 +55,8 @@
     </header>
     <div class="grid">
       <div class="card"><div class="ic">🔤</div><h3>HTML Escape</h3><p><code>escape_str()</code> is called on every dynamic value inside an <code>html!</code> macro block. Clean inputs return <code>Cow::Borrowed</code> (zero allocation). Malicious inputs allocate once.</p></div>
-      <div class="card"><div class="ic">🕵️</div><h3>PII Masking</h3><p><code>mask_pii()</code> classifies every field on ORM writes — emails, credit cards, SSNs, phones. Must be sub-microsecond to avoid slowing down database operations.</p></div>
-      <div class="card"><div class="ic">🔑</div><h3>CSRF Token</h3><p><code>generate_csrf_token()</code> uses <code>rand::Alphanumeric</code> to generate a 32-character cryptographically secure token on every form render.</p></div>
+      <div class="card"><div class="ic">🕵️</div><h3>PII Masking</h3><p><code>mask_pii()</code> applies bounded email and payment-card heuristics when the response-masking layer is enabled. It is not complete DLP.</p></div>
+      <div class="card"><div class="ic">🔑</div><h3>CSRF Token</h3><p><code>generate_csrf_token()</code> generates the 32-character random value used when CSRF middleware needs a new double-submit cookie.</p></div>
     </div>
     <div id="loading">⏳ Loading primitives benchmark data...</div>
     <div id="dashboard" style="display:none">
@@ -70,7 +70,7 @@
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
       const L=document.getElementById('loading'),D=document.getElementById('dashboard');
-      if(!window.BENCHMARK_DATA){L.innerHTML='⚠️ No data yet. Run bench.yml on push to main.';return;}
+      if(!window.BENCHMARK_DATA){L.textContent='No Core primitives benchmark data is available yet. Run bench.yml on dev.';return;}
       L.style.display='none';D.style.display='block';
       const data=window.BENCHMARK_DATA,entries=data.entries||data,suite=Object.keys(entries)[0],commits=entries[suite];
       if(!commits?.length){D.innerHTML='<p>No entries yet.</p>';return;}

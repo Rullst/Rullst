@@ -28,7 +28,10 @@ application that mounts them.
 
 ## 🔐 1. Rullst Vault (Authenticated AES-256-GCM)
 
-`FieldEncryptor` provides authenticated encryption at rest (AEAD) with built-in versioning and zero-downtime key rotation support.
+`FieldEncryptor` provides authenticated encryption at rest (AEAD) with a
+versioned envelope and keyring-assisted rotation. Applications can keep prior
+keys readable while writing with a new key; deployment coordination, key
+custody, data re-encryption, and retirement remain operator responsibilities.
 
 ### Usage Example
 

@@ -7,9 +7,8 @@ Learn how to configure a local Ollama endpoint so prompts need not be sent to a 
 ## 🛠️ Step 1: Configure `.env` for Ollama
 
 ```dotenv
-AI_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
-AI_MODEL=llama3:8b
+OLLAMA_MODEL=llama3:8b
 ```
 
 ---
@@ -17,17 +16,17 @@ AI_MODEL=llama3:8b
 ## 💻 Step 2: Use Local AI Client in Rust
 
 ```rust
-use rullst_ai::AiClient;
+use rullst_ai::ai::AiClient;
 
-pub async fn analyze_security_threat(payload: &str) -> Result<String, rullst_core::AppError> {
-    let client = AiClient::from_env()?;
+pub async fn analyze_security_threat(payload: &str) -> Result<String, rullst_ai::AiError> {
+    let client = AiClient::auto()?;
     
     let prompt = format!(
         "Analyze the following request string for attack patterns: '{}'. Reply with SAFE or THREAT.",
         payload
     );
     
-    let response = client.generate(&prompt).await?;
+    let response = client.prompt(&prompt).await?;
     Ok(response)
 }
 ```
@@ -35,5 +34,8 @@ pub async fn analyze_security_threat(payload: &str) -> Result<String, rullst_cor
 ---
 
 ## 💡 Key Takeaways
-- **Zero Cloud API Costs:** Runs completely on local CPU/NPU/GPU.
-- **Air-Gapped Privacy:** No user payloads or internal code leave your local infrastructure.
+- No cloud LLM request is required when `AiClient::auto()` selects the configured
+  Ollama endpoint. Hardware, electricity, hosting, and model licenses still have
+  costs.
+- “Local” does not prove an air gap. Verify host networking, Ollama bind address,
+  model downloads, DNS/proxies, application logs, telemetry, and backups.

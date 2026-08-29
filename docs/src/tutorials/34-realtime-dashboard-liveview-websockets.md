@@ -1,6 +1,8 @@
 # Tutorial 34: Live Analytics Dashboard (`rullst::live` & WebSockets) 📈
 
-Build a live financial analytics dashboard combining `rullst::live` server components, WebSockets presence, and HTMX OOB HTML swaps.
+Build a per-connection analytics view with `rullst::live`. Feed it values from
+your own authoritative metrics source; the example below uses explicit state
+only to demonstrate the component lifecycle.
 
 ---
 
@@ -20,8 +22,9 @@ pub struct AnalyticsDashboard {
 #[async_trait]
 impl LiveComponent for AnalyticsDashboard {
     async fn mount(&mut self) {
-        self.revenue_mrr = 12450.00;
-        self.active_users = 342;
+        // Replace these initial values with an application-owned metrics query.
+        self.revenue_mrr = 0.0;
+        self.active_users = 0;
     }
 
     async fn handle_event(&mut self, payload: Value) {
@@ -70,8 +73,15 @@ pub async fn analytics_page() -> String {
 }
 ```
 
+Register `/ws/analytics` with
+`axum::routing::get(rullst::live::live_ws_handler::<AnalyticsDashboard>)` and
+load a pinned HTMX WebSocket extension in the page.
+
 ---
 
 ## 💡 Key Takeaways
-- Zero JavaScript required to maintain stateful real-time WebSockets connections.
-- Out-Of-Band (OOB) swaps allow multiple sections of the dashboard to update simultaneously.
+- Rullst owns the server-side component lifecycle; a browser transport is still
+  required.
+- The current implementation re-renders an HTML fragment after each valid JSON
+  event. It does not provide distributed state, replay, authorization or a
+  metrics source automatically.

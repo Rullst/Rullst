@@ -92,8 +92,10 @@ To guarantee consistency, both humans and AI coders must adhere to the following
   ```
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
-* **Macro:** `html!` procedural macro compiles HTML trees directly into static memory string concat builders.
-* **XSS Protection:** Automatic HTML escaping on all dynamic variables wrapped in `{expr}`.
+* **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
+  construction at compile time.
+* **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
+  are HTML-escaped by the generated code.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
 * **Example:**
   ```rust
@@ -134,27 +136,34 @@ new_user.delete().await?;
 
 ### 5.2. Parameterized Queries & Privacy
 * All dynamic queries use SQLx parameterization (`$1`, `?`) to prevent SQL Injection.
-* Sensitive fields annotated with `#[orm(encrypted)]` are automatically encrypted at rest using AES-256-GCM.
+* `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
 
 ---
 
 ## 💳 6. Billing, Payments & Fiscal Engine (`rullst-capital`)
 
-`rullst-capital` unifies multi-provider subscription billing, international payouts, and Brazilian digital invoicing (NFS-e Nacional).
+`rullst-capital` exposes bounded billing-provider and payout-provider adapters,
+plus an offline-only Brazilian digital-invoicing preview (NFS-e Nacional).
 
 ### 6.1. Multi-Gateway Payment Architecture
-All providers implement the standard asynchronous traits (`PaymentProvider`, `SubscriptionProvider`, `PayoutProvider`):
+Billing adapters implement `BillingProvider`; the Wise payout adapter implements
+the separate `PayoutProvider` contract. Individual billing operations may still
+return `Unsupported` when a provider adapter has no reviewed implementation:
 ```rust
 use rullst_capital::providers::stripe::StripeProvider;
-use rullst_capital::traits::PaymentProvider;
+use rullst_capital::providers::BillingProvider;
 
-let provider = StripeProvider::new(api_key);
-let session = provider.create_checkout_session(plan_id, customer_email).await?;
+let provider = StripeProvider::new(api_key, webhook_secret);
+let session = provider
+    .create_checkout_session(customer_email, plan_id, redirect_url)
+    .await?;
 ```
 
 ### 6.2. Webhook Signature Verification
-* Webhooks enforce constant-time cryptographic verification (`subtle::ConstantTimeEq`).
-* Replay attack prevention validates event timestamps against maximum age thresholds.
+* Built-in webhook adapters use provider-appropriate cryptographic verification;
+  equality checks for derived signatures are constant-time where applicable.
+* Timestamped protocols enforce a bounded freshness window. Applications still
+  need durable event-id idempotency across processes.
 
 ### 6.3. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implementado]` Offline DPS Generator:** Serializes standardized XML DPS documents with proper XML character escaping and entity validation.
@@ -171,7 +180,10 @@ let session = provider.create_checkout_session(plan_id, customer_email).await?;
 ### 7.1. Rullst Vault (Authenticated Field Encryption)
 * **Algorithm:** AES-256-GCM with authenticated 96-bit random nonces and 128-bit authentication tags.
 * **Envelope Format:** `RULLST:v2:<key_id>:<base64_nonce>:<base64_ciphertext_and_tag>`.
-* **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) enabling zero-downtime cryptographic key rotation.
+* **Key Rotation:** Built-in keyring support (`decrypt_with_keyring`) can read
+  prior keys while new writes use the active key. Deployment coordination,
+  re-encryption, key custody and retirement remain operator responsibilities.
+* **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
 * **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
@@ -204,9 +216,23 @@ let session = provider.create_checkout_session(plan_id, customer_email).await?;
 ## 📊 10. Control Center & Admin Interfaces (`rullst-studio` & `rullst-nexus`)
 
 ### 10.1. Rullst Studio (`http://127.0.0.1:5555`)
-* Zero-bundle developer dashboard with dark glassmorphic UI.
-* Real-time metrics sourced from `RadarSnapshot::collect()` (RSS RAM, Tokio scheduler latency, active spans).
-* Generated applications start the standalone Studio only in debug builds and bind it to loopback. Exposing it beyond the developer machine requires an explicit authenticated network boundary owned by the application; no environment variable silently converts the local server into a production admin surface.
+* Local-first developer dashboard with a server-rendered dark interface; browser
+  assets and final page policy remain deployment concerns.
+* Process observations sourced from `RadarSnapshot::collect()` and explicitly
+  supplied local collectors; unsupported values remain unavailable.
+* Generated applications start the standalone Studio only in debug builds and
+  bind it to loopback. Its local capability verifies the direct loopback peer,
+  accepts only a local `Host` authority, requires same-origin `Origin` on unsafe
+  methods, and rejects missing origins on mutations. This is a local
+  DNS-rebinding/CSRF boundary, not production authentication.
+* Queue, revenue, security and telemetry pages report only values supplied by
+  their configured process-local source. Unsupported driver operations and
+  disconnected integrations remain errors or `Unavailable`. The standalone
+  migration surface provides CLI guidance and returns `501` from legacy
+  mutation handlers because no migration/seeder registry is installed.
+* Exposing Studio beyond the developer machine requires an explicit
+  authenticated network boundary owned by the application; no environment
+  variable silently converts the local server into a production admin surface.
 
 ### 10.2. Rullst Nexus (`/nexus`)
 * Auto-generated CMS with dynamic CRUD operations and AI Admin Assistant.

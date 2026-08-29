@@ -1,8 +1,11 @@
-# Rullst Nexus: Your Instant CMS
+# Rullst Nexus: Explicit Admin CMS
 
-**Rullst Nexus** is a tightly coupled and dynamically generated Content Management System (CMS) for your Rullst project.
+**Rullst Nexus** is a server-rendered administrative CMS for explicitly
+registered Rullst models.
 
-Instead of spending dozens of hours developing an administrative panel (CRUDs) for your database tables, Rullst Nexus reads the metadata from your database models (`structs`) and builds a stunning administrative interface (using Tailwind CSS and glassmorphism layouts) at the exact moment the application compiles.
+`NexusModel` metadata defines the tables, fields, and widgets available in the
+panel. Rullst builds CRUD, search, pagination, and batch routes from that
+registration; it does not discover an arbitrary database schema automatically.
 
 ## How it Works
 
@@ -81,7 +84,9 @@ let nexus = rullst::nexus::Nexus::new()
     .try_build()?;
 ```
 
-Administrators can edit the developer profile fields directly at `/nexus`. Changes to name, title, bio, email, website, avatar image, and social URLs immediately update the live portfolio website without requiring code changes or server redeployment!
+Administrators can edit the registered profile fields at `/nexus`. A blueprint
+that reads those fields on each request can show the persisted values without a
+code change or redeployment; cache policy remains application-owned.
 
 ## Benefits of Nexus
 

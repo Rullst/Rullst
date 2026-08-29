@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rullst AI — Guardrails & Prompt Token Benchmarks</title>
-  <meta name="description" content="Performance benchmarks for rullst-ai prompt injection filtering, PII masking, and token context estimation." />
+  <title>Rullst AI — Tool Schema, PII & Context Benchmarks</title>
+  <meta name="description" content="Criterion history for rullst-ai tool-schema, PII-masking, serialization, and context-estimation operations." />
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
@@ -38,8 +38,8 @@
   <div class="wrap">
     <header>
       <div class="badge">🤖 rullst-ai</div>
-      <h1>AI Guardrails & Prompt Token Benchmarks</h1>
-      <p class="sub">Performance benchmarks for <code>AiGuardrails::sanitize_prompt</code>, PII masking, and zero-cost LLM token context estimation.</p>
+      <h1>AI Helper Benchmarks</h1>
+      <p class="sub">Criterion measurements for selected prompt filtering, PII masking, and token-estimation functions. Results are commit- and runner-specific.</p>
       <div class="links">
         <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
         <a href="/Rullst/benches/" class="btn btn-o">⚡ Core</a>
@@ -48,56 +48,49 @@
       </div>
     </header>
     <div class="grid">
-      <div class="card"><div class="ic">🛡️</div><h3>Prompt Injection Guard</h3><p><code>AiGuardrails::sanitize_prompt()</code>: Scans and neutralizes prompt injection payloads before sending context to LLM providers.</p></div>
-      <div class="card"><div class="ic">🔒</div><h3>PII Masking</h3><p><code>AiGuardrails::mask_pii()</code>: Anonymizes sensitive email and personal identification numbers in sub-microseconds.</p></div>
-      <div class="card"><div class="ic">🧠</div><h3>Token Context Estimation</h3><p>Zero-allocation token counter estimating prompt size to maximize token economy.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3>Tool Schema Export</h3><p>Measures OpenAI-compatible schema generation for an explicitly registered and policy-allowed local tool.</p></div>
+      <div class="card"><div class="ic">🔒</div><h3>PII Masking</h3><p><code>AiGuardrails::mask_pii()</code> applies bounded heuristics to supported identifier patterns; it is not complete DLP.</p></div>
+      <div class="card"><div class="ic">🧠</div><h3>Token Context Estimation</h3><p>A heuristic prompt-size estimate; it is not a provider tokenizer or billing authority.</p></div>
     </div>
     <div class="glass">
       <h2>📊 AI Microsecond Benchmark Trends</h2>
-      <div id="loading" style="display:none;">Loading benchmark dataset...</div>
-      <div class="chart-c" id="chart-wrap"><canvas id="canvas"></canvas></div>
+      <div id="loading">Loading benchmark dataset...</div>
+      <div class="chart-c" id="chart-wrap" style="display:none;"><canvas id="canvas"></canvas></div>
     </div>
   </div>
 
   <script src="data.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const ctx = document.getElementById('canvas').getContext('2d');
-      const defaultData = {
-        labels: ['Run 1', 'Run 2', 'Run 3', 'Run 4', 'Run 5', 'Run 6', 'Latest'],
-        datasets: [
-          {
-            label: 'AiGuardrails::sanitize_prompt (µs)',
-            data: [0.55, 0.52, 0.49, 0.51, 0.48, 0.47, 0.45],
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.2)',
-            tension: 0.3,
-            fill: true
-          },
-          {
-            label: 'AiGuardrails::mask_pii (µs)',
-            data: [0.38, 0.35, 0.36, 0.34, 0.33, 0.32, 0.31],
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139, 92, 246, 0.2)',
-            tension: 0.3,
-            fill: true
-          },
-          {
-            label: 'Token Context Estimation (µs)',
-            data: [0.12, 0.11, 0.11, 0.10, 0.10, 0.09, 0.09],
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.2)',
-            tension: 0.3,
-            fill: true
-          }
-        ]
-      };
-
-      const chartData = (window.BENCHMARK_DATA && window.BENCHMARK_DATA.datasets) ? window.BENCHMARK_DATA : defaultData;
-
-      new Chart(ctx, {
+      const loading = document.getElementById('loading');
+      const chartWrap = document.getElementById('chart-wrap');
+      if (!window.BENCHMARK_DATA) {
+        loading.textContent = 'No published AI benchmark data is available yet.';
+        return;
+      }
+      const entries = window.BENCHMARK_DATA.entries || window.BENCHMARK_DATA;
+      const commits = entries[Object.keys(entries)[0]] || [];
+      if (!commits.length) {
+        loading.textContent = 'No published AI benchmark entries are available yet.';
+        return;
+      }
+      const recent = commits.slice(-30);
+      const labels = recent.map(entry => `${new Date(entry.commit.timestamp).toLocaleDateString()} ${entry.commit.id.slice(0, 7)}`);
+      const names = [...new Set(recent.flatMap(entry => entry.benches.map(bench => bench.name)))];
+      const colors = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e'];
+      const datasets = names.map((name, index) => ({
+        label: name,
+        data: recent.map(entry => entry.benches.find(bench => bench.name === name)?.value ?? null),
+        borderColor: colors[index % colors.length],
+        backgroundColor: `${colors[index % colors.length]}22`,
+        tension: 0.3,
+        spanGaps: true
+      }));
+      loading.style.display = 'none';
+      chartWrap.style.display = 'block';
+      new Chart(document.getElementById('canvas').getContext('2d'), {
         type: 'line',
-        data: chartData,
+        data: { labels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -106,7 +99,7 @@
           },
           scales: {
             x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Latency (microseconds)', color: '#94a3b8' } }
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Reported benchmark value', color: '#94a3b8' } }
           }
         }
       });

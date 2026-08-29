@@ -25,7 +25,7 @@
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Instant boilerplate generation for Welcome, Password Reset, OTP, and Invoice mailables.
+- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Generates starting mailables for Welcome, Password Reset, OTP, and Invoice flows.
 
 ---
 

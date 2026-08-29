@@ -1,26 +1,42 @@
 # Rullst Core ⚙️
 
-`rullst-core` encapsulates the foundational primitives, routing engines, state management, Cloud-Native health probes, Kernel-level telemetry, and configuration layers of the Rullst Framework. It acts as the beating heart that orchestrates HTTP handlers, middleware, and backend worker systems.
+`rullst-core` contains Rullst's runtime primitives, Axum-compatible routing,
+state management, health probes, process telemetry, queues, and configuration
+helpers.
 
 Core is runtime-only by default. Enable `orm` for ORM bootstrap/artisan and
 database-backed feature flags, and `queue-sqlite` for the SQLite queue driver.
 The umbrella `rullst` crate enables both by default, while domain crates opt in
 only when they actually use them.
 
+Queue monitoring capabilities are driver-specific. The trait defaults for
+listing all jobs, retrying failures and purging failures return
+`QueueError::Unsupported`; they never fabricate an empty snapshot or successful
+mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
+`purge_completed_jobs` name is retained only as a source-compatibility alias for
+the historical operation, which actually removed failed jobs.
+
 ## ✨ Core Features & Subsystems
 
-- **Zero-Cost Routing:** Extends `axum` routing for sub-millisecond response times without sacrificing safety.
-- **Rullst Radar (`rullst::radar`):** Kernel-level telemetry collector tracking Tokio runtime tick latency, active async tasks, CPU utilization, and RSS memory consumption.
+- **Axum-compatible routing:** `rullst::Router` wraps and converts to/from
+  `axum::Router`; application latency depends on handlers, middleware, build
+  profile, and deployment.
+- **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
+  is supported, Tokio task/yield observations when a runtime is available, and
+  process uptime. Unsupported probes return `None`.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes Health Probes (`rullst::health`):** Cloud-Native Liveness (`GET /health`) and Readiness (`GET /ready`) probe endpoints.
-- **Interactive Scalar API Docs (`rullst::scalar`):** High-performance OpenAPI documentation UI mounted at `/docs` with CDN loading and static offline fallback.
+- **Interactive Scalar API Docs (`rullst::scalar`):** OpenAPI documentation UI
+  mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
+  missing or malformed `openapi.json` returns `503`.
 - **Unified Error Handling:** `AppError` standardizes fallible application paths and error-console integration. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 
 ---
 
 ## 🚀 Usage
 
-Most developers will not depend on `rullst-core` directly, as it is re-exported seamlessly through the primary `rullst` crate.
+Most applications can use the re-exports provided by the umbrella `rullst`
+crate instead of depending on `rullst-core` directly.
 
 ### Mounting Health Probes & Prometheus Metrics
 
@@ -43,7 +59,8 @@ async fn main() {
 
 ### Axum First-Class Escape Hatches & Tower Interoperability
 
-Rullst does not lock developers in a "walled garden". `rullst::Router` provides seamless, bidirectional interoperability with `axum::Router` and `tower::Layer`:
+`rullst::Router` provides bidirectional conversion with `axum::Router` and
+accepts compatible `tower::Layer` values:
 
 ```rust
 use rullst::Router;
@@ -60,7 +77,7 @@ let mut router = Router::new()
 // Direct conversion to raw axum::Router
 let axum_app: axum::Router = router.into();
 
-// Or wrap existing Axum routers seamlessly
+// Or wrap an existing Axum router
 let rullst_app: Router = axum_app.into();
 ```
 

@@ -9,6 +9,12 @@ adapters, payout helpers, and verified webhook plumbing. Provider capabilities
 are not uniform: consult the adapter API and its tests before depending on a
 particular checkout, refund, payout, or webhook operation.
 
+`RevenueDashboardManager` is a bounded process-local presentation source.
+Applications call `update_metrics` with values reconciled from their durable
+billing database and call `record_event` after a verified webhook path. Recording
+an event deliberately does not invent a plan price, fee, currency or subscriber
+count from its event name.
+
 ## Payment providers
 
 Initialize only the provider required by the application and treat credentials

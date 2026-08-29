@@ -10,7 +10,10 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/rullst-connect?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**Rullst Connect** is an elegant, async-first, and Developer Experience (DX) focused OAuth2 authentication library for Rust. It simplifies the integration of social logins into your Rust web applications, providing a standardized interface across multiple providers.
+**Rullst Connect** is an async OAuth2/OIDC client layer with a shared
+`Provider` interface and normalized `ConnectUser` output. Provider-specific
+protocols, scopes, claims, and application account-linking rules still require
+explicit review.
 
 ## 🛡️ Security Engineering
 
@@ -41,13 +44,15 @@ state of those checks for the referenced commit; they are not an absolute securi
 
 ## ✨ Features
 
-- 🚀 **Async & Fast**: Built on top of `tokio` and `reqwest`.
+- 🚀 **Async HTTP**: Built on Tokio-compatible request paths and `reqwest`.
 - 🧩 **Standardized**: All providers return a unified `ConnectUser` struct.
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
-- 🔌 **Framework Agnostic**: Works seamlessly with Rullst, Axum, Actix, Leptos, Dioxus, or any other framework.
+- 🔌 **Framework adapters**: Core provider APIs are framework-independent;
+  optional extractor features cover the integrations declared in the crate.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
-- 🛠️ **Testing**: Embedded Mock IdP router for seamless offline local E2E testing.
+- 🛠️ **Testing**: Empty or `mock_*` credentials select a deterministic
+  offline transport, and `mock_idp` supplies a local protocol fixture.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -72,17 +77,20 @@ Official support for 11 core providers:
 
 ## 🛠️ Installation
 
-Add the package to your `Cargo.toml`. If you use **Rullst**, **Axum**, **Actix**, or **Leptos**, you can enable their specific features for native Extractor support!
+Add the published package to an application with `cargo add`. Inside a checkout
+of the unreleased v12 workspace, examples use its path dependency instead.
 
 You can either run:
 ```bash
 cargo add rullst-connect
+cargo add secrecy
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "11.0.0"
+rullst-connect = { path = "../Rullst/rullst-connect" }
+secrecy = "0.10"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -94,11 +102,11 @@ Choose your provider and pass your credentials and callback URL:
 ```rust
 use rullst_connect::prelude::*;
 
-let github = GithubProvider::new(
-    "YOUR_CLIENT_ID".to_string(),
-    "YOUR_CLIENT_SECRET".to_string(),
-    "http://localhost:3000/auth/github/callback".to_string(),
-);
+let github = GithubProvider::try_new(
+    "YOUR_CLIENT_ID",
+    "YOUR_CLIENT_SECRET".to_string().into(),
+    "http://localhost:3000/auth/github/callback",
+)?;
 ```
 
 ### 2. Redirect the User
@@ -129,24 +137,30 @@ match github.get_user(params).await {
 
 ### 🛡️ CSRF Protection (State Parameter)
 
-To prevent Cross-Site Request Forgery (CSRF) attacks, you should generate a secure random string, save it in a session/cookie, and pass it to the provider.
+To bind the authorization request to its callback, generate a high-entropy
+state, store it in a short-lived server-side session, and consume it after the
+callback comparison.
 
 ```rust
-// 1. Generate a random state string and save it in the session
-let state = "random_secure_string";
+use rullst_connect::pkce::generate_oauth_state;
+
+// 1. Generate and store this exact value in the server-side session.
+let state = generate_oauth_state();
 
 // 2. Get the authorization URL with the state parameter using the builder
-let url = github.with_state(state).redirect_url();
+let url = github.with_state(&state).redirect_url();
 // return Redirect::temporary(&url);
 
-// 3. In the callback route, verify if the query param `state` matches your session!
-// If you are using the optional `axum` or `actix` features, you can use `verify_state`:
-// params.verify_state(&state_from_session)?;
+// 3. With the optional Axum/Actix extractor, validate before token exchange:
+callback.verify_state(&state_from_session)?;
+session.consume_oauth_state()?;
 ```
 
 ### 🔄 Refreshing Tokens
 
-If an access token expires, you can seamlessly renew it without asking the user to login again by using their `refresh_token`:
+If the provider issued a refresh token and still accepts it, the provider
+adapter can request refreshed credentials. Rotation, revocation, secure storage,
+and reauthentication policy remain application concerns:
 
 ```rust
 let refreshed_user = github.refresh_token("existing_refresh_token_string").await?;
@@ -154,7 +168,7 @@ let refreshed_user = github.refresh_token("existing_refresh_token_string").await
 // When you need to send it to an API, expose it explicitly:
 use secrecy::ExposeSecret;
 let raw_token = refreshed_user.access_token.expose_secret();
-println!("Successfully refreshed token securely!");
+send_token_to_the_authorized_api(raw_token).await?;
 ```
 
 ### 🔒 PKCE Support (v9.0.0+)
@@ -178,7 +192,7 @@ let params = rullst_connect::provider::ExchangeParams {
     code_verifier: Some(&code_verifier),
     ..Default::default()
 };
-let user = provider.get_user(params).await.unwrap();
+let user = provider.get_user(params).await?;
 ```
 
 ## 🧑‍💻 Full Example with Axum
@@ -191,21 +205,10 @@ cargo run --example axum_server
 
 ## 📦 Releasing a New Version
 
-This project uses `cargo-release` to automate version bumps, README synchronization, and CHANGELOG management.
-The publish workflow in `.github/workflows/publish.yml` runs when a `vX.Y.Z` tag is pushed, and it can also be triggered manually from GitHub Actions.
-
-To release a new version, simply run:
-
-```bash
-# install it first if you haven't: cargo install cargo-release
-cargo release patch --execute  # for v1.0.x patches
-cargo release minor --execute  # for v1.x.0 features
-cargo release major --execute  # for vX.0.0 breaking changes
-```
-
-This will automatically bump versions, tag the release, and push to GitHub, triggering the crates.io publish workflow.
-
-For the exact release checklist and what to do next time, see [RELEASE_GUIDE.md](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md).
+Connect is released only through the repository-wide, topologically ordered
+release workflow. Do not publish this crate independently from a working tree.
+Follow the [v12 release guide](https://github.com/Rullst/Rullst/blob/dev/RELEASE_GUIDE.md)
+and require all candidate-SHA gates before creating a release tag.
 
 ## 🤝 Contributing
 

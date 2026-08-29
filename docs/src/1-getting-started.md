@@ -42,7 +42,9 @@ cargo rullst dev
 ```
 
 > [!TIP]
-> The `cargo rullst dev` command automatically compiles your code and spins up a local server. If you edit any `.rs` file, it will instantly recompile using Hot Reload!
+> The `cargo rullst dev` command compiles the project, starts the local server,
+> and watches Rust source files. A change triggers another compilation and a
+> process reload; the duration depends on the project and machine.
 > 
 > For a detailed guide on choosing ORM patterns (Active Record vs Data Mapper vs Hybrid) and Frontend Engines (HTMX vs Leptos vs Dioxus), check out our [Architecture Choices Guide](architecture-decisions.md).
 
@@ -85,7 +87,7 @@ but require domain authorization, durable jobs/storage and provider contracts.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
-The ultimate boilerplate for SaaS products, pre-wired with:
+An opinionated SaaS starting point, pre-wired with:
 - User authentication (login, signup, session management).
 - Stripe pricing panels and subscription checkout views.
 - Secure user dashboard.
@@ -94,12 +96,13 @@ The ultimate boilerplate for SaaS products, pre-wired with:
 **Use Case:** Content creation and articles.
 A static site generator pre-wired with Nexus CMS. It features:
 - A beautiful article reading view with typography optimized for readability.
-- A fully functional Markdown parser engine.
+- Article CRUD and a server-rendered reading view. Markdown parsing is not part
+  of the current generated starter.
 - SEO-friendly metadata injection.
 
 ## 6. ERP Pocket
 **Use Case:** Business management, stock, and inventory tracking.
-A complete back-office suite out of the box. It features:
+An inventory-oriented back-office starter. It features:
 - A complex relational database schema (Products and Orders).
 - Full CRUD operations with HTMX.
 - A sleek, split-pane dashboard for simultaneous product listing and order creation.
@@ -132,7 +135,7 @@ application authorization; do not expose Studio publicly.
 
 Rullst ORM supports **SQLite**, **Turso / libSQL**, **PostgreSQL**, and **MySQL**.
 
-### Local-First Experience (Zero Config)
+### Local-first database default
 When creating a project with **SQLite** or **Turso / libSQL**, Rullst defaults to
 a local file database (`db.sqlite` or `turso_local.db`). This reduces initial
 setup, but filesystem permissions, migrations, and external Turso connectivity

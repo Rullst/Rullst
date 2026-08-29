@@ -1,48 +1,76 @@
-# Tutorial 18: Wasm Islands in Pure Rust 🧩
+# Tutorial 18: Wasm Island foundation
 
-Write high-performance interactive client-side components in pure Rust compiled to WebAssembly.
+Rullst can generate a dual-target Island function: native builds emit a host
+element with serialized props, while `wasm32-unknown-unknown` builds export a
+hydration function.
 
----
-
-## 🛠️ Step 1: Scaffold a Wasm Island
+## Generate the component
 
 ```bash
 cargo rullst make:island InteractiveChart
 ```
 
-This creates `src/islands/interactive_chart.rs`.
-
----
-
-## 💻 Step 2: Write Client Component Code
+The generated `src/islands/interactive_chart.rs` uses the supported macro:
 
 ```rust
-use rullst::client_component;
-use web_sys::window;
+use rullst::island;
 
-#[client_component]
-pub fn render_chart() {
-    let window = window().expect("Global window missing");
-    let document = window.document().expect("Document missing");
-    
-    if let Some(element) = document.get_element_by_id("chart-container") {
-        element.set_inner_html("<p class='text-emerald-400 font-bold'>Wasm Island Mounted!</p>");
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::{closure::Closure, JsCast};
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InteractiveChartProps {
+    pub initial_value: i32,
+}
+
+#[island]
+pub fn interactive_chart(props: InteractiveChartProps) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        format!(
+            "<button type=\"button\">Count: {}</button>",
+            props.initial_value
+        )
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut value = props.initial_value;
+        element.set_text_content(Some(&format!("Count: {value}")));
+
+        let button = element.clone();
+        let closure = Closure::<dyn FnMut()>::new(move || {
+            value = value.saturating_add(1);
+            button.set_text_content(Some(&format!("Count: {value}")));
+        });
+        if element
+            .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
+            .is_ok()
+        {
+            closure.forget();
+        }
+
+        String::new()
     }
 }
 ```
 
----
+The `element` binding in the Wasm block is supplied by `#[island]`.
 
-## 🚀 Step 3: Build WebAssembly Binaries
+## Build and load the artifact
 
 ```bash
 cargo rullst build:client
 ```
 
-This invokes `wasm-pack` to compile your client components into optimized WebAssembly assets.
+The command parses `Cargo.toml`, adds `cdylib` to the existing `[lib]`
+`crate-type` array when needed, installs/checks the Wasm target and
+`wasm-bindgen-cli`, builds the library, locates the artifact using `lib.name` or
+`package.name`, writes bindings under `static/`, and generates a hydration
+orchestrator. Review these manifest, network, and toolchain side effects in CI
+and pin the required tools for reproducible releases. Load the generated ES
+module from the page as instructed by the command output.
 
----
-
-## 💡 Key Takeaways
-- Use **Wasm Islands** for heavy client-side interactivity (canvas graphs, rich text editors, cryptography in the browser).
-- Avoid JS bundlers and Webpack setup.
+This is a useful foundation, not a complete frontend framework: routing,
+application state, accessibility, CSP-compatible asset delivery, cache busting,
+error reporting and browser E2E remain application/release work.

@@ -44,10 +44,15 @@ When building for production:
 cargo rullst build
 ```
 
-Rullst automatically runs Brotli and Zstandard compression passes on your static files, generating `.br` and `.zst` sidecars so web servers serve compressed assets instantly with zero CPU overhead.
+The build command generates Brotli and Zstandard sidecars for supported static
+files. Serving a sidecar avoids per-request compression work, but file I/O,
+headers, negotiation, proxy configuration, and network delivery still have
+runtime cost. Verify that the deployed server actually selects `.br`/`.zst` for
+the matching `Accept-Encoding` request.
 
 ---
 
 ## 💡 Key Takeaways
 - Use `ServeDir` to serve images, CSS, and favicon files.
-- `cargo rullst build` pre-compresses static assets for sub-millisecond edge delivery.
+- `cargo rullst build` pre-compresses supported static assets. Edge latency
+  depends on the CDN/proxy, cache policy, payload, and deployment.

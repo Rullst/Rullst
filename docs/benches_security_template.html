@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rullst Security — RASP, HMAC & Vault Benchmarks</title>
-  <meta name="description" content="Performance benchmarks for rullst-security RASP payload inspection, HMAC audit log ledger, and Vault AES-256 zeroization." />
+  <title>Rullst Security — Sanitizer, RBAC & Vault Benchmarks</title>
+  <meta name="description" content="Criterion history for rullst-security sanitizer, RBAC, and VaultSecret operations." />
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
@@ -44,8 +44,8 @@
   <div class="wrap">
     <header>
       <div class="badge">🛡️ rullst-security</div>
-      <h1>Security & RASP Engine Benchmarks</h1>
-      <p class="sub">Performance benchmarks for zero-trust <code>HtmlSanitizer</code>, <code>RbacGuard</code> BOLA protection, and <code>VaultSecret</code> zeroization memory safety.</p>
+      <h1>Security Primitive Benchmarks</h1>
+      <p class="sub">Criterion measurements for selected sanitizer, authorization, and secret-wrapper operations. Results are commit- and runner-specific.</p>
       <div class="links">
         <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
         <a href="/Rullst/benches/" class="btn btn-o">⚡ Core</a>
@@ -55,56 +55,49 @@
       </div>
     </header>
     <div class="grid">
-      <div class="card"><div class="ic">🧹</div><h3>HTML & XSS Sanitizer</h3><p><code>HtmlSanitizer::sanitize(input)</code>: Ammonia-powered sanitization filtering XSS and malicious SVG vectors in sub-microseconds.</p></div>
-      <div class="card"><div class="ic">🛡️</div><h3>RBAC & BOLA Guard</h3><p><code>RbacGuard::authorize_owner_or_role(ctx)</code>: Zero-overhead role and ownership verification preventing IDOR attacks.</p></div>
-      <div class="card"><div class="ic">🔐</div><h3>Vault Zeroization</h3><p><code>VaultSecret::new()</code>: Zero-trust secret management with in-memory zeroization upon drop.</p></div>
+      <div class="card"><div class="ic">🧹</div><h3>HTML Sanitizer</h3><p><code>HtmlSanitizer::sanitize(input)</code> applies the configured Ammonia policy; applications must test their rendering context.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3>RBAC & Ownership Guard</h3><p><code>RbacGuard::authorize_owner_or_role(ctx)</code> evaluates the supplied identity, owner, and roles. Correct context construction remains application-owned.</p></div>
+      <div class="card"><div class="ic">🔐</div><h3>Vault Zeroization</h3><p><code>VaultSecret</code> zeroizes its owned buffer on drop; it cannot erase prior copies, allocator artifacts, swap, or external logs.</p></div>
     </div>
     <div class="glass">
       <h2>📊 Microsecond Benchmark Trends</h2>
-      <div id="loading" style="display:none;">Loading benchmark dataset...</div>
-      <div class="chart-c" id="chart-wrap"><canvas id="canvas"></canvas></div>
+      <div id="loading">Loading benchmark dataset...</div>
+      <div class="chart-c" id="chart-wrap" style="display:none;"><canvas id="canvas"></canvas></div>
     </div>
   </div>
 
   <script src="data.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const ctx = document.getElementById('canvas').getContext('2d');
-      const defaultData = {
-        labels: ['Run 1', 'Run 2', 'Run 3', 'Run 4', 'Run 5', 'Run 6', 'Latest'],
-        datasets: [
-          {
-            label: 'HtmlSanitizer::sanitize (µs)',
-            data: [0.42, 0.40, 0.39, 0.41, 0.38, 0.39, 0.37],
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.2)',
-            tension: 0.3,
-            fill: true
-          },
-          {
-            label: 'RbacGuard::authorize (µs)',
-            data: [0.18, 0.17, 0.18, 0.16, 0.17, 0.16, 0.15],
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.2)',
-            tension: 0.3,
-            fill: true
-          },
-          {
-            label: 'VaultSecret Zeroization (µs)',
-            data: [0.08, 0.07, 0.08, 0.07, 0.06, 0.07, 0.06],
-            borderColor: '#38bdf8',
-            backgroundColor: 'rgba(56, 189, 248, 0.2)',
-            tension: 0.3,
-            fill: true
-          }
-        ]
-      };
-
-      const chartData = (window.BENCHMARK_DATA && window.BENCHMARK_DATA.datasets) ? window.BENCHMARK_DATA : defaultData;
-
-      new Chart(ctx, {
+      const loading = document.getElementById('loading');
+      const chartWrap = document.getElementById('chart-wrap');
+      if (!window.BENCHMARK_DATA) {
+        loading.textContent = 'No published security benchmark data is available yet.';
+        return;
+      }
+      const entries = window.BENCHMARK_DATA.entries || window.BENCHMARK_DATA;
+      const commits = entries[Object.keys(entries)[0]] || [];
+      if (!commits.length) {
+        loading.textContent = 'No published security benchmark entries are available yet.';
+        return;
+      }
+      const recent = commits.slice(-30);
+      const labels = recent.map(entry => `${new Date(entry.commit.timestamp).toLocaleDateString()} ${entry.commit.id.slice(0, 7)}`);
+      const names = [...new Set(recent.flatMap(entry => entry.benches.map(bench => bench.name)))];
+      const colors = ['#f59e0b', '#10b981', '#38bdf8', '#8b5cf6', '#f43f5e'];
+      const datasets = names.map((name, index) => ({
+        label: name,
+        data: recent.map(entry => entry.benches.find(bench => bench.name === name)?.value ?? null),
+        borderColor: colors[index % colors.length],
+        backgroundColor: `${colors[index % colors.length]}22`,
+        tension: 0.3,
+        spanGaps: true
+      }));
+      loading.style.display = 'none';
+      chartWrap.style.display = 'block';
+      new Chart(document.getElementById('canvas').getContext('2d'), {
         type: 'line',
-        data: chartData,
+        data: { labels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -113,7 +106,7 @@
           },
           scales: {
             x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Latency (microseconds)', color: '#94a3b8' } }
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Reported benchmark value', color: '#94a3b8' } }
           }
         }
       });

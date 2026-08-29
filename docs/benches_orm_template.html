@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rullst ORM — Query Builder Benchmarks</title>
-  <meta name="description" content="Real-time performance benchmarks for the Rullst ORM query builder — zero-overhead SQL generation with no runtime allocations." />
+  <meta name="description" content="Criterion history for selected Rullst ORM CPU and local SQLite operations." />
 
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -348,9 +348,8 @@
       <div class="header-badge">🗄️ rullst-orm</div>
       <h1>ORM Query Builder Benchmarks</h1>
       <p class="subtitle">
-        Every commit to <code style="background:rgba(167,139,250,0.1);padding:0.1em 0.4em;border-radius:4px;font-family:'JetBrains Mono',monospace;color:#a78bfa;">main</code> runs Criterion.rs against the full ORM query pipeline.
-        We verify that SQL generation, schema compilation, and row mapping remain zero-overhead — 
-        <em>measured in nanoseconds, not milliseconds</em>.
+        Pushes to <code style="background:rgba(167,139,250,0.1);padding:0.1em 0.4em;border-radius:4px;font-family:'JetBrains Mono',monospace;color:#a78bfa;">dev</code> run Criterion against selected ORM CPU paths and local SQLite round trips.
+        Results describe the exact commit, runner, and benchmark input; they are not production database latency claims.
       </p>
       <div class="header-links">
         <a href="/Rullst/" class="btn btn-outline">🏠 Home</a>
@@ -364,22 +363,22 @@
       <div class="info-card">
         <div class="icon">🔨</div>
         <h3>Query Builder</h3>
-        <p>Measures the time to construct a full SQL query with <code>where_eq</code>, <code>where_like</code>, <code>order_by</code>, <code>limit</code>, and <code>offset</code> using the static dispatch API. Zero allocations target.</p>
+        <p>Measures construction of a builder using <code>where_eq</code>, <code>order_by</code>, <code>limit</code>, and <code>offset</code>. The suite does not currently measure allocations.</p>
       </div>
       <div class="info-card">
         <div class="icon">🗺️</div>
-        <h3>Row Mapping</h3>
-        <p>Benchmarks <code>FromRow</code> deserialization from a mock result set. Derived by the <code>#[derive(Orm)]</code> macro — compile-time generated, no reflection overhead.</p>
+        <h3>Model JSON</h3>
+        <p>Measures generated <code>to_json</code> and <code>from_json</code> conversion for the benchmark model.</p>
       </div>
       <div class="info-card">
         <div class="icon">🏗️</div>
-        <h3>Schema Builder</h3>
-        <p>Measures <code>Schema::create()</code> DDL generation — the time to produce a <code>CREATE TABLE</code> SQL string from a <code>Blueprint</code> closure without any I/O.</p>
+        <h3>Identifier Validation</h3>
+        <p>Measures valid, qualified, and rejected structural identifier inputs used by schema/query safety checks.</p>
       </div>
       <div class="info-card">
         <div class="icon">🔐</div>
-        <h3>Audit Trail</h3>
-        <p>Benchmarks the <code>AuditGuard::is_sensitive()</code> field classifier that runs on every data write. Must be sub-microsecond to avoid slowing down ORM operations.</p>
+        <h3>SQLite Round Trips</h3>
+        <p>Measures insert/delete and several read shapes against a local SQLite file created for the benchmark process.</p>
       </div>
     </div>
 
@@ -387,7 +386,7 @@
     <div class="glass">
       <h2>📝 What's Being Measured</h2>
       <div class="code-block">
-<span class="cmt">// This entire pipeline — derive macro → query build → SQL string — is benchmarked</span>
+<span class="cmt">// The current CPU benchmark constructs this query-builder value.</span>
 <span class="kw">#[derive</span>(<span class="mac">Debug, FromRow, Orm</span>)<span class="kw">]</span>
 <span class="kw">#[orm</span>(table = <span class="str">"users"</span>)<span class="kw">]</span>
 <span class="kw">struct</span> <span class="fn">User</span> { id: i32, name: String, email: String }
@@ -395,9 +394,9 @@
 <span class="cmt">// bench_query_builder: builds SQL without executing — pure generation cost</span>
 <span class="kw">let</span> sql = <span class="fn">User</span>::query()
     .<span class="fn">where_eq</span>(<span class="str">"email"</span>, <span class="str">"alice@example.com"</span>)
-    .<span class="fn">order_by_desc</span>(<span class="str">"id"</span>)
+    .<span class="fn">order_by</span>(<span class="str">"name"</span>)
     .<span class="fn">limit</span>(<span class="num">10</span>)
-    .<span class="fn">to_sql</span>();  <span class="cmt">// → "SELECT * FROM users WHERE email = ? ORDER BY id DESC LIMIT 10"</span>
+    .<span class="fn">offset</span>(<span class="num">20</span>);
       </div>
     </div>
 
@@ -445,7 +444,7 @@
       const dashboard = document.getElementById('dashboard');
 
       if (!window.BENCHMARK_DATA) {
-        loading.innerHTML = '⚠️ No ORM benchmark data yet. Trigger <code>bench.yml</code> on a push to main.';
+        loading.textContent = 'No ORM benchmark data is available yet. Run bench.yml on dev.';
         return;
       }
 

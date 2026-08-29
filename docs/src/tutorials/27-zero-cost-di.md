@@ -1,6 +1,8 @@
-# Tutorial 27: Zero-Cost Dependency Injection (`rullst::di`) 💉
+# Tutorial 27: Typed Dependency Injection (`rullst::di`) 💉
 
-Organize enterprise services and repositories using static dispatch dependency injection with zero runtime reflection overhead.
+Organize services and repositories with type-indexed registration and no
+runtime reflection. Lookup, `Arc` cloning, and application constructors still
+have their normal runtime cost.
 
 ---
 

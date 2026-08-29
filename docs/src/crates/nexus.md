@@ -58,4 +58,4 @@ mutations.
   they have typed contracts and proportional tests.
 
 For a complete model example and the local/release access flow, see
-[Rullst Nexus: Your Instant CMS](../4-rullst-nexus.md).
+[Rullst Nexus: Explicit Admin CMS](../4-rullst-nexus.md).

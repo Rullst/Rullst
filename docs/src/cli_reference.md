@@ -14,7 +14,11 @@ documents the principal version 12 commands and their security boundaries.
 Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
 * **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
-* **Frontend Engine:** HTMX + TailwindCSS (no project-local SPA bundle), LiveView Server-Driven UI (`rullst::live`), Reactive Wasm Islands (`rullst::island`), Pico.css, or Tera templates.
+* **Frontend profile:** HTMX + Tailwind SSR is the audited default. The LiveView,
+  Wasm Island, Pico.css and Tera selections record compatibility intent and add
+  limited dependencies/scaffold markers; they do not yet generate four complete,
+  interchangeable application renderers. Wire and test the selected runtime and
+  browser assets explicitly.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
@@ -100,7 +104,10 @@ Manages third-party community packages and extensions conforming to the `RullstP
 
 ## 🛠️ 2. Architecture Scaffolding (`make:*`)
 
-Rullst is heavily opinionated. All `make:*` commands automatically update references (e.g., registering a controller in the main router) and regenerate the **AI Context** (`.llms.txt`).
+Rullst generators write the files described under each command. Some commands
+also register modules and refresh `.llms.txt`; this is command-specific, and a
+failed best-effort context refresh does not roll back generated source. Review
+the diff and run `cargo check` after scaffolding.
 
 ### `cargo rullst make:resource <name>`
 Scaffolds a complete Full CRUD resource stack in a single command. It simultaneously generates the Model (`src/models/<name>.rs`), Migration (`migrations/<timestamp>_create_<name>s_table.rs`), Controller (`src/controllers/<name>.rs`), and HTML Views (`views/<name>/index.html` & `views/<name>/form.html`).
@@ -167,16 +174,25 @@ It does not install an MQTT/CoAP transport or claim broker connectivity.
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.
 
 ### `cargo rullst make:scalar`
-Scaffolds an interactive Scalar API Documentation controller at `src/controllers/docs_controller.rs` serving modern OpenAPI UI at `http://localhost:3000/docs`.
+Scaffolds a Scalar API Documentation controller at
+`src/controllers/docs_controller.rs`. The interactive view loads a pinned CDN
+asset; its local fallback is status-only and final CSP/network policy belongs to
+the application.
 
 ### `cargo rullst make:live <ComponentName>`
-Scaffolds a new LiveView-style reactive server component at `src/live/<name>.rs` enabling real-time WebSocket state synchronization and HTMX Out-Of-Band (OOB) HTML swaps without writing JavaScript.
+Scaffolds a LiveView-style server component at `src/live/<name>.rs` using a
+WebSocket and HTMX out-of-band swaps. Application JavaScript may be unnecessary,
+but HTMX remains client-side JavaScript and the generated transport requires
+origin, reconnect, and backpressure review.
 
 ### `cargo rullst make:grpc <ServiceName>`
 Scaffolds a new gRPC service implementation in `src/grpc/<name>.rs` and Protobuf schema definition in `proto/<name>.proto` powered by `tonic`.
 
 ### `cargo rullst deploy [--platform <fly|railway|render|vps>]`
-1-Click deployment wizard generating cloud manifests (`fly.toml`, `railway.json`, `render.yaml`, `docker-compose.prod.yml` with Caddy SSL) and launching the deployment.
+Guided deployment helper that generates cloud manifests (`fly.toml`,
+`railway.json`, `render.yaml`, or `docker-compose.prod.yml`) and invokes the
+selected provider CLI where supported. Credentials, migrations, availability,
+DNS/TLS and rollback remain operator responsibilities.
 
 ### `cargo rullst auth`
 Creates an authentication starting point in your codebase, including:
@@ -227,7 +243,14 @@ and API behavior.
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
 
 ### `cargo rullst generate:models` / `cargo rullst make:models-from-db`
-Connects to a legacy database (that already exists and has tables), maps the entire "Information Schema", and automatically outputs Rust Struct files based on the columns and types found in the database.
+Connects to an existing database and generates reviewable starter structs from
+the tables and columns visible in SQLite or the current PostgreSQL/MySQL schema.
+Table lookups are parameterized and SQL identifiers are allowlisted. Table
+module names are normalized, while collisions and database columns that would
+require an unsupported ORM field remapping fail before the output directory is
+written. The bounded type mapping falls back to `String`; review keys,
+relations, custom types, schema selection and generated files before compiling
+or replacing application models.
 * **Required Flags:**
   * `--driver`: `postgres`, `mysql`, or `sqlite`.
   * `--url`: The complete connection string.
@@ -279,8 +302,13 @@ trigger a rebuild or restart; latency depends on the project and toolchain.
   * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.
 
 ### `cargo rullst build:client`
-Builds supported client islands with `wasm-pack`. Bundle size and browser
-performance depend on the generated application and must be measured.
+Builds the library for `wasm32-unknown-unknown`, runs `wasm-bindgen`, and writes a
+separate `static/rullst-islands.js` hydrator that awaits binding initialization.
+It parses `Cargo.toml`, merges the required `cdylib` crate type without replacing
+existing library crate types, and honors an explicit `lib.name`. The command
+checks/installs the Rust target and `wasm-bindgen-cli`; any failed tool step
+aborts. Bundle size and browser performance depend on the generated application
+and must be measured.
 * **Flags:** `--debug` (Avoids extreme minification so you can inspect and debug Wasm sourcemaps).
 
 ### `cargo rullst build`
@@ -291,13 +319,22 @@ Creates the monolithic final Production binary of the backend and executes pre-c
 Injects infrastructure files (Dockerfile or Nix Flake) directly into a pre-existing project (similar to the flags used in `new`).
 
 ### `cargo rullst foundry:init`
-Generates the `Foundry.toml` deployment manifest at the project root containing SSH access settings (host IP, user, SSH key, deploy path) and environment variables for direct Bare-Metal / Cloud VPS deployment (Hetzner, DigitalOcean, AWS EC2, Linode, Vultr). Automatically adds `Foundry.toml` to `.gitignore`.
+Generates the `Foundry.toml` deployment manifest at the project root containing
+SSH access settings and environment variables for a compatible systemd-based
+Linux VPS. It adds `Foundry.toml` to `.gitignore`; operators must still verify
+that secrets were never committed.
 
 ### `cargo rullst foundry:deploy`
 Executes an SSH deployment pipeline: local release build, remote directory and
-systemd provisioning, `scp` transfer with SHA-256 integrity verification,
-migrations, service reload, and a health probe. Availability and rollback depend
-on the target topology; the command does not guarantee zero downtime.
+systemd provisioning, `scp` transfer, environment/Caddy configuration, service
+restart, and a bounded remote-local `/health` probe. It requires a preinstalled,
+reviewed `curl`, systemd, and Caddy installation plus root or passwordless
+non-interactive `sudo`. Candidate files are staged under an application-specific
+`/opt/rullst/<app>` root, the Caddy configuration is validated, and `.previous`
+copies of replaced files are retained. The current command replaces the global
+`/etc/caddy/Caddyfile`; it does not perform a separate remote checksum,
+migrations, data backup, external reachability check, or automatic rollback. It
+does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
 Runs the generated Tauri development client after `make:omni`. Android/iOS
@@ -330,7 +367,10 @@ collision instead of overwriting it. These local hooks are bypassable by design;
 protected CI remains authoritative.
 
 ### `cargo rullst doctor`
-Runs comprehensive system and toolchain diagnostics, verifying Rust MSRV (>= 1.96.0), linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`, `cargo-mutants`, `kani-verifier`, and Docker Engine with instant actionable recommendations.
+Runs bounded system and toolchain diagnostics for Rust MSRV (>= 1.96.0),
+linters, `cargo-llvm-cov`, `cargo-audit`, `cargo-geiger`, `cargo-deny`,
+`cargo-mutants`, `kani-verifier`, and Docker Engine, and reports detected or
+missing components.
 
 ### `cargo rullst inspect [target]`
 Expands macros and displays structural insights in the terminal:
@@ -356,6 +396,6 @@ cargo rullst inspect model
 # Launch the visual Studio Dashboard (Data Browser, ER Diagram, Feature Flags)
 cargo rullst studio
 
-# Deploy to Cloud / VPS with automatic SSL Caddy setup
+# Run the reviewed Foundry pipeline on a compatible, prepared VPS
 cargo rullst foundry:deploy
 ```

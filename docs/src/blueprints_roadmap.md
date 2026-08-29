@@ -1,5 +1,5 @@
 # Rullst Blueprints Roadmap 🗺️
-### *"The Ultimate High-Performance Blueprints Collection for Rullst"*
+### *"A practical collection of reviewed Rullst application starters"*
 
 This document maps the expansion plan for the Rullst **Starter Blueprints** ecosystem. The goal is to provide reviewable application starting points with explicit production checklists and capability boundaries.
 
@@ -7,49 +7,69 @@ This document maps the expansion plan for the Rullst **Starter Blueprints** ecos
 
 ## 🚀 Blueprints Design Philosophy
 Every blueprint added to the CLI must meet three fundamental principles:
-1. **Immediate Wow Factor:** Beautiful, responsive interfaces (Dark Mode, Glassmorphism, Micro-animations) and highly interactive via HTMX/Tailwind.
-2. **Native Rust/Rullst Features:** Practically demonstrate Rust's unfair advantage (low RAM usage, safe concurrency, parallel processing, type safety, robust WebSockets).
+1. **Clear first experience:** Responsive, accessible interfaces whose browser assets and CSP are explicit.
+2. **Native Rust/Rullst Features:** Demonstrate measured resource use, typed concurrency and explicit server/realtime boundaries.
 3. **Production-minded defaults:** Generate `.env.example`, database configuration, and a conservative `.gitignore`; deployment readiness remains an application-level review.
 
 ---
 
-## 🗺️ New Blueprints Roadmap (Ordered from Easiest to Hardest)
+## 🗺️ Proposed blueprints (ordered from easiest to hardest)
+
+Except for ERP, these rows describe design targets and are not selectable CLI
+blueprints. A proposal becomes implemented only when its generated project and
+negative boundaries pass the release gates.
 
 | ID | Blueprint Name | Technical Focus in Rullst | Commercial Differentiator |
 |:---|:---|:---|:---|
-| **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/Medium businesses with an offline-first, crash-immune system. |
-| **5** | 📋 Member/Club Management | `#[derive(Validate)]` + Nexus + PDF Receipt Generation | Member registration and billing for gyms, clubs, and condominiums. |
-| **7** | 🤖 AI Agent & RAG Boilerplate | `rullst::ai` (Ollama/Gemini/OpenAI) + Local Vector Embedding | Intelligent parsing of local and private PDF/TXT documents. |
-| **8** | 🪙 AI Credit-Based SaaS | Streaming (SSE) + `rullst-orm` (Concurrency Lock) + Stripe | AI SaaS platforms with token consumption secured against race conditions. |
-| **9** | 🏥 Scheduling & Clinics | HTMX Calendar + Cron Scheduler + Double-Booking Locks | Barbershops, doctors, and freelancers with duplicate reservation prevention. |
-| **10**| 🚪 Biometric Access Control | `rullst::routing` (WebSockets) + Real-time Concierge Panel | Concierge systems, gyms, and electronic timeclocks with zero lag. |
-| **11**| 📈 Affiliate Checkout | Fast SSR (<100ms) + Commission Splits + Landing Page | Sales pages with a 100 Lighthouse Score for maximum conversion. |
-| **12**| 🏢 B2B Multi-Tenant Platform | `rullst::multitenant` (subdomains) + RBAC (Enums) + `rullst::mail` | Secure, isolated enterprise software for selling corporate licenses. |
-| **13**| 💬 Discord-Like Realtime Chat | **Rullst Live** (Server-Driven UI) + WebSockets on Tokio | Scalable, concurrent chat rooms with low infrastructure cost. |
-| **14**| 🛵 Delivery / Food App | Background Queue (`rullst::queue`) + Order State | Asynchronous delivery status processing and email notifications. |
+| **4** | 💼 ERP Pocket (Inventory) | Embedded SQLite + `rullst::nexus` (Auto-CMS) + Single Binary | Small/medium-business inventory starter; crash recovery and backup remain application work. |
+| **5** | 📋 Member/Club Management | Validation + Nexus + reviewed receipt adapter | Proposed member and billing domain starter. |
+| **7** | 🤖 AI Agent & RAG Boilerplate | `rullst-ai` + opt-in document parsing/embedding adapters | Proposed RAG starter; uploaded content remains untrusted. |
+| **8** | 🪙 AI Credit-Based SaaS | SSE + transactional usage ledger + payment adapter | Proposed AI SaaS starter with server-owned credit reservation. |
+| **9** | 🏥 Scheduling & Clinics | HTMX calendar + scheduler + database conflict policy | Proposed scheduling starter with database-specific contention tests. |
+| **10**| 🚪 Biometric Access Control | WebSocket foundation + real-time concierge panel | Planned access-control starter; device trust and latency need deployment-specific validation. |
+| **11**| 📈 Affiliate Checkout | SSR + commission-split domain model + landing page | Planned sales starter; performance and Lighthouse scores must be measured per application. |
+| **12**| 🏢 B2B Multi-Tenant Platform | Tenant context + RBAC + `rullst-mail` | Planned B2B starter; isolation must be proven across every storage and messaging boundary. |
+| **13**| 💬 Discord-Like Realtime Chat | Server-driven UI + authenticated WebSockets | Proposed chat starter; distributed presence and load evidence are required. |
+| **14**| 🛵 Delivery / Food App | Background queue + explicit order state machine | Proposed delivery starter with idempotent jobs and notification adapters. |
 
 ---
 
 ## 🔍 Highlighted Architectural Details
 
 ### 🪙 8. AI Credit-Based SaaS (The Token-Burner)
-* **Architecture:** Clean chat interface consuming data via native Server-Sent Events (SSE) for fluid AI response streaming.
-* **Data Security:** `rullst-orm` implements strict transaction locks to ensure that if a user's credit balance reaches zero simultaneously in two different tabs, the system aborts token generation before finalizing costly calls to the LLM.
-* **Monetization:** Integrated Stripe checkout with usage-based billing and a self-managed billing portal.
+* **Architecture goal:** a server-owned chat flow with bounded SSE streaming,
+  cancellation and provider error handling.
+* **Data Security goal:** use a database transaction and provider-specific lock
+  semantics to reserve credit before an LLM request. This workflow is not yet a
+  generated, cross-database guarantee.
+* **Monetization goal:** integrate a reviewed usage ledger with a supported
+  payment adapter; billing portals remain provider/application work.
 
 ### 🏢 12. B2B Multi-Tenant Platform (The Corporate Boilerplate)
-* **Isolation:** Uses the native `rullst::multitenant` module, which intercepts HTTP requests and dynamically injects the `tenant_id` scope into all SQL queries throughout the request lifecycle, preventing accidental data leaks between companies.
-* **Permissions (RBAC):** Role structures (`Admin`, `Member`, `Billing`) based on safe Rust enums, validated via middlewares before dispatching to controllers.
-* **Invitations:** Cryptographically tokenized email invitation flow with a 24-hour expiration using the native `rullst::mail` mailer.
+* **Isolation goal:** derive a validated `TenantContext` at the HTTP boundary and
+  carry it explicitly through database, cache, queue and realtime operations.
+  Rullst does not inject a tenant predicate into every arbitrary SQL statement.
+* **Permissions goal:** typed roles (`Admin`, `Member`, `Billing`) enforced in
+  middleware and again at sensitive service boundaries.
+* **Invitations goal:** hashed, single-use, expiring invitation tokens delivered
+  through a configured mail adapter.
 
 ### 💬 13. Discord-Like Realtime Chat
-* **No Complex JS:** Uses **Rullst Live** to maintain the chat room state on the server. Every message submitted via an HTMX form is processed, added to the thread's broadcasting channel, and rendered directly by the server, updating client DOMs via real-time WebSockets.
-* **Scale:** Utilizes Rust's efficient `Tokio` runtime threads, allowing thousands of persistent active WebSocket connections while consuming less than 50MB of RAM on the server.
+* **Client goal:** use server-rendered messages and an explicit WebSocket client
+  without making bundle size a proxy for correctness.
+* **Scale gate:** publish connection count, message mix, backpressure behavior,
+  CPU/RSS, hardware and distributed topology before attaching capacity numbers.
 
 ### 🏥 9. Scheduling & Clinics (The Scheduler)
-* **Conflict Prevention:** Database transactions executed with a strict `SERIALIZABLE` isolation level or pessimistic locking to prevent double-booking at the exact millisecond of confirmation.
-* **Integrated Cron:** Reminder registration via Rullst's native Cron to fetch appointments in the next 2 hours and trigger automatic notifications without the need for external schedulers like Sidekiq or Celery.
+* **Conflict-prevention goal:** enforce a database constraint plus a transaction
+  strategy tested on every declared backend; isolation level alone is not a
+  universal double-booking proof.
+* **Reminder goal:** use bounded, idempotent scheduler jobs and a configured mail
+  adapter. Multi-instance leadership and durable retry must be explicit.
 
 ### 🤖 7. AI Agent & RAG Boilerplate (AI-Native)
-* **Structure:** Intuitive file upload interface where Rullst converts the document, calculates embeddings using local models or configured APIs, and stores the vector data in the embedded SQLite database.
-* **Flexibility:** Flexible configuration via `rullst::ai` allowing instant toggling between external commercial LLMs (Gemini, OpenAI) and local instances (Ollama / Llama 3) with a single environment variable.
+* **Structure goal:** quarantine and scan bounded uploads, parse supported formats
+  in an isolated adapter, generate embeddings and store an authorized index.
+* **Provider goal:** expose an explicit provider selection and capability check.
+  Changing an environment variable does not make data policy, schema or model
+  behavior interchangeable.

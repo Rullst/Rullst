@@ -63,7 +63,7 @@ green dev gates:
 | Deep evidence | Trigger and enforcement |
 | :--- | :--- |
 | [OpenSSF Scorecard](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) | Weekly/default-branch supply-chain evidence and SARIF; [scorecard badge](https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst). |
-| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, stable-branch push, or manual; eight suites emit non-blocking alerts at a 20% regression. |
+| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `dev` push, or manual; eight suites emit non-blocking alerts at a 20% regression. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual nightly-toolchain package matrices. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
@@ -223,15 +223,20 @@ performance evidence until its versions and runs are refreshed.
 - 💳 **Capital adapters:** Stripe and LemonSqueezy checkout/webhook adapters use
   cryptographic HMAC verification. The included process-local metrics/event
   buffer is a preview helper, not an accounting ledger or authoritative MRR.
-- 🔐 **Encryption & memory hygiene:** a versioned AES-256-GCM field-encryption
-  API supports AAD, key identifiers, and keyrings; selected wrappers zeroize
-  buffers on drop. Key custody and OS/allocator memory exposure remain external.
+- 🔐 **Encryption & memory hygiene:** `#[orm(encrypted)]` transparently protects
+  string fields on generated ORM writes/reads using versioned AES-256-GCM,
+  authenticated table/column context, key identifiers, and keyrings. Randomized
+  fields are intentionally not queryable without a separate blind index;
+  key custody and OS/allocator memory exposure remain external.
 - 🔄 **Transactions:** `Orm::transaction` scopes generated queries through
   `CURRENT_TX`, commits on success, and rolls back on failure; its current
   closure API returns a boxed future.
 - 🔄 **Database introspection:** `cargo rullst make:models-from-db` generates
-  starter model files from SQLite, PostgreSQL, or MySQL schemas; type mappings
-  and generated code require review.
+  starter model files through parameterized SQLite/PostgreSQL/MySQL metadata
+  queries and fail-closed identifier validation. Table module names are
+  normalized, while columns that would require unsupported ORM remapping are
+  rejected before files are written; bounded type mappings, keys, relations,
+  schemas, and generated code still require review.
 - 🔍 **Static project inspection:** `cargo rullst inspect` scans conventional
   `routes!` entries and model declarations or prints the generated JSON schema;
   it is not a runtime route inventory.
@@ -315,16 +320,16 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 
 **Explore the Monorepo Ecosystem:**
 - 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/dev/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
-- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record ORM, automated migrations, and multi-tenancy.
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record ORM, migrations, and an explicit task-local tenant context; applications must enforce tenant predicates and database policy.
 - 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/dev/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
-- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/dev/rullst-security)**: RASP deep inspection, Honeypot bot traps, XSS/CSP sanitization, and HMAC audit log.
+- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/dev/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/dev/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/dev/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
 - 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/dev/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/dev/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
-- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/dev/rullst-mail)**: Transactional email delivery engine with anti-phishing and DLP secret scanning.
+- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/dev/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, and background delivery.
 - 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/dev/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
-- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/dev/rullst-nexus)**: Auto-generated Admin CMS (`/nexus`) and SOC Threat Radar.
+- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/dev/rullst-nexus)**: Registered-model Admin CMS (`/nexus`) and a local security-event view.
 - 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/dev/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
 
 ---

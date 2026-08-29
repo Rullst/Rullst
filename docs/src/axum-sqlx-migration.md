@@ -1,105 +1,67 @@
-# Zero Lock-In & Migration Guide: Axum + SQLx ↔ Rullst
+# Axum and SQLx interoperability guide
 
-Rullst is built directly on top of `Axum`, `Tokio`, and `Tower`. It does not invent proprietary HTTP abstractions or incompatible router types. Every Rullst controller, extractor, and middleware maps 1:1 to standard Axum and Tower equivalents.
+Rullst builds on Axum, Tokio, Tower and SQLx and preserves direct access to
+their APIs. This reduces coupling for HTTP and database code; it does not make
+every optional framework subsystem free to remove.
 
-This document serves as both:
-1. An **Incremental Adoption Guide** (moving an existing `Axum + SQLx` app to Rullst).
-2. An **Escape Hatch Specification** (extracting Rullst routes to a pure `Axum` app).
+## Mount an existing Axum router
 
----
-
-## 1. Incremental Migration (Axum → Rullst)
-
-You do **not** need to rewrite your application to adopt Rullst. You can mount existing `axum::Router` instances directly into a Rullst server.
-
-### Step 1: Mounting Existing Axum Routers
-
-Existing Axum routes can be attached directly to Rullst's `Server`:
+`rullst::Router` supports conversion to and from `axum::Router`:
 
 ```rust
-use axum::{routing::get, Router};
-use rullst::server::Server;
+use axum::{Router as AxumRouter, routing::get};
+use rullst::Router;
 
-async fn legacy_axum_handler() -> &'static str {
-    "Hello from existing Axum handler!"
+async fn existing_handler() -> &'static str {
+    "existing Axum route"
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Existing Axum Router
-    let legacy_router = Router::new().route("/legacy", get(legacy_axum_handler));
-
-    // 2. Attach seamlessly into Rullst Server
-    Server::new()
-        .nest("/api/v1", legacy_router)
-        .listen("127.0.0.1:3000")
-        .await?;
-
-    Ok(())
-}
+let existing = AxumRouter::new().route("/existing", get(existing_handler));
+let rullst_router: Router = existing.into();
+let axum_router: AxumRouter = rullst_router.into();
+# let _ = axum_router;
 ```
 
-### Step 2: Using Raw `sqlx::Pool` alongside Rullst ORM
+The standard Axum extractor and response types remain available, including
+through Rullst's documented re-exports.
 
-Rullst ORM operates on top of standard `sqlx::Pool`. If you have raw SQL queries written for `sqlx`, they run natively:
+## Keep raw SQLx where it is useful
+
+Application-owned SQL can live beside generated ORM queries. Bind every dynamic
+value and review structural SQL separately:
 
 ```rust
-use rullst::db::sqlx;
+use sqlx::PgPool;
 
-pub async fn custom_raw_query(pool: &sqlx::PgPool) -> Result<Vec<String>, sqlx::Error> {
-    let names = sqlx::query_scalar!("SELECT name FROM users WHERE active = true")
+async fn active_names(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar("SELECT name FROM users WHERE active = $1")
+        .bind(true)
         .fetch_all(pool)
-        .await?;
-
-    Ok(names)
+        .await
 }
 ```
 
----
+## Generate an escape-hatch snapshot
 
-## 2. Escape Hatch: Extracting Rullst to Pure Axum
-
-If your project requirements change and you decide to extract your codebase from Rullst back to pure `Axum + SQLx`:
-
-### Extractor & Handler Equivalence Matrix
-
-| Rullst Extractor / Return | Pure Axum Equivalent | Lock-In Cost |
-| :--- | :--- | :--- |
-| `rullst::server::Json(data)` | `axum::Json(data)` | 0 (direct alias) |
-| `rullst::server::Path(id)` | `axum::extract::Path(id)` | 0 (direct alias) |
-| `rullst::server::Query(q)` | `axum::extract::Query(q)` | 0 (direct alias) |
-| `rullst::server::Request` | `axum::http::Request<axum::body::Body>` | 0 (direct alias) |
-| `rullst::server::Response` | `axum::response::Response` | 0 (direct alias) |
-| `rullst::server::Next` | `axum::middleware::Next` | 0 (direct alias) |
-
-### Refactoring a Controller to Pure Axum
-
-A Rullst controller function:
-
-```rust
-// In Rullst:
-use rullst::server::{Json, Path, IntoResponse};
-
-pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
-    Json(serde_json::json!({ "id": id }))
-}
+```bash
+cargo rullst eject
+cargo check
 ```
 
-Refactored to pure Axum (1-line import change):
+The command writes an inspectable Axum/Tokio entry-point snapshot. Review it;
+ORM models, migrations, authentication policy, Studio/Nexus integration and
+other selected subsystems can still require deliberate migration work. Use
+`--force` only when replacing `src/main.rs` is intended and the worktree is
+backed up.
 
-```rust
-// In pure Axum:
-use axum::{extract::Path, response::IntoResponse, Json};
+## Practical migration sequence
 
-pub async fn show(Path(id): Path<i32>) -> impl IntoResponse {
-    Json(serde_json::json!({ "id": id }))
-}
-```
+1. Keep domain types and handlers independent of framework globals.
+2. Convert router boundaries incrementally.
+3. Replace generated ORM calls with raw SQLx only where that trade-off helps.
+4. Inventory authentication, middleware order, jobs, cache and admin surfaces.
+5. Run application-specific integration and authorization tests before removing
+   dependencies.
 
----
-
-## Summary
-
-Rullst is designed to preserve access to standard Axum and SQLx APIs. Some
-generated and framework-specific code still requires an explicit migration when
-removing Rullst dependencies.
+Interoperability is a maintained design goal. “Zero lock-in” or zero migration
+cost is not a framework guarantee.

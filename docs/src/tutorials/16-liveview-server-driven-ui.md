@@ -1,6 +1,8 @@
 # Tutorial 16: LiveView Server-Driven UI (`rullst::live`) ⚡
 
-Build stateful, reactive user interfaces in pure Rust that synchronize over WebSockets without writing JavaScript.
+Build a per-connection Rust component that receives JSON events and sends
+rendered HTML over WebSockets. The browser still needs the HTMX WebSocket
+extension (or a compatible client transport).
 
 ---
 
@@ -67,8 +69,24 @@ pub async fn page_handler() -> String {
 }
 ```
 
+Register the matching Axum WebSocket route:
+
+```rust
+use axum::{routing::get, Router};
+use rullst::live::live_ws_handler;
+
+let app = Router::new().route(
+    "/ws/counter",
+    get(live_ws_handler::<CounterComponent>),
+);
+```
+
 ---
 
 ## 💡 Key Takeaways
 - Event payloads travel over WebSocket connections; `render()` produces updated HTML fragments.
-- HTMX handles Out-Of-Band (OOB) swaps using the root container ID.
+- The current component state lives in one socket task. Authentication,
+  authorization, reconnect/replay, backpressure and multi-process state remain
+  application concerns.
+- Include and pin the HTMX WebSocket extension; Rullst does not inject that
+  browser dependency automatically.

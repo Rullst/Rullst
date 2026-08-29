@@ -1,30 +1,38 @@
 # Rullst Capital 💳
 
-`rullst-capital` is the native monetization, subscription, and financial billing engine for the Rullst Framework. It abstracts away the complexity of handling global SaaS subscriptions, domestic low-fee gateways, digital wallets, crypto payments, international B2B payouts, and cryptographically verified webhooks.
+`rullst-capital` provides payment/payout adapter foundations, normalized billing
+types, bounded webhook verification helpers, application-supplied revenue
+snapshots, and an offline-only NFS-e preview. Provider method coverage is not
+uniform; inspect the selected adapter and test it in the provider sandbox.
 
 ## 🚀 Core Features
 
 - **Multi-Provider Architecture:** A unified billing surface across global, regional, Web3, and payout adapters. Capabilities vary by provider, and unsupported live operations fail closed.
-- **Revenue Dashboard (`/studio/capital`):** Native MRR (Monthly Recurring Revenue), ARR (Annual Recurring Revenue), Net Revenue, active subscriber metrics, and churn rate calculations built right into Rullst Studio.
-- **Live Webhook Audit Inspector:** Real-time log inspector recording every received payment event payload, signature verification status, and timestamp.
-- **Webhook Handling & Database Synchronization:** Secure, constant-time HMAC-verified webhook handlers that listen to subscription creations, renewals, upgrades, and cancellations, automatically updating database records via `rullst-orm`.
+- **Revenue snapshot (`/studio/capital`):** Displays metrics supplied explicitly
+  by the application to a process-local `RevenueDashboardManager`; it is not an
+  accounting ledger and does not infer money from event names.
+- **Webhook event inspector:** Holds records explicitly passed to the local
+  manager. Capital does not connect every webhook route to Studio automatically.
+- **Webhook verification:** Provider-specific signature/freshness/replay
+  foundations for documented adapters. Durable reconciliation and database
+  updates remain application responsibilities.
 
 ---
 
 ## ✨ Supported Providers
 
-| Provider | Type / Archetype | Key Features & Strengths |
+| Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
-| **Stripe** | Global Direct Merchant | 135+ currencies, Apple/Google Pay, customer portals, metered usage. |
-| **Lemon Squeezy** | Global Merchant of Record (MoR) | Automated EU VAT and US state sales tax compliance for global sales. |
-| **InfinitePay** | Brazil Domestic Gateway (CloudWalk) | **Pix at 0.00% fee**, instant D+0 payouts, lowest domestic credit card rates (~0.75% to 1.44%) with transparent installment interest pass-through. |
-| **Polar.sh** | Developer-First MoR & Open Source | Built specifically for developers, GitHub funding, software licenses, and micro-SaaS. |
-| **Paddle** | Enterprise Global MoR | Comprehensive Merchant of Record for European & US B2B SaaS. |
-| **Razorpay** | India & Southeast Asia | Recurring UPI autopay, Indian credit cards, net banking, and Asian subscriptions. |
-| **Mercado Pago** | Latin America (Regional) | Broadest regional coverage across Brazil, Argentina, Mexico, Chile, and Colombia. |
-| **Coinbase Commerce** | Global Web3 / Crypto | Self-custody and hosted crypto charges (BTC, ETH, SOL, USDC/USDT) with automated on-chain webhook verification. |
-| **PicPay** | Brazil Digital Wallet & QR Code | Instant consumer wallet and QR-code payments for Brazilian users. |
-| **Wise** | Global Multi-Currency Payouts | High-speed, low-fee international B2B payouts and contractor disbursements across 40+ currencies. |
+| **Stripe** | Billing | Checkout and documented webhook foundations; verify required live methods. |
+| **Lemon Squeezy** | Billing | Adapter with explicit mock path; verify required live methods. |
+| **InfinitePay** | Billing | Regional adapter foundation; pricing and settlement are external contracts. |
+| **Polar** | Billing | Adapter foundation; verify provider API coverage. |
+| **Paddle** | Billing | Adapter and signed-webhook foundation. |
+| **Razorpay** | Billing | Adapter and signed-webhook foundation. |
+| **Mercado Pago** | Billing | Adapter and signed-webhook foundation. |
+| **Coinbase Commerce** | Billing | Adapter and signed-webhook foundation. |
+| **PicPay** | Billing | Adapter foundation; verify provider API coverage. |
+| **Wise** | Payout | Payout adapter foundation rather than a subscription provider. |
 
 ---
 
@@ -40,29 +48,14 @@ rullst-capital = "12.0.0"
 ### Initializing a Provider
 
 ```rust
-use rullst_capital::{
-    init_provider, StripeProvider, LemonSqueezyProvider, InfinitePayProvider,
-    PolarProvider, PaddleProvider, RazorpayProvider, MercadoPagoProvider,
-    CoinbaseCommerceProvider, PicPayProvider, WiseProvider,
-};
+use rullst_capital::{init_provider, StripeProvider};
 
-// 1. Stripe (Global Direct)
-init_provider(Box::new(StripeProvider::new(
-    std::env::var("STRIPE_SECRET_KEY").unwrap(),
-    std::env::var("STRIPE_WEBHOOK_SECRET").unwrap(),
-)));
-
-// 2. InfinitePay (Brazil - Pix 0% fee)
-// init_provider(Box::new(InfinitePayProvider::new(
-//     std::env::var("INFINITEPAY_API_KEY").unwrap(),
-//     std::env::var("INFINITEPAY_WEBHOOK_SECRET").unwrap(),
-// )));
-
-// 3. Polar.sh (Developer-first MoR)
-// init_provider(Box::new(PolarProvider::new(
-//     std::env::var("POLAR_ACCESS_TOKEN").unwrap(),
-//     std::env::var("POLAR_WEBHOOK_SECRET").unwrap(),
-// )));
+fn configure_billing() -> Result<(), std::env::VarError> {
+    let api_key = std::env::var("STRIPE_SECRET_KEY")?;
+    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")?;
+    init_provider(Box::new(StripeProvider::new(api_key, webhook_secret)));
+    Ok(())
+}
 ```
 
 ### Creating Checkout Sessions

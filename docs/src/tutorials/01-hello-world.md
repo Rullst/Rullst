@@ -114,7 +114,9 @@ command and boundary.
 
 ## Key takeaways
 
-- The `rullst::html!` macro compiles HTML templates down to zero-cost string concatenation at compile time.
+- The `rullst::html!` macro generates ordinary Rust string-building code and
+  escapes dynamic values. Rendering still performs the allocations/work implied
+  by the generated template.
 - All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
 - Fallible handlers can return `Result<Response, AppError>`; server startup propagates its typed error with `?`.
 - The v12 `dev` branch is an evaluation source, not a stable release channel.

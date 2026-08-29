@@ -46,22 +46,44 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 
 ## 🚀 Why Rullst ORM?
 
-In traditional Rust database handling, you have to write raw SQL queries, manage connection pools manually, and bind variables repetitively. Rullst ORM abstracts the heavy lifting behind a single `#[derive(Orm)]` macro, generating hundreds of safe, chainable query methods at compile time.
+Rullst ORM generates Active Record operations and a fluent query builder from
+`#[derive(Orm)]`. SQLx remains available for queries that do not fit the
+generated API.
 
 **Key Features:**
-- **Zero-Boilerplate CRUD**: Insert, update, delete, and find records instantly.
-- **Fluent Query Builder**: Chain `.where_eq()`, `.limit()`, and `.order_by()` effortlessly.
-- **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
-- **Built-in Multi-Tenancy**: Automatically scope all queries by tenant ID.
-- **Automated Audit Logs**: Track `old_values` and `new_values` history natively.
-- **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
-- **Scout Search**: Seamlessly sync models to full-text search engines.
-- **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
-- **Declarative Struct-Based Migrations**: Safely auto-generate additive SQL migrations (`make:migration:auto`) directly from your Rust struct definitions.
-- **Cascading Soft Deletes**: Configure relationships to automatically soft-delete dependent children records in a single transaction.
-- **Type-Safe Partial Updates**: Virtual dirty checking with `.update_partial()` to intelligently modify only changed columns.
-- **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
-- **Strict Lazy Loading Prevention**: Enable a global toggle to instantly panic on N+1 queries during development.
+- **Generated CRUD:** Insert, update, delete, restore, and find operations for
+  supported model shapes.
+- **Fluent Query Builder:** Chain methods such as `.where_eq()`, `.limit()`, and
+  `.order_by()`; values are bound and structural identifiers are validated.
+- **Relationships and eager loading:** `has_many`, `has_one`, `belongs_to`, and
+  polymorphic relationship helpers, with explicit eager-load methods.
+- **Opt-in tenant scope:** `#[orm(tenant_column = "account_id")]` adds the
+  configured task-local tenant to generated model queries. Applications must
+  establish the tenant context at their authenticated boundary.
+- **Opt-in audit logs:** `#[orm(auditable)]` records model changes after the
+  audit table is created. Sensitive names are recursively masked, and explicitly
+  encrypted fields are decrypted only in memory before the masked diff is built.
+- **Field privacy:** `#[orm(encrypted)]` transparently encrypts supported
+  `String` fields with a versioned AES-256-GCM envelope. Randomized ciphertext
+  cannot be filtered or sorted; use a separate keyed blind index where needed.
+- **Scout hooks:** `#[orm(searchable)]` calls a configured `SearchEngine` after
+  generated writes/deletes. Delivery guarantees depend on the adapter.
+- **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
+  PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
+  table module identifiers, and rejects unsafe SQL identifiers, collisions, or
+  columns requiring unsupported ORM remapping before writing files.
+- **Additive migration generation:** `make:migration:auto` compares supported
+  model definitions and emits a migration for review.
+- **Cascading soft deletes:** Opt-in relationship metadata can cascade through
+  generated delete methods; transaction-aware variants use the supplied
+  transaction.
+- **Partial updates:** `.update_partial()` binds only the selected supported
+  fields.
+- **Model policies:** `#[orm(policy = "MyPolicy")]` invokes the configured
+  policy on generated create/update/delete/restore operations.
+- **Strict lazy-loading prevention:** the global toggle makes generated lazy
+  relationship methods return a validation error instead of performing the
+  query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
 
 ---
@@ -97,7 +119,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     // 2. Initialize the connection pool (Supports SQLite, Postgres, MySQL)
     Orm::init("sqlite::memory:").await?;
 
-    // 3. Create a new user magically
+    // 3. Create a new user
     let mut user = User {
         id: 0,
         name: "Alice".to_string(),

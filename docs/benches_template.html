@@ -221,22 +221,22 @@
   <div class="container">
     <header>
       <h1>Rullst Performance Benchmarks</h1>
-      <p class="subtitle">Real-time historical performance data of the Rullst Framework. We track memory usage, throughput, and CPU time to ensure zero regressions.</p>
+      <p class="subtitle">Historical Criterion measurements for selected Rullst operations. Compare runs from the same CI environment; these are not application throughput or production capacity claims.</p>
       <a href="/Rullst/" class="btn btn-outline">🏠 Back to Home</a>
     </header>
 
     <div class="info-grid">
       <div class="info-card">
         <h3>⚡ Continuous Benchmarking</h3>
-        <p>Every commit pushed to the <code>main</code> branch triggers our benchmarking suite using Criterion.rs, ensuring we never merge a performance regression.</p>
+        <p>Pushes to the active <code>dev</code> branch and the weekly schedule run Criterion suites. Alerts are informational and do not currently block a merge.</p>
       </div>
       <div class="info-card">
-        <h3>📊 Throughput Analysis</h3>
-        <p>We measure <code>requests per second</code> on synthetic HTTP loads to ensure the core routing and middleware layers remain blazing fast.</p>
+        <h3>📊 Selected Request Operations</h3>
+        <p>The suite times in-process router calls, HTML rendering, and one WAF middleware path. It does not measure network requests per second.</p>
       </div>
       <div class="info-card">
-        <h3>🧠 Memory & SSR</h3>
-        <p>Our <code>html!</code> macro and ORM mapping logic are heavily monitored for zero-allocation and CPU nanosecond times.</p>
+        <h3>🧠 CPU Microbenchmarks</h3>
+        <p>Criterion reports operation timing for the exact benchmark code. This dashboard does not measure heap allocation or process memory.</p>
       </div>
     </div>
 

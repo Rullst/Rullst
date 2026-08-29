@@ -94,9 +94,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   runtime dispatch, identifies benchmark scope and historical comparison data,
   and replaces the unsupported ecosystem scorecard with a source-linked
   architectural positioning guide.
+- Added working `#[orm(encrypted)]` persistence for `String` and
+  `Option<String>` fields. Generated writes use authenticated AES-256-GCM
+  `RULLST:v2` envelopes, generated reads decrypt before hooks, Redis query
+  caches retain ciphertext, keyrings support rotation, and unsafe query-builder
+  operations on randomized fields fail explicitly. Added end-to-end rotation,
+  tamper, nullable-field, pluck, and query-boundary coverage.
+- Aligned `FieldEncryptor` writes with the specified `RULLST:v2` envelope while
+  retaining migration reads for the development-era `ENC:v2` prefix. Corrected
+  Vault documentation to describe zeroization as bounded memory hygiene rather
+  than heap-dump prevention.
+- Hardened `make:models-from-db`: metadata lookups now bind table names for all
+  three supported drivers, table module identifiers are normalized, SQL
+  identifiers are allowlisted, and collisions or columns requiring unsupported
+  ORM remapping fail before files are written.
 - Studio Radar reports real process CPU on Windows after a sampling interval,
   refreshes KPIs from `/api/radar`, and keeps unavailable probes visibly
   unavailable.
+- Studio's debug-only local capability now verifies the direct loopback peer and
+  local `Host`, and requires same-origin `Origin` on unsafe methods. This closes
+  the supported local browser boundary against direct remote access, DNS
+  rebinding and cross-origin mutation without claiming production
+  authentication.
+- Studio no longer infers an active security guard, AI-provider reachability,
+  revenue, worker state or migration success from environment variables, event
+  names or empty registries. Unsupported queue operations propagate typed
+  errors; migration compatibility handlers return `501`; application revenue
+  snapshots and webhook inspection remain explicitly supplied and process-local.
+- Removed the legacy Studio `/tools/*` aliases; supported pages use the clean
+  `/studio/*` route contract.
+- Queue drivers now fail explicitly when Studio-style list/retry/purge
+  operations are unsupported. `purge_failed_jobs` is the canonical API; the
+  misleading legacy `purge_completed_jobs` facade alias remains deprecated for
+  source migration.
+- Scalar uses a pinned reference asset, escapes the configured OpenAPI URL,
+  returns `503` when the configured specification is missing or malformed, and
+  keeps the no-script fallback status-only. The Wasm build helper now fails
+  closed on missing tools, merges `cdylib` into an existing `[lib]` table,
+  resolves the artifact from parsed package/library metadata and writes a
+  separate hydrator that awaits generated binding initialization.
+- Foundry configuration is parsed as section-aware TOML and validated through
+  typed errors. The SSH flow requires reviewed, preinstalled `curl`, systemd and
+  Caddy executables instead of installing packages or piping a network script
+  into a remote shell. Application data, secrets and binaries are isolated under
+  `/opt/rullst/<app>`; Caddy failures are blocking, plain-HTTP proxying uses port
+  80, replaced files receive `.previous` copies, and a successful local
+  `/health` probe is reported as a candidate deployment rather than proof of
+  public DNS/TLS reachability. The current pipeline replaces the global
+  Caddyfile, requires root or passwordless sudo, and leaves rollback to the
+  operator.
 - The blog showcase's security controls execute instrumented local primitives.
   Prompt inspections are counted once, unsigned events are not labeled HMAC
   verified, and detector results are not presented as production guarantees.
@@ -373,7 +419,7 @@ release gate has completed.
   - **OPC-UA Protocol Driver (`rullst_iot::opcua`):** Industry 4.0 OPC-UA driver for SCADA/MES/ERP communication (ISA-95, IEC 62541).
   - **MQTT Sparkplug B Profile (`rullst_iot::sparkplug`):** IIoT-standard Sparkplug B over MQTT for Unified Namespace interoperability.
   - **IEC 61508 / IEC 62443 Safety Mode (`rullst_iot::safety`):** SIL 2/3 safety-critical deterministic execution with watchdog timer and memory protection.
-- **Rullst Vault (`rullst-vault` & `FieldEncryptor`)**: Added zero-trust secret management with `Zeroize` in-memory cleaning upon drop (`VaultSecret<T>`) and field-level AES-256-GCM / ChaCha20-Poly1305 encryption in `rullst-security`.
+- **Rullst Vault (`FieldEncryptor`)**: Added `Zeroize`-on-drop memory hygiene through `VaultSecret<T>` and versioned AES-256-GCM field encryption in `rullst-security`; no ChaCha20-Poly1305 implementation is claimed.
 - **Intent-Based Modeling (`rullst-orm`)**: Added `IntentAnalyzer` in `rullst-orm` to auto-generate `CREATE INDEX` migrations directly from plain-text Rust doc comments (`/// @index(...)`).
 - **IoT data and frame helpers (`rullst-iot`)**: Introduced a `no_std`-compatible helper crate; network transports and hardware drivers are not part of this release:
   - **GPIO state and I2C frame helpers (`rullst_iot::gpio`, `rullst_iot::i2c`)**: In-memory GPIO state plus I2C transaction byte construction; no register access claim.

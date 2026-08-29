@@ -1,6 +1,9 @@
-# Tutorial 06: Zero-Bundle HTMX UI 🎨
+# Tutorial 06: HTMX-oriented server rendering 🎨
 
-Rullst adopts a **Zero-Bundle Frontend** philosophy by default: combining HTML5 SSR, TailwindCSS, and HTMX to build rich reactive interfaces without loading megabytes of JavaScript frameworks.
+Rullst's default scaffold renders HTML on the server and can use HTMX attributes
+for targeted requests and fragment swaps. It does not require a project-local
+SPA bundle, but HTMX itself is browser JavaScript and must be supplied, pinned,
+and permitted by the application's CSP.
 
 ---
 
@@ -50,5 +53,8 @@ pub async fn search_users(query: String) -> Result<Response, AppError> {
 ---
 
 ## 💡 Key Takeaways
-- **0KB JavaScript Bundle:** HTMX handles AJAX, WebSockets, and CSS transitions using HTML attributes.
-- **Partial View Rendering:** Handlers return tiny HTML fragments instead of full pages, delivering instant initial page load speeds.
+- **Small application-owned client surface:** business logic can remain on the
+  server while HTMX coordinates browser requests.
+- **Partial rendering:** handlers can return fragments instead of full pages.
+  Measure page weight and latency for the actual application; no fixed size or
+  load-time guarantee follows from the rendering style.

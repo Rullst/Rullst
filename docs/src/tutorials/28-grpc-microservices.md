@@ -50,5 +50,7 @@ impl UserService for UserServiceImpl {
 ---
 
 ## 💡 Key Takeaways
-- gRPC delivers sub-microsecond inter-service communication for microservice mesh architectures.
-- Powered by `tonic` and static `prost` codegen.
+- The generator creates a starting point for `tonic` and `prost`; inspect the
+  generated build configuration and service before deployment.
+- Network, serialization, handler, and proxy latency must be measured in the
+  target environment. Rullst does not claim a universal latency bound.

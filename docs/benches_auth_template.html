@@ -45,7 +45,7 @@
     <header>
       <div class="badge">🔐 rullst-auth</div>
       <h1>Auth Session Crypto Benchmarks</h1>
-      <p class="sub"><code>encrypt_session</code> and <code>decrypt_session</code> run on <em>every authenticated request</em> using <strong>AES-256-GCM</strong>. These must stay in the microsecond range to not dominate request latency.</p>
+      <p class="sub">Criterion measurements for AES-256-GCM session encryption/decryption and login-cookie assembly. Application request cost depends on the authentication flow that calls them.</p>
       <div class="links">
         <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
         <a href="/Rullst/benches/" class="btn btn-o">⚡ Core</a>
@@ -58,7 +58,7 @@
       <div class="card"><div class="ic">🔒</div><h3>Session Encryption</h3><p><code>encrypt_session(user_id, key)</code>: AES-256-GCM encrypt + base64-encode the user ID. Generates a random 12-byte nonce per call using <code>OsRng</code>. Called on every login.</p></div>
       <div class="card"><div class="ic">🔓</div><h3>Session Decryption</h3><p><code>decrypt_session(token, key)</code>: base64-decode + AES-256-GCM decrypt. Called on <em>every authenticated request</em>. This is the most critical path in the auth stack.</p></div>
       <div class="card"><div class="ic">🍪</div><h3>Login Cookie</h3><p><code>make_login_cookie(user_id)</code>: full pipeline — encrypt + format the <code>Set-Cookie</code> header string. Represents the complete overhead of setting an auth session.</p></div>
-      <div class="card"><div class="ic">🔄</div><h3>Round-Trip</h3><p>Encrypt → Decrypt combined (per-request budget). If this stays under <strong>10µs</strong>, auth overhead is &lt;1% of a typical 1ms handler latency.</p></div>
+      <div class="card"><div class="ic">🔄</div><h3>Round-Trip</h3><p>Encrypt → decrypt combined for regression comparison in the CI runner; it is not a universal per-request budget.</p></div>
     </div>
     <div id="loading">⏳ Loading auth benchmark data...</div>
     <div id="dashboard" style="display:none">
@@ -72,7 +72,7 @@
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
       const L=document.getElementById('loading'),D=document.getElementById('dashboard');
-      if(!window.BENCHMARK_DATA){L.innerHTML='⚠️ No auth bench data yet. Run bench.yml on push to main.';return;}
+      if(!window.BENCHMARK_DATA){L.textContent='No Auth benchmark data is available yet. Run bench.yml on dev.';return;}
       L.style.display='none';D.style.display='block';
       const data=window.BENCHMARK_DATA,entries=data.entries||data,suite=Object.keys(entries)[0],commits=entries[suite];
       if(!commits?.length){D.innerHTML='<p>No entries yet.</p>';return;}

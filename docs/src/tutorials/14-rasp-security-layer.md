@@ -12,15 +12,12 @@ use rullst_security::rasp::RaspSecurityLayer;
 use rullst::Server;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), rullst::ServerError> {
     let app = Router::new()
         // ... routes
         .layer(RaspSecurityLayer::default());
 
-    Server::new()
-        .merge(app)
-        .run()
-        .await;
+    Server::new(app.into()).run(3000).await
 }
 ```
 
@@ -34,10 +31,15 @@ Send an attack payload in query string:
 curl "http://localhost:3000/api/users?query=SELECT%20*%20FROM%20users;--' OR 1=1"
 ```
 
-RASP instantly responds with HTTP `403 Forbidden` and logs the blocked attack vector in the **Visual Threat Radar (SOC)** at `http://localhost:5555/studio/security`.
+For a recognized bounded signature, the layer returns `403 Forbidden` and adds
+a process-local event to `SecurityStore`. A Studio instance running in the same
+process can display that event at
+`http://127.0.0.1:5555/studio/security`.
 
 ---
 
 ## 💡 Key Takeaways
-- Zero-latency pre-controller inspection.
-- Protects APIs even if raw queries or third-party crates have vulnerabilities.
+- Inspection has runtime cost and uses bounded pattern heuristics, with possible
+  false positives and false negatives.
+- RASP is defense in depth; parameterized SQL, validation, authorization, body
+  limits, and dependency review remain required.

@@ -29,7 +29,7 @@
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Instant boilerplate generation for Welcome, Password Reset, OTP, and Invoice mailables.
+- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Generates starting mailables for Welcome, Password Reset, OTP, and Invoice flows.
 
 ---
 
@@ -244,47 +244,29 @@ For Resend, SendGrid, Postmark, AWS SES, and authenticated SMTP, an empty creden
 
 ---
 
-## ⚖️ Rullst Mail vs Marketing Automation Platforms (RD Station / Mailchimp)
+## Scope and product boundaries
 
-A common architectural question when building web applications and SaaS platforms is: **"Does `rullst-mail` replace services like RD Station or Mailchimp?"**
+`rullst-mail` is a transactional-delivery library, not a marketing CRM or a
+claim that third-party delivery infrastructure is unnecessary.
 
-The answer depends on the use case. `rullst-mail` is designed as a **high-throughput, sovereign, transactional email & backend delivery engine**, replacing the need for expensive third-party transactional tiers while allowing seamless optional integration with marketing automation tools.
+Implemented building blocks include:
 
-### ⚔️ What `rullst-mail` Replaces Directly:
-1. **Transactional Email Services**: Replaces **Resend**, **SendGrid Transactional**, **Postmark**, **AWS SES SDKs**, **Mailgun**, and **Mailtrap**.
-2. **Backend Notification & Dunning Workflows**:
-   - Authentication ceremonies (account activation, password reset, 2FA/OTP tokens).
-   - Real-time security alerts and system events.
-   - SaaS invoices and payment receipts. NFS-e output is limited to a clearly marked offline DPS preview until live fiscal issuance is validated.
-   - **AI Smart Dunning**: Empathetic sales recovery and automated dunning sequences powered by `rullst-ai` and `rullst-capital`.
-3. **Local Testing Environments**: Eliminates paid email sandbox subscriptions by providing a zero-I/O in-memory `MailTrap` with visual inspection in Rullst Studio (`/studio/mail`).
-4. **B2B SaaS Multi-Tenancy**: Lets every tenant organization configure their own isolated custom domains, SMTP servers, or API keys (`TenantMailResolver`).
+- typed message construction and templates;
+- explicit SMTP, Resend, SendGrid, Postmark, SES, log, and memory drivers;
+- deterministic offline mode for empty or `mock_*` provider credentials;
+- an in-memory `MailTrap` and `MailFactory` fixtures;
+- bounded retry/failover helpers, tenant-driver resolution, attachments, and
+  provider-specific scheduling fields;
+- HMAC-authenticated tracking tokens with expiry/replay helpers, URL checks,
+  and bounded secret-redaction heuristics.
 
----
+These components do not provide deliverability, sender-domain reputation,
+legal consent, unsubscribe policy, durable campaign orchestration, a visual
+marketing editor, or a production inbox. Provider acceptance is not proof of
+delivery. Tracking pixels/links have privacy and consent implications that the
+application must evaluate for each jurisdiction and use case.
 
-### 📊 Comparative Matrix: `rullst-mail` vs RD Station / Mailchimp
-
-| Feature / Capability | `rullst-mail` (Native Framework Engine) | RD Station / Mailchimp / ActiveCampaign |
-| :--- | :---: | :---: |
-| **Transactional Emails (Password reset, 2FA, receipts)** | ✅ **Native, sub-millisecond, zero-markup** | ❌ Expensive add-on or restricted |
-| **Multi-Driver Delivery with Automatic Failover** | ✅ **Yes (`FailoverDriver` with Circuit Breaker)** | ❌ Vendor-locked to proprietary IP pools |
-| **Attachments & Inline CID Assets** | ✅ **Yes (transport may copy/encode)** | ⚠️ Heavily capped file sizes |
-| **Zero-Cookie Privacy Tracking** | ✅ **Native (`TrackingEngine` HMAC)** | ⚠️ Third-party cookie dependency |
-| **Disposable Email & Deliverability Filter** | ✅ **Native (`DisposableEmailFilter`)** | ⚠️ Expensive external addons |
-| **Security: Anti-Phishing & Homograph URL Scanner** | ✅ **Native pre-flight IDN inspection** | ⚠️ Basic link scanning |
-| **Outbound DLP Secret Scanner (AWS tokens, keys)** | ✅ **Native (`redact_email_secrets`)** | ❌ No credential leak prevention |
-| **Dynamic B2B SaaS Multi-Tenancy** | ✅ **Yes (Dedicated credentials per tenant)** | ❌ Single-account flat tenancy |
-| **Scheduled Delivery (`.send_at()`, `.send_in()`)** | ✅ **Yes (Native UTC & relative delays)** | ✅ Yes |
-| **In-Memory MailTrap & Test Fixtures** | ✅ **Native (`MailTrap` & `MailFactory`)** | ⚠️ Manual sandbox configuration |
-| **Code-Driven Automated Sequences & Dunning** | ✅ **Yes (Tokio background queue integration)** | ✅ Yes |
-| **Live Studio Web Inspector (`/studio/mail`)** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Proprietary dashboard |
-| **AI Smart Dunning Revenue Recovery** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Rule-based workflows only |
-| **Drag-and-Drop No-Code Visual Builder** | ❌ *(Code/Template-first: HTML, Jinja2, Tailwind)* | ✅ **Yes (Visual WYSIWYG for marketers)** |
-| **No-Code Landing Pages & Commercial Sales CRM** | ❌ *(Built with `rullst-core` / `rullst-nexus`)* | ✅ **Yes (Integrated lead scoring CRM)** |
-
----
-
-### 💡 Architectural Recommendation
-
-* **Use `rullst-mail` if:** You are building a SaaS, web app, or API that needs to send transactional emails, alerts, invoices, smart dunning sequences, or if you want to build your own internal email automation engine with zero third-party subscription markup.
-* **Coexist with RD Station / Mailchimp if:** Non-technical marketing teams require a standalone drag-and-drop WYSIWYG newsletter builder, visual landing page creators, and a commercial lead-scoring CRM. In this setup, `rullst-mail` powers the core application while marketing platforms integrate via webhooks using `rullst-connect`.
+Choose a delivery provider and operational policy based on measured volume,
+region, data processing terms, bounce/complaint handling, retention, cost, and
+failover tests. Rullst publishes no universal latency, price, or feature
+comparison against commercial platforms.

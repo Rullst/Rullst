@@ -45,7 +45,7 @@
     <header>
       <div class="badge">🔗 rullst-connect</div>
       <h1>OAuth Connect Benchmarks</h1>
-      <p class="sub">OAuth provider construction and PKCE flow — the zero-overhead <strong>statically-dispatched</strong> design means every provider (GitHub, Google, Discord…) costs exactly the same. Measured in <strong>nanoseconds</strong>.</p>
+      <p class="sub">Criterion history for the currently benchmarked GitHub provider constructor. It does not establish equal cost for every provider or measure a complete OAuth flow.</p>
       <div class="links">
         <a href="/Rullst/" class="btn btn-o">🏠 Home</a>
         <a href="/Rullst/benches/" class="btn btn-o">⚡ Core</a>
@@ -54,9 +54,7 @@
       </div>
     </header>
     <div class="grid">
-      <div class="card"><div class="ic">🏗️</div><h3>Provider Construction</h3><p><code>GithubProvider::new(client_id, secret, redirect_url)</code> — constructs a fully configured OAuth2 provider. Should be near-zero since all config is stack-allocated.</p></div>
-      <div class="card"><div class="ic">🔐</div><h3>PKCE Flow</h3><p>PKCE code verifier generation (<code>OsRng</code> → base64url) and code challenge SHA-256 hash. Runs on every OAuth authorization redirect — must be sub-microsecond.</p></div>
-      <div class="card"><div class="ic">🌐</div><h3>Auth URL Build</h3><p>Building the full authorization URL with state parameter, scope, and PKCE challenge — pure string manipulation, no I/O. Tests the query builder overhead.</p></div>
+      <div class="card"><div class="ic">🏗️</div><h3>GitHub Provider Construction</h3><p><code>GithubProvider::try_new(client_id, secret, redirect_url)</code> validates and constructs the provider configuration. Allocation and validation are part of the measured operation.</p></div>
     </div>
     <div id="loading">⏳ Loading connect benchmark data...</div>
     <div id="dashboard" style="display:none">
@@ -70,7 +68,7 @@
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
       const L=document.getElementById('loading'),D=document.getElementById('dashboard');
-      if(!window.BENCHMARK_DATA){L.innerHTML='⚠️ No connect bench data yet. Run bench.yml on push to main.';return;}
+      if(!window.BENCHMARK_DATA){L.textContent='No Connect benchmark data is available yet. Run bench.yml on dev.';return;}
       L.style.display='none';D.style.display='block';
       const data=window.BENCHMARK_DATA,entries=data.entries||data,suite=Object.keys(entries)[0],commits=entries[suite];
       if(!commits?.length){D.innerHTML='<p>No entries yet.</p>';return;}

@@ -3,53 +3,122 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Open Graph / Thumbnail Meta Tags -->
-  <meta property="og:title" content="Rullst v12 Development Preview - NO-GO" />
+  <meta name="description"
+    content="Rullst v12 development preview: an explicit, AI-friendly full-stack Rust framework built on Axum, Tokio, Tower and SQLx. Not yet released." />
+  <meta property="og:title" content="Rullst v12 development preview — NO-GO" />
   <meta property="og:description"
-    content="Unreleased Rullst v12 development preview. The main branch is the legacy v5 baseline; active v12 work remains NO-GO until its release gates pass." />
+    content="Explore the implemented v12 capabilities, evidence and release boundaries. The published v5 line is end-of-life; v12 remains unreleased." />
   <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
   <meta property="og:type" content="website" />
-
-  <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Rullst v12 Development Preview - NO-GO" />
+  <meta name="twitter:title" content="Rullst v12 development preview — NO-GO" />
   <meta name="twitter:description"
-    content="Unreleased Rullst v12 development preview. The main branch is the legacy v5 baseline; active v12 work remains NO-GO until its release gates pass." />
+    content="Implemented capabilities, reproducible evidence and honest release boundaries for Rullst v12." />
   <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
-
-  <title>Rullst v12 Development Preview - NO-GO</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
+  <title>Rullst v12 development preview — NO-GO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="https://rullst.github.io/src/style.css">
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://rullst.github.io/src/style.css" />
   <style>
-    body > .navbar {
+    body>.navbar {
       position: sticky;
       top: 0;
+    }
+
+    .content-section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 4.5rem 1rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .fact-card {
+      padding: 1.6rem;
+      border-radius: 16px;
+      text-align: left;
+    }
+
+    .fact-card h3 {
+      color: #38bdf8;
+      margin: 0 0 0.65rem;
+      font-size: 1.1rem;
+    }
+
+    .fact-card p,
+    .boundary-copy {
+      color: #cbd5e1;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    .evidence-link {
+      display: inline-block;
+      margin-top: 0.8rem;
+      color: #a7f3d0;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .status-list li {
+      margin-bottom: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .positioning-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .positioning-table th,
+    .positioning-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      vertical-align: top;
+    }
+
+    .positioning-table th {
+      color: #f8fafc;
+      background: rgba(30, 41, 59, 0.75);
+    }
+
+    code {
+      font-family: "JetBrains Mono", monospace;
     }
   </style>
 </head>
 
 <body>
+  <p
+    style="margin: 0; padding: 0.5rem 1rem; text-align: center; color: #cbd5e1; background: #020617; font-size: 0.85rem;">
+    All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).
+  </p>
+
   <aside aria-label="Rullst release status"
     style="position: relative; z-index: 1000; padding: 1rem; border-bottom: 1px solid rgba(251, 191, 36, 0.55); background: rgba(69, 26, 3, 0.97); color: #fef3c7; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);">
     <div style="max-width: 1180px; margin: 0 auto; line-height: 1.55; text-align: center;">
       <strong style="display: block; margin-bottom: 0.25rem; color: #fbbf24; font-size: 1.05rem;">
-        ⚠️ Release status: v5 legacy / v12 development preview
+        ⚠️ Published v5 is end-of-life; v12 is an unreleased development preview
       </strong>
       <span>
-        The <a href="https://github.com/Rullst/Rullst/tree/main"
-          style="color: #fde68a; font-weight: 700; text-decoration: underline;">main branch</a> is the
-        end-of-life v5 baseline and no longer receives maintenance. Active v12 work lives on
-        <a href="https://github.com/Rullst/Rullst/tree/dev"
-          style="color: #fde68a; font-weight: 700; text-decoration: underline;">dev</a>, is unreleased, and remains
-        <strong>NO-GO for production</strong> until its documented tests, audits, package checks, and release gates
-        pass. Use versioned crates.io releases and matching immutable tags for published artifacts.
+        <a href="https://github.com/Rullst/Rullst/tree/main"
+          style="color: #fde68a; font-weight: 700;">main</a> preserves the legacy v5 baseline.
+        Active work lives on <a href="https://github.com/Rullst/Rullst/tree/dev"
+          style="color: #fde68a; font-weight: 700;">dev</a> and remains
+        <strong>NO-GO for production</strong>. Use only versioned crates.io releases and matching immutable tags as
+        published artifacts.
       </span>
     </div>
   </aside>
@@ -57,1035 +126,234 @@
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
 
-  <nav class="navbar">
+  <nav class="navbar" aria-label="Primary navigation">
     <div class="nav-content">
-      <div class="logo">
-        <span>📜🦀🌐 Rullst <small
+      <div class="logo"><span>📜🦀🌐 Rullst <small
             style="font-size: 0.6em; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">v12 dev</small></span>
       </div>
-      <div class="hamburger" id="hamburger">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar"></span>
-      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
       <div class="nav-links" id="nav-links">
-        <a href="https://github.com/Rullst/Rullst" target="_blank" class="btn btn-outline">⭐ GitHub</a>
-
-        <a href="/Rullst/book/" class="btn btn-outline"
-          style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05);">📖
-          mdBook</a>
-
-        <a href="https://github.com/Rullst/Rullst/blob/dev/docs/src/SUMMARY.md" target="_blank" class="btn btn-outline"
-          style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05);">📝 GitHub
-          Docs</a>
-
-        <a href="#benches" class="btn btn-outline"
-          style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05);">📊
-          Interactive Benches</a>
-
-        <a href="https://github.com/Rullst/Benchmarks" target="_blank" class="btn btn-outline"
-          style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05);">📈
-          CI Benchmarks</a>
+        <a href="https://github.com/Rullst/Rullst/tree/dev" class="btn btn-outline">GitHub</a>
+        <a href="/Rullst/book/" class="btn btn-outline">Documentation</a>
+        <a href="/Rullst/book/v12.html" class="btn btn-outline">Release program</a>
+        <a href="#evidence" class="btn btn-outline">Evidence</a>
       </div>
     </div>
   </nav>
 
   <header class="hero">
     <div class="hero-content">
-      <h1 class="hero-title">Rust for those who want to <span class="text-gradient">build</span>, not suffer.</h1>
-      <p class="hero-subtitle">The AI-Native, developer-first full-stack Rust web framework designed for ultimate
-        productivity, zero-panic runtime safety, and seamless LLM agent collaboration.</p>
-
+      <h1 class="hero-title">Full-stack Rust with <span class="text-gradient">explicit boundaries</span>.</h1>
+      <p class="hero-subtitle">
+        Rullst v12 is an AI-friendly framework suite built on Axum, Tokio, Tower and SQLx: typed APIs, inspectable
+        generated code, offline provider fixtures and security controls whose limits are documented alongside them.
+      </p>
       <div class="hero-cta">
-        <button class="btn btn-primary" id="copy-install">cargo install cargo-rullst</button>
-        <a href="#cli-demo" class="btn btn-secondary">See how it works</a>
+        <a href="/Rullst/book/tutorials/01-hello-world.html" class="btn btn-primary">Read Zero to Hero</a>
+        <a href="https://github.com/Rullst/Rullst/blob/dev/README.md" class="btn btn-secondary">Explore the preview</a>
       </div>
-
       <div class="badges">
-        <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io">
-        <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-        <img src="https://img.shields.io/badge/v12-development%20NO--GO-f59e0b.svg?style=for-the-badge" alt="Version 12 development NO-GO">
+        <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=64748b&logo=rust"
+          alt="Latest published Rullst version" />
+        <img src="https://img.shields.io/badge/v12-development%20NO--GO-f59e0b.svg?style=for-the-badge"
+          alt="Version 12 development NO-GO" />
+        <img src="https://img.shields.io/badge/license-MIT-eab308.svg?style=for-the-badge" alt="MIT license" />
       </div>
+      <p style="color: #94a3b8; margin-top: 1rem; font-size: 0.9rem;">
+        The crates.io badge identifies the legacy published line; it is not evidence that v12 has shipped.
+      </p>
     </div>
   </header>
 
-  <section id="philosophy" style="padding: 6rem 1rem 2rem 1rem; max-width: 850px; margin: 0 auto;">
-    <div class="glass"
-      style="padding: 3rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: left; background: rgba(15, 23, 42, 0.6);">
-      <h2 class="section-title" style="margin-bottom: 1.5rem; text-align: left;">💡 The Rullst Philosophy</h2>
-      <p style="color: #cbd5e1; line-height: 1.8; margin-bottom: 1.5rem; font-size: 1.05rem;">
-        Unlike other frameworks, Rullst strives to be <strong>simultaneously simple and complete</strong>, with a
-        relentless focus on <strong>security</strong>, <strong>AI-native architecture</strong>, and <strong>developer
-          experience (DX)</strong>.
+  <main>
+    <section class="content-section" aria-labelledby="capabilities-title">
+      <h2 id="capabilities-title" class="section-title">What the v12 preview implements</h2>
+      <p class="boundary-copy" style="max-width: 820px; margin: 0 auto 2rem; text-align: center;">
+        These are bounded capabilities in the dev branch, not a framework-wide production-readiness label.
       </p>
-      <p style="color: #cbd5e1; line-height: 1.8; margin-bottom: 1.5rem; font-size: 1.05rem;">
-        The origins of this philosophy can be traced back to the creation of Rust by Graydon Hoare, who sought memory
-        safety to eliminate runtime elevator crashes. Rullst carries this exact mindset into web development:
-        eliminating runtime panics, hidden reflection magic, and framework guesswork.
-      </p>
-      <h3 style="color: #38bdf8; margin-bottom: 1rem; margin-top: 2rem; font-size: 1.25rem;">Our Core Tenets</h3>
-      <ul style="color: #94a3b8; font-size: 1rem; line-height: 1.8; padding-left: 1.5rem;">
-        <li style="margin-bottom: 1rem;"><strong>Simple yet Complete:</strong> Batteries included out-of-the-box:
-          Parameterized ORM, JWT & Session Auth, RASP Security Shield, Local/Cloud AI Client, SaaS Billing, and
-          Real-Time Telemetry.</li>
-        <li style="margin-bottom: 1rem;"><strong>AI-Native & Token Efficient:</strong> Strongly typed static dispatch
-          (`impl Trait`) and macro delimiters (`routes!`, `html!`) save up to 70% in LLM prompt token context when
-          building with Cursor, Claude, or Copilot.</li>
-        <li><strong>Zero-Panic Production Guarantee:</strong> All runtime paths use typed `AppError` enums. No
-          unexpected panics in production.</li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- How to build a SaaS with Rullst -->
-  <section id="video-demo" style="padding: 4rem 1rem 2rem 1rem; text-align: center; max-width: 850px; margin: 0 auto;">
-    <h2 class="section-title" style="margin-bottom: 2rem;">How to build a SaaS with Rullst</h2>
-    <div
-      style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); margin-bottom: 3rem;">
-      <iframe src="https://www.youtube.com/embed/nDXLeNM327g?si=WNhDumJlkfj3VkNG" title="YouTube video player"
-        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
-      </iframe>
-    </div>
-
-    <div class="docs-tabs-container glass" style="border-radius: 16px; overflow: hidden; text-align: left;">
-      <div class="docs-tabs-header"
-        style="display: flex; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
-        <button class="doc-tab active" data-tab="orm"
-          style="padding: 1rem 1.5rem; color: #38bdf8; background: transparent; border: none; border-bottom: 2px solid #38bdf8; font-weight: 600; cursor: pointer; white-space: nowrap;">🗄️
-          ORM & Models</button>
-        <button class="doc-tab" data-tab="ssr"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🎨
-          html! Macro</button>
-        <button class="doc-tab" data-tab="routing"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🛡️
-          Security & Auth</button>
-        <button class="doc-tab" data-tab="ai"
-          style="padding: 1rem 1.5rem; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; white-space: nowrap;">🤖
-          AI & Guardrails</button>
+      <div class="card-grid">
+        <article class="glass fact-card">
+          <h3>Axum-native HTTP</h3>
+          <p>Routing, middleware and server helpers preserve access to Axum, Tokio and Tower escape hatches.</p>
+          <a class="evidence-link" href="/Rullst/book/crates/core.html">Core boundary →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Parameterized ORM</h3>
+          <p>Active Record and repository APIs cover SQLite, PostgreSQL and MySQL, with strict identifier validation
+            around generated queries.</p>
+          <a class="evidence-link" href="/Rullst/book/crates/orm.html">ORM documentation →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Authenticated field encryption</h3>
+          <p><code>#[orm(encrypted)]</code> protects string fields on generated reads and writes with versioned
+            AES-256-GCM envelopes and explicit key rotation.</p>
+          <a class="evidence-link" href="/Rullst/book/tutorials/15-rullst-vault-encryption.html">Encryption guide →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Defense-in-depth helpers</h3>
+          <p>CSRF, secure headers, bounded WAF/RASP heuristics, ownership guards, Login Jail and telemetry support an
+            application policy; they do not replace it.</p>
+          <a class="evidence-link" href="/Rullst/book/security-architecture.html">Security architecture →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Guarded AI clients</h3>
+          <p>Five built-in provider paths share offline fixtures, bounded prompt/PII checks, capabilities and an
+            opt-in strict egress fetcher.</p>
+          <a class="evidence-link" href="/Rullst/book/ai-provider-capabilities.html">Provider matrix →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Studio, Nexus and CLI</h3>
+          <p>Local developer telemetry, policy-protected admin scaffolding and generators make architecture visible
+            while keeping production access decisions explicit.</p>
+          <a class="evidence-link" href="/Rullst/book/cli_reference.html">CLI reference →</a>
+        </article>
       </div>
+    </section>
 
-      <div class="docs-tabs-content" style="padding: 2rem;">
-        <!-- Tab 1: ORM -->
-        <div id="tab-orm" class="doc-tab-pane" style="display: block;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Active Record & Parameterized SQLx ORM</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Declare models with type-safe macros,
-            transparent field encryption, and zero SQL injection vulnerability.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #a78bfa; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_orm::Orm;
-use rullst::db::FromRow;
+    <section class="content-section" aria-labelledby="model-title">
+      <h2 id="model-title" class="section-title">Small model, explicit behavior</h2>
+      <div class="glass" style="padding: 2rem; border-radius: 16px; overflow-x: auto;">
+        <pre style="margin: 0; color: #a7f3d0;"><code>use rullst_orm::FromRow;
 
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
 #[orm(table = "users")]
-pub struct User {
-    pub id: i32,
-    pub email: String,
-    #[orm(encrypted)] // Transparent Vault field encryption
-    pub ssn: String,
+struct User {
+    id: i32,
+    email: String,
+    #[orm(encrypted)]
+    recovery_note: Option&lt;String&gt;,
 }
 
-// Simple Active Record queries
-let user = User::find(1).await?;
-let all_users = User::all().await?;</code></pre>
-        </div>
-
-        <!-- Tab 2: SSR -->
-        <div id="tab-ssr" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Native html! Macro & Zero-Bundle SSR</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Blazing-fast JSX-like syntax in pure
-            Rust that compiles directly into optimized static strings without runtime Virtual DOM overhead.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #34d399; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst::html;
-
-fn dashboard_view(user: &User) -> String {
-    html! {
-        <div class="p-8 bg-slate-900 text-white rounded-2xl shadow-xl">
-            <h1 class="text-2xl font-bold text-emerald-400">"Welcome back, " { &user.email }</h1>
-            <p class="text-slate-400 mt-2">"Your account is protected by RASP and Argon2id."</p>
-        </div>
-    }
-}</code></pre>
-        </div>
-
-        <!-- Tab 3: Routing & Security -->
-        <div id="tab-routing" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">RASP Protection & Granular RBAC</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Pre-controller threat shield,
-            Passkeys/WebAuthn, and ownership-based BOLA protection.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_security::{RbacGuard, HtmlSanitizer};
-use rullst_core::AppError;
-
-pub async fn update_document(user: User, doc_owner_id: i32) -> Result<(), AppError> {
-    // Ensures current user owns resource or has 'admin' role
-    RbacGuard::authorize_owner_or_role(&user, doc_owner_id, "admin")
-        .map_err(|e| AppError::Forbidden(e))?;
-
-    let safe_content = HtmlSanitizer::sanitize("<b>User Content</b>");
-    Ok(())
-}</code></pre>
-        </div>
-
-        <!-- Tab 4: AI -->
-        <div id="tab-ai" class="doc-tab-pane" style="display: none;">
-          <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem;">Provider-Agnostic AI Client (`rullst-ai`)</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Connect to ANY local runner (Ollama, LM
-            Studio, vLLM, LocalAI) or commercial cloud (Gemini, Claude, OpenAI, DeepSeek) with prompt injection filters
-            and PII masking.</p>
-          <pre style="background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin: 0;"><code style="color: #06b6d4; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">use rullst_ai::ai::{AiClient, AiGuardrails, Message};
-
-let client = AiClient::auto()?; // Detects Ollama / LM Studio / Gemini / OpenAI credentials
-let clean_prompt = AiGuardrails::sanitize_prompt(&user_prompt);
-
-let response = client.prompt(&clean_prompt).await?;</code></pre>
-        </div>
+let user = User::find(42).await?;</code></pre>
       </div>
-    </div>
-  </section>
+      <p class="boundary-copy" style="margin-top: 1rem;">
+        Generated persistence encrypts annotated values before SQL and decrypts loaded models before fetch hooks.
+        Randomized encrypted columns deliberately reject filtering and sorting; raw SQL remains caller-owned.
+      </p>
+    </section>
 
-  <!-- The Full-Stack Feature Matrix (Identical to README) -->
-  <section id="feature-matrix" style="padding: 4rem 1rem; max-width: 950px; margin: 0 auto;">
-    <h2 class="section-title" style="text-align: center; margin-bottom: 2rem;">The Full-Stack Feature Matrix</h2>
-    <div
-      style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-      <table
-        style="width: 100%; border-collapse: collapse; text-align: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px);">
-        <thead>
-          <tr style="background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-            <th style="padding: 1rem; text-align: left; font-weight: 600;">Feature</th>
-            <th style="padding: 1rem; font-weight: 600; color: #10b981;">Rullst</th>
-            <th style="padding: 1rem; font-weight: 600;">Loco</th>
-            <th style="padding: 1rem; font-weight: 600;">Topcoat</th>
-            <th style="padding: 1rem; font-weight: 600;">Dioxus / Leptos</th>
-            <th style="padding: 1rem; font-weight: 600;">Axum / Actix</th>
-          </tr>
-        </thead>
-        <tbody style="color: #cbd5e1;">
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">HTTP & High-Performance Routing
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Axum Engine)</span></td>
-            <td style="padding: 1rem;">✅</td>
-            <td style="padding: 1rem;">✅</td>
-            <td style="padding: 1rem;">✅ (SSR)</td>
-            <td style="padding: 1rem;">✅</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Active Record & Data Mapper ORM
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-orm)</span></td>
-            <td style="padding: 1rem;">✅ (SeaORM)</td>
-            <td style="padding: 1rem;">✅ (Toasty)</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Compile-Time Zero-Cost DI
-              Container</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::di &
-                Inject&lt;T&gt;)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">1-Click PaaS Cloud Deployment
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst deploy)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">RASP Security Layer
-              (Pre-Controller)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-security)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Passkeys & WebAuthn (FIDO2)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-auth::passkey)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Granular RBAC & Permission
-              Matrix</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-auth::rbac)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Zero-Trust Device Fingerprinting
-            </td>
-            <td style="padding: 1rem;">✅ <span
-                style="font-size: 0.85em; color: #10b981;">(rullst-security::zero_trust)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Rullst Vault & Field Encryption
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(#[orm(encrypted)] +
-                Zeroize)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Synthetic Honeypots & Bot Ban
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-honey)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">HMAC Cryptographic Audit Log
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-audit-log)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Visual Threat Radar (SOC
-              Dashboard)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(/studio/security)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Air-Gapped Local & Multi-Cloud
-              AI</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Ollama, LM Studio, vLLM,
-                OpenAI, Claude, Gemini)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">LiveView Reactive UI</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::live +
-                make:live)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">✅ (Signals)</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">gRPC Microservices & Protobuf
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-grpc / Tonic)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Kubernetes Native Manifests &
-              Probes</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(make:k8s + /health)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Interactive Scalar API Docs</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Built-in /docs)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Web-based Database Studio</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Rullst Studio :5555)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Auto-Generated Admin Panel (CMS)
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Rullst Nexus /nexus)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Kernel Telemetry & Prometheus
-              Exporter</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::radar +
-                /metrics)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">IoT Data & Frame Helpers
-              (#![no_std])</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-iot;
-                transports and hardware adapters are roadmap work)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">SaaS Revenue Dashboard & Stripe
-              Billing</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst-capital)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Background Workers & Redis
-              Queues</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(rullst::queue)</span></td>
-            <td style="padding: 1rem;">✅ (Task worker)</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Wasm Islands & Hybrid SSR</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(#[client_component])</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">✅ (Core focus)</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">TypeScript AST SDK Generator
-            </td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst
-                generate:ts)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Zero-Panics Policy Enforced</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(Typed AppError &
-                Lints)</span></td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-          <tr>
-            <td style="padding: 1rem; text-align: left; font-weight: 500; color: #fff;">Framework Escape Hatch (Zero
-              Lock-in)</td>
-            <td style="padding: 1rem;">✅ <span style="font-size: 0.85em; color: #10b981;">(cargo rullst eject)</span>
-            </td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-            <td style="padding: 1rem;">❌</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- The Interactive CLI Experience -->
-  <section id="cli-demo" class="cli-demo-section" style="padding: 4rem 1rem;">
-    <h2 class="section-title">The Interactive CLI Experience</h2>
-    <p class="section-subtitle" style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Stop memorizing flags.
-      The Rullst CLI guides you through project setup, database migrations, authentication, AI configuration, and cloud
-      deployment interactively.</p>
-
-    <div class="code-container glass" style="max-width: 800px; margin: 0 auto;">
-      <div class="code-header">
-        <div class="mac-dots">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-        </div>
-        <span class="filename">bash — cargo rullst</span>
+    <section id="evidence" class="content-section" aria-labelledby="evidence-title">
+      <h2 id="evidence-title" class="section-title">Evidence over slogans</h2>
+      <div class="card-grid">
+        <article class="glass fact-card">
+          <h3>Release program</h3>
+          <p>The v12 checklist distinguishes implemented, partial, external and release-only gates. The current stable
+            decision remains NO-GO.</p>
+          <a class="evidence-link" href="/Rullst/book/v12.html">Inspect the checklist →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Security evidence ledger</h3>
+          <p>Each v12 security claim links to implementation, tests and a known boundary. It is not a certification or
+            external audit.</p>
+          <a class="evidence-link" href="/Rullst/book/v12-security-claims.html">Inspect the ledger →</a>
+        </article>
+        <article class="glass fact-card">
+          <h3>Microbenchmarks</h3>
+          <p>Criterion suites track selected operations for regressions. They are not production throughput promises
+            or proof that one framework is universally faster.</p>
+          <a class="evidence-link" href="/Rullst/benches/">Open benchmark dashboards →</a>
+        </article>
       </div>
-      <div class="terminal-body"
-        style="padding: 1.5rem; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.6; color: #f8fafc; overflow-x: auto;">
-        <pre style="margin: 0; color: #fef08a; font-weight: bold; line-height: 1.2; text-shadow: 2px 2px 0 #a16207;">
-  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗
-  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝
-  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   
-  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   
-  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   
-  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   
-</pre>
-        <div style="margin-top: 1.5rem;">
-          The <span style="color: #06b6d4;">Ultimate Full-Stack Rust Framework</span> <span
-            style="color: #fef08a; font-weight: bold;">v12.0.0</span><br>
-          ⚡ <span style="color: #d946ef;">Security</span> · <span style="color: #d946ef;">Speed</span> · <span
-            style="color: #d946ef;">Developer Experience</span> ⚡<br><br>
-          <span style="color: #fef08a; font-weight: bold;">?</span> Navigate with ↑↓, confirm with Enter<br>
-          <span style="color: #22c55e; font-weight: bold;">&gt; ✨ <span style="color: #38bdf8;">Create New
-              Project</span></span> <span style="color: #64748b;">(API, Fullstack or SaaS Blueprint)</span><br>
-          &nbsp;&nbsp;📁 Already have a project? <span style="color: #64748b;">(Dev, Scaffold, DB, Auth,
-            Deploy...)</span><br>
-          &nbsp;&nbsp;💡 View Help & Commands <span style="color: #64748b;">(Framework Reference)</span><br>
-          &nbsp;&nbsp;❌ <span style="color: #94a3b8;">Exit</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Official Benchmarks & Performance -->
-  <section class="benchmarks" style="padding: 4rem 1rem;">
-    <h2 class="section-title">Official Benchmarks & Performance</h2>
-    <p class="section-subtitle"
-      style="text-align: center; color: #94a3b8; margin-bottom: 3rem; max-width: 800px; margin-inline: auto;">Rullst
-      delivers high throughput and low latencies comparable to raw Axum, but provides a fully furnished fullstack
-      experience out-of-the-box.</p>
-
-    <!-- Bar charts -->
-    <div class="features-grid"
-      style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto 3rem auto;">
-
-      <div class="feature-card glass">
-        <h3>Requests per Second (JSON)</h3>
-        <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Higher is better (Containerized, 125 Conns)
+      <div class="glass" style="margin-top: 1rem; padding: 1.5rem; border-radius: 16px;">
+        <p class="boundary-copy">
+          <strong style="color: #fbbf24;">Cross-framework benchmark boundary:</strong> the separate Rullst Benchmarks
+          repository currently exercises a historical Rullst 4.x application. It must not be cited as v12 evidence
+          until its dependency versions, hardware, configuration and runs are refreshed.
         </p>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="bar-label">Rullst (Rust)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 100%; background: var(--gradient-primary);"></div>
-              </div>
-              <span class="bar-text">10,847 req/s</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Spring Boot (Java)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 32%; background: #0ea5e9;"></div>
-              </div>
-              <span class="bar-text">3,480 req/s</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">NestJS (JS)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 14%; background: #eab308;"></div>
-              </div>
-              <span class="bar-text">1,565 req/s</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Django (Python)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 6%; background: #ef4444;"></div>
-              </div>
-              <span class="bar-text">692 req/s</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Laravel Octane</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 5%; background: #f97316;"></div>
-              </div>
-              <span class="bar-text">536 req/s</span>
-            </div>
-          </div>
-        </div>
       </div>
+    </section>
 
-      <div class="feature-card glass">
-        <h3>SSR Engine Speed</h3>
-        <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem;">Lower is better (CPU time per render)</p>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="bar-label">Rullst (html!)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 12%; background: var(--gradient-primary);"></div>
-              </div>
-              <span class="bar-text">1.07 µs</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Tera Template</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 22%; background: #f97316;"></div>
-              </div>
-              <span class="bar-text">2.07 µs</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Dioxus (VDOM)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 49%; background: #0ea5e9;"></div>
-              </div>
-              <span class="bar-text">4.72 µs</span>
-            </div>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">Leptos (View)</span>
-            <div class="bar-wrapper">
-              <div class="bar-track">
-                <div class="bar-fill" style="width: 100%; background: #eab308;"></div>
-              </div>
-              <span class="bar-text">9.54 µs</span>
-            </div>
-          </div>
-        </div>
+    <section class="content-section" aria-labelledby="positioning-title">
+      <h2 id="positioning-title" class="section-title">Choose by architecture, not scorecards</h2>
+      <div class="glass" style="overflow-x: auto; border-radius: 16px;">
+        <table class="positioning-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Best fit</th>
+              <th>Relationship to Rullst</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="https://docs.rs/axum/latest/axum/" style="color: #38bdf8;">Axum</a></td>
+              <td>Focused HTTP routing and Tower composition</td>
+              <td>Rullst builds on it and should preserve direct access to it.</td>
+            </tr>
+            <tr>
+              <td><a href="https://actix.rs/docs/" style="color: #38bdf8;">Actix Web</a></td>
+              <td>Mature, focused Rust web services</td>
+              <td>An established alternative when an integrated suite is unnecessary.</td>
+            </tr>
+            <tr>
+              <td><a href="https://loco.rs/docs/" style="color: #38bdf8;">Loco</a></td>
+              <td>Rails-inspired Axum applications</td>
+              <td>The closest batteries-included Rust comparison and a DX reference.</td>
+            </tr>
+            <tr>
+              <td><a href="https://book.leptos.dev/" style="color: #38bdf8;">Leptos</a> / <a
+                  href="https://dioxuslabs.com/learn/0.7/" style="color: #38bdf8;">Dioxus</a></td>
+              <td>Reactive Rust UI and full-stack rendering</td>
+              <td>Frontend-first choices; Rullst defaults to server-rendered HTML/HTMX.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
-
-    <!-- The Honest Conclusion on Throughput -->
-    <div
-      style="max-width: 1000px; margin: 0 auto 3rem auto; padding: 2rem; background: rgba(15, 23, 42, 0.4); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); text-align: left;">
-      <h3 style="color: #38bdf8; margin-bottom: 1rem; font-size: 1.2rem;">The Honest Conclusion on Throughput</h3>
-      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-        Rullst is built directly on top of <strong>Axum</strong> and <strong>Tokio</strong>. As the data clearly shows,
-        adding a complete full-stack framework layer (Active Record ORM, CSRF protection, RASP runtime inspection, and
-        structured error boundaries) still comfortably handles <strong>over 10,000 requests per second</strong> with
-        sub-millisecond latency.
+      <p class="boundary-copy" style="margin-top: 1rem;">
+        Ecosystems change. This compact positioning guide links to each project's own documentation and avoids claims
+        that another framework “does not have” a feature.
       </p>
-      <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-        Compared to dynamic ecosystems (Node.js, Python, PHP, Ruby), Rullst delivers <strong>10x to 50x higher
-          throughput</strong> and <strong>orders of magnitude lower memory consumption</strong>.
-      </p>
-      <p style="color: #38bdf8; font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; font-style: italic;">
-        If your goal is to build a full-fledged, secure, and maintainable SaaS product with databases, queues, AI
-        integrations, Hot-Reloading, and an Auto-CMS in a matter of days—while still enjoying bare-metal
-        speed—<strong>Rullst</strong> is your framework.
-      </p>
-    </div>
+    </section>
 
-    <!-- Performance vs. DX Scorecard -->
-    <div style="max-width: 1000px; margin: 0 auto 4rem auto; overflow-x: auto;">
-      <h3 style="color: #f8fafc; margin-bottom: 1rem; font-size: 1.5rem; text-align: center;">Performance vs. DX
-        Scorecard</h3>
-      <table
-        style="width: 100%; border-collapse: collapse; background: rgba(15, 23, 42, 0.6); border-radius: 12px; overflow: hidden; text-align: left; font-size: 0.9rem;">
-        <thead>
-          <tr style="background: rgba(255,255,255,0.05);">
-            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">Framework</th>
-            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">Language</th>
-            <th
-              style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center;">
-              Performance</th>
-            <th
-              style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center;">
-              DX</th>
-            <th style="padding: 1rem; color: #38bdf8; border-bottom: 1px solid rgba(255,255,255,0.1);">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(16, 185, 129, 0.05);">
-            <td style="padding: 1rem; color: #10b981; font-weight: bold;">Rullst</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">High-level fullstack APIs, ORM, Studio, Passkeys, RASP, and
-              Hot-Reloading with Rust memory safety.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Axum / Actix</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Absolute maximum raw speed, but you must manually configure ORMs,
-              Auth, and background jobs.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Loco</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rails-like experience in Rust, good generators, but steeper
-              learning curve.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Leptos / Dioxus</td>
-            <td style="padding: 1rem; color: #94a3b8;">Rust</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Great for fullstack WASM frontend, but backend API patterns are
-              tightly coupled to SSR.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Fiber / Gin</td>
-            <td style="padding: 1rem; color: #94a3b8;">Go</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Fast and simple, but lacks built-in fullstack features (Studio,
-              Admin Panel, Vault).</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Spring Boot</td>
-            <td style="padding: 1rem; color: #94a3b8;">Java</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Enterprise standard, decent speed, but heavy memory footprint and
-              extensive boilerplate.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">NestJS</td>
-            <td style="padding: 1rem; color: #94a3b8;">JS/TS</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Good architecture, but single-threaded event loop bottlenecks
-              under high load.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Ruby on Rails</td>
-            <td style="padding: 1rem; color: #94a3b8;">Ruby</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Pioneered batteries-included DX, but throughput is limited under
-              heavy concurrent traffic.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Laravel</td>
-            <td style="padding: 1rem; color: #94a3b8;">PHP</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Incredible ecosystem and DX, but higher server costs to handle
-              equivalent load.</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <td style="padding: 1rem; color: #f8fafc;">Django</td>
-            <td style="padding: 1rem; color: #94a3b8;">Python</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Great batteries included framework, but CPU-bound operations
-              suffer from GIL bottlenecks.</td>
-          </tr>
-          <tr>
-            <td style="padding: 1rem; color: #f8fafc;">Next.js</td>
-            <td style="padding: 1rem; color: #94a3b8;">JS/TS</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐</td>
-            <td style="padding: 1rem; color: #fbbf24; text-align: center;">⭐⭐⭐⭐</td>
-            <td style="padding: 1rem; color: #94a3b8;">Popular for frontend SSR, but backend serverless functions
-              introduce cold starts and latency.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Why Rullst? Key Architectural Benefits -->
-    <div style="max-width: 1000px; margin: 0 auto 4rem auto;">
-      <h3 style="color: #f8fafc; margin-bottom: 2rem; font-size: 1.8rem; text-align: center;">Why Rullst? Key
-        Architectural Benefits</h3>
-
-      <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; text-align: left;">
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Enterprise-Grade Security Shield
-          </h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst is "Secure by Design", shipping
-            natively with pre-controller RASP AST inspection, Passkeys/WebAuthn FIDO2 authentication, Double-Submit
-            CSRF, and synthetic bot honeypots.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔐 Enterprise Vault & Zeroization</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Field-level transparent encryption
-            (<code>#[orm(encrypted)]</code>) paired with cryptographic memory wiping (<code>Zeroize</code>) ensuring
-            zero memory leak vulnerabilities.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">⚡ Auto-Migrations in Dev Server</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Experience unmatched Developer Experience.
-            <code>cargo rullst dev</code> automatically and silently runs pending migrations before hot-reloading your
-            application.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🤖 Provider-Agnostic AI Integration
-          </h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Connect seamlessly to <strong>ANY local
-              LLM</strong> (Ollama, LM Studio, vLLM, LocalAI) or commercial cloud (Gemini, Claude, OpenAI) with prompt
-            injection filters and PII masking.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🛡️ Zero-Panic Production Policy</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">All runtime paths use strongly typed
-            <code>AppError</code> enums. Zero runtime panics or hidden unwraps in production code.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🔒 Strict Type Safety (No Dynamic
-            Traits)</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Rullst avoids heavy usage of
-            <code>dyn Trait</code> in favor of static dispatch. This guarantees maximum compiler optimizations,
-            monomorphization, and smaller binaries.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🗺️ Explicit API Design</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">No hidden magic or unexpected middleware
-            sequencing. Routes, state, and filters are explicitly declared for maximum maintainability.</p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">🌍 Edge Fusion & Replication</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Compile to WebAssembly for Cloudflare Workers
-            globally, backed by built-in Turso/libsql replication for sub-millisecond database read latencies worldwide.
-          </p>
-        </div>
-
-        <div class="glass" style="padding: 2rem; border-radius: 16px;">
-          <h3 style="color: #38bdf8; margin-bottom: 0.5rem; font-size: 1.25rem;">📱 Omni-Frontend Wasm & Tauri</h3>
-          <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">Write interactive client components strictly
-            in Rust (<code>#[client_component]</code>) and package desktop/mobile apps natively with Tauri.</p>
-        </div>
+    <section class="content-section" aria-labelledby="release-title">
+      <div class="glass" style="padding: 2rem; border-radius: 16px;">
+        <h2 id="release-title" class="section-title" style="text-align: left; margin-top: 0;">What still blocks v12</h2>
+        <ul class="status-list">
+          <li>All local gates and Linux/macOS/Windows CI must be green on one immutable candidate SHA.</li>
+          <li>Exact packages and a crates.io-only consumer must reproduce from the candidate artifacts.</li>
+          <li>Security advisories require resolution or a narrow, owned and expiring exception.</li>
+          <li>External review, an operated release candidate and human GO/NO-GO approval cannot be replaced by local
+            tests.</li>
+        </ul>
+        <a href="https://github.com/Rullst/Rullst/blob/dev/RELEASE_GUIDE.md" class="btn btn-primary">Read the release
+          guide</a>
       </div>
-    </div>
-  </section>
-
-  <!-- Performance CI Dashboards -->
-  <section id="benches" style="padding: 2rem 1rem 4rem; max-width: 1000px; margin: 0 auto; scroll-margin-top: 5rem;">
-    <h2 style="text-align: center; font-size: 1.8rem; margin-bottom: 2rem; color: #f8fafc;">📈 Performance CI Dashboards
-    </h2>
-    <p style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Track automated microsecond regression
-      benchmarks updated on every commit across all crates.</p>
-
-    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
-      <a href="/Rullst/benches/" class="btn btn-outline"
-        style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; background: rgba(56, 189, 248, 0.05); flex: 1 1 200px; text-align: center;">⚡
-        Core Framework</a>
-      <a href="/Rullst/benches/orm/" class="btn btn-outline"
-        style="border-color: rgba(168, 85, 247, 0.3); color: #a855f7; background: rgba(168, 85, 247, 0.05); flex: 1 1 200px; text-align: center;">🗄️
-        ORM Queries</a>
-      <a href="/Rullst/benches/auth/" class="btn btn-outline"
-        style="border-color: rgba(244, 63, 94, 0.3); color: #f43f5e; background: rgba(244, 63, 94, 0.05); flex: 1 1 200px; text-align: center;">🔐
-        Auth Crypto</a>
-      <a href="/Rullst/benches/connect/" class="btn btn-outline"
-        style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05); flex: 1 1 200px; text-align: center;">🔗
-        OAuth PKCE</a>
-      <a href="/Rullst/benches/security/" class="btn btn-outline"
-        style="border-color: rgba(245, 158, 11, 0.3); color: #f59e0b; background: rgba(245, 158, 11, 0.05); flex: 1 1 200px; text-align: center;">🛡️
-        Security RASP</a>
-      <a href="/Rullst/benches/ai/" class="btn btn-outline"
-        style="border-color: rgba(6, 182, 212, 0.3); color: #06b6d4; background: rgba(6, 182, 212, 0.05); flex: 1 1 200px; text-align: center;">🤖
-        AI Guardrails</a>
-      <a href="/Rullst/benches/capital/" class="btn btn-outline"
-        style="border-color: rgba(16, 185, 129, 0.3); color: #10b981; background: rgba(16, 185, 129, 0.05); flex: 1 1 200px; text-align: center;">💳
-        Capital Billing</a>
-    </div>
-  </section>
+    </section>
+  </main>
 
   <footer class="footer">
-    <p>Built with ❤️ by the Rullst Community.</p>
-    <div
-      style="margin-top: 1rem; display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; font-size: 0.95rem;">
-      <a href="https://discord.gg/2ntKFtsSjw" target="_blank" style="color: #10b981; text-decoration: none;">💬 Join the
-        Discord</a>
-      <a href="https://github.com/Rullst/Rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">⭐ GitHub
-        Repo</a>
-      <a href="https://x.com/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">🐦 Twitter/X</a>
-      <a href="https://youtube.com/@Rullst_Official" target="_blank" style="color: #94a3b8; text-decoration: none;">📺
-        YouTube</a>
-      <a href="https://dev.to/venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📝 Dev.to</a>
-      <a href="https://hashnode.com/@venelouis" target="_blank" style="color: #94a3b8; text-decoration: none;">📓
-        Hashnode</a>
-      <a href="https://instagram.com/rullst.framework" target="_blank" style="color: #94a3b8; text-decoration: none;">📸
-        Instagram</a>
-      <a href="https://tiktok.com/@rullst" target="_blank" style="color: #94a3b8; text-decoration: none;">🎵 TikTok</a>
-      <a href="mailto:officialrullst@gmail.com" style="color: #38bdf8; text-decoration: none; font-weight: 500;">✉️
-        officialrullst@gmail.com</a>
-      <a href="javascript:void(0)" id="open-privacy-link"
-        style="color: #38bdf8; text-decoration: none; font-weight: 500;">🔒 Privacy Policy</a>
+    <p>Rullst is open source under the MIT license.</p>
+    <div style="margin-top: 1rem; display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap;">
+      <a href="https://github.com/Rullst/Rullst" style="color: #94a3b8;">GitHub</a>
+      <a href="https://discord.gg/2ntKFtsSjw" style="color: #94a3b8;">Discord</a>
+      <a href="https://youtube.com/@Rullst_Official" style="color: #94a3b8;">YouTube</a>
+      <a href="mailto:officialrullst@gmail.com" style="color: #38bdf8;">Security and official inquiries</a>
     </div>
     <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem; font-style: italic;">
       All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).
     </p>
   </footer>
 
-  <!-- Cookie Consent Modal (Appears automatically on page load) -->
-  <div id="cookie-banner"
-    style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); opacity: 0; width: 90%; max-width: 440px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 2.25rem; display: flex; flex-direction: column; gap: 1.5rem; z-index: 1000; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); pointer-events: none;">
-    <div style="text-align: center;">
-      <div style="font-size: 2.75rem; margin-bottom: 1rem;">🍪</div>
-      <h3 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1.35rem; color: #f8fafc;">Privacy & Cookie
-        Preferences</h3>
-      <p style="color: #cbd5e1; font-size: 0.95rem; margin: 0; line-height: 1.6;">
-        We use essential cookies and zero-trust session safeguards to ensure optimal security, telemetry diagnostics,
-        and developer productivity.
-      </p>
-    </div>
-    <div style="display: flex; gap: 1rem; justify-content: center; width: 100%;">
-      <button id="decline-cookies" class="btn btn-outline"
-        style="flex: 1; padding: 0.75rem; font-size: 0.95rem; cursor: pointer; text-align: center; justify-content: center;">Decline</button>
-      <button id="accept-cookies" class="btn btn-primary"
-        style="flex: 1; padding: 0.75rem; font-size: 0.95rem; cursor: pointer; text-align: center; justify-content: center;">Accept
-        All</button>
-    </div>
-  </div>
-
-  <!-- Full Privacy Policy Reader Modal (Opened from Footer) -->
-  <div id="privacy-modal"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 1.5rem; box-sizing: border-box;">
-    <div class="glass"
-      style="max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 2.5rem; border-radius: 20px; text-align: left; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h2 style="margin: 0; font-size: 1.5rem; color: #f8fafc;">🔒 Privacy Policy & Data Protections</h2>
-        <button id="close-privacy-modal"
-          style="background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 6px;">✕</button>
-      </div>
-      <div style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.8;">
-        <p><strong>1. Privacy by Architecture:</strong> The Rullst Framework is architected for zero data tracking.
-          Open-source local installations never transmit your codebase, database records, or credentials to third-party
-          telemetry servers.</p>
-        <p><strong>2. Local & Air-Gapped AI:</strong> When utilizing <code>rullst-ai</code> with local runners (Ollama,
-          LM Studio, vLLM, LocalAI), prompts and vector embeddings remain 100% on your local machine with zero external
-          network leakage.</p>
-        <p><strong>3. Transparent Vault & Memory Safety:</strong> Sensitive fields decorated with
-          <code>#[orm(encrypted)]</code> are encrypted with AES-256-GCM and purged from RAM upon drop via
-          <code>Zeroize</code>.</p>
-        <p><strong>4. Cookies & Session Storage:</strong> Web cookies used by the framework are configured with
-          <code>HttpOnly</code>, <code>SameSite=Lax</code>, and cryptographic HMAC session binding.</p>
-        <p><strong>5. Official Inquiries & Disclosures:</strong> For questions, privacy assessments, or coordinated
-          security disclosure, contact: <strong><a href="mailto:officialrullst@gmail.com"
-              style="color: #38bdf8;">officialrullst@gmail.com</a></strong>.</p>
-      </div>
-      <div style="margin-top: 2rem; text-align: right;">
-        <button id="dismiss-privacy-modal" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // Tab switching logic
-    document.addEventListener('DOMContentLoaded', () => {
-      const tabs = document.querySelectorAll('.doc-tab');
-      const panes = document.querySelectorAll('.doc-tab-pane');
-
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          tabs.forEach(t => {
-            t.classList.remove('active');
-            t.style.color = '#94a3b8';
-            t.style.borderBottomColor = 'transparent';
-          });
-
-          panes.forEach(p => p.style.display = 'none');
-
-          tab.classList.add('active');
-          tab.style.color = '#38bdf8';
-          tab.style.borderBottomColor = '#38bdf8';
-
-          const targetId = 'tab-' + tab.getAttribute('data-tab');
-          const targetPane = document.getElementById(targetId);
-          if (targetPane) {
-            targetPane.style.display = 'block';
-          }
-        });
-      });
-    });
-
-    // Mobile Navbar Logic
     const hamburger = document.getElementById('hamburger');
-    const navLinks = document.getElementById('nav-links');
-    const navItems = document.querySelectorAll('.nav-links a');
-
-    if (hamburger && navLinks) {
+    const navigation = document.getElementById('nav-links');
+    if (hamburger && navigation) {
       hamburger.addEventListener('click', () => {
+        const expanded = hamburger.getAttribute('aria-expanded') === 'true';
+        hamburger.setAttribute('aria-expanded', String(!expanded));
         hamburger.classList.toggle('active');
-        navLinks.classList.toggle('active');
+        navigation.classList.toggle('active');
       });
-
-      navItems.forEach(item => {
+      navigation.querySelectorAll('a').forEach((item) => {
         item.addEventListener('click', () => {
+          hamburger.setAttribute('aria-expanded', 'false');
           hamburger.classList.remove('active');
-          navLinks.classList.remove('active');
+          navigation.classList.remove('active');
         });
       });
     }
-
-    // Privacy Consent Banner & Full Privacy Modal Logic
-    document.addEventListener("DOMContentLoaded", function () {
-      const banner = document.getElementById('cookie-banner');
-      const acceptBtn = document.getElementById('accept-cookies');
-      const declineBtn = document.getElementById('decline-cookies');
-
-      const privacyModal = document.getElementById('privacy-modal');
-      const openPrivacyLink = document.getElementById('open-privacy-link');
-      const closePrivacyModal = document.getElementById('close-privacy-modal');
-      const dismissPrivacyModal = document.getElementById('dismiss-privacy-modal');
-
-      // Pop-up banner appears automatically on page load if not already answered
-      if (!localStorage.getItem('rullst_privacy_accepted')) {
-        setTimeout(() => {
-          banner.style.opacity = '1';
-          banner.style.transform = 'translate(-50%, -50%) scale(1)';
-          banner.style.pointerEvents = 'auto';
-        }, 600);
-      }
-
-      const closeBanner = (accepted) => {
-        localStorage.setItem('rullst_privacy_accepted', accepted ? 'true' : 'false');
-        banner.style.opacity = '0';
-        banner.style.transform = 'translate(-50%, -50%) scale(0.95)';
-        banner.style.pointerEvents = 'none';
-      };
-
-      acceptBtn.addEventListener('click', () => closeBanner(true));
-      declineBtn.addEventListener('click', () => closeBanner(false));
-
-      // Open full Privacy Policy reader modal from footer link
-      if (openPrivacyLink && privacyModal) {
-        openPrivacyLink.addEventListener('click', () => {
-          privacyModal.style.display = 'flex';
-        });
-      }
-
-      const hidePrivacyModal = () => {
-        if (privacyModal) privacyModal.style.display = 'none';
-      };
-
-      if (closePrivacyModal) closePrivacyModal.addEventListener('click', hidePrivacyModal);
-      if (dismissPrivacyModal) dismissPrivacyModal.addEventListener('click', hidePrivacyModal);
-      if (privacyModal) {
-        privacyModal.addEventListener('click', (e) => {
-          if (e.target === privacyModal) hidePrivacyModal();
-        });
-      }
-    });
   </script>
 </body>
 

@@ -80,7 +80,7 @@ use rullst_capital::{
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Select your active provider:
     
-    // Example A: InfinitePay for Brazilian operations (Pix 0% fee)
+    // Example A: InfinitePay for a configured Brazilian merchant account
     init_provider(Box::new(InfinitePayProvider::new(
         std::env::var("INFINITEPAY_API_KEY")?,
         std::env::var("INFINITEPAY_WEBHOOK_SECRET")?,
@@ -113,10 +113,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use rullst_capital::provider;
-use rullst::response::Redirect;
+use axum::response::Redirect;
+use rullst_capital::CapitalError;
 
-pub async fn start_checkout(customer_email: String, plan_id: String) -> Result<Redirect, String> {
-    let p = provider().ok_or_else(|| "No billing provider configured".to_string())?;
+pub async fn start_checkout(customer_email: String, plan_id: String) -> Result<Redirect, CapitalError> {
+    let p = provider().ok_or_else(|| CapitalError::ConfigurationError(
+        "No billing provider configured".to_string(),
+    ))?;
 
     let checkout_url = p.create_checkout_session(
         &customer_email,
@@ -164,27 +167,31 @@ pub fn billing_routes() -> Router {
 ### 4. International Payouts with Wise
 
 ```rust
-use rullst_capital::{init_payout_provider, payout_provider, WiseProvider, PayoutStatus};
+use rullst_capital::{CapitalError, WiseProvider};
 
-pub async fn disburse_affiliate_commission(affiliate_email: &str, amount_usd_cents: u64) -> Result<(), String> {
-    init_payout_provider(Box::new(WiseProvider::new(
-        std::env::var("WISE_API_TOKEN").unwrap(),
-        std::env::var("WISE_PROFILE_ID").unwrap(),
-    )));
-
-    if let Some(payout) = payout_provider() {
-        let transfer_id = payout.create_transfer(affiliate_email, amount_usd_cents, "USD").await?;
-        println!("Payout initiated! Transfer ID: {}", transfer_id);
-    }
-
-    Ok(())
+pub async fn disburse_affiliate_commission(
+    provider: &WiseProvider,
+    affiliate_email: &str,
+    amount_usd_cents: u64,
+) -> Result<String, CapitalError> {
+    provider
+        .send_payout(affiliate_email, amount_usd_cents, "USD", "affiliate commission")
+        .await
 }
 ```
 
 ---
 
-## 🛡️ Security Guarantees
+## 🛡️ Security controls and boundaries
 
-1. **Zero Allocations on Forged Requests**: Requests missing required signatures or providing malformed tokens are rejected with `401 Unauthorized` before reading request bodies into memory.
-2. **Constant-Time Verification**: All cryptographic signatures use constant-time comparisons (`ConstantTimeEq`) to prevent side-channel timing attacks.
-3. **No Dynamic Reflection**: All provider responses map into typed Rust enums and structs at compile time.
+1. **Bounded verification:** webhook handlers should bound the body before
+   parsing and reject a missing or malformed signature. Reading and parsing still
+   allocate according to the concrete HTTP stack and payload.
+2. **Cryptographic verification:** supported webhook adapters use HMAC or
+   constant-time verification for the exact signed bytes. Each provider's
+   timestamp/replay policy and deployed secret lifecycle still require review.
+   The default replay store is process-local; multi-instance deployments need a
+   durable shared idempotency boundary owned by the application.
+3. **Typed parsing:** supported provider responses map into Rust enums and
+   structs without runtime reflection. A typed response does not establish
+   authorization, idempotency, or correctness of the upstream service.

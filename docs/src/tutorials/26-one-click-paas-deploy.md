@@ -1,9 +1,12 @@
-# Tutorial 26: Cloud Deployment & Rullst Foundry SSH Pipeline 🚀
+# Tutorial 26: Guided Cloud Deployment & Foundry SSH Pipeline 🚀
 
-Rullst provides two distinct, powerful deployment strategies tailored to different infrastructure needs:
+Rullst provides two deployment scaffolds that require provider credentials,
+application-specific review, and rollback planning:
 
-1. **`cargo rullst deploy`**: 1-Click PaaS Cloud Wizard (Fly.io, Railway, Render, Local Docker Compose).
-2. **`cargo rullst foundry:deploy`**: Enterprise Bare-Metal & Cloud VPS SSH Pipeline (Hetzner, DigitalOcean, AWS EC2, Linode, Vultr, Self-Hosted Servers).
+1. **`cargo rullst deploy`**: guided PaaS manifest/CLI helper (Fly.io,
+   Railway, Render, or local Docker Compose).
+2. **`cargo rullst foundry:deploy`**: reviewed SSH pipeline for a compatible
+   systemd-based Linux VPS.
 
 ---
 
@@ -12,11 +15,11 @@ Rullst provides two distinct, powerful deployment strategies tailored to differe
 | Feature | `cargo rullst deploy` (PaaS) | `cargo rullst foundry:deploy` (Foundry SSH) |
 | :--- | :--- | :--- |
 | **Primary Target** | Managed Cloud (Fly.io, Railway, Render) | Cloud VPS / Bare-Metal (Hetzner, DigitalOcean, AWS, Linode) |
-| **Mechanism** | Platform CLI (`flyctl`, `railway up`) & Manifests | Automated SSH + SCP + Systemd / Docker |
-| **Setup Required** | Platform Account & CLI installed | SSH Access (`Foundry.toml`) |
+| **Mechanism** | Platform CLI (`flyctl`, `railway up`) and manifests | SSH + SCP + systemd + an existing Caddy installation |
+| **Setup Required** | Platform account, credentials, and CLI | Reviewed root or passwordless-sudo SSH access, systemd, Caddy, DNS and firewall policy |
 | **Config File** | `fly.toml`, `railway.json`, `render.yaml` | `Foundry.toml` (auto-gitignored) |
-| **Migrations** | Executed in container entrypoint | Auto-executed via SSH remote `db:migrate` |
-| **SSL Certificates** | Managed by PaaS provider | Auto-provisioned by Caddy / Let's Encrypt |
+| **Migrations** | Application/platform configuration | Not executed by the current Foundry command |
+| **TLS Certificates** | Provider configuration | Requested by Caddy when DNS/network prerequisites are satisfied |
 
 ---
 
@@ -48,7 +51,10 @@ cargo rullst deploy --platform=vps
 
 ## 🏭 Strategy 2: Rullst Foundry SSH Pipeline (`cargo rullst foundry:*`)
 
-Rullst Foundry is an automated deployment engine for **any Linux server with SSH access** (Hetzner, DigitalOcean Droplets, AWS EC2, Linode, Vultr, or local hardware).
+Rullst Foundry is a bounded deployment helper for compatible systemd-based
+Linux servers. Its current provisioning commands require root or passwordless
+non-interactive `sudo`; it is not portable to every SSH host and does not
+support IPv6 SCP targets.
 
 ### Step 1: Initialize `Foundry.toml`
 
@@ -69,30 +75,51 @@ host = "203.0.113.50"
 user = "root"
 ssh_port = 22
 ssh_key = "~/.ssh/id_ed25519"
-deploy_path = "/var/www/my_rullst_app"
 
 [env]
 RULLST_ENV = "production"
 PORT = "3000"
-DATABASE_URL = "postgres://user:password@localhost:5432/production_db"
-JWT_SECRET = "super_secure_production_jwt_secret_key"
+DATABASE_URL = "sqlite:///opt/rullst/my_rullst_app/data/db.sqlite"
+APP_KEY = "REPLACE_WITH_A_STRONG_RANDOM_KEY"
 ```
 
-### Step 2: Deploy to Remote Server with 1 Command
+### Step 2: Run the reviewed deployment command
 
 ```bash
 cargo rullst foundry:deploy
 ```
 
-### What Happens During `foundry:deploy`:
-1. **Local Native Build**: Compiles optimized release binary (`cargo build --release`).
-2. **Directory & Service Provisioning**: Ensures remote directory structure and Systemd / Docker service files exist on the server via SSH.
-3. **Secure Transfer**: Uploads binary and static assets via `scp` with SHA-256 integrity verification.
-4. **Remote Migration**: Executes pending database migrations (`cargo rullst db:migrate`) on the remote server.
-5. **Zero-Downtime Reload**: Restarts the Systemd service and verifies HTTP health probes (`GET /health`).
+### What the current `foundry:deploy` does
+
+1. Builds the selected profile and optional target locally.
+2. Connects over SSH, checks the preinstalled `curl`, `systemctl`, and `caddy`
+   executables, creates `/opt/rullst/<app>/{bin,config,data}`, and fails if that
+   step fails. Foundry does not install operating-system packages and never pipes
+   an unpinned network script into a shell.
+3. Uploads the application binary with `scp` to a staging path. It does not
+   currently upload static directories or perform a separate remote checksum
+   comparison.
+4. Writes staged environment, Caddy, systemd and binary files, validates the
+   candidate Caddy configuration, renames each staged file, then restarts the
+   services. A validation/reload/restart failure aborts the command. The prior
+   binary, environment, systemd unit, and global Caddyfile are retained as
+   `.previous`, but rollback is manual and the application restart is not
+   zero-downtime. This version manages one global `/etc/caddy/Caddyfile`; review
+   that replacement before using the server for multiple independently managed
+   sites.
+5. Requires `GET /health` to succeed within ten bounded attempts before printing
+   that the remote process answered locally. It does not prove public DNS, TLS,
+   firewall, proxy, or external reachability.
+
+SSH uses `StrictHostKeyChecking=accept-new`: verify the host fingerprint through
+an independent channel before the first connection. The command does not
+compare a separate remote checksum, run database migrations, back up/restore
+data, coordinate multiple instances, or automatically roll back a failed
+release.
 
 ---
 
 ## 💡 Summary & Best Practices
 - Use **`cargo rullst deploy`** when hosting on serverless container platforms (Fly.io, Railway, Render).
-- Use **`cargo rullst foundry:deploy`** when deploying to cost-effective VPS providers (Hetzner, DigitalOcean, AWS EC2) with full control over server resources and zero vendor lock-in.
+- Use **`cargo rullst foundry:deploy`** only after reviewing the generated SSH,
+  systemd, Caddy, secret, migration, backup, and rollback plan for the target VPS.

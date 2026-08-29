@@ -1,60 +1,59 @@
-# Tutorial 32: SOC Threat Radar & Autonomous AI Security 🛡️
+# Tutorial 32: Bounded security telemetry in Studio
 
-Build a complete enterprise defense system combining Honeypot deception traps, RASP runtime inspection, Vault secret zeroization, and an offline AI Threat Sentinel.
+Rullst's honeypot, RASP and Studio security page provide local defense-in-depth
+signals. They are not an autonomous SOC, a universal blocker, an AI incident
+responder or a durable SIEM integration.
 
----
-
-## 🛠️ Step 1: Wire Defense Layers in `main.rs`
+## 1. Compose local request controls
 
 ```rust
 use axum::Router;
-use rullst_security::{
-    HoneypotLayer, HoneypotState, CspSecurityLayer,
-    rasp::RaspSecurityLayer,
-};
-use rullst::Server;
+use rullst_security::{CspSecurityLayer, HoneypotLayer, HoneypotState, RaspSecurityLayer};
+use std::net::SocketAddr;
 
-#[tokio::main]
-async fn main() {
-    let state = HoneypotState::default();
+# async fn run() -> Result<(), Box<dyn std::error::Error>> {
+let app = Router::new()
+    // Add application routes first.
+    .layer(RaspSecurityLayer)
+    .layer(CspSecurityLayer)
+    .layer(HoneypotLayer::new(HoneypotState::default()));
 
-    let app = Router::new()
-        // ... routes
-        .layer(RaspSecurityLayer::default())
-        .layer(CspSecurityLayer::default())
-        .layer(HoneypotLayer::new(state));
-
-    Server::new().merge(app).run().await;
-}
+let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+axum::serve(
+    listener,
+    app.into_make_service_with_connect_info::<SocketAddr>(),
+)
+.await?;
+# Ok(())
+# }
 ```
 
----
+`ConnectInfo` supplies the accepted socket peer used by the honeypot. Deployments
+behind a proxy must establish and test a trusted client-identity boundary; the
+middleware deliberately does not trust arbitrary forwarding headers.
 
-## 🤖 Step 2: Enable Local AI Sentinel via Ollama
+## 2. Understand each signal
 
-In `.env`:
+- Honeypots match configured exact synthetic paths and keep bounded, expiring
+  process-local bans.
+- RASP performs bounded heuristic inspection for selected patterns and can have
+  false positives and negatives.
+- CSP and headers depend on the final rendered page, proxy, browser and TLS
+  deployment.
+- `SecurityStore` is local telemetry. An event is not HMAC-verified or durably
+  delivered merely because it appears in Studio.
 
-```dotenv
-AI_PROVIDER=ollama
-OLLAMA_HOST=http://localhost:11434
-AI_MODEL=llama3:8b
-```
+No built-in path automatically asks an LLM to ban a peer or issues a dynamic
+proof-of-work challenge. Sensitive automated actions require authenticated
+policy, limits, durable audit and human approval where appropriate.
 
-When malicious requests hit synthetic deception endpoints (e.g. `/.env`, `/admin.php`), Honeypot traps fingerprint the bot IP, and AI Sentinel automatically issues dynamic Proof-of-Work challenge tokens.
+## 3. Inspect the local Studio view
 
----
+Mount Studio only through its documented access capability and open
+`/studio/security`. The page renders current local telemetry and keeps
+unavailable sources visibly unavailable. A multi-instance deployment needs a
+shared, authenticated event pipeline with retry, acknowledgement, retention and
+dead-letter handling before it can be described as an operational SIEM.
 
-## 📊 Step 3: Monitor Live SOC Threat Radar
-
-Launch dev mode:
-```bash
-cargo rullst dev
-```
-
-Open Rullst Studio Visual Threat Radar at `http://localhost:5555/studio/security` to observe live attack vectors, blocked IP counts, and HMAC audit chain integrity in real-time.
-
----
-
-## 💡 Key Takeaways
-- Deception traps ban automated scanning bots before they reach application logic.
-- local AI classification without a required cloud LLM when the deployment is configured and isolated accordingly.
+See the [Threat Radar and SOC guide](../threat-radar-soc-guide.md) and the
+[v12 security evidence ledger](../v12-security-claims.md) for exact boundaries.

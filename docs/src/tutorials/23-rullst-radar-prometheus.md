@@ -1,4 +1,4 @@
-# Tutorial 23: Kernel Telemetry & Prometheus Exporter 📡
+# Tutorial 23: Process Telemetry & Prometheus Exporter 📡
 
 Monitor process RSS memory, Tokio runtime tick latency, and active tasks using Rullst Radar (`rullst::radar`) and Prometheus (`GET /metrics`).
 
@@ -14,11 +14,11 @@ use rullst_core::radar::radar_metrics_router;
 use rullst::Server;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), rullst_core::server::ServerError> {
     let app = Router::new()
         .merge(radar_metrics_router()); // Exposes GET /metrics
 
-    Server::new().merge(app).run().await;
+    Server::new(app.into()).run(3000).await
 }
 ```
 
@@ -43,5 +43,7 @@ Visual dashboard available in Studio: `http://localhost:5555/studio/radar`.
 ---
 
 ## 💡 Key Takeaways
-- Zero allocation text-format Prometheus exporter.
-- Real-time kernel metrics read directly from `/proc/self/statm`.
+- The response is a point-in-time local snapshot and allocates its text body.
+- Linux and Windows expose supported process RSS/CPU probes. Tokio task data is
+  available only inside a Tokio runtime; unsupported probes are omitted.
+- The scheduler-yield observation is not a universal request-latency target.
