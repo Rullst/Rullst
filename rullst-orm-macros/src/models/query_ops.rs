@@ -8,9 +8,15 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         return quote! {};
     }
     let table_name = &parsed.table_name;
+    let encrypted_fields = parsed
+        .encrypted_fields
+        .iter()
+        .map(|field| &field.name)
+        .collect::<Vec<_>>();
     let cols = parsed
         .normal_fields
         .iter()
+        .filter(|field| !encrypted_fields.contains(field))
         .map(|f| f.to_string())
         .collect::<Vec<_>>();
     quote! {

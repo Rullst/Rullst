@@ -178,4 +178,61 @@ mod tests {
         };
         assert!(parse(&input7).is_ok());
     }
+
+    #[test]
+    fn parses_supported_encrypted_fields() {
+        use syn::parse_quote;
+
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "vault_records")]
+            struct VaultRecord {
+                id: i32,
+                #[orm(encrypted)]
+                secret: String,
+                #[orm(encrypted)]
+                recovery_code: Option<String>,
+            }
+        };
+        let parsed = parse(&input).expect("encrypted String fields should parse");
+
+        assert_eq!(parsed.encrypted_fields.len(), 2);
+        assert_eq!(parsed.encrypted_fields[0].name, "secret");
+        assert_eq!(parsed.encrypted_fields[0].kind, EncryptedFieldKind::String);
+        assert_eq!(parsed.encrypted_fields[1].name, "recovery_code");
+        assert_eq!(
+            parsed.encrypted_fields[1].kind,
+            EncryptedFieldKind::OptionalString
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_encrypted_field_declarations() {
+        use syn::parse_quote;
+
+        let wrong_type: DeriveInput = parse_quote! {
+            struct VaultRecord {
+                id: i32,
+                #[orm(encrypted)]
+                secret: i64,
+            }
+        };
+        assert!(parse(&wrong_type)
+            .err()
+            .expect("non-string encryption must fail")
+            .to_string()
+            .contains("supports only String and Option<String>"));
+
+        let skipped: DeriveInput = parse_quote! {
+            struct VaultRecord {
+                id: i32,
+                #[orm(encrypted, skip)]
+                secret: String,
+            }
+        };
+        assert!(parse(&skipped)
+            .err()
+            .expect("encrypted skipped fields must fail")
+            .to_string()
+            .contains("cannot be combined"));
+    }
 }

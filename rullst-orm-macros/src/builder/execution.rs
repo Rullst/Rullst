@@ -1,6 +1,6 @@
 // src/builder/execution.rs — Terminal database execution, pagination, streaming, and mutation methods.
 
-use crate::parser::{ParsedModel, SoftDeleteConfig};
+use crate::parser::{EncryptedFieldKind, ParsedModel, SoftDeleteConfig};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -81,6 +81,32 @@ pub fn generate_execution_methods(
     } else {
         quote! {}
     };
+    let decrypt_results = if parsed.encrypted_fields.is_empty() {
+        quote! {}
+    } else {
+        quote! {
+            for model in &mut results {
+                model.__rullst_decrypt_encrypted_fields()?;
+            }
+        }
+    };
+    let decrypt_row = if parsed.encrypted_fields.is_empty() {
+        quote! {}
+    } else {
+        quote! { row.__rullst_decrypt_encrypted_fields()?; }
+    };
+    let encrypted_string_columns = parsed
+        .encrypted_fields
+        .iter()
+        .filter(|field| field.kind == EncryptedFieldKind::String)
+        .map(|field| field.name.to_string())
+        .collect::<Vec<_>>();
+    let encrypted_optional_columns = parsed
+        .encrypted_fields
+        .iter()
+        .filter(|field| field.kind == EncryptedFieldKind::OptionalString)
+        .map(|field| field.name.to_string())
+        .collect::<Vec<_>>();
     let delete_all_logic = generate_delete_all_logic(parsed);
 
     vec![quote! {
@@ -121,6 +147,7 @@ pub fn generate_execution_methods(
                     if let Ok(cached_data) = conn.get::<_, String>(&cache_key).await {
                         if !cached_data.is_empty() {
                             if let Ok(mut results) = #name::from_cache_json_array(&cached_data) {
+                                #decrypt_results
                                 #hook_after_fetch
                                 #eager_loads
                                 return Ok(results);
@@ -175,6 +202,7 @@ pub fn generate_execution_methods(
                 }
             }
 
+            #decrypt_results
             #hook_after_fetch
             #eager_loads
             Ok(results)
@@ -344,6 +372,7 @@ pub fn generate_execution_methods(
                 let mut db_stream = query.fetch(pool);
                 while let Some(row_res) = rullst_orm::_futures::StreamExt::next(&mut db_stream).await {
                     let mut row = row_res.map_err(|e| rullst_orm::Error::DatabaseError(e.to_string()))?;
+                    #decrypt_row
                     #hook_after_fetch_single
                     yield row;
                 }
@@ -373,6 +402,7 @@ pub fn generate_execution_methods(
                 let mut db_stream = query.fetch(&mut **tx);
                 while let Some(row_res) = rullst_orm::_futures::StreamExt::next(&mut db_stream).await {
                     let mut row = row_res.map_err(|e| rullst_orm::Error::DatabaseError(e.to_string()))?;
+                    #decrypt_row
                     #hook_after_fetch_single
                     yield row;
                 }
@@ -445,6 +475,15 @@ pub fn generate_execution_methods(
                 return Err(self.errors[0].clone());
             }
             let pool = rullst_orm::Orm::try_read_pool()?;
+            const ENCRYPTED_STRING_COLUMNS: &[&str] = &[#(#encrypted_string_columns),*];
+            const ENCRYPTED_OPTIONAL_COLUMNS: &[&str] = &[#(#encrypted_optional_columns),*];
+            if ENCRYPTED_OPTIONAL_COLUMNS.contains(&column) {
+                return Err(rullst_orm::Error::Validation(format!(
+                    "pluck_string() cannot decode nullable encrypted column `{}`; load the model instead",
+                    column
+                )));
+            }
+            let is_encrypted = ENCRYPTED_STRING_COLUMNS.contains(&column);
             let query_str = self.to_pluck_sql(column);
             let rows: Vec<(String,)> = {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (String,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
@@ -465,7 +504,13 @@ pub fn generate_execution_methods(
                     query.fetch_all(pool).await?
                 }
             };
-            Ok(rows.into_iter().map(|(s,)| s).collect())
+            if is_encrypted {
+                rows.into_iter()
+                    .map(|(value,)| rullst_orm::privacy::decrypt_model_field(&value, #table_name, column).map_err(Into::into))
+                    .collect()
+            } else {
+                Ok(rows.into_iter().map(|(value,)| value).collect())
+            }
         }
 
         pub async fn pluck_i32(&self, column: &str) -> Result<Vec<i32>, rullst_orm::Error> {

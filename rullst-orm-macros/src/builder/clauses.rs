@@ -22,6 +22,12 @@ pub fn generate_builder_struct(
         .map(|ident| ident.to_string())
         .collect();
     let skipped_columns_lit = skipped_columns.clone();
+    let encrypted_columns: Vec<String> = parsed
+        .encrypted_fields
+        .iter()
+        .map(|field| field.name.to_string())
+        .collect();
+    let encrypted_columns_lit = encrypted_columns.clone();
 
     quote! {
         #[derive(Clone)]
@@ -57,6 +63,7 @@ pub fn generate_builder_struct(
 
         impl #builder_name {
             const SKIPPED_COLUMNS: &'static [&'static str] = &[#(#skipped_columns_lit),*];
+            const ENCRYPTED_COLUMNS: &'static [&'static str] = &[#(#encrypted_columns_lit),*];
 
             fn is_skipped_column(column: &str) -> bool {
                 Self::SKIPPED_COLUMNS.iter().any(|c| *c == column)
@@ -66,6 +73,12 @@ pub fn generate_builder_struct(
                 if Self::is_skipped_column(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!(
                         "column `{}` is declared with `#[orm(skip)]` / `#[sqlx(skip)]` and does not exist in the table; it must not be used in WHERE / ORDER BY / GROUP BY / SELECT",
+                        column
+                    )));
+                    true
+                } else if Self::ENCRYPTED_COLUMNS.iter().any(|candidate| *candidate == column) {
+                    self.errors.push(rullst_orm::Error::Validation(format!(
+                        "column `{}` uses randomized `#[orm(encrypted)]` storage and cannot be used in WHERE / ORDER BY / GROUP BY / SELECT; query a separate blind-index column instead",
                         column
                     )));
                     true

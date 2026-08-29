@@ -83,23 +83,29 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
         }
 
         pub fn select_cols(mut self, cols: &[#column_enum_name]) -> Self {
+            for col in cols {
+                self.reject_skipped_column(col.as_str());
+            }
             let s = cols.iter().map(|c| c.as_str()).collect::<Vec<_>>().join(", ");
             self.selects = Some(s);
             self
         }
 
         pub fn where_col<T: Into<rullst_orm::RullstValue>>(mut self, col: #column_enum_name, value: T) -> Self {
+            self.reject_skipped_column(col.as_str());
             self.wheres.push(("AND".to_string(), format!("{} = ?", col.as_str())));
             self.bindings.push(value.into());
             self
         }
 
         pub fn order_by_col(mut self, col: #column_enum_name) -> Self {
+            self.reject_skipped_column(col.as_str());
             self.order_by = Some(col.as_str().to_string());
             self
         }
 
         pub fn order_by_desc_col(mut self, col: #column_enum_name) -> Self {
+            self.reject_skipped_column(col.as_str());
             self.order_by = Some(format!("{} DESC", col.as_str()));
             self
         }
@@ -160,6 +166,8 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
         }
 
         pub fn where_column(mut self, first: &str, second: &str) -> Self {
+            self.reject_skipped_column(first);
+            self.reject_skipped_column(second);
             if let Err(e) = rullst_orm::schema::validate_identifier(first) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_column() — invalid identifier for `first`: {}", e)));
             }

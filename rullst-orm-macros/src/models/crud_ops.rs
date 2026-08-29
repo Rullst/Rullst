@@ -1,4 +1,4 @@
-use crate::parser::ParsedModel;
+use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -36,7 +36,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 
     let audit_before_update = if parsed.auditable {
         quote! {
-            let old_model_for_audit = if !is_new {
+            let mut old_model_for_audit = if !is_new {
                 let driver = rullst_orm::Orm::driver()?;
                 let query = if driver == "postgres" {
                     format!("SELECT * FROM {} WHERE id = $1", #table_name)
@@ -49,6 +49,9 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             } else {
                 None
             };
+            if let Some(old_model) = old_model_for_audit.as_mut() {
+                old_model.__rullst_decrypt_encrypted_fields()?;
+            }
         }
     } else {
         quote! {}
@@ -107,10 +110,35 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         if field_name_str != "id" {
             insert_columns.push(field_name_str.clone());
             insert_placeholders.push("?");
-            bind_inserts.push(quote! { .bind(self.#field_name.clone()) });
+            let encrypted_kind = parsed
+                .encrypted_fields
+                .iter()
+                .find(|field| field.name == *field_name)
+                .map(|field| field.kind);
+            let binding = match encrypted_kind {
+                Some(EncryptedFieldKind::String) => quote! {
+                    .bind(rullst_orm::privacy::encrypt_model_field(
+                        &self.#field_name,
+                        #table_name,
+                        #field_name_str,
+                    )?)
+                },
+                Some(EncryptedFieldKind::OptionalString) => quote! {
+                    .bind(match self.#field_name.as_deref() {
+                        Some(value) => Some(rullst_orm::privacy::encrypt_model_field(
+                            value,
+                            #table_name,
+                            #field_name_str,
+                        )?),
+                        None => None,
+                    })
+                },
+                None => quote! { .bind(self.#field_name.clone()) },
+            };
+            bind_inserts.push(binding.clone());
 
             update_sets.push(format!("{} = ?", field_name_str));
-            bind_updates.push(quote! { .bind(self.#field_name.clone()) });
+            bind_updates.push(binding);
         }
     }
 

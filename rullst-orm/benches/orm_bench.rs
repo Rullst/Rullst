@@ -8,9 +8,9 @@
 //   2. Full round-trip operations (save / query / delete) against an
 //      in-process SQLite file, exercising the real driver stack.
 //
-// All async benchmarks use Criterion's `async_tokio` feature so they run
-// inside a real Tokio runtime and the results are directly comparable to
-// production async code.
+// All async benchmarks use Criterion's `async_tokio` feature and a local
+// SQLite file. Results are regression evidence for this setup, not production
+// database latency claims.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rullst_orm::schema::{Blueprint, Schema};

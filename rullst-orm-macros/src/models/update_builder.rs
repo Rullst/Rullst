@@ -1,4 +1,4 @@
-use crate::parser::ParsedModel;
+use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -44,10 +44,39 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
             }
         });
 
-        update_bindings.push(quote! {
-            if let Some(ref val) = self.#field {
-                exec = exec.bind(val.clone());
-            }
+        let encrypted_kind = parsed
+            .encrypted_fields
+            .iter()
+            .find(|encrypted| encrypted.name == *field)
+            .map(|encrypted| encrypted.kind);
+        update_bindings.push(match encrypted_kind {
+            Some(EncryptedFieldKind::String) => quote! {
+                if let Some(ref value) = self.#field {
+                    exec = exec.bind(rullst_orm::privacy::encrypt_model_field(
+                        value,
+                        #table_name,
+                        #field_str,
+                    )?);
+                }
+            },
+            Some(EncryptedFieldKind::OptionalString) => quote! {
+                if let Some(ref value) = self.#field {
+                    let encrypted_value = match value.as_deref() {
+                        Some(plaintext) => Some(rullst_orm::privacy::encrypt_model_field(
+                            plaintext,
+                            #table_name,
+                            #field_str,
+                        )?),
+                        None => None,
+                    };
+                    exec = exec.bind(encrypted_value);
+                }
+            },
+            None => quote! {
+                if let Some(ref value) = self.#field {
+                    exec = exec.bind(value.clone());
+                }
+            },
         });
 
         apply_to_model.push(quote! {

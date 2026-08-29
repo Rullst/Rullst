@@ -321,7 +321,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
 
             if rel_type == "morph_many" || rel_type == "morph_one" {
                 // Batch load: one query with WHERE morph_id IN (...) AND morph_type = 'Name'
-                // eliminates the previous N+1 pattern (one query per parent model).
+                // instead of issuing one relationship query per parent model.
                 quote! {
                     if self.#load_flag {
                         let parent_ids: Vec<_> = results.iter().map(|m| m.#lk_ident.clone()).collect();

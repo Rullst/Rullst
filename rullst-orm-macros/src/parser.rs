@@ -30,6 +30,8 @@ pub struct ParsedModel {
     pub normal_fields: Vec<syn::Ident>,
     pub normal_fields_types: Vec<syn::Type>,
     pub hidden_fields: Vec<syn::Ident>,
+    /// String fields transparently encrypted by generated persistence methods.
+    pub encrypted_fields: Vec<ParsedEncryptedField>,
     /// Fields tagged with `#[orm(skip)]` or `#[sqlx(skip)]`. They are
     /// still part of the struct but excluded from generated INSERT /
     /// UPDATE statements, the `*Column` enum and JSON serialisation.
@@ -72,6 +74,42 @@ pub struct ParsedRelation {
     pub cascade_soft_delete: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EncryptedFieldKind {
+    String,
+    OptionalString,
+}
+
+pub struct ParsedEncryptedField {
+    pub name: syn::Ident,
+    pub kind: EncryptedFieldKind,
+}
+
+fn encrypted_field_kind(field_type: &syn::Type) -> Option<EncryptedFieldKind> {
+    let syn::Type::Path(type_path) = field_type else {
+        return None;
+    };
+    let segment = type_path.path.segments.last()?;
+    if segment.ident == "String" && matches!(segment.arguments, syn::PathArguments::None) {
+        return Some(EncryptedFieldKind::String);
+    }
+    if segment.ident != "Option" {
+        return None;
+    }
+    let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return None;
+    };
+    if arguments.args.len() != 1 {
+        return None;
+    }
+    let syn::GenericArgument::Type(syn::Type::Path(inner_path)) = &arguments.args[0] else {
+        return None;
+    };
+    let inner = inner_path.path.segments.last()?;
+    (inner.ident == "String" && matches!(inner.arguments, syn::PathArguments::None))
+        .then_some(EncryptedFieldKind::OptionalString)
+}
+
 pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let name = input.ident.clone();
     let mut model_attributes = ModelAttributes::parse(input)?;
@@ -97,6 +135,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut normal_fields = vec![];
     let mut normal_fields_types = vec![];
     let mut hidden_fields = vec![];
+    let mut encrypted_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
@@ -125,6 +164,24 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
 
         let field_attributes = FieldAttributes::parse(field)?;
+        if field_attributes.is_encrypted {
+            if field_attributes.is_relation() || field_attributes.is_skipped {
+                return Err(syn::Error::new(
+                    field.span(),
+                    "#[orm(encrypted)] cannot be combined with relation or skipped fields",
+                ));
+            }
+            let kind = encrypted_field_kind(&field.ty).ok_or_else(|| {
+                syn::Error::new(
+                    field.ty.span(),
+                    "#[orm(encrypted)] supports only String and Option<String> fields",
+                )
+            })?;
+            encrypted_fields.push(ParsedEncryptedField {
+                name: field_name.clone(),
+                kind,
+            });
+        }
         if field_attributes.rag_context {
             rag_context_fields.push(field_name.clone());
         }
@@ -203,6 +260,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         normal_fields,
         normal_fields_types,
         hidden_fields,
+        encrypted_fields,
         skipped_fields,
         relations,
         has_soft_deletes,

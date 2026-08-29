@@ -49,10 +49,12 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 In traditional Rust database handling, you have to write raw SQL queries, manage connection pools manually, and bind variables repetitively. Rullst ORM abstracts the heavy lifting behind a single `#[derive(Orm)]` macro, generating hundreds of safe, chainable query methods at compile time.
 
 **Key Features:**
-- **Zero-Boilerplate CRUD**: Insert, update, delete, and find records instantly.
+- **Generated CRUD**: Derive insert, update, delete, and find helpers from model metadata.
 - **Fluent Query Builder**: Chain `.where_eq()`, `.limit()`, and `.order_by()` effortlessly.
 - **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
-- **Built-in Multi-Tenancy**: Automatically scope all queries by tenant ID.
+- **Tenant Context Primitive**: `with_tenant` carries an explicit task-local
+  tenant value. It does not inject SQL predicates; applications must bind tenant
+  filters, ownership checks, and database policy themselves.
 - **Automated Audit Logs**: Track `old_values` and `new_values` history natively.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
 - **Scout Search**: Seamlessly sync models to full-text search engines.
@@ -61,7 +63,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Cascading Soft Deletes**: Configure relationships to automatically soft-delete dependent children records in a single transaction.
 - **Type-Safe Partial Updates**: Virtual dirty checking with `.update_partial()` to intelligently modify only changed columns.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
-- **Strict Lazy Loading Prevention**: Enable a global toggle to instantly panic on N+1 queries during development.
+- **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
 
 ---

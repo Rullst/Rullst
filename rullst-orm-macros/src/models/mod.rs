@@ -6,7 +6,7 @@ pub mod query_ops;
 pub mod redis_ops;
 pub mod update_builder;
 
-use crate::parser::ParsedModel;
+use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -33,6 +33,28 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
     let (update_builder_struct, update_builder_method) = generate_update_builder(parsed);
     let redis_methods = generate_redis_hash_methods(parsed);
     let ai_methods = generate_ai_methods(parsed);
+    let decrypt_encrypted_fields = parsed.encrypted_fields.iter().map(|field| {
+        let field_name = &field.name;
+        let column_name = field_name.to_string();
+        match field.kind {
+            EncryptedFieldKind::String => quote! {
+                self.#field_name = rullst_orm::privacy::decrypt_model_field(
+                    &self.#field_name,
+                    #table_name,
+                    #column_name,
+                )?;
+            },
+            EncryptedFieldKind::OptionalString => quote! {
+                if let Some(encrypted_value) = self.#field_name.as_deref() {
+                    self.#field_name = Some(rullst_orm::privacy::decrypt_model_field(
+                        encrypted_value,
+                        #table_name,
+                        #column_name,
+                    )?);
+                }
+            },
+        }
+    });
 
     quote! {
         #enum_def
@@ -49,6 +71,11 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
 
         impl #name {
             #(#relationship_methods)*
+
+            fn __rullst_decrypt_encrypted_fields(&mut self) -> Result<(), rullst_orm::Error> {
+                #(#decrypt_encrypted_fields)*
+                Ok(())
+            }
 
             #json_methods
 
