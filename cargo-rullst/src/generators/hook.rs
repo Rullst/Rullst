@@ -130,7 +130,10 @@ fn hooks_directory(worktree: &Path) -> Result<PathBuf, HookInstallError> {
     if !metadata.is_file() {
         return Err(HookInstallError::NotGitWorktree(worktree.to_path_buf()));
     }
-    let git_dir = metadata_target(&metadata)?;
+    let git_dir_target = metadata_target(&metadata)?;
+    let git_dir = git_dir_target
+        .canonicalize()
+        .map_err(|error| io_error("resolve Git directory", &git_dir_target, error))?;
     let common_metadata = git_dir.join("commondir");
     if !common_metadata.is_file() {
         return Ok(git_dir.join("hooks"));
@@ -143,6 +146,9 @@ fn hooks_directory(worktree: &Path) -> Result<PathBuf, HookInstallError> {
     } else {
         git_dir.join(common)
     };
+    let common = common
+        .canonicalize()
+        .map_err(|error| io_error("resolve Git common directory", &common, error))?;
     Ok(common.join("hooks"))
 }
 
@@ -420,7 +426,7 @@ mod tests {
         fs::write(linked.join("commondir"), "../..\n").expect("common directory metadata");
 
         let hooks = install_git_hooks_at(&worktree.path).expect("linked hook installation");
-        assert_eq!(hooks, linked.join("../..").join("hooks"));
+        assert_eq!(hooks, common.canonicalize().unwrap().join("hooks"));
         assert!(hooks.join("pre-commit").exists());
     }
 }

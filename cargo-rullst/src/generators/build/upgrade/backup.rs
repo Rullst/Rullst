@@ -112,6 +112,7 @@ impl UpgradeBackup {
         project_root: &Path,
         requested: &Path,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let project_root = project_root.canonicalize()?;
         let allowed_root = project_root.join("target").join("rullst-upgrades");
         let requested = if requested.is_absolute() {
             requested.to_path_buf()
@@ -147,11 +148,11 @@ impl UpgradeBackup {
                     }
                     if let Some(parent) = original.parent() {
                         let canonical_parent = parent.canonicalize()?;
-                        if !canonical_parent.starts_with(project_root) {
+                        if !canonical_parent.starts_with(&project_root) {
                             return Err("restore target escapes the project root".into());
                         }
                     }
-                    if original.exists() && !original.canonicalize()?.starts_with(project_root) {
+                    if original.exists() && !original.canonicalize()?.starts_with(&project_root) {
                         return Err("restore target resolves outside the project root".into());
                     }
                     std::fs::copy(snapshot, original)?;
