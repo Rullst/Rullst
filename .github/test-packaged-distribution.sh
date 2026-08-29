@@ -97,6 +97,10 @@ if [ ! -f "$cli_package/Cargo.lock" ]; then
   echo "The packaged cargo-rullst archive must include Cargo.lock."
   exit 1
 fi
+# The CLI depends on packages from the same release train. Point the extracted
+# manifest at the extracted archives so a first publication can be verified
+# offline before those package names exist in the registry.
+append_package_patches "$cli_package/Cargo.toml"
 
 "$cargo_bin" install \
   --path "$cli_package" \

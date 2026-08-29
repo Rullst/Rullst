@@ -155,6 +155,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Generated blueprints and representative release builds are exercised by
   compile tests. The exact RC still requires multi-OS CI, packaged crates-only
   reproduction, and release-tag evidence before publication.
+- The packaged-distribution gate now installs `cargo-rullst` offline from the
+  extracted release train, including crates not yet present in the registry,
+  before generating and checking all six supported blueprints.
 
 ### Detailed technical inventory (preserved)
 
