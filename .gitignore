@@ -39,6 +39,7 @@ test.db-wal
 *.zst  
  
 node_modules/
+docs/book/
 .vitepress/dist/
 .vitepress/cache/
 val_test_*
