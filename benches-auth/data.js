@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787881518896,
+  "lastUpdate": 1787984539495,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3799,6 +3799,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 524,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "cad5729a21eb15ae4be65dd8b1597fc705b5ec4d",
+          "message": "fix(release): verify cli bootstrap from packages",
+          "timestamp": "2026-08-29T02:50:30-03:00",
+          "tree_id": "82759ff6998afe8f65244f598a019c6185d21c48",
+          "url": "https://github.com/Rullst/Rullst/commit/cad5729a21eb15ae4be65dd8b1597fc705b5ec4d"
+        },
+        "date": 1787984539014,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 408,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
