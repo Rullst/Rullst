@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787881611859,
+  "lastUpdate": 1787984610690,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2394,6 +2394,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 538,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "cad5729a21eb15ae4be65dd8b1597fc705b5ec4d",
+          "message": "fix(release): verify cli bootstrap from packages",
+          "timestamp": "2026-08-29T02:50:30-03:00",
+          "tree_id": "82759ff6998afe8f65244f598a019c6185d21c48",
+          "url": "https://github.com/Rullst/Rullst/commit/cad5729a21eb15ae4be65dd8b1597fc705b5ec4d"
+        },
+        "date": 1787984610219,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 392,
             "range": "± 1",
             "unit": "ns/iter"
           }
