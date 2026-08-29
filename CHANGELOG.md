@@ -74,6 +74,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- Dependabot now targets `dev` for both Cargo and GitHub Actions. The v12
+  dependency baseline incorporates the open Cargo update set, including the
+  `jsonwebtoken`, `aes-gcm`, `p256`, `tokio-tungstenite`, `syn`, `tera`,
+  `base64`, and `validator` major trains; the lockfile no longer contains
+  yanked packages. The remaining RSA advisory has no fixed upstream release
+  and stays bounded by the documented exception policy.
+- `rullst-auth` now declares the `rand_core/getrandom` capability used by
+  Argon2 salt generation directly, so isolated generated applications no longer
+  depend on accidental workspace feature unification.
+- SemVer CI resolves the exact latest non-yanked crates.io baseline for every
+  supported, already-published library target. Packages awaiting their first
+  publication and proc-macro/binary API surfaces unsupported by the checker are
+  reported explicitly instead of being presented as verified.
+- The README keeps a compact v12 preview quick start and links to the complete
+  cross-platform Zero-to-Hero tutorial, including typed startup error
+  propagation and an explicit warning against deploying from mutable `dev`.
+- README performance language now distinguishes compile-time expansion from
+  runtime dispatch, identifies benchmark scope and historical comparison data,
+  and replaces the unsupported ecosystem scorecard with a source-linked
+  architectural positioning guide.
 - Studio Radar reports real process CPU on Windows after a sampling interval,
   refreshes KPIs from `/api/radar`, and keeps unavailable probes visibly
   unavailable.
