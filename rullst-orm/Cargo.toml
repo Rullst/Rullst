@@ -27,7 +27,7 @@ base64 = { workspace = true }
 rand = { workspace = true }
 async-stream = "0.3.5"
 tracing = { workspace = true }
-syn = { version = "2.0", features = ["full", "extra-traits"] }
+syn = { version = "3.0", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
 
 walkdir = "2.5.0"

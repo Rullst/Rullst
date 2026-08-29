@@ -25,7 +25,9 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "main"
+    # v5 on main is frozen. Action updates belong to the actively maintained
+    # v12 line and must pass the dev branch workflow gates before release.
+    target-branch: "dev"
     schedule:
       interval: "weekly"
       day: "monday"

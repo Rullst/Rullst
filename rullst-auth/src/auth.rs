@@ -3,13 +3,13 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit, Payload},
 };
-use argon2::password_hash::rand_core::OsRng;
 use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
+use rand_core::OsRng;
 use sha2::Digest;
 use std::collections::HashMap;
 use std::convert::TryInto;
