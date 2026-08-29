@@ -10,7 +10,7 @@ pub async fn render_traces_page() -> Html<String> {
         rows_html.push_str(
             r#"<tr>
                 <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 font-medium bg-slate-950/40">
-                    No trace spans recorded yet. Execute HTTP requests or ORM database queries to generate live traces.
+                    No local spans have been recorded yet. Application or framework code must record TraceSpan values explicitly.
                 </td>
             </tr>"#,
         );
@@ -56,9 +56,9 @@ pub async fn render_traces_page() -> Html<String> {
             <header class="pb-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-                        <span>🔍 Distributed Tracing & Flamegraph Inspector</span>
+                        <span>🔍 Local Span Inspector</span>
                     </h1>
-                    <p class="text-slate-400 text-sm mt-1">Live Microsecond Telemetry Spans for HTTP Handlers, SQLx ORM Queries & AI Model Calls</p>
+                    <p class="text-slate-400 text-sm mt-1">Bounded in-process TraceSpan records supplied explicitly by application or framework code</p>
                 </div>
                 <span class="px-3.5 py-1.5 bg-indigo-950 border border-indigo-800/80 rounded-full text-xs font-bold text-indigo-400 flex items-center gap-2">
                     <span class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></span>
@@ -124,7 +124,7 @@ mod tests {
         });
 
         let html = render_traces_page().await.0;
-        assert!(html.contains("Distributed Tracing"));
+        assert!(html.contains("Local Span Inspector"));
         assert!(html.contains("SQL QUERY"));
         assert!(html.contains("AI GENERATION"));
         assert!(html.contains("ASYNC JOB"));

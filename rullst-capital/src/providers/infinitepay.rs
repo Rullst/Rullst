@@ -9,8 +9,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 use subtle::ConstantTimeEq;
 
-/// Billing provider implementation for InfinitePay (CloudWalk Brazil).
-/// Features: 0.00% Pix fee, instant D+0 payouts, and transparent credit card installment pass-through.
+/// Billing provider adapter for InfinitePay (CloudWalk Brazil).
+///
+/// Fees, settlement schedules, installment terms, geography, and merchant
+/// eligibility belong to the current provider contract and account.
 pub struct InfinitePayProvider {
     api_key: String,
     webhook_secret: String,

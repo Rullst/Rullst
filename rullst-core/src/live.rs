@@ -57,7 +57,8 @@ pub struct Live;
 
 impl Live {
     /// Generates the wrapper `<div>` tag that activates the `hx-ext="ws"` HTMX extension.
-    /// It pre-renders (`mount` + `render`) to guarantee SEO-optimised SSR on the first load.
+    /// It pre-renders (`mount` + `render`) on the first load. Search-engine
+    /// behavior still depends on the rendered document and deployment.
     pub async fn mount<C: LiveComponent>(ws_path: &str) -> String {
         let mut comp = C::default();
         comp.mount().await;

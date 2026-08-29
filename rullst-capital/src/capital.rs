@@ -1,9 +1,8 @@
 //! # Rullst Capital
 //!
-//! SaaS Billing & Subscription Engine for Rullst applications.
-//! Supports Stripe, LemonSqueezy, InfinitePay (Pix 0%), Polar.sh, Paddle,
-//! Mercado Pago, Coinbase Commerce, PicPay, and Wise out of the box with
-//! secure cryptographic webhook validation.
+//! Billing and payout adapter foundations for Rullst applications.
+//! Provider capabilities and webhook protocols vary; applications must verify
+//! the exact live methods they use and reconcile durable state themselves.
 
 pub use crate::providers::*;
 

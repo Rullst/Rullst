@@ -32,20 +32,18 @@ pub fn render_revenue_dashboard_page() -> String {
         event_rows.push_str(
             r#"<tr>
                 <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 font-medium bg-slate-950/40">
-                    No payment webhook events recorded yet. Webhooks from Stripe or LemonSqueezy will automatically appear here in real-time.
+                    No payment events were supplied to this process-local manager. The application must call record_event after its verified webhook processing path.
                 </td>
             </tr>"#,
         );
     } else {
         for evt in &events {
-            let (badge_class, badge_text) = if evt.status == "processed" {
-                (
-                    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-                    "PROCESSED",
-                )
+            let badge_class = if evt.status == "processed" {
+                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
             } else {
-                ("bg-rose-500/10 text-rose-400 border-rose-500/20", "FAILED")
+                "bg-rose-500/10 text-rose-400 border-rose-500/20"
             };
+            let badge_text = evt.status.to_ascii_uppercase();
 
             event_rows.push_str(&format!(
                 r#"<tr class="hover:bg-slate-900/50 transition">
@@ -58,7 +56,7 @@ pub fn render_revenue_dashboard_page() -> String {
                 provider = rullst_core::html::escape_str(&evt.provider),
                 event_type = rullst_core::html::escape_str(&evt.event_type),
                 badge_class = badge_class,
-                badge_text = badge_text
+                badge_text = rullst_core::html::escape_str(&badge_text)
             ));
         }
     }
@@ -70,11 +68,11 @@ pub fn render_revenue_dashboard_page() -> String {
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
                         <span>💳 Rullst Capital Dashboard</span>
                     </h1>
-                    <p class="text-slate-400 text-sm mt-1">Real-time SaaS MRR/ARR Revenue Analytics & Live Payment Webhook Inspector</p>
+                    <p class="text-slate-400 text-sm mt-1">Application-supplied revenue snapshot and process-local webhook inspector</p>
                 </div>
                 <span class="px-3.5 py-1.5 bg-emerald-950 border border-emerald-800/80 rounded-full text-xs font-bold text-emerald-400 flex items-center gap-2">
                     <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Stripe & LemonSqueezy Ready</span>
+                    <span>Local supplied data</span>
                 </span>
             </header>
 
@@ -83,27 +81,27 @@ pub fn render_revenue_dashboard_page() -> String {
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Monthly Recurring (MRR)</div>
                     <div class="text-2xl font-bold text-sky-400 mt-1">{mrr}</div>
-                    <div class="text-xs text-slate-400 mt-2">Active recurring revenue</div>
+                    <div class="text-xs text-slate-400 mt-2">Supplied by the application</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Annual Recurring (ARR)</div>
                     <div class="text-2xl font-bold text-emerald-400 mt-1">{arr}</div>
-                    <div class="text-xs text-slate-400 mt-2">Annualized run-rate</div>
+                    <div class="text-xs text-slate-400 mt-2">Supplied by the application</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Net Revenue</div>
                     <div class="text-2xl font-bold text-indigo-400 mt-1">{net}</div>
-                    <div class="text-xs text-slate-400 mt-2">Net after provider fees</div>
+                    <div class="text-xs text-slate-400 mt-2">Supplied by the application</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Active Subscribers</div>
                     <div class="text-2xl font-bold text-amber-400 mt-1">{subs}</div>
-                    <div class="text-xs text-slate-400 mt-2">Total paying customers</div>
+                    <div class="text-xs text-slate-400 mt-2">Supplied by the application</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Churn Rate</div>
                     <div class="text-2xl font-bold text-purple-400 mt-1">{churn:.1}%</div>
-                    <div class="text-xs text-slate-400 mt-2">Estimated monthly churn</div>
+                    <div class="text-xs text-slate-400 mt-2">Supplied by the application</div>
                 </div>
             </div>
 
@@ -111,7 +109,7 @@ pub fn render_revenue_dashboard_page() -> String {
             <div class="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md space-y-4 p-6">
                 <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
                     <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
-                        <span>📡 Live Webhook Audit Log Inspector</span>
+                        <span>Process-local Webhook Event Inspector</span>
                     </h2>
                     <span class="text-xs font-semibold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
                         {events_count} Webhook Events Recorded
@@ -157,10 +155,6 @@ pub fn router() -> Router {
             "/studio/capital",
             get(|| async { Html(render_revenue_dashboard_page()) }),
         )
-        .route(
-            "/studio/tools/revenue",
-            get(|| async { Html(render_revenue_dashboard_page()) }),
-        )
         .route("/api/revenue", get(api_revenue_handler))
 }
 
@@ -181,13 +175,6 @@ mod tests {
             .unwrap();
         let page_resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(page_resp.status(), StatusCode::OK);
-
-        let legacy_req = Request::builder()
-            .uri("/studio/tools/revenue")
-            .body(Body::empty())
-            .unwrap();
-        let legacy_resp = app.clone().oneshot(legacy_req).await.unwrap();
-        assert_eq!(legacy_resp.status(), StatusCode::OK);
 
         let api_req = Request::builder()
             .uri("/api/revenue")

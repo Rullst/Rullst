@@ -8,7 +8,8 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use std::fmt;
 use zeroize::Zeroize;
 
-const ENVELOPE_PREFIX: &str = "ENC";
+const ENVELOPE_PREFIX: &str = "RULLST";
+const LEGACY_ENVELOPE_PREFIX: &str = "ENC";
 const ENVELOPE_VERSION: &str = "v2";
 const LEGACY_ENVELOPE_VERSION: &str = "v1";
 const DEFAULT_KEY_ID: &str = "default";
@@ -19,7 +20,8 @@ const MAX_KEY_ID_LENGTH: usize = 128;
 const AAD_DOMAIN: &[u8] = b"rullst-security:field-encryption:aes-256-gcm";
 
 /// Zero-Trust wrapper for sensitive in-memory secrets (API keys, DB passwords, private tokens).
-/// Automatically zeroes memory upon drop to prevent heap dump leaks.
+/// Zeroizes the wrapped value on drop, reducing how long that allocation keeps
+/// the secret. It cannot erase prior copies or prevent process-memory capture.
 pub struct VaultSecret<T: Zeroize> {
     inner: T,
 }
@@ -162,7 +164,7 @@ impl From<VaultError> for crate::error::SecurityError {
 /// AES-256-GCM field-level encryption helper.
 ///
 /// Encrypted values use the versioned envelope
-/// `ENC:v2:<key-id>:<nonce>:<ciphertext-and-tag>`. The nonce and encrypted payload
+/// `RULLST:v2:<key-id>:<nonce>:<ciphertext-and-tag>`. The nonce and encrypted payload
 /// are URL-safe base64 without padding. The envelope version, algorithm domain,
 /// key identifier, and caller-provided AAD are authenticated by AES-GCM.
 ///
@@ -321,7 +323,10 @@ fn build_authenticated_data(key_id: &str, caller_aad: &[u8]) -> Vec<u8> {
 
 fn parse_envelope(cipher_text: &str) -> Result<ParsedEnvelope<'_>, VaultError> {
     let mut fields = cipher_text.split(':');
-    if fields.next() != Some(ENVELOPE_PREFIX) {
+    if !matches!(
+        fields.next(),
+        Some(ENVELOPE_PREFIX | LEGACY_ENVELOPE_PREFIX)
+    ) {
         return Err(VaultError::InvalidEnvelope);
     }
 

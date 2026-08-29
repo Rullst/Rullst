@@ -84,7 +84,8 @@ async fn test_all_studio_views_and_api_handlers() {
     let sec_html = studio_security_handler().await;
     assert!(sec_html.0.contains("Threat Radar") || sec_html.0.contains("Security"));
 
-    // 7. Traces
+    // 7. Process-local span records
     let trace_html = studio_traces_handler().await;
-    assert!(trace_html.0.contains("Traces") || trace_html.0.contains("Trace"));
+    assert!(trace_html.0.contains("Local Span Records"));
+    assert!(trace_html.0.contains("SpanCollector"));
 }

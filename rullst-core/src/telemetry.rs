@@ -2,8 +2,10 @@ use tracing_core::Field;
 use tracing_core::field::Visit;
 use tracing_subscriber::Layer;
 
-/// A security layer that intercepts all telemetry events and audits them for sensitive data leakage.
-/// If fields like `cpf`, `password`, or `email` are logged, it triggers an instant security warning.
+/// A diagnostic layer that warns when known sensitive field names appear in tracing events.
+///
+/// This observer cannot alter an event already recorded by other layers. Callers must redact
+/// values before logging them; this layer is detection, not data-loss prevention.
 pub struct RedactPersonalDataLayer;
 
 struct PrivacyVisitor {
@@ -35,7 +37,7 @@ impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
         event.record(&mut visitor);
         if visitor.has_leak {
             eprintln!(
-                "\n🚨 [RULLST GDPR/LGPD AUDITOR] Security Warning: Sensitive field '{}' was exposed in telemetry logs! The data was masked. Use #[derive(PersonalData)] to suppress this automatically.\n",
+                "\n🚨 [RULLST TELEMETRY AUDITOR] Sensitive field name '{}' was logged. This observer cannot redact an event already emitted; remove or redact the value at the call site.\n",
                 visitor.leaked_field
             );
         }

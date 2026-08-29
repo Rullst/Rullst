@@ -1,8 +1,8 @@
 //! Anti-Timing Attack User Enumeration Guard (`rullst-security::timing_guard`).
 //!
-//! Eliminates side-channel timing analysis on authentication, user lookup,
-//! and password reset endpoints by enforcing constant-time response durations
-//! with cryptographically randomized micro-jitter.
+//! Reduces coarse timing differences on authentication, user lookup, and
+//! password-reset endpoints by padding responses to a configured target with
+//! random jitter. It is not a constant-time or side-channel-elimination proof.
 
 use crate::telemetry::SecurityStore;
 use axum::{extract::Request, middleware::Next, response::Response};
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 /// Configuration for the Anti-Timing Attack Guard.
 #[derive(Clone, Debug)]
 pub struct TimingGuardConfig {
-    /// Minimum guaranteed response duration (e.g., 250ms).
+    /// Target minimum response duration before scheduler and transport effects.
     pub min_duration: Duration,
     /// Maximum random micro-jitter to prevent statistical synchronization (e.g., 20ms).
     pub max_jitter: Duration,

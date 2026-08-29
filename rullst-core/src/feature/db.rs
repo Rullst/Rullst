@@ -16,7 +16,8 @@ struct DbCacheValue {
 
 /// Feature flag driver backed by a database table `rullst_feature_flags`.
 ///
-/// Features a high-performance concurrent local cache with custom TTL to ensure sub-millisecond lookups.
+/// Uses a concurrent process-local cache with a configurable TTL. Lookup
+/// latency depends on contention, key/value size, hardware, and build profile.
 ///
 /// # Note on Database Pool Initialization
 /// This driver requires a live database pool to function. If feature flags are evaluated before the

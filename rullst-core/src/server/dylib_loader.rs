@@ -54,8 +54,7 @@ pub fn load_dylib_router(
         }
     }
 
-    // L-1: Use UUID v4 instead of nanosecond timestamp to guarantee filename uniqueness
-    //       even on systems with low-resolution clocks.
+    // L-1: UUID v4 avoids clock-resolution collisions between temporary names.
     let unique_id = uuid::Uuid::new_v4().as_simple().to_string();
     let temp_filename = format!("{}_active_{}.{}", filename, unique_id, lib_extension);
     let temp_path = parent.join(temp_filename);

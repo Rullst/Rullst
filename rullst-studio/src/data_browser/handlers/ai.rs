@@ -1,4 +1,4 @@
-//! AI Playground handler.
+//! Explicit AI integration-boundary handler.
 
 use super::super::layout::*;
 use axum::response::{Html, IntoResponse};

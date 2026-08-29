@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
-/// Real-time revenue analytics metrics payload.
+/// Application-supplied revenue analytics metrics payload.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RevenueMetrics {
     /// Monthly Recurring Revenue in cents.
@@ -30,7 +30,8 @@ impl Default for RevenueMetrics {
     }
 }
 
-/// Record of a processed payment provider webhook event (Stripe or LemonSqueezy).
+/// Application-supplied record describing the result of a webhook processing
+/// path. Constructing this value does not perform signature verification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookEventRecord {
     /// Unique event identifier.
@@ -70,47 +71,59 @@ impl RevenueDashboardManager {
 
     /// Retrieves current revenue metrics.
     pub fn get_metrics(&self) -> RevenueMetrics {
-        self.metrics.read().map(|m| m.clone()).unwrap_or_default()
+        match self.metrics.read() {
+            Ok(metrics) => metrics.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        }
     }
 
     /// Updates current revenue metrics.
     pub fn update_metrics(&self, new_metrics: RevenueMetrics) {
-        if let Ok(mut m) = self.metrics.write() {
-            *m = new_metrics;
-        }
+        let mut metrics = match self.metrics.write() {
+            Ok(metrics) => metrics,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *metrics = new_metrics;
     }
 
-    /// Records a new incoming webhook event into the audit log buffer and updates live metrics.
-    pub fn record_event(&self, event: WebhookEventRecord) {
-        let is_processed = event.status == "processed";
-        let is_sub_or_payment = event.event_type.contains("subscription")
-            || event.event_type.contains("payment_succeeded");
+    /// Records a webhook event in the bounded process-local inspection buffer.
+    ///
+    /// An event type does not contain enough authoritative price, currency,
+    /// refund, fee or subscription state to derive financial metrics. Call
+    /// [`Self::update_metrics`] with values computed from the application's
+    /// durable billing source instead.
+    pub fn record_event(&self, mut event: WebhookEventRecord) {
+        event.id = bounded_text(event.id, 128);
+        event.provider = bounded_text(event.provider, 64);
+        event.event_type = bounded_text(event.event_type, 128);
+        event.status = bounded_text(event.status, 64);
+        event.payload_snippet = bounded_text(event.payload_snippet, 2_048);
 
-        if let Ok(mut events) = self.events.write() {
-            events.insert(0, event);
-            if events.len() > 100 {
-                events.pop();
-            }
-        }
-
-        // Dynamically update metrics based on payment events
-        if is_processed
-            && is_sub_or_payment
-            && let Ok(mut m) = self.metrics.write()
-        {
-            m.active_subscriptions += 1;
-            m.mrr_cents += 2900; // default tier $29.00
-            m.arr_cents = m.mrr_cents * 12;
-            m.net_revenue_cents += 2816; // net after ~2.9% fees
+        let mut events = match self.events.write() {
+            Ok(events) => events,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        events.insert(0, event);
+        if events.len() > 100 {
+            events.pop();
         }
     }
 
     /// Lists recent webhook events (up to limit).
     pub fn get_recent_events(&self, limit: usize) -> Vec<WebhookEventRecord> {
-        self.events
-            .read()
-            .map(|e| e.iter().take(limit).cloned().collect())
-            .unwrap_or_default()
+        let events = match self.events.read() {
+            Ok(events) => events,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        events.iter().take(limit.min(100)).cloned().collect()
+    }
+}
+
+fn bounded_text(value: String, maximum_chars: usize) -> String {
+    if value.chars().count() <= maximum_chars {
+        value
+    } else {
+        value.chars().take(maximum_chars).collect()
     }
 }
 
@@ -140,5 +153,18 @@ mod tests {
         let updated_events = manager.get_recent_events(10);
         assert_eq!(updated_events.len(), 1);
         assert_eq!(updated_events[0].id, "evt_test");
+        assert_eq!(manager.get_metrics(), RevenueMetrics::default());
+
+        manager.record_event(WebhookEventRecord {
+            id: "x".repeat(200),
+            provider: "provider".to_string(),
+            event_type: "type".to_string(),
+            status: "observed".to_string(),
+            timestamp: 1001,
+            payload_snippet: "é".repeat(3_000),
+        });
+        let bounded = manager.get_recent_events(1);
+        assert_eq!(bounded[0].id.chars().count(), 128);
+        assert_eq!(bounded[0].payload_snippet.chars().count(), 2_048);
     }
 }

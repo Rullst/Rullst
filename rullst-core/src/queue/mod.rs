@@ -174,15 +174,25 @@ pub trait QueueDriver: Send + Sync {
     async fn pending_count(&self) -> Result<u64, QueueError>;
     /// List all recent jobs for monitoring
     async fn list_all_jobs(&self, _limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
-        Ok(vec![])
+        Err(QueueError::Unsupported(
+            "this queue driver does not expose job inspection".to_string(),
+        ))
     }
     /// Retry a failed job
     async fn retry_failed_job(&self, _job_id: &str) -> Result<(), QueueError> {
-        Ok(())
+        Err(QueueError::Unsupported(
+            "this queue driver does not expose failed-job retry".to_string(),
+        ))
     }
-    /// Purge completed or failed jobs
+    /// Legacy, misnamed hook that purges failed jobs in the SQLite driver.
     async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
-        Ok(())
+        Err(QueueError::Unsupported(
+            "this queue driver does not expose failed-job purge".to_string(),
+        ))
+    }
+    /// Purge failed jobs retained by the backend.
+    async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
+        self.purge_completed_jobs().await
     }
 }
 
@@ -247,10 +257,19 @@ impl Queue {
         self.driver.retry_failed_job(job_id).await
     }
 
-    /// Purge failed jobs from the queue database
+    /// Purge failed jobs retained by the queue backend.
+    pub async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
+        self.driver.purge_failed_jobs().await
+    }
+
+    /// Legacy compatibility name for [`Self::purge_failed_jobs`].
+    #[deprecated(
+        since = "12.0.0",
+        note = "use purge_failed_jobs; this method has always targeted failed rows"
+    )]
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
-        self.driver.purge_completed_jobs().await
+        self.purge_failed_jobs().await
     }
 
     /// Get an `Arc` reference to the internal driver (for sharing with `Worker`).

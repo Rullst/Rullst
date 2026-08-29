@@ -92,6 +92,7 @@ mod tests {
         let request = |uri: &'static str| {
             let mut request = Request::builder()
                 .uri(uri)
+                .header(axum::http::header::HOST, "127.0.0.1:5555")
                 .body(Body::empty())
                 .expect("valid request");
             request.extensions_mut().insert(axum::extract::ConnectInfo(

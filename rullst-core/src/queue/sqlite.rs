@@ -103,7 +103,7 @@ impl SqliteDriver {
     }
 
     /// Purges all failed jobs from the database.
-    pub async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+    pub async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
         sqlx::query("DELETE FROM rullst_jobs WHERE status = 'failed'")
             .execute(&self.pool)
             .await
@@ -253,7 +253,11 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
-        self.purge_completed_jobs().await
+        SqliteDriver::purge_failed_jobs(self).await
+    }
+
+    async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
+        SqliteDriver::purge_failed_jobs(self).await
     }
 }
 

@@ -51,53 +51,6 @@ pub fn router() -> Router {
         .route("/studio/capital", axum::routing::get(handle_studio_capital))
         .route("/traces", axum::routing::get(handle_studio_traces))
         .route("/studio/traces", axum::routing::get(handle_studio_traces))
-        // Backward-compatible route aliases for legacy /tools/* endpoints
-        .route(
-            "/tools/migrations",
-            axum::routing::get(handle_studio_tools_migrations),
-        )
-        .route(
-            "/studio/tools/migrations",
-            axum::routing::get(handle_studio_tools_migrations),
-        )
-        .route("/tools/ai", axum::routing::get(handle_studio_tools_ai))
-        .route(
-            "/studio/tools/ai",
-            axum::routing::get(handle_studio_tools_ai),
-        )
-        .route(
-            "/tools/security",
-            axum::routing::get(handle_studio_tools_security),
-        )
-        .route(
-            "/studio/tools/security",
-            axum::routing::get(handle_studio_tools_security),
-        )
-        .route("/tools/telemetry", axum::routing::get(handle_studio_radar))
-        .route(
-            "/studio/tools/telemetry",
-            axum::routing::get(handle_studio_radar),
-        )
-        .route("/tools/radar", axum::routing::get(handle_studio_radar))
-        .route(
-            "/studio/tools/radar",
-            axum::routing::get(handle_studio_radar),
-        )
-        .route("/tools/capital", axum::routing::get(handle_studio_capital))
-        .route(
-            "/studio/tools/capital",
-            axum::routing::get(handle_studio_capital),
-        )
-        .route("/tools/revenue", axum::routing::get(handle_studio_capital))
-        .route(
-            "/studio/tools/revenue",
-            axum::routing::get(handle_studio_capital),
-        )
-        .route("/tools/traces", axum::routing::get(handle_studio_traces))
-        .route(
-            "/studio/tools/traces",
-            axum::routing::get(handle_studio_traces),
-        )
         // API endpoints
         .route(
             "/api/radar",

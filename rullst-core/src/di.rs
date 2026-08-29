@@ -1,7 +1,8 @@
-//! Compile-Time Zero-Cost Dependency Injection Container (`rullst::di`)
+//! Type-indexed dependency injection container (`rullst::di`).
 //!
-//! Provides static dispatch dependency injection for services, repositories,
-//! and background handlers without dynamic reflection or runtime performance penalties.
+//! Provides type-indexed registration and resolution for services,
+//! repositories, and background handlers without runtime reflection. The
+//! container still performs synchronization and type lookup at runtime.
 
 use axum::{
     extract::FromRequestParts,

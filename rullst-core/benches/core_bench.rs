@@ -3,9 +3,7 @@ use rullst_core::html::escape_str;
 use rullst_core::security::{generate_csrf_token, mask_pii};
 use std::hint::black_box;
 
-/// Benchmarks the HTML escaping hot path.
-/// `escape_str` is called on EVERY dynamic value inside an `html!` macro block.
-/// Sub-100ns is required to keep SSR competitive with static files.
+/// Benchmarks HTML escaping for representative clean and escaped inputs.
 fn bench_html_escape(c: &mut Criterion) {
     let mut group = c.benchmark_group("html_escape");
 
@@ -30,8 +28,7 @@ fn bench_html_escape(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks PII masking — called on every ORM write in audit mode.
-/// Must be sub-microsecond to avoid slowing down database operations.
+/// Benchmarks the bounded response-text PII masking helper.
 fn bench_mask_pii(c: &mut Criterion) {
     let mut group = c.benchmark_group("mask_pii");
 
@@ -54,8 +51,7 @@ fn bench_mask_pii(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks CSRF token generation — called on every form render.
-/// Uses `rand::distr::Alphanumeric` — must be fast enough for high-traffic endpoints.
+/// Benchmarks the random token generator used when CSRF middleware creates a token.
 fn bench_csrf_token(c: &mut Criterion) {
     c.bench_function("generate_csrf_token_32_chars", |b| {
         b.iter(generate_csrf_token)

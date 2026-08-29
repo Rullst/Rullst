@@ -1,4 +1,4 @@
-//! Rullst Radar Kernel-Level Telemetry & Spans Visualizer (`/studio/radar`)
+//! Rullst Radar process/Tokio telemetry and spans visualizer (`/studio/radar`).
 
 use axum::{
     Json, Router,
@@ -17,7 +17,7 @@ pub async fn render_radar_page() -> String {
     if spans.is_empty() {
         span_rows_html.push_str(
             r#"<div class="p-6 text-center text-sm text-slate-500 font-medium bg-slate-950/40 rounded-xl border border-slate-800/60">
-                No active telemetry spans recorded yet. Send HTTP requests or execute ORM queries to stream live microsecond spans.
+                No local spans have been recorded yet. Application or framework code must record TraceSpan values explicitly.
             </div>"#,
         );
     } else {
@@ -91,7 +91,7 @@ pub async fn render_radar_page() -> String {
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
                         <span>📡 Telemetry & Rullst Radar</span>
                     </h1>
-                    <p class="text-slate-400 text-sm mt-1">Real-time Tokio Runtime Kernel Telemetry, Memory RSS & Microsecond Async Spans</p>
+                    <p class="text-slate-400 text-sm mt-1">Live supported process/Tokio probes and locally recorded async spans</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <a href="/metrics" target="_blank" class="px-3.5 py-1.5 bg-sky-950 border border-sky-800/80 hover:border-sky-500 rounded-full text-xs font-bold text-sky-400 transition flex items-center gap-1.5 shadow-inner">
@@ -105,7 +105,7 @@ pub async fn render_radar_page() -> String {
                 </div>
             </header>
 
-            <!-- Real-time Kernel KPI Cards -->
+            <!-- Live supported process/runtime KPI cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Tokio Tick Latency</div>
@@ -139,9 +139,9 @@ pub async fn render_radar_page() -> String {
                 <div class="flex items-center justify-between pb-3 border-b border-slate-800/80">
                     <div>
                         <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
-                            <span>⚡ Live Async Telemetry Spans</span>
+                            <span>⚡ Local Async Telemetry Spans</span>
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Captured microsecond spans across HTTP handlers, SQL queries, AI generations & security filters.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Bounded in-process records explicitly submitted to SpanCollector.</p>
                     </div>
                     <span class="text-xs font-semibold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
                         {spans_count} Recorded Spans
@@ -201,10 +201,6 @@ pub fn router() -> Router {
             "/studio/radar",
             get(|| async { Html(render_radar_page().await) }),
         )
-        .route(
-            "/studio/tools/radar",
-            get(|| async { Html(render_radar_page().await) }),
-        )
         .route("/api/radar", get(api_radar_handler))
 }
 
@@ -225,13 +221,6 @@ mod tests {
             .unwrap();
         let resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-
-        let legacy_req = Request::builder()
-            .uri("/studio/tools/radar")
-            .body(Body::empty())
-            .unwrap();
-        let legacy_resp = app.clone().oneshot(legacy_req).await.unwrap();
-        assert_eq!(legacy_resp.status(), StatusCode::OK);
 
         let api_req = Request::builder()
             .uri("/api/radar")

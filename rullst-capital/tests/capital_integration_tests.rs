@@ -20,6 +20,13 @@ fn test_revenue_metrics_and_dashboard() {
     };
 
     mgr.record_event(event1);
+    mgr.update_metrics(RevenueMetrics {
+        mrr_cents: 2900,
+        arr_cents: 2900 * 12,
+        net_revenue_cents: 2900,
+        active_subscriptions: 1,
+        churn_rate_percent: 0.0,
+    });
     let after_sub = mgr.get_metrics();
     assert_eq!(after_sub.active_subscriptions, 1);
     assert_eq!(after_sub.mrr_cents, 2900);

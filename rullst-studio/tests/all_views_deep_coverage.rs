@@ -11,6 +11,19 @@ use std::net::SocketAddr;
 use tower::ServiceExt;
 
 async fn inject_loopback(mut request: AxumRequest, next: Next) -> axum::response::Response {
+    request.headers_mut().insert(
+        axum::http::header::HOST,
+        axum::http::HeaderValue::from_static("127.0.0.1:5555"),
+    );
+    if !matches!(
+        *request.method(),
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    ) {
+        request.headers_mut().insert(
+            axum::http::header::ORIGIN,
+            axum::http::HeaderValue::from_static("http://127.0.0.1:5555"),
+        );
+    }
     request.extensions_mut().insert(ConnectInfo(
         "127.0.0.1:42000"
             .parse::<SocketAddr>()

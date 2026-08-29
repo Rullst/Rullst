@@ -194,7 +194,7 @@ pub mod driver_tests {
         let job2 = driver.pop().await.unwrap().unwrap();
         driver.mark_failed(&job2.id, "error2").await.unwrap();
 
-        driver.purge_completed_jobs().await.unwrap();
+        driver.purge_failed_jobs().await.unwrap();
         let jobs = driver.list_all_jobs(10).await.unwrap();
         assert_eq!(jobs.len(), 0);
     }
@@ -358,7 +358,7 @@ pub mod driver_tests {
     }
 
     #[tokio::test]
-    async fn test_sqlite_queue_purge_completed_jobs() {
+    async fn test_sqlite_queue_purge_failed_jobs() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
 
         driver
@@ -374,7 +374,7 @@ pub mod driver_tests {
         assert_eq!(job.id, "job-to-fail");
         driver.mark_failed(&job.id, "Error").await.unwrap();
 
-        driver.purge_completed_jobs().await.unwrap();
+        driver.purge_failed_jobs().await.unwrap();
 
         let pending = driver.pending_count().await.unwrap();
         assert_eq!(pending, 1);
@@ -425,7 +425,7 @@ pub mod driver_tests {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
         driver.pool.close().await;
 
-        let result = driver.purge_completed_jobs().await;
+        let result = driver.purge_failed_jobs().await;
         assert!(result.is_err());
         if let Err(QueueError::Driver(msg)) = result {
             assert!(
@@ -590,7 +590,7 @@ mod tests_additional {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
         let res = queue.retry_failed_job("1").await;
-        assert!(res.is_ok());
+        assert!(matches!(res, Err(QueueError::Unsupported(_))));
     }
 
     #[tokio::test]
@@ -598,7 +598,7 @@ mod tests_additional {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
         let res = queue.list_all_jobs(10).await;
-        assert!(res.is_ok());
+        assert!(matches!(res, Err(QueueError::Unsupported(_))));
     }
 
     #[tokio::test]
@@ -610,11 +610,11 @@ mod tests_additional {
     }
 
     #[tokio::test]
-    async fn test_queue_purge_completed_jobs() {
+    async fn unsupported_driver_does_not_report_a_fake_failed_job_purge() {
         let driver = Box::new(MockPendingCountDriver { should_fail: false });
         let queue = Queue::custom(driver);
-        let res = queue.purge_completed_jobs().await;
-        assert!(res.is_ok());
+        let res = queue.purge_failed_jobs().await;
+        assert!(matches!(res, Err(QueueError::Unsupported(_))));
     }
 
     #[tokio::test]
@@ -626,7 +626,7 @@ mod tests_additional {
     }
 
     #[tokio::test]
-    async fn test_sqlite_driver_purge_completed_jobs() {
+    async fn test_sqlite_driver_purge_failed_jobs() {
         let driver = crate::queue::SqliteDriver::new("sqlite::memory:")
             .await
             .unwrap();
@@ -638,7 +638,7 @@ mod tests_additional {
         sqlx::query("INSERT INTO rullst_jobs (id, name, payload, status) VALUES ('3', 'test', '{}', 'pending')")
             .execute(pool).await.unwrap();
 
-        driver.purge_completed_jobs().await.unwrap();
+        driver.purge_failed_jobs().await.unwrap();
 
         let remaining: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM rullst_jobs WHERE status = 'failed'")

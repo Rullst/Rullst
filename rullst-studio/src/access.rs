@@ -2,7 +2,7 @@ use axum::{
     Router,
     body::Body,
     extract::{ConnectInfo, Request},
-    http::StatusCode,
+    http::{HeaderMap, Method, StatusCode, header},
     middleware::Next,
     response::Response,
 };
@@ -60,13 +60,63 @@ async fn loopback_only_middleware(request: Request, next: Next) -> Response {
         .get::<ConnectInfo<SocketAddr>>()
         .is_some_and(|connection| connection.0.ip().is_loopback());
 
-    if is_loopback {
+    let local_host = local_host_authority(request.headers());
+    let origin_valid = request
+        .headers()
+        .get(header::ORIGIN)
+        .map(|origin| same_origin(origin, local_host.as_deref()))
+        .unwrap_or(true);
+    let unsafe_method = !matches!(
+        *request.method(),
+        Method::GET | Method::HEAD | Method::OPTIONS
+    );
+    let unsafe_origin_present = !unsafe_method || request.headers().contains_key(header::ORIGIN);
+
+    if is_loopback && local_host.is_some() && origin_valid && unsafe_origin_present {
         next.run(request).await
     } else {
         let mut response = Response::new(Body::empty());
         *response.status_mut() = StatusCode::FORBIDDEN;
         response
     }
+}
+
+fn local_host_authority(headers: &HeaderMap) -> Option<String> {
+    let authority = headers
+        .get(header::HOST)?
+        .to_str()
+        .ok()?
+        .parse::<axum::http::uri::Authority>()
+        .ok()?;
+    let host = authority.host();
+    let ip_host = host
+        .strip_prefix('[')
+        .and_then(|host| host.strip_suffix(']'))
+        .unwrap_or(host);
+    let is_local = host.eq_ignore_ascii_case("localhost")
+        || ip_host
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|address| address.is_loopback());
+    is_local.then(|| authority.as_str().to_ascii_lowercase())
+}
+
+fn same_origin(origin: &axum::http::HeaderValue, local_authority: Option<&str>) -> bool {
+    let Some(local_authority) = local_authority else {
+        return false;
+    };
+    let Ok(origin) = origin.to_str() else {
+        return false;
+    };
+    let Ok(origin) = origin.parse::<axum::http::Uri>() else {
+        return false;
+    };
+    let scheme_allowed = origin
+        .scheme_str()
+        .is_some_and(|scheme| matches!(scheme, "http" | "https"));
+    scheme_allowed
+        && origin
+            .authority()
+            .is_some_and(|authority| authority.as_str().eq_ignore_ascii_case(local_authority))
 }
 
 #[cfg(test)]
@@ -79,6 +129,7 @@ mod tests {
     fn request_from(peer: Option<&str>) -> Request<Body> {
         let mut request = Request::builder()
             .uri("/")
+            .header(header::HOST, "127.0.0.1:5555")
             .body(Body::empty())
             .expect("valid Studio test request");
         if let Some(peer) = peer {
@@ -125,5 +176,51 @@ mod tests {
             .await
             .expect("missing-peer Studio response");
         assert_eq!(missing.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn protected_router_rejects_rebinding_and_cross_origin_mutations() {
+        let router = LocalStudioAccess::loopback_only()
+            .protect_router(
+                Router::new().route("/mutate", axum::routing::post(|| async { StatusCode::OK })),
+            )
+            .expect("debug Studio access");
+
+        let request = |host: &'static str, origin: Option<&'static str>| {
+            let mut builder = Request::builder()
+                .method(Method::POST)
+                .uri("/mutate")
+                .header(header::HOST, host);
+            if let Some(origin) = origin {
+                builder = builder.header(header::ORIGIN, origin);
+            }
+            let mut request = builder.body(Body::empty()).expect("valid request");
+            request.extensions_mut().insert(ConnectInfo(
+                "127.0.0.1:42000"
+                    .parse::<SocketAddr>()
+                    .expect("loopback peer"),
+            ));
+            request
+        };
+
+        let same_origin = router
+            .clone()
+            .oneshot(request("127.0.0.1:5555", Some("http://127.0.0.1:5555")))
+            .await
+            .expect("same-origin response");
+        assert_eq!(same_origin.status(), StatusCode::OK);
+
+        for denied in [
+            request("attacker.example", Some("http://attacker.example")),
+            request("127.0.0.1:5555", Some("https://attacker.example")),
+            request("127.0.0.1:5555", None),
+        ] {
+            let response = router
+                .clone()
+                .oneshot(denied)
+                .await
+                .expect("denied Studio response");
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        }
     }
 }

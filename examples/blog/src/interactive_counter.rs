@@ -10,7 +10,7 @@ pub fn InteractiveCounter(initial_count: i32) -> String {
         html! {
             <div style="background: #1e293b; padding: 2.5rem; border-radius: 1rem; text-align: center; max-width: 420px; margin: 3rem auto; color: white; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
                 <h2 style="margin-top: 0; font-size: 1.5rem; color: #818cf8;">"Rullst Wasm Island 🏝️"</h2>
-                <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;">"Natively compiled to WebAssembly. 100% transparent hydration!"</p>
+                <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;">"Compiled to WebAssembly with explicit client-side hydration."</p>
 
                 <div style="font-size: 4rem; font-weight: 800; margin: 1.5rem 0; color: #fff; font-family: monospace;">
                     <span id="counter-value">{initial_count}</span>

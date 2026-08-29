@@ -3,13 +3,25 @@ use axum::{
     extract::{ConnectInfo, Request as AxumRequest},
     http::{Request, StatusCode},
     middleware::Next,
-    response::IntoResponse,
 };
 use rullst_studio::*;
 use std::net::SocketAddr;
 use tower::ServiceExt;
 
 async fn inject_loopback(mut request: AxumRequest, next: Next) -> axum::response::Response {
+    request.headers_mut().insert(
+        axum::http::header::HOST,
+        axum::http::HeaderValue::from_static("127.0.0.1:5555"),
+    );
+    if !matches!(
+        *request.method(),
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    ) {
+        request.headers_mut().insert(
+            axum::http::header::ORIGIN,
+            axum::http::HeaderValue::from_static("http://127.0.0.1:5555"),
+        );
+    }
     request.extensions_mut().insert(ConnectInfo(
         "127.0.0.1:42000"
             .parse::<SocketAddr>()
@@ -44,18 +56,33 @@ async fn test_studio_core_routes() {
         "/studio/capital",
         "/traces",
         "/studio/traces",
-        "/tools/migrations",
-        "/tools/ai",
-        "/tools/security",
-        "/tools/telemetry",
-        "/tools/revenue",
-        "/tools/traces",
     ];
 
     for path in routes {
         let req = Request::builder().uri(path).body(Body::empty()).unwrap();
         let res = app.clone().oneshot(req).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK, "Failed on route: {}", path);
+    }
+
+    for legacy_path in [
+        "/tools/migrations",
+        "/tools/ai",
+        "/tools/security",
+        "/tools/telemetry",
+        "/tools/revenue",
+        "/tools/traces",
+        "/studio/tools/radar",
+    ] {
+        let req = Request::builder()
+            .uri(legacy_path)
+            .body(Body::empty())
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::NOT_FOUND,
+            "legacy route remained mounted: {legacy_path}"
+        );
     }
 }
 
@@ -207,33 +234,26 @@ async fn test_studio_table_browser_and_schema_inspection() {
     // 7. Migration Manager Handlers
     use rullst_studio::migration_manager::*;
     let html = render_migration_manager_html("<div>Tables</div>");
-    assert!(html.contains("Database Tools"));
+    assert!(html.contains("Database schema tools"));
 
-    let res = handle_run_migrations().await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
+    let res = handle_run_migrations().await;
+    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
 
-    let res = handle_rollback_migrations().await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
+    let res = handle_rollback_migrations().await;
+    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
 
-    let res = handle_run_seeders().await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
+    let res = handle_run_seeders().await;
+    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
 }
 
 #[tokio::test]
 async fn test_studio_ai_playground_and_providers() {
     use rullst_studio::ai_playground::*;
 
-    // Render HTML
     let html = render_ai_playground_html();
-    assert!(html.contains("AI & RAG Playground"));
-
-    // Fallback when no keys
-    let req = axum::Json(PromptRequest {
-        prompt: "Hello AI".to_string(),
-        system_context: Some("System ctx".to_string()),
-    });
-    let res = handle_ai_prompt(req).await.into_response();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert!(html.contains("AI integration"));
+    assert!(html.contains("No AI client is connected"));
+    assert!(!html.contains("Connection successful"));
 }
 
 #[tokio::test]
@@ -277,7 +297,7 @@ async fn test_studio_horizon_jobs_and_purge() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CONFLICT);
 
     let req = Request::builder()
         .method("POST")
@@ -285,7 +305,7 @@ async fn test_studio_horizon_jobs_and_purge() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.status().is_redirection());
 }
 
 #[tokio::test]

@@ -68,9 +68,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div class="flex items-center gap-4">
-                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2">
-                    <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" class="h-9 w-9 object-contain" alt="Rullst" />
-                </div>
+                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2" aria-hidden="true">R</div>
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
                         <span>Rullst Studio Control Center</span>
@@ -81,10 +79,10 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
             <div class="flex items-center gap-3">
                 <span class="px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2 shadow-inner">
                     <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Isolated (127.0.0.1:5555)</span>
+                    <span>Supported mode: loopback</span>
                 </span>
                 <span class="px-3.5 py-1.5 bg-emerald-950 border border-emerald-800/80 rounded-full text-xs font-bold text-emerald-400">
-                    🔒 Guard Active
+                    Verify direct peer
                 </span>
             </div>
         </div>
@@ -97,24 +95,24 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
     );
     dash_content_str.push_str(&driver_name);
     dash_content_str.push_str(r##"</div>
-                <div class="text-xs text-slate-400 mt-2">SQLx Async Zero-Lock Pool</div>
+                <div class="text-xs text-slate-400 mt-2">SQLx async connection pool</div>
             </div>
             <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                 <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Managed Tables</div>
                 <div class="text-2xl font-bold text-indigo-400 mt-1">"##);
     let _ = write!(dash_content_str, "{} Tables", tables_count);
     dash_content_str.push_str(r##"</div>
-                <div class="text-xs text-slate-400 mt-2">Full Schema Inspection Ready</div>
+                <div class="text-xs text-slate-400 mt-2">Tables visible to the configured connection</div>
             </div>
             <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
-                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">AI Sentinel Guard</div>
-                <div class="text-2xl font-bold text-cyan-400 mt-1">Guarded</div>
-                <div class="text-xs text-slate-400 mt-2">Prompt Injection & PII Filter</div>
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">AI Integration</div>
+                <div class="text-2xl font-bold text-cyan-400 mt-1">Not connected</div>
+                <div class="text-xs text-slate-400 mt-2">Application-owned client required</div>
             </div>
             <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
-                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Tokio Executor</div>
-                <div class="text-2xl font-bold text-emerald-400 mt-1">&lt; 0.15 ms</div>
-                <div class="text-xs text-slate-400 mt-2">Ultra-light ~14MB RSS RAM</div>
+                <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Runtime Telemetry</div>
+                <div class="text-2xl font-bold text-emerald-400 mt-1">Radar</div>
+                <div class="text-xs text-slate-400 mt-2">Open the Radar for live supported probes</div>
             </div>
         </div>
 
@@ -128,7 +126,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                 </div>
             </div>
             <span class="text-xs text-emerald-400 font-bold border border-emerald-900 bg-emerald-950 px-3 py-1 rounded-lg flex-shrink-0">
-                Loopback Protected
+                Supported launcher only
             </span>
         </div>
 
@@ -143,35 +141,35 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                         <span>🛠️ Database Tools & Migrations</span>
                         <span class="text-slate-600 group-hover:text-purple-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Run pending schema migrations, rollbacks, data seeders, and inspect raw database records line by line.</p>
+                    <p class="text-slate-400 text-sm">Inspect the configured schema and view explicit CLI guidance. Application migrations are not inferred by Studio.</p>
                 </a>
                 <a href="#" hx-get="/studio/ai" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
-                        <span>🤖 rullst-ai Playground</span>
+                        <span>🤖 rullst-ai Integration</span>
                         <span class="text-slate-600 group-hover:text-cyan-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Test AI prompts, embeddings, and context injections in real-time across Gemini, OpenAI, Claude, and DeepSeek.</p>
+                    <p class="text-slate-400 text-sm">Review the explicit AI integration boundary. No client or provider call is inferred from environment variables.</p>
                 </a>
                 <a href="#" hx-get="/studio/radar" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-sky-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-sky-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>📡 Telemetry & Rullst Radar</span>
                         <span class="text-slate-600 group-hover:text-sky-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Kernel-level telemetry visualizer displaying Tokio tick latency (µs), active async tasks, CPU, RSS memory & live spans.</p>
+                    <p class="text-slate-400 text-sm">Process and Tokio telemetry displaying supported task, CPU, RSS, uptime, scheduler-yield and local span observations.</p>
                 </a>
                 <a href="#" hx-get="/studio/capital" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-emerald-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-emerald-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>💳 Revenue Dashboard</span>
                         <span class="text-slate-600 group-hover:text-emerald-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Real-time SaaS MRR/ARR analytics, active subscriber metrics, churn rate, and live Stripe/LemonSqueezy Webhook Audit.</p>
+                    <p class="text-slate-400 text-sm">Inspect application-supplied revenue metrics and webhook records held by the local dashboard manager.</p>
                 </a>
                 <a href="#" hx-get="/studio/security" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-amber-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-amber-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🛡️ Visual Threat Radar</span>
                         <span class="text-slate-600 group-hover:text-amber-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Real-time SOC security dashboard, RASP engine memory alerts, Honeypot traps, and HMAC tamper-proof audit chain.</p>
+                    <p class="text-slate-400 text-sm">Local security telemetry for RASP observations, honeypot events, and HMAC-linked audit records. Operational response remains application-owned.</p>
                 </a>
                 <a href="#" hx-get="/studio/traces" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-indigo-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-indigo-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">

@@ -3,19 +3,31 @@ use rand::{RngExt, distr::Alphanumeric};
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
+fn random_alphanumeric(length: usize) -> String {
+    rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
+/// Generates a high-entropy state value for binding an OAuth authorization
+/// request to its callback.
+///
+/// The application must store the value in a server-side session (or an
+/// equivalently protected, short-lived binding) and consume it after a
+/// constant-time callback comparison such as [`crate::extractors::AuthCallback::verify_state`].
+pub fn generate_oauth_state() -> String {
+    random_alphanumeric(64)
+}
+
 /// Generates a (code_verifier, code_challenge) pair for OAuth2 PKCE.
 ///
 /// - `code_verifier`: A high-entropy cryptographic random string. The developer MUST store this in the session/cookie.
 /// - `code_challenge`: The base64-url-encoded SHA256 hash of the verifier. Sent in the authorization URL.
 pub fn generate_pkce() -> (String, String) {
     // Generate a 64-character random string (verifier)
-    let mut code_verifier = String::with_capacity(64);
-    code_verifier.extend(
-        rand::rng()
-            .sample_iter(&Alphanumeric)
-            .take(64)
-            .map(char::from),
-    );
+    let code_verifier = random_alphanumeric(64);
 
     // SHA256 hash
     let mut hasher = Sha256::new();
@@ -53,6 +65,20 @@ mod tests {
             64,
             "Code verifier should be 64 characters long"
         );
+    }
+
+    #[test]
+    fn test_generate_oauth_state_is_random_and_url_safe() {
+        let first = generate_oauth_state();
+        let second = generate_oauth_state();
+
+        assert_eq!(first.len(), 64);
+        assert!(
+            first
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric())
+        );
+        assert_ne!(first, second);
     }
 
     #[test]

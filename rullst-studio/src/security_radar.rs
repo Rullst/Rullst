@@ -1,10 +1,12 @@
+//! Bounded, process-local security telemetry for Studio.
+
 use axum::{
     Router,
     response::{Html, Json},
     routing::get,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::Ordering;
+use std::{fmt::Write, sync::atomic::Ordering};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreatRadarStats {
@@ -38,405 +40,189 @@ pub fn router() -> Router {
         .route("/stats", get(get_radar_stats))
 }
 
-/// JSON telemetry endpoints merged into the main Studio router without replacing the unified
-/// `/studio/security` page supplied by the Studio layout.
+/// JSON telemetry endpoints merged into the main Studio router without
+/// replacing the unified `/studio/security` page.
 pub fn stats_router() -> Router {
     Router::new()
         .route("/security/stats", get(get_radar_stats))
         .route("/studio/security/stats", get(get_radar_stats))
 }
 
-async fn get_radar_stats() -> Json<ThreatRadarStats> {
+fn collect_stats() -> ThreatRadarStats {
     let store = rullst_security::SecurityStore::global();
     let active_ip_bans = store.active_banned_count();
-    let events: Vec<rullst_security::LiveSecurityEvent> = store
-        .live_events
-        .lock()
-        .map(|e| e.iter().take(20).cloned().collect())
-        .unwrap_or_default();
+    let live_events = match store.live_events.lock() {
+        Ok(events) => events,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let events: Vec<rullst_security::LiveSecurityEvent> =
+        live_events.iter().take(20).cloned().collect();
+    drop(live_events);
 
-    Json(ThreatRadarStats {
-        honeypot_traps_blocked: store.honeypot_traps_count.load(Ordering::Relaxed),
+    let honeypot_traps_blocked = store.honeypot_traps_count.load(Ordering::Relaxed);
+    let xss_sanitizations = store.sanitizations_count.load(Ordering::Relaxed);
+    let rbac_violations_prevented = store.rbac_denials_count.load(Ordering::Relaxed);
+    let log_redactions = store.log_redactions_count.load(Ordering::Relaxed);
+    let zero_trust_mismatches = store.zero_trust_mismatches_count.load(Ordering::Relaxed);
+    let schema_violations = store.schema_violations_count.load(Ordering::Relaxed);
+    let sri_signed_assets = store.sri_signed_assets_count.load(Ordering::Relaxed);
+    let mfa_verifications = store.mfa_verifications_count.load(Ordering::Relaxed);
+    let deception_hits = store.deception_hits_count.load(Ordering::Relaxed);
+    let cswsh_blocks = store.cswsh_blocks_count.load(Ordering::Relaxed);
+    let rate_limit_blocks = store.rate_limit_blocks_count.load(Ordering::Relaxed);
+    let siem_dispatches = store.siem_dispatches_count.load(Ordering::Relaxed);
+    let login_jail_bans = store.login_jail_bans_count.load(Ordering::Relaxed);
+    let dlp_secrets_masked = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
+    let secure_headers_applied = store.secure_headers_applied_count.load(Ordering::Relaxed);
+    let idor_warnings = store.idor_warnings_count.load(Ordering::Relaxed);
+    let timing_guard_protected = store.timing_guard_protected_count.load(Ordering::Relaxed);
+    let prompt_injections_blocked = store
+        .prompt_injections_blocked_count
+        .load(Ordering::Relaxed);
+    let observed_counter_total = honeypot_traps_blocked
+        .saturating_add(xss_sanitizations)
+        .saturating_add(rbac_violations_prevented)
+        .saturating_add(log_redactions)
+        .saturating_add(zero_trust_mismatches)
+        .saturating_add(schema_violations)
+        .saturating_add(sri_signed_assets)
+        .saturating_add(mfa_verifications)
+        .saturating_add(deception_hits)
+        .saturating_add(cswsh_blocks)
+        .saturating_add(rate_limit_blocks)
+        .saturating_add(siem_dispatches)
+        .saturating_add(login_jail_bans)
+        .saturating_add(dlp_secrets_masked)
+        .saturating_add(secure_headers_applied)
+        .saturating_add(idor_warnings)
+        .saturating_add(timing_guard_protected)
+        .saturating_add(prompt_injections_blocked);
+    let local_activity_recorded =
+        active_ip_bans > 0 || !events.is_empty() || observed_counter_total > 0;
+
+    ThreatRadarStats {
+        honeypot_traps_blocked,
         active_ip_bans,
-        xss_sanitizations: store.sanitizations_count.load(Ordering::Relaxed),
-        rbac_violations_prevented: store.rbac_denials_count.load(Ordering::Relaxed),
-        log_redactions: store.log_redactions_count.load(Ordering::Relaxed),
-        zero_trust_mismatches: store.zero_trust_mismatches_count.load(Ordering::Relaxed),
-        schema_violations: store.schema_violations_count.load(Ordering::Relaxed),
-        sri_signed_assets: store.sri_signed_assets_count.load(Ordering::Relaxed),
-        mfa_verifications: store.mfa_verifications_count.load(Ordering::Relaxed),
-        deception_hits: store.deception_hits_count.load(Ordering::Relaxed),
-        cswsh_blocks: store.cswsh_blocks_count.load(Ordering::Relaxed),
-        rate_limit_blocks: store.rate_limit_blocks_count.load(Ordering::Relaxed),
-        siem_dispatches: store.siem_dispatches_count.load(Ordering::Relaxed),
-        login_jail_bans: store.login_jail_bans_count.load(Ordering::Relaxed),
-        dlp_secrets_masked: store.dlp_secrets_masked_count.load(Ordering::Relaxed),
-        secure_headers_applied: store.secure_headers_applied_count.load(Ordering::Relaxed),
-        idor_warnings: store.idor_warnings_count.load(Ordering::Relaxed),
-        timing_guard_protected: store.timing_guard_protected_count.load(Ordering::Relaxed),
-        prompt_injections_blocked: store
-            .prompt_injections_blocked_count
-            .load(Ordering::Relaxed),
-        // Studio has no configured audit-chain source yet, so it reports absence instead of
-        // inventing a successful integrity verification.
+        xss_sanitizations,
+        rbac_violations_prevented,
+        log_redactions,
+        zero_trust_mismatches,
+        schema_violations,
+        sri_signed_assets,
+        mfa_verifications,
+        deception_hits,
+        cswsh_blocks,
+        rate_limit_blocks,
+        siem_dispatches,
+        login_jail_bans,
+        dlp_secrets_masked,
+        secure_headers_applied,
+        idor_warnings,
+        timing_guard_protected,
+        prompt_injections_blocked,
+        // No audit-chain verifier is supplied to Studio today.
         audit_chain_integrity: None,
-        threat_level: if active_ip_bans == 0 && events.is_empty() {
-            "NO_ACTIVE_ALERTS".to_string()
+        threat_level: if local_activity_recorded {
+            "LOCAL_ACTIVITY_RECORDED".to_string()
         } else {
-            "ACTIVITY_OBSERVED".to_string()
+            "NO_LOCAL_ACTIVITY_RECORDED".to_string()
         },
         live_events: events,
-    })
+    }
+}
+
+async fn get_radar_stats() -> Json<ThreatRadarStats> {
+    Json(collect_stats())
 }
 
 async fn render_radar_dashboard() -> Html<String> {
-    let store = rullst_security::SecurityStore::global();
-    let honeypot_count = store.honeypot_traps_count.load(Ordering::Relaxed);
-    let ip_bans_count = store.active_banned_count();
-    let xss_count = store.sanitizations_count.load(Ordering::Relaxed);
-    let log_redactions_count = store.log_redactions_count.load(Ordering::Relaxed);
-    let zero_trust_mismatches_count = store.zero_trust_mismatches_count.load(Ordering::Relaxed);
-    let schema_violations_count = store.schema_violations_count.load(Ordering::Relaxed);
-    let sri_signed_assets_count = store.sri_signed_assets_count.load(Ordering::Relaxed);
-    let mfa_verifications_count = store.mfa_verifications_count.load(Ordering::Relaxed);
-    let deception_hits_count = store.deception_hits_count.load(Ordering::Relaxed);
-    let cswsh_blocks_count = store.cswsh_blocks_count.load(Ordering::Relaxed);
-    let rate_limit_blocks_count = store.rate_limit_blocks_count.load(Ordering::Relaxed);
-    let siem_dispatches_count = store.siem_dispatches_count.load(Ordering::Relaxed);
-    let login_jail_bans_count = store.login_jail_bans_count.load(Ordering::Relaxed);
-    let dlp_secrets_masked_count = store.dlp_secrets_masked_count.load(Ordering::Relaxed);
-    let secure_headers_applied_count = store.secure_headers_applied_count.load(Ordering::Relaxed);
-    let idor_warnings_count = store.idor_warnings_count.load(Ordering::Relaxed);
-    let timing_guard_count = store.timing_guard_protected_count.load(Ordering::Relaxed);
-    let prompt_injections_count = store
-        .prompt_injections_blocked_count
-        .load(Ordering::Relaxed);
-
-    let events = store
-        .live_events
-        .lock()
-        .map(|e| e.iter().take(10).cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
-
-    let mut incidents_html = String::new();
-    if events.is_empty() {
-        incidents_html.push_str(
-            r#"<div class="p-4 text-center text-xs text-slate-500 bg-slate-950/60 border border-slate-800 rounded-lg">
-                No security incidents detected. System operating normally.
-            </div>"#,
+    let stats = collect_stats();
+    let mut rows = String::new();
+    for (label, value) in [
+        ("Honeypot trap calls", stats.honeypot_traps_blocked),
+        ("HTML sanitizations", stats.xss_sanitizations),
+        ("RBAC denials", stats.rbac_violations_prevented),
+        ("Log redactions", stats.log_redactions),
+        ("Schema violations", stats.schema_violations),
+        ("Rate-limit blocks", stats.rate_limit_blocks),
+        ("Prompt heuristic blocks", stats.prompt_injections_blocked),
+    ] {
+        let _ = write!(
+            rows,
+            "<tr class=\"border-b border-slate-800/70\"><th scope=\"row\" class=\"px-4 py-3 text-left font-medium text-slate-300\">{}</th><td class=\"px-4 py-3 text-right font-mono text-sky-300\">{value}</td></tr>",
+            rullst_core::html::escape_str(label)
         );
-    } else {
-        for evt in events {
-            let (badge_color, border_color) = match evt.event_type.as_str() {
-                "HONEYPOT_TRAP_TRIGGERED" | "LOGIN_JAIL_TRIGGERED" => {
-                    ("text-rose-400", "border-rose-900/40")
-                }
-                "XSS_SANITIZED" | "DLP_SECRET_LEAK_PREVENTED" => {
-                    ("text-cyan-400", "border-cyan-900/40")
-                }
-                _ => ("text-amber-400", "border-amber-900/40"),
-            };
-
-            incidents_html.push_str(&format!(
-                r#"<div class="p-3 bg-slate-950 border {border_color} rounded-lg">
-                    <div class="flex justify-between {badge_color} font-bold">
-                        <span>{evt_type}</span>
-                        <span>{ts}</span>
-                    </div>
-                    <p class="text-slate-300 mt-1">{details}</p>
-                </div>"#,
-                border_color = border_color,
-                badge_color = badge_color,
-                evt_type = rullst_core::html::escape_str(&evt.event_type),
-                ts = rullst_core::html::escape_str(&evt.timestamp_str),
-                details = rullst_core::html::escape_str(&evt.details)
-            ));
-        }
     }
 
-    Html(format!(
-        r#"<!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
-<head>
-    <meta charset="UTF-8">
-    <title>Rullst SOC - Visual Threat Radar</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="h-full flex flex-col font-mono p-6">
-    <header class="flex justify-between items-center pb-6 border-b border-slate-800 mb-8">
-        <div>
-            <div class="flex items-center gap-3">
-                <h1 class="text-3xl font-bold text-emerald-400">Visual Threat Radar 🛡️</h1>
-                <span class="px-3 py-1 bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold rounded-full animate-pulse">LIVE SOC MONITOR</span>
-            </div>
-            <p class="text-slate-400 text-sm mt-1">Real-time threat vectors, deception traps, and HMAC audit chain status</p>
-        </div>
-        <a href="/studio" class="px-4 py-2 bg-slate-900 border border-slate-700 hover:border-slate-500 rounded-lg text-sm transition-colors">
-            ← Back to Studio
-        </a>
-    </header>
+    let mut events = String::new();
+    if stats.live_events.is_empty() {
+        events.push_str("<p class=\"text-sm text-slate-400\">No local security events were recorded. This is not proof that every control is mounted or that no attack occurred.</p>");
+    } else {
+        events.push_str("<ul class=\"space-y-2\">");
+        for event in &stats.live_events {
+            let _ = write!(
+                events,
+                "<li class=\"rounded-lg border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300\"><strong class=\"text-amber-300\">{}</strong> — {} — {}</li>",
+                rullst_core::html::escape_str(&event.event_type),
+                rullst_core::html::escape_str(&event.timestamp_str),
+                rullst_core::html::escape_str(&event.details)
+            );
+        }
+        events.push_str("</ul>");
+    }
 
-    <!-- Top Metrics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Honeypot Traps Blocked</span>
-            <div class="text-3xl font-extrabold text-amber-400 mt-2" id="stat-honeypot">{honeypot_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Synthetic route triggers (/.env, /admin.php)</p>
-        </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active IP Bans</span>
-            <div class="text-3xl font-extrabold text-rose-500 mt-2" id="stat-ipbans">{ip_bans_count}</div>
-            <p class="text-xs text-slate-500 mt-1">In-Memory DashMap & Shield WAF bans</p>
-        </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">XSS / SVG Cleaned</span>
-            <div class="text-3xl font-extrabold text-cyan-400 mt-2" id="stat-xss">{xss_count}</div>
-            <p class="text-xs text-slate-500 mt-1">Ammonia HTML Sanitizer & CSP Nonces</p>
-        </div>
-        <div class="p-5 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">HMAC Audit Integrity</span>
-            <div class="text-3xl font-extrabold text-slate-400 mt-2" id="stat-audit">Unavailable</div>
-            <p class="text-xs text-slate-500 mt-1">No audit-chain verifier connected</p>
-        </div>
+    let content = format!(
+        r#"<section class="mx-auto w-full max-w-6xl p-6 lg:p-10">
+  <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">Process-local evidence</p>
+      <h1 class="text-3xl font-extrabold tracking-tight text-slate-100">Rullst local security telemetry</h1>
+      <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Bounded counters from this process only. Unobserved middleware and external systems are not represented.</p>
     </div>
-
-    <!-- Deep Security & Zero-Trust Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Log Secrets Redacted</span>
-            <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-redactions">{log_redactions_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Zero-Leak Log Sanitizer</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Login Jail Bans</span>
-            <div class="text-2xl font-extrabold text-rose-500 mt-1" id="stat-loginjail">{login_jail_bans_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Anti-Bruteforce Tarpit Jails</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">DLP Leaks Blocked</span>
-            <div class="text-2xl font-extrabold text-emerald-400 mt-1" id="stat-dlp">{dlp_secrets_masked_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Response Secret Interceptor</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">OWASP Headers Applied</span>
-            <div class="text-2xl font-extrabold text-sky-400 mt-1" id="stat-headers">{secure_headers_applied_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">A+ Rating Security Suite</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Zero-Trust Mismatches</span>
-            <div class="text-2xl font-extrabold text-rose-500 mt-1" id="stat-zerotrust">{zero_trust_mismatches_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Client Fingerprint Shield</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schema / Bomb Intercepts</span>
-            <div class="text-2xl font-extrabold text-indigo-400 mt-1" id="stat-schema">{schema_violations_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Payload Size & Depth Limits</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">SRI Signed Assets</span>
-            <div class="text-2xl font-extrabold text-emerald-400 mt-1" id="stat-sri">{sri_signed_assets_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Subresource Integrity Tags</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">MFA TOTP Verified</span>
-            <div class="text-2xl font-extrabold text-sky-400 mt-1" id="stat-mfa">{mfa_verifications_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">RFC 6238 2FA Verifications</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Deception Traps Hit</span>
-            <div class="text-2xl font-extrabold text-rose-400 mt-1" id="stat-deception">{deception_hits_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Decoy Bot Trap Interceptions</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">CSWSH Blocked</span>
-            <div class="text-2xl font-extrabold text-purple-400 mt-1" id="stat-cswsh">{cswsh_blocks_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Cross-Site WebSocket Hijacks</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Rate Limit Drops</span>
-            <div class="text-2xl font-extrabold text-amber-500 mt-1" id="stat-ratelimit">{rate_limit_blocks_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Sliding-Window IP Limits</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Local SIEM-Candidate Alerts</span>
-            <div class="text-2xl font-extrabold text-emerald-500 mt-1" id="stat-siem">{siem_dispatches_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">In-process only; no delivery acknowledgement</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">IDOR Scanner Audited</span>
-            <div class="text-2xl font-extrabold text-amber-400 mt-1" id="stat-idor">{idor_warnings_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Static RBAC/Ownership Guard</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Anti-Timing Guard</span>
-            <div class="text-2xl font-extrabold text-cyan-400 mt-1" id="stat-timingguard">{timing_guard_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Constant-Time Auth Padding</p>
-        </div>
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Firewall Shield</span>
-            <div class="text-2xl font-extrabold text-rose-400 mt-1" id="stat-aifirewall">{prompt_injections_count}</div>
-            <p class="text-[10px] text-slate-500 mt-1">Jailbreak & Prompt Shield v2</p>
-        </div>
+    <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Local snapshot</span>
+  </div>
+  <div class="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 backdrop-blur">
+    <p class="text-sm text-slate-300">Audit-chain integrity: <strong class="text-amber-300">unavailable</strong> (no verifier connected). Active in-memory IP bans: <strong class="text-sky-300">{active_bans}</strong>.</p>
+  </div>
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/20 backdrop-blur">
+      <table class="w-full"><caption class="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider text-slate-400">Locally recorded operations</caption><tbody>{rows}</tbody></table>
     </div>
-
-    <!-- Charts & Logs Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Live Threat Chart -->
-        <div class="lg:col-span-2 p-6 bg-slate-900 border border-slate-800 rounded-xl">
-            <h2 class="text-lg font-bold text-slate-200 mb-4">Threat Vectors Timeline</h2>
-            <div class="h-64">
-                <canvas id="threatChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Recent Security Incidents Feed -->
-        <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl">
-            <h2 class="text-lg font-bold text-slate-200 mb-4">Live Incident Stream</h2>
-            <div class="space-y-3 text-xs overflow-y-auto max-h-64 pr-2" id="incident-stream">
-                {incidents_html}
-            </div>
-        </div>
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 backdrop-blur">
+      <h2 class="mb-4 text-lg font-bold text-slate-100">Recent local events</h2>{events}
     </div>
-
-    <script>
-        const ctx = document.getElementById('threatChart').getContext('2d');
-        const chart = new Chart(ctx, {{
-            type: 'line',
-            data: {{
-                labels: ['Now'],
-                datasets: [
-                    {{
-                        label: 'Honeypot Traps',
-                        data: [{honeypot_count}],
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }},
-                    {{
-                        label: 'XSS Sanitized',
-                        data: [{xss_count}],
-                        borderColor: '#22d3ee',
-                        backgroundColor: 'rgba(34, 211, 238, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }}
-                ]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{
-                    legend: {{ labels: {{ color: '#94a3b8' }} }}
-                }},
-                scales: {{
-                    x: {{ ticks: {{ color: '#64748b' }}, grid: {{ color: '#1e293b' }} }},
-                    y: {{ ticks: {{ color: '#64748b' }}, grid: {{ color: '#1e293b' }} }}
-                }}
-            }}
-        }});
-
-        async function fnPollStats() {{
-            try {{
-                const res = await fetch('/studio/security/stats');
-                if (res.ok) {{
-                    const data = await res.json();
-                    document.getElementById('stat-honeypot').textContent = data.honeypot_traps_blocked;
-                    document.getElementById('stat-ipbans').textContent = data.active_ip_bans;
-                    document.getElementById('stat-xss').textContent = data.xss_sanitizations;
-                    document.getElementById('stat-redactions').textContent = data.log_redactions;
-                    document.getElementById('stat-zerotrust').textContent = data.zero_trust_mismatches;
-                    document.getElementById('stat-schema').textContent = data.schema_violations;
-                    document.getElementById('stat-sri').textContent = data.sri_signed_assets;
-                    document.getElementById('stat-mfa').textContent = data.mfa_verifications;
-                    document.getElementById('stat-deception').textContent = data.deception_hits;
-                    document.getElementById('stat-cswsh').textContent = data.cswsh_blocks;
-                    document.getElementById('stat-ratelimit').textContent = data.rate_limit_blocks;
-                    document.getElementById('stat-siem').textContent = data.siem_dispatches;
-                    document.getElementById('stat-audit').textContent = data.audit_chain_integrity || 'Unavailable';
-
-                    if (data.live_events && data.live_events.length > 0) {{
-                        const stream = document.getElementById('incident-stream');
-                        const fragment = document.createDocumentFragment();
-                        data.live_events.forEach(evt => {{
-                            const color = evt.event_type === 'HONEYPOT_TRAP_TRIGGERED' ? 'text-rose-400 border-rose-900/40' : 'text-cyan-400 border-cyan-900/40';
-                            const card = document.createElement('div');
-                            card.className = 'p-3 bg-slate-950 border rounded-lg ' + color;
-                            const heading = document.createElement('div');
-                            heading.className = 'flex justify-between font-bold';
-                            const eventType = document.createElement('span');
-                            eventType.textContent = String(evt.event_type || 'SECURITY_EVENT');
-                            const timestamp = document.createElement('span');
-                            timestamp.textContent = String(evt.timestamp_str || '');
-                            heading.append(eventType, timestamp);
-                            const details = document.createElement('p');
-                            details.className = 'text-slate-300 mt-1';
-                            details.textContent = String(evt.details || '');
-                            card.append(heading, details);
-                            fragment.append(card);
-                        }});
-                        stream.replaceChildren(fragment);
-                    }}
-                }}
-            }} catch (e) {{}}
-        }}
-
-        setInterval(fnPollStats, 3000);
-    </script>
-</body>
-</html>"#,
-        honeypot_count = honeypot_count,
-        ip_bans_count = ip_bans_count,
-        xss_count = xss_count,
-        log_redactions_count = log_redactions_count,
-        zero_trust_mismatches_count = zero_trust_mismatches_count,
-        schema_violations_count = schema_violations_count,
-        sri_signed_assets_count = sri_signed_assets_count,
-        mfa_verifications_count = mfa_verifications_count,
-        deception_hits_count = deception_hits_count,
-        cswsh_blocks_count = cswsh_blocks_count,
-        rate_limit_blocks_count = rate_limit_blocks_count,
-        siem_dispatches_count = siem_dispatches_count,
-        incidents_html = incidents_html
-    ))
+  </div>
+</section>"#,
+        active_bans = stats.active_ip_bans,
+    );
+    Html(crate::data_browser::studio_layout(content, None, &[]))
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use axum::body::Body;
-    use axum::http::{Request, StatusCode};
+    use axum::{body::Body, http::Request};
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn test_security_radar_endpoints_and_stats() {
-        let app = router();
-
-        // 1. GET / (HTML dashboard)
-        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let resp = app.clone().oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        // 2. GET /stats (JSON)
-        let stats_req = Request::builder()
-            .uri("/stats")
-            .body(Body::empty())
+    async fn standalone_radar_reports_bounded_local_state_without_certification() {
+        let response = router()
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
             .unwrap();
-        let stats_resp = app.oneshot(stats_req).await.unwrap();
-        assert_eq!(stats_resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("radar body");
+        let html = String::from_utf8(body.to_vec()).expect("UTF-8 radar page");
 
-        // 3. Direct function calls
-        let stats = get_radar_stats().await.0;
-        assert_eq!(stats.audit_chain_integrity, None);
-        assert!(matches!(
-            stats.threat_level.as_str(),
-            "NO_ACTIVE_ALERTS" | "ACTIVITY_OBSERVED"
-        ));
-
-        let html = render_radar_dashboard().await.0;
-        assert!(html.contains("Threat Radar"));
-        assert!(html.contains("Honeypot Traps"));
+        assert!(html.contains("Bounded counters from this process only"));
+        assert!(html.contains("Audit-chain integrity:"));
+        assert!(html.contains(">unavailable</strong>"));
+        assert!(html.contains("Rullst Studio Control Center"));
+        assert!(html.contains("bg-slate-900/70"));
+        assert!(!html.contains("A+ Rating"));
+        assert!(!html.contains("System operating normally"));
+        assert!(!html.contains("LIVE SOC MONITOR"));
     }
 }

@@ -24,7 +24,7 @@ pub mod client;
 /// Agentic DevOps Engine & Infrastructure Tuning (Milestone 20).
 pub mod devops;
 #[cfg(not(target_arch = "wasm32"))]
-/// Compile-Time Zero-Cost Dependency Injection Container.
+/// Type-indexed dependency injection container.
 pub mod di;
 #[cfg(not(target_arch = "wasm32"))]
 /// HTML visual logging and runtime console for development mode.
@@ -123,7 +123,7 @@ pub use routing::Router;
 #[cfg(not(target_arch = "wasm32"))]
 pub use server::{Server, ServerError};
 
-// Re-export rullst-orm for seamless database usage
+// Re-export rullst-orm for applications using the ORM feature.
 #[cfg(all(not(target_arch = "wasm32"), feature = "orm"))]
 pub use rullst_orm::{Orm, RullstModel};
 

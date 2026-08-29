@@ -117,7 +117,7 @@ impl Service<axum::extract::Request> for HotSwapService {
                         // server shutdown is the safe lifecycle trade-off.
 
                         println!(
-                            "\x1b[32m🚀 Rullst Hot-Reload: Dylib swapped instantly via webhook!\x1b[0m"
+                            "\x1b[32mRullst hot reload: development library swap completed.\x1b[0m"
                         );
 
                         let res = axum::response::Response::builder()

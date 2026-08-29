@@ -77,7 +77,7 @@ fn test_vault_secret_zeroization_and_field_encryptor() {
     let encrypted =
         FieldEncryptor::encrypt_with_key_id("user_ssn_secret", KEY, "primary-2026", AAD)
             .expect("valid field encryption should succeed");
-    assert!(encrypted.starts_with("ENC:v2:primary-2026:"));
+    assert!(encrypted.starts_with("RULLST:v2:primary-2026:"));
 
     let decrypted = FieldEncryptor::decrypt_with_aad(&encrypted, KEY, AAD)
         .expect("valid field decryption should succeed");

@@ -103,7 +103,7 @@ pub fn studio_layout(content: String, active_table: Option<&str>, tables: &[Stri
                         <span>"🛠️ Database Tools"</span>
                     </a>
                     <a href="#" hx-get="/studio/ai" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
-                        <span>"🤖 AI Playground"</span>
+                        <span>"🤖 AI Integration"</span>
                     </a>
                     <a href="#" hx-get="/studio/radar" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"📡 Radar & Telemetry"</span>
@@ -124,7 +124,7 @@ pub fn studio_layout(content: String, active_table: Option<&str>, tables: &[Stri
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
-                    "Connected"
+                    "Local page"
                 </div>
             </header>
 

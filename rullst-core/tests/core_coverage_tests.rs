@@ -64,7 +64,7 @@ async fn test_scalar_docs_router_endpoints() {
         .body(Body::empty())
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[test]

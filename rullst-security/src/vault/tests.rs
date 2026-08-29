@@ -19,7 +19,7 @@ fn field_encryptor_round_trips_and_uses_random_nonces() {
     let second = FieldEncryptor::encrypt_with_key_id("secret_data", KEY, "primary", AAD)
         .expect("encryption should succeed");
 
-    assert!(first.starts_with("ENC:v2:primary:"));
+    assert!(first.starts_with("RULLST:v2:primary:"));
     assert!(!first.contains("secret_data"));
     assert_ne!(first, second, "a fresh nonce must produce a new envelope");
     assert_eq!(
@@ -41,6 +41,18 @@ fn convenience_api_round_trips_empty_and_unicode_fields() {
             plaintext
         );
     }
+}
+
+#[test]
+fn reads_pre_v12_enc_prefix_for_migration() {
+    let current =
+        FieldEncryptor::encrypt("legacy data", KEY).expect("current encryption should succeed");
+    let legacy = current.replacen("RULLST:", "ENC:", 1);
+
+    assert_eq!(
+        FieldEncryptor::decrypt(&legacy, KEY).expect("legacy prefix should remain readable"),
+        "legacy data"
+    );
 }
 
 #[test]
@@ -99,13 +111,13 @@ fn rejects_tampered_ciphertext_and_authenticated_key_id() {
 #[test]
 fn rejects_legacy_unknown_and_malformed_envelopes() {
     assert_eq!(
-        FieldEncryptor::decrypt("ENC:v1:irreversible-hash", KEY),
+        FieldEncryptor::decrypt("RULLST:v1:irreversible-hash", KEY),
         Err(VaultError::LegacyIrreversibleEnvelope {
             version: "v1".to_string(),
         })
     );
     assert_eq!(
-        FieldEncryptor::decrypt("ENC:v99:default:nonce:ciphertext", KEY),
+        FieldEncryptor::decrypt("RULLST:v99:default:nonce:ciphertext", KEY),
         Err(VaultError::UnsupportedEnvelopeVersion {
             version: "v99".to_string(),
         })
@@ -118,7 +130,7 @@ fn rejects_legacy_unknown_and_malformed_envelopes() {
     let short_nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_LENGTH - 1]);
     let tag = URL_SAFE_NO_PAD.encode([0_u8; TAG_LENGTH]);
     assert_eq!(
-        FieldEncryptor::decrypt(&format!("ENC:v2:default:{short_nonce}:{tag}"), KEY),
+        FieldEncryptor::decrypt(&format!("RULLST:v2:default:{short_nonce}:{tag}"), KEY),
         Err(VaultError::InvalidNonceLength {
             expected: NONCE_LENGTH,
             actual: NONCE_LENGTH - 1,
@@ -179,11 +191,14 @@ fn rejects_invalid_envelope_encodings_and_short_ciphertexts() {
     let valid_nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_LENGTH]);
 
     assert_eq!(
-        FieldEncryptor::decrypt("ENC:v2:default:!not-base64!:AAAA", KEY),
+        FieldEncryptor::decrypt("RULLST:v2:default:!not-base64!:AAAA", KEY),
         Err(VaultError::InvalidEnvelopeEncoding { component: "nonce" })
     );
     assert_eq!(
-        FieldEncryptor::decrypt(&format!("ENC:v2:default:{valid_nonce}:!not-base64!"), KEY),
+        FieldEncryptor::decrypt(
+            &format!("RULLST:v2:default:{valid_nonce}:!not-base64!"),
+            KEY
+        ),
         Err(VaultError::InvalidEnvelopeEncoding {
             component: "ciphertext"
         })
@@ -192,7 +207,7 @@ fn rejects_invalid_envelope_encodings_and_short_ciphertexts() {
     let short_ciphertext = URL_SAFE_NO_PAD.encode([0_u8; TAG_LENGTH - 1]);
     assert_eq!(
         FieldEncryptor::decrypt(
-            &format!("ENC:v2:default:{valid_nonce}:{short_ciphertext}"),
+            &format!("RULLST:v2:default:{valid_nonce}:{short_ciphertext}"),
             KEY
         ),
         Err(VaultError::CiphertextTooShort {
@@ -202,7 +217,7 @@ fn rejects_invalid_envelope_encodings_and_short_ciphertexts() {
     );
     assert_eq!(
         FieldEncryptor::decrypt(
-            &format!("ENC:v2:default:{valid_nonce}:{short_ciphertext}:extra"),
+            &format!("RULLST:v2:default:{valid_nonce}:{short_ciphertext}:extra"),
             KEY
         ),
         Err(VaultError::InvalidEnvelope)
@@ -225,7 +240,7 @@ fn authenticated_non_utf8_plaintext_is_rejected() {
         )
         .expect("non-UTF-8 bytes are valid authenticated plaintext");
     let envelope = format!(
-        "ENC:v2:{DEFAULT_KEY_ID}:{}:{}",
+        "RULLST:v2:{DEFAULT_KEY_ID}:{}:{}",
         URL_SAFE_NO_PAD.encode(nonce_bytes),
         URL_SAFE_NO_PAD.encode(ciphertext)
     );

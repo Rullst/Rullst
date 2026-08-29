@@ -5,45 +5,23 @@ use axum::response::{Html, IntoResponse};
 
 pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
-    let (ai_active, provider_name) = detect_ai_provider();
-    let (_ai_card_status, _ai_card_color, _ai_subtext) = if ai_active {
-        (
-            "ENFORCED".to_string(),
-            "text-cyan-400",
-            format!("Active Provider: {}", provider_name),
+    let (ai_configured, provider_name) = detect_ai_provider();
+    let provider_observation = if ai_configured {
+        format!(
+            "Configuration detected for {}; reachability and mounted guardrails are not observed by Studio.",
+            rullst_core::html::escape_str(&provider_name)
         )
     } else {
-        (
-            "NOT CONFIGURED".to_string(),
-            "text-amber-400",
-            "No AI API key or Local Ollama detected".to_string(),
-        )
+        "No supported provider configuration was detected. Studio does not connect an AI client automatically."
+            .to_string()
     };
 
-    let ai_filter_status = if ai_active {
-        r#"<span class="text-xs text-emerald-400 font-bold">Active (0 Attacks)</span>"#
-    } else {
-        r#"<span class="text-xs text-amber-400 font-bold">Disabled (No API Key)</span>"#
-    };
-
-    let ai_masking_status = if ai_active {
-        r#"<span class="text-xs text-emerald-400 font-bold">Active</span>"#
-    } else {
-        r#"<span class="text-xs text-amber-400 font-bold">Disabled</span>"#
-    };
-
-    let ai_quota_status = if ai_active {
-        r#"<span class="text-xs text-cyan-400 font-bold">Enforced</span>"#
-    } else {
-        r#"<span class="text-xs text-slate-500 font-bold">N/A</span>"#
-    };
-
-    let ai_setup_box = if !ai_active {
+    let ai_setup_box = if !ai_configured {
         r#"<div class="bg-slate-900 border border-amber-900/60 rounded-xl p-6 mb-8">
             <h2 class="text-lg font-bold text-amber-400 mb-2 flex items-center gap-2">
-                <span>💡 Universal LLM Provider Support (Provider-Agnostic)</span>
+                <span>AI provider configuration</span>
             </h2>
-            <p class="text-slate-300 text-sm mb-4">Rullst AI is provider-agnostic. You can connect to <strong>ANY AI service or local model</strong> — including Gemini, OpenAI, Claude, DeepSeek, Groq, Qwen, or local Ollama — by adding credentials to your project's <code>.env</code> file:</p>
+            <p class="text-slate-300 text-sm mb-4">The application-facing client supports OpenAI, Anthropic, Gemini, DeepSeek and Ollama. Configure and construct the client in application code; Studio does not treat a credential as proof of a live or protected integration.</p>
             <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 text-xs font-mono space-y-2">
                 <p class="text-slate-400"># Google Gemini:</p>
                 <p class="text-cyan-300">GEMINI_API_KEY="AIzaSyYourGeminiApiKeyHere"</p>
@@ -51,9 +29,9 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                 <p class="text-emerald-300">OPENAI_API_KEY="sk-YourOpenAiKeyHere"</p>
                 <p class="text-slate-400 mt-2"># Anthropic Claude:</p>
                 <p class="text-purple-300">ANTHROPIC_API_KEY="sk-ant-YourClaudeKeyHere"</p>
-                <p class="text-slate-400 mt-2"># DeepSeek / Qwen / Moonshot:</p>
+                <p class="text-slate-400 mt-2"># DeepSeek:</p>
                 <p class="text-yellow-300">DEEPSEEK_API_KEY="sk-YourDeepSeekKeyHere"</p>
-                <p class="text-slate-400 mt-2"># Local Ollama (100% Offline & Free):</p>
+                <p class="text-slate-400 mt-2"># Ollama endpoint operated by you:</p>
                 <p class="text-sky-300">OLLAMA_HOST="http://127.0.0.1:11434"</p>
                 <p class="text-slate-400 mt-3"># 2. Add rullst-ai to your dependencies or use CLI scaffold:</p>
                 <p class="text-yellow-300">cargo rullst pkg add rullst-ai</p>
@@ -102,7 +80,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
     if events.is_empty() {
         incidents_html.push_str(
             r#"<div class="p-6 text-center text-xs text-slate-500 font-medium bg-slate-950/60 border border-slate-800/80 rounded-xl">
-                🛡️ Zero critical threats detected. RASP Honeypot traps and WAF guards operating normally.
+                No local security events have been recorded by this process. This does not prove that every security layer is mounted or that no attack occurred.
             </div>"#,
         );
     } else {
@@ -148,12 +126,12 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     <h1 class="text-2xl md:text-3xl font-extrabold text-amber-400 flex items-center gap-3">
                         <span>🛡️ Visual Threat Radar & AI Security</span>
                     </h1>
-                    <p class="text-slate-400 text-xs md:text-sm mt-1">Rullst Security SOC Shield, RASP Engine, AI Sentinel & Real-Time SOC Telemetry</p>
+                    <p class="text-slate-400 text-xs md:text-sm mt-1">Bounded counters and local in-process security events</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="px-3.5 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 rounded-full text-xs font-bold flex items-center gap-2 shadow-inner">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                        Production Shield Active
+                        Local telemetry snapshot
                     </span>
                 </div>
             </header>
@@ -163,7 +141,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🔒 Secret Log Redactor</div>
                     <div class="text-3xl font-bold text-emerald-400 mt-1">{log_redactions}</div>
-                    <div class="text-xs text-slate-400 mt-2">Zero-leak bearer &amp; token redactions</div>
+                    <div class="text-xs text-slate-400 mt-2">Supported redaction operations recorded locally</div>
                 </div>
                 <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                     <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">🧬 Zero-Trust Fingerprints</div>
@@ -211,9 +189,9 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
             <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-md">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
-                        <span>🚨 Live Security Incident Stream</span>
+                        <span>Local Security Event Stream</span>
                     </h2>
-                    <span class="text-xs text-slate-500 font-mono">Real-Time In-Memory Stream</span>
+                    <span class="text-xs text-slate-500 font-mono">Bounded in-memory source</span>
                 </div>
                 {incidents_html}
             </div>
@@ -225,18 +203,19 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     <h2 class="text-lg font-bold text-cyan-400 mb-4 flex items-center gap-2">
                         <span>🤖 rullst-ai Guardrails</span>
                     </h2>
+                    <p class="text-xs text-slate-400 mb-4">{provider_observation}</p>
                     <div class="space-y-3 text-sm">
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">Prompt Injection Filter</span>
-                            {ai_filter_status}
+                            <span class="text-xs text-slate-500 font-bold">Not observed</span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">LLM Output PII Masking</span>
-                            {ai_masking_status}
+                            <span class="text-xs text-slate-500 font-bold">Not observed</span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">Token Rate-Limit Quota</span>
-                            {ai_quota_status}
+                            <span class="text-xs text-slate-500 font-bold">Not observed</span>
                         </div>
                     </div>
                 </div>
@@ -248,15 +227,15 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
                     <div class="space-y-3 text-sm">
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">Double-Submit Cookie CSRF</span>
-                            <span class="text-xs text-emerald-400 font-bold">Strict</span>
+                            <span class="text-xs text-slate-500 font-bold">Verify composition</span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">Parametrized SQLx ORM</span>
-                            <span class="text-xs text-emerald-400 font-bold">SQL-Injection Safe</span>
+                            <span class="text-xs text-slate-500 font-bold">Bindings available</span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800/80 rounded-lg">
                             <span class="text-slate-300">Leaky Bucket Rate Limiter</span>
-                            <span class="text-xs text-emerald-400 font-bold">Active</span>
+                            <span class="text-xs text-slate-500 font-bold">See local counter</span>
                         </div>
                     </div>
                 </div>
@@ -273,9 +252,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
         siem_dispatches = siem_dispatches,
         incidents_html = incidents_html,
         ai_setup_box = ai_setup_box,
-        ai_filter_status = ai_filter_status,
-        ai_masking_status = ai_masking_status,
-        ai_quota_status = ai_quota_status
+        provider_observation = provider_observation
     );
 
     if is_htmx {
@@ -306,17 +283,35 @@ fn detect_ai_provider() -> (bool, String) {
     if let Ok(key) = std::env::var("DEEPSEEK_API_KEY")
         && !key.trim().is_empty()
     {
-        return (true, "DeepSeek / Qwen / Moonshot".to_string());
-    }
-    if let Ok(key) = std::env::var("GROQ_API_KEY")
-        && !key.trim().is_empty()
-    {
-        return (true, "Groq Llama 3".to_string());
+        return (true, "DeepSeek".to_string());
     }
     if let Ok(host) = std::env::var("OLLAMA_HOST")
         && !host.trim().is_empty()
     {
-        return (true, "Local Ollama (Offline)".to_string());
+        return (true, "Ollama".to_string());
     }
     (false, "No AI Provider Configured".to_string())
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn security_page_does_not_infer_active_controls_from_configuration() {
+        let response = handle_studio_tools_security(axum::http::HeaderMap::new())
+            .await
+            .into_response();
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("security page body");
+        let html = String::from_utf8(body.to_vec()).expect("UTF-8 security page");
+
+        assert!(html.contains("Local telemetry snapshot"));
+        assert!(html.contains("Not observed"));
+        assert!(!html.contains("Production Shield Active"));
+        assert!(!html.contains("SQL-Injection Safe"));
+        assert!(!html.contains("Connection successful"));
+    }
 }

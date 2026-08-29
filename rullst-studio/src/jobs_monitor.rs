@@ -1,18 +1,19 @@
+//! Bounded queue inspection routes for a queue explicitly supplied to Studio.
+
 use axum::{
     Router,
     extract::{Path, State},
-    response::{Html, IntoResponse},
+    http::StatusCode,
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use rullst_core::Queue;
-use std::sync::Arc;
+use rullst_core::{Queue, QueuedJobDetail, queue::QueueError};
+use std::{fmt::Write, sync::Arc};
 
-/// Horizon Dashboard App State
 struct HorizonState {
     queue: Queue,
 }
 
-/// Create a pre-configured Axum Router for the Horizon dashboard
 pub fn router(queue: Queue) -> Router {
     let state = Arc::new(HorizonState { queue });
 
@@ -21,58 +22,72 @@ pub fn router(queue: Queue) -> Router {
         .route("/jobs-table", get(jobs_table))
         // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/retry/{id}", post(retry_job))
+        .route("/purge-failed", post(purge_failed_jobs))
         .route("/purge", post(purge_failed_jobs))
         .with_state(state)
 }
 
-// ─── Route Handlers ─────────────────────────────────────────────────────────
-
-#[cfg_attr(mutants, mutants::skip)]
-async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
-    let jobs = state.queue.list_all_jobs(50).await.unwrap_or_default();
-    let pending = state.queue.pending_count().await.unwrap_or(0);
-
-    let failed = jobs.iter().filter(|j| j.status == "failed").count();
-    let _completed = jobs.iter().filter(|j| j.status == "completed").count(); // completed are deleted, but let's count completed in the session list if any
-    let processing = jobs.iter().filter(|j| j.status == "processing").count();
-
-    let html_content =
-        render_dashboard_layout(pending, failed, processing, render_table_rows(&jobs));
-    Html(html_content)
+async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> Response {
+    match load_snapshot(&state.queue).await {
+        Ok((jobs, pending)) => {
+            let failed = jobs.iter().filter(|job| job.status == "failed").count();
+            let processing = jobs.iter().filter(|job| job.status == "processing").count();
+            Html(render_dashboard_layout(
+                pending,
+                failed,
+                processing,
+                render_table_rows(&jobs),
+            ))
+            .into_response()
+        }
+        Err(error) => queue_error_response(error),
+    }
 }
 
-async fn jobs_table(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
-    let jobs = state.queue.list_all_jobs(50).await.unwrap_or_default();
-    Html(render_table_rows(&jobs))
+async fn jobs_table(State(state): State<Arc<HorizonState>>) -> Response {
+    match state.queue.list_all_jobs(50).await {
+        Ok(jobs) => Html(render_table_rows(&jobs)).into_response(),
+        Err(error) => queue_error_response(error),
+    }
 }
 
-async fn retry_job(
-    State(state): State<Arc<HorizonState>>,
-    Path(id): Path<String>,
-) -> impl IntoResponse {
-    let _ = state.queue.retry_failed_job(&id).await;
+async fn retry_job(State(state): State<Arc<HorizonState>>, Path(id): Path<String>) -> Response {
+    match state.queue.retry_failed_job(&id).await {
+        Ok(()) => Redirect::to("/jobs").into_response(),
+        Err(error) => queue_error_response(error),
+    }
+}
 
-    // Return HTMX trigger header to refresh the table and metrics
-    let headers = [("HX-Trigger", "refresh-jobs")];
+async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> Response {
+    match state.queue.purge_failed_jobs().await {
+        Ok(()) => Redirect::to("/jobs").into_response(),
+        Err(error) => queue_error_response(error),
+    }
+}
+
+async fn load_snapshot(queue: &Queue) -> Result<(Vec<QueuedJobDetail>, u64), QueueError> {
+    let jobs = queue.list_all_jobs(50).await?;
+    let pending = queue.pending_count().await?;
+    Ok((jobs, pending))
+}
+
+fn queue_error_response(error: QueueError) -> Response {
+    let status = if matches!(error, QueueError::StateTransition { .. }) {
+        StatusCode::CONFLICT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    };
+    let error = error.to_string();
+    let message = rullst_core::html::escape_str(&error);
     (
-        headers,
-        Html(r#"<span class="text-xs text-teal-400 font-semibold">Retrying...</span>"#),
+        status,
+        Html(format!(
+            "<h1>Queue snapshot unavailable</h1><p>{message}</p>"
+        )),
     )
+        .into_response()
 }
 
-async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> impl IntoResponse {
-    let _ = state.queue.purge_completed_jobs().await;
-
-    let headers = [("HX-Trigger", "refresh-jobs")];
-    (
-        headers,
-        Html(r#"<span class="text-xs text-rose-400 font-semibold">Purged Failed Jobs</span>"#),
-    )
-}
-
-// ─── UI Rendering Helpers ───────────────────────────────────────────────────
-
-#[cfg_attr(mutants, mutants::skip)]
 fn render_dashboard_layout(
     pending: u64,
     failed: usize,
@@ -80,322 +95,146 @@ fn render_dashboard_layout(
     table_rows: String,
 ) -> String {
     format!(
-        r##"<!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
-<head>
-    <meta charset="UTF-8">
-    <title>Rullst Horizon 🪐</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
-        body {{
-            font-family: 'Outfit', sans-serif;
-        }}
-        .font-mono {{
-            font-family: 'JetBrains Mono', monospace;
-        }}
-        .glass {{
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }}
-        .glow-teal {{
-            box-shadow: 0 0 25px -5px rgba(20, 184, 166, 0.2);
-        }}
-        .glow-rose {{
-            box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.2);
-        }}
-        .animate-pulse-slow {{
-            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }}
-        @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: .65; }}
-        }}
-    </style>
-</head>
-<body class="min-h-full flex flex-col bg-slate-950 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]">
-
-    <!-- Navbar -->
-    <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">🪐</span>
-                <div>
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent">Rullst Horizon</h1>
-                    <p class="text-xs text-slate-500 font-medium">Background Queue Dashboard</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/10 text-teal-400 animate-pulse-slow">
-                    <span class="h-1.5 w-1.5 rounded-full bg-teal-400"></span>
-                    Live Connected
-                </span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        <!-- Metrics Row -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <!-- Pending Card -->
-            <div class="glass glow-teal rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01]">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Pending Jobs</p>
-                        <h3 class="text-4xl font-extrabold text-teal-400 mt-2 font-mono" id="metrics-pending">{pending}</h3>
-                    </div>
-                    <span class="p-3 bg-teal-500/10 text-teal-400 rounded-xl">
-                        <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="mt-4 text-xs text-slate-500">
-                    Active worker threads polling continuously.
-                </div>
-            </div>
-
-            <!-- Processing Card -->
-            <div class="glass rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01]">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Active Workers</p>
-                        <h3 class="text-4xl font-extrabold text-indigo-400 mt-2 font-mono">{processing}</h3>
-                    </div>
-                    <span class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl">
-                        <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="mt-4 text-xs text-slate-500">
-                    Executing registered closure callbacks.
-                </div>
-            </div>
-
-            <!-- Failed Card -->
-            <div class="glass glow-rose rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01]">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Failed Jobs</p>
-                        <h3 class="text-4xl font-extrabold text-rose-400 mt-2 font-mono" id="metrics-failed">{failed}</h3>
-                    </div>
-                    <span class="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
-                        <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="mt-4 flex gap-3">
-                    <button hx-post="/horizon/purge" 
-                            hx-target="#jobs-table-body"
-                            class="text-xs text-rose-400 hover:text-rose-300 font-semibold transition-colors duration-200">
-                        Purge Failed
-                    </button>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Jobs Listing Section -->
-        <div class="glass rounded-2xl border border-slate-900 overflow-hidden">
-            <div class="px-6 py-5 border-b border-slate-900 flex justify-between items-center bg-slate-950/45">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-200">Recent Queue Jobs</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Real-time listing of background execution pipelines</p>
-                </div>
-                <button hx-get="/horizon/jobs-table"
-                        hx-target="#jobs-table-body"
-                        hx-trigger="click, refresh-jobs from:body"
-                        class="px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold hover:bg-slate-850 hover:text-teal-400 transition-all duration-200">
-                    Refresh List
-                </button>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-900 text-sm">
-                    <thead class="bg-slate-950/20 text-slate-400 font-semibold uppercase tracking-wider text-xs">
-                        <tr>
-                            <th class="px-6 py-4 text-left">Job ID / Type</th>
-                            <th class="px-6 py-4 text-left">Payload Parameters</th>
-                            <th class="px-6 py-4 text-left">Status</th>
-                            <th class="px-6 py-4 text-left">Attempts</th>
-                            <th class="px-6 py-4 text-left">Date / Logs</th>
-                            <th class="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-900" id="jobs-table-body" hx-get="/horizon/jobs-table" hx-trigger="every 5s">
-                        {table_rows}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-900 bg-slate-950/40 text-center py-6 mt-12 text-xs text-slate-650">
-        Rullst Horizon v0.9.0 &bull; Built in Rust for maximum factory productivity.
-    </footer>
-
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Rullst queue snapshot</title></head>
+<body>
+<main>
+  <h1>Rullst queue snapshot</h1>
+  <p>Current values from the queue supplied to this local Studio instance. They do not prove that a worker is running.</p>
+  <dl>
+    <dt>Pending jobs</dt><dd>{pending}</dd>
+    <dt>Jobs marked processing</dt><dd>{processing}</dd>
+    <dt>Jobs marked failed</dt><dd>{failed}</dd>
+  </dl>
+  <form method="post" action="/jobs/purge-failed"><button type="submit">Purge failed jobs</button></form>
+  <p><a href="/jobs">Refresh snapshot</a> · <a href="/studio">Back to Studio</a></p>
+  <table>
+    <caption>Up to 50 recent queue records</caption>
+    <thead><tr><th>ID / type</th><th>Payload preview</th><th>Status</th><th>Attempts</th><th>Created</th><th>Action</th></tr></thead>
+    <tbody>{table_rows}</tbody>
+  </table>
+</main>
 </body>
-</html>"##,
-        pending = pending,
-        failed = failed,
-        processing = processing,
-        table_rows = table_rows
+</html>"#
     )
 }
 
-#[cfg_attr(mutants, mutants::skip)]
-fn render_table_rows(jobs: &[rullst_core::QueuedJobDetail]) -> String {
+fn bounded_preview(value: &str, maximum_chars: usize) -> String {
+    let mut preview = value.chars().take(maximum_chars).collect::<String>();
+    if value.chars().count() > maximum_chars {
+        preview.push('…');
+    }
+    preview
+}
+
+fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
     if jobs.is_empty() {
-        return r#"<tr>
-            <td colspan="6" class="px-6 py-12 text-center text-slate-500 italic">
-                No recent jobs found on this queue. Go dispatch some work! 🚀
-            </td>
-        </tr>"#
-            .to_string();
+        return "<tr><td colspan=\"6\">No queue records in this snapshot.</td></tr>".to_string();
     }
 
-    use std::fmt::Write;
-
-    jobs.iter().fold(String::with_capacity(jobs.len() * 1024), |mut acc, job| {
-        let badge_class = match job.status.as_str() {
-            "pending" => "bg-yellow-400/10 text-yellow-400 border border-yellow-500/20",
-            "processing" => {
-                "bg-indigo-400/10 text-indigo-400 border border-indigo-500/20 animate-pulse"
-            }
-            "failed" => "bg-rose-400/10 text-rose-400 border border-rose-500/20",
-            _ => "bg-emerald-400/10 text-emerald-400 border border-emerald-500/20",
-        };
-
-        let action_button = if job.status == "failed" {
+    jobs.iter().fold(String::new(), |mut rows, job| {
+        let id_preview = bounded_preview(&job.id, 8);
+        let payload = bounded_preview(&job.payload, 256);
+        let error = job
+            .error
+            .as_deref()
+            .map(|error| bounded_preview(error, 512));
+        let action = if job.status == "failed" {
             format!(
-                r#"<button hx-post="/horizon/retry/{}" 
-                           hx-swap="outerHTML"
-                           class="px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-xs font-semibold transition-all duration-200">
-                    Retry Job
-                </button>"#,
-                job.id
+                "<form method=\"post\" action=\"/jobs/retry/{}\"><button type=\"submit\">Retry job</button></form>",
+                urlencoding::encode(&job.id)
             )
         } else {
-            r#"<span class="text-xs text-slate-600 font-medium">No actions</span>"#.to_string()
+            "No action".to_string()
         };
-
-        let error_log = if let Some(ref err) = job.error {
+        let error_markup = error.map_or_else(String::new, |error| {
             format!(
-                r#"<div class="text-[11px] text-rose-400 font-mono mt-1 max-w-md overflow-x-auto bg-rose-950/20 p-2 rounded border border-rose-500/10">
-                    {}
-                </div>"#,
-                err
+                "<div>{}</div>",
+                rullst_core::html::escape_str(&error)
             )
-        } else {
-            "".to_string()
-        };
+        });
 
-        let _ = write!(acc,
-            r#"<tr class="hover:bg-slate-900/30 transition-all duration-150">
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-mono text-xs text-slate-500 font-bold">{}</span>
-                    <div class="text-sm font-semibold text-slate-200 mt-0.5 capitalize">{}</div>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="font-mono text-xs text-teal-300">{}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize {}">
-                        {}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap font-mono text-xs text-slate-300">
-                    {}
-                </td>
-                <td class="px-6 py-4">
-                    <span class="text-xs text-slate-500">{}</span>
-                    {}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                    {}
-                </td>
-            </tr>"#,
-            &job.id[0..8],
-            job.name,
-            job.payload,
-            badge_class,
-            job.status,
+        let _ = write!(
+            rows,
+            "<tr><td><code>{}</code><div>{}</div></td><td><code>{}</code></td><td>{}{}</td><td>{}</td><td>{}</td><td>{action}</td></tr>",
+            rullst_core::html::escape_str(&id_preview),
+            rullst_core::html::escape_str(&job.name),
+            rullst_core::html::escape_str(&payload),
+            rullst_core::html::escape_str(&job.status),
+            error_markup,
             job.attempts,
-            job.created_at,
-            error_log,
-            action_button
+            rullst_core::html::escape_str(&job.created_at),
         );
-
-        acc
+        rows
     })
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 #[cfg(not(miri))]
 mod tests {
     use super::*;
-    use axum::body::Body;
-    use axum::http::Request;
+    use axum::{body::Body, http::Request};
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn test_horizon_dashboard_router_compiles() {
+    async fn queue_dashboard_routes_return_real_snapshots() {
         let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
         let app = router(queue);
 
-        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = app.oneshot(req).await.unwrap();
+        for uri in ["/", "/jobs-table"] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+        }
 
-        assert_eq!(response.status(), 200);
+        let purge = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/purge-failed")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(purge.status().is_redirection());
+
+        let legacy_purge = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/purge")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(legacy_purge.status().is_redirection());
     }
 
-    #[tokio::test]
-    async fn test_horizon_jobs_table() {
-        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
-        let app = router(queue);
+    #[test]
+    fn job_rows_escape_untrusted_values_and_accept_short_identifiers() {
+        let html = render_table_rows(&[QueuedJobDetail {
+            id: "é".to_string(),
+            name: "<script>".to_string(),
+            payload: "{\"value\":\"<img>\"}".to_string(),
+            status: "failed".to_string(),
+            error: Some("<b>failure</b>".to_string()),
+            attempts: 1,
+            created_at: "now".to_string(),
+            updated_at: "now".to_string(),
+        }]);
 
-        let req = Request::builder()
-            .uri("/jobs-table")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(req).await.unwrap();
-
-        assert_eq!(response.status(), 200);
-    }
-
-    #[tokio::test]
-    async fn test_horizon_retry_and_purge_endpoints() {
-        let queue = Queue::sqlite("sqlite::memory:").await.unwrap();
-        let app = router(queue);
-
-        // Test POST /retry/job_123
-        let retry_req = Request::builder()
-            .method("POST")
-            .uri("/retry/job_test_999")
-            .body(Body::empty())
-            .unwrap();
-        let retry_resp = app.clone().oneshot(retry_req).await.unwrap();
-        assert_eq!(retry_resp.status(), 200);
-
-        // Test POST /purge
-        let purge_req = Request::builder()
-            .method("POST")
-            .uri("/purge")
-            .body(Body::empty())
-            .unwrap();
-        let purge_resp = app.oneshot(purge_req).await.unwrap();
-        assert_eq!(purge_resp.status(), 200);
+        assert!(html.contains("Retry job"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("&lt;img&gt;"));
+        assert!(html.contains("&lt;b&gt;failure&lt;/b&gt;"));
+        assert!(!html.contains("<script>"));
     }
 }

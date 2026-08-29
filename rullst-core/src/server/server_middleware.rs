@@ -134,7 +134,7 @@ pub async fn zstd_static_middleware(
     next.run(req).await
 }
 
-/// Adds standard W3C `Server-Timing` headers to HTTP responses for instant DevTools network profiling.
+/// Adds a standard W3C `Server-Timing` header with the observed handler duration.
 ///
 /// Format: `Server-Timing: app;dur=X.XX;desc="Rullst App Handler"`
 #[cfg_attr(mutants, mutants::skip)]

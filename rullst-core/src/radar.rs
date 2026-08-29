@@ -1,4 +1,4 @@
-//! Rullst Radar — Kernel-Level Telemetry & Tokio Runtime Visualizer (`rullst::radar`)
+//! Rullst Radar — process telemetry and Tokio runtime observations (`rullst::radar`).
 #![cfg(not(target_arch = "wasm32"))]
 
 use axum::{Json, Router, response::IntoResponse, routing::get};
