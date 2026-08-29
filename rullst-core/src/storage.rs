@@ -132,13 +132,12 @@ impl Storage {
 
     /// Public URL resolution helper for uploaded asset
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
-        let relative_path = validate_relative_path(relative_path)?;
-        let relative_path = relative_path.to_string_lossy();
+        let relative_path = normalized_object_key(relative_path)?;
         match &self.driver {
             StorageDriver::Local { base_path } => Ok(format!(
                 "{}/{}",
                 base_path.trim_end_matches('/'),
-                relative_path.trim_start_matches('/')
+                relative_path
             )),
             StorageDriver::S3 { bucket, region } => Ok(format!(
                 "https://{}.s3.{}.amazonaws.com/{}",
@@ -260,8 +259,7 @@ impl LocalDriver {
 
     /// Resolve public URL path
     pub async fn url(&self, path: &str) -> Result<String, StorageError> {
-        let _ = validate_relative_path(path)?;
-        Ok(format!("/storage/{}", path.trim_start_matches('/')))
+        Ok(format!("/storage/{}", normalized_object_key(path)?))
     }
 
     /// Delete file from target path
@@ -295,6 +293,21 @@ fn validate_relative_path(relative_path: &str) -> Result<PathBuf, StorageError> 
     }
 
     Ok(validated)
+}
+
+fn normalized_object_key(relative_path: &str) -> Result<String, StorageError> {
+    let validated = validate_relative_path(relative_path)?;
+    let mut key = String::new();
+    for segment in validated.iter() {
+        let segment = segment.to_str().ok_or_else(|| {
+            StorageError::PathTraversal("storage path is not valid UTF-8".to_string())
+        })?;
+        if !key.is_empty() {
+            key.push('/');
+        }
+        key.push_str(segment);
+    }
+    Ok(key)
 }
 
 async fn reject_symlink_components(
@@ -342,6 +355,26 @@ mod tests {
                 Err(StorageError::PathTraversal(_))
             ));
         }
+    }
+
+    #[test]
+    fn object_urls_use_portable_forward_slash_keys() {
+        let local = Storage::local("storage");
+        let s3 = Storage::s3("bucket", "sa-east-1");
+        let r2 = Storage::r2("bucket", "account");
+
+        assert_eq!(
+            local.url("courses/1/lesson.txt").unwrap(),
+            "storage/courses/1/lesson.txt"
+        );
+        assert_eq!(
+            s3.url("courses/1/lesson.txt").unwrap(),
+            "https://bucket.s3.sa-east-1.amazonaws.com/courses/1/lesson.txt"
+        );
+        assert_eq!(
+            r2.url("courses/1/lesson.txt").unwrap(),
+            "https://account.r2.cloudflarestorage.com/bucket/courses/1/lesson.txt"
+        );
     }
 
     #[tokio::test]

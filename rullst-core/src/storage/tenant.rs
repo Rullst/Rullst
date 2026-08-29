@@ -1,4 +1,4 @@
-use super::{Storage, StorageError, validate_relative_path};
+use super::{Storage, StorageError, normalized_object_key};
 use crate::security::TenantContext;
 
 /// Storage facade permanently bound to one authenticated tenant context.
@@ -30,10 +30,7 @@ impl TenantStorage {
 
     /// Returns the backend object key confined below the tenant namespace.
     pub fn object_key(&self, relative_path: &str) -> Result<String, StorageError> {
-        let path = validate_relative_path(relative_path)?;
-        let path = path.to_str().ok_or_else(|| {
-            StorageError::PathTraversal("storage path is not valid UTF-8".to_string())
-        })?;
+        let path = normalized_object_key(relative_path)?;
         Ok(format!("tenants/{}/{path}", self.tenant_id))
     }
 

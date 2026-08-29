@@ -33,7 +33,7 @@ pub fn ensure_jwt_dependencies(cargo_toml: &str) -> Result<String, Box<dyn std::
     let mut missing = Vec::new();
     if !dependency_is_declared(cargo_toml, "jsonwebtoken") {
         missing.push(
-            "jsonwebtoken = { version = \"10\", default-features = false, features = [\"rust_crypto\"] }",
+            "jsonwebtoken = { version = \"11\", default-features = false, features = [\"rust_crypto\"] }",
         );
     }
     if !dependency_is_declared(cargo_toml, "chrono") {
@@ -466,7 +466,7 @@ rullst = "12.0.0"
         let updated = ensure_jwt_dependencies(original).unwrap();
         let repeated = ensure_jwt_dependencies(&updated).unwrap();
         assert_eq!(updated, repeated);
-        assert!(updated.contains("jsonwebtoken = { version = \"10\""));
-        assert!(!updated.contains("jsonwebtoken = \"9.3\""));
+        assert!(updated.contains("jsonwebtoken = { version = \"11\""));
+        assert!(!updated.contains("jsonwebtoken = { version = \"10\""));
     }
 }

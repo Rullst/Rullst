@@ -12,6 +12,15 @@ use semver::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn portable_path(path: &Path) -> String {
+    path.to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/")
+}
+
+fn relative_report_path(root: &Path, path: &Path) -> String {
+    portable_path(path.strip_prefix(root).unwrap_or(path))
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct UpgradeOptions {
     pub target: Option<String>,
@@ -224,31 +233,23 @@ fn print_plan(
     println!("Project: {}", root.display());
 
     for plan in plans {
-        let relative = plan.path.strip_prefix(root).unwrap_or(&plan.path);
+        let relative = relative_report_path(root, &plan.path);
         for change in &plan.changes {
             println!(
                 "  {}: {} ({}) {} -> {}",
-                relative.display(),
-                change.key,
-                change.package,
-                change.from,
-                change.to
+                relative, change.key, change.package, change.from, change.to
             );
         }
         for warning in &plan.warnings {
-            println!("  REVIEW {}: {}", relative.display(), warning);
+            println!("  REVIEW {relative}: {warning}");
         }
     }
 
     for finding in findings {
-        let relative = finding.path.strip_prefix(root).unwrap_or(&finding.path);
+        let relative = relative_report_path(root, &finding.path);
         println!(
             "  {} {}:{} [{}] {}",
-            finding.severity,
-            relative.display(),
-            finding.line,
-            finding.code,
-            finding.message
+            finding.severity, relative, finding.line, finding.code, finding.message
         );
     }
 }
@@ -265,19 +266,15 @@ fn render_report(
     );
     report.push_str("## Dependency plan\n\n");
     for plan in plans {
-        let relative = plan.path.strip_prefix(root).unwrap_or(&plan.path);
+        let relative = relative_report_path(root, &plan.path);
         for change in &plan.changes {
             report.push_str(&format!(
                 "- `{}`: `{}` (`{}`) `{}` → `{}`\n",
-                relative.display(),
-                change.key,
-                change.package,
-                change.from,
-                change.to
+                relative, change.key, change.package, change.from, change.to
             ));
         }
         for warning in &plan.warnings {
-            report.push_str(&format!("- REVIEW `{}`: {}\n", relative.display(), warning));
+            report.push_str(&format!("- REVIEW `{relative}`: {warning}\n"));
         }
     }
     report.push_str("\n## Source review\n\n");
@@ -287,14 +284,10 @@ fn render_report(
         );
     } else {
         for finding in findings {
-            let relative = finding.path.strip_prefix(root).unwrap_or(&finding.path);
+            let relative = relative_report_path(root, &finding.path);
             report.push_str(&format!(
                 "- **{}** `{}` line {} (`{}`): {}\n",
-                finding.severity,
-                relative.display(),
-                finding.line,
-                finding.code,
-                finding.message
+                finding.severity, relative, finding.line, finding.code, finding.message
             ));
         }
     }
@@ -314,7 +307,7 @@ fn render_json_report(
         .iter()
         .map(|plan| {
             serde_json::json!({
-                "path": plan.path.strip_prefix(root).unwrap_or(&plan.path),
+                "path": relative_report_path(root, &plan.path),
                 "matched_dependencies": plan.matched,
                 "source_majors": plan.source_majors,
                 "changes": plan.changes,
@@ -326,7 +319,7 @@ fn render_json_report(
         .iter()
         .map(|finding| {
             serde_json::json!({
-                "path": finding.path.strip_prefix(root).unwrap_or(&finding.path),
+                "path": relative_report_path(root, &finding.path),
                 "line": finding.line,
                 "code": finding.code,
                 "severity": finding.severity,

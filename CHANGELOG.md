@@ -152,6 +152,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Newly generated `.env`, Kubernetes and Foundry configurations now use
   `RULLST_ENV`; generated billing follows the same canonical-first precedence.
   Existing `APP_ENV` configurations remain supported as a legacy fallback.
+- Generated JWT middleware now follows the workspace's `jsonwebtoken` 11
+  baseline, so fresh offline scaffold checks do not request the obsolete v10
+  package. Upgrade reports and storage object keys also use portable forward
+  slashes on Windows.
 - Generated blueprints and representative release builds are exercised by
   compile tests. The exact RC still requires multi-OS CI, packaged crates-only
   reproduction, and release-tag evidence before publication.
