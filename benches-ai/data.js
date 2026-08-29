@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787985921017,
+  "lastUpdate": 1787990648012,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2059,6 +2059,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 750,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "dbd82756413a7194006988514993ab7ffb9e5001",
+          "message": "fix(cli): align generated tera dependency",
+          "timestamp": "2026-08-29T04:31:37-03:00",
+          "tree_id": "528314d9f3fffdff3c6bf0669a3759f7b0bfef8d",
+          "url": "https://github.com/Rullst/Rullst/commit/dbd82756413a7194006988514993ab7ffb9e5001"
+        },
+        "date": 1787990647480,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1124,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 233,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 480,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
