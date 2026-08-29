@@ -32,19 +32,4 @@ jobs:
         with:
           tool: cargo-semver-checks
       - name: Check every published Rust API for SemVer regressions
-        run: |
-          cargo semver-checks check-release \
-            -p rullst-macros \
-            -p rullst-orm-macros \
-            -p rullst-core \
-            -p rullst-orm \
-            -p rullst-iot \
-            -p rullst-mail \
-            -p rullst-ai \
-            -p rullst-connect \
-            -p rullst-security \
-            -p rullst-auth \
-            -p rullst-capital \
-            -p rullst-studio \
-            -p rullst-nexus \
-            -p rullst
+        run: .github/check-semver.sh
