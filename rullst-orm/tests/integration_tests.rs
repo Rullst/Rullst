@@ -202,10 +202,47 @@ async fn scenario_cascade_soft_delete() {
     };
     c.save().await.unwrap();
 
-    // delete parent, should cascade to child
+    let pool = Orm::pool().expect("ORM should be initialized");
+    sqlx::query(
+        "CREATE TRIGGER it_child_reject_soft_delete \
+         BEFORE UPDATE OF deleted_at ON it_child \
+         BEGIN SELECT RAISE(ABORT, 'forced child cascade failure'); END",
+    )
+    .execute(pool)
+    .await
+    .expect("create failure trigger");
+
+    let failed_delete = p.delete().await;
+    assert!(
+        failed_delete.is_err(),
+        "child failure must abort the cascade"
+    );
+    let parent_after_failure: (Option<String>,) =
+        sqlx::query_as("SELECT deleted_at FROM it_parent WHERE id = ?")
+            .bind(p.id)
+            .fetch_one(pool)
+            .await
+            .expect("read parent after failed cascade");
+    let child_after_failure: (Option<String>,) =
+        sqlx::query_as("SELECT deleted_at FROM it_child WHERE id = ?")
+            .bind(c.id)
+            .fetch_one(pool)
+            .await
+            .expect("read child after failed cascade");
+    assert!(
+        parent_after_failure.0.is_none(),
+        "parent soft delete must roll back when a child cascade fails"
+    );
+    assert!(child_after_failure.0.is_none());
+
+    sqlx::query("DROP TRIGGER it_child_reject_soft_delete")
+        .execute(pool)
+        .await
+        .expect("drop failure trigger");
+
+    // A successful implicit delete commits the parent and child atomically.
     p.delete().await.unwrap();
 
-    let pool = Orm::pool().expect("ORM should be initialized");
     let parent_row: Option<(i32, Option<String>)> =
         sqlx::query_as("SELECT id, deleted_at FROM it_parent WHERE id = ?")
             .bind(p.id)

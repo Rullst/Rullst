@@ -137,6 +137,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added fallible SQLx `chunk_by_id` and `chunk_by_id_with_tx` keyset traversal
   for generated `i32` primary keys. A SQLite regression deletes processed rows
   while proving that later IDs are not skipped by offset drift.
+- Made implicit model deletes with marked direct soft-delete cascades atomic.
+  Generated code reuses active transactions or creates its own transaction;
+  a forced child-trigger failure proves that the parent mutation rolls back.
 - SQLx migration tracking is written after each successful migration, so a later
   failure cannot make earlier DDL appear pending; PostgreSQL rollback uses native
   placeholders. Transaction regressions now assert database rollback state

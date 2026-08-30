@@ -80,7 +80,10 @@ compile-time schema verified.
 - [x] **Polyglot Persistence (bounded v12)**: Optional MongoDB document CRUD, DuckDB parameterized/bounded OLAP, Turso/libSQL SQL/transactions/migrations and SurrealDB HTTP document/read-only GQL adapters preserve separate semantics.
 - [~] **Advanced Vector & Key-Value Stores**: Optional Redis cache/hash helpers exist; Qdrant and a general native Redis datastore contract do not.
 - [x] **Schema Visualizer**: `cargo rullst generate:diagram` emits Mermaid from statically inspected models.
-- [~] **Cascading Soft Deletes**: Marked `has_one`/`has_many` relations cascade, with an atomic explicit-transaction path; unrestricted recursion/cycle handling and atomic implicit delete are not claimed.
+- [~] **Cascading Soft Deletes**: Marked `has_one`/`has_many` relations cascade;
+  implicit deletes now create an atomic transaction when necessary and reuse
+  explicit/task-scoped transactions. Recursive descendant traversal and cycle
+  handling remain outside the bounded contract.
 - [~] **Native Enum Mapping**: Rust enums map to validated strings and schema helpers emit portable `CHECK`; native PostgreSQL/MySQL enum DDL is not generated.
 
 ## Phase 7: future and infrastructure

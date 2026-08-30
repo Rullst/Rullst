@@ -585,8 +585,33 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     quote! {
         #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
         pub async fn delete(&self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::dispatch_executor!(pool, |pool| self.delete_with_tx_internal(pool).await)?;
-            #cascade_deletes
+            let scoped_transaction = rullst_orm::CURRENT_TX
+                .try_with(|transaction| transaction.clone())
+                .ok();
+            let has_active_transaction = if let Some(transaction) = scoped_transaction {
+                transaction.lock().await.is_some()
+            } else {
+                false
+            };
+
+            if has_active_transaction {
+                rullst_orm::dispatch_executor!(pool, |pool| self.delete_with_tx_internal(pool).await)?;
+                #cascade_deletes
+                return Ok(());
+            }
+
+            let mut transaction = rullst_orm::Orm::begin_transaction().await?;
+            if let Err(delete_error) = self.delete_with_tx(&mut transaction).await {
+                return match transaction.rollback().await {
+                    Ok(()) => Err(delete_error),
+                    Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                        "cascade delete failed: {}; rollback also failed: {}",
+                        delete_error,
+                        rollback_error,
+                    ))),
+                };
+            }
+            transaction.commit().await?;
             Ok(())
         }
 

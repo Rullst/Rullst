@@ -157,6 +157,11 @@ new_user.delete().await?;
   keyset traversal over the generated `i32` primary key. This prevents deletes
   of processed rows from shifting later rows behind an offset; it is not a
   database-server cursor or a universal cross-shard snapshot.
+* A model delete with marked `cascade_soft_delete` has-one/has-many relations
+  runs parent and direct-child mutations in one transaction. An existing
+  explicit or task-scoped transaction is reused; otherwise `delete()` opens,
+  commits, or rolls back its own transaction. Recursive descendant/cycle
+  traversal and strictly post-commit external observers are separate contracts.
 
 ### 5.4. Polyglot Persistence Boundary
 

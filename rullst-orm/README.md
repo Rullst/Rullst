@@ -67,9 +67,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.
-- **Cascading Soft Deletes**: Mark generated has-one/has-many relationships for
-  cascade; use the explicit transaction path when parent/child atomicity is
-  required.
+- **Atomic Cascading Soft Deletes**: Mark generated has-one/has-many
+  relationships for cascade; implicit deletes open a transaction when needed,
+  while explicit or task-scoped transactions are reused without nesting.
 - **Typed Partial Updates**: `.update_partial()` changes only explicitly
   selected columns and preserves model policy/tenant checks.
 - **Stable Keyset Chunking**: `.chunk_by_id()` traverses ascending generated
