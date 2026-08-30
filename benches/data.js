@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788119855969,
+  "lastUpdate": 1788120884348,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -11011,6 +11011,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2353,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "171eda55c909245a86b061f369b79558d813467c",
+          "message": "feat(ai): add tenant-bound audited rag pipeline",
+          "timestamp": "2026-08-30T17:12:10-03:00",
+          "tree_id": "bf1d07a51cbd9c4abf0c1bbb4bd4c8ac020d32fd",
+          "url": "https://github.com/Rullst/Rullst/commit/171eda55c909245a86b061f369b79558d813467c"
+        },
+        "date": 1788120883250,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 736,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1004,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 624,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2247,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
