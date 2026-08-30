@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788071474966,
+  "lastUpdate": 1788073146667,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4008,6 +4008,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "session_crypto/encrypt_session",
             "value": 477,
+            "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3720f92ac7bc58b59c8d1505fb10be2e08d3aff3",
+          "message": "fix(orm): replace vulnerable Turso transport",
+          "timestamp": "2026-08-30T03:51:43-03:00",
+          "tree_id": "79c493bc0ec3d91e98e92c275ee6df576def78cf",
+          "url": "https://github.com/Rullst/Rullst/commit/3720f92ac7bc58b59c8d1505fb10be2e08d3aff3"
+        },
+        "date": 1788073145931,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 470,
             "range": "± 12",
             "unit": "ns/iter"
           }
