@@ -427,8 +427,13 @@ let session = provider
 `#[derive(rullst::Billable)]` is the umbrella convenience for named structs with
 an `email: String` field. It preserves generics; optional
 `subscription_id: Option<String>` and `tier: Option<String>` fields expose the
-corresponding helpers. It does not infer ownership, team membership, currency,
-payment methods, usage or database-backed quotas.
+corresponding helpers. An all-or-none
+`grace_period_starts_at: Option<i64>`/`grace_period_ends_at: Option<i64>` pair
+exposes a validated half-open window of at most 366 days. A provider-bound
+`SubscriptionHandle<P>` delegates cancellation and pausing; the explicit
+`subscription_with` path keeps static dispatch. These values do not infer or
+persist ownership, team membership, entitlement, currency, payment methods,
+usage, provider scheduling or database-backed quotas.
 
 ### 6.2. Invoice Rendering
 

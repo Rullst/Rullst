@@ -65,6 +65,8 @@ struct Workspace {
     email: String,
     subscription_id: Option<String>,
     tier: Option<String>,
+    grace_period_starts_at: Option<i64>,
+    grace_period_ends_at: Option<i64>,
 }
 
 fn has_pro_access(workspace: &Workspace) -> bool {
@@ -72,8 +74,13 @@ fn has_pro_access(workspace: &Workspace) -> bool {
 }
 ```
 
-`Billable` does not infer membership, usage from a database, currency or a
-payment method. Applications must establish those identities before invoking a
+`Billable::subscription_with(&provider)` returns a statically dispatched
+`SubscriptionHandle` with `cancel()` and `pause()`. When both grace-period
+fields are present, the derive exposes a validated half-open window of at most
+366 days; an incomplete pair is a compile error. `Billable` does not persist or
+authorize that state, enforce access, schedule provider changes, infer
+membership, read usage from a database, or choose currency/payment methods.
+Applications must establish those identities and policies before invoking a
 provider operation.
 
 ### Initializing a Provider

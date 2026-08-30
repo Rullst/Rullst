@@ -23,8 +23,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   delivery after payment are not implemented.
 
 ## Phase 3: Advanced Subscription Management
-- [~] **Grace Periods & Pausing**: Cancellation and pausing exist on the trait;
-  grace-period state and the historic subscription-handle API do not.
+- [x] **Bounded Grace Periods & Subscription Handle**: `SubscriptionHandle<P>` validates/redacts the provider ID and exposes `cancel()`/`pause()` with static dispatch when the provider is explicit. `GracePeriod` is a validated half-open window of at most 366 days, and `#[derive(Billable)]` recognizes an all-or-none start/end field pair. Persistence, trusted clock, entitlement enforcement, provider semantics and scheduling remain application/provider boundaries.
 - [ ] **Proration Handling**: Automatically handle prorations when users upgrade or downgrade their tiers mid-billing cycle.
 - [x] **Metered Billing (Usage-Based)**: API to report consumption (`user.report_usage("api_requests", 100).await`) for Stripe/LemonSqueezy metered limits.
 

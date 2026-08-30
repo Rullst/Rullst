@@ -454,6 +454,34 @@ fn expand_billable(input: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenSt
         quote::quote! {}
     };
 
+    let has_grace_start = has_field("grace_period_starts_at");
+    let has_grace_end = has_field("grace_period_ends_at");
+    if has_grace_start != has_grace_end {
+        return Err(syn::Error::new_spanned(
+            fields,
+            "Billable grace periods require both `grace_period_starts_at: Option<i64>` and `grace_period_ends_at: Option<i64>`",
+        ));
+    }
+    let grace_period_fn = if has_grace_start {
+        quote::quote! {
+            fn grace_period(
+                &self,
+            ) -> Result<Option<rullst::capital::GracePeriod>, rullst::capital::CapitalError> {
+                match (self.grace_period_starts_at, self.grace_period_ends_at) {
+                    (Some(starts_at), Some(ends_at)) => {
+                        rullst::capital::GracePeriod::new(starts_at, ends_at).map(Some)
+                    }
+                    (None, None) => Ok(None),
+                    _ => Err(rullst::capital::CapitalError::SubscriptionError(
+                        "grace period requires both start and end timestamps".to_string(),
+                    )),
+                }
+            }
+        }
+    } else {
+        quote::quote! {}
+    };
+
     let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
     Ok(quote::quote! {
         impl #impl_generics rullst::capital::Billable for #name #type_generics #where_clause {
@@ -463,6 +491,7 @@ fn expand_billable(input: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenSt
 
             #sub_id_fn
             #tier_fn
+            #grace_period_fn
         }
     })
 }

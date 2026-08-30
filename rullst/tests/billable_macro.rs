@@ -12,6 +12,8 @@ where
     email: String,
     subscription_id: Option<String>,
     tier: Option<String>,
+    grace_period_starts_at: Option<i64>,
+    grace_period_ends_at: Option<i64>,
     marker: PhantomData<T>,
 }
 
@@ -21,6 +23,8 @@ fn billable_derive_is_available_from_facade_and_preserves_generics() {
         email: "owner@example.com".to_string(),
         subscription_id: Some("sub_1".to_string()),
         tier: Some("pro".to_string()),
+        grace_period_starts_at: Some(1_000),
+        grace_period_ends_at: Some(1_100),
         marker: PhantomData,
     };
 
@@ -28,4 +32,5 @@ fn billable_derive_is_available_from_facade_and_preserves_generics() {
     assert_eq!(account.subscription_id().as_deref(), Some("sub_1"));
     assert!(account.can_access("pro"));
     assert!(!account.can_access("enterprise"));
+    assert!(account.grace_period().unwrap().is_some());
 }

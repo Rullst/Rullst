@@ -191,6 +191,11 @@ and exercised through subscription ownership and collision negatives; the
 test does not turn provider sandbox validation or distributed reconciliation
 into an automatic claim.
 
+The billing facade follows the same bounded design: an explicit generic
+subscription handle delegates pause/cancel without erasing the provider type,
+while its grace-period value validates time bounds but leaves persistence,
+authorization and entitlement policy visible in application code.
+
 The same CLI includes inspection, toolchain diagnostics, migration assistance,
 SBOM generation, and a bounded static route-access scanner. Generated output
 remains application code: review it, test it, and keep it under version control.

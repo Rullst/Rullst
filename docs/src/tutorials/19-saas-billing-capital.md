@@ -63,7 +63,29 @@ shown in the [Capital crate guide](../5-rullst-capital.md). Apply any CSRF
 exemption only to that exact signed route. Never update access or subscription
 state from an unverified request.
 
-## 4. Supply an optional local revenue snapshot
+## 4. Use a bounded subscription handle and grace period
+
+```rust,no_run
+use rullst_capital::{Billable as _, CapitalError, GracePeriod, StripeProvider};
+
+async fn pause_with_local_policy(
+    workspace: &impl rullst_capital::Billable,
+    provider: &StripeProvider,
+) -> Result<(), CapitalError> {
+    let grace = GracePeriod::new(1_900_000_000, 1_900_604_800)?;
+    let handle = workspace
+        .subscription_with(provider)?
+        .with_grace_period(grace);
+    handle.pause().await
+}
+```
+
+The grace value does not schedule the pause or grant access by itself. Persist
+it with authoritative subscription state, evaluate it against a trusted clock
+inside the entitlement check, and confirm the selected adapter's live pause or
+cancel semantics.
+
+## 5. Supply an optional local revenue snapshot
 
 `RevenueDashboardManager` does not derive money or subscribers from event names.
 After durable reconciliation, the application may call `update_metrics` with its

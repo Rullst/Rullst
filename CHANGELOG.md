@@ -72,6 +72,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   reuse is denied before the conflicting customer can be bound. Stripe and
   LemonSqueezy are the bounded scaffold choices; route mounting, plan policy,
   live provider validation and distributed reconciliation remain host-owned.
+- Capital now exposes `SubscriptionHandle<P>` for validated, redacted,
+  provider-bound `cancel()` and `pause()` operations. The explicit-provider path
+  uses static dispatch; the global provider remains a compatibility path.
+  `GracePeriod` adds a fallible half-open window capped at 366 days, and
+  `#[derive(Billable)]` supports a complete optional start/end field pair while
+  rejecting an incomplete pair. Persistence, authorization, trusted time,
+  entitlement enforcement and provider scheduling remain application-owned.
 - `TenantMailResolver` now accepts the trusted Core `TenantContext` directly
   for registration and delivery, validates every registry key, and returns a
   typed failure instead of treating an unavailable registry lock as a missing
