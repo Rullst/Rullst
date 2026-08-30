@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788114785218,
+  "lastUpdate": 1788117890521,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4399,6 +4399,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 487,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "cd2b10965e831654639dd2a1188a82d3b326ebbe",
+          "message": "feat(connect): add bounded corporate proxy client",
+          "timestamp": "2026-08-30T16:17:56-03:00",
+          "tree_id": "5dc0818e47fe6a0fcff8469fc5e7b5c95b5ef1a7",
+          "url": "https://github.com/Rullst/Rullst/commit/cd2b10965e831654639dd2a1188a82d3b326ebbe"
+        },
+        "date": 1788117890015,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 327,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
