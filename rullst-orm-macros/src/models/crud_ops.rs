@@ -22,18 +22,22 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let scout_update = if parsed.searchable {
+    let scout_after_commit = if parsed.searchable {
         quote! {
-            if let Some(engine) = rullst_orm::scout::get_search_engine() {
-                let payload: rullst_orm::_serde_json::Value = match rullst_orm::_serde_json::from_str(&self.to_json()) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        eprintln!("[rullst-orm] Scout: failed to serialize model {} (id={}) to JSON: {e}", #table_name, self.id);
-                        rullst_orm::_serde_json::Value::Null
-                    }
-                };
-                let _ = engine.update(#table_name, self.id, payload).await;
-            }
+            let event = rullst_orm::ModelCommittedEvent::new(
+                #table_name,
+                self.id,
+                operation,
+                self.to_json(),
+            );
+            rullst_orm::after_commit(move || async move {
+                if let Some(engine) = rullst_orm::scout::get_search_engine() {
+                    let payload: rullst_orm::_serde_json::Value =
+                        rullst_orm::_serde_json::from_str(&event.payload)?;
+                    engine.update(event.table, event.id, payload).await?;
+                }
+                Ok(())
+            }).await?;
         }
     } else {
         quote! {}
@@ -212,24 +216,48 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
             }
             let futures = observers.iter().map(|obs| obs.saved(&*self));
             rullst_orm::_futures::future::try_join_all(futures).await?;
+            #hook_after_save
+            let operation = if is_new {
+                rullst_orm::ModelOperation::Created
+            } else {
+                rullst_orm::ModelOperation::Updated
+            };
             #[cfg(feature = "redis")]
             {
-                use rullst_orm::_redis::AsyncCommands;
-                if let Ok(mut conn) = rullst_orm::Orm::redis_manager() {
-                    let payload = self.to_json();
-                    if is_new {
-                        let topic = format!("orm:events:{}:created", #table_name);
-                        let _: Result<usize, _> = conn.publish(&topic, &payload).await;
-                    } else {
-                        let topic = format!("orm:events:{}:updated", #table_name);
-                        let _: Result<usize, _> = conn.publish(&topic, &payload).await;
+                let event = rullst_orm::ModelCommittedEvent::new(
+                    #table_name,
+                    self.id,
+                    operation,
+                    self.to_json(),
+                );
+                rullst_orm::after_commit(move || async move {
+                    use rullst_orm::_redis::AsyncCommands;
+                    rullst_orm::query_cache::invalidate_table(event.table).await?;
+                    if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
+                        let topic = format!(
+                            "orm:events:{}:{}",
+                            event.table,
+                            event.operation.as_str(),
+                        );
+                        let _: usize = connection.publish(&topic, &event.payload).await?;
+                        let topic = format!("orm:events:{}:saved", event.table);
+                        let _: usize = connection.publish(&topic, &event.payload).await?;
                     }
-                    let topic = format!("orm:events:{}:saved", #table_name);
-                    let _: Result<usize, _> = conn.publish(&topic, &payload).await;
-                }
+                    Ok(())
+                }).await?;
             }
-            #scout_update
-            #hook_after_save
+            let event = rullst_orm::ModelCommittedEvent::new(
+                #table_name,
+                self.id,
+                operation,
+                self.to_json(),
+            );
+            rullst_orm::after_commit(move || async move {
+                let futures = observers.iter().map(|observer| observer.committed(&event));
+                rullst_orm::_futures::future::try_join_all(futures).await?;
+                Ok(())
+            }).await?;
+            #scout_after_commit
             Ok(())
         }
     }
@@ -336,11 +364,20 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let scout_delete = if parsed.searchable {
+    let scout_delete_after_commit = if parsed.searchable {
         quote! {
-            if let Some(engine) = rullst_orm::scout::get_search_engine() {
-                let _ = engine.delete(#table_name, self.id).await;
-            }
+            let event = rullst_orm::ModelCommittedEvent::new(
+                #table_name,
+                self.id,
+                rullst_orm::ModelOperation::Deleted,
+                self.to_json(),
+            );
+            rullst_orm::after_commit(move || async move {
+                if let Some(engine) = rullst_orm::scout::get_search_engine() {
+                    engine.delete(event.table, event.id).await?;
+                }
+                Ok(())
+            }).await?;
         }
     } else {
         quote! {}
@@ -472,7 +509,11 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             }
 
             let mut transaction = rullst_orm::Orm::begin_transaction().await?;
-            if let Err(delete_error) = self.delete_with_tx(&mut transaction).await {
+            let post_commit = rullst_orm::post_commit::PostCommitScope::new();
+            let delete_result = post_commit
+                .run(self.delete_with_tx(&mut transaction))
+                .await;
+            if let Err(delete_error) = delete_result {
                 return match transaction.rollback().await {
                     Ok(()) => Err(delete_error),
                     Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
@@ -483,9 +524,14 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                 };
             }
             transaction.commit().await?;
-            Ok(())
+            post_commit.commit().await
         }
 
+        /// Deletes through a caller-owned transaction.
+        ///
+        /// Strict post-commit effects require this transaction to be managed by
+        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
+        /// commit decision to the ORM.
         pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
             let mut savepoint = (&mut **tx).begin().await?;
@@ -539,17 +585,37 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             #tenant_rows_check
             let futures = observers.iter().map(|obs| obs.deleted(&*self));
             rullst_orm::_futures::future::try_join_all(futures).await?;
+            #hook_after_delete
             #[cfg(feature = "redis")]
             {
-                use rullst_orm::_redis::AsyncCommands;
-                if let Ok(mut conn) = rullst_orm::Orm::redis_manager() {
-                    let payload = self.to_json();
-                    let topic = format!("orm:events:{}:deleted", #table_name);
-                    let _: Result<usize, _> = conn.publish(&topic, &payload).await;
-                }
+                let event = rullst_orm::ModelCommittedEvent::new(
+                    #table_name,
+                    self.id,
+                    rullst_orm::ModelOperation::Deleted,
+                    self.to_json(),
+                );
+                rullst_orm::after_commit(move || async move {
+                    use rullst_orm::_redis::AsyncCommands;
+                    rullst_orm::query_cache::invalidate_table(event.table).await?;
+                    if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
+                        let topic = format!("orm:events:{}:deleted", event.table);
+                        let _: usize = connection.publish(&topic, &event.payload).await?;
+                    }
+                    Ok(())
+                }).await?;
             }
-            #scout_delete
-            #hook_after_delete
+            let event = rullst_orm::ModelCommittedEvent::new(
+                #table_name,
+                self.id,
+                rullst_orm::ModelOperation::Deleted,
+                self.to_json(),
+            );
+            rullst_orm::after_commit(move || async move {
+                let futures = observers.iter().map(|observer| observer.committed(&event));
+                rullst_orm::_futures::future::try_join_all(futures).await?;
+                Ok(())
+            }).await?;
+            #scout_delete_after_commit
             Ok(())
         }
 

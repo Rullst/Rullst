@@ -68,6 +68,11 @@ pub fn generate(parsed: &ParsedModel) -> TokenStream {
             async fn created(&self, model: &#name) -> Result<(), rullst_orm::Error> { Ok(()) }
             async fn deleting(&self, model: &#name) -> Result<(), rullst_orm::Error> { Ok(()) }
             async fn deleted(&self, model: &#name) -> Result<(), rullst_orm::Error> { Ok(()) }
+            /// Receives an owned snapshot only after a managed transaction has committed.
+            async fn committed(&self, event: &rullst_orm::ModelCommittedEvent) -> Result<(), rullst_orm::Error> {
+                let _ = event;
+                Ok(())
+            }
         }
     }
 }

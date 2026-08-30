@@ -54,8 +54,10 @@ cargo test --workspace --all-features
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
 minimal umbrella boundaries, runs the portable database matrix on Linux, and
-tests the all-feature workspace on Linux, macOS, and Windows. A dedicated job
-checks the declared MSRV, Rust 1.96.0.
+tests the all-feature workspace on Linux, macOS, and Windows. Its pinned live
+Redis job also proves ORM cache hit/TTL/recovery, tenant/table invalidation,
+rollback preservation, process-local post-commit observers and Scout commit
+ordering. A dedicated job checks the declared MSRV, Rust 1.96.0.
 
 ## Recommended `main` branch-protection profile
 

@@ -11,16 +11,42 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         return quote! {
             #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
             pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
-                let is_new = self.id == 0;
-                #tenant_prepare
-                if is_new {
-                    #policy_create
-                } else {
-                    #policy_update
+                let scoped_transaction = rullst_orm::CURRENT_TX
+                    .try_with(|transaction| transaction.clone())
+                    .ok();
+                if let Some(transaction) = scoped_transaction {
+                    let mut transaction = transaction.lock().await;
+                    if let Some(tx) = transaction.as_mut() {
+                        return self.save_with_tx(tx).await;
+                    }
                 }
-                rullst_orm::dispatch_executor!(pool, |pool| self.save_with_tx_internal(pool).await)
+
+                let original_id = self.id;
+                let mut transaction = rullst_orm::Orm::begin_transaction().await?;
+                let post_commit = rullst_orm::post_commit::PostCommitScope::new();
+                let save_result = post_commit
+                    .run(self.save_with_tx(&mut transaction))
+                    .await;
+                if let Err(save_error) = save_result {
+                    self.id = original_id;
+                    return match transaction.rollback().await {
+                        Ok(()) => Err(save_error),
+                        Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                            "save failed: {}; rollback also failed: {}",
+                            save_error,
+                            rollback_error,
+                        ))),
+                    };
+                }
+                transaction.commit().await?;
+                post_commit.commit().await
             }
 
+            /// Saves through a caller-owned transaction.
+            ///
+            /// Strict post-commit effects require this transaction to be managed by
+            /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
+            /// commit decision to the ORM.
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 let is_new = self.id == 0;
                 #tenant_prepare
@@ -53,7 +79,11 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
 
             let original_id = self.id;
             let mut transaction = rullst_orm::Orm::begin_transaction().await?;
-            if let Err(save_error) = self.save_with_tx(&mut transaction).await {
+            let post_commit = rullst_orm::post_commit::PostCommitScope::new();
+            let save_result = post_commit
+                .run(self.save_with_tx(&mut transaction))
+                .await;
+            if let Err(save_error) = save_result {
                 self.id = original_id;
                 return match transaction.rollback().await {
                     Ok(()) => Err(save_error),
@@ -65,9 +95,14 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 };
             }
             transaction.commit().await?;
-            Ok(())
+            post_commit.commit().await
         }
 
+        /// Saves through a caller-owned transaction.
+        ///
+        /// Strict post-commit effects require this transaction to be managed by
+        /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
+        /// commit decision to the ORM.
         pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
             let original_id = self.id;

@@ -319,15 +319,21 @@ impl Orm {
     {
         let tx = Self::begin_transaction().await?;
         let tx_arc = std::sync::Arc::new(tokio::sync::Mutex::new(Some(tx)));
-        let result = crate::CURRENT_TX
-            .scope(tx_arc.clone(), f(tx_arc.clone()))
+        let post_commit = crate::post_commit::PostCommitScope::new();
+        let result = post_commit
+            .run(crate::CURRENT_TX.scope(tx_arc.clone(), f(tx_arc.clone())))
             .await;
 
         match result {
             Ok(val) => {
-                if let Some(tx) = tx_arc.lock().await.take() {
-                    tx.commit().await?;
-                }
+                let tx = tx_arc.lock().await.take().ok_or_else(|| {
+                    crate::Error::Internal(
+                        "managed transaction ownership was removed before automatic commit"
+                            .to_string(),
+                    )
+                })?;
+                tx.commit().await?;
+                post_commit.commit().await?;
                 Ok(val)
             }
             Err(err) => {

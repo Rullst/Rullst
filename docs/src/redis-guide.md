@@ -87,9 +87,11 @@ The failure and consistency rules are explicit:
 - Redis command failures or corrupt JSON fall back to the authoritative
   database; a successful read is returned even if cache population fails.
 - Explicit and task-scoped ORM transactions always bypass query cache.
-- ORM writes do not automatically invalidate remembered results. Keep TTLs
-  short enough for the domain, and do not cache authorization or other reads
-  that require immediate freshness.
+- Generated model saves/deletes invalidate the active tenant/table's remembered
+  results only after a managed commit; rollback keeps existing cache entries. Raw SQL, bulk
+  builders and writes from another process cannot be inferred. Keep defensive
+  TTLs and do not cache authorization or reads that require a stronger
+  distributed consistency contract.
 
 The Core `Cache` facade and ORM query cache use different keyspaces and APIs;
 initializing one does not initialize the other.

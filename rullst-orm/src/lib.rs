@@ -71,6 +71,7 @@ pub mod intent;
 pub mod policy;
 pub mod polyglot;
 pub mod pool;
+pub mod post_commit;
 pub mod privacy;
 #[cfg(feature = "redis")]
 #[doc(hidden)]
@@ -106,6 +107,7 @@ pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,
 };
+pub use post_commit::{ModelCommittedEvent, ModelOperation, after_commit};
 pub use privacy::{ComplianceModel, PrivacyReport, SecretString};
 pub use replica::ReplicaPool;
 pub use repository::{GenericRepository, Repository};

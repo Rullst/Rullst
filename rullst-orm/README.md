@@ -67,8 +67,13 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `old_values`/`new_values` diffs. Generated instance saves/deletes and their
   audit row now commit or roll back one savepoint together and audit failures
   reject the mutation. Bulk builders do not synthesize per-row history; actor
-  identity, revision restore, and durable post-commit effects remain
-  application/roadmap work.
+  identity and revision restore remain application/roadmap work.
+- **Bounded Post-Commit Effects**: `after_commit` and the generated observer
+  `committed` callback run only after `Orm::transaction` or a direct generated
+  save/delete commits. Rollback discards them, and post-commit failures use a
+  distinct error that says the database is already durable. This is
+  process-local, not a durable outbox; caller-owned raw SQLx transactions cannot
+  expose their eventual commit decision to generated hooks.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
 - **Scout Extension Point**: Connect an application-owned search engine to the
   generated search/save/delete hooks; live Meili/Algolia/Elastic adapters are
@@ -89,6 +94,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   versioned SHA-256 key bound to the application namespace, active tenant,
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
+  Generated model saves/deletes invalidate keys for the active tenant and table
+  only after commit, using a bounded non-blocking scan; cluster/failover
+  evidence remains outside the current contract.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
@@ -183,9 +191,29 @@ let users = User::query().where_like("email", "%@example.com")
 An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and
-task-scoped transactions always bypass the cache. Writes are not automatically
-invalidated yet, so select a TTL that safely bounds stale data; do not cache
-authorization or other freshness-critical reads.
+task-scoped transactions always bypass the cache. Generated model saves and
+deletes invalidate that table's generated cache keys after commit. Raw SQL,
+bulk builders and writes outside generated model methods cannot be inferred, so
+keep a defensive TTL and do not cache authorization or other reads whose
+freshness requires a stronger distributed consistency contract.
+
+Register process-local effects against the managed commit boundary:
+
+```rust
+use rullst_orm::{Error, Orm, after_commit};
+
+Orm::transaction(|_| Box::pin(async move {
+    // Executor-aware ORM operations participate in this transaction.
+    after_commit(|| async {
+        // Publish a best-effort projection after commit.
+        Ok::<(), Error>(())
+    }).await?;
+    Ok::<(), Error>(())
+})).await?;
+```
+
+For delivery that must survive a process crash, write an idempotent outbox row
+in the same database transaction and dispatch it from a retrying worker.
 
 ---
 

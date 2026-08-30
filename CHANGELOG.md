@@ -70,10 +70,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   SHA-256 keys bound to an explicit application namespace, opaque tenant scope,
   table, SQL and typed bindings. Explicit and task-scoped transactions bypass
   cache, zero TTL is rejected, missing Redis configuration fails closed, and
-  Redis transport/corrupt-entry failures fall back to the database. Automatic
-  post-commit write invalidation remains roadmap work, so TTL bounds staleness.
-  CI and release gates exercise cache hits, TTL, corrupt-entry recovery and both
-  transaction APIs against a pinned live Redis service.
+  Redis transport/corrupt-entry failures fall back to the database. Generated
+  model saves/deletes now invalidate active-tenant/table cache keys through a
+  bounded scan after commit; rollback preserves the cache. CI and release gates exercise
+  hits, TTL, corrupt-entry recovery, invalidation and both transaction APIs
+  against a pinned live Redis service. Raw/bulk writes and Redis
+  cluster/failover remain outside this contract.
+- Added a bounded post-commit contract to `rullst-orm`: `after_commit` and the
+  generated `committed` observer defer process-local effects until a direct
+  generated save/delete or `Orm::transaction` has committed. Redis pub/sub and
+  Scout projections use the same boundary, rollback discards callbacks, all
+  queued callbacks are attempted, and `PostCommit` distinguishes effect failure
+  after durable persistence. This is not a crash-safe outbox/retry system, and
+  caller-owned raw SQLx transactions cannot expose their eventual commit.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

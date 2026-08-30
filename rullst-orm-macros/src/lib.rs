@@ -183,6 +183,9 @@ mod tests {
         assert!(builder.contains("where_id"));
         assert!(models.contains("fn delete"));
         assert!(models.contains("fn search"));
+        assert!(models.contains("PostCommitScope :: new"));
+        assert!(models.contains("after_commit"));
+        assert!(models.contains("scout :: get_search_engine"));
     }
 
     #[test]

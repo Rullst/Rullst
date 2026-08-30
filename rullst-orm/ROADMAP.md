@@ -57,10 +57,16 @@ retaining Rust typing, explicit escape hatches and parameterized values.
 - [~] **Integrated Caching Layer**: `.remember(seconds)` uses versioned
   application/tenant-aware SHA-256 keys and bypasses explicit/task-scoped
   transactions. Missing configuration fails closed; transport/corrupt-entry
-  failures use the database. A pinned single-node Redis gate covers hit, TTL,
-  corrupt-entry recovery and transaction bypass; automatic post-commit write
-  invalidation and cluster/failover evidence are not currently claimed.
-- [~] **Asynchronous Reactive Event Hooks**: Async observers and optional Redis publish exist; a durable, strictly post-commit outbox does not.
+  failures use the database. Generated model save/delete invalidation is
+  tenant/table-scoped, bounded and post-commit. A pinned single-node Redis gate covers
+  hit, TTL, corrupt-entry recovery, invalidation and rollback preservation;
+  raw/bulk writes and cluster/failover evidence remain outside the contract.
+- [~] **Asynchronous Reactive Event Hooks**: `after_commit`, generated
+  `committed` observers, Redis invalidation/pub-sub and Scout projection use the
+  managed transaction commit boundary. Rollback drops effects and a distinct
+  error reports failures after persistence. This is process-local; a durable,
+  idempotent outbox/retry worker is still required for guaranteed delivery, and
+  caller-owned raw SQLx transactions cannot expose their later decision.
 - [~] **Security & Performance Static Audit**: Current gates and targeted hardening are tracked; an old third-party audit cannot become a timeless “all findings resolved” guarantee.
 - [ ] **Continuous Performance Comparison with Diesel and SeaORM**: Rullst Criterion benchmarks exist, but the historical cross-ORM comparison/proof does not.
 - [~] **Native OpenTelemetry**: Query spans use `tracing`; transaction/checkout coverage and an OpenTelemetry export contract are incomplete.

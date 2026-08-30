@@ -180,16 +180,39 @@ new_user.delete().await?;
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
-  traversal and strictly post-commit external observers are separate contracts.
+  traversal remains a separate contract.
 * Generated `#[orm(auditable)]` instance `save()`/`delete()` operations write
   their bounded audit entry through the same explicit, implicit, or task-scoped
   transaction as the model mutation. Audit write errors fail the mutation and
   roll its savepoint back; direct `log_audit` calls also honor a task-scoped
   transaction. Bulk builders do not synthesize per-row history. Actor/tenant
-  identity, revision restore, and durable post-commit delivery of observers,
-  search, or Redis events are separate application or roadmap contracts.
+  identity and revision restore remain separate application or roadmap
+  contracts.
 
-### 5.5. Generated Redis Query Cache Contract
+### 5.5. Process-Local Post-Commit Contract
+
+* `Orm::transaction` and direct generated model `save()`/`delete()` operations
+  own a post-commit callback scope. `after_commit` callbacks registered within
+  it run only after SQLx confirms commit and are discarded on rollback. When no
+  managed transaction is active, `after_commit` executes immediately for an
+  already committed/autocommit operation.
+* Generated observers retain synchronous lifecycle callbacks such as
+  `creating`, `created`, and `saved` for mutation validation. The separate
+  `committed(ModelCommittedEvent)` callback receives an owned, hidden-field-
+  aware snapshot after the managed commit. Generated Redis invalidation/pub-sub
+  and Scout projections use this same post-commit boundary.
+* Every queued callback is attempted. A failure is returned as `PostCommit`,
+  whose contract explicitly means the database mutation is already durable.
+  Applications must not retry the database mutation blindly from this error.
+* A caller-owned raw SQLx transaction passed to `save_with_tx` or
+  `delete_with_tx` does not expose its later commit/rollback decision to the
+  ORM. Use `Orm::transaction` for the strict process-local boundary.
+* These callbacks do not survive process failure and provide no retry,
+  idempotency or cross-node delivery. Irreversible effects and guaranteed
+  webhooks require an application-owned transactional outbox written in the
+  same database transaction.
+
+### 5.6. Generated Redis Query Cache Contract
 
 * The optional `redis` feature enables `.remember(seconds)` for generated SQLx
   reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
@@ -204,11 +227,15 @@ new_user.delete().await?;
   without initializing Redis fails closed as a configuration error; transport
   failures and corrupt cached JSON fail open to the authoritative database.
 * Cache writes occur only after a successful database read and retain encrypted
-  model fields as ciphertext. Automatic write invalidation and a durable
-  post-commit invalidation outbox are not implemented: callers must choose a
-  bounded TTL and accept that a remembered query can be stale until expiry.
+  model fields as ciphertext. Generated model `save()`/`delete()` operations
+  invalidate the active tenant/table's versioned keys only after commit through
+  a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
+  Raw SQL, bulk builders, caller-owned raw transactions and writes from other
+  processes cannot be inferred. Callers must retain a defensive TTL and treat
+  Redis cluster/failover and durable invalidation delivery as separate
+  application contracts.
 
-### 5.6. Polyglot Persistence Boundary
+### 5.7. Polyglot Persistence Boundary
 
 * Optional persistence adapters are disabled by default and selected with
   `mongodb`, `duckdb`, `turso`, `surrealdb`, or the `polyglot` convenience

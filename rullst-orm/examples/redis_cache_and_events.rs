@@ -83,8 +83,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Orm::enable_query_log();
 
         // 5. Caching: fetch with .remember(10) (10 seconds cache TTL).
-        // Writes do not automatically invalidate query cache yet, so the TTL
-        // must safely bound staleness for the application's domain.
+        // Generated model writes invalidate this table after commit. The TTL
+        // still bounds raw/bulk/cross-process writes the ORM cannot infer.
         println!(
             "\n🔍 Fetching product for the FIRST time (should hit SQL database and cache in Redis):"
         );

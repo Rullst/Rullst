@@ -17,6 +17,8 @@ pub enum RullstError {
     SerializationError(String),
     /// A cache or event-related error.
     CacheError(String),
+    /// A database commit succeeded, but one or more post-commit effects failed.
+    PostCommit(String),
     /// A validation error, such as invalid SQL identifiers.
     Validation(String),
     /// Other internal errors.
@@ -37,6 +39,13 @@ impl fmt::Display for RullstError {
             RullstError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
             RullstError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
             RullstError::CacheError(msg) => write!(f, "Cache error: {}", msg),
+            RullstError::PostCommit(msg) => {
+                write!(
+                    f,
+                    "Database committed, but a post-commit effect failed: {}",
+                    msg
+                )
+            }
             RullstError::Validation(msg) => write!(f, "Validation error: {}", msg),
             RullstError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
@@ -96,6 +105,10 @@ mod tests {
         assert_eq!(
             RullstError::SerializationError("msg".to_string()).to_string(),
             "Serialization error: msg"
+        );
+        assert_eq!(
+            RullstError::PostCommit("msg".to_string()).to_string(),
+            "Database committed, but a post-commit effect failed: msg"
         );
         assert_eq!(
             RullstError::Validation("msg".to_string()).to_string(),

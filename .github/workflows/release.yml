@@ -89,10 +89,14 @@ jobs:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
 
-      - name: Run live ORM Redis query-cache contract
+      - name: Run ORM cache and post-commit contracts
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
-        run: cargo test -p rullst-orm --features redis --test query_cache_live
+        run: >-
+          cargo test -p rullst-orm --features redis
+          --test query_cache_live
+          --test post_commit_transaction_test
+          --test scout_post_commit_test
 
       - name: Verify current crates.io name ownership and bootstrap scope
         run: bash .github/check-crates-ownership.sh

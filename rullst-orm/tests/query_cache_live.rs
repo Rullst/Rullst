@@ -131,6 +131,61 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .expect("read repaired cache entry");
     assert!(repaired.contains("second"));
 
+    let mut updated = recovered;
+    updated.name = "third".to_string();
+    updated
+        .save()
+        .await
+        .expect("model save should commit before cache invalidation");
+    let exists_after_commit: bool = redis
+        .exists(&cache_key)
+        .await
+        .expect("inspect invalidated cache key");
+    assert!(!exists_after_commit);
+
+    let repopulated = QueryCacheLiveRecord::query()
+        .where_id(1)
+        .limit(1)
+        .remember(30)
+        .first()
+        .await
+        .expect("repopulate cache after committed update")
+        .expect("updated fixture should exist");
+    assert_eq!(repopulated.name, "third");
+
+    let rollback = Orm::transaction(|_| {
+        Box::pin(async move {
+            let mut model = QueryCacheLiveRecord::query()
+                .where_id(1)
+                .first()
+                .await?
+                .ok_or_else(|| {
+                    rullst_orm::Error::DatabaseError("live cache fixture disappeared".to_string())
+                })?;
+            model.name = "rolled back fourth".to_string();
+            model.save().await?;
+            Err::<(), rullst_orm::Error>(rullst_orm::Error::Validation(
+                "force cache invalidation rollback".to_string(),
+            ))
+        })
+    })
+    .await;
+    assert!(rollback.is_err());
+    let exists_after_rollback: bool = redis
+        .exists(&cache_key)
+        .await
+        .expect("cache should survive rolled-back update");
+    assert!(exists_after_rollback);
+    let still_cached = QueryCacheLiveRecord::query()
+        .where_id(1)
+        .limit(1)
+        .remember(30)
+        .first()
+        .await
+        .expect("read cache after rollback")
+        .expect("cached fixture should exist");
+    assert_eq!(still_cached.name, "third");
+
     let _: usize = redis
         .del(&cache_key)
         .await
