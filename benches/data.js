@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788089358616,
+  "lastUpdate": 1788094777506,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -10309,6 +10309,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2255,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a88aabd66b0a52ed4e9a543a7ceefb9801574446",
+          "message": "feat(orm): add durable transactional outbox",
+          "timestamp": "2026-08-30T09:53:20-03:00",
+          "tree_id": "078736268707dfec79cc38923280b17a61ddeb2b",
+          "url": "https://github.com/Rullst/Rullst/commit/a88aabd66b0a52ed4e9a543a7ceefb9801574446"
+        },
+        "date": 1788094776207,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 716,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 959,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 656,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2230,
+            "range": "± 68",
             "unit": "ns/iter"
           }
         ]
