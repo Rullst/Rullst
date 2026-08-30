@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788120596504,
+  "lastUpdate": 1788121868212,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -2581,6 +2581,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/26451e691ad885bff791c98c0bd0e1083fef951a"
         },
         "date": 1788120595816,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3baa13c4e496da89631e2a7ab19aca89bb36c8c0",
+          "message": "feat(studio): retain bounded queue completion history",
+          "timestamp": "2026-08-30T17:20:58-03:00",
+          "tree_id": "7f078a8eae71471ea1f945003eadb5fa8d73e048",
+          "url": "https://github.com/Rullst/Rullst/commit/3baa13c4e496da89631e2a7ab19aca89bb36c8c0"
+        },
+        "date": 1788121867491,
         "tool": "cargo",
         "benches": [
           {
