@@ -1,8 +1,11 @@
 // src/queue/sqlite.rs — SQLite-backed queue driver with automatic schema migrations.
 
-use super::{QueueDriver, QueueError, QueuedJob, QueuedJobDetail};
+use super::{
+    QueueDriver, QueueError, QueuedJob, QueuedJobDetail, unix_timestamp_millis_ceil,
+    unix_timestamp_millis_floor,
+};
 use async_trait::async_trait;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// Queue driver backed by a SQLite database.
 ///
@@ -30,6 +33,7 @@ impl SqliteDriver {
                 status TEXT NOT NULL DEFAULT 'pending',
                 error TEXT,
                 attempts INTEGER NOT NULL DEFAULT 0,
+                available_at_ms INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             )"#,
@@ -38,6 +42,27 @@ impl SqliteDriver {
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs table: {}", e)))?;
 
+        let scheduled_column: Option<String> = sqlx::query_scalar(
+            "SELECT name FROM pragma_table_info('rullst_jobs') WHERE name = 'available_at_ms'",
+        )
+        .fetch_optional(&pool)
+        .await
+        .map_err(|error| {
+            QueueError::Driver(format!("Failed to inspect rullst_jobs columns: {error}"))
+        })?;
+        if scheduled_column.is_none() {
+            sqlx::query(
+                "ALTER TABLE rullst_jobs ADD COLUMN available_at_ms INTEGER NOT NULL DEFAULT 0",
+            )
+            .execute(&pool)
+            .await
+            .map_err(|error| {
+                QueueError::Driver(format!(
+                    "Failed to add rullst_jobs scheduling column: {error}"
+                ))
+            })?;
+        }
+
         // Add index for fast polling of pending jobs
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_status_created ON rullst_jobs(status, created_at)"
@@ -45,6 +70,14 @@ impl SqliteDriver {
         .execute(&pool)
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to create rullst_jobs indexes: {}", e)))?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_rullst_jobs_ready ON rullst_jobs(status, available_at_ms, created_at)",
+        )
+        .execute(&pool)
+        .await
+        .map_err(|error| {
+            QueueError::Driver(format!("Failed to create scheduled-job index: {error}"))
+        })?;
 
         Ok(Self { pool })
     }
@@ -93,7 +126,7 @@ impl SqliteDriver {
 
     /// Retries a failed job by resetting its status to 'pending' and clearing error details.
     pub async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
+        let result = sqlx::query("UPDATE rullst_jobs SET status = 'pending', attempts = 0, error = NULL, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'failed'")
             .bind(job_id)
             .execute(&self.pool)
             .await
@@ -121,20 +154,53 @@ impl QueueDriver for SqliteDriver {
             .bind(payload)
             .execute(&self.pool)
             .await
-            .map_err(|e| QueueError::Driver(format!("Failed to push job: {}", e)))?;
+            .map_err(|error| QueueError::Driver(format!("Failed to push job: {error}")))?;
+        Ok(())
+    }
+
+    async fn push_at(
+        &self,
+        id: &str,
+        job_name: &str,
+        payload: &str,
+        available_at: SystemTime,
+    ) -> Result<(), QueueError> {
+        let available_at_ms =
+            i64::try_from(unix_timestamp_millis_ceil(available_at)?).map_err(|_| {
+                QueueError::InvalidConfiguration(
+                    "scheduled timestamp exceeds SQLite integer range".to_string(),
+                )
+            })?;
+        sqlx::query(
+            "INSERT INTO rullst_jobs (id, name, payload, available_at_ms) VALUES (?, ?, ?, ?)",
+        )
+        .bind(id)
+        .bind(job_name)
+        .bind(payload)
+        .bind(available_at_ms)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| QueueError::Driver(format!("Failed to push job: {}", e)))?;
         Ok(())
     }
 
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        let now_ms =
+            i64::try_from(unix_timestamp_millis_floor(SystemTime::now())?).map_err(|_| {
+                QueueError::Driver("current timestamp exceeds SQLite integer range".to_string())
+            })?;
         // Atomically select and mark the oldest pending job as 'processing'
         let row: Option<(String, String, String, i32)> = sqlx::query_as(
             r#"UPDATE rullst_jobs
                SET status = 'processing', attempts = attempts + 1, updated_at = datetime('now')
                WHERE id = (
-                   SELECT id FROM rullst_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1
+                   SELECT id FROM rullst_jobs
+                   WHERE status = 'pending' AND available_at_ms <= ?
+                   ORDER BY available_at_ms ASC, created_at ASC LIMIT 1
                )
                RETURNING id, name, payload, attempts"#,
         )
+        .bind(now_ms)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| QueueError::Driver(format!("Failed to pop job: {}", e)))?;
@@ -207,7 +273,7 @@ impl QueueDriver for SqliteDriver {
 
     async fn requeue(&self, job_id: &str, reason: &str) -> Result<(), QueueError> {
         let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
+            "UPDATE rullst_jobs SET status = 'pending', error = ?, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'processing'",
         )
         .bind(reason)
         .bind(job_id)
@@ -226,7 +292,7 @@ impl QueueDriver for SqliteDriver {
         let stale_seconds = stale_after.as_secs().max(1);
         let modifier = format!("-{stale_seconds} seconds");
         let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', updated_at = datetime('now') WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
+            "UPDATE rullst_jobs SET status = 'pending', error = 'recovered after worker interruption', available_at_ms = 0, updated_at = datetime('now') WHERE status = 'processing' AND updated_at <= datetime('now', ?)",
         )
         .bind(modifier)
         .execute(&self.pool)

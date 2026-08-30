@@ -1,7 +1,7 @@
 // src/worker.rs — Background mail worker handler registration.
 
 use crate::facade::{MAIL_JOB_SCHEMA_VERSION, QueuedMail};
-use crate::{Mail, Message};
+use crate::{Mail, MailError, Message};
 use rullst_core::queue::Worker;
 use serde_json::Value;
 
@@ -27,17 +27,34 @@ pub fn register_mail_handler(worker: &mut Worker) {
                     )
                     .into());
                 }
+                let message = prepare_claimed_message(job.message)?;
                 if let Some(tenant_id) = job.tenant_id {
-                    Mail::send_now_for_tenant(tenant_id, job.message)
+                    Mail::send_now_for_tenant(tenant_id, message)
                         .await
                         .map_err(Into::into)
                 } else {
-                    Mail::send_now(job.message).await.map_err(Into::into)
+                    Mail::send_now(message).await.map_err(Into::into)
                 }
             }
-            MailJobPayload::Legacy(message) => Mail::send_now(message).await.map_err(Into::into),
+            MailJobPayload::Legacy(message) => Mail::send_now(prepare_claimed_message(message)?)
+                .await
+                .map_err(Into::into),
         }
     });
+}
+
+fn prepare_claimed_message(mut message: Message) -> Result<Message, MailError> {
+    if message
+        .send_at
+        .as_ref()
+        .is_some_and(|send_at| send_at > &chrono::Utc::now())
+    {
+        return Err(MailError::SendError(
+            "queue claimed scheduled mail before its due timestamp".to_string(),
+        ));
+    }
+    message.send_at = None;
+    Ok(message)
 }
 
 #[cfg(test)]
@@ -59,5 +76,22 @@ mod tests {
         };
         assert_eq!(decoded.tenant_id.as_deref(), Some("tenant_acme"));
         assert_eq!(decoded.schema_version, MAIL_JOB_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn claimed_schedule_is_enforced_then_consumed_by_the_queue() {
+        let future = Message::new()
+            .to("future@example.com")
+            .send_in(std::time::Duration::from_secs(60));
+        assert!(matches!(
+            prepare_claimed_message(future),
+            Err(MailError::SendError(_))
+        ));
+
+        let due = Message::new()
+            .to("due@example.com")
+            .send_at(chrono::Utc::now() - chrono::Duration::seconds(1));
+        let claimed = prepare_claimed_message(due).expect("due message");
+        assert!(claimed.send_at.is_none());
     }
 }

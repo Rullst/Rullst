@@ -9,6 +9,9 @@
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
+- **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
+  timestamps and never claim a job before its millisecond due time. Delivery is
+  poll-dependent and at-least-once.
 
 ## 🚀 Usage
 
@@ -31,6 +34,12 @@ rullst-core = { version = "12", features = ["orm", "queue-sqlite"] }
 Enable `orm`, `queue-sqlite`, `queue-redis`, or `telemetry` only when that
 integration is required. The primary `rullst` crate keeps `orm` and
 `queue-sqlite` in its default feature set for application compatibility.
+
+Both built-in queue drivers implement `Queue::dispatch_at` for schedules up to
+366 days ahead. SQLite performs an automatic additive schema migration; Redis
+uses a sorted set and server time, with a digest-pinned live CI contract. Custom
+drivers fail with `QueueError::Unsupported` for future jobs until they implement
+the scheduling method explicitly.
 
 ### Minimal HTTP Server
 

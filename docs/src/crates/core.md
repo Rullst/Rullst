@@ -16,6 +16,14 @@ mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
 `purge_completed_jobs` name is retained only as a source-compatibility alias for
 the historical operation, which actually removed failed jobs.
 
+`Queue::dispatch_at` persists a due timestamp for at most 366 days through the
+built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
+milliseconds; Redis atomically promotes bounded batches using Redis server time.
+Neither backend claims a scheduled job early. Execution starts on the first
+worker poll after it becomes due and retains the queue's at-least-once semantics.
+Custom drivers return `QueueError::Unsupported` for future timestamps unless
+they explicitly implement durable scheduling.
+
 ## ✨ Core Features & Subsystems
 
 - **Axum-compatible routing:** `rullst::Router` wraps and converts to/from
@@ -30,6 +38,9 @@ the historical operation, which actually removed failed jobs.
   mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
   missing or malformed `openapi.json` returns `503`.
 - **Unified Error Handling:** `AppError` standardizes fallible application paths and error-console integration. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
+- **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
+  the live Redis CI contract proves that an immediate job remains claimable
+  while a future job stays unavailable.
 
 ---
 

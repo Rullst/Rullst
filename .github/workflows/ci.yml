@@ -180,6 +180,11 @@ jobs:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
 
+      - name: Prove Redis queue never claims scheduled jobs early
+        env:
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: cargo test -p rullst-core --features queue-redis --test queue_scheduling_live
+
       - name: Prove ORM cache and post-commit contracts
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379

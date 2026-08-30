@@ -6,6 +6,7 @@ use crate::security::is_crlf_safe;
 use crate::validator::{validate_email_deliverability, validate_email_syntax};
 
 const MAX_TENANT_ID_LEN: usize = 128;
+const MAX_SCHEDULE_DAYS: i64 = 366;
 
 /// Validated tenant metadata associated with a delivery.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,6 +82,21 @@ impl DeliveryPipeline {
         validate_tenant_id(tenant_id)
     }
 
+    /// Rejects direct delivery through a transport that cannot persist future scheduling.
+    pub(crate) fn require_due(transport: &'static str, message: &Message) -> Result<(), MailError> {
+        if message
+            .send_at
+            .as_ref()
+            .is_some_and(|send_at| send_at > &chrono::Utc::now())
+        {
+            Err(MailError::ConfigError(format!(
+                "{transport} cannot schedule future delivery directly; initialize a durable Rullst queue"
+            )))
+        } else {
+            Ok(())
+        }
+    }
+
     fn prepare_with_context(
         message: &Message,
         context: DeliveryContext,
@@ -105,6 +121,14 @@ impl DeliveryPipeline {
         if let Some(url) = message.unsubscribe_url.as_deref() {
             validate_header("List-Unsubscribe URL", url)?;
             validate_http_url("List-Unsubscribe URL", url)?;
+        }
+
+        if message.send_at.as_ref().is_some_and(|send_at| {
+            send_at > &(chrono::Utc::now() + chrono::Duration::days(MAX_SCHEDULE_DAYS))
+        }) {
+            return Err(MailError::ValidationError(format!(
+                "mail delivery may be scheduled at most {MAX_SCHEDULE_DAYS} days ahead"
+            )));
         }
 
         for attachment in &message.attachments {
@@ -242,5 +266,30 @@ mod tests {
         ] {
             assert!(validate_action_url(invalid).is_err(), "accepted {invalid}");
         }
+    }
+
+    #[test]
+    fn rejects_unbounded_schedule_instead_of_sending_immediately() {
+        let message = Message::new()
+            .to("future@example.com")
+            .text("bounded")
+            .send_in(std::time::Duration::MAX);
+        assert!(message.send_at.is_some());
+        assert!(matches!(
+            DeliveryPipeline::prepare(&message),
+            Err(MailError::ValidationError(_))
+        ));
+    }
+
+    #[test]
+    fn direct_non_scheduling_transport_rejects_future_delivery() {
+        let future = Message::new()
+            .to("future@example.com")
+            .text("bounded")
+            .send_in(std::time::Duration::from_secs(60));
+        assert!(matches!(
+            DeliveryPipeline::require_due("fixture", &future),
+            Err(MailError::ConfigError(_))
+        ));
     }
 }

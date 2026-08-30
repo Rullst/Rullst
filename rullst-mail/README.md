@@ -18,7 +18,7 @@
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
-- **⏰ Provider-specific Scheduling (`.send_at()`, `.send_in()`):** Resend and SendGrid receive their scheduling fields. Generic queue, SMTP and Postmark paths do not yet guarantee due-time dispatch.
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES-proxy paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
@@ -56,11 +56,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unsubscribe_url("https://rullst.dev/unsub/alice");
 
     // The mandatory pipeline validates and sanitizes before queueing or delivery.
-    Mail::send(message).await?;
+Mail::send(message).await?;
 
     Ok(())
 }
 ```
+
+For a schedule that survives process restarts, operate a built-in queue and keep
+its worker handle alive:
+
+```rust,no_run
+use rullst_core::queue::{Queue, Worker};
+use rullst_mail::{register_mail_handler, Mail, Message};
+
+# async fn schedule() -> Result<(), Box<dyn std::error::Error>> {
+let queue = Queue::sqlite("sqlite://storage/jobs.db").await?;
+let mut worker = Worker::new(&queue).poll_interval(100);
+register_mail_handler(&mut worker);
+let worker_handle = worker.run()?;
+
+let message = Message::new()
+    .to("alice@example.com")
+    .subject("Scheduled update")
+    .text("Delivered after the durable due time")
+    .send_in(std::time::Duration::from_secs(60));
+Mail::enqueue(&queue, message).await?;
+
+// Keep `worker_handle` in application state; shut it down during graceful exit.
+worker_handle.shutdown().await?;
+# Ok(())
+# }
+```
+
+Execution begins on the first worker poll after the UTC timestamp and remains
+at-least-once. Queue scheduling does not promise exact wall-clock execution,
+exactly-once provider delivery, or provider acceptance.
 
 ---
 

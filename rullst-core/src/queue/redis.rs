@@ -3,12 +3,20 @@
 #[cfg(feature = "queue-redis")]
 /// Redis queue driver implementation and its recoverable lease protocol.
 pub mod redis_driver {
-    use super::super::{QueueDriver, QueueError, QueuedJob};
+    use super::super::{QueueDriver, QueueError, QueuedJob, unix_timestamp_millis_ceil};
     use async_trait::async_trait;
     use serde::Deserialize;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     const CLAIM_SCRIPT: &str = r#"
+local now = redis.call('TIME')
+local claimed_at_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
+local due = redis.call('ZRANGEBYSCORE', KEYS[5], '-inf', claimed_at_ms, 'LIMIT', 0, 100)
+for _, scheduled_raw in ipairs(due) do
+    if redis.call('ZREM', KEYS[5], scheduled_raw) == 1 then
+        redis.call('RPUSH', KEYS[1], scheduled_raw)
+    end
+end
 local raw = redis.call('LPOP', KEYS[1])
 if not raw then return nil end
 local ok, envelope = pcall(cjson.decode, raw)
@@ -16,8 +24,6 @@ if ok and type(envelope) == 'table' and type(envelope.attempts) == 'number' then
     envelope.attempts = envelope.attempts + 1
     raw = cjson.encode(envelope)
 end
-local now = redis.call('TIME')
-local claimed_at_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
 if ok and type(envelope) == 'table' and type(envelope.id) == 'string' and envelope.id ~= '' then
     if redis.call('HEXISTS', KEYS[3], envelope.id) == 1 then
         redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'duplicate processing job id' }))
@@ -82,6 +88,10 @@ end
 return recovered
 "#;
 
+    const PENDING_COUNT_SCRIPT: &str = r#"
+return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
+"#;
+
     #[derive(Deserialize)]
     struct RedisJobEnvelope {
         id: String,
@@ -97,6 +107,7 @@ return recovered
         queue_key: String,
         processing_key: String,
         processing_index_key: String,
+        scheduled_key: String,
         failed_key: String,
         dead_letter_key: String,
     }
@@ -108,15 +119,49 @@ return recovered
             let client = redis::Client::open(redis_url).map_err(|error| {
                 QueueError::Driver(format!("Failed to connect to Redis: {error}"))
             })?;
-            let queue_key = "rullst:queue:default".to_string();
-            Ok(Self {
+            Ok(Self::from_client(
+                client,
+                "rullst:queue:default".to_string(),
+            ))
+        }
+
+        /// Selects an isolated queue namespace before the driver is shared with workers.
+        pub fn try_with_namespace(
+            mut self,
+            namespace: impl Into<String>,
+        ) -> Result<Self, QueueError> {
+            let namespace = namespace.into();
+            if namespace.is_empty()
+                || namespace.len() > 64
+                || !namespace
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+            {
+                return Err(QueueError::InvalidConfiguration(
+                    "Redis queue namespace must be 1-64 ASCII letters, digits, '-' or '_'"
+                        .to_string(),
+                ));
+            }
+            let queue_key = format!("rullst:queue:{namespace}");
+            self.queue_key = queue_key.clone();
+            self.processing_key = format!("{queue_key}:processing");
+            self.processing_index_key = format!("{queue_key}:processing:index");
+            self.scheduled_key = format!("{queue_key}:scheduled");
+            self.failed_key = format!("{queue_key}:failed");
+            self.dead_letter_key = format!("{queue_key}:dead-letter");
+            Ok(self)
+        }
+
+        fn from_client(client: redis::Client, queue_key: String) -> Self {
+            Self {
                 processing_key: format!("{queue_key}:processing"),
                 processing_index_key: format!("{queue_key}:processing:index"),
+                scheduled_key: format!("{queue_key}:scheduled"),
                 failed_key: format!("{queue_key}:failed"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
                 client,
-            })
+            }
         }
 
         async fn reject_claimed(&self, raw: &str, reason: &str) -> Result<(), QueueError> {
@@ -200,15 +245,43 @@ return recovered
             Ok(())
         }
 
+        async fn push_at(
+            &self,
+            id: &str,
+            job_name: &str,
+            payload: &str,
+            available_at: SystemTime,
+        ) -> Result<(), QueueError> {
+            let available_at_ms = unix_timestamp_millis_ceil(available_at)?;
+            let mut connection = self.connection().await?;
+            let job_data = serde_json::json!({
+                "id": id,
+                "name": job_name,
+                "payload": payload,
+                "attempts": 0
+            });
+            redis::cmd("ZADD")
+                .arg(&self.scheduled_key)
+                .arg(available_at_ms)
+                .arg(job_data.to_string())
+                .query_async::<i64>(&mut connection)
+                .await
+                .map_err(|error| {
+                    QueueError::Driver(format!("Failed to schedule Redis job: {error}"))
+                })?;
+            Ok(())
+        }
+
         async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
             let mut connection = self.connection().await?;
             let raw: Option<String> = redis::cmd("EVAL")
                 .arg(CLAIM_SCRIPT)
-                .arg(4)
+                .arg(5)
                 .arg(&self.queue_key)
                 .arg(&self.processing_key)
                 .arg(&self.processing_index_key)
                 .arg(&self.dead_letter_key)
+                .arg(&self.scheduled_key)
                 .query_async(&mut connection)
                 .await
                 .map_err(|error| {
@@ -299,8 +372,11 @@ return recovered
 
         async fn pending_count(&self) -> Result<u64, QueueError> {
             let mut connection = self.connection().await?;
-            let count: i64 = redis::cmd("LLEN")
+            let count: i64 = redis::cmd("EVAL")
+                .arg(PENDING_COUNT_SCRIPT)
+                .arg(2)
                 .arg(&self.queue_key)
+                .arg(&self.scheduled_key)
                 .query_async(&mut connection)
                 .await
                 .map_err(|error| {
@@ -361,6 +437,21 @@ return recovered
             assert_eq!(job.id, "job-1");
             assert_eq!(job.payload["ok"], true);
             assert_eq!(job.attempts, 2);
+        }
+
+        #[test]
+        fn namespace_is_bounded_and_syntax_checked() {
+            let valid = RedisDriver::new("redis://127.0.0.1/")
+                .unwrap()
+                .try_with_namespace("tenant_42-prod");
+            assert!(valid.is_ok());
+
+            for invalid in ["", "../shared", "contains space"] {
+                let result = RedisDriver::new("redis://127.0.0.1/")
+                    .unwrap()
+                    .try_with_namespace(invalid);
+                assert!(matches!(result, Err(QueueError::InvalidConfiguration(_))));
+            }
         }
     }
 }

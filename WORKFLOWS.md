@@ -55,9 +55,9 @@ cargo test --workspace --all-features
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
 minimal umbrella boundaries, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. Its pinned live
-Redis job also proves ORM cache hit/TTL/recovery, tenant/table invalidation,
-rollback preservation, process-local post-commit observers and Scout commit
-ordering. A separate SQLite outbox contract runs on all three operating systems
+Redis job also proves that scheduled Core jobs are not claimed early, plus ORM
+cache hit/TTL/recovery, tenant/table invalidation, rollback preservation,
+process-local post-commit observers and Scout commit ordering. A separate SQLite outbox contract runs on all three operating systems
 and covers atomicity, conflicting idempotency keys, claim races, lease expiry,
 retry and dead-letter; the relational matrix repeats the core outbox lifecycle
 against PostgreSQL, MySQL, MariaDB and strict SQLite. A dedicated job checks

@@ -62,6 +62,7 @@ impl MailDriver for PostmarkDriver {
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("postmark", message);
         }
+        DeliveryPipeline::require_due("Postmark", message)?;
 
         static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
         let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);

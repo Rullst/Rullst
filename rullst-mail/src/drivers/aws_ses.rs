@@ -96,6 +96,7 @@ impl MailDriver for AwsSesDriver {
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("aws_ses", message);
         }
+        DeliveryPipeline::require_due("AWS SES proxy", message)?;
 
         if self.endpoint_override.is_none() {
             return Err(MailError::ConfigError(

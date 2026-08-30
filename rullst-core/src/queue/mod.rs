@@ -48,7 +48,10 @@ pub use worker::{JobHandler, Worker, WorkerHandle};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
+
+const MAX_SCHEDULE_DELAY: Duration = Duration::from_secs(366 * 24 * 60 * 60);
 
 // ─── Error Types ────────────────────────────────────────────────────────────
 
@@ -152,6 +155,26 @@ pub struct QueuedJobDetail {
 pub trait QueueDriver: Send + Sync {
     /// Push a new job onto the queue.
     async fn push(&self, id: &str, job_name: &str, payload: &str) -> Result<(), QueueError>;
+    /// Push a job that must not be claimed before `available_at`.
+    ///
+    /// Custom drivers remain source-compatible. Their default implementation accepts jobs that
+    /// are already due and fails closed for future delivery until the backend implements durable
+    /// scheduling.
+    async fn push_at(
+        &self,
+        id: &str,
+        job_name: &str,
+        payload: &str,
+        available_at: SystemTime,
+    ) -> Result<(), QueueError> {
+        if available_at > SystemTime::now() {
+            Err(QueueError::Unsupported(
+                "this driver cannot persist future scheduled jobs".to_string(),
+            ))
+        } else {
+            self.push(id, job_name, payload).await
+        }
+    }
     /// Pop the next available job from the queue (FIFO).
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError>;
     /// Mark a job as successfully completed (removes from queue).
@@ -241,6 +264,40 @@ impl Queue {
         Ok(id)
     }
 
+    /// Dispatches a durable job that cannot be claimed before `available_at`.
+    ///
+    /// The built-in SQLite and Redis drivers support millisecond scheduling for at most 366 days
+    /// ahead. Actual execution occurs on the first worker poll after the timestamp; wall-clock
+    /// precision, provider acceptance, and exactly-once delivery are not implied.
+    pub async fn dispatch_at(
+        &self,
+        job_name: &str,
+        payload: Value,
+        available_at: SystemTime,
+    ) -> Result<String, QueueError> {
+        if available_at.duration_since(UNIX_EPOCH).is_err() {
+            return Err(QueueError::InvalidConfiguration(
+                "scheduled timestamp predates the Unix epoch".to_string(),
+            ));
+        }
+        let now = SystemTime::now();
+        if available_at
+            .duration_since(now)
+            .is_ok_and(|delay| delay > MAX_SCHEDULE_DELAY)
+        {
+            return Err(QueueError::InvalidConfiguration(
+                "scheduled jobs may be dispatched at most 366 days ahead".to_string(),
+            ));
+        }
+        let id = Uuid::new_v4().to_string();
+        let payload_str = serde_json::to_string(&payload)
+            .map_err(|error| QueueError::Serialization(error.to_string()))?;
+        self.driver
+            .push_at(&id, job_name, &payload_str, available_at)
+            .await?;
+        Ok(id)
+    }
+
     /// Return the number of pending jobs in the queue.
     pub async fn pending_count(&self) -> Result<u64, QueueError> {
         self.driver.pending_count().await
@@ -276,4 +333,31 @@ impl Queue {
     pub(crate) fn driver_ref(&self) -> Arc<Box<dyn QueueDriver>> {
         Arc::clone(&self.driver)
     }
+}
+
+#[cfg(any(feature = "queue-sqlite", feature = "queue-redis"))]
+pub(crate) fn unix_timestamp_millis_ceil(timestamp: SystemTime) -> Result<u64, QueueError> {
+    let duration = timestamp.duration_since(UNIX_EPOCH).map_err(|_| {
+        QueueError::InvalidConfiguration("timestamp predates Unix epoch".to_string())
+    })?;
+    let whole_millis = duration.as_millis();
+    let has_fractional_millisecond = duration.subsec_nanos() % 1_000_000 != 0;
+    let rounded_millis = whole_millis
+        .checked_add(u128::from(has_fractional_millisecond))
+        .ok_or_else(|| {
+            QueueError::InvalidConfiguration("timestamp exceeds queue storage range".to_string())
+        })?;
+    u64::try_from(rounded_millis).map_err(|_| {
+        QueueError::InvalidConfiguration("timestamp exceeds queue storage range".to_string())
+    })
+}
+
+#[cfg(feature = "queue-sqlite")]
+pub(crate) fn unix_timestamp_millis_floor(timestamp: SystemTime) -> Result<u64, QueueError> {
+    let duration = timestamp.duration_since(UNIX_EPOCH).map_err(|_| {
+        QueueError::InvalidConfiguration("timestamp predates Unix epoch".to_string())
+    })?;
+    u64::try_from(duration.as_millis()).map_err(|_| {
+        QueueError::InvalidConfiguration("timestamp exceeds queue storage range".to_string())
+    })
 }

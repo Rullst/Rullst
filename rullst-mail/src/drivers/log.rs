@@ -14,6 +14,7 @@ impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
+        DeliveryPipeline::require_due("LogDriver", message)?;
         let path_str =
             std::env::var("MAIL_LOG_PATH").unwrap_or_else(|_| "storage/logs/mail.log".to_string());
         let log_path = std::path::PathBuf::from(path_str);

@@ -72,6 +72,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   low-cardinality fields, and circuit-state lock failures are typed instead of
   silently failing open. Distributed breaker coordination and alert operations
   remain deployment concerns.
+- Mail scheduling is now durable through the built-in SQLite and Redis queues.
+  `Queue::dispatch_at` and `Mail::enqueue` preserve a bounded UTC due time;
+  workers cannot claim it early, consume the scheduling field before transport,
+  and the Redis contract runs against the digest-pinned live service in CI and
+  release verification. Direct Resend/SendGrid delivery retains provider-native
+  scheduling, while real SMTP, Postmark, Log and SES-proxy paths fail closed for
+  future direct delivery; offline fixtures may retain the metadata for assertions.
+  Execution remains poll-dependent and at-least-once,
+  not an exactly-once or provider-acceptance guarantee.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested

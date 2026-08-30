@@ -6,6 +6,7 @@ use crate::pipeline::DeliveryPipeline;
 use rullst_core::queue::Queue;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
 
 static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
@@ -49,18 +50,15 @@ impl Mail {
     pub async fn send(message: Message) -> Result<(), MailError> {
         let message = DeliveryPipeline::prepare(&message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
-            let payload = serde_json::to_value(QueuedMail {
-                schema_version: MAIL_JOB_SCHEMA_VERSION,
-                tenant_id: None,
-                message,
-            })
-            .map_err(|e| {
-                MailError::SendError(format!("Failed to serialize message for queue: {}", e))
-            })?;
-            queue
-                .dispatch("rullst_mail_send", payload)
-                .await
-                .map_err(|e| MailError::SendError(format!("Failed to enqueue mail job: {}", e)))?;
+            Self::enqueue_prepared(
+                queue,
+                QueuedMail {
+                    schema_version: MAIL_JOB_SCHEMA_VERSION,
+                    tenant_id: None,
+                    message,
+                },
+            )
+            .await?;
             Ok(())
         } else {
             Self::send_now(message).await
@@ -86,22 +84,15 @@ impl Mail {
         let tenant_id = tenant_id.into();
         let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
-            let payload = serde_json::to_value(QueuedMail {
-                schema_version: MAIL_JOB_SCHEMA_VERSION,
-                tenant_id: Some(tenant_id),
-                message,
-            })
-            .map_err(|error| {
-                MailError::SendError(format!(
-                    "failed to serialize tenant mail for queue: {error}"
-                ))
-            })?;
-            queue
-                .dispatch("rullst_mail_send", payload)
-                .await
-                .map_err(|error| {
-                    MailError::SendError(format!("failed to enqueue tenant mail job: {error}"))
-                })?;
+            Self::enqueue_prepared(
+                queue,
+                QueuedMail {
+                    schema_version: MAIL_JOB_SCHEMA_VERSION,
+                    tenant_id: Some(tenant_id),
+                    message,
+                },
+            )
+            .await?;
             return Ok(());
         }
 
@@ -124,11 +115,66 @@ impl Mail {
         }
     }
 
+    /// Enqueues a message on an explicit queue, preserving its optional `send_at` timestamp.
+    pub async fn enqueue(queue: &Queue, message: Message) -> Result<(), MailError> {
+        let message = DeliveryPipeline::prepare(&message)?.into_message();
+        Self::enqueue_prepared(
+            queue,
+            QueuedMail {
+                schema_version: MAIL_JOB_SCHEMA_VERSION,
+                tenant_id: None,
+                message,
+            },
+        )
+        .await
+    }
+
+    /// Enqueues a tenant-scoped message on an explicit queue with durable scheduling metadata.
+    pub async fn enqueue_for_tenant(
+        queue: &Queue,
+        tenant_id: impl Into<String>,
+        message: Message,
+    ) -> Result<(), MailError> {
+        let tenant_id = tenant_id.into();
+        let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
+        Self::enqueue_prepared(
+            queue,
+            QueuedMail {
+                schema_version: MAIL_JOB_SCHEMA_VERSION,
+                tenant_id: Some(tenant_id),
+                message,
+            },
+        )
+        .await
+    }
+
     fn custom_driver() -> Result<Option<Arc<dyn MailDriver>>, MailError> {
         CUSTOM_DRIVER
             .read()
             .map(|driver| driver.clone())
             .map_err(|_| MailError::DriverError("custom driver lock poisoned".to_string()))
+    }
+
+    async fn enqueue_prepared(queue: &Queue, job: QueuedMail) -> Result<(), MailError> {
+        let available_at = job
+            .message
+            .send_at
+            .as_ref()
+            .map(datetime_to_system_time)
+            .transpose()?;
+        let payload = serde_json::to_value(job).map_err(|error| {
+            MailError::SendError(format!("failed to serialize mail queue job: {error}"))
+        })?;
+        let result = if let Some(available_at) = available_at {
+            queue
+                .dispatch_at("rullst_mail_send", payload, available_at)
+                .await
+        } else {
+            queue.dispatch("rullst_mail_send", payload).await
+        };
+        result
+            .map(|_| ())
+            .map_err(|error| MailError::SendError(format!("failed to enqueue mail job: {error}")))
     }
 
     #[cfg_attr(mutants, mutants::skip)]
@@ -221,4 +267,15 @@ impl Mail {
             ))),
         }
     }
+}
+
+fn datetime_to_system_time(
+    timestamp: &chrono::DateTime<chrono::Utc>,
+) -> Result<SystemTime, MailError> {
+    let seconds = u64::try_from(timestamp.timestamp()).map_err(|_| {
+        MailError::ValidationError("mail schedule predates the Unix epoch".to_string())
+    })?;
+    UNIX_EPOCH
+        .checked_add(Duration::new(seconds, timestamp.timestamp_subsec_nanos()))
+        .ok_or_else(|| MailError::ValidationError("mail schedule exceeds system range".to_string()))
 }

@@ -112,6 +112,13 @@ PKCS#12 XMLDSig verification, and mTLS client preparation are testable without
 calling SEFIN, while tax authorization remains explicitly disabled until the
 external homologation gates pass.
 
+Mail scheduling follows the same bounded approach: SQLite and Redis persist a
+due time and never claim it early, while unsupported real direct transports
+reject a future message instead of delivering it immediately. Offline fixtures
+may retain that timestamp for assertions. Polling delay,
+at-least-once delivery, and provider acceptance remain visible operational
+boundaries.
+
 Mocks prove the local application contract, not the live provider contract.
 Provider-specific production support still requires the applicable live or
 protocol tests, credentials, policy, and operational evidence.

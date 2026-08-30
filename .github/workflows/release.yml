@@ -98,6 +98,11 @@ jobs:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
 
+      - name: Run live Redis queue scheduling contract
+        env:
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: cargo test -p rullst-core --features queue-redis --test queue_scheduling_live
+
       - name: Run ORM cache and post-commit contracts
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379

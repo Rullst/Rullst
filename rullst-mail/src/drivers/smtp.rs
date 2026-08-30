@@ -92,6 +92,7 @@ impl MailDriver for SmtpDriver {
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("smtp", message);
         }
+        DeliveryPipeline::require_due("SMTP", message)?;
 
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
         let mut email_builder = LettreMessage::builder()

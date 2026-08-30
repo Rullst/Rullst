@@ -107,11 +107,18 @@ impl Message {
     }
 
     /// Schedules delivery after the specified duration from now.
+    ///
+    /// Durations outside Chrono's representable range are retained as an invalid maximum
+    /// timestamp so the mandatory delivery pipeline fails closed instead of sending immediately.
     pub fn send_in(mut self, duration: std::time::Duration) -> Self {
-        let Ok(chrono_dur) = chrono::Duration::from_std(duration) else {
+        let Some(timestamp) = chrono::Duration::from_std(duration)
+            .ok()
+            .and_then(|chrono_duration| Utc::now().checked_add_signed(chrono_duration))
+        else {
+            self.send_at = Some(DateTime::<Utc>::MAX_UTC);
             return self;
         };
-        self.send_at = Some(Utc::now() + chrono_dur);
+        self.send_at = Some(timestamp);
         self
     }
 

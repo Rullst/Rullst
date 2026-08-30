@@ -30,7 +30,7 @@ mod formatting_tests {
 pub mod driver_tests {
     use super::super::*;
     use async_trait::async_trait;
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime};
 
     #[tokio::test]
     async fn test_sqlite_queue_push_pop() {
@@ -73,6 +73,119 @@ pub mod driver_tests {
         let job2 = driver.pop().await.unwrap().unwrap();
         assert_eq!(job2.id, "job-2");
         assert_eq!(job2.name, "process_image");
+    }
+
+    #[tokio::test]
+    async fn sqlite_scheduled_jobs_are_durable_and_never_claimed_early() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        let available_at = SystemTime::now() + Duration::from_millis(120);
+        driver
+            .push_at("scheduled", "mail", r#"{"scheduled":true}"#, available_at)
+            .await
+            .unwrap();
+        driver
+            .push("immediate", "mail", r#"{"scheduled":false}"#)
+            .await
+            .unwrap();
+
+        let immediate = driver.pop().await.unwrap().unwrap();
+        assert_eq!(immediate.id, "immediate");
+        driver.mark_complete(&immediate.id).await.unwrap();
+        assert!(driver.pop().await.unwrap().is_none());
+        assert_eq!(driver.pending_count().await.unwrap(), 1);
+
+        tokio::time::sleep(Duration::from_millis(140)).await;
+        let scheduled = driver.pop().await.unwrap().unwrap();
+        assert_eq!(scheduled.id, "scheduled");
+        assert_eq!(scheduled.payload["scheduled"], true);
+    }
+
+    #[tokio::test]
+    async fn sqlite_existing_queue_schema_is_upgraded_for_scheduling() {
+        let database_name = format!("rullst_queue_{}", uuid::Uuid::new_v4().simple());
+        let database_url = format!("sqlite:file:{database_name}?mode=memory&cache=shared");
+        let keeper = sqlx::SqlitePool::connect(&database_url).await.unwrap();
+        sqlx::query(
+            r#"CREATE TABLE rullst_jobs (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                error TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"#,
+        )
+        .execute(&keeper)
+        .await
+        .unwrap();
+
+        let driver = SqliteDriver::new(database_url).await.unwrap();
+        let scheduled_column: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('rullst_jobs') WHERE name = 'available_at_ms'",
+        )
+        .fetch_one(&driver.pool)
+        .await
+        .unwrap();
+        assert_eq!(scheduled_column, 1);
+    }
+
+    #[tokio::test]
+    async fn dispatch_at_rejects_unsupported_or_unbounded_scheduling() {
+        struct ImmediateOnlyDriver;
+
+        #[async_trait]
+        impl QueueDriver for ImmediateOnlyDriver {
+            async fn push(
+                &self,
+                _id: &str,
+                _job_name: &str,
+                _payload: &str,
+            ) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+                Ok(None)
+            }
+            async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+                Ok(())
+            }
+            async fn pending_count(&self) -> Result<u64, QueueError> {
+                Ok(0)
+            }
+        }
+
+        let queue = Queue::custom(Box::new(ImmediateOnlyDriver));
+        let future = SystemTime::now() + Duration::from_secs(60);
+        assert!(matches!(
+            queue
+                .dispatch_at("future", serde_json::json!({}), future)
+                .await,
+            Err(QueueError::Unsupported(_))
+        ));
+
+        let sqlite = Queue::sqlite("sqlite::memory:").await.unwrap();
+        assert!(matches!(
+            sqlite
+                .dispatch_at(
+                    "past-epoch",
+                    serde_json::json!({}),
+                    std::time::UNIX_EPOCH - Duration::from_secs(1),
+                )
+                .await,
+            Err(QueueError::InvalidConfiguration(_))
+        ));
+        let too_far = SystemTime::now() + Duration::from_secs(367 * 24 * 60 * 60);
+        assert!(matches!(
+            sqlite
+                .dispatch_at("future", serde_json::json!({}), too_far)
+                .await,
+            Err(QueueError::InvalidConfiguration(_))
+        ));
     }
 
     #[tokio::test]
