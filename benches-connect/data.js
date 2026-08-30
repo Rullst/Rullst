@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788086311104,
+  "lastUpdate": 1788089910323,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2755,6 +2755,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 381,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d8c38e4364d311957b87b1a9299f8a77efaae600",
+          "message": "feat(orm): add managed post-commit effects",
+          "timestamp": "2026-08-30T08:23:27-03:00",
+          "tree_id": "2cddfb5c017bdcf9a75afec1118fbccf6b03c982",
+          "url": "https://github.com/Rullst/Rullst/commit/d8c38e4364d311957b87b1a9299f8a77efaae600"
+        },
+        "date": 1788089909924,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 532,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
