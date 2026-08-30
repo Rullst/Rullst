@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788061272684,
+  "lastUpdate": 1788062793045,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2545,6 +2545,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 576,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "644388ba7ad58f1c391004cfb761e145a6c6317e",
+          "message": "feat(orm): add typed inverse polymorphic relations",
+          "timestamp": "2026-08-30T00:58:04-03:00",
+          "tree_id": "47313c9e9dc05ea34d1e65f6fcb48aebf7cd4b1f",
+          "url": "https://github.com/Rullst/Rullst/commit/644388ba7ad58f1c391004cfb761e145a6c6317e"
+        },
+        "date": 1788062792606,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 481,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
