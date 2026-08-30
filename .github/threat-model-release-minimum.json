@@ -129,6 +129,15 @@
       "marker": "TM-STUDIO-04"
     },
     {
+      "id": "STUDIO-06",
+      "crate": "rullst-studio",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "data_browser::tests::unprotected_data_browser_cannot_execute_mutations",
+      "source": "rullst-studio/src/data_browser/tests.rs",
+      "marker": "TM-STUDIO-06"
+    },
+    {
       "id": "TENANT-02",
       "crate": "rullst-security",
       "target_kind": "integration",

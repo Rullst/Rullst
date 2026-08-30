@@ -110,6 +110,10 @@ jobs:
           cargo test -p rullst-orm --no-default-features --features pgvector,strict-postgres --test matrix_pgvector
           cargo test -p rullst-orm --no-default-features --features qdrant --test matrix_qdrant
           cargo test -p rullst-orm --no-default-features --features redis --test matrix_redis_data
+          cargo test -p rullst-studio --no-default-features --test data_browser_mutation_sqlite -- --test-threads=1
+          cargo test -p rullst-studio --no-default-features --features strict-postgres --test data_browser_mutation_postgres -- --test-threads=1
+          cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mysql -- --test-threads=1
+          cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
 
   strict-database-features:
     name: ORM ${{ matrix.feature }}

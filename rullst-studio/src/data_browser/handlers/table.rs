@@ -2,12 +2,13 @@
 
 use super::super::db::*;
 use super::super::layout::*;
+use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
-use sqlx::{QueryBuilder, Row};
+use sqlx::QueryBuilder;
 use std::fmt::Write;
 
 pub async fn handle_table(
@@ -54,8 +55,8 @@ pub async fn handle_table(
         );
     }
 
-    let (col_names, primary_keys) = match fetch_table_schema(pool, driver, &clean_table).await {
-        Ok(res) => res,
+    let columns = match fetch_table_schema(pool, driver, &clean_table).await {
+        Ok(columns) => columns,
         Err(err) => {
             return table_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -96,7 +97,7 @@ pub async fn handle_table(
     };
     let total_pages = total_records.div_ceil(per_page);
 
-    if col_names.is_empty() {
+    if columns.is_empty() {
         return table_error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "This table has no columns inside Studio's supported identifier boundary.",
@@ -105,6 +106,20 @@ pub async fn handle_table(
             &tables,
         );
     }
+
+    let col_names = columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>();
+    let primary_keys = columns
+        .iter()
+        .enumerate()
+        .filter_map(|(index, column)| column.primary_key.then_some(index))
+        .collect::<Vec<_>>();
+    let supports_mutations = !primary_keys.is_empty()
+        && primary_keys
+            .iter()
+            .all(|index| columns[*index].kind.is_editable());
 
     let quoted_table = quote_table_name(driver, &clean_table);
     let selected_columns = col_names
@@ -149,8 +164,13 @@ pub async fn handle_table(
         }
     };
 
-    let headers_html = build_headers_html(&col_names, &primary_keys);
-    let rows_html = build_rows_html(&records, &col_names);
+    let mut headers_html = build_headers_html(&col_names, &primary_keys);
+    if supports_mutations {
+        headers_html.push_str(
+            "<th scope=\"col\" class=\"px-6 py-3.5 text-left text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800/80\">Actions</th>",
+        );
+    }
+    let rows_html = build_mutable_rows_html(&records, &columns, &clean_table);
 
     let content_html = format!(
         r##"<div class="p-8 font-mono space-y-6 max-w-7xl mx-auto">
@@ -160,7 +180,7 @@ pub async fn handle_table(
                         <span>{}</span>
                         <span class="text-xs px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 uppercase font-mono">Table View</span>
                     </h1>
-                    <p class="text-slate-400 text-xs mt-1">Inspecting raw database schema records line by line</p>
+                    <p class="text-slate-400 text-xs mt-1">Inspect rows; primitive values may be changed only through the verified local Studio boundary</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <input type="text"
@@ -237,55 +257,6 @@ fn table_error_response(
         studio_layout(message, active_table, tables)
     };
     (status, Html(body)).into_response()
-}
-
-pub(crate) async fn fetch_table_schema(
-    pool: &rullst_orm::RullstPool,
-    driver: &str,
-    clean_table: &str,
-) -> Result<(Vec<String>, Vec<usize>), rullst_orm::Error> {
-    let columns_query = match driver {
-        "postgres" => format!("
-            SELECT CAST(c.column_name AS VARCHAR) as name,
-            CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END as pk
-            FROM information_schema.columns c
-            LEFT JOIN information_schema.key_column_usage kcu
-              ON c.table_name = kcu.table_name AND CAST(c.column_name AS VARCHAR) = CAST(kcu.column_name AS VARCHAR) AND kcu.table_schema = 'public'
-            LEFT JOIN information_schema.table_constraints tc
-              ON kcu.constraint_name = tc.constraint_name AND tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public'
-            WHERE c.table_name = '{}' AND c.table_schema = 'public'
-        ", clean_table),
-        "mysql" => format!("
-            SELECT column_name as name,
-            CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END as pk
-            FROM information_schema.columns
-            WHERE table_name = '{}' AND table_schema = DATABASE()
-        ", clean_table),
-        _ => format!("PRAGMA table_info(\"{}\")", clean_table),
-    };
-
-    let columns_rows = QueryBuilder::<rullst_orm::RullstDatabase>::new(columns_query)
-        .build()
-        .fetch_all(pool)
-        .await?;
-
-    let mut col_names = Vec::new();
-    let mut primary_keys = Vec::new();
-
-    for r in columns_rows {
-        let name: String = r.try_get("name").unwrap_or_default();
-        if !is_safe_identifier(&name) {
-            continue;
-        }
-        let is_pk: i32 = r.try_get("pk").unwrap_or(0);
-        let idx = col_names.len();
-        col_names.push(name);
-        if is_pk == 1 {
-            primary_keys.push(idx);
-        }
-    }
-
-    Ok((col_names, primary_keys))
 }
 
 fn build_pagination_html(

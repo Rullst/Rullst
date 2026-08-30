@@ -40,6 +40,7 @@ jq -e '
     "STUDIO-01",
     "STUDIO-03",
     "STUDIO-04",
+    "STUDIO-06",
     "TENANT-02",
     "TENANT-04"
   ])

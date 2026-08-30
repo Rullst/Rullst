@@ -2,6 +2,29 @@
 
 use super::db::*;
 
+#[tokio::test]
+// TM-STUDIO-06: importing the raw browser router cannot bypass the verified
+// local capability required by destructive database handlers.
+async fn unprotected_data_browser_cannot_execute_mutations() {
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    let request = Request::builder()
+        .method("POST")
+        .uri("/studio/tables/users/rows/delete")
+        .header(
+            axum::http::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .body(Body::from("confirm=DELETE+users&pk_id=1"))
+        .expect("valid bounded mutation request");
+    let response = super::router()
+        .oneshot(request)
+        .await
+        .expect("raw data-browser response");
+    assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
+}
+
 #[test]
 fn test_escape_html_attr() {
     let input = r#"<script>alert("XSS & Hack")</script> 'test'"#;
@@ -81,6 +104,15 @@ async fn test_db_operations() {
 
     let search_count = count_table_rows("test_users", Some("Alice")).await.unwrap();
     assert_eq!(search_count, 1);
+
+    let schema = fetch_table_schema(pool, "sqlite", "test_users")
+        .await
+        .unwrap();
+    assert_eq!(schema.len(), 2);
+    assert!(schema[0].primary_key);
+    assert_eq!(schema[0].kind, StudioColumnKind::Integer);
+    assert!(!schema[0].nullable);
+    assert_eq!(schema[1].kind, StudioColumnKind::Text);
 }
 
 #[tokio::test]
@@ -113,6 +145,34 @@ fn test_build_search_clause() {
         "CAST(`col` AS CHAR) LIKE "
     );
     assert_eq!(build_search_clause("sqlite", "col"), "\"col\" LIKE ");
+}
+
+#[test]
+fn test_mutable_column_type_boundary() {
+    assert_eq!(
+        StudioColumnKind::from_database_type("character varying"),
+        StudioColumnKind::Text
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("BIGINT"),
+        StudioColumnKind::Integer
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("double precision"),
+        StudioColumnKind::Float
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("BOOLEAN"),
+        StudioColumnKind::Boolean
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("numeric"),
+        StudioColumnKind::Unsupported
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("jsonb"),
+        StudioColumnKind::Unsupported
+    );
 }
 
 #[test]

@@ -11,6 +11,79 @@ pub struct TableQuery {
     pub search: Option<String>,
 }
 
+/// Primitive SQL values that Studio can round-trip without guessing a
+/// backend-specific codec.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StudioColumnKind {
+    Text,
+    Integer,
+    Float,
+    Boolean,
+    Unsupported,
+}
+
+impl StudioColumnKind {
+    pub(crate) fn from_database_type(database_type: &str) -> Self {
+        let normalized = database_type.trim().to_ascii_lowercase();
+        if matches!(
+            normalized.as_str(),
+            "text"
+                | "varchar"
+                | "character varying"
+                | "char"
+                | "character"
+                | "tinytext"
+                | "mediumtext"
+                | "longtext"
+        ) || normalized.starts_with("varchar(")
+            || normalized.starts_with("char(")
+        {
+            Self::Text
+        } else if normalized == "bool" || normalized == "boolean" {
+            Self::Boolean
+        } else if matches!(
+            normalized.as_str(),
+            "smallint"
+                | "integer"
+                | "int"
+                | "bigint"
+                | "tinyint"
+                | "mediumint"
+                | "int2"
+                | "int4"
+                | "int8"
+        ) || normalized.starts_with("integer(")
+            || normalized.starts_with("int(")
+            || normalized.starts_with("bigint(")
+            || normalized.starts_with("smallint(")
+            || normalized.starts_with("tinyint(")
+        {
+            Self::Integer
+        } else if matches!(
+            normalized.as_str(),
+            "real" | "float" | "double" | "double precision" | "float4" | "float8"
+        ) || normalized.starts_with("float(")
+            || normalized.starts_with("double(")
+        {
+            Self::Float
+        } else {
+            Self::Unsupported
+        }
+    }
+
+    pub(crate) const fn is_editable(self) -> bool {
+        !matches!(self, Self::Unsupported)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StudioColumn {
+    pub(crate) name: String,
+    pub(crate) kind: StudioColumnKind,
+    pub(crate) primary_key: bool,
+    pub(crate) nullable: bool,
+}
+
 /// Helper function to escape standard strings manually when building raw strings
 pub fn escape_html_attr(s: &str) -> String {
     s.replace('&', "&amp;")
@@ -123,6 +196,88 @@ pub async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
         }
     }
     Ok(tables)
+}
+
+/// Loads ordered column metadata for a validated table. Only metadata from the
+/// active database is trusted; request-provided column names never enter SQL.
+pub(crate) async fn fetch_table_schema(
+    pool: &rullst_orm::RullstPool,
+    driver: &str,
+    table: &str,
+) -> Result<Vec<StudioColumn>, sqlx::Error> {
+    if !is_safe_identifier(table) {
+        return Err(sqlx::Error::Configuration(
+            "Studio received an unsupported SQL identifier".into(),
+        ));
+    }
+
+    let query = match driver {
+        "postgres" => format!(
+            "SELECT CAST(c.column_name AS VARCHAR) AS name, \
+                    CAST(c.data_type AS VARCHAR) AS type_name, \
+                    CASE WHEN c.is_nullable = 'YES' THEN 1 ELSE 0 END AS nullable, \
+                    CASE WHEN EXISTS ( \
+                        SELECT 1 FROM information_schema.table_constraints tc \
+                        JOIN information_schema.key_column_usage kcu \
+                          ON tc.constraint_catalog = kcu.constraint_catalog \
+                         AND tc.constraint_schema = kcu.constraint_schema \
+                         AND tc.constraint_name = kcu.constraint_name \
+                        WHERE tc.constraint_type = 'PRIMARY KEY' \
+                          AND tc.table_schema = c.table_schema \
+                          AND tc.table_name = c.table_name \
+                          AND kcu.column_name = c.column_name \
+                    ) THEN 1 ELSE 0 END AS pk \
+             FROM information_schema.columns c \
+             WHERE c.table_name = '{table}' AND c.table_schema = 'public' \
+             ORDER BY c.ordinal_position"
+        ),
+        "mysql" => format!(
+            "SELECT column_name AS name, data_type AS type_name, \
+                    CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END AS nullable, \
+                    CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END AS pk \
+             FROM information_schema.columns \
+             WHERE table_name = '{table}' AND table_schema = DATABASE() \
+             ORDER BY ordinal_position"
+        ),
+        _ => format!("PRAGMA table_info(\"{table}\")"),
+    };
+
+    let rows = QueryBuilder::<rullst_orm::RullstDatabase>::new(query)
+        .build()
+        .fetch_all(pool)
+        .await?;
+    let mut columns = Vec::with_capacity(rows.len().min(256));
+    for row in rows.into_iter().take(256) {
+        let name = row.try_get::<String, _>("name").unwrap_or_default();
+        if !is_safe_identifier(&name) {
+            continue;
+        }
+        let database_type = if driver == "sqlite" {
+            row.try_get::<String, _>("type").unwrap_or_default()
+        } else {
+            row.try_get::<String, _>("type_name").unwrap_or_default()
+        };
+        let primary_key = row_flag(&row, "pk");
+        let nullable = if driver == "sqlite" {
+            !row_flag(&row, "notnull") && !primary_key
+        } else {
+            row_flag(&row, "nullable") && !primary_key
+        };
+        columns.push(StudioColumn {
+            name,
+            kind: StudioColumnKind::from_database_type(&database_type),
+            primary_key,
+            nullable,
+        });
+    }
+    Ok(columns)
+}
+
+fn row_flag(row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row, column: &str) -> bool {
+    row.try_get::<bool, _>(column)
+        .or_else(|_| row.try_get::<i32, _>(column).map(|value| value != 0))
+        .or_else(|_| row.try_get::<i64, _>(column).map(|value| value != 0))
+        .unwrap_or(false)
 }
 
 pub fn quote_table_name(driver: &str, clean_table: &str) -> String {

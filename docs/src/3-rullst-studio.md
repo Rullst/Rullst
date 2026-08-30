@@ -58,8 +58,14 @@ overhead.
 
 ## Tooling boundaries
 
-- The data browser reads, searches, and paginates allowlisted SQLx identifiers;
-  it does not edit or delete records.
+- The data browser reads, searches, and paginates allowlisted SQLx identifiers.
+  Inside the verified debug-loopback/same-origin boundary, it may edit one
+  primitive non-key value or delete one complete-primary-key-selected row.
+  Inputs are bounded and parameterized; exact deletion confirmation is
+  required, backend-specific types remain read-only, and anything other than
+  exactly one affected row fails. SQLite, PostgreSQL, MySQL, and MariaDB run
+  separate executable contracts. This does not supply application tenant/RBAC,
+  audit history, rollback, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
   routes.

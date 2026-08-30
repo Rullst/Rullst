@@ -8,7 +8,12 @@
 Rullst Studio is the visual development environment and dashboard for managing your Rullst applications. It aims to bridge the gap between code and data management, providing an experience similar to Prisma Studio but native to Rust.
 
 ## Phase 1: Data & API Management
-- [~] **Visual Data Browser**: Read and filter allowlisted SQLx tables with bounded pagination and escaped output. Edit/delete UI is not implemented; Studio must not be described as general database CRUD.
+- [x] **Bounded Visual Data Browser**: Read, filter, edit primitive non-key
+  values and delete one primary-key-selected row across SQLite, PostgreSQL,
+  MySQL and MariaDB. Values are bound and schema identifiers come from a strict
+  allowlist; composite primitive keys are supported, backend-specific values
+  stay read-only, deletion requires exact textual confirmation, and every write
+  requires the unforgeable verified-loopback/same-origin request marker.
 - [~] **API Playground**: Interactive Swagger UI for an `OpenApi` document explicitly supplied through `Studio::with_openapi`. Studio does not infer a complete specification from arbitrary Axum routes.
 
 ## Phase 2: Observability & Profiling

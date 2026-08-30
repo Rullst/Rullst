@@ -42,5 +42,9 @@ chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
 futures-util = { workspace = true }
 
+[dev-dependencies]
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
+
 [package.metadata.cargo-machete]
 ignored = []

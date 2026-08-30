@@ -16,6 +16,14 @@ pub struct LocalStudioAccess {
     _private: (),
 }
 
+/// Request-local proof that the debug and loopback Studio boundary accepted
+/// the peer, host authority, and (for unsafe methods) same-origin request.
+///
+/// This type remains crate-private so application code cannot manufacture the
+/// marker and bypass the access middleware for privileged Studio handlers.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct VerifiedLocalStudioAccess;
+
 impl LocalStudioAccess {
     /// Opts in to the debug-only, loopback-verified Studio boundary.
     pub const fn loopback_only() -> Self {
@@ -54,7 +62,7 @@ impl fmt::Display for StudioBuildError {
 
 impl std::error::Error for StudioBuildError {}
 
-async fn loopback_only_middleware(request: Request, next: Next) -> Response {
+async fn loopback_only_middleware(mut request: Request, next: Next) -> Response {
     let is_loopback = request
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
@@ -73,6 +81,7 @@ async fn loopback_only_middleware(request: Request, next: Next) -> Response {
     let unsafe_origin_present = !unsafe_method || request.headers().contains_key(header::ORIGIN);
 
     if is_loopback && local_host.is_some() && origin_valid && unsafe_origin_present {
+        request.extensions_mut().insert(VerifiedLocalStudioAccess);
         next.run(request).await
     } else {
         let mut response = Response::new(Body::empty());

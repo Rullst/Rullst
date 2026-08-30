@@ -6,8 +6,10 @@ telemetry views from the sources explicitly supplied by the application.
 
 ## ✨ Features
 
-- **Database inspector:** Read and filter configured SQLx tables and inspect a
-  live ER diagram. Record editing/deletion is not implemented.
+- **Database inspector:** Read and filter configured SQLx tables, edit bounded
+  primitive non-key values, delete one primary-key-selected row with explicit
+  confirmation, and inspect a live ER diagram. Mutation contracts run against
+  SQLite, PostgreSQL, MySQL, and MariaDB.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -38,6 +40,9 @@ The supported v12 mode is a standalone debug server. `run_studio` and
 and requests whose direct peer is not verified as loopback. Servers composing
 the router manually must preserve Axum `ConnectInfo<SocketAddr>`. Non-local
 `Host`, cross-origin requests, and unsafe requests without `Origin` fail closed.
+Data-browser writes additionally require a crate-private marker created only by
+that verified access middleware, so importing the raw browser router cannot
+turn its mutation handlers into an unprotected database API.
 
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
@@ -70,6 +75,14 @@ session, payment, and personal data. A successful Studio toggle invalidates all
 already-warm `DbFeatureDriver` entries in the same process. Other processes and
 direct database writers remain visible through the configured TTL unless the
 application supplies distributed invalidation.
+
+Data-browser mutation forms use database-inspected tables, columns and complete
+primary keys. SQL values are parameterized; only text, signed integer, finite
+float and Boolean codecs are writable. Primary keys and backend-specific types
+remain read-only, a mutation must affect exactly one row, request bodies are
+limited to 64 KiB, and deletion requires typing `DELETE <table>`. This is a
+local developer database tool, not application authorization, tenant policy,
+audit history, rollback, or a supported shared-production admin surface.
 
 ## 📚 Documentation
 

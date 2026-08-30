@@ -163,6 +163,11 @@ not claim that every frontend mode is interchangeable or bundle-free.
 Studio is a local developer control room with explicit unavailable states when
 a probe is not connected. Nexus generates an authenticated administration
 surface from registered model metadata and applies server-side field policy.
+Studio's relational browser can also perform deliberately narrow primitive
+row edits/deletions: the write surface exists only behind the verified local
+request capability, binds values, identifies one row by its inspected complete
+primary key and runs against four relational engines. It is not presented as a
+replacement for application tenant authorization or production administration.
 Studio flag toggles also invalidate already-warm database flag drivers in the
 same process without an unbounded key registry; cross-process invalidation
 remains an explicit application transport.

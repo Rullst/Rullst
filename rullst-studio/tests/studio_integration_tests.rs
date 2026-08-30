@@ -175,6 +175,9 @@ async fn test_studio_table_browser_and_schema_inspection() {
     let body_str = String::from_utf8_lossy(&body);
     assert_eq!(status, StatusCode::OK, "{body_str}");
     assert!(body_str.contains("alice") || body_str.contains("studio_users"));
+    assert!(body_str.contains("Actions"), "{body_str}");
+    assert!(body_str.contains("/rows/update"), "{body_str}");
+    assert!(body_str.contains("/rows/delete"), "{body_str}");
 
     // 2. Search query and pagination
     let req = Request::builder()

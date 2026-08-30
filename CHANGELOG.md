@@ -108,6 +108,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   visible to the real Studio snapshot, and a separate purge removes that
   history. Redis/custom inspection and host access/retention policy remain
   explicit boundaries.
+- Studio's SQLx data browser now supports bounded primitive row updates and
+  confirmed single-row deletion across SQLite, PostgreSQL, MySQL and MariaDB.
+  The database supplies allowlisted table/column/complete-primary-key metadata,
+  every value is typed and bound, unsupported codecs remain read-only, bodies
+  are capped and affected-row count must equal one. Mutation handlers require
+  the crate-private proof installed by the debug-loopback/same-origin access
+  middleware, so importing the raw browser router cannot expose writes.
+  Application tenant/RBAC, durable audit, rollback and shared production access
+  remain outside Studio's local developer contract.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested
@@ -399,9 +408,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Request-log markup is escaped, completed queue records are counted only when
   a backend retains them, and the environment page adds a secret-free typed
   configuration projection. SQLite now provides an explicit bounded retained
-  history while keeping deletion as the default. Browser writes, automatic
-  OpenAPI inference, secret-bearing request capture and Redis queue inspection
-  remain explicitly outside the current contract.
+  history while keeping deletion as the default. The later bounded primitive
+  write contract supersedes this audit checkpoint's read-only browser state;
+  automatic OpenAPI inference, secret-bearing request capture and Redis queue
+  inspection remain explicitly outside the current contract.
 - Studio's debug-only local capability now verifies the direct loopback peer and
   local `Host`, and requires same-origin `Origin` on unsafe methods. This closes
   the supported local browser boundary against direct remote access, DNS

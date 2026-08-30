@@ -2,7 +2,7 @@
 
 > **Model version:** TM-12.2
 > **Applies to:** the v12 release candidate source and generated applications
-> **Last source review:** 2026-08-28
+> **Last source review:** 2026-08-30
 > **Status:** maintainer baseline; application owners must extend it for their
 > data, topology and providers. It is not a pentest or certification.
 
@@ -27,7 +27,7 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 33 abuse-case IDs to 32 exact
+`.github/threat-model-release-minimum.json` binds 34 abuse-case IDs to 34 exact
 tests across ten crates. The gate rejects missing markers, missing tests and
 zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
 Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
@@ -84,7 +84,7 @@ controls, prompts and source-error tooling.
 | `STUDIO-03` SQL/table injection | Parameterize values and strictly validate dynamic identifiers. | Data-browser identifier/query-builder tests. |
 | `STUDIO-04` arbitrary source file access | Require debug loopback, canonical allowlisted paths/extensions and bounded files. | Traversal, sensitive-file, non-loopback and extension tests. |
 | `STUDIO-05` forged telemetry | Label local/unverified events accurately; never invent source IP, HMAC verification or provider status. | Telemetry integrity tests. |
-| `STUDIO-06` destructive job/database action | Require explicit policy, CSRF and audit; remote production controls remain disabled until reviewed. | Local handlers exist; production authorization review remains open. |
+| `STUDIO-06` destructive job/database action | Require verified local policy and same-origin checks; remote production controls remain disabled until separately authenticated, authorized and reviewed. | Data-browser writes additionally require an unforgeable middleware marker, inspected complete PK, typed binds, exactly one affected row and exact delete confirmation. Importing the raw router is denied by an exact release-negative test. Application tenant/RBAC, durable audit and rollback remain open. |
 
 Trust boundaries are local browser ↔ loopback listener, Studio ↔
 telemetry/database and error console ↔ source filesystem.

@@ -13,7 +13,7 @@ pub use db::{TableQuery, ensure_pool_initialized, resolve_db_url};
 pub use handlers::*;
 pub use layout::{render_sidebar_oob, studio_layout};
 
-use axum::Router;
+use axum::{Router, extract::DefaultBodyLimit};
 
 /// Central router for Rullst Studio
 pub fn router() -> Router {
@@ -26,6 +26,16 @@ pub fn router() -> Router {
         .route("/tables/{table}", axum::routing::get(handle_table))
         // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/studio/tables/{table}", axum::routing::get(handle_table))
+        // These handlers additionally require the request-local proof inserted
+        // by LocalStudioAccess after its loopback and same-origin checks.
+        .route(
+            "/studio/tables/{table}/rows/update",
+            axum::routing::post(handle_table_update).layer(DefaultBodyLimit::max(64 * 1024)),
+        )
+        .route(
+            "/studio/tables/{table}/rows/delete",
+            axum::routing::post(handle_table_delete).layer(DefaultBodyLimit::max(64 * 1024)),
+        )
         // Core Studio Navigation Routes
         .route(
             "/migrations",
