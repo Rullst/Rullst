@@ -57,9 +57,13 @@ messaging and enterprise identity sections remain roadmap work.
 - [x] **Strict Profile Normalization (`UniversalProfile`):** A typed,
   credential-free projection (`id`, `name`, `email`, `email_verified`,
   `avatar_url`) is returned from `ConnectUser::universal_profile()`.
-- [~] **Secure State/Nonce Handling (`AuthSession`):** The Axum/tower-sessions
-  extractor consumes and validates a stored one-time CSRF state. Generating and
-  storing state plus OIDC nonce lifecycle are not yet automatic.
+- [x] **Secure State/Nonce Handling (`AuthSession`):** The optional
+  Axum/tower-sessions flow generates and stores a ten-minute state + PKCE
+  challenge, adds an OIDC nonce when requested, consumes the challenge before
+  callback validation, and exposes the exact verifier/nonce only through typed
+  exchange parameters. One new flow replaces the previous flow in that browser
+  session; durable session storage and cookie/deployment policy remain host
+  responsibilities.
 - [x] **Native Apple Secret Generation:** Handle "Sign In with Apple" painlessly by accepting a `.p8` key and Key ID to generate the required JWT `client_secret` on-the-fly.
 - [~] **Embedded Local Mock IdP:** An explicitly mounted Axum
   authorization/access-token/userinfo fixture. It does not issue a signed ID

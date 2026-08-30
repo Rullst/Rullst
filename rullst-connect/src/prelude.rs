@@ -15,6 +15,11 @@ pub use secrecy::{ExposeSecret, SecretString};
 #[cfg(any(feature = "axum", feature = "actix"))]
 pub use crate::extractors::AuthCallback;
 
+#[cfg(feature = "axum-session")]
+pub use crate::extractors::{
+    AuthSession, OAuthAuthorization, begin_oauth_session, begin_oidc_session,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,5 +36,8 @@ mod tests {
             error: None,
             error_description: None,
         };
+
+        #[cfg(feature = "axum-session")]
+        let _authorization: Option<OAuthAuthorization> = None;
     }
 }

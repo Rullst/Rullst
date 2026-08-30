@@ -25,8 +25,8 @@
       "crate": "rullst-connect",
       "target_kind": "lib",
       "target": "lib",
-      "test_filter": "extractors::tests::test_axum_session_extractor_mismatch",
-      "source": "rullst-connect/src/extractors.rs",
+      "test_filter": "extractors::session::tests::oidc_session_round_trip_is_sequentially_single_use_and_keeps_secrets_server_side",
+      "source": "rullst-connect/src/extractors/session/tests.rs",
       "marker": "TM-AUTH-04"
     },
     {

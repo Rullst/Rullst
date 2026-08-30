@@ -49,6 +49,8 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
 - 🔌 **Framework adapters**: Core provider APIs are framework-independent;
   optional extractor features cover the integrations declared in the crate.
+- 🔐 **Managed callback transaction**: The optional Axum/tower-sessions path
+  generates, stores, expires, validates, and consumes state + PKCE + OIDC nonce.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
@@ -85,6 +87,14 @@ You can either run:
 ```bash
 cargo add rullst-connect
 cargo add secrecy
+```
+
+For the recommended Axum session transaction, enable `axum-session` and add a
+`tower-sessions` store:
+
+```toml
+rullst-connect = { path = "../Rullst/rullst-connect", features = ["axum-session"] }
+tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
@@ -133,51 +143,58 @@ use HTTPS. The configured client uses only that explicit proxy; PAC/WPAD,
 SOCKS, proxy mTLS identity and deployment certification remain outside this
 bounded transport.
 
-### 2. Redirect the User
-Get the authorization URL and redirect your user:
+### 2. Start a Server-Bound Authorization
+
+The recommended Axum path generates state and PKCE, stores their private
+counterparts in `tower-sessions` for ten minutes, and returns only the redirect
+URL:
 
 ```rust
-let url = github.redirect_url();
-// Example in Axum: return Redirect::temporary(&url);
+use axum::response::Redirect;
+use rullst_connect::extractors::begin_oauth_session;
+use tower_sessions::Session;
+
+let authorization = begin_oauth_session(&session, &github).await?;
+return Ok(Redirect::temporary(authorization.url()));
 ```
 
-### 3. Handle the Callback & Get User
-When the user returns to your callback URL with a `code` query parameter, exchange it for a `ConnectUser`:
+Use `begin_oidc_session` instead for Google, Apple, or a custom OIDC provider.
+It adds and stores an OIDC nonce as well.
+
+### 3. Consume the Callback and Get the User
+
+`AuthSession` consumes the challenge before checking its expiry and state. It
+then supplies the exact PKCE verifier and optional OIDC nonce to the provider:
 
 ```rust
-let params = rullst_connect::provider::ExchangeParams {
-    auth_code: code,
-    ..Default::default()
-};
-match github.get_user(params).await {
-    Ok(user) => {
-        println!("Welcome, {}!", user.name);
-        println!("Email: {:?}", user.email);
-        println!("Avatar: {:?}", user.avatar_url);
-    }
-    Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user".to_string()),
-}
+use rullst_connect::extractors::AuthSession;
+
+let params = auth_session.exchange_params()?;
+let user = github.get_user(params).await?;
+let public_profile = user.universal_profile();
 ```
 
-### 🛡️ CSRF Protection (State Parameter)
+Only one managed challenge is active per browser session. Starting another
+login deliberately invalidates the earlier tab. The application must configure
+a durable production session store, Secure/HttpOnly/SameSite cookies, TLS,
+registered redirect URLs, account-linking policy, and post-login session
+rotation. See [Server-Bound OAuth/OIDC Sessions](../tutorials/42-server-bound-oauth-sessions.md).
 
-To bind the authorization request to its callback, generate a high-entropy
-state, store it in a short-lived server-side session, and consume it after the
-callback comparison.
+### 🛡️ Manual State Handling
+
+Non-Axum hosts may use the framework-neutral primitives directly. The host must
+atomically take the expected value from a short-lived server-side store before
+comparison; a reusable cookie value is not equivalent.
 
 ```rust
 use rullst_connect::pkce::generate_oauth_state;
 
-// 1. Generate and store this exact value in the server-side session.
 let state = generate_oauth_state();
+store_one_time_state(&state).await?; // application-provided durable operation
+let url = github.redirect_url_with_state(&state);
 
-// 2. Get the authorization URL with the state parameter using the builder
-let url = github.with_state(&state).redirect_url();
-// return Redirect::temporary(&url);
-
-// 3. With the optional Axum/Actix extractor, validate before token exchange:
-callback.verify_state(&state_from_session)?;
-session.consume_oauth_state()?;
+let expected = take_one_time_state().await?; // atomically removes it
+callback.verify_state(&expected)?;
 ```
 
 ### 🔄 Refreshing Tokens
@@ -195,7 +212,7 @@ let raw_token = refreshed_user.access_token.expose_secret();
 send_token_to_the_authorized_api(raw_token).await?;
 ```
 
-### 🔒 PKCE Support (v9.0.0+)
+### 🔒 Manual PKCE Support
 
 Provider adapters expose PKCE (Proof Key for Code Exchange) where supported by the provider protocol. Some providers such as **X (Twitter) v2** require it; applications must preserve and validate the verifier/state for the complete authorization transaction.
 

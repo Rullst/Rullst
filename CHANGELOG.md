@@ -122,6 +122,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   system-proxy fallback and a local protocol-level routing/auth contract.
   PAC/WPAD, SOCKS, proxy mTLS and production network certification are not
   claimed.
+- `rullst-connect` now offers an opt-in Axum/tower-sessions authorization
+  transaction. `begin_oauth_session` stores state + PKCE for ten minutes,
+  `begin_oidc_session` also stores nonce, and `AuthSession` removes and
+  immediately saves the sole active challenge before constant-time state
+  validation, then exposes
+  the exact typed exchange parameters. Expiry, mismatch, missing state, replay,
+  replacement and debug redaction are regression-tested. Durable session
+  storage, cookie/TLS configuration, account linking/recovery and live-provider
+  conformance remain application and deployment boundaries. The generic
+  tower-sessions store contract is not a distributed compare-and-delete;
+  simultaneous already-loaded callbacks still require idempotent account/login
+  effects or an application-owned atomic challenge store. Managed redirects
+  also reject non-HTTPS/non-loopback destinations, URL credentials, fragments,
+  and conflicting/duplicated state, nonce or PKCE parameters.
 - Studio feature-flag toggles now invalidate every already-warm
   `DbFeatureDriver` cache in the same process immediately after the database
   update succeeds. The signal is a constant-size process epoch rather than an

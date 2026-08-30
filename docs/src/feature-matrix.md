@@ -144,7 +144,7 @@ types remain available without a web-framework adapter.
 | `rullst` | Convenience integration boundary that enables `axum` |
 | `retry` | Retry-aware HTTP client behavior using `reqwest-middleware` and `reqwest-retry` |
 | `reqwest-middleware` | The optional middleware dependency alone; prefer `retry` for retry behavior |
-| `axum-session` | Axum plus `tower-sessions` session extractors |
+| `axum-session` | Axum plus a ten-minute, one-active-challenge `tower-sessions` state/PKCE/OIDC-nonce transaction and callback extractor |
 | `mock` | Deterministic offline provider modules outside test builds |
 
 ### `rullst-iot`

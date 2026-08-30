@@ -77,6 +77,9 @@ inputs rather than deployment footnotes. Current bounded contracts include:
   telemetry primitives;
 - Argon2id password hashing, expiring encrypted sessions, RBAC, model policies,
   and explicit owner-or-role guards;
+- a typed OAuth/OIDC session transaction that keeps PKCE verifiers and OIDC
+  nonces server-side, expires them after ten minutes, and consumes them before
+  callback validation;
 - an authenticated Nexus admin surface and a loopback/debug-constrained Studio;
 - versioned AES-256-GCM ORM field encryption with authenticated context;
 - CI gates against `panic!`, `unwrap()`, and `expect()` in declared production

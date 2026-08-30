@@ -65,6 +65,7 @@
 - [39. Scout Search Providers](tutorials/39-scout-search.md)
 - [40. NFS-e Homologation Preparation](tutorials/40-nfse-homologation-preparation.md)
 - [41. Tenant-Bound RAG](tutorials/41-tenant-bound-rag.md)
+- [42. Server-Bound OAuth/OIDC Sessions](tutorials/42-server-bound-oauth-sessions.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

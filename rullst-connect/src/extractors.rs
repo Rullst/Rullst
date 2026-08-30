@@ -1,5 +1,10 @@
 use serde::Deserialize;
 
+#[cfg(feature = "axum-session")]
+mod session;
+#[cfg(feature = "axum-session")]
+pub use session::{AuthSession, OAuthAuthorization, begin_oauth_session, begin_oidc_session};
+
 /// Standard OAuth2 callback query parameters.
 ///
 /// Most web frameworks (like Axum, Actix, Leptos, Rocket) can automatically
@@ -87,63 +92,6 @@ impl actix_web::FromRequest for AuthCallback {
         match actix_web::web::Query::<AuthCallback>::from_query(req.query_string()) {
             Ok(query) => std::future::ready(Ok(query.into_inner())),
             Err(e) => std::future::ready(Err(e.into())),
-        }
-    }
-}
-
-#[cfg(feature = "axum-session")]
-#[derive(Debug, Clone)]
-pub struct AuthSession {
-    pub callback: AuthCallback,
-}
-
-#[cfg(feature = "axum-session")]
-impl<S> axum::extract::FromRequestParts<S> for AuthSession
-where
-    S: Send + Sync,
-{
-    type Rejection = axum::response::Response;
-
-    async fn from_request_parts(
-        parts: &mut axum::http::request::Parts,
-        state: &S,
-    ) -> Result<Self, Self::Rejection> {
-        let session = parts
-            .extensions
-            .get::<tower_sessions::Session>()
-            .cloned()
-            .ok_or_else(|| {
-                axum::response::IntoResponse::into_response((
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    "Missing tower-sessions extension",
-                ))
-            })?;
-
-        let axum::extract::Query(callback) =
-            axum::extract::Query::<AuthCallback>::from_request_parts(parts, state)
-                .await
-                .map_err(axum::response::IntoResponse::into_response)?;
-
-        let state_param = callback.state.as_ref().ok_or_else(|| {
-            axum::response::IntoResponse::into_response((
-                axum::http::StatusCode::BAD_REQUEST,
-                "Missing CSRF state parameter",
-            ))
-        })?;
-
-        use subtle::ConstantTimeEq;
-        let session_state: Option<String> = session.remove("oauth_state").await.unwrap_or(None);
-        if let Some(saved) = session_state
-            && state_param.len() == saved.len()
-            && bool::from(state_param.as_bytes().ct_eq(saved.as_bytes()))
-        {
-            // Valid!
-            Ok(Self { callback })
-        } else {
-            Err(axum::response::IntoResponse::into_response((
-                axum::http::StatusCode::BAD_REQUEST,
-                "CSRF state mismatch",
-            )))
         }
     }
 }

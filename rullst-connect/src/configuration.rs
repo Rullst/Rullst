@@ -84,6 +84,10 @@ pub(crate) fn validate_redirect_url(value: &str) -> Result<Url, ConnectError> {
     validate_https_or_loopback_url("redirect_url", value)
 }
 
+pub(crate) fn validate_authorization_url(value: &str) -> Result<Url, ConnectError> {
+    validate_https_or_loopback_url("authorization_url", value)
+}
+
 pub(crate) fn validate_jwks_url(value: &str) -> Result<Url, ConnectError> {
     validate_https_or_loopback_url("jwks_uri", value)
 }

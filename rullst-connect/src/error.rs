@@ -39,6 +39,9 @@ pub enum ConnectError {
 
     #[error("Invalid CSRF state: {0}")]
     InvalidState(String),
+
+    #[error("Server-side OAuth session error: {0}")]
+    Session(String),
 }
 
 impl From<reqwest::Error> for ConnectError {
@@ -156,6 +159,7 @@ mod tests {
             },
             ConnectError::Provider("test".to_string()),
             ConnectError::InvalidState("test".to_string()),
+            ConnectError::Session("test".to_string()),
         ];
 
         for err in errors {
