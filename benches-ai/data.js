@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788109012536,
+  "lastUpdate": 1788114915347,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2827,6 +2827,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 535,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "353ebaec07c44723509d9239c7dc061b680f3d9b",
+          "message": "feat(capital): add bounded nfse preparation",
+          "timestamp": "2026-08-30T15:24:50-03:00",
+          "tree_id": "47831ab5878bc7a0e895f9c6920d7e700d43e307",
+          "url": "https://github.com/Rullst/Rullst/commit/353ebaec07c44723509d9239c7dc061b680f3d9b"
+        },
+        "date": 1788114914971,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1703,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 359,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 745,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
