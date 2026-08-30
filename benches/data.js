@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788062415567,
+  "lastUpdate": 1788071027142,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -9931,6 +9931,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2359,
             "range": "± 86",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b73d29b2fe86f2b65c38b4ce644eb6d37f7e6ff2",
+          "message": "feat(cli): verify hardened iOS Omni scaffolds",
+          "timestamp": "2026-08-30T03:18:37-03:00",
+          "tree_id": "9fe5cc949e2d04f800df894d1f2e1b34e6871b81",
+          "url": "https://github.com/Rullst/Rullst/commit/b73d29b2fe86f2b65c38b4ce644eb6d37f7e6ff2"
+        },
+        "date": 1788071026369,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 750,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1003,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2341,
+            "range": "± 59",
             "unit": "ns/iter"
           }
         ]
