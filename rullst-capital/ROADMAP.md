@@ -15,7 +15,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   needs currency, customer/payment-method identity and an idempotency policy.
 
 ## Phase 2: Billing Operations
-- [x] **Fail-closed Axum Webhooks**: Supported provider signatures reject empty secrets; timestamped protocols enforce freshness and middleware provides bounded TTL replay protection.
+- [x] **Fail-closed Axum and Actix Webhooks**: Both framework adapters call one canonical verifier. Supported provider signatures reject empty secrets; timestamped protocols enforce freshness, bodies are bounded and middleware provides bounded TTL replay protection.
 - [ ] **Distributed Idempotency Store**: Persist accepted event keys across processes and deployments before billing side effects.
 - [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
 - [~] **Invoicing Generation**: Generates escaped invoice HTML and converts a

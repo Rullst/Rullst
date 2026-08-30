@@ -6142,11 +6142,13 @@ dependencies = [
 name = "rullst-capital"
 version = "12.0.0"
 dependencies = [
+ "actix-web",
  "async-trait",
  "axum",
  "base64 0.23.1",
  "chrono",
  "criterion",
+ "futures-util",
  "hex",
  "oxixml-schema",
  "p12-keystore",

@@ -11,7 +11,7 @@
 | :--- | :---: | :--- |
 | **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
-| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Named adapters implement signature verification and freshness checks; cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
+| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. Cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
 | **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, and bounded rustls mTLS client construction. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
@@ -67,7 +67,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 2. Verified Webhook Signature Handling
 
-Webhooks enforce constant-time cryptographic verification to eliminate side-channel timing attacks:
+The low-level provider contract below illustrates exact-byte verification. HTTP
+applications should normally mount `verify_webhook` on Axum or
+`verify_webhook_actix_with_state` on Actix so body limits, normalized event
+insertion, and local replay rejection are applied before the handler. Webhooks
+use constant-time cryptographic verification where applicable:
 
 ```rust
 use axum::{body::Bytes, http::HeaderMap, response::IntoResponse};

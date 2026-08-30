@@ -437,8 +437,10 @@ renders HTML only: native PDF generation and automatic delivery after a payment
 event are not part of the current contract.
 
 ### 6.3. Webhook Signature Verification
-* Built-in webhook adapters use provider-appropriate cryptographic verification;
-  equality checks for derived signatures are constant-time where applicable.
+* The Axum and opt-in Actix middleware adapters call one canonical bounded
+  verifier before dispatch. Built-in provider adapters use provider-appropriate
+  cryptographic verification; equality checks for derived signatures are
+  constant-time where applicable.
 * Timestamped protocols enforce a bounded freshness window. Applications still
   need durable event-id idempotency across processes.
 

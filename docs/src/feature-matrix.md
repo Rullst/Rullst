@@ -53,6 +53,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
+| `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, and rustls mTLS preparation |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
@@ -162,7 +163,8 @@ Default feature: `axum`.
 
 | Feature | Enables |
 | --- | --- |
-| `axum` | Axum HTTP response integration for Capital errors and handlers |
+| `axum` | Axum middleware for the canonical bounded signed-webhook verifier |
+| `actix` | Actix Web middleware for the same verifier; it does not enable Axum when selected directly |
 | `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, and rustls mTLS preparation; it does not enable live SEFIN transmission |
 
 ### `rullst-mail`

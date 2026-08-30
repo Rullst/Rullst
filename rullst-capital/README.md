@@ -111,7 +111,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes an Axum middleware [`verify_webhook`](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs) that verifies supported provider signatures, enforces timestamp freshness for Stripe, Mercado Pago and Paddle, and rejects replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by this production-safe middleware.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Mercado Pago and Paddle, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -140,6 +140,19 @@ pub fn router() -> Router {
         .layer(axum::middleware::from_fn(verify_webhook))
 }
 ```
+
+For Actix Web, enable the crate's `actix` feature (or umbrella
+`rullst/capital-actix`) and mount
+`actix_web::middleware::from_fn(verify_webhook_actix_with_state)` with a
+`web::Data<WebhookMiddlewareState>`. The state can bind an explicit provider
+through `WebhookMiddlewareState::production_with_provider`, avoiding global
+configuration. See the
+[payment guide](https://rullst.github.io/payment-gateways-guide.html#actix-web-adapter)
+for a complete example.
+
+The bundled replay store is process-local. Multi-instance deployments must
+claim the provider event ID in shared durable state before idempotent billing
+side effects.
 
 ---
 

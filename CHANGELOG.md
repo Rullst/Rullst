@@ -50,6 +50,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   request/response handling, durable idempotency/audit, real A1 restricted-
   environment evidence, independent review and SEFIN homologation remain open;
   live modes still perform no network I/O.
+- Capital's signed-webhook boundary now exposes both Axum and feature-gated
+  Actix Web middleware over one canonical verifier. Both paths cap raw bodies
+  at two megabytes, verify before dispatch, restore the exact payload, attach a
+  normalized event and reject local replay. Explicit provider-bound state
+  removes the need for global configuration in isolated applications; durable
+  cross-instance provider-event idempotency remains application-owned.
 - `cargo rullst make:mail-invoice [Name]` and `make:mail-dunning [Name]`
   complete the bounded transactional-mail scaffold set. The fiscal template
   consumes typed Capital provenance and always labels `OfflineMock` as

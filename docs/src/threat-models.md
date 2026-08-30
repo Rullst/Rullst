@@ -112,8 +112,8 @@ amount/currency, invoice identity, replay state and fiscal documents.
 
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
-| `PAY-01` forged webhook | Verify the provider's exact signed bytes and algorithm cryptographically before parsing side effects. | Provider-specific signature negative tests. |
-| `PAY-02` replay/stale event | Enforce timestamp window and unique event ID in durable shared state before effects. | Freshness/local replay exists; distributed durable idempotency remains open. |
+| `PAY-01` forged webhook | Verify the provider's exact signed bytes and algorithm cryptographically before parsing side effects. | Axum and Actix call the same verifier; provider-specific signature negatives plus Actix body/event preservation prove the bounded adapters. |
+| `PAY-02` replay/stale event | Enforce timestamp window and unique event ID in durable shared state before effects. | Freshness and bounded local replay are enforced before dispatch; distributed durable idempotency remains open. |
 | `PAY-03` amount/owner substitution | Derive product/currency/owner from authenticated server state, never arbitrary client values. | Generated billing identity tests; live route review remains open. |
 | `PAY-04` duplicate/partial transition | Use a transactional idempotent state machine and reconcile with the provider. | Cross-instance atomic workflow remains open. |
 | `PAY-05` payout destination takeover | Require step-up authentication, allowlist/change delay and independent audit. | Application workflow remains open. |

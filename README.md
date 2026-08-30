@@ -223,8 +223,9 @@ performance evidence until its versions and runs are refreshed.
   Ollama transports with bounded injection heuristics and PII masking on the
   high-level client path. Passing a heuristic is not authorization.
 - 💳 **Capital adapters:** Stripe and LemonSqueezy checkout/webhook adapters use
-  cryptographic HMAC verification. The included process-local metrics/event
-  buffer is a preview helper, not an accounting ledger or authoritative MRR.
+  cryptographic HMAC verification; Axum and opt-in Actix middleware share one
+  bounded verifier. The included process-local metrics/event buffer is a preview
+  helper, not an accounting ledger or authoritative MRR.
 - 🔐 **Encryption & memory hygiene:** `#[orm(encrypted)]` transparently protects
   string fields on generated ORM writes/reads using versioned AES-256-GCM,
   authenticated table/column context, key identifiers, and keyrings. Randomized

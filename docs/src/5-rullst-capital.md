@@ -22,11 +22,13 @@ as deployment secrets. Empty credentials are configuration errors for live
 operations. Credentials deliberately prefixed with `mock_` select deterministic
 offline behavior where that adapter documents support for it.
 
-Webhook endpoints must use the Capital verification middleware. For supported
-protocols it performs cryptographic verification, freshness checks, and bounded
-replay protection before the application receives a normalized event. A webhook
-route may receive a narrowly scoped CSRF exemption only when this verifier remains
-mandatory on that exact route.
+Webhook endpoints must use the Capital verification middleware. Its Axum and
+opt-in Actix adapters call the same canonical verifier. For supported protocols
+it performs cryptographic verification, freshness checks, a two-megabyte body
+limit, and bounded replay protection before the application receives a
+normalized event. A webhook route may receive a narrowly scoped CSRF exemption
+only when this verifier remains mandatory on that exact route. See the
+[payment guide](payment-gateways-guide.md#actix-web-adapter) for Actix setup.
 
 ```rust,no_run
 use axum::{routing::post, Router};

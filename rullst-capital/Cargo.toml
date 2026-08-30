@@ -20,6 +20,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 [features]
 default = ["axum"]
 axum = ["dep:axum"]
+actix = ["dep:actix-web", "dep:futures-util"]
 nfse = ["dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
 
 [dependencies]
@@ -40,6 +41,8 @@ xml-sec = { version = "=0.1.16", default-features = false, features = ["xmldsig"
 p12-keystore = { version = "=0.3.1", optional = true }
 roxmltree = { version = "=0.19.0", optional = true }
 axum = { workspace = true, optional = true }
+actix-web = { version = "4", optional = true, default-features = false }
+futures-util = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

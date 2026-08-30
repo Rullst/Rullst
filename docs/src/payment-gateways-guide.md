@@ -133,7 +133,11 @@ pub async fn start_checkout(customer_email: String, plan_id: String) -> Result<R
 
 ### 3. Cryptographically Verified Webhook Endpoint
 
-Rullst Capital provides the `verify_webhook` middleware, which intercepts incoming requests, verifies HMAC signatures using constant-time comparisons (`subtle::ConstantTimeEq`), and passes a strongly-typed `WebhookEvent` into your handler:
+Rullst Capital provides Axum and Actix Web adapters for one canonical webhook
+verifier. It bounds the original payload, verifies the selected provider before
+dispatch, restores the exact signed bytes, and passes a strongly typed
+`WebhookEvent` into the handler. The production entry points reject empty and
+`mock_*` webhook configuration.
 
 ```rust
 use axum::{Router, routing::post, Extension};
@@ -163,6 +167,54 @@ pub fn billing_routes() -> Router {
         .layer(axum::middleware::from_fn(verify_webhook))
 }
 ```
+
+#### Actix Web adapter
+
+Enable `rullst-capital` with `default-features = false, features = ["actix"]`,
+or enable `rullst/capital-actix` through the umbrella crate. An explicit
+provider-bound state avoids global provider configuration and makes the replay
+boundary visible:
+
+```rust,no_run
+use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, HttpServer, middleware, web};
+use rullst_capital::{
+    InMemoryWebhookReplayStore, StripeProvider, WebhookEvent,
+    WebhookMiddlewareState, verify_webhook_actix_with_state,
+};
+use std::sync::Arc;
+
+async fn handle_billing_event(request: HttpRequest) -> HttpResponse {
+    let Some(event) = request.extensions().get::<WebhookEvent>().cloned() else {
+        return HttpResponse::InternalServerError().finish();
+    };
+    // Apply an idempotent subscription transition using `event`.
+    HttpResponse::NoContent().finish()
+}
+
+async fn serve() -> std::io::Result<()> {
+    let provider = Arc::new(StripeProvider::new(
+        "sk_live_from_secret_store",
+        "whsec_from_secret_store",
+    ));
+    let replay = Arc::new(InMemoryWebhookReplayStore::default());
+    let state = WebhookMiddlewareState::production_with_provider(provider, replay);
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(state.clone()))
+            .wrap(middleware::from_fn(verify_webhook_actix_with_state))
+            .route("/webhooks/capital", web::post().to(handle_billing_event))
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
+}
+```
+
+The in-memory replay store is atomic only inside one process. Before applying
+billing side effects in a multi-instance deployment, claim the provider event
+ID through a durable database or Redis uniqueness transaction and make the
+state transition idempotent.
 
 ### 4. International Payouts with Wise
 
