@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788126410593,
+  "lastUpdate": 1788128116670,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst ORM Benchmark": [
@@ -12877,6 +12877,120 @@ window.BENCHMARK_DATA = {
             "name": "db_roundtrip/query/limit_n/100",
             "value": 261314,
             "range": "± 2694",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbec614909d9a5e414ccb9b9a219014b8e7440a8",
+          "message": "fix(cli): render billing blueprint scaffold",
+          "timestamp": "2026-08-30T19:09:40-03:00",
+          "tree_id": "f4582fed0e26359f7bf222b8886dfa29c17f5748",
+          "url": "https://github.com/Rullst/Rullst/commit/fbec614909d9a5e414ccb9b9a219014b8e7440a8"
+        },
+        "date": 1788128115927,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "cpu/validate_identifier/short",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/qualified",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/invalid",
+            "value": 46,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/to_json/user",
+            "value": 477,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/from_json/user",
+            "value": 343,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/query_builder/build",
+            "value": 223,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/save/insert",
+            "value": 2214177,
+            "range": "± 238545",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/find_by_id",
+            "value": 100205,
+            "range": "± 1984",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/where_eq_first",
+            "value": 105928,
+            "range": "± 1043",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/count",
+            "value": 98351,
+            "range": "± 1940",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/all_limit_10",
+            "value": 105041,
+            "range": "± 1571",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/1",
+            "value": 96043,
+            "range": "± 3039",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/10",
+            "value": 104965,
+            "range": "± 1610",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/50",
+            "value": 152988,
+            "range": "± 2310",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/100",
+            "value": 245971,
+            "range": "± 2497",
             "unit": "ns/iter"
           }
         ]
