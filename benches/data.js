@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788118258730,
+  "lastUpdate": 1788119261429,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -10903,6 +10903,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2261,
             "range": "± 58",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0a9d35e30e1d6836558e97d920c49cb3d6663563",
+          "message": "feat(mail): add durable scheduled delivery",
+          "timestamp": "2026-08-30T16:45:44-03:00",
+          "tree_id": "5c62c67a7864e3e050da1ae0cfe98c9502216c99",
+          "url": "https://github.com/Rullst/Rullst/commit/0a9d35e30e1d6836558e97d920c49cb3d6663563"
+        },
+        "date": 1788119260604,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 770,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1007,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 644,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2293,
+            "range": "± 55",
             "unit": "ns/iter"
           }
         ]
