@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787990518382,
+  "lastUpdate": 1788057573900,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3889,6 +3889,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 362,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1b6b2da9a62eaa05dd98144c7b3c08cc239d8616",
+          "message": "feat(v12): implement audited roadmap capabilities",
+          "timestamp": "2026-08-29T23:27:39-03:00",
+          "tree_id": "8f335a4285b1f154dd589ba76e4b432943b3eda8",
+          "url": "https://github.com/Rullst/Rullst/commit/1b6b2da9a62eaa05dd98144c7b3c08cc239d8616"
+        },
+        "date": 1788057573529,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 477,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
