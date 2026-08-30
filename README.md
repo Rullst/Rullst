@@ -302,6 +302,9 @@ may be preferable when the application needs only routing and middleware; a
 frontend-first framework may be preferable when client component composition is
 the primary architecture.
 
+For a concise, evidence-bounded explanation of the framework's strongest
+technical differentiators, read [Why Rullst?](docs/src/why-Rullst.md).
+
 ### Where it fits in the Rust ecosystem
 
 This is a positioning guide, not a feature-score leaderboard. The projects solve

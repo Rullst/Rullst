@@ -8,6 +8,7 @@ documents to distinguish implemented behavior from roadmap work.
 
 ## Documentation Hub
 
+- [✨ Why Rullst?](./why-Rullst.md)
 - [📖 Getting Started & Blueprints Showcase](./1-getting-started.md)
 - [🤖 Rullst AI: Developing with Autonomous Agents](./2-rullst-ai.md)
 - [📊 Rullst Studio: Real-Time Monitoring & Radar](./3-rullst-studio.md)

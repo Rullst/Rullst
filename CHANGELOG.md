@@ -242,6 +242,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- Added an English [Why Rullst?](docs/src/why-Rullst.md) guide that summarizes
+  the framework's implemented technical differentiators, suitable use cases,
+  explicit limits, and evaluation path without presenting roadmap work as a
+  stable capability.
+
 - Dependabot now targets the active `main` line for both Cargo and GitHub Actions;
   the frozen `v5` branch receives no routine dependency maintenance. The v12
   dependency baseline incorporates the open Cargo update set, including the

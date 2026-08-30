@@ -1,6 +1,7 @@
 # Summary
 
 - [Welcome to Rullst](index.md)
+- [Why Rullst?](why-Rullst.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 
 # Core Features
