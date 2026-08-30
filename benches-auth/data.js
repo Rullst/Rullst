@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788098992799,
+  "lastUpdate": 1788103505193,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4279,6 +4279,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 437,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fb5909560635187434eabfab552f273fe3661447",
+          "message": "feat(orm): add bounded qdrant and redis stores",
+          "timestamp": "2026-08-30T12:13:42-03:00",
+          "tree_id": "29d9407a16fe63ab01d34a65368258688afd12d2",
+          "url": "https://github.com/Rullst/Rullst/commit/fb5909560635187434eabfab552f273fe3661447"
+        },
+        "date": 1788103504439,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 418,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
