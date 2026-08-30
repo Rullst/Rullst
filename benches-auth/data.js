@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788128661305,
+  "lastUpdate": 1788130718331,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4759,6 +4759,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 481,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "20dc06a6bb04ce67ecb6446ec2a47af097d67728",
+          "message": "feat(security): enforce bounded json schemas",
+          "timestamp": "2026-08-30T19:51:44-03:00",
+          "tree_id": "763fb73ffb17615e48c124fdf6206a807a816b50",
+          "url": "https://github.com/Rullst/Rullst/commit/20dc06a6bb04ce67ecb6446ec2a47af097d67728"
+        },
+        "date": 1788130717909,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 503,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
