@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788119537865,
+  "lastUpdate": 1788120298941,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4489,6 +4489,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 480,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "26451e691ad885bff791c98c0bd0e1083fef951a",
+          "message": "feat(studio): invalidate feature flag caches",
+          "timestamp": "2026-08-30T16:52:16-03:00",
+          "tree_id": "10b45c14d94ed557c20665d071ac6827b8019196",
+          "url": "https://github.com/Rullst/Rullst/commit/26451e691ad885bff791c98c0bd0e1083fef951a"
+        },
+        "date": 1788120298236,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 477,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
