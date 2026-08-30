@@ -2,14 +2,14 @@ name: IoT Cryptography Containment
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "rullst-iot/**"
       - "rullst-security/src/vault.rs"
       - ".github/workflows/pqc-compliance.yml"
       - "Cargo.lock"
   pull_request:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "rullst-iot/**"
       - "rullst-security/src/vault.rs"

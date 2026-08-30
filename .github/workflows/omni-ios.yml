@@ -2,7 +2,7 @@ name: Omni iOS Simulator
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
@@ -11,7 +11,7 @@ on:
       - "Cargo.lock"
       - ".github/workflows/omni-ios.yml"
   pull_request:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"

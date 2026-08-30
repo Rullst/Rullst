@@ -6,7 +6,8 @@ operation, secrets, billing and recovery remain deployment responsibilities.
 
 ## 1. Materialize and verify the SaaS starter
 
-While v12 is unreleased, use a reviewed dev checkout. After a prerelease ships,
+While v12 is unreleased, use a reviewed `main` checkout pinned by `Cargo.lock`.
+After a prerelease ships,
 install the matching versioned CLI and generate deterministically:
 
 ```bash

@@ -6,13 +6,14 @@ The following is a set of guidelines for contributing to `rullst-orm`.
 
 ## Branching Strategy
 
-- **`main`**: The stable branch. Do not submit pull requests directly to `main`.
-- **`dev`**: The active development branch. **All Pull Requests must target the `dev` branch.**
+- **`main`**: The protected active integration and release source line. Normal
+  pull requests target `main`; a branch name alone is not a stable release.
+- **`v5`**: Frozen historical source for the legacy v5 line.
 
 ## Local Development
 
 1. Fork the repository and clone it locally.
-2. Create a new branch off `dev`: `git checkout -b feature/my-feature`
+2. Create a new branch off the latest green `main`: `git checkout -b feature/my-feature`
 3. Make your changes.
 4. Make sure tests pass: `cargo test`
 5. Ensure your code is formatted properly: `cargo fmt`
@@ -20,7 +21,7 @@ The following is a set of guidelines for contributing to `rullst-orm`.
 
 ## Submitting a Pull Request
 
-- Target the `dev` branch.
+- Target the `main` branch.
 - Provide a clear and descriptive title.
 - Explain the changes you've made in the description.
 - Link any relevant issues.

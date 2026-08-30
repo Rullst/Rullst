@@ -2,9 +2,8 @@ name: Benchmark Regression
 
 on:
   push:
-    # v12 benchmark history is built from the active development line. Return
-    # this trigger to main when v12 is promoted.
-    branches: [dev]
+    # v12 benchmark history is built from the active mainline.
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '0 4 * * 1'  # Every Monday at 04:00 UTC (weekly regression audit)

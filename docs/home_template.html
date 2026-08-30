@@ -9,14 +9,14 @@
   <meta property="og:title" content="Rullst v12 development preview — NO-GO" />
   <meta property="og:description"
     content="Explore the implemented v12 capabilities, evidence and release boundaries. The published v5 line is end-of-life; v12 remains unreleased." />
-  <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
+  <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Rullst v12 development preview — NO-GO" />
   <meta name="twitter:description"
     content="Implemented capabilities, reproducible evidence and honest release boundaries for Rullst v12." />
-  <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" />
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
   <title>Rullst v12 development preview — NO-GO</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -114,11 +114,11 @@
       </strong>
       <span>
         <a href="https://github.com/Rullst/Rullst/tree/main"
-          style="color: #fde68a; font-weight: 700;">main</a> preserves the legacy v5 baseline.
-        Active work lives on <a href="https://github.com/Rullst/Rullst/tree/dev"
-          style="color: #fde68a; font-weight: 700;">dev</a> and remains
-        <strong>NO-GO for production</strong>. Use only versioned crates.io releases and matching immutable tags as
-        published artifacts.
+          style="color: #fde68a; font-weight: 700;">main</a> contains active v12 work and remains
+        <strong>NO-GO for production</strong>. The frozen
+        <a href="https://github.com/Rullst/Rullst/tree/v5"
+          style="color: #fde68a; font-weight: 700;">v5 branch</a> preserves legacy source without maintenance.
+        Use only versioned crates.io releases and matching immutable tags as published artifacts.
       </span>
     </div>
   </aside>
@@ -129,13 +129,13 @@
   <nav class="navbar" aria-label="Primary navigation">
     <div class="nav-content">
       <div class="logo"><span>📜🦀🌐 Rullst <small
-            style="font-size: 0.6em; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">v12 dev</small></span>
+            style="font-size: 0.6em; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">v12 preview</small></span>
       </div>
       <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
         <span class="bar"></span><span class="bar"></span><span class="bar"></span>
       </button>
       <div class="nav-links" id="nav-links">
-        <a href="https://github.com/Rullst/Rullst/tree/dev" class="btn btn-outline">GitHub</a>
+        <a href="https://github.com/Rullst/Rullst/tree/main" class="btn btn-outline">GitHub</a>
         <a href="/Rullst/book/" class="btn btn-outline">Documentation</a>
         <a href="/Rullst/book/v12.html" class="btn btn-outline">Release program</a>
         <a href="#evidence" class="btn btn-outline">Evidence</a>
@@ -152,7 +152,7 @@
       </p>
       <div class="hero-cta">
         <a href="/Rullst/book/tutorials/01-hello-world.html" class="btn btn-primary">Read Zero to Hero</a>
-        <a href="https://github.com/Rullst/Rullst/blob/dev/README.md" class="btn btn-secondary">Explore the preview</a>
+        <a href="https://github.com/Rullst/Rullst/blob/main/README.md" class="btn btn-secondary">Explore the preview</a>
       </div>
       <div class="badges">
         <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=64748b&logo=rust"
@@ -171,7 +171,7 @@
     <section class="content-section" aria-labelledby="capabilities-title">
       <h2 id="capabilities-title" class="section-title">What the v12 preview implements</h2>
       <p class="boundary-copy" style="max-width: 820px; margin: 0 auto 2rem; text-align: center;">
-        These are bounded capabilities in the dev branch, not a framework-wide production-readiness label.
+        These are bounded capabilities in the main branch, not a framework-wide production-readiness label.
       </p>
       <div class="card-grid">
         <article class="glass fact-card">
@@ -317,7 +317,7 @@ let user = User::find(42).await?;</code></pre>
           <li>External review, an operated release candidate and human GO/NO-GO approval cannot be replaced by local
             tests.</li>
         </ul>
-        <a href="https://github.com/Rullst/Rullst/blob/dev/RELEASE_GUIDE.md" class="btn btn-primary">Read the release
+        <a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md" class="btn btn-primary">Read the release
           guide</a>
       </div>
     </section>

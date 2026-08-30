@@ -2,9 +2,8 @@ name: Deploy Sites to GitHub Pages
 
 on:
   push:
-    # While v12 is unreleased, the public site is an explicit dev preview.
-    # Return this trigger to main as part of the stable v12 promotion.
-    branches: ["dev"]
+    # While v12 is unreleased, the public site is an explicit mainline preview.
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:

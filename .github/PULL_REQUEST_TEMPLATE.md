@@ -27,4 +27,4 @@
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing tests for implemented behavior pass locally (run `cargo test --workspace --all-features`)
 - [ ] I have checked my code and corrected any misspellings
-- [ ] I am submitting normal work to `dev` (`main` accepts only reviewed release promotion)
+- [ ] I branched from `main` and this pull request targets `main`

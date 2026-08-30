@@ -3,9 +3,9 @@ updates:
   # Enable Cargo updates for the Rust workspace
   - package-ecosystem: "cargo"
     directory: "/"
-    # All dependency PRs target dev, NOT main.
-    # Review and test on dev first, then release to main via the normal process.
-    target-branch: "dev"
+    # Dependency PRs target the actively maintained v12 integration line.
+    # The frozen v5 branch receives no routine dependency updates.
+    target-branch: "main"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -25,9 +25,9 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    # v5 on main is frozen. Action updates belong to the actively maintained
-    # v12 line and must pass the dev branch workflow gates before release.
-    target-branch: "dev"
+    # Action updates belong to the actively maintained v12 integration line.
+    # The frozen v5 branch receives no routine workflow maintenance.
+    target-branch: "main"
     schedule:
       interval: "weekly"
       day: "monday"

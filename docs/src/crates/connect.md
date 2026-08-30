@@ -207,7 +207,7 @@ cargo run --example axum_server
 
 Connect is released only through the repository-wide, topologically ordered
 release workflow. Do not publish this crate independently from a working tree.
-Follow the [v12 release guide](https://github.com/Rullst/Rullst/blob/dev/RELEASE_GUIDE.md)
+Follow the [v12 release guide](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md)
 and require all candidate-SHA gates before creating a release tag.
 
 ## 🤝 Contributing

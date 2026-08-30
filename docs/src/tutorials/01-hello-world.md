@@ -3,7 +3,7 @@
 This tutorial takes a new developer from installing Rust to a running Rullst
 web application. It uses the unreleased v12 development snapshot documented by
 this site. For production, use a versioned crates.io release or an immutable
-release tag instead of the mutable `dev` branch.
+release tag instead of the mutable `main` branch.
 
 ## 1. Install Rust and Cargo
 
@@ -43,12 +43,12 @@ Every command below must run in this directory, where `Cargo.toml` lives.
 Until v12 is published, select the development source explicitly:
 
 ```bash
-cargo add rullst --git https://github.com/Rullst/Rullst.git --branch dev
+cargo add rullst --git https://github.com/Rullst/Rullst.git --branch main
 cargo add tokio --features full
 ```
 
 Cargo records the resolved Git commit in `Cargo.lock`. This makes one checkout
-repeatable, but a future dependency update can select a newer `dev` commit. Do
+repeatable, but a future dependency update can select a newer `main` commit. Do
 not use this mutable preview source in production.
 
 Applications that must remain on stable v5 should use its
@@ -101,7 +101,7 @@ The v12 CLI can generate complete starters and project modules. While working
 from a source checkout, install the same revision locally:
 
 ```bash
-git clone --branch dev https://github.com/Rullst/Rullst.git
+git clone --branch main https://github.com/Rullst/Rullst.git
 cd Rullst
 cargo install --locked --path cargo-rullst
 cargo rullst --help
@@ -119,4 +119,4 @@ command and boundary.
   by the generated template.
 - All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
 - Fallible handlers can return `Result<Response, AppError>`; server startup propagates its typed error with `?`.
-- The v12 `dev` branch is an evaluation source, not a stable release channel.
+- The v12 `main` branch is an evaluation source, not a stable release channel.

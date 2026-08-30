@@ -17,19 +17,18 @@
     mainLink.href = "https://github.com/Rullst/Rullst/tree/main";
     mainLink.textContent = "main";
 
-    const devLink = document.createElement("a");
-    devLink.href = "https://github.com/Rullst/Rullst/tree/dev";
-    devLink.textContent = "dev";
+    const v5Link = document.createElement("a");
+    v5Link.href = "https://github.com/Rullst/Rullst/tree/v5";
+    v5Link.textContent = "v5";
 
     const message = document.createElement("span");
     message.append(
       "The ",
       mainLink,
-      " branch is the end-of-life v5 baseline and no longer receives maintenance. " +
-        "Active v12 work lives on ",
-      devLink,
-      ", is unreleased, and remains NO-GO for production until its documented " +
-        "release gates pass."
+      " branch contains active v12 work, is unreleased, and remains NO-GO for " +
+        "production until its documented release gates pass. The frozen ",
+      v5Link,
+      " branch preserves legacy source without ongoing maintenance."
     );
 
     banner.append(title, message);

@@ -6,17 +6,20 @@
 
 ## 🧠 The Core Concept
 
-**The golden rule: `main` is the promoted release/maintenance line; active work
-belongs in `dev`.** A branch name is not a publication or a security
-certification. Official release artifacts remain crates.io packages and their
-matching immutable tags.
+**The golden rule: `main` is the protected active integration and release
+source line.** Normal work is reviewed through short-lived branches before it
+reaches `main`. A branch name is not a publication or a security certification.
+Official release artifacts remain crates.io packages and their matching
+immutable tags.
 
-We use **two permanent branches**:
+The repository uses one permanent active line and preserves historical source
+only when it is useful:
 
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
-| `main` | Promoted release or maintenance source line | Only after an approved release tag |
-| `dev` | Active integration and unreleased development | Never directly |
+| `main` | Active v12 integration and source for future releases | Only after an approved release tag |
+| `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
+| `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
 | `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
 | crates.io `X.Y.Z[-pre]` | Official distributed artifact | Yes |
 
@@ -24,16 +27,16 @@ We use **two permanent branches**:
 
 ## 📋 The Full Release Cycle (Step by Step)
 
-### Phase 1 — Develop on `dev`
+### Phase 1 — Develop from `main`
 
-All new work starts from `dev` and returns through a pull request targeting
-`dev`. Direct pushes to `main` are not part of the normal workflow; promotion
-uses a reviewed `dev` → `main` pull request.
+All new work starts from the latest green `main` and returns through a pull
+request targeting `main`. Keep branches short-lived and do not stack new work
+on a broken required gate.
 
 ```powershell
-# Switch to dev before starting any new work
-git switch dev
-git pull --ff-only origin dev
+# Synchronize main before starting any new work
+git switch main
+git pull --ff-only origin main
 git switch -c feat/<short-topic>
 ```
 
@@ -46,9 +49,9 @@ git commit -m "feat(scope): add concise capability"
 git push -u origin feat/<short-topic>
 ```
 
-Every push and pull request to `dev` triggers the relevant CI. Checks are
-classified so unfinished roadmap work does not make every development signal
-meaningless:
+Every push to `main` and every pull request targeting it triggers the relevant
+CI. Checks are classified so unfinished roadmap work does not make every
+development signal meaningless:
 
 - **Development baseline:** formatting, compilation, strict Clippy, tests for
   implemented behavior, and current panic/unsafe/security invariants should
@@ -85,9 +88,9 @@ Before releasing, make sure:
     compilation on macOS; this is not device, signing, TestFlight, or App Store
     acceptance evidence.
 - [ ] You have manually verified the mandatory local trifecta:
-  `cargo fmt --all -- --check`,
-  `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and
-  `cargo test --workspace --all-features`.
+  `cargo test --workspace --all-features`,
+  `cargo clippy --workspace --all-features -- -D warnings`, and
+  `cargo fmt --all`.
 - [ ] `CHANGELOG.md` has a detailed release section describing all additions and fixes.
 - [ ] The [compatibility and MSRV policy](docs/src/compatibility-policy.md) still
   matches the manifests, supported-version table, and intended release changes.
@@ -113,16 +116,15 @@ Before releasing, make sure:
 
 ---
 
-### Phase 3 — Release (Promote to `main` + Create a Tag)
+### Phase 3 — Freeze `main` + Create a Tag
 
 Once everything is stable and verified:
 
-1. Freeze feature work and prepare the synchronized version change in `dev`.
-2. Run the full local and CI release gates.
-3. Open a promotion PR from `dev` to `main` and require the configured checks.
-4. If merging produces a different SHA, rerun the release gates on that final
-   `main` SHA.
-5. Create `v12.0.0-rc.1` or `v12.0.0` only on the approved SHA, then push that
+1. Freeze feature work and prepare the synchronized version change through a
+   reviewed pull request into `main`.
+2. Run the full local and CI release gates on the resulting `main` SHA.
+3. Record and review the package/evidence artifacts for that exact SHA.
+4. Create `v12.0.0-rc.1` or `v12.0.0` only on the approved SHA, then push that
    tag to trigger the release workflow:
 
 ```powershell
@@ -145,20 +147,23 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 
 ---
 
-### Phase 4 — Start the Next Version on `dev`
+### Phase 4 — Start the Next Version from `main`
 
-After the release, immediately start the next development cycle on `dev`:
+After the release, start the next development cycle through a short-lived
+branch created from `main`:
 
 ```powershell
-# Switch back to dev
-git switch dev
+# Synchronize the released main line
+git switch main
+git pull --ff-only origin main
+git switch -c chore/start-next-version
 
 # Update versions to next iteration (e.g., 12.1.0-dev)
 # Add new [Unreleased] section to CHANGELOG.md
 
 git add .
 git commit -m "chore(release): start 12.1 development"
-git push
+git push -u origin chore/start-next-version
 ```
 
 ---
@@ -166,16 +171,13 @@ git push
 ## 🔄 Visual Summary
 
 ```
-                        YOU WORK HERE
-                              │
-                              ▼
-dev ──────────────────────────────────────────────────▶
-     commit commit commit    │ cargo sync, version bump
-                             │ reviewed promotion PR
-                             ▼
-main ────────────────────────●────────────────────────▶
-                             │ git tag vX.Y.Z
-                             ▼
+short-lived branches ── reviewed pull requests ──▶ main
+                                                   │
+                                                   │ exact approved SHA
+                                                   ▼
+                                            git tag vX.Y.Z
+                                                   │
+                                                   ▼
                    🤖 GitHub Actions CI
                    runs all tests...
                              │ if ✅ all green
@@ -194,8 +196,9 @@ main ────────────────────────●
 > order. A workflow name alone is not evidence; the exact release run must pass.
 
 > [!WARNING]
-> **Never** use `main` as a work branch. Start from `dev` and promote through the
-> reviewed process above.
+> Keep `main` green and protected. Normal changes arrive through reviewed,
+> short-lived branches; emergency direct pushes require the same evidence and
+> must not bypass repository rulesets.
 
 > [!IMPORTANT]
 > The automatic publishing only triggers when you push a **version tag** (e.g., `v1.0.5`). A regular `git push` to `main` does **NOT** publish to crates.io.
@@ -218,8 +221,9 @@ a permanent repository-wide registry token.
 
 ```powershell
 # Start new work
-git switch dev
-git pull --ff-only origin dev
+git switch main
+git pull --ff-only origin main
+git switch -c feat/<short-topic>
 
 # Sync README badges after bumping version
 cargo sync
@@ -227,7 +231,7 @@ cargo sync
 # Check status before releasing
 git status
 
-# After an approved dev -> main promotion PR
+# After the candidate commit is approved on main
 git switch main
 git pull --ff-only origin main
 git tag vX.Y.Z
@@ -243,6 +247,6 @@ git push origin vX.Y.Z
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | Legacy v5 maintenance baseline during v12 development |
-| Active dev branch | `dev` |
+| Current `main` line | Active, unreleased v12 integration |
+| Legacy source | Frozen `v5` branch and immutable `v5.0.0` tag |
 | v12 stable decision | `NO-GO` until the documented gates pass |

@@ -20,19 +20,17 @@ The distinction matters: Kani, Miri, mutation testing, or a scanner can be very
 valuable without proving that the entire framework is panic-free, race-free,
 memory-safe, or compliant with a regulation.
 
-## Development branch execution model
+## Mainline execution model
 
-The v12 dashboard and its automatic status badges are pinned to `dev`. The
-continuous workflows accept pushes and pull requests for both `main` and `dev`,
+The v12 dashboard and its automatic status badges are pinned to `main`. The
+continuous workflows accept pushes to `main` and pull requests targeting it,
 and expose `workflow_dispatch` where a safe rerun is useful. Superseded runs of
 these workflows are cancelled per workflow and ref so rapid development does
 not spend runner capacity proving an obsolete commit.
 
-GitHub executes `schedule` events from the repository's default branch. While
-v12 remains unreleased on `dev`, a scheduled result normally describes `main`;
-run the deep workflow manually with `dev` selected when the evidence must apply
-to v12. Tag publication remains deliberately unavailable through a manual
-button.
+GitHub executes `schedule` events from the repository's default branch, so
+scheduled and continuous v12 evidence now share the active `main` source line.
+Tag publication remains deliberately unavailable through a manual button.
 
 ## Required local and release baseline
 
@@ -59,10 +57,10 @@ minimal umbrella boundaries, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. A dedicated job
 checks the declared MSRV, Rust 1.96.0.
 
-## Recommended `dev` branch-protection profile
+## Recommended `main` branch-protection profile
 
 Require every job emitted by the following workflows before merging into
-`dev`: Rust CI, GitHub Actions Lint, End-to-End Smoke Tests, Cargo Audit,
+`main`: Rust CI, GitHub Actions Lint, End-to-End Smoke Tests, Cargo Audit,
 Security Audit, Cargo Deny, CodeQL, Test Coverage, Cargo Machete, SemVer Checks,
 Spellcheck, Crate Architecture Policy, TruffleHog, Unsafe Policy, WebAssembly Matrix, Zero
 Panics, no-std Build, IoT Integration, and PR Security Evidence.
@@ -179,40 +177,40 @@ dependency graph make static estimates unreliable.
 
 | Workflow | Trigger | Mode | Actual scope |
 | :--- | :--- | :--- | :--- |
-| [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
-| [`architecture.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/architecture.yml) | main/dev push and PR, manual | Blocking | Compares Cargo's publishable internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed edges, removals, or optionality changes fail. |
-| [`audit.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/audit.yml) | main/dev push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
-| [`bench.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/bench.yml) | dev push, weekly, manual | Automated evidence | Eight benchmark groups with non-blocking 20% regression alerts and gh-pages history. Scheduled runs use the repository default branch unless dispatched from `dev`. |
-| [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/cargo-deny.yml) | main/dev push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/ci.yml) | main/dev push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, isolated strict-DB compile/runtime boundaries, and MSRV. |
-| [`codeql.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/codeql.yml) | main/dev push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
-| [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
-| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/coverage.yml) | main/dev push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
-| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/dast-zap.yml) | manual | On-demand | OWASP ZAP baseline against the blog example. |
-| [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/e2e-smoke.yml) | main/dev push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
-| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/fuzzing.yml) | manual | On-demand | Forty libFuzzer matrix jobs, each capped below six hours. |
-| [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/iot-integration.yml) | main/dev push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
-| [`kani.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/kani.yml) | manual | Informational | Bounded Kani research harnesses; failures do not fail the workflow job. |
-| [`machete.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/machete.yml) | main/dev push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
-| [`miri.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/miri.yml) | manual | Informational | Miri package matrix with randomized layouts; failures are tolerated. |
-| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/mutants.yml) | manual | Informational | Eight cargo-mutants shards with uploaded results. |
-| [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/no_std-build.yml) | main/dev push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
-| [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/omni-ios.yml) | relevant main/dev changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
-| [`pages.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/pages.yml) | dev push, manual | Deploy | Builds and deploys the unreleased v12 documentation preview to GitHub Pages. |
-| [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/pqc-compliance.yml) | relevant main/dev changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
-| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Release-mode property and workspace tests with configured case counts. |
-| [`release.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
-| [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on nightly Rust. |
-| [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/scorecards.yml) | main push, weekly | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
-| [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/security-audit.yml) | main/dev push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
-| [`semver.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/semver.yml) | main/dev push and PR, manual | Blocking | Compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
-| [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/spellcheck.yml) | main/dev push and PR, manual | Blocking | Repository typo scan. |
-| [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/trufflehog.yml) | main/dev push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
-| [`udeps.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/udeps.yml) | weekly, manual | Informational | Nightly cargo-udeps signal; command failures are tolerated. |
-| [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/unsafe-policy.yml) | main/dev push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |
-| [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/wasm-matrix.yml) | main/dev push and PR, manual | Blocking | Compiles Core and macro crates for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
-| [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/workflow-lint.yml) | main/dev push and PR, manual | Blocking | Actionlint checks workflow syntax, GitHub expressions, and embedded shell using an immutable container digest. |
-| [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/zero-panics.yml) | main/dev push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
+| [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
+| [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main push and PR, manual | Blocking | Compares Cargo's publishable internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed edges, removals, or optionality changes fail. |
+| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
+| [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight benchmark groups with non-blocking 20% regression alerts and gh-pages history. Scheduled runs use the repository default branch. |
+| [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, isolated strict-DB compile/runtime boundaries, and MSRV. |
+| [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
+| [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
+| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
+| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | On-demand | OWASP ZAP baseline against the blog example. |
+| [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
+| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty libFuzzer matrix jobs, each capped below six hours. |
+| [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
+| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational | Bounded Kani research harnesses; failures do not fail the workflow job. |
+| [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
+| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational | Miri package matrix with randomized layouts; failures are tolerated. |
+| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Eight cargo-mutants shards with uploaded results. |
+| [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
+| [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
+| [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Builds and deploys the unreleased v12 documentation preview to GitHub Pages. |
+| [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
+| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Release-mode property and workspace tests with configured case counts. |
+| [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
+| [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on nightly Rust. |
+| [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
+| [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
+| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main push and PR, manual | Blocking | Compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
+| [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main push and PR, manual | Blocking | Repository typo scan. |
+| [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
+| [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | Nightly cargo-udeps signal; command failures are tolerated. |
+| [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | main push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |
+| [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | main push and PR, manual | Blocking | Compiles Core and macro crates for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
+| [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/workflow-lint.yml) | main push and PR, manual | Blocking | Actionlint checks workflow syntax, GitHub expressions, and embedded shell using an immutable container digest. |
+| [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | main push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
 
 ## Preserved next-generation roadmap
 

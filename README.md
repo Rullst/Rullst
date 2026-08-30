@@ -3,17 +3,18 @@
 </div>
 
 > [!WARNING]
-> **Rullst v12 development snapshot:** this `dev` branch contains active,
-> unreleased work and remains **NO-GO** for a stable `12.0.0` release. It will be
-> promoted only after the documented tests, audits, package checks, and release
-> candidate gates pass on the exact commit. Use a versioned
+> **Rullst v12 development snapshot:** `main` contains active, unreleased work
+> and remains **NO-GO** for a stable `12.0.0` release until the documented tests,
+> audits, package checks, and release-candidate gates pass on the exact commit.
+> Use a versioned
 > [crates.io](https://crates.io/crates/rullst) release or its matching immutable
-> tag in production; do not track `dev`. See the
+> tag in production; do not deploy from the moving `main` branch. The frozen
+> `v5` branch preserves legacy source without ongoing maintenance. See the
 > [v12 release program](docs/src/v12.md) and
 > [compatibility policy](docs/src/compatibility-policy.md).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/Rullst.png" alt="Rullst Logo" width="300">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
 <h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
@@ -23,64 +24,64 @@
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io"></a>
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/d/rullst?style=for-the-badge&color=blue" alt="Crates.io Downloads"></a>
   <a href="https://docs.rs/rullst"><img src="https://img.shields.io/docsrs/rullst?style=for-the-badge&logo=docsdotrs" alt="Docs.rs"></a>
-  <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Adev"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=dev&style=for-the-badge&label=Dev%20Build" alt="Dev Rust CI"></a>
+  <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=for-the-badge&label=Main%20Build" alt="Main Rust CI"></a>
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
 </p>
 
-<h3 align="center">🛡️ v12 Dev Verification Dashboard</h3>
+<h3 align="center">🛡️ v12 Main Verification Dashboard</h3>
 
 <p align="center">
   Rullst applies layered compile, test, architecture, portability, and security checks.<br/>
-  Dev badges are pinned to the <code>dev</code> branch; they report the latest matching run, not a certification or deployment guarantee.
+  Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
 </p>
 
-| Continuous or change-aware gate | v12 `dev` status | Actual scope |
+| Continuous or change-aware gate | v12 `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=dev&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Adev) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
-| **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=dev&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Adev) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
-| **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=dev&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Adev) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
-| **LLVM coverage** | [![Coverage](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?branch=dev&style=flat-square&label=Coverage)](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Adev) | Generates LCOV from workspace and DB-matrix tests; the Codecov upload is blocking. |
-| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?branch=dev&style=flat-square&label=RustSec)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml?query=branch%3Adev) | RustSec advisory scan with only governed, expiring exceptions. |
-| **Security exception governance** | [![Security Governance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?branch=dev&style=flat-square&label=Exception%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml?query=branch%3Adev) | Cross-checks scanner allowlists against the owner/expiry ledger, then independently reruns Cargo Audit. |
-| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=dev&style=flat-square&label=Cargo%20Deny)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml?query=branch%3Adev) | Advisory, license, ban, and source policy. |
-| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=dev&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Adev) | Rust semantic analysis after an all-target/all-feature build. |
-| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=dev&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Adev) | Unused direct dependency detection. |
-| **SemVer checks** | [![SemVer](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=dev&style=flat-square&label=SemVer)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml?query=branch%3Adev) | Supported library APIs are compared with exact latest non-yanked registry baselines; never-published packages and unsupported proc-macro/binary surfaces are reported explicitly. |
-| **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=dev&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Adev) | Denies panic-family operations in published production targets and generated runtime templates. |
-| **Unsafe boundary** | [![Unsafe Policy](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?branch=dev&style=flat-square&label=Unsafe%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml?query=branch%3Adev) | Denies new production unsafe code outside the reviewed OS/FFI allowlist. |
-| **Secret scanning** | [![TruffleHog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?branch=dev&style=flat-square&label=Secrets)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml?query=branch%3Adev) | Verified-secret scan across the configured Git history range. |
-| **Spellcheck** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?branch=dev&style=flat-square&label=Spellcheck)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml?query=branch%3Adev) | Repository-wide typo detection. |
-| **Crate architecture policy** | [![Architecture](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/architecture.yml?branch=dev&style=flat-square&label=Architecture)](https://github.com/Rullst/Rullst/actions/workflows/architecture.yml?query=branch%3Adev) | Compares the real publishable-crate dependency graph with a versioned, reviewed repository policy. |
-| **WebAssembly matrix** | [![Wasm](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/wasm-matrix.yml?branch=dev&style=flat-square&label=Wasm)](https://github.com/Rullst/Rullst/actions/workflows/wasm-matrix.yml?query=branch%3Adev) | Compiles Core and macros for browser Wasm and WASI Preview 1. |
-| **Bare-metal `no_std` matrix** | [![no_std](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?branch=dev&style=flat-square&label=no_std)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml?query=branch%3Adev) | Builds IoT helpers for Cortex-M and RISC-V targets; this is compile evidence, not hardware testing. |
-| **IoT integration** | [![IoT](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?branch=dev&style=flat-square&label=IoT)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml?query=branch%3Adev) | Host tests, signed OTA invariants, and a Cortex-M build. |
-| **IoT crypto containment** | [![IoT Crypto](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?branch=dev&style=flat-square&label=Crypto%20Boundary)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml?query=branch%3Adev) | Path-aware signed OTA, Vault, advisory, and simulator-boundary checks; no PQC/HSM certification claim. |
-| **Omni iOS simulator** | [![Omni iOS](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-ios.yml?branch=dev&style=flat-square&label=Omni%20iOS)](https://github.com/Rullst/Rullst/actions/workflows/omni-ios.yml?query=branch%3Adev) | Path-aware fresh scaffold generation and compilation on a macOS iOS simulator target; no device, signing or App Store claim. |
-| **PR security evidence** | [![PR Security](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ai-sentinel-pr.yml?branch=dev&style=flat-square&label=PR%20Evidence)](https://github.com/Rullst/Rullst/actions/workflows/ai-sentinel-pr.yml?query=branch%3Adev) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
+| **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
+| **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=main&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Amain) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
+| **LLVM coverage** | [![Coverage](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/coverage.yml?branch=main&style=flat-square&label=Coverage)](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Amain) | Generates LCOV from workspace and DB-matrix tests; the Codecov upload is blocking. |
+| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?branch=main&style=flat-square&label=RustSec)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml?query=branch%3Amain) | RustSec advisory scan with only governed, expiring exceptions. |
+| **Security exception governance** | [![Security Governance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?branch=main&style=flat-square&label=Exception%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml?query=branch%3Amain) | Cross-checks scanner allowlists against the owner/expiry ledger, then independently reruns Cargo Audit. |
+| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=main&style=flat-square&label=Cargo%20Deny)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml?query=branch%3Amain) | Advisory, license, ban, and source policy. |
+| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Amain) | Rust semantic analysis after an all-target/all-feature build. |
+| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=main&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Amain) | Unused direct dependency detection. |
+| **SemVer checks** | [![SemVer](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=main&style=flat-square&label=SemVer)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml?query=branch%3Amain) | Supported library APIs are compared with exact latest non-yanked registry baselines; never-published packages and unsupported proc-macro/binary surfaces are reported explicitly. |
+| **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=main&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Amain) | Denies panic-family operations in published production targets and generated runtime templates. |
+| **Unsafe boundary** | [![Unsafe Policy](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?branch=main&style=flat-square&label=Unsafe%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml?query=branch%3Amain) | Denies new production unsafe code outside the reviewed OS/FFI allowlist. |
+| **Secret scanning** | [![TruffleHog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?branch=main&style=flat-square&label=Secrets)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml?query=branch%3Amain) | Verified-secret scan across the configured Git history range. |
+| **Spellcheck** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?branch=main&style=flat-square&label=Spellcheck)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml?query=branch%3Amain) | Repository-wide typo detection. |
+| **Crate architecture policy** | [![Architecture](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/architecture.yml?branch=main&style=flat-square&label=Architecture)](https://github.com/Rullst/Rullst/actions/workflows/architecture.yml?query=branch%3Amain) | Compares the real publishable-crate dependency graph with a versioned, reviewed repository policy. |
+| **WebAssembly matrix** | [![Wasm](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/wasm-matrix.yml?branch=main&style=flat-square&label=Wasm)](https://github.com/Rullst/Rullst/actions/workflows/wasm-matrix.yml?query=branch%3Amain) | Compiles Core and macros for browser Wasm and WASI Preview 1. |
+| **Bare-metal `no_std` matrix** | [![no_std](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?branch=main&style=flat-square&label=no_std)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml?query=branch%3Amain) | Builds IoT helpers for Cortex-M and RISC-V targets; this is compile evidence, not hardware testing. |
+| **IoT integration** | [![IoT](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?branch=main&style=flat-square&label=IoT)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml?query=branch%3Amain) | Host tests, signed OTA invariants, and a Cortex-M build. |
+| **IoT crypto containment** | [![IoT Crypto](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?branch=main&style=flat-square&label=Crypto%20Boundary)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml?query=branch%3Amain) | Path-aware signed OTA, Vault, advisory, and simulator-boundary checks; no PQC/HSM certification claim. |
+| **Omni iOS simulator** | [![Omni iOS](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-ios.yml?branch=main&style=flat-square&label=Omni%20iOS)](https://github.com/Rullst/Rullst/actions/workflows/omni-ios.yml?query=branch%3Amain) | Path-aware fresh scaffold generation and compilation on a macOS iOS simulator target; no device, signing or App Store claim. |
+| **PR security evidence** | [![PR Security](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ai-sentinel-pr.yml?branch=main&style=flat-square&label=PR%20Evidence)](https://github.com/Rullst/Rullst/actions/workflows/ai-sentinel-pr.yml?query=branch%3Amain) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. |
 
 Deep or irreversible workflows are intentionally not presented as continuously
-green dev gates:
+green main gates:
 
 | Deep evidence | Trigger and enforcement |
 | :--- | :--- |
 | [OpenSSF Scorecard](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) | Weekly/default-branch supply-chain evidence and SARIF; [scorecard badge](https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst). |
-| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `dev` push, or manual; eight suites emit non-blocking alerts at a 20% regression. |
+| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight suites emit non-blocking alerts at a 20% regression. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual nightly-toolchain package matrices. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual DAST against the blog example only. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals with explicitly non-blocking portions. |
-| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the unreleased v12 documentation preview from `dev`; it is not a code-quality gate. |
+| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the unreleased v12 documentation preview from `main`; it is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: full verification, package-all, evidence bundle, checksums, attestations, ordered crates.io publish, and release provenance. |
 
-Scheduled events use the repository's default branch. While v12 remains on
-`dev`, run deep workflows manually with `dev` selected when the evidence must
-apply to v12. The recommended required-check profile and the exact scope of all
+Scheduled events use the repository's default branch, so scheduled and
+continuous v12 evidence now refer to `main`. The recommended required-check
+profile and the exact scope of all
 34 workflow definitions are documented in [WORKFLOWS.md](WORKFLOWS.md).
 
-> 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/dev/WORKFLOWS.md).**
+> 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
 >
-> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/dev/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
+> 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
 <br>
 
 ## 💡 The Rullst Philosophy
@@ -106,17 +107,17 @@ documented `src/main.rs`:
 ```bash
 cargo new my_app
 cd my_app
-cargo add rullst --git https://github.com/Rullst/Rullst.git --branch dev
+cargo add rullst --git https://github.com/Rullst/Rullst.git --branch main
 cargo add tokio --features full
 ```
 
 The Git dependency tracks active development and is for evaluation only. Keep
-the generated `Cargo.lock`, do not deploy from `dev`, and use a versioned crate
+the generated `Cargo.lock`, do not deploy from mutable `main`, and use a versioned crate
 release or immutable tag in production.
 
 <h2 align="center"> CLI ⚡ Rullst Framework ⚡ </h2>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="Rullst CLI Initiating LMS Blueprint" width="80%"/>
 </p>
 
 <h2 align="center">Click to Watch: How to build a SaaS Blueprint with Rullst </h2>
@@ -133,10 +134,10 @@ release or immutable tag in production.
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="SaaS Blueprint" width="100%" />
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
+      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="LMS Blueprint" width="100%" />
     </td>
   </tr>
 </table>
@@ -145,11 +146,11 @@ release or immutable tag in production.
 <br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst Interactive Terminal Dashboard" width="100%"/>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/dev/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
 </p>
 
 ### 🔄 Assisted framework upgrades (v12 preview)
@@ -272,7 +273,7 @@ Rullst is built on **Axum**, **Tokio**, **Tower**, and **SQLx**, and exposes sta
 - **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Use the CLI eject output as a migration starting point and review the generated code before deployment.
-- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/dev/docs/src/axum-sqlx-migration.md).
+- 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).
 
 ---
 
@@ -324,18 +325,18 @@ Evaluate only the features you intend to enable. In particular:
 Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are versioned and tested together so compatibility regressions can be caught in one workspace; consumers should still follow SemVer notes and the release matrix for the exact version they use.
 
 **Explore the Monorepo Ecosystem:**
-- 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/dev/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
-- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md).
-- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/dev/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
-- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/dev/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
-- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/dev/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
-- 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/dev/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
-- 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/dev/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
-- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/dev/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
-- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/dev/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, and background delivery.
-- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/dev/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
-- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/dev/rullst-nexus)**: Registered-model Admin CMS (`/nexus`) and a local security-event view.
-- 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/dev/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
+- 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md).
+- 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
+- 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
+- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
+- 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics and payment-provider adapters; live Alipay RSA2 and NFS-e authorization remain fail-closed roadmap work.
+- 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
+- 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
+- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, and background delivery.
+- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
+- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Registered-model Admin CMS (`/nexus`) and a local security-event view.
+- 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
 
 ---
 

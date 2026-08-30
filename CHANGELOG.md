@@ -195,7 +195,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
-- Dependabot now targets `dev` for both Cargo and GitHub Actions. The v12
+- Dependabot now targets the active `main` line for both Cargo and GitHub Actions;
+  the frozen `v5` branch receives no routine dependency maintenance. The v12
   dependency baseline incorporates the open Cargo update set, including the
   `jsonwebtoken`, `aes-gcm`, `p256`, `tokio-tungstenite`, `syn`, `tera`,
   `base64`, and `validator` major trains; the lockfile no longer contains
@@ -210,7 +211,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   reported explicitly instead of being presented as verified.
 - The README keeps a compact v12 preview quick start and links to the complete
   cross-platform Zero-to-Hero tutorial, including typed startup error
-  propagation and an explicit warning against deploying from mutable `dev`.
+  propagation and an explicit warning against deploying from mutable `main`.
+- Repository governance now uses protected `main` as the active v12 integration
+  and future release source, short-lived reviewed branches for normal work, and
+  a frozen `v5` branch for the exact legacy source baseline. This branch move
+  does not publish or certify v12.
 - README performance language now distinguishes compile-time expansion from
   runtime dispatch, identifies benchmark scope and historical comparison data,
   and replaces the unsupported ecosystem scorecard with a source-linked

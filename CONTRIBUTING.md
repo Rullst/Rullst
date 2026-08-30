@@ -28,7 +28,7 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 
 ## Development Setup
 
-1. Fork the repo and create your branch from `dev`.
+1. Fork the repo and create a short-lived branch from the latest green `main`.
 2. Configure git hooks: `git config core.hooksPath .githooks`.
 3. Run `cargo build --workspace --all-features` to build the framework.
 4. Run `cargo test --workspace --all-features` to exercise implemented behavior.
@@ -38,9 +38,12 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 8. Ensure the full test suite passes.
 
 ## Branching Model
-- `main`: Promoted release and maintenance source line. It is not itself a
-  crates.io publication or security certification.
-- `dev`: Active integration branch. Normal pull requests must target this
-  branch; only reviewed release promotion targets `main`.
+- `main`: Protected active integration and release source line. Normal pull
+  requests target this branch; required checks should remain green. It is not
+  itself a crates.io publication or security certification.
+- `v5`: Frozen historical source for the legacy v5 line. Do not target it with
+  routine fixes or dependency updates; released v5 consumers should pin the
+  immutable `v5.0.0` tag or crates.io artifact.
+- Feature and fix branches are short-lived and branch from `main`.
 
 Thank you for your interest in making Rullst better!
