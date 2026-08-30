@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788123991472,
+  "lastUpdate": 1788124793582,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4609,6 +4609,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 482,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3a5aa1aaead3451f5fe449ed8abb3cee05609d10",
+          "message": "feat(capital): add actix webhook middleware",
+          "timestamp": "2026-08-30T18:06:54-03:00",
+          "tree_id": "b7edd1476c801638d713ab87ad6bbc63599537a2",
+          "url": "https://github.com/Rullst/Rullst/commit/3a5aa1aaead3451f5fe449ed8abb3cee05609d10"
+        },
+        "date": 1788124793183,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 485,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
