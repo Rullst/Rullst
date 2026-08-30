@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788118711017,
+  "lastUpdate": 1788119537865,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4459,6 +4459,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 480,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0a9d35e30e1d6836558e97d920c49cb3d6663563",
+          "message": "feat(mail): add durable scheduled delivery",
+          "timestamp": "2026-08-30T16:45:44-03:00",
+          "tree_id": "5c62c67a7864e3e050da1ae0cfe98c9502216c99",
+          "url": "https://github.com/Rullst/Rullst/commit/0a9d35e30e1d6836558e97d920c49cb3d6663563"
+        },
+        "date": 1788119537488,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 480,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
