@@ -33,7 +33,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `orm` | yes | `rullst-orm` and Core's ORM integration |
 | `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
 | `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
-| `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL, transactions, reversible checked migrations, and a persistent offline fallback |
+| `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-polyglot` | no | Convenience feature enabling all four optional persistence adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
@@ -95,7 +95,7 @@ aliases use SQLx `Any`.
 | `redis` | Redis connection-manager support and Redis-aware ORM errors |
 | `mongodb` | Official MongoDB driver plus typed document CRUD and offline fallback |
 | `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
-| `turso` | Official remote libSQL driver, typed primary CRUD/query facade, parameterized SQL, transactions, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
+| `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
 | `surrealdb` | SurrealDB HTTP document CRUD and bounded read-only ISO GQL; no embedded SDK |
 | `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, and `surrealdb` |
 | `strict-postgres` | Concrete PostgreSQL pool, database, query-result, and query paths |

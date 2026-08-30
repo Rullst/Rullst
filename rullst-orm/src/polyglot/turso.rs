@@ -6,9 +6,13 @@ const MAX_QUERY_ROWS: u32 = 10_000;
 const MAX_STATEMENT_BYTES: usize = 1024 * 1024;
 const MAX_PARAMETERS: usize = 1_024;
 const MAX_PARAMETER_BYTES: usize = 8 * 1024 * 1024;
+const MAX_TRANSACTION_STATEMENTS: usize = 1_024;
+const MAX_TRANSACTION_BYTES: usize = 16 * 1024 * 1024;
 
 mod codec;
-use codec::{execute_sqlite, from_libsql_row, query_sqlite, to_libsql_values, transaction_sqlite};
+use codec::{execute_sqlite, query_sqlite, transaction_sqlite};
+mod hrana;
+use hrana::HranaClient;
 mod migration;
 pub use migration::{TursoMigration, TursoMigrationReport, TursoRollbackReport};
 mod model;
@@ -73,6 +77,19 @@ impl TursoStatement {
             });
         }
         Ok(Self { sql, parameters })
+    }
+
+    fn payload_bytes(&self) -> Option<usize> {
+        self.parameters
+            .iter()
+            .try_fold(self.sql.len(), |total, value| {
+                total.checked_add(match value {
+                    TursoValue::Null => 0,
+                    TursoValue::Integer(_) | TursoValue::Real(_) => 8,
+                    TursoValue::Text(value) => value.len(),
+                    TursoValue::Blob(value) => value.len(),
+                })
+            })
     }
 }
 
@@ -185,6 +202,12 @@ impl TursoConfig {
                 reason: "endpoint must not contain credentials, query parameters, or a fragment",
             });
         }
+        if parsed.host_str().is_none() {
+            return Err(PolyglotError::InvalidConfiguration {
+                backend: "Turso",
+                reason: "endpoint must contain a host",
+            });
+        }
         let secure = matches!(parsed.scheme(), "libsql" | "https");
         let loopback = parsed.host_str().is_some_and(|host| {
             host.eq_ignore_ascii_case("localhost")
@@ -226,10 +249,7 @@ impl fmt::Debug for TursoConfig {
 }
 
 enum TursoInner {
-    Remote {
-        _database: libsql::Database,
-        connection: libsql::Connection,
-    },
+    Remote(HranaClient),
     Offline(sqlx::SqlitePool),
 }
 
@@ -261,18 +281,9 @@ impl TursoStore {
             });
         }
 
-        let database = libsql::Builder::new_remote(config.url, config.auth_token)
-            .build()
-            .await
-            .map_err(|error| PolyglotError::driver("Turso", error))?;
-        let connection = database
-            .connect()
-            .map_err(|error| PolyglotError::driver("Turso", error))?;
+        let client = HranaClient::new(&config.url, config.auth_token)?;
         Ok(Self {
-            inner: TursoInner::Remote {
-                _database: database,
-                connection,
-            },
+            inner: TursoInner::Remote(client),
         })
     }
 
@@ -292,10 +303,7 @@ impl TursoStore {
     /// Executes one parameterized statement and returns affected rows.
     pub async fn execute(&self, statement: TursoStatement) -> Result<u64, PolyglotError> {
         match &self.inner {
-            TursoInner::Remote { connection, .. } => connection
-                .execute(&statement.sql, to_libsql_values(statement.parameters))
-                .await
-                .map_err(|error| PolyglotError::driver("Turso", error)),
+            TursoInner::Remote(client) => client.execute(statement).await,
             TursoInner::Offline(pool) => execute_sqlite(pool, statement).await,
         }
     }
@@ -311,38 +319,23 @@ impl TursoStore {
                 reason: "at least one statement is required",
             });
         }
+        if statements.len() > MAX_TRANSACTION_STATEMENTS {
+            return Err(PolyglotError::InvalidIdentifier {
+                kind: "Turso transaction",
+                reason: "a transaction accepts at most 1024 statements",
+            });
+        }
+        let payload_bytes = statements.iter().try_fold(0usize, |total, statement| {
+            total.checked_add(statement.payload_bytes()?)
+        });
+        if payload_bytes.is_none_or(|bytes| bytes > MAX_TRANSACTION_BYTES) {
+            return Err(PolyglotError::InvalidIdentifier {
+                kind: "Turso transaction",
+                reason: "transaction SQL and parameters must not exceed 16 MiB",
+            });
+        }
         match &self.inner {
-            TursoInner::Remote { connection, .. } => {
-                let transaction = connection
-                    .transaction()
-                    .await
-                    .map_err(|error| PolyglotError::driver("Turso", error))?;
-                let mut affected = Vec::with_capacity(statements.len());
-                for statement in statements {
-                    match transaction
-                        .execute(&statement.sql, to_libsql_values(statement.parameters))
-                        .await
-                    {
-                        Ok(rows) => affected.push(rows),
-                        Err(error) => {
-                            transaction.rollback().await.map_err(|rollback| {
-                                PolyglotError::Driver {
-                                    backend: "Turso",
-                                    message: format!(
-                                        "statement failed: {error}; rollback failed: {rollback}"
-                                    ),
-                                }
-                            })?;
-                            return Err(PolyglotError::driver("Turso", error));
-                        }
-                    }
-                }
-                transaction
-                    .commit()
-                    .await
-                    .map_err(|error| PolyglotError::driver("Turso", error))?;
-                Ok(affected)
-            }
+            TursoInner::Remote(client) => client.transaction(statements).await,
             TursoInner::Offline(pool) => transaction_sqlite(pool, statements).await,
         }
     }
@@ -354,24 +347,7 @@ impl TursoStore {
         limit: TursoQueryLimit,
     ) -> Result<Vec<TursoRow>, PolyglotError> {
         match &self.inner {
-            TursoInner::Remote { connection, .. } => {
-                let mut rows = connection
-                    .query(&statement.sql, to_libsql_values(statement.parameters))
-                    .await
-                    .map_err(|error| PolyglotError::driver("Turso", error))?;
-                let mut materialized = Vec::new();
-                while materialized.len() < limit.get() as usize {
-                    let Some(row) = rows
-                        .next()
-                        .await
-                        .map_err(|error| PolyglotError::driver("Turso", error))?
-                    else {
-                        break;
-                    };
-                    materialized.push(from_libsql_row(&row)?);
-                }
-                Ok(materialized)
-            }
+            TursoInner::Remote(client) => client.query(statement, limit).await,
             TursoInner::Offline(pool) => query_sqlite(pool, statement, limit).await,
         }
     }

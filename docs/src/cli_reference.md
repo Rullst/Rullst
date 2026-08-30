@@ -28,7 +28,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API project (no HTML view rendering).
   * `--docker`: Adds the current multi-stage `Dockerfile` packaging scaffold; Compose services and deployment hardening remain explicit project work.
-  * `--turso`: Adds the official remote Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
+  * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.

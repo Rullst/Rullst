@@ -48,7 +48,7 @@ async fn test_matrix_turso_remote_sql_contract() {
         TursoConfig::new(format!("http://{host}:{port}"), "").allow_insecure_loopback(),
     )
     .await
-    .expect("official libSQL remote driver should initialize");
+    .expect("official Hrana remote protocol should initialize");
     assert!(!store.is_offline());
 
     let migration = TursoMigration::new(
@@ -118,6 +118,37 @@ async fn test_matrix_turso_remote_sql_contract() {
         rows[0].get("label"),
         Some(&TursoValue::Text("updated remotely".into()))
     );
+
+    let failed = store
+        .transaction(vec![
+            statement(
+                "INSERT INTO edge_events VALUES (?1, ?2)",
+                vec![
+                    TursoValue::Integer(2),
+                    TursoValue::Text("must roll back".into()),
+                ],
+            ),
+            statement(
+                "INSERT INTO edge_events VALUES (?1, ?2)",
+                vec![
+                    TursoValue::Integer(1),
+                    TursoValue::Text("duplicate key".into()),
+                ],
+            ),
+        ])
+        .await;
+    assert!(failed.is_err(), "duplicate key transaction must fail");
+    let rolled_back = store
+        .query(
+            statement(
+                "SELECT sequence FROM edge_events WHERE sequence = ?1",
+                vec![TursoValue::Integer(2)],
+            ),
+            TursoQueryLimit::new(1).expect("bounded rollback query"),
+        )
+        .await
+        .expect("rollback verification query should succeed");
+    assert!(rolled_back.is_empty(), "failed batch must roll back fully");
 
     store
         .execute(statement(

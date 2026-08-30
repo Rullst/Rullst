@@ -5,52 +5,6 @@ use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use super::{PolyglotError, TursoQueryLimit, TursoRow, TursoStatement, TursoValue};
 
-pub(super) fn to_libsql_values(values: Vec<TursoValue>) -> Vec<libsql::Value> {
-    values
-        .into_iter()
-        .map(|value| match value {
-            TursoValue::Null => libsql::Value::Null,
-            TursoValue::Integer(value) => libsql::Value::Integer(value),
-            TursoValue::Real(value) => libsql::Value::Real(value),
-            TursoValue::Text(value) => libsql::Value::Text(value),
-            TursoValue::Blob(value) => libsql::Value::Blob(value),
-        })
-        .collect()
-}
-
-pub(super) fn from_libsql_row(row: &libsql::Row) -> Result<TursoRow, PolyglotError> {
-    let mut columns = BTreeMap::new();
-    for index in 0..row.column_count() {
-        let name = row
-            .column_name(index)
-            .ok_or_else(|| PolyglotError::Driver {
-                backend: "Turso",
-                message: format!("result column {index} has no name"),
-            })?;
-        if columns.contains_key(name) {
-            return Err(PolyglotError::Driver {
-                backend: "Turso",
-                message: format!("duplicate result column name: {name}"),
-            });
-        }
-        let value = row
-            .get_value(index)
-            .map_err(|error| PolyglotError::driver("Turso", error))?;
-        columns.insert(name.to_owned(), from_libsql_value(value));
-    }
-    Ok(TursoRow { columns })
-}
-
-fn from_libsql_value(value: libsql::Value) -> TursoValue {
-    match value {
-        libsql::Value::Null => TursoValue::Null,
-        libsql::Value::Integer(value) => TursoValue::Integer(value),
-        libsql::Value::Real(value) => TursoValue::Real(value),
-        libsql::Value::Text(value) => TursoValue::Text(value),
-        libsql::Value::Blob(value) => TursoValue::Blob(value),
-    }
-}
-
 pub(super) async fn execute_sqlite(
     pool: &sqlx::SqlitePool,
     statement: TursoStatement,

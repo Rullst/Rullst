@@ -54,6 +54,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offline modes; SurrealDB uses its public HTTP protocol rather than adding the
   BSL-licensed SDK. Umbrella `orm-mongodb`, `orm-duckdb`, `orm-turso`,
   `orm-surrealdb`, and `orm-polyglot` features mirror the lower-level flags.
+- Replaced Turso's remote `libsql` SDK dependency with a direct, bounded Hrana
+  HTTP v3 transport over the workspace Rustls client. Typed parameters, remote
+  CRUD, checked migrations and conditional atomic batches retain live libSQL
+  conformance, including rollback evidence. This removes the obsolete
+  Hyper/Rustls chain responsible for the five RustSec failures without adding
+  audit exceptions.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

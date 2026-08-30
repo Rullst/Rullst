@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn turso_primary_uses_libsql_features_without_a_direct_sqlx_driver() {
+    fn turso_primary_uses_hrana_features_without_a_direct_sqlx_driver() {
         let manifest = build_cargo_toml(
             "edge-primary",
             false,

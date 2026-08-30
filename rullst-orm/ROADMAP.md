@@ -102,4 +102,4 @@ compile-time schema verified.
 - [ ] **Post-Quantum Field Encryption**: No production `#[orm(encrypt_pq)]` implementation exists; custom cryptography is not recommended.
 - [ ] **Automatic Distributed Graph Traversal**: Manual CTE and bounded SurrealDB read-only GQL are separate foundations, not this capability.
 - [ ] **Qdrant / General Redis Datastore**: Not implemented beyond the bounded Redis helpers above.
-- [x] **Edge Databases (bounded v12)**: Remote-only official libSQL support provides parameterized Turso SQL, transactions, bounded materialization, checksummed migrations and real-SQL offline fallback; transparent replicas and SQLx Active Record parity are not claimed.
+- [x] **Edge Databases (bounded v12)**: Direct official Hrana HTTP v3 support provides parameterized Turso SQL, atomic transactions, bounded responses/materialization, checksummed migrations and a real-SQL offline fallback; transparent replicas and SQLx Active Record parity are not claimed.

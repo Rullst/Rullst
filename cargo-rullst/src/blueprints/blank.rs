@@ -33,7 +33,7 @@ pub fn file_manifest(
     };
 
     let db_status_code = if turso_primary {
-        "    // Typed Turso Active Record query through the primary libSQL driver.\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Turso connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Turso offline or not migrated: {}\", e),\n    };"
+        "    // Typed Turso Active Record query through the primary Hrana transport.\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Turso connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Turso offline or not migrated: {}\", e),\n    };"
     } else if db_needed {
         "    // ORM usage example: Fetch active users from database\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Database connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Database offline or not configured: {}\", e),\n    };"
     } else {

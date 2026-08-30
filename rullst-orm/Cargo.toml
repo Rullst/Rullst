@@ -24,7 +24,6 @@ serde_json = { workspace = true }
 redis = { workspace = true, features = ["tokio-comp", "connection-manager"], optional = true }
 mongodb = { version = "3.8.2", optional = true }
 duckdb = { version = "1.10505.0", features = ["bundled"], optional = true }
-libsql = { version = "0.9.30", default-features = false, features = ["remote", "tls"], optional = true }
 url = { version = "2.5.8", optional = true }
 reqwest = { workspace = true, features = ["json", "rustls", "stream"], optional = true }
 aes-gcm = "0.11.0"
@@ -43,7 +42,7 @@ default = []
 redis = ["dep:redis"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
-turso = ["dep:libsql", "dep:url", "dep:sha2"]
+turso = ["dep:reqwest", "dep:url", "dep:sha2"]
 surrealdb = ["dep:reqwest"]
 polyglot = ["mongodb", "duckdb", "turso", "surrealdb"]
 strict-postgres = []

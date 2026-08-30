@@ -197,11 +197,14 @@ new_user.delete().await?;
   parameters, and callers must supply a `QueryLimit` before rows are
   materialized. Application-provided SQL text remains a trusted structural
   input.
-* `TursoStore` uses the official remote-only `libsql` driver for edge SQL,
-  prepared parameters, bounded materialization, transactions and ordered
-  checksummed migrations. Empty or `mock_*` endpoints use a one-connection
-  SQLite in-memory fallback that exercises real SQL without pretending to be a
-  remote replica. HTTPS/`libsql://` is required outside explicitly enabled
+* `TursoStore` speaks the official Hrana HTTP v3 protocol directly for remote
+  edge SQL. It uses positional typed parameters, conditional atomic batches,
+  a 30-second request deadline, no redirects, a 16-MiB response bound, bounded
+  row materialization, and ordered checksummed migrations. This avoids an
+  unnecessary embedded/native SDK dependency while retaining conformance
+  against the official libSQL server. Empty or `mock_*` endpoints use a
+  one-connection SQLite fallback that exercises real SQL without pretending to
+  be a remote replica. HTTPS/`libsql://` is required outside explicitly enabled
   loopback development.
 * `SurrealDbStore<T>` uses the documented `/key`, `/sql`, and `/gql` HTTP
   endpoints with namespace/database headers, no redirects, bounded streaming

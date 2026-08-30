@@ -123,19 +123,23 @@ let rows = edge.query(
 ).await?;
 ```
 
-The live path uses the official Rust `libsql` remote client with TLS enabled,
-without embedding its native SQLite engine. URLs must use `libsql://` or HTTPS;
-cleartext HTTP requires an explicit loopback-development opt-in. Tokens and
-endpoint details are redacted from `Debug`, result
-materialization is limited to 1–10,000 rows, and each statement is limited to
-1,024 positional parameters with at most 8 MiB of parameter data. SQL result
-cells can still be large, so applications must also constrain selected columns
-and data at the schema/query boundary.
+The live path speaks the official Hrana HTTP v3 protocol directly through the
+workspace's Rustls-backed HTTP client; it does not embed the native SQLite
+engine or the legacy remote SDK dependency chain. URLs must use
+`libsql://` or HTTPS; cleartext HTTP requires an explicit loopback-development
+opt-in. Requests reject redirects and have a 30-second deadline. Tokens and
+endpoint details are redacted from `Debug`; remote responses are capped at
+16 MiB, result materialization at 1–10,000 rows, each statement at 1,024
+positional parameters/8 MiB of parameter data, and each transaction at 1,024
+statements/16 MiB of raw SQL plus parameters. SQL result cells can still be
+large, so applications must also constrain selected columns and data at the
+schema/query boundary.
 
 An empty or `mock_*` endpoint selects a single-connection SQLite in-memory
 fallback. It executes real SQL and migrations deterministically but does not
 simulate remote replication, latency, failover, or Turso Cloud. The live CI
-contract runs the same API against the official `sqld` container.
+contract runs the same API against the official `sqld` container and proves
+that a failed multi-statement batch rolls back its earlier writes.
 
 ## The portable document contract
 

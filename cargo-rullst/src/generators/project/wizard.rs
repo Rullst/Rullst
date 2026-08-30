@@ -251,7 +251,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
         }
 
         let persistence_options = &[
-            "Turso / libSQL (edge SQL; remote driver + offline fallback)",
+            "Turso / libSQL (edge SQL; Hrana v3 + offline fallback)",
             "MongoDB (document CRUD)",
             "DuckDB (in-process OLAP / analytics)",
             "SurrealDB (document CRUD + bounded read-only graph queries)",
