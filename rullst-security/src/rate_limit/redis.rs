@@ -40,7 +40,7 @@ pub struct RateLimitDecision {
 
 #[derive(Clone)]
 enum Backend {
-    Redis(redis::Client),
+    Redis(Box<redis::Client>),
     OfflineMock(Arc<DashMap<String, (Instant, u64)>>),
 }
 
@@ -88,10 +88,10 @@ impl RedisRateLimiter {
         let backend = if redis_url.is_empty() || redis_url.starts_with("mock_") {
             Backend::OfflineMock(Arc::new(DashMap::new()))
         } else {
-            Backend::Redis(
+            Backend::Redis(Box::new(
                 redis::Client::open(redis_url)
                     .map_err(|error| RateLimitError::Backend(error.to_string()))?,
-            )
+            ))
         };
         Ok(Self {
             max_requests,
