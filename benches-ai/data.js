@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788084165635,
+  "lastUpdate": 1788086456712,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2491,6 +2491,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 680,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32c6c2fd314c8d42dd8948d1e686d58d1054fc15",
+          "message": "ci(coverage): authenticate uploads with oidc",
+          "timestamp": "2026-08-30T07:15:30-03:00",
+          "tree_id": "809e1c3998fd3442d3db50d43d7af8a8bac16e52",
+          "url": "https://github.com/Rullst/Rullst/commit/32c6c2fd314c8d42dd8948d1e686d58d1054fc15"
+        },
+        "date": 1788086455999,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1287,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 250,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 587,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
