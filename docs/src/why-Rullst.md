@@ -106,6 +106,12 @@ deterministic offline behavior when configured with their documented empty or
 `mock_*` credentials. This lets generated projects, tests, examples, and local
 sandboxes run without silently contacting a third party.
 
+The Brazilian fiscal boundary applies the same evidence-first approach: its
+bounded DPS 1.01 builder, checksum-pinned official XSD catalogue, local
+PKCS#12 XMLDSig verification, and mTLS client preparation are testable without
+calling SEFIN, while tax authorization remains explicitly disabled until the
+external homologation gates pass.
+
 Mocks prove the local application contract, not the live provider contract.
 Provider-specific production support still requires the applicable live or
 protocol tests, credentials, policy, and operational evidence.

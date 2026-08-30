@@ -2,8 +2,9 @@
 
 `rullst-capital` provides payment/payout adapter foundations, normalized billing
 types, bounded webhook verification helpers, application-supplied revenue
-snapshots, and an offline-only NFS-e preview. Provider method coverage is not
-uniform; inspect the selected adapter and test it in the provider sandbox.
+snapshots, and a bounded National NFS-e preparation pipeline. Provider method
+coverage is not uniform; inspect the selected adapter and test it in the
+provider sandbox.
 
 ## 🚀 Core Features
 
@@ -43,6 +44,12 @@ Add `rullst-capital` to your `Cargo.toml`:
 ```toml
 [dependencies]
 rullst-capital = "12.0.0"
+```
+
+The heavier NFS-e schema/signature boundary is opt-in:
+
+```toml
+rullst-capital = { version = "12.0.0", features = ["nfse"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -136,9 +143,36 @@ pub fn router() -> Router {
 
 ---
 
-## 🧾 NFS-e Padrão Nacional — Contained Preview
+## 🧾 NFS-e Padrão Nacional — Homologation Preparation
 
-The crate can build an escaped DPS XML fixture, but live NFS-e issuance is intentionally fail-closed. `Homologation` and `Production` return `FiscalError::Unsupported` until PKCS#12 key extraction, XML C14N/XMLDSig, XSD validation, mTLS, strict response parsing and official end-to-end homologation are independently verified. The legacy `sign_dps_xml` entry point never fabricates a signature.
+The local pipeline now implements a bounded ordinary-service DPS 1.01 builder,
+checksum-pinned validation against official production/restricted XSD sources,
+PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
+signature verification, and rustls mTLS client construction. Certificate bytes,
+passphrases, and derived PEM are redacted and zeroized where owned by Rullst.
+The production profile applies one exact, documented in-memory compatibility
+normalization after hash verification: it removes `.NET` `^...$` anchors from
+the known DPS-series pattern because XSD regex grammar treats them as literals.
+
+This is preparation for homologation, not live issuance. `Homologation` and
+`Production` still return `FiscalError::Unsupported` without network I/O until
+the official JSON envelope and bounded response/rejection parser, full
+certificate/emitter policy, durable idempotency/audit, real restricted-environment
+evidence, independent review, and official homologation are complete.
+
+Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
+XSD, XMLDSig, and mTLS preparation APIs. The strict DPS builder and unmistakable
+offline mock remain available through the base Capital crate.
+
+The runnable [`nfse_v101_preview`](examples/nfse_v101_preview.rs) example emits
+the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted
+official production package whose files match the pinned hashes, it validates
+the document before writing it:
+
+```bash
+RULLST_NFSE_XSD_DIR=/path/to/NFSe/Schemas/1.01 \
+  cargo run -p rullst-capital --example nfse_v101_preview
+```
 
 Only `NfseEnvironment::Mock` is executable. Its response is typed as `FiscalResponseKind::OfflineMock`, uses `MOCK_NOT_AUTHORIZED`, and must never be accounted as an issued invoice:
 
@@ -172,7 +206,7 @@ let customer = FiscalCustomer {
 let dps = invoice.to_dps("1.03.01", "3550308", 2.0); // 1.03.01 = SaaS & Hosting, 2.0% ISS
 
 // 4. Mock mode does not load or use a real certificate.
-let cert = FiscalCertificate::from_base64("", "");
+let cert = FiscalCertificate::offline_mock();
 
 // 5. Produce a deterministic offline fixture; no network request is made.
 let response = issue_nfse_direct(
@@ -194,4 +228,4 @@ assert!(!response.is_officially_authorized());
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store.
 - **Alipay Containment**: Live RSA2 checkout and webhook verification return `UnsupportedOperation`; only explicitly mock-prefixed credentials operate offline.
-- **Fiscal Containment**: No XMLDSig or official NFS-e authorization is claimed until the complete official integration is validated.
+- **Fiscal Containment**: Local XSD/XMLDSig/mTLS preparation is not an official NFS-e authorization; live transmission remains disabled until the documented external gates pass.

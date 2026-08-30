@@ -1,7 +1,7 @@
 # Rullst Capital 💰
 ### *"Enterprise Multi-Gateway Billing, SaaS Analytics & Fiscal Engine"*
 
-`rullst-capital` provides a unified financial foundation for SaaS, digital commerce, and marketplace platforms written in Rust. It includes multi-provider adapter surfaces, recurring-subscription models, international payout helpers, and an offline Brazilian NFS-e DPS preview. Live provider and fiscal production readiness must be established per adapter and environment.
+`rullst-capital` provides a unified financial foundation for SaaS, digital commerce, and marketplace platforms written in Rust. It includes multi-provider adapter surfaces, recurring-subscription models, international payout helpers, and a bounded Brazilian National NFS-e preparation pipeline. Live provider and fiscal production readiness must be established per adapter and environment.
 
 ---
 
@@ -13,9 +13,9 @@
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
 | **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Named adapters implement signature verification and freshness checks; cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
-| **NFS-e DPS XML Preview** | 🟡 `[Offline Test Mock]` | Escaped DPS XML construction and deterministic offline fixtures; no XMLDSig, transmission, official schema conformance, authorization, or homologation claim. |
+| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, and bounded rustls mTLS client construction. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
-| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap]` | W3C XMLDSig signing (C14N canonicalization, RSA-SHA256 with ICP-Brasil A1 PKCS#12) and mTLS transmission to SEFIN. |
+| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Official JSON request/response and rejection contracts, full emitter/ICP-Brasil certificate policy, durable idempotency/audit, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
 
 ---
 
@@ -112,25 +112,32 @@ pub async fn handle_stripe_webhook(
 
 ## 🏛️ Brazilian Digital Invoicing (NFS-e Nacional)
 
-`rullst-capital` includes a dedicated offline fiscal preview module (`rullst_capital::fiscal`) shaped around the National NFS-e domain. It is not yet an officially conformant issuer.
+`rullst-capital` includes a dedicated fiscal module (`rullst_capital::fiscal`)
+shaped around the National NFS-e domain. Its local schema, signature, and mTLS
+preparation contracts are implemented and tested; it is not yet an officially
+homologated issuer.
+
+Enable `rullst-capital/nfse` (or umbrella `rullst/capital-nfse`) for the pinned
+XSD, XMLDSig, and mTLS preparation dependencies. Selecting the feature does not
+enable SEFIN transmission.
 
 ### Architecture & Pipeline
 
 ```
-[SaaS Sale Event] ──► [build_dps_xml()] ──► [XMLDSig C14N Signer (Roadmap)] ──► [SEFIN mTLS (Roadmap)]
-                              │
-                              ▼
-                     [NfseEnvironment::Mock] ──► [Offline Deterministic Fixture]
+[SaaS Sale] ──► [NfseDpsV101] ──► [Pinned XSD] ──► [PKCS#12 XMLDSig] ──► [mTLS client]
+                    │                                                    │
+                    ▼                                                    ▼
+          [Offline deterministic fixture]                  [SEFIN transmission disabled]
 ```
 
 ### Emitting an Invoicing Document (DPS)
 
 ```rust
 use rullst_capital::fiscal::{
-    build_dps_xml, issue_nfse_direct, FiscalCertificate, FiscalCustomer,
-    FiscalEmitter, NfseDps, NfseEnvironment, TaxRegime,
+    build_dps_xml_v1_01, FiscalCustomer, FiscalEmitter, IssRetention,
+    IssTaxation, NfseDpsV101, NfseEnvironment, TaxRegime,
 };
-use chrono::Utc;
+use chrono::{NaiveDate, Utc};
 
 let emitter = FiscalEmitter {
     cnpj: "12.345.678/0001-90".to_string(),
@@ -150,30 +157,38 @@ let customer = FiscalCustomer {
     ibge_code: Some("3550308".to_string()),
 };
 
-let dps = NfseDps {
-    id: "DPS355030800010000000000000000000000000000001".to_string(),
+let dps = NfseDpsV101 {
+    id: "DPS355030821122233300018100001000000000000101".to_string(),
     series: "1".to_string(),
     number: 101,
     issued_at: Utc::now(),
-    service_code: "1.03.01".to_string(),
+    competence_date: NaiveDate::from_ymd_opt(2026, 8, 30).ok_or("invalid date")?,
+    service_code: "010301".to_string(),
     description: "Assinatura Mensal SaaS Rullst Pro".to_string(),
-    amount: 99.00,
-    iss_rate: 2.0,
-    iss_retained: false,
+    amount_cents: 9_900,
+    iss_rate_basis_points: Some(200),
+    iss_taxation: IssTaxation::Taxable,
+    iss_retention: IssRetention::NotRetained,
     service_city_ibge: "3550308".to_string(),
 };
 
-let cert = FiscalCertificate::from_base64("MIIKggIBAzCC...", "certificate_password");
-
-// In Development/CI, runs deterministic offline mock
-let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Mock).await?;
-println!("Mock Access Key: {}", response.access_key);
+let unsigned_xml = build_dps_xml_v1_01(
+    &emitter,
+    &customer,
+    &dps,
+    NfseEnvironment::Homologation,
+)?;
 ```
+
+See [Preparing a National NFS-e 1.01 homologation
+candidate](../tutorials/40-nfse-homologation-preparation.md) for pinned artifact
+validation, local signing, and the external gates that still prevent live
+transmission.
 
 ---
 
 ## 🔒 Security Invariants
 
 1. **Constant-Time Verification:** Webhook signatures use `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
-2. **Fail-Closed Live Modes:** Unverified live modes (`Homologation` and `Production`) return a typed `FiscalError::Unsupported` until the official XMLDSig C14N and mTLS pipeline is validated end-to-end against the national government portal.
+2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/mTLS preparation does not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the official envelope/response contract and external homologation gates pass.
 3. **No Phantom Persistences:** All provider drivers use explicit connection pooling (`reqwest::Client`) with keep-alive to avoid socket storms.

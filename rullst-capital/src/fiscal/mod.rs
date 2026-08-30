@@ -1,14 +1,26 @@
 pub mod client;
+pub mod contract;
 pub mod dps;
+pub mod dps_v101;
 pub mod models;
+#[cfg(feature = "nfse")]
+pub mod schema;
 pub mod signer;
 
 pub use client::{NfseEnvironment, NfseNationalClient};
+pub use contract::{
+    MAX_DPS_XML_BYTES, MAX_SEFIN_RESPONSE_BYTES, NFSE_NAMESPACE, NFSE_PRODUCTION_SEFIN,
+    NFSE_PRODUCTION_V1_01_20260209, NFSE_RESTRICTED_SEFIN, NFSE_RESTRICTED_V1_01_20260727,
+    NfseArtifactManifest, NfseSefinContract,
+};
 pub use dps::build_dps_xml;
+pub use dps_v101::{IssRetention, IssTaxation, NfseDpsV101, build_dps_xml_v1_01};
 pub use models::{
     FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse,
     FiscalResponseKind, NfseDps, TaxRegime,
 };
+#[cfg(feature = "nfse")]
+pub use schema::NfseDpsSchemaValidator;
 pub use signer::{compute_sha256_digest, sign_dps_xml};
 
 /// High-level trait for issuing digital invoices.
@@ -91,8 +103,9 @@ mod tests {
     }
 
     #[test]
-    fn xml_digital_signature_fails_closed() {
-        let cert = FiscalCertificate::from_base64("MIIKggIBAzCCCl8GCSqGSIb3DQEHA", "mock_pass");
+    #[cfg(feature = "nfse")]
+    fn xml_digital_signature_rejects_an_invalid_pkcs12() {
+        let cert = FiscalCertificate::from_bytes(b"not-a-real-pkcs12", "mock_pass").unwrap();
 
         let emitter = FiscalEmitter {
             cnpj: "12345678000190".to_string(),
@@ -126,9 +139,14 @@ mod tests {
         };
 
         let unsigned_xml = build_dps_xml(&emitter, &customer, &dps);
-        let result = sign_dps_xml(&unsigned_xml, &cert);
+        let signable_xml = concat!(
+            "<DPS xmlns=\"http://www.sped.fazenda.gov.br/nfse\" versao=\"1.01\">",
+            "<infDPS Id=\"DPS355030821122233300018100001000000000000101\">",
+            "<tpAmb>2</tpAmb></infDPS></DPS>"
+        );
+        let result = sign_dps_xml(signable_xml, &cert);
 
-        assert!(matches!(result, Err(FiscalError::Unsupported(_))));
+        assert!(matches!(result, Err(FiscalError::Certificate(_))));
         assert!(!unsigned_xml.contains("<Signature"));
     }
 
@@ -166,7 +184,7 @@ mod tests {
             service_city_ibge: "3550308".to_string(),
         };
 
-        let cert = FiscalCertificate::from_base64("MIIKggIBAzCCCl8GCSqGSIb3DQEHA", "mock");
+        let cert = FiscalCertificate::offline_mock();
 
         let response = issue_nfse_direct(&emitter, &customer, &dps, &cert, NfseEnvironment::Mock)
             .await

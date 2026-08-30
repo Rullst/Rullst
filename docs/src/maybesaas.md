@@ -61,14 +61,16 @@ The names below are working descriptions, not announced product names.
 **Best initial form:** a dedicated fiscal program, followed by a managed SaaS
 and a self-hostable/private deployment if the operating model proves viable.
 
-The current Rullst capability is an offline, unsigned DPS/NFS-e preview. A live
-product would be responsible for substantially more:
+The current Rullst capability now includes a bounded local DPS 1.01 builder,
+checksum-pinned official XSD validation, PKCS#12 XMLDSig and mTLS client
+preparation, while live transmission remains disabled. A live product would be
+responsible for substantially more:
 
 - official schemas, municipality/national variations, rejection codes, and
   protocol updates;
 - PKCS#12 or delegated certificate custody, rotation, access control, and audit;
-- XML canonicalization, XMLDSig, XSD validation, mTLS, retries, reconciliation,
-  cancellation, substitution, and immutable evidence;
+- official request/response envelopes, retries, reconciliation, cancellation,
+  substitution, and immutable evidence around the local crypto/schema core;
 - durable idempotency and a complete issuance state machine;
 - official homologation environments, operational monitoring, and specialized
   support.

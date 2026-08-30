@@ -1,5 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
+
+const MAX_PKCS12_BYTES: usize = 1024 * 1024;
 
 /// Tax regime of the emitting company.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -17,6 +20,30 @@ pub enum TaxRegime {
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum FiscalError {
+    /// Local schema or identity validation rejected an input before signing or transport.
+    #[error("Invalid fiscal input `{field}`: {reason}")]
+    InvalidInput {
+        /// Stable field identifier, safe for structured telemetry.
+        field: &'static str,
+        /// Bounded explanation without secret material.
+        reason: String,
+    },
+
+    /// A pinned official artifact is missing, modified or cannot be assembled safely.
+    #[error("NFS-e artifact error: {0}")]
+    Artifact(String),
+
+    /// Offline XSD assessment rejected a fiscal XML document.
+    #[error("NFS-e XML validation error [{code}] at {path}: {message}")]
+    XmlValidation {
+        /// Stable W3C constraint identifier.
+        code: String,
+        /// Bounded element/attribute path.
+        path: String,
+        /// Bounded non-secret diagnostic.
+        message: String,
+    },
+
     /// XML construction or digital signing failure.
     #[error("XML digital signing error: {0}")]
     XmlSigning(String),
@@ -47,50 +74,123 @@ pub enum FiscalError {
 }
 
 /// A1 Digital Certificate (.pfx / .p12) container for digital signatures and mTLS.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct FiscalCertificate {
-    /// Base64-encoded PKCS#12 (.pfx / .p12) certificate file bytes.
-    pub raw_pfx_base64: String,
-    /// Secret passphrase decrypting the private key and public certificate.
-    pub passphrase: String,
+    pkcs12_der: Zeroizing<Vec<u8>>,
+    passphrase: Zeroizing<String>,
+    offline_mock: bool,
     /// Optional certificate issuer or subject CN description.
     pub subject_cn: Option<String>,
 }
 
+impl std::fmt::Debug for FiscalCertificate {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("FiscalCertificate")
+            .field("pkcs12_der", &"[REDACTED]")
+            .field("passphrase", &"[REDACTED]")
+            .field("offline_mock", &self.offline_mock)
+            .field("subject_cn", &self.subject_cn)
+            .finish()
+    }
+}
+
 impl FiscalCertificate {
-    /// Creates a new certificate container from raw .pfx bytes.
-    pub fn from_bytes(pfx_bytes: &[u8], passphrase: impl Into<String>) -> Self {
-        use base64::Engine;
-        use base64::engine::general_purpose::STANDARD;
-        Self {
-            raw_pfx_base64: STANDARD.encode(pfx_bytes),
-            passphrase: passphrase.into(),
+    /// Creates a protected certificate container from raw PKCS#12 bytes.
+    pub fn from_bytes(
+        pfx_bytes: &[u8],
+        passphrase: impl Into<String>,
+    ) -> Result<Self, FiscalError> {
+        validate_pkcs12_size(pfx_bytes.len())?;
+        Ok(Self {
+            pkcs12_der: Zeroizing::new(pfx_bytes.to_vec()),
+            passphrase: Zeroizing::new(passphrase.into()),
+            offline_mock: false,
             subject_cn: None,
-        }
+        })
     }
 
-    /// Creates a new certificate container from a base64 string.
-    pub fn from_base64(pfx_base64: impl Into<String>, passphrase: impl Into<String>) -> Self {
-        Self {
-            raw_pfx_base64: pfx_base64.into().trim().to_string(),
-            passphrase: passphrase.into(),
-            subject_cn: None,
-        }
-    }
-
-    /// Decodes the underlying raw .pfx bytes.
-    pub fn raw_bytes(&self) -> Result<Vec<u8>, FiscalError> {
+    /// Creates a protected certificate container from base64-encoded PKCS#12 bytes.
+    pub fn from_base64(
+        pfx_base64: impl Into<String>,
+        passphrase: impl Into<String>,
+    ) -> Result<Self, FiscalError> {
         use base64::Engine;
         use base64::engine::general_purpose::STANDARD;
-        if self.raw_pfx_base64.trim().is_empty() {
+
+        let encoded = Zeroizing::new(pfx_base64.into());
+        let trimmed = encoded.trim();
+        if trimmed.is_empty() {
             return Err(FiscalError::Certificate(
                 "PKCS#12 certificate cannot be empty".to_string(),
             ));
         }
-        STANDARD.decode(&self.raw_pfx_base64).map_err(|e| {
-            FiscalError::Certificate(format!("Failed to decode certificate base64: {}", e))
-        })
+        let maximum_encoded_len = MAX_PKCS12_BYTES.saturating_mul(4).div_ceil(3) + 4;
+        if trimmed.len() > maximum_encoded_len {
+            return Err(FiscalError::Certificate(format!(
+                "PKCS#12 certificate exceeds the {MAX_PKCS12_BYTES}-byte limit"
+            )));
+        }
+        let decoded = Zeroizing::new(STANDARD.decode(trimmed).map_err(|_| {
+            FiscalError::Certificate("PKCS#12 certificate is not valid base64".to_string())
+        })?);
+        Self::from_bytes(decoded.as_slice(), passphrase)
     }
+
+    /// Creates the explicit credential marker accepted only by the offline mock environment.
+    pub fn offline_mock() -> Self {
+        Self {
+            pkcs12_der: Zeroizing::new(Vec::new()),
+            passphrase: Zeroizing::new(String::new()),
+            offline_mock: true,
+            subject_cn: None,
+        }
+    }
+
+    /// Adds non-secret subject metadata without exposing certificate material.
+    #[must_use]
+    pub fn with_subject_cn(mut self, subject_cn: impl Into<String>) -> Self {
+        self.subject_cn = Some(subject_cn.into());
+        self
+    }
+
+    pub(crate) fn pkcs12_der(&self) -> Result<&[u8], FiscalError> {
+        if self.offline_mock {
+            return Err(FiscalError::Certificate(
+                "the offline mock credential cannot be used for fiscal signing or mTLS".to_string(),
+            ));
+        }
+        Ok(self.pkcs12_der.as_slice())
+    }
+
+    pub(crate) fn passphrase(&self) -> Result<&str, FiscalError> {
+        if self.offline_mock {
+            return Err(FiscalError::Certificate(
+                "the offline mock credential has no PKCS#12 passphrase".to_string(),
+            ));
+        }
+        Ok(self.passphrase.as_str())
+    }
+
+    pub(crate) fn validate_for_live_use(&self) -> Result<(), FiscalError> {
+        let _certificate = self.pkcs12_der()?;
+        let _passphrase = self.passphrase()?;
+        Ok(())
+    }
+}
+
+fn validate_pkcs12_size(length: usize) -> Result<(), FiscalError> {
+    if length == 0 {
+        return Err(FiscalError::Certificate(
+            "PKCS#12 certificate cannot be empty".to_string(),
+        ));
+    }
+    if length > MAX_PKCS12_BYTES {
+        return Err(FiscalError::Certificate(format!(
+            "PKCS#12 certificate exceeds the {MAX_PKCS12_BYTES}-byte limit"
+        )));
+    }
+    Ok(())
 }
 
 /// Provenance of a fiscal response.

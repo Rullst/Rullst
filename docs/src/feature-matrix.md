@@ -52,7 +52,8 @@ rullst = { version = "12.0.0", default-features = false }
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
-| `capital` | no | Payment, payout, analytics, and offline fiscal-preview APIs from `rullst-capital` |
+| `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
+| `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, and rustls mTLS preparation |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
@@ -162,6 +163,7 @@ Default feature: `axum`.
 | Feature | Enables |
 | --- | --- |
 | `axum` | Axum HTTP response integration for Capital errors and handlers |
+| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, and rustls mTLS preparation; it does not enable live SEFIN transmission |
 
 ### `rullst-mail`
 

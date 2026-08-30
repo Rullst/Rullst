@@ -41,17 +41,23 @@ let router = Router::new()
     .layer(axum::middleware::from_fn(verify_webhook));
 ```
 
-## NFS-e Nacional: contained offline preview
+## NFS-e Nacional: bounded homologation preparation
 
-The current fiscal module can construct an escaped DPS XML fixture. It does not
-claim a valid XMLDSig signature or an authorization from the Brazilian national
-NFS-e service.
+The fiscal module can construct a strict ordinary-service DPS 1.01 subset,
+validate it against checksum-pinned official schema sources with the one
+documented production regex normalization, sign its `infDPS/@Id` with a
+matching RSA key/certificate from PKCS#12, independently verify the local
+XMLDSig, and construct the bounded rustls mTLS client. These local properties
+do not constitute an authorization from the Brazilian National NFS-e service.
 
 - `NfseEnvironment::Mock` returns `FiscalResponseKind::OfflineMock`, status
   `MOCK_NOT_AUTHORIZED`, and `is_officially_authorized() == false`.
 - `NfseEnvironment::Homologation` and `NfseEnvironment::Production` fail closed
   with `FiscalError::Unsupported`.
-- `sign_dps_xml` also fails closed; it never fabricates a `<Signature>` element.
+- `sign_dps_xml` rejects malformed, duplicate-ID, already-signed, non-RSA, and
+  mismatched key/certificate inputs instead of returning partial signature XML.
+- the official request/response envelope and external homologation gates remain
+  deliberately disconnected from the network path.
 
 ```rust,no_run
 use rullst_capital::fiscal::{
@@ -64,7 +70,7 @@ async fn offline_preview(
     customer: &FiscalCustomer,
     dps: &NfseDps,
 ) -> Result<(), rullst_capital::fiscal::FiscalError> {
-    let unused_certificate = FiscalCertificate::from_base64("", "");
+    let unused_certificate = FiscalCertificate::offline_mock();
     let response = issue_nfse_direct(
         emitter,
         customer,
@@ -80,10 +86,12 @@ async fn offline_preview(
 }
 ```
 
-Live issuance remains roadmap work until PKCS#12 private-key handling, XML
-C14N/XMLDSig, XSD validation, mTLS, strict response parsing, rejection handling,
-and official end-to-end homologation are independently verified. Do not account
-an offline fixture as an issued invoice.
+Live issuance remains disabled until the official JSON envelope, strict bounded
+response/rejection parser, full certificate/emitter and ICP-Brasil policy,
+durable idempotency/audit, real A1 restricted-environment tests, independent
+review, and official end-to-end homologation are complete. Follow the
+[NFS-e homologation-preparation tutorial](tutorials/40-nfse-homologation-preparation.md)
+and never account an offline fixture as an issued invoice.
 
 ## Operational checklist
 

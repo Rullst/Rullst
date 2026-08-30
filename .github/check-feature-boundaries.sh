@@ -70,6 +70,7 @@ rullst-iot|std
 rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
 rullst-capital|axum
+rullst-capital|nfse
 rullst-mail|mail-smtp
 rullst-auth|jwt
 
@@ -94,6 +95,7 @@ rullst|auth-jwt
 rullst|oauth
 rullst|ai
 rullst|capital
+rullst|capital-nfse
 rullst|security
 rullst|security-redis
 rullst|iot

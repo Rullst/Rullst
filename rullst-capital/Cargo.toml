@@ -20,6 +20,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 [features]
 default = ["axum"]
 axum = ["dep:axum"]
+nfse = ["dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
 
 [dependencies]
 rullst-core = { workspace = true }
@@ -33,17 +34,26 @@ hex = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true, features = ["clock", "serde"] }
 thiserror = { workspace = true }
+zeroize = { workspace = true }
+oxixml-schema = { version = "=0.1.2", optional = true }
+xml-sec = { version = "=0.1.16", default-features = false, features = ["xmldsig", "c14n", "xml-backend-xmloxide"], optional = true }
+p12-keystore = { version = "=0.3.1", optional = true }
+roxmltree = { version = "=0.19.0", optional = true }
 axum = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true, features = ["async_tokio"] }
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "zeroize"] }
 
 [[bench]]
 name = "capital_bench"
 harness = false
 
+[[example]]
+name = "nfse_v101_preview"
+required-features = ["nfse"]
+
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
-

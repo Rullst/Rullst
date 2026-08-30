@@ -1,9 +1,17 @@
 use chrono::{DateTime, Utc};
 use ring::digest::{SHA256, digest};
 
+use crate::fiscal::contract::{NFSE_PRODUCTION_SEFIN, NFSE_RESTRICTED_SEFIN, NfseSefinContract};
 use crate::fiscal::models::{
     FiscalCertificate, FiscalEmitter, FiscalError, FiscalResponse, FiscalResponseKind,
 };
+#[cfg(feature = "nfse")]
+use crate::fiscal::signer::build_mtls_identity;
+
+#[cfg(feature = "nfse")]
+const NFSE_CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+#[cfg(feature = "nfse")]
+const NFSE_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// NFS-e execution mode.
 #[non_exhaustive]
@@ -18,14 +26,24 @@ pub enum NfseEnvironment {
 }
 
 impl NfseEnvironment {
-    /// Returns a deliberately non-network endpoint marker.
+    /// Returns the immutable official SEFIN contract, or `None` for the offline mock.
     ///
-    /// Rullst does not expose unverified NFS-e URLs. Transmission through the client remains
-    /// fail-closed until the full official contract and mTLS setup are implemented.
+    /// Knowing an endpoint does not enable transmission. The client remains fail-closed until
+    /// the signed request and response paths pass independent interoperability and official tests.
+    pub fn sefin_contract(&self) -> Option<&'static NfseSefinContract> {
+        match self {
+            Self::Mock => None,
+            Self::Homologation => Some(&NFSE_RESTRICTED_SEFIN),
+            Self::Production => Some(&NFSE_PRODUCTION_SEFIN),
+        }
+    }
+
+    /// Returns the offline marker or the pinned official API base URL.
     pub fn endpoint(&self) -> &'static str {
         match self {
             Self::Mock => "mock://offline-nfse",
-            Self::Homologation | Self::Production => "unsupported://nfse-national",
+            Self::Homologation => NFSE_RESTRICTED_SEFIN.base_url,
+            Self::Production => NFSE_PRODUCTION_SEFIN.base_url,
         }
     }
 }
@@ -59,14 +77,24 @@ impl NfseNationalClient {
     pub async fn transmit_dps(&self, dps_xml: &str) -> Result<FiscalResponse, FiscalError> {
         match self.environment {
             NfseEnvironment::Mock => self.mock_response(dps_xml),
-            NfseEnvironment::Homologation => Err(FiscalError::Unsupported(
-                "NFS-e homologation is disabled until XMLDSig, PKCS#12, mTLS, XSD validation and official response parsing are validated end to end"
-                    .to_string(),
-            )),
-            NfseEnvironment::Production => Err(FiscalError::Unsupported(
-                "NFS-e production is disabled until XMLDSig, PKCS#12, mTLS, XSD validation and official homologation are complete"
-                    .to_string(),
-            )),
+            NfseEnvironment::Homologation => {
+                self.certificate.validate_for_live_use()?;
+                #[cfg(feature = "nfse")]
+                let _client = build_live_http_client(&self.certificate)?;
+                Err(FiscalError::Unsupported(
+                    "NFS-e homologation transport is disabled until the official JSON envelope and response parser are validated end to end"
+                        .to_string(),
+                ))
+            }
+            NfseEnvironment::Production => {
+                self.certificate.validate_for_live_use()?;
+                #[cfg(feature = "nfse")]
+                let _client = build_live_http_client(&self.certificate)?;
+                Err(FiscalError::Unsupported(
+                    "NFS-e production is disabled until restricted-environment homologation and response evidence are complete"
+                        .to_string(),
+                ))
+            }
         }
     }
 
@@ -95,6 +123,21 @@ impl NfseNationalClient {
     }
 }
 
+#[cfg(feature = "nfse")]
+fn build_live_http_client(certificate: &FiscalCertificate) -> Result<reqwest::Client, FiscalError> {
+    let identity = build_mtls_identity(certificate)?;
+    reqwest::Client::builder()
+        .identity(identity)
+        .https_only(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(NFSE_CONNECT_TIMEOUT)
+        .timeout(NFSE_REQUEST_TIMEOUT)
+        .build()
+        .map_err(|_| {
+            FiscalError::Certificate("cannot construct the bounded NFS-e mTLS client".to_string())
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,7 +156,7 @@ mod tests {
 
     #[tokio::test]
     async fn explicit_mock_is_distinguishable_and_deterministic() {
-        let cert = FiscalCertificate::from_base64("", "");
+        let cert = FiscalCertificate::offline_mock();
         let client = NfseNationalClient::new(emitter(), cert, NfseEnvironment::Mock);
         let dps_xml = "<DPS><infDPS>test</infDPS></DPS>";
 
@@ -133,31 +176,26 @@ mod tests {
     // TM-PAY-06: non-mock fiscal transmission must never simulate authorization.
     async fn real_environments_fail_closed_even_with_mock_or_empty_certificate() {
         for environment in [NfseEnvironment::Homologation, NfseEnvironment::Production] {
-            for certificate in [
-                FiscalCertificate::from_base64("", "mock"),
-                FiscalCertificate::from_base64("TU9DSw==", "mock"),
-            ] {
+            for certificate in [FiscalCertificate::offline_mock()] {
                 let client = NfseNationalClient::new(emitter(), certificate, environment);
-                assert!(matches!(
-                    client.transmit_dps("<DPS/>").await,
-                    Err(FiscalError::Unsupported(_))
-                ));
+                assert!(client.transmit_dps("<DPS/>").await.is_err());
             }
         }
     }
 
     #[test]
-    fn endpoints_are_non_network_markers() {
+    fn endpoints_are_pinned_to_the_official_contracts() {
         assert_eq!(NfseEnvironment::Mock.endpoint(), "mock://offline-nfse");
         assert!(
             NfseEnvironment::Homologation
                 .endpoint()
-                .starts_with("unsupported://")
+                .starts_with("https://sefin.producaorestrita.nfse.gov.br/")
         );
         assert!(
             NfseEnvironment::Production
                 .endpoint()
-                .starts_with("unsupported://")
+                .starts_with("https://sefin.nfse.gov.br/")
         );
+        assert!(NfseEnvironment::Mock.sefin_contract().is_none());
     }
 }
