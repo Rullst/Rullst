@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788120298941,
+  "lastUpdate": 1788121165894,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4519,6 +4519,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 477,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "171eda55c909245a86b061f369b79558d813467c",
+          "message": "feat(ai): add tenant-bound audited rag pipeline",
+          "timestamp": "2026-08-30T17:12:10-03:00",
+          "tree_id": "bf1d07a51cbd9c4abf0c1bbb4bd4c8ac020d32fd",
+          "url": "https://github.com/Rullst/Rullst/commit/171eda55c909245a86b061f369b79558d813467c"
+        },
+        "date": 1788121165363,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 492,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
