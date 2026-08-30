@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788099210825,
+  "lastUpdate": 1788104193915,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2731,6 +2731,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 553,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4f4da233e56dbdc7aa09e9e4813931ed942782bf",
+          "message": "fix(security): box redis rate limit client",
+          "timestamp": "2026-08-30T12:25:20-03:00",
+          "tree_id": "28508b05d1583c1977cb859f7efa09bf0564a667",
+          "url": "https://github.com/Rullst/Rullst/commit/4f4da233e56dbdc7aa09e9e4813931ed942782bf"
+        },
+        "date": 1788104193216,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1527,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 266,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 606,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
