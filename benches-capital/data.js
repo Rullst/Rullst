@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788095523444,
+  "lastUpdate": 1788096747571,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -2287,6 +2287,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/a88aabd66b0a52ed4e9a543a7ceefb9801574446"
         },
         "date": 1788095522794,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ef8f3aae18838f540faa893e74811f8ef90dbcf5",
+          "message": "feat(orm): add bounded scout providers",
+          "timestamp": "2026-08-30T10:22:52-03:00",
+          "tree_id": "5f59868b0609bbb2fe9443484523c6d320ef4dff",
+          "url": "https://github.com/Rullst/Rullst/commit/ef8f3aae18838f540faa893e74811f8ef90dbcf5"
+        },
+        "date": 1788096747185,
         "tool": "cargo",
         "benches": [
           {
