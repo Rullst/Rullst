@@ -19,7 +19,7 @@
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
-- **🔀 Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`):** Primary driver dispatch with automatic fallback across secondary drivers, atomic failure threshold triggering, cooldown circuit breakers, and structured tracing warnings.
+- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
 - **⏰ Provider-specific Scheduling (`.send_at()`, `.send_in()`):** Resend and SendGrid receive scheduling fields; generic queue/SMTP/Postmark due-time dispatch is not implied.

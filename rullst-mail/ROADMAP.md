@@ -46,7 +46,7 @@ flowchart TD
   they do not prove panic-freedom across every driver, parser, dependency, or
   generated application.
 - [x] **Async Background Job Integration**: Automatic non-blocking dispatch through `rullst-core::queue::Queue` with configurable retry backoff.
-- [~] **Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`)**: In-process fallback, cooldown and tracing exist. Provider-specific transient/permanent classification, durable state and an alert sink remain open.
+- [x] **Typed In-Process Circuit Breaker & Automatic Failover (`FailoverDriver`)**: HTTP 5xx, 429 plus bounded `Retry-After`, transport errors, permanent provider responses, validation and configuration have explicit dispositions. Only transient/rate-limit failures open the circuit or reach a fallback; structured low-cardinality tracing records the decision without response bodies. SMTP distinguishes transient 4xx from permanent 5xx. Circuit state is fail-closed and poison-aware. Durable/distributed breaker state and an independently operated alert sink remain deployment concerns.
 - [~] **Postmark REST plus bounded AWS SES adapter**: Postmark uses its live HTTP API. `AwsSesDriver` is offline-mock or an explicit bearer-authenticated custom proxy; direct AWS SES fails closed until SigV4 is implemented.
 - [~] **Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: Resend/SendGrid receive provider scheduling fields. The generic queue/SMTP/Postmark paths do not yet guarantee due-time dispatch.
 - [~] **Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: Fluent owned-byte helpers and REST serialization exist for named providers; encoding copies memory and SMTP parity is incomplete.

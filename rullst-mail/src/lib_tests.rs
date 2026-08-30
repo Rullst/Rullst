@@ -14,6 +14,17 @@ impl MailDriver for AlwaysFailDriver {
     }
 }
 
+struct ClassifiedFailDriver {
+    error: MailError,
+}
+
+#[async_trait::async_trait]
+impl MailDriver for ClassifiedFailDriver {
+    async fn send(&self, _message: &Message) -> Result<(), MailError> {
+        Err(self.error.clone())
+    }
+}
+
 #[test]
 fn test_message_subject() {
     let msg = Message::new().subject("Test Subject");
@@ -339,8 +350,8 @@ async fn test_failover_driver_success_primary() {
         .with_threshold(2);
 
     assert_eq!(failover.fallback_count(), 1);
-    assert_eq!(failover.failure_count(), 0);
-    assert!(!failover.is_tripped());
+    assert_eq!(failover.failure_count().expect("failure count"), 0);
+    assert!(!failover.is_tripped().expect("circuit state"));
 
     let msg = Message::new()
         .to("user@example.com")
@@ -350,7 +361,7 @@ async fn test_failover_driver_success_primary() {
 
     assert_eq!(primary_store.lock().unwrap().len(), 1);
     assert_eq!(fallback_store.lock().unwrap().len(), 0);
-    assert_eq!(failover.failure_count(), 0);
+    assert_eq!(failover.failure_count().expect("failure count"), 0);
 }
 
 #[tokio::test]
@@ -368,7 +379,7 @@ async fn test_failover_driver_fallback_on_primary_failure() {
     let res = failover.send(&msg).await;
 
     assert!(res.is_ok());
-    assert_eq!(failover.failure_count(), 1);
+    assert_eq!(failover.failure_count().expect("failure count"), 1);
     assert_eq!(fallback_store.lock().unwrap().len(), 1);
     assert_eq!(
         fallback_store.lock().unwrap()[0].to,
@@ -392,13 +403,13 @@ async fn test_failover_driver_circuit_breaker_tripping() {
 
     // First failure -> count = 1, not tripped yet
     let _ = failover.send(&msg).await;
-    assert_eq!(failover.failure_count(), 1);
-    assert!(!failover.is_tripped());
+    assert_eq!(failover.failure_count().expect("failure count"), 1);
+    assert!(!failover.is_tripped().expect("circuit state"));
 
     // Second failure -> count = 2, threshold reached -> tripped!
     let _ = failover.send(&msg).await;
-    assert_eq!(failover.failure_count(), 2);
-    assert!(failover.is_tripped());
+    assert_eq!(failover.failure_count().expect("failure count"), 2);
+    assert!(failover.is_tripped().expect("circuit state"));
 
     // Third dispatch -> skips primary directly because circuit is tripped
     let res = failover.send(&msg).await;
@@ -406,9 +417,9 @@ async fn test_failover_driver_circuit_breaker_tripping() {
     assert_eq!(fallback_store.lock().unwrap().len(), 3);
 
     // Manual reset
-    failover.reset_circuit();
-    assert!(!failover.is_tripped());
-    assert_eq!(failover.failure_count(), 0);
+    failover.reset_circuit().expect("circuit reset");
+    assert!(!failover.is_tripped().expect("circuit state"));
+    assert_eq!(failover.failure_count().expect("failure count"), 0);
 }
 
 #[tokio::test]
@@ -423,6 +434,60 @@ async fn test_failover_driver_all_fail() {
     assert!(res.is_err());
     let err_msg = res.unwrap_err().to_string();
     assert!(err_msg.contains("All mail drivers in failover chain failed"));
+}
+
+#[tokio::test]
+async fn failover_uses_typed_provider_failure_policy() {
+    let message = Message::new()
+        .to("user@example.com")
+        .subject("Typed failover policy");
+
+    let (permanent_fallback, permanent_store) = MemoryDriver::isolated();
+    let permanent = FailoverDriver::new(ClassifiedFailDriver {
+        error: MailError::from_provider_response("fixture", 400, "bad request", None),
+    })
+    .with_fallback(permanent_fallback);
+    let permanent_error = permanent
+        .send(&message)
+        .await
+        .expect_err("HTTP 400 must not fail over");
+    assert_eq!(permanent_error.failure_class(), MailFailureClass::Permanent);
+    assert!(permanent_store.lock().expect("permanent store").is_empty());
+    assert_eq!(permanent.failure_count().expect("failure count"), 0);
+
+    let (transient_fallback, transient_store) = MemoryDriver::isolated();
+    let transient = FailoverDriver::new(ClassifiedFailDriver {
+        error: MailError::from_provider_response("fixture", 503, "unavailable", None),
+    })
+    .with_fallback(transient_fallback);
+    transient
+        .send(&message)
+        .await
+        .expect("HTTP 503 should fail over");
+    assert_eq!(transient_store.lock().expect("transient store").len(), 1);
+    assert_eq!(transient.failure_count().expect("failure count"), 1);
+
+    let (rate_fallback, rate_store) = MemoryDriver::isolated();
+    let rate_limited = MailError::from_provider_response(
+        "fixture",
+        429,
+        "slow down",
+        Some(std::time::Duration::from_secs(30)),
+    );
+    assert_eq!(rate_limited.failure_class(), MailFailureClass::RateLimited);
+    assert_eq!(
+        rate_limited.retry_after(),
+        Some(std::time::Duration::from_secs(30))
+    );
+    let rate_failover = FailoverDriver::new(ClassifiedFailDriver {
+        error: rate_limited,
+    })
+    .with_fallback(rate_fallback);
+    rate_failover
+        .send(&message)
+        .await
+        .expect("HTTP 429 should fail over");
+    assert_eq!(rate_store.lock().expect("rate store").len(), 1);
 }
 
 #[tokio::test]

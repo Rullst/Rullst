@@ -117,16 +117,12 @@ impl MailDriver for SendGridDriver {
             .json(&body)
             .send()
             .await
-            .map_err(|e| MailError::SendError(e.to_string()))?;
+            .map_err(|_| MailError::transport("sendgrid", "request failed before response"))?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            let text = res.text().await.unwrap_or_default();
-            Err(MailError::SendError(format!(
-                "SendGrid API error: {}",
-                text
-            )))
+            Err(crate::error::provider_http_error("sendgrid", res).await)
         }
     }
 }

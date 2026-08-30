@@ -98,12 +98,12 @@ impl MailDriver for SmtpDriver {
             .from(
                 from_addr
                     .parse()
-                    .map_err(|e| MailError::SendError(format!("{}", e)))?,
+                    .map_err(|e| MailError::ValidationError(format!("invalid sender: {e}")))?,
             )
             .to(message
                 .to
                 .parse()
-                .map_err(|e| MailError::SendError(format!("{}", e)))?)
+                .map_err(|e| MailError::ValidationError(format!("invalid recipient: {e}")))?)
             .subject(&message.subject);
 
         if let Some(unsub) = message.list_unsubscribe_header() {
@@ -131,24 +131,26 @@ impl MailDriver for SmtpDriver {
                             .singlepart(lettre::message::SinglePart::plain(text.clone()))
                             .singlepart(lettre::message::SinglePart::html(html.clone())),
                     )
-                    .map_err(|e| MailError::SendError(format!("{}", e)))?
+                    .map_err(|e| MailError::ValidationError(e.to_string()))?
             } else {
                 email_builder
                     .header(lettre::message::header::ContentType::TEXT_HTML)
                     .body(html.clone())
-                    .map_err(|e| MailError::SendError(format!("{}", e)))?
+                    .map_err(|e| MailError::ValidationError(e.to_string()))?
             }
         } else if let Some(ref text) = message.body_text {
             email_builder
                 .header(lettre::message::header::ContentType::TEXT_PLAIN)
                 .body(text.clone())
-                .map_err(|e| MailError::SendError(format!("{}", e)))?
+                .map_err(|e| MailError::ValidationError(e.to_string()))?
         } else {
-            return Err(MailError::SendError("No email body provided".to_string()));
+            return Err(MailError::ValidationError(
+                "No email body provided".to_string(),
+            ));
         };
 
         let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&self.host)
-            .map_err(|e| MailError::SendError(e.to_string()))?
+            .map_err(|_| MailError::ConfigError("SMTP relay configuration is invalid".to_string()))?
             .port(self.port);
 
         if let (Some(user), Some(pass)) = (&self.username, &self.password) {
@@ -156,11 +158,19 @@ impl MailDriver for SmtpDriver {
         }
 
         let transport = builder.build();
-        transport
-            .send(email)
-            .await
-            .map_err(|e| MailError::SendError(format!("{}", e)))?;
+        transport.send(email).await.map_err(classify_smtp_error)?;
         Ok(())
+    }
+}
+
+#[cfg(feature = "mail-smtp")]
+fn classify_smtp_error(error: lettre::transport::smtp::Error) -> MailError {
+    if error.is_permanent() {
+        MailError::SendError("SMTP server permanently rejected the message".to_string())
+    } else if error.is_transient() {
+        MailError::transport("smtp", "SMTP server returned a transient response")
+    } else {
+        MailError::transport("smtp", "SMTP transport failed before accepted delivery")
     }
 }
 
@@ -173,7 +183,7 @@ pub struct SmtpDriver;
 #[async_trait]
 impl MailDriver for SmtpDriver {
     async fn send(&self, _message: &Message) -> Result<(), MailError> {
-        Err(MailError::DriverError(
+        Err(MailError::ConfigError(
             "SMTP mailer driver requires the 'mail-smtp' Cargo feature to be enabled".to_string(),
         ))
     }

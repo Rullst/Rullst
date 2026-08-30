@@ -64,6 +64,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   tenant. Its regression contract proves that two membership-derived contexts
   select separate drivers. Credential persistence, encryption, rotation, and
   distribution between processes remain application/deployment concerns.
+- Mail failover is now disposition-aware. Provider HTTP responses, transport
+  failures, rate limits with bounded delta `Retry-After`, SMTP transient replies,
+  validation and configuration errors have typed classes; only transient or
+  rate-limited primary failures reach a fallback or open the process-local
+  circuit. Provider error bodies are bounded/redacted, telemetry uses structured
+  low-cardinality fields, and circuit-state lock failures are typed instead of
+  silently failing open. Distributed breaker coordination and alert operations
+  remain deployment concerns.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested
@@ -541,7 +549,9 @@ release gate has completed.
   - **v12 audited scope:** attachments own/copy bytes and REST transports
     Base64-encode them; scheduling fields are implemented only where the
     provider consumes them; tenant selection now has a direct, explicit
-    authenticated `TenantContext` bridge and remains in-process. The
+    authenticated `TenantContext` bridge and remains in-process. Failover now
+    distinguishes permanent, transient and rate-limited outcomes rather than
+    forwarding every error. The
     Postmark path is live, while direct SES was not valid because AWS requires
     SigV4. It now fails closed and exposes only offline fixtures or an explicit
     trusted bearer proxy until a real signed adapter is implemented.

@@ -167,17 +167,13 @@ impl MailDriver for AwsSesDriver {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| MailError::SendError(e.to_string()))?;
+            .map_err(|_| MailError::transport("aws_ses_proxy", "request failed before response"))?;
 
         let status = res.status();
         if status.is_success() {
             Ok(())
         } else {
-            let text = res.text().await.unwrap_or_default();
-            Err(MailError::SendError(format!(
-                "AWS SES API error (status {}): {}",
-                status, text
-            )))
+            Err(crate::error::provider_http_error("aws_ses_proxy", res).await)
         }
     }
 }
