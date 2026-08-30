@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788090066641,
+  "lastUpdate": 1788095469824,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2587,6 +2587,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 729,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a88aabd66b0a52ed4e9a543a7ceefb9801574446",
+          "message": "feat(orm): add durable transactional outbox",
+          "timestamp": "2026-08-30T09:53:20-03:00",
+          "tree_id": "078736268707dfec79cc38923280b17a61ddeb2b",
+          "url": "https://github.com/Rullst/Rullst/commit/a88aabd66b0a52ed4e9a543a7ceefb9801574446"
+        },
+        "date": 1788095469113,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1688,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 381,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 727,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
