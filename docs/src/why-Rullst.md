@@ -45,6 +45,13 @@ structure available to the compiler, review tools, and the CLI. Macro
 diagnostics, compile-fail tests, generated-project gates, and the AST-based IDOR
 scanner turn that structure into evidence.
 
+The AI layer follows the same rule. Its bounded RAG pipeline makes tenant
+context, retrieval, context limits, source metadata, and audit explicit in one
+typed operation. It rejects differently tagged or unsafe passages and refuses
+ungrounded generation when retrieval is empty. The included cosine retriever is
+clearly process-local; production datastore authorization and durability are
+not hidden behind an “automatic AI” claim.
+
 ### 2. A broad platform that keeps its foundations visible
 
 Rullst coordinates a large backend surface in one versioned workspace, but it

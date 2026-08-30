@@ -196,7 +196,7 @@ are:
 - **`routes!` registration:** expands at compile time into ordinary, typed Axum
   route registrations. Request matching and middleware still execute at runtime.
 - **Bounded local primitives:** Ammonia allowlist sanitization, RBAC ownership
-  checks, AI heuristics, and the in-memory vector index have explicit limits;
+  checks, AI heuristics, and the tenant-partitioned in-memory RAG retriever have explicit limits;
   they are not described as zero-cost.
 - **Development build tuning:** generated configuration may select an installed
   `mold` or `lld`, and debug hot reload uses a watched dynamic library plus a
@@ -242,8 +242,9 @@ performance evidence until its versions and runs are refreshed.
   only Meilisearch currently has a live pinned service contract in CI.
 - 🧠 **Typed pgvector search:** `orm-pgvector` plus `strict-postgres` provides
   SQLx-compatible vectors and parameterized L2/cosine/inner-product queries,
-  exercised against a digest-pinned PostgreSQL + pgvector service. RAG policy,
-  tenant authorization and index tuning remain explicit application work.
+  exercised against a digest-pinned PostgreSQL + pgvector service. The AI crate
+  separately composes bounded tenant-aware retrieval, guarded context/generation,
+  sources and audit; datastore authorization and index tuning remain application work.
 - 🧭 **Specialized vector and key-value stores:** `orm-qdrant` provides bounded
   dense-cosine collection/upsert/delete/query operations, while `orm-redis`
   provides namespaced Hash, Set and Sorted Set operations. Deterministic
@@ -348,7 +349,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 - 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record, durable opt-in outbox, Scout, pgvector, bounded Qdrant and namespaced Redis structures for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md), [Transactional Outbox](docs/src/tutorials/38-transactional-outbox.md), [Scout Search](docs/src/tutorials/39-scout-search.md) and [RAG/Vector Search](docs/src/tutorials/22-rag-vector-search.md).
 - 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
 - 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
-- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).
+- 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Guarded provider-agnostic clients (Gemini, OpenAI, Claude, DeepSeek, Ollama), bounded tenant-aware audited RAG, structured output, and authorized local-tool foundations. See [Tenant-Bound RAG](docs/src/tutorials/41-tenant-bound-rag.md).
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics, payment-provider adapters, and bounded checksum-pinned NFS-e DPS/XSD/XMLDSig/mTLS preparation; live Alipay RSA2 and official NFS-e authorization remain fail-closed roadmap/external-evidence work.
 - 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.

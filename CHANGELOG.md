@@ -292,6 +292,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   call budget, and a mandatory audit sink. Destructive/financial approvals are
   one-use and bound to the exact payload; durable production auditing and domain
   authorization remain application responsibilities.
+- Added a bounded tenant-aware `RagPipeline` that performs guarded embedding,
+  static-dispatch retrieval, Unicode-safe context budgeting, guarded generation,
+  source reporting, and mandatory secret-minimized audit in one operation. A
+  tenant-partitioned process-local cosine retriever supports offline contracts;
+  authoritative datastore authorization, durable external adapters, ingestion,
+  output policy, and live-model evaluation remain application boundaries.
 
 #### Local development and observability
 

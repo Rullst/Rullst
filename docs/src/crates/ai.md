@@ -5,7 +5,8 @@
 > [capability ledger](../capability-ledger.md#ai-and-mail).
 
 `rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
-PII masking, deterministic offline fixtures, JSON mode, and explicit JSON Schema output.
+PII masking, deterministic offline fixtures, JSON mode, explicit JSON Schema output, and a bounded
+tenant-aware RAG pipeline.
 
 ## Provider capabilities
 
@@ -46,6 +47,28 @@ Markdown beacons, and selected invisible Unicode controls. Supported PII classes
 outbound transmission. This is a bounded heuristic control, not proof that arbitrary input or model
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
+
+## Tenant-aware RAG pipeline
+
+`RagPipeline::answer` performs guarded embedding, calls a static-dispatch `RagRetriever`, applies
+per-document and total Unicode-safe budgets, guards and masks every selected passage, generates a
+grounded response, returns source metadata, and records one terminal audit event. It requires a
+trusted `TenantContext`, rejects differently tagged documents, and fails with `RagError::NoContext`
+instead of asking the model to answer without retrieved evidence.
+
+The bundled `InMemoryRagRetriever` is a bounded tenant-partitioned cosine index for offline tests,
+development, and small ephemeral datasets. It is neither durable nor distributed. A production
+application can implement `RagRetriever` over ORM pgvector or Qdrant, but that adapter must bind the
+trusted tenant and ownership predicates in the authoritative datastore. The pipeline's tag check is
+defense in depth, not a replacement for datastore authorization.
+
+The mandatory audit event stores the tenant, a SHA-256 correlation digest, counts, character budget,
+and outcome. It deliberately omits raw questions, documents, embeddings, provider bodies, and model
+answers. The digest is not encryption and can be guessed for low-entropy questions. Use a durable
+append-only `RagAuditSink` in production; the included sink is process-local.
+
+Follow the [tenant-bound RAG tutorial](../tutorials/41-tenant-bound-rag.md) for the complete offline
+flow and production integration boundary.
 
 ## Versioned offline evals
 
@@ -117,6 +140,6 @@ semantic validation.
 
 ## Current boundaries
 
-Streaming responses, durable chat memory, provider-native tool execution loops, external vector
-database adapters, and compile-time schema derivation remain roadmap work. The in-memory vector
-index and tool registry are utilities; they do not create an authorization boundary by themselves.
+Streaming responses, durable chat memory, provider-native tool execution loops, first-party external
+vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
+in-memory vector utilities and tool registry do not create an authorization boundary by themselves.

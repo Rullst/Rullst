@@ -176,30 +176,33 @@ or multivectors, arbitrary filters, hosted availability, ANN index tuning or
 tenant authorization. A digest-pinned Qdrant lifecycle proves the supported
 operations.
 
-## Build the guarded prompt
+## Orchestrate one bounded RAG operation
 
-Convert only application-authorized fields into context and apply an explicit
-budget before sending them to the provider:
+The compatibility `build_rag_prompt` helper only formats already-authorized
+text. Prefer `RagPipeline` when the application needs one typed operation for
+embedding, retrieval, context budgets, guarded generation, source metadata, and
+mandatory auditing:
 
 ```rust,no_run
-use rullst::ai::AiClient;
-use rullst::ai::rag::build_rag_prompt;
+use rullst::ai::rag::{RagPipeline, RagRetriever};
 
-# async fn answer(
-#     client: &AiClient,
-#     question: &str,
-#     chunks: Vec<KnowledgeChunk>,
-# ) -> Result<String, rullst::ai::AiError> {
-let contexts = chunks
-    .into_iter()
-    .map(|chunk| chunk.content)
-    .collect::<Vec<_>>();
-let prompt = build_rag_prompt(question, &contexts);
-client.prompt(&prompt).await
+# fn compose<R, A>(client: rullst::ai::AiClient, retriever: R, audit: A)
+# where
+#     R: RagRetriever,
+#     A: rullst::ai::rag::RagAuditSink,
+# {
+let pipeline = RagPipeline::new(client, retriever, audit);
+# let _ = pipeline;
 # }
 ```
 
-This is composition, not a one-call RAG guarantee. The application still owns
-authorization, tenant selection, embedding dimension/model compatibility,
-context/token budgets, citation behavior, durable ingestion, deletion, model
-evaluation, index tuning, observability, and recovery.
+The retriever receives a trusted tenant context and must enforce authoritative
+tenant and ownership predicates in its datastore query. The pipeline also
+rejects differently tagged documents and refuses ungrounded generation when no
+safe context remains. Follow the complete
+[Tenant-Bound RAG tutorial](41-tenant-bound-rag.md) for the offline index,
+production adapter boundary, and secret-minimized audit contract.
+
+The application still owns embedding dimension/model compatibility, durable
+ingestion and deletion, citation evaluation, index tuning, authorization,
+output policy, observability, and recovery.

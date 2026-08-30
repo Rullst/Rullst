@@ -1,7 +1,8 @@
 # Rullst AI
 
 `rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
-PII masking, deterministic offline fixtures, JSON mode, and explicit JSON Schema output.
+PII masking, deterministic offline fixtures, JSON mode, explicit JSON Schema output, and a bounded
+tenant-aware RAG pipeline.
 
 ## Provider capabilities
 
@@ -38,6 +39,23 @@ calls. Custom `AiProvider` implementations should be called through `AiClient` i
 The guardrail blocks deterministic injection patterns and invisible Unicode controls. Supported PII
 classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
 a defense-in-depth design; it is not a proof that arbitrary model output is safe.
+
+## Tenant-aware RAG pipeline
+
+`RagPipeline::answer` composes guarded embedding, application-provided retrieval, Unicode-safe
+context budgets, guarded generation, source metadata, and mandatory secret-minimized auditing in one
+typed operation. A trusted `TenantContext` is required and every returned document must carry the
+same tenant tag. Empty retrieval fails with `RagError::NoContext` instead of generating an
+ungrounded answer.
+
+`InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
+development, and small ephemeral datasets. It is not durable or distributed. Production
+applications implement the static-dispatch `RagRetriever` boundary over a store such as Rullst ORM
+pgvector or Qdrant and must enforce authoritative tenant/ownership predicates in that store. The
+pipeline's tenant-tag check is an additional invariant, not datastore authorization.
+
+See the [tenant-bound RAG tutorial](../docs/src/tutorials/41-tenant-bound-rag.md) for a complete
+offline example, audit behavior, and the production adapter boundary.
 
 ## Versioned offline evals
 

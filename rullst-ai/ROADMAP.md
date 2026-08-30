@@ -13,6 +13,9 @@
 - Deterministic empty/`mock_*` offline paths for supported provider capabilities.
 - Explicit separation between parseable JSON mode and provider-enforced JSON Schema output.
 - Ordered provider fallback, RAG prompt helper, vector index, and tool registry.
+- Bounded `RagPipeline` with trusted tenant context, guarded embedding/context/generation,
+  Unicode-safe context budgets, fail-closed no-context behavior, source metadata, mandatory
+  secret-minimized audit, and a tenant-partitioned process-local cosine retriever.
 - `cargo rullst make:chat-session` application scaffold with SQLx and
   Turso-primary models, reversible migrations, bounded ordered history,
   serialized sends, propagated persistence errors, and materialized runtime
@@ -27,7 +30,8 @@
 - Provider-native tool invocation loop with explicit authorization boundaries.
 - Reusable durable chat-memory adapters inside `rullst-ai` and transactional
   ORM/outbox lifecycle hooks; the current CLI scaffold is application-owned.
-- Retrieval adapters for external vector databases.
+- First-party `RagRetriever` adapters for external vector databases; applications can already
+  implement the public static-dispatch boundary over ORM pgvector or Qdrant.
 - Configurable guardrail policies and adaptive/live model-specific safety evaluations.
 
 Roadmap items are not part of the current API guarantee until implemented and covered by contract
