@@ -64,8 +64,11 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   paths. Authentication and permission to use that escape hatch remain the
   application's responsibility.
 - **Audit Log Foundation**: Opt-in auditable models can record bounded
-  `old_values`/`new_values` diffs; actor identity, strict transaction coupling
-  and revision restore remain application/roadmap work.
+  `old_values`/`new_values` diffs. Generated instance saves/deletes and their
+  audit row now commit or roll back one savepoint together and audit failures
+  reject the mutation. Bulk builders do not synthesize per-row history; actor
+  identity, revision restore, and durable post-commit effects remain
+  application/roadmap work.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
 - **Scout Extension Point**: Connect an application-owned search engine to the
   generated search/save/delete hooks; live Meili/Algolia/Elastic adapters are

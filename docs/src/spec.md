@@ -181,6 +181,13 @@ new_user.delete().await?;
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
   traversal and strictly post-commit external observers are separate contracts.
+* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations write
+  their bounded audit entry through the same explicit, implicit, or task-scoped
+  transaction as the model mutation. Audit write errors fail the mutation and
+  roll its savepoint back; direct `log_audit` calls also honor a task-scoped
+  transaction. Bulk builders do not synthesize per-row history. Actor/tenant
+  identity, revision restore, and durable post-commit delivery of observers,
+  search, or Redis events are separate application or roadmap contracts.
 
 ### 5.5. Polyglot Persistence Boundary
 

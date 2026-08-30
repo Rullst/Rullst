@@ -56,7 +56,48 @@ pub async fn log_audit(
     let (old_values, new_values) =
         validate_and_prepare_payloads(model_type, event, old_values, new_values)?;
 
-    let pool = Orm::try_pool()?;
+    let driver = Orm::try_driver()?;
+
+    let query = if driver == "postgres" {
+        sqlx::query(
+            "INSERT INTO rullst_audits (model_type, model_id, event, old_values, new_values) VALUES ($1, $2, $3, $4, $5)"
+        )
+        .bind(model_type)
+        .bind(model_id)
+        .bind(event)
+        .bind(old_values)
+        .bind(new_values)
+    } else {
+        sqlx::query(
+            "INSERT INTO rullst_audits (model_type, model_id, event, old_values, new_values) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(model_type)
+        .bind(model_id)
+        .bind(event)
+        .bind(old_values)
+        .bind(new_values)
+    };
+
+    crate::execute_query!(query, execute, pool)?;
+
+    Ok(())
+}
+
+/// Writes an audit entry through an explicit SQLx transaction.
+///
+/// Generated auditable mutations use this function so the model write and its
+/// audit evidence commit or roll back together.
+#[cfg_attr(test, mutants::skip)]
+pub async fn log_audit_with_tx(
+    tx: &mut crate::db::Transaction<'_>,
+    model_type: &str,
+    model_id: i32,
+    event: &str,
+    old_values: Option<String>,
+    new_values: Option<String>,
+) -> Result<(), crate::Error> {
+    let (old_values, new_values) =
+        validate_and_prepare_payloads(model_type, event, old_values, new_values)?;
     let driver = Orm::try_driver()?;
 
     if driver == "postgres" {
@@ -68,7 +109,7 @@ pub async fn log_audit(
         .bind(event)
         .bind(old_values)
         .bind(new_values)
-        .execute(pool)
+        .execute(&mut **tx)
         .await?;
     } else {
         sqlx::query(
@@ -79,11 +120,27 @@ pub async fn log_audit(
         .bind(event)
         .bind(old_values)
         .bind(new_values)
-        .execute(pool)
+        .execute(&mut **tx)
         .await?;
     }
 
     Ok(())
+}
+
+fn diff_payloads(old_json: &str, new_json: &str) -> Option<(Option<String>, Option<String>)> {
+    const MAX_PAYLOAD_LEN: usize = 5 * 1024 * 1024; // 5 MB
+
+    if old_json.len() > MAX_PAYLOAD_LEN || new_json.len() > MAX_PAYLOAD_LEN {
+        let marker = Some(r#"{"error":"payload_too_large_for_diff"}"#.to_string());
+        return Some((marker.clone(), marker));
+    }
+
+    let payloads = compute_diff(old_json, new_json);
+    if payloads.0.is_none() && payloads.1.is_none() {
+        None
+    } else {
+        Some(payloads)
+    }
 }
 
 #[cfg_attr(test, mutants::skip)]
@@ -94,24 +151,26 @@ pub async fn log_audit_diff(
     old_json: &str,
     new_json: &str,
 ) -> Result<(), crate::Error> {
-    const MAX_PAYLOAD_LEN: usize = 5 * 1024 * 1024; // 5 MB
-
-    if old_json.len() > MAX_PAYLOAD_LEN || new_json.len() > MAX_PAYLOAD_LEN {
-        return log_audit(
-            model_type,
-            model_id,
-            event,
-            Some(r#"{"error":"payload_too_large_for_diff"}"#.to_string()),
-            Some(r#"{"error":"payload_too_large_for_diff"}"#.to_string()),
-        )
-        .await;
+    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json) {
+        log_audit(model_type, model_id, event, old_values, new_values).await?;
     }
+    Ok(())
+}
 
-    let (final_old, final_new) = compute_diff(old_json, new_json);
-    if final_old.is_none() && final_new.is_none() {
-        return Ok(()); // Nothing changed
+/// Writes a bounded audit diff through an explicit SQLx transaction.
+#[cfg_attr(test, mutants::skip)]
+pub async fn log_audit_diff_with_tx(
+    tx: &mut crate::db::Transaction<'_>,
+    model_type: &str,
+    model_id: i32,
+    event: &str,
+    old_json: &str,
+    new_json: &str,
+) -> Result<(), crate::Error> {
+    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json) {
+        log_audit_with_tx(tx, model_type, model_id, event, old_values, new_values).await?;
     }
-    log_audit(model_type, model_id, event, final_old, final_new).await
+    Ok(())
 }
 
 #[cfg_attr(test, mutants::skip)]

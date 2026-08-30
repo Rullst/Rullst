@@ -60,6 +60,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   conformance, including rollback evidence. This removes the obsolete
   Hyper/Rustls chain responsible for the five RustSec failures without adding
   audit exceptions.
+- Auditable SQLx models now persist each generated instance save/delete and its
+  bounded audit row in one savepoint inside the explicit, implicit, or
+  task-scoped transaction. Audit failures reject and roll back the model
+  mutation even when the outer caller catches the error. Bulk per-row history,
+  actor identity, revision restore, and durable post-commit delivery remain
+  outside this contract.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

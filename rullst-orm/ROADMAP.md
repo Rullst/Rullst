@@ -76,7 +76,7 @@ compile-time schema verified.
 - [~] **Strict Lazy Loading Prevention**: Explicit generated relationship access fails while prevention is enabled; it cannot prove absence of every application-level N+1 pattern.
 - [~] **Type-Safe Partial Updates**: A typed explicit builder emits only selected fields and preserves policy/tenant checks; it is not automatic dirty tracking or a zero-overhead proof.
 - [~] **Compliance & Data Governance Foundations**: `PersonalData`, redacted `SecretString`, and AES-GCM encrypted model fields are separate bounded primitives, not automatic GDPR/LGPD compliance.
-- [~] **Audit Trails**: Diff history exists for auditable model writes; actor identity, durable rollback, fail-closed writes and strict transaction coupling remain incomplete.
+- [~] **Audit Trails**: Diff history is fail-closed and savepoint-coupled to generated auditable instance saves/deletes; bulk per-row history, actor identity, revision restore, and durable post-commit external effects remain incomplete.
 - [~] **Full-Text Search (Scout)**: A `SearchEngine` extension point and save/delete hooks exist; Meilisearch, Algolia and Elasticsearch adapters are not included.
 - [x] **Sandbox Testing**: `#[rullst_orm::test]` scopes executor-aware operations to a transaction and rolls it back after the async test.
 - [~] **Model Policies**: Generated create/update/delete/restore checks exist, including partial updates; read authorization and host identity/ownership loading remain application work.

@@ -4,6 +4,7 @@ pub mod crud_ops;
 pub mod json_ops;
 pub mod query_ops;
 pub mod redis_ops;
+mod save_entrypoints;
 pub mod update_builder;
 
 use crate::parser::{EncryptedFieldKind, ParsedModel};

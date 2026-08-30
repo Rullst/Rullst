@@ -1,3 +1,4 @@
+use crate::models::save_entrypoints;
 use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -17,93 +18,6 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     let hook_after_save = if !parsed.after_save.is_empty() {
         let method = syn::Ident::new(&parsed.after_save, name.span());
         quote! { self.#method().await?; }
-    } else {
-        quote! {}
-    };
-
-    let tenant_prepare_logic = if !parsed.tenant_column.is_empty() {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        quote! {
-            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context is required to save `{}`",
-                    #table_name
-                ))
-            })?;
-            self.#col_ident = tenant.try_into().map_err(|_| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context type does not match `{}.{}`",
-                    #table_name,
-                    stringify!(#col_ident)
-                ))
-            })?;
-        }
-    } else {
-        quote! {}
-    };
-
-    let audit_lookup = if !parsed.tenant_column.is_empty() {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        let col = &parsed.tenant_column;
-        quote! {
-            let query = if driver == "postgres" {
-                format!("SELECT * FROM {} WHERE id = $1 AND {} = $2", #table_name, #col)
-            } else {
-                format!("SELECT * FROM {} WHERE id = ? AND {} = ?", #table_name, #col)
-            };
-            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-                .bind(self.id)
-                .bind(self.#col_ident.clone());
-        }
-    } else {
-        quote! {
-            let query = if driver == "postgres" {
-                format!("SELECT * FROM {} WHERE id = $1", #table_name)
-            } else {
-                format!("SELECT * FROM {} WHERE id = ?", #table_name)
-            };
-            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-                .bind(self.id);
-        }
-    };
-
-    let audit_before_update = if parsed.auditable {
-        quote! {
-            let mut old_model_for_audit = if !is_new {
-                let driver = rullst_orm::Orm::driver()?;
-                #audit_lookup
-                rullst_orm::execute_query!(q, fetch_optional, read_pool)?
-            } else {
-                None
-            };
-            if let Some(old_model) = old_model_for_audit.as_mut() {
-                old_model.__rullst_decrypt_encrypted_fields()?;
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let audit_after_save = if parsed.auditable {
-        quote! {
-            if is_new {
-                let _ = rullst_orm::audit::log_audit(
-                    #table_name,
-                    self.id,
-                    "created",
-                    None,
-                    Some(self.to_json())
-                ).await;
-            } else if let Some(old_model) = old_model_for_audit {
-                let _ = rullst_orm::audit::log_audit_diff(
-                    #table_name,
-                    self.id,
-                    "updated",
-                    &old_model.to_json(),
-                    &self.to_json()
-                ).await;
-            }
-        }
     } else {
         quote! {}
     };
@@ -196,49 +110,15 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let policy_check_create = if !parsed.policy.is_empty() {
-        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
-        quote! {
-            if !<#policy_type as rullst_orm::Policy<Self>>::can_create(self).await? {
-                return Err(rullst_orm::Error::Validation("Policy prevents creation of this record".to_string()));
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let policy_check_update = if !parsed.policy.is_empty() {
-        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
-        quote! {
-            if !<#policy_type as rullst_orm::Policy<Self>>::can_update(self).await? {
-                return Err(rullst_orm::Error::Validation("Policy prevents updating this record".to_string()));
-            }
-        }
-    } else {
-        quote! {}
-    };
+    let save_entrypoints = save_entrypoints::generate(parsed);
 
     quote! {
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
-        pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::dispatch_executor!(pool, |pool| self.save_with_tx_internal(pool).await)
-        }
-
-        pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<(), rullst_orm::Error> {
-            self.save_with_tx_internal(&mut **tx).await
-        }
+        #save_entrypoints
 
         async fn save_with_tx_internal<'e, E>(&mut self, executor: E) -> Result<(), rullst_orm::Error>
         where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
         {
             let is_new = self.id == 0;
-            #tenant_prepare_logic
-            if is_new {
-                #policy_check_create
-            } else {
-                #policy_check_update
-            }
-            #audit_before_update
             #hook_before_save
             let observers = {
                 let list = Self::observers().read().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -348,7 +228,6 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     let _: Result<usize, _> = conn.publish(&topic, &payload).await;
                 }
             }
-            #audit_after_save
             #scout_update
             #hook_after_save
             Ok(())
@@ -442,15 +321,16 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let audit_after_delete = if parsed.auditable {
+    let audit_after_delete_with_tx = if parsed.auditable {
         quote! {
-            let _ = rullst_orm::audit::log_audit(
+            rullst_orm::audit::log_audit_with_tx(
+                tx,
                 #table_name,
                 self.id,
                 "deleted",
                 Some(self.to_json()),
                 None
-            ).await;
+            ).await?;
         }
     } else {
         quote! {}
@@ -550,7 +430,6 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let mut cascade_deletes = quote! {};
     let mut cascade_deletes_with_tx = quote! {};
     if has_soft_deletes {
         for rel in &parsed.relations {
@@ -572,9 +451,6 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                     name.span(),
                 );
 
-                cascade_deletes.extend(quote! {
-                    #rel_model::query().where_eq(#fk, self.#lk.clone()).delete_all().await?;
-                });
                 cascade_deletes_with_tx.extend(quote! {
                     #rel_model::query().where_eq(#fk, self.#lk.clone()).delete_all_with_tx(tx).await?;
                 });
@@ -588,16 +464,11 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
                 .ok();
-            let has_active_transaction = if let Some(transaction) = scoped_transaction {
-                transaction.lock().await.is_some()
-            } else {
-                false
-            };
-
-            if has_active_transaction {
-                rullst_orm::dispatch_executor!(pool, |pool| self.delete_with_tx_internal(pool).await)?;
-                #cascade_deletes
-                return Ok(());
+            if let Some(transaction) = scoped_transaction {
+                let mut transaction = transaction.lock().await;
+                if let Some(tx) = transaction.as_mut() {
+                    return self.delete_with_tx(tx).await;
+                }
             }
 
             let mut transaction = rullst_orm::Orm::begin_transaction().await?;
@@ -615,9 +486,27 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }
 
-        pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<(), rullst_orm::Error> {
-            self.delete_with_tx_internal(&mut **tx).await?;
-            #cascade_deletes_with_tx
+        pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
+            use rullst_orm::_sqlx::Acquire;
+            let mut savepoint = (&mut **tx).begin().await?;
+            let delete_result = async {
+                let tx = &mut savepoint;
+                self.delete_with_tx_internal(&mut **tx).await?;
+                #cascade_deletes_with_tx
+                #audit_after_delete_with_tx
+                Ok::<(), rullst_orm::Error>(())
+            }.await;
+            if let Err(delete_error) = delete_result {
+                return match savepoint.rollback().await {
+                    Ok(()) => Err(delete_error),
+                    Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                        "delete failed: {}; savepoint rollback also failed: {}",
+                        delete_error,
+                        rollback_error,
+                    ))),
+                };
+            }
+            savepoint.commit().await?;
             Ok(())
         }
 
@@ -659,7 +548,6 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                     let _: Result<usize, _> = conn.publish(&topic, &payload).await;
                 }
             }
-            #audit_after_delete
             #scout_delete
             #hook_after_delete
             Ok(())

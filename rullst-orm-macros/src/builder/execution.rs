@@ -390,7 +390,7 @@ pub fn generate_execution_methods(
             rullst_orm::dispatch_executor!(pool, |pool| self.delete_all_with_tx_internal(pool).await)
         }
 
-        pub async fn delete_all_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<u64, rullst_orm::Error> {
+        pub async fn delete_all_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<u64, rullst_orm::Error> {
             self.delete_all_with_tx_internal(&mut **tx).await
         }
 

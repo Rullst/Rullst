@@ -61,8 +61,11 @@ generated API.
   configured task-local tenant to generated model queries. Applications must
   establish the tenant context at their authenticated boundary.
 - **Opt-in audit logs:** `#[orm(auditable)]` records model changes after the
-  audit table is created. Sensitive names are recursively masked, and explicitly
-  encrypted fields are decrypted only in memory before the masked diff is built.
+  audit table is created. Generated instance saves/deletes and their audit entry
+  share a savepoint and fail together; bulk builders do not synthesize per-row
+  history. Sensitive names are recursively masked, and explicitly encrypted
+  fields are decrypted only in memory before the masked diff is built. Actor
+  identity and revision restore remain application responsibilities.
 - **Field privacy:** `#[orm(encrypted)]` transparently encrypts supported
   `String` fields with a versioned AES-256-GCM envelope. Randomized ciphertext
   cannot be filtered or sorted; use a separate keyed blind index where needed.
