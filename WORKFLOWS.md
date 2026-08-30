@@ -105,11 +105,13 @@ unsafe Rust.
 ### Coverage
 
 `coverage.yml` runs LLVM coverage over workspace all-features tests plus the
-PostgreSQL/MySQL matrix and uploads LCOV to Codecov. `codecov.yml` configures a
-90% project target with 1% tolerance, and failure to upload the generated LCOV
-fails the workflow. The report excludes examples, CLI, macro crates,
-benchmarks, and test files. Therefore “90% configured target over the measured
-scope” is accurate; “90% of the whole repository is enforced” is not.
+PostgreSQL/MySQL matrix and uploads LCOV to Codecov using GitHub OIDC rather
+than a long-lived upload secret. `codecov.yml` configures an 80% project target
+with no tolerance for the measured framework libraries and a separate 90%
+patch target; failure to upload the generated LCOV fails the workflow. The
+report excludes examples, CLI, macro crates, benchmarks, and test files.
+Therefore “80% project and 90% patch targets over the measured scope” is
+accurate; “90% of the whole repository is enforced” is not.
 
 ### Formal, dynamic, and stress analysis
 
@@ -185,7 +187,7 @@ dependency graph make static estimates unreliable.
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, isolated strict-DB compile/runtime boundaries, and MSRV. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
-| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
+| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | On-demand | OWASP ZAP baseline against the blog example. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty libFuzzer matrix jobs, each capped below six hours. |

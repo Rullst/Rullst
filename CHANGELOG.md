@@ -216,6 +216,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   and future release source, short-lived reviewed branches for normal work, and
   a frozen `v5` branch for the exact legacy source baseline. This branch move
   does not publish or certify v12.
+- Coverage uploads now use GitHub OIDC instead of a long-lived Codecov upload
+  secret; LCOV generation and upload failures remain blocking.
 - README performance language now distinguishes compile-time expansion from
   runtime dispatch, identifies benchmark scope and historical comparison data,
   and replaces the unsupported ecosystem scorecard with a source-linked
