@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788126573994,
+  "lastUpdate": 1788128236524,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4699,6 +4699,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 505,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbec614909d9a5e414ccb9b9a219014b8e7440a8",
+          "message": "fix(cli): render billing blueprint scaffold",
+          "timestamp": "2026-08-30T19:09:40-03:00",
+          "tree_id": "f4582fed0e26359f7bf222b8886dfa29c17f5748",
+          "url": "https://github.com/Rullst/Rullst/commit/fbec614909d9a5e414ccb9b9a219014b8e7440a8"
+        },
+        "date": 1788128235821,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 487,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
