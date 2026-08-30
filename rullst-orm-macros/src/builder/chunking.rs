@@ -7,13 +7,23 @@ use quote::quote;
 #[cfg_attr(test, mutants::skip)]
 pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
     let name = &parsed.name;
+    let table_name = &parsed.table_name;
 
     vec![quote! {
         /// Processes rows in offset-based pages.
         ///
         /// Prefer [`Self::chunk_by_id`] when the handler mutates the same table;
         /// offset pagination can skip rows after deletes or reordering.
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self, handler))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, handler),
+            fields(
+                orm.model = stringify!(#name),
+                orm.table = #table_name,
+                orm.operation = "chunk"
+            )
+        )]
         pub async fn chunk<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
         where
             F: FnMut(Vec<#name>) -> Fut + Send,
@@ -77,7 +87,16 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
         /// The generated SQL uses `id > last_seen_id`, so deleting already
         /// processed rows cannot make later records move behind an offset. The
         /// handler is fallible and stops traversal on its first error.
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self, handler))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, handler),
+            fields(
+                orm.model = stringify!(#name),
+                orm.table = #table_name,
+                orm.operation = "chunk_by_id"
+            )
+        )]
         pub async fn chunk_by_id<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
         where
             F: FnMut(Vec<#name>) -> Fut + Send,

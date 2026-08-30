@@ -64,6 +64,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   live lifecycle. These APIs do not claim arbitrary Qdrant search, Redis
   Lists/Streams, cluster/failover, tenant authorization or cross-store
   transactions.
+- Added structured ORM telemetry for generated/raw queries, generated streams,
+  managed transaction outcomes and Rullst-owned pool acquisitions. Rullst span
+  fields omit SQL, bindings, model values, DSNs and error strings; the existing
+  opt-in Core OpenTelemetry layer exports them when the host initializes it and
+  remains responsible for filters, sampling and collector policy.
 - Replaced Turso's remote `libsql` SDK dependency with a direct, bounded Hrana
   HTTP v3 transport over the workspace Rustls client. Typed parameters, remote
   CRUD, checked migrations and conditional atomic batches retain live libSQL
@@ -191,7 +196,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   all-feature Clippy plus bounded unsafe/IDOR checks, and the CycloneDX 1.5 SBOM
   uses parsed Cargo metadata, a valid UUID serial and unique component refs.
 - Audited all 45 unique historical ORM `[x]` claims and removed a duplicated
-  roadmap body. The current ledger records 24 bounded integral contracts, 20
+  roadmap body. The current ledger records 25 bounded integral contracts, 19
   partial foundations and one absent comparison claim; 100% means classified,
   not fully implemented.
 - SQLx models declaring `tenant_column` now fail closed outside

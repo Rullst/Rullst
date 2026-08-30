@@ -3,13 +3,19 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
+    let name = &parsed.name;
     let table_name = &parsed.table_name;
     let tenant_prepare = tenant_prepare(parsed);
     let (policy_create, policy_update) = policy_checks(parsed);
 
     if !parsed.auditable {
         return quote! {
-            #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+            #[rullst_orm::_tracing::instrument(
+                name = "rullst.orm.query",
+                target = "rullst_orm",
+                skip(self),
+                fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
+            )]
             pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
                 let scoped_transaction = rullst_orm::CURRENT_TX
                     .try_with(|transaction| transaction.clone())
@@ -47,6 +53,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             /// Strict post-commit effects require this transaction to be managed by
             /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
             /// commit decision to the ORM.
+            #[rullst_orm::_tracing::instrument(
+                name = "rullst.orm.query",
+                target = "rullst_orm",
+                skip(self, tx),
+                fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save_with_tx")
+            )]
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 let is_new = self.id == 0;
                 #tenant_prepare
@@ -65,7 +77,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let after_tx = audit_after_tx(table_name);
 
     quote! {
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
+        )]
         pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
@@ -103,6 +120,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         /// Strict post-commit effects require this transaction to be managed by
         /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
         /// commit decision to the ORM.
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, tx),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save_with_tx")
+        )]
         pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
             let original_id = self.id;

@@ -496,7 +496,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     }
 
     quote! {
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete")
+        )]
         pub async fn delete(&self) -> Result<(), rullst_orm::Error> {
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
@@ -532,6 +537,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         /// Strict post-commit effects require this transaction to be managed by
         /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
         /// commit decision to the ORM.
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, tx),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_with_tx")
+        )]
         pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
             let mut savepoint = (&mut **tx).begin().await?;
@@ -619,7 +630,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "restore")
+        )]
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
             #tenant_guard
             #policy_check_restore
@@ -627,7 +643,12 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             Ok(())
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "force_delete")
+        )]
         pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
             #tenant_guard
             #policy_check_force_delete

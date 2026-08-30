@@ -62,6 +62,7 @@ criterion = { workspace = true, features = ["async_tokio"] }
 testcontainers = "0.27.3"
 testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb", "mongo", "surrealdb"] }
 proptest = "1.11.0"
+tracing-subscriber = { workspace = true }
 
 [[bench]]
 name = "orm_bench"

@@ -6,7 +6,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{RullstPool, RullstPoolOptions};
 
+const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::from_millis(500);
+
 mod placeholders;
+mod telemetry;
 pub use placeholders::replace_placeholders;
 
 #[cfg(not(any(
@@ -80,6 +83,13 @@ pub trait RagContext {
 pub struct Orm;
 
 impl Orm {
+    fn pool_options() -> RullstPoolOptions {
+        RullstPoolOptions::new()
+            .acquire_time_level(tracing::log::LevelFilter::Info)
+            .acquire_slow_level(tracing::log::LevelFilter::Warn)
+            .acquire_slow_threshold(POOL_SLOW_ACQUIRE_THRESHOLD)
+    }
+
     fn driver_for_url(database_url: &str) -> &'static str {
         if database_url.starts_with("postgres") {
             "postgres"
@@ -131,7 +141,7 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = RullstPoolOptions::new()
+        let pool = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .max_lifetime(Some(std::time::Duration::from_secs(1800)))
@@ -161,7 +171,7 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = RullstPoolOptions::new()
+        let pool = Self::pool_options()
             .max_connections(max_connections)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
@@ -243,7 +253,7 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = RullstPoolOptions::new()
+        let pool = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .max_lifetime(Some(std::time::Duration::from_secs(1800)))
@@ -253,7 +263,10 @@ impl Orm {
         // Prepare every replica before publishing any global state. If one
         // connection fails, `pool` and the successfully prepared replicas are
         // dropped locally and initialization remains retryable.
-        let replica_futures: Vec<_> = replica_urls.into_iter().map(RullstPool::connect).collect();
+        let replica_futures: Vec<_> = replica_urls
+            .into_iter()
+            .map(|replica_url| Self::pool_options().connect(replica_url))
+            .collect();
         let replicas = futures::future::try_join_all(replica_futures).await?;
 
         Self::publish(OrmState::new(
@@ -300,52 +313,6 @@ impl Orm {
     /// Create a raw SQL query builder.
     pub fn raw(sql: impl Into<String>) -> crate::raw::RawQueryBuilder {
         crate::raw::RawQueryBuilder::new(sql)
-    }
-
-    pub async fn begin_transaction() -> Result<crate::db::Transaction<'static>, crate::Error> {
-        let pool = Self::pool()?;
-        pool.begin().await.map_err(Into::into)
-    }
-
-    /// Executes a closure inside an isolated database transaction, automatically committing on Ok and rolling back on Err.
-    pub async fn transaction<F, R, E>(f: F) -> Result<R, crate::Error>
-    where
-        F: FnOnce(
-                std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>,
-            )
-                -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<R, E>> + Send>>
-            + Send,
-        E: std::fmt::Display,
-    {
-        let tx = Self::begin_transaction().await?;
-        let tx_arc = std::sync::Arc::new(tokio::sync::Mutex::new(Some(tx)));
-        let post_commit = crate::post_commit::PostCommitScope::new();
-        let result = post_commit
-            .run(crate::CURRENT_TX.scope(tx_arc.clone(), f(tx_arc.clone())))
-            .await;
-
-        match result {
-            Ok(val) => {
-                let tx = tx_arc.lock().await.take().ok_or_else(|| {
-                    crate::Error::Internal(
-                        "managed transaction ownership was removed before automatic commit"
-                            .to_string(),
-                    )
-                })?;
-                tx.commit().await?;
-                post_commit.commit().await?;
-                Ok(val)
-            }
-            Err(err) => {
-                if let Some(tx) = tx_arc.lock().await.take() {
-                    let _ = tx.rollback().await;
-                }
-                Err(crate::Error::DatabaseError(format!(
-                    "Transaction failed: {}",
-                    err
-                )))
-            }
-        }
     }
 
     /// Run an array of seeders sequentially

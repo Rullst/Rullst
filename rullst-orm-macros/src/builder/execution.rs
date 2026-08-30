@@ -118,7 +118,12 @@ pub fn generate_execution_methods(
     let cache_write = super::query_cache::generate_cache_write(name);
 
     vec![quote! {
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_many")
+        )]
         pub async fn get(&self) -> Result<Vec<#name>, rullst_orm::Error> {
             if let Ok(tx_arc) = rullst_orm::CURRENT_TX.try_with(|tx| tx.clone()) {
                 let mut tx_guard = tx_arc.lock().await;
@@ -130,6 +135,12 @@ pub fn generate_execution_methods(
             self.get_with_tx_internal(pool, true).await
         }
 
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, tx),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_many_with_tx")
+        )]
         pub async fn get_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Vec<#name>, rullst_orm::Error> {
             self.get_with_tx_internal(&mut **tx, false).await
         }
@@ -176,7 +187,12 @@ pub fn generate_execution_methods(
             Ok(results)
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_first")
+        )]
         pub async fn first(&self) -> Result<Option<#name>, rullst_orm::Error> {
             let mut builder = self.clone();
             builder.limit = Some(1);
@@ -184,6 +200,12 @@ pub fn generate_execution_methods(
             Ok(results.into_iter().next())
         }
 
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, tx),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_first_with_tx")
+        )]
         pub async fn first_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Option<#name>, rullst_orm::Error> {
             let mut builder = self.clone();
             builder.limit = Some(1);
@@ -191,7 +213,12 @@ pub fn generate_execution_methods(
             Ok(results.into_iter().next())
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "paginate")
+        )]
         pub async fn paginate(&self, page: usize, per_page: usize) -> Result<rullst_orm::PaginationResult<#name>, rullst_orm::Error> {
             if !self.errors.is_empty() {
                 return Err(self.errors[0].clone());
@@ -262,7 +289,12 @@ pub fn generate_execution_methods(
             })
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "count")
+        )]
         pub async fn count(&self) -> Result<i64, rullst_orm::Error> {
             if !self.errors.is_empty() {
                 return Err(self.errors[0].clone());
@@ -295,7 +327,8 @@ pub fn generate_execution_methods(
         }
 
         pub fn stream<'a>(&'a self) -> impl rullst_orm::_futures::Stream<Item = Result<#name, rullst_orm::Error>> + 'a {
-            rullst_orm::_async_stream::try_stream! {
+            rullst_orm::telemetry::instrument_query_stream(
+                rullst_orm::_async_stream::try_stream! {
                 if !self.errors.is_empty() {
                     Err(self.errors[0].clone())?;
                 }
@@ -323,11 +356,16 @@ pub fn generate_execution_methods(
                     #hook_after_fetch_single
                     yield row;
                 }
-            }
+                },
+                stringify!(#name),
+                #table_name,
+                "stream",
+            )
         }
 
         pub fn stream_with_tx<'a>(&'a self, tx: &'a mut rullst_orm::db::Transaction<'static>) -> impl rullst_orm::_futures::Stream<Item = Result<#name, rullst_orm::Error>> + 'a {
-            rullst_orm::_async_stream::try_stream! {
+            rullst_orm::telemetry::instrument_query_stream(
+                rullst_orm::_async_stream::try_stream! {
                 if !self.errors.is_empty() {
                     Err(self.errors[0].clone())?;
                 }
@@ -354,14 +392,29 @@ pub fn generate_execution_methods(
                     #hook_after_fetch_single
                     yield row;
                 }
-            }
+                },
+                stringify!(#name),
+                #table_name,
+                "stream_with_tx",
+            )
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_all")
+        )]
         pub async fn delete_all(&self) -> Result<u64, rullst_orm::Error> {
             rullst_orm::dispatch_executor!(pool, |pool| self.delete_all_with_tx_internal(pool).await)
         }
 
+        #[rullst_orm::_tracing::instrument(
+            name = "rullst.orm.query",
+            target = "rullst_orm",
+            skip(self, tx),
+            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete_all_with_tx")
+        )]
         pub async fn delete_all_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<u64, rullst_orm::Error> {
             self.delete_all_with_tx_internal(&mut **tx).await
         }

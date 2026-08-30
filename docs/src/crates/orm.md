@@ -85,6 +85,11 @@ generated API.
 - **Native Redis structures:** `redis` adds an immutable namespace and bounded
   Hash, Set and Sorted Set operations in addition to `.remember`; remote
   endpoints require TLS and live evidence covers isolation and native commands.
+- **Structured telemetry:** generated/raw query and stream spans expose only
+  static model/table/operation metadata, managed transactions record bounded
+  outcomes, and Rullst-created pools emit checkout timing. Core's opt-in
+  OpenTelemetry layer can export the standard tracing signals; subscriber,
+  sampling, collector and separately configured SQLx logs remain host policy.
 - **Durable opt-in outbox:** `Outbox::enqueue` commits a stream-scoped,
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.

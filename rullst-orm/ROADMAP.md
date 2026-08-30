@@ -72,7 +72,7 @@ retaining Rust typing, explicit escape hatches and parameterized values.
   transactions cannot expose their later decision.
 - [~] **Security & Performance Static Audit**: Current gates and targeted hardening are tracked; an old third-party audit cannot become a timeless “all findings resolved” guarantee.
 - [ ] **Continuous Performance Comparison with Diesel and SeaORM**: Rullst Criterion benchmarks exist, but the historical cross-ORM comparison/proof does not.
-- [~] **Native OpenTelemetry**: Query spans use `tracing`; transaction/checkout coverage and an OpenTelemetry export contract are incomplete.
+- [x] **Native OpenTelemetry (bounded)**: Generated/raw query and stream spans, managed transaction outcomes and SQLx pool-acquire timing use secret-free structured `tracing` metadata. Core's opt-in OpenTelemetry layer exports them; the host still owns subscriber setup, sampling, collector policy and direct SQLx/application logging.
 - [~] **Raw SQL Mapping Fallback**: `Orm::raw(...).bind(...).map_to::<T>()` maps rows, but raw SQL remains runtime-checked and caller-owned.
 
 ## Phase 5: architecture choice

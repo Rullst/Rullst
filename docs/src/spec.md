@@ -367,6 +367,28 @@ new_user.delete().await?;
   hosted-provider availability, backups, cluster failover, tenant
   authorization, eviction policy, ANN quality, or cross-store transactions.
 
+### 5.12. ORM Telemetry Contract
+
+* Generated model/query entrypoints, transaction-aware variants, raw ORM
+  queries and generated streams emit `rullst.orm.query` spans with only a
+  static model, validated table and bounded operation name. SQL text, bindings,
+  model values, DSNs and error strings are not fields of these Rullst-owned
+  spans. The explicit debug query logger remains a separate opt-in surface.
+* Managed transactions emit begin and lifecycle spans. Their final outcome is
+  one of the bounded commit/rollback states; transaction errors are returned to
+  the caller rather than copied into telemetry. Generated stream spans are
+  entered only while the stream is polled, so a tracing guard is never held
+  across suspension.
+* Every pool constructed through `Orm::init*` emits SQLx pool-acquire timing at
+  info level and promotes acquisitions slower than 500 ms to warnings. Primary
+  and replica pools share this configuration. Direct pools constructed by the
+  application are outside the contract.
+* These standard `tracing` spans/events are exported when the host enables the
+  umbrella `telemetry` feature and initializes Core's OpenTelemetry subscriber.
+  The host still owns OTLP endpoint security, filters, sampling, retention and
+  collector availability. SQLx or application logging configured separately
+  may have its own statement-data policy.
+
 ---
 
 ## 💳 6. Billing, Payments & Fiscal Engine (`rullst-capital`)

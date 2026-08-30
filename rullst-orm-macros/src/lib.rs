@@ -277,6 +277,26 @@ mod tests {
     }
 
     #[test]
+    fn generated_query_spans_are_structured_and_do_not_capture_sql() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(Orm)]
+            pub struct Post {
+                pub id: i32,
+                pub title: String,
+            }
+        };
+        let (_, builder, models) = run_macro_generator(&input);
+        let generated = format!("{builder} {models}");
+
+        assert!(generated.contains("rullst.orm.query"));
+        assert!(generated.contains("orm . operation"));
+        assert!(generated.contains("orm . table"));
+        assert!(generated.contains("orm . model"));
+        assert!(!generated.contains("fields ( sql"));
+        assert!(!generated.contains("fields ( bindings"));
+    }
+
+    #[test]
     fn inconsistent_soft_delete_state_emits_compile_error() {
         let input: DeriveInput = parse_quote! {
             #[derive(Orm)]

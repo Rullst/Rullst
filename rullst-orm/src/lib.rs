@@ -90,6 +90,8 @@ pub mod resource;
 pub mod schema;
 pub mod schema_diff;
 pub mod scout;
+#[doc(hidden)]
+pub mod telemetry;
 pub mod tenant;
 pub mod types;
 pub mod value;

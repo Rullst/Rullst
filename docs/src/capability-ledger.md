@@ -60,7 +60,7 @@ homologation, or hardware can follow the
 | Typed PostgreSQL pgvector queries | **Implemented / bounded feature-gated contract** | `pgvector` plus `strict-postgres` exposes SQLx-compatible `Vector` and parameterized L2/cosine/inner-product helpers. A digest-pinned live matrix installs the extension, inserts typed values and executes bounded similarity queries. Embedding policy, ANN index tuning, RAG orchestration, authorization and production topology remain application/deployment work. |
 | Polyglot MongoDB, DuckDB, Turso and SurrealDB boundary | **Implemented / bounded per adapter** | Keep document, OLAP, SQL and graph capabilities separate, with bounds and deterministic offline modes. Do not introduce a universal Active Record facade or cross-store transaction fiction. |
 | Transparent edge replication and latency guarantees | **Not implemented** | SQLx read replicas can be configured, but Turso synchronization, health/failover and consistency remain vendor/deployment concerns. Benchmark measured topology; never promise “1 ms” universally. |
-| Historical ORM roadmap completeness | **Fully classified, not fully implemented** | All 45 unique former `[x]` claims are individually classified in `v12.md`: 24 bounded integral, 20 partial and one absent. Continue from that evidence instead of restoring duplicate/absolute roadmap text. |
+| Historical ORM roadmap completeness | **Fully classified, not fully implemented** | All 45 unique former `[x]` claims are individually classified in `v12.md`: 25 bounded integral, 19 partial and one absent. Continue from that evidence instead of restoring duplicate/absolute roadmap text. |
 
 ## Capital, billing, and fiscal vision
 

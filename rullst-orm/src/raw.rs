@@ -18,6 +18,15 @@ impl RawQueryBuilder {
         self
     }
 
+    #[tracing::instrument(
+        name = "rullst.orm.query",
+        target = "rullst_orm",
+        skip(self),
+        fields(
+            orm.operation = "raw.select",
+            orm.binding_count = self.bindings.len()
+        )
+    )]
     pub async fn map_to<T>(&self) -> Result<Vec<T>, Error>
     where
         for<'r> T: crate::_sqlx::FromRow<'r, <crate::RullstDatabase as crate::_sqlx::Database>::Row>
@@ -56,6 +65,15 @@ impl RawQueryBuilder {
         Ok(results)
     }
 
+    #[tracing::instrument(
+        name = "rullst.orm.query",
+        target = "rullst_orm",
+        skip(self),
+        fields(
+            orm.operation = "raw.execute",
+            orm.binding_count = self.bindings.len()
+        )
+    )]
     pub async fn execute(&self) -> Result<u64, Error> {
         if crate::schema::is_query_log_enabled() {
             println!(

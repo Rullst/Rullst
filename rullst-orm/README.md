@@ -101,6 +101,11 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   endpoints, redacted ACL credentials and a deterministic fallback. A pinned
   lifecycle covers increment, membership, ranking, exact deletion and namespace
   isolation; Lists, Streams and cluster/failover remain outside the contract.
+- **Structured ORM Telemetry**: Generated/raw queries and streams emit
+  `rullst.orm.query` spans without SQL, bindings or model values; managed
+  transactions record bounded commit/rollback outcomes and every Rullst-owned
+  pool reports checkout timing. The application's tracing/OpenTelemetry
+  subscriber controls export, sampling and retention.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.
