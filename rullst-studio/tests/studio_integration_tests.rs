@@ -238,6 +238,13 @@ async fn test_studio_table_browser_and_schema_inspection() {
     .await
     .expect("insert deterministic feature flag fixture");
 
+    use rullst_core::FeatureDriver;
+    let feature_driver = rullst_core::DbFeatureDriver::with_ttl(std::time::Duration::from_secs(60));
+    assert_eq!(
+        feature_driver.enabled_for("dark_mode", "user-42").await,
+        Some(false)
+    );
+
     let req = Request::builder()
         .method("POST")
         .uri("/studio/features/toggle/dark_mode")
@@ -248,6 +255,11 @@ async fn test_studio_table_browser_and_schema_inspection() {
     assert_eq!(
         res.headers().get(axum::http::header::LOCATION).unwrap(),
         "/studio/features"
+    );
+    assert_eq!(
+        feature_driver.enabled_for("dark_mode", "user-42").await,
+        Some(true),
+        "Studio toggle must invalidate already-warm in-process drivers"
     );
 
     // 7. Migration Manager Handlers

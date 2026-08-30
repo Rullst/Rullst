@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use dashmap::DashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use super::driver::FeatureDriver;
@@ -7,11 +8,14 @@ use super::resolvers::{calculate_hash_bucket, parse_variants, resolve_variant};
 
 // ─── Database Driver (with local TTL caching) ───────────────────────────────
 
+static DB_FEATURE_CACHE_EPOCH: AtomicU64 = AtomicU64::new(0);
+
 struct DbCacheValue {
     enabled: bool,
     rollout_percentage: Option<u32>,
     variants: Option<String>,
     expires_at: Instant,
+    epoch: u64,
 }
 
 /// Feature flag driver backed by a database table `rullst_feature_flags`.
@@ -49,19 +53,31 @@ impl DbFeatureDriver {
         }
     }
 
+    /// Invalidates cached database flags in every `DbFeatureDriver` in this process.
+    ///
+    /// Call this only after the corresponding database transaction commits. Other processes and
+    /// direct database writers remain visible through the configured TTL unless the application
+    /// distributes this signal itself.
+    pub fn invalidate_process_cache() {
+        DB_FEATURE_CACHE_EPOCH.fetch_add(1, Ordering::AcqRel);
+    }
+
     #[cfg_attr(mutants, mutants::skip)]
     async fn fetch_flag_from_db(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
         use sqlx::Row;
 
         let pool = crate::db::safe_pool()?;
-        let row = sqlx::query(
-            "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?",
-        )
-        .bind(flag)
-        .fetch_optional(pool)
-        .await
-        .ok()
-        .flatten()?;
+        let sql = if crate::db::safe_driver() == Some("postgres") {
+            "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = $1"
+        } else {
+            "SELECT enabled, rollout_percentage, variants FROM rullst_feature_flags WHERE name = ?"
+        };
+        let row = sqlx::query(sql)
+            .bind(flag)
+            .fetch_optional(pool)
+            .await
+            .ok()
+            .flatten()?;
 
         // Resolve enabled column safely (support int 0/1 or boolean)
         let enabled = row
@@ -82,8 +98,10 @@ impl DbFeatureDriver {
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn resolve_flag(&self, flag: &str) -> Option<(bool, Option<u32>, Option<String>)> {
+        let epoch = DB_FEATURE_CACHE_EPOCH.load(Ordering::Acquire);
         if let Some(entry) = self.cache.get(flag)
             && Instant::now() < entry.expires_at
+            && entry.epoch == epoch
         {
             return Some((
                 entry.enabled,
@@ -101,6 +119,7 @@ impl DbFeatureDriver {
                 rollout_percentage: rollout,
                 variants: variants.clone(),
                 expires_at: Instant::now() + self.ttl,
+                epoch,
             },
         );
 

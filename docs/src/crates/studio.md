@@ -16,6 +16,8 @@ telemetry views from the sources explicitly supplied by the application.
   is not durable completion history.
 - **Safe configuration view:** Environment values are deny-by-default redacted;
   typed runtime configuration is projected without URLs, paths, or secrets.
+- **Feature flags manager:** Toggle database-backed flags and immediately
+  invalidate already-warm `DbFeatureDriver` caches in the same process.
 - **Tracing and telemetry:** Visualize in-process sources exposed by `rullst-core`; disconnected probes remain `Unavailable`.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority on every request, and requires a
@@ -66,9 +68,10 @@ application; unsupported operations return errors instead of simulated success.
 
 The SSE request view records method, URI, status and latency only. It does not
 capture bodies or headers by default because those can contain authentication,
-session, payment, and personal data. `DbFeatureDriver` has a process-local TTL
-cache, so a database flag toggled in Studio can take up to that TTL to affect an
-already cached evaluation.
+session, payment, and personal data. A successful Studio toggle invalidates all
+already-warm `DbFeatureDriver` entries in the same process. Other processes and
+direct database writers remain visible through the configured TTL unless the
+application supplies distributed invalidation.
 
 ## 📚 Documentation
 

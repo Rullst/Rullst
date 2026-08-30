@@ -135,62 +135,27 @@ async fn toggle_feature_flag_with_pool(
             .into_response();
     };
 
-    let select_sql = if driver == "postgres" {
-        "SELECT enabled FROM rullst_feature_flags WHERE name = $1"
+    let sql = if driver == "postgres" {
+        "UPDATE rullst_feature_flags SET enabled = NOT enabled WHERE name = $1"
     } else {
-        "SELECT enabled FROM rullst_feature_flags WHERE name = ?"
+        "UPDATE rullst_feature_flags SET enabled = NOT enabled WHERE name = ?"
     };
-    let row = match rullst_orm::_sqlx::query(select_sql)
-        .bind(name)
-        .fetch_optional(pool)
-        .await
-    {
-        Ok(Some(row)) => row,
-        Ok(None) => {
+    let update = rullst_orm::_sqlx::query(sql).bind(name).execute(pool).await;
+    match update {
+        Ok(result) if result.rows_affected() == 1 => {}
+        Ok(_) => {
             return (axum::http::StatusCode::NOT_FOUND, "Feature flag not found").into_response();
         }
         Err(error) => {
             return (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to load feature flag: {error}"),
+                format!("Failed to update feature flag: {error}"),
             )
                 .into_response();
         }
-    };
-
-    use sqlx::Row;
-    let current_enabled = row
-        .try_get::<i32, _>("enabled")
-        .map(|v| v != 0)
-        .or_else(|_| row.try_get::<bool, _>("enabled"))
-        .unwrap_or(false);
-
-    let sql = if driver == "postgres" {
-        "UPDATE rullst_feature_flags SET enabled = $1 WHERE name = $2"
-    } else {
-        "UPDATE rullst_feature_flags SET enabled = ? WHERE name = ?"
-    };
-
-    let update = if driver == "sqlite" {
-        rullst_orm::_sqlx::query(sql)
-            .bind(if current_enabled { 0 } else { 1 })
-            .bind(name)
-            .execute(pool)
-            .await
-    } else {
-        rullst_orm::_sqlx::query(sql)
-            .bind(!current_enabled)
-            .bind(name)
-            .execute(pool)
-            .await
-    };
-    if let Err(error) = update {
-        return (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to update feature flag: {error}"),
-        )
-            .into_response();
     }
+
+    rullst_core::DbFeatureDriver::invalidate_process_cache();
 
     axum::response::Redirect::to("/studio/features").into_response()
 }

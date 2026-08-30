@@ -116,6 +116,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   system-proxy fallback and a local protocol-level routing/auth contract.
   PAC/WPAD, SOCKS, proxy mTLS and production network certification are not
   claimed.
+- Studio feature-flag toggles now invalidate every already-warm
+  `DbFeatureDriver` cache in the same process immediately after the database
+  update succeeds. The signal is a constant-size process epoch rather than an
+  unbounded flag registry. Other processes and direct database writers still
+  converge through their configured TTL unless the application distributes an
+  invalidation signal.
 - Replaced Turso's remote `libsql` SDK dependency with a direct, bounded Hrana
   HTTP v3 transport over the workspace Rustls client. Typed parameters, remote
   CRUD, checked migrations and conditional atomic batches retain live libSQL

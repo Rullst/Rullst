@@ -18,6 +18,6 @@ Rullst Studio is the visual development environment and dashboard for managing y
 
 ## Phase 3: Advanced Tooling (Suggestions)
 - [x] **Visual ER Diagram Generator**: Render a read-only Mermaid diagram from parameterized SQLite, PostgreSQL, MySQL, or MariaDB schema inspection. Unsupported/unconfigured sources remain visibly unavailable and identifiers are normalized before Mermaid rendering.
-- [~] **Feature Flags Manager**: View and toggle rows in the same `rullst_feature_flags` table used by `DbFeatureDriver`. Existing process-local driver caches can remain stale until their configured TTL expires.
+- [x] **Bounded Feature Flags Manager**: View and toggle rows in the same `rullst_feature_flags` table used by `DbFeatureDriver`. A successful Studio write advances a constant-size process epoch, so already-warm drivers refresh on their next evaluation. Other processes/direct writers still converge by TTL unless the application distributes invalidation.
 - [ ] **Cache & Redis Inspector**: Explore cached keys, view their contents, and manually invalidate or flush cache entries from the Studio.
 - [x] **Environment & Config Viewer**: Inspect environment keys with deny-by-default value redaction plus a safe projection of the process-global typed `RullstConfig`; database URLs, filesystem paths, secrets, cookies and credentials are never rendered.
