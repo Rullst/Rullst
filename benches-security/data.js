@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787990596747,
+  "lastUpdate": 1788057736245,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -2370,6 +2370,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1b6b2da9a62eaa05dd98144c7b3c08cc239d8616",
+          "message": "feat(v12): implement audited roadmap capabilities",
+          "timestamp": "2026-08-29T23:27:39-03:00",
+          "tree_id": "8f335a4285b1f154dd589ba76e4b432943b3eda8",
+          "url": "https://github.com/Rullst/Rullst/commit/1b6b2da9a62eaa05dd98144c7b3c08cc239d8616"
+        },
+        "date": 1788057735873,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5190,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 602,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 25,
             "range": "± 0",
             "unit": "ns/iter"
           }
