@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788128236524,
+  "lastUpdate": 1788128661305,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4728,6 +4728,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "session_crypto/encrypt_session",
             "value": 487,
+            "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8b34ca4127825b9ebf58ed23dea03b0be0eeb30c",
+          "message": "feat(studio): add bounded data mutations",
+          "timestamp": "2026-08-30T19:17:16-03:00",
+          "tree_id": "dd255b1883cb644b275092b525cad2fd60ffde07",
+          "url": "https://github.com/Rullst/Rullst/commit/8b34ca4127825b9ebf58ed23dea03b0be0eeb30c"
+        },
+        "date": 1788128660608,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 481,
             "range": "± 3",
             "unit": "ns/iter"
           }
