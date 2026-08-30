@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788127959984,
+  "lastUpdate": 1788128384580,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -11389,6 +11389,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2292,
             "range": "± 34",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8b34ca4127825b9ebf58ed23dea03b0be0eeb30c",
+          "message": "feat(studio): add bounded data mutations",
+          "timestamp": "2026-08-30T19:17:16-03:00",
+          "tree_id": "dd255b1883cb644b275092b525cad2fd60ffde07",
+          "url": "https://github.com/Rullst/Rullst/commit/8b34ca4127825b9ebf58ed23dea03b0be0eeb30c"
+        },
+        "date": 1788128383183,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 746,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1001,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 639,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2271,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
