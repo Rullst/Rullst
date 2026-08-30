@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788089813699,
+  "lastUpdate": 1788095225585,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4189,6 +4189,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 499,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a88aabd66b0a52ed4e9a543a7ceefb9801574446",
+          "message": "feat(orm): add durable transactional outbox",
+          "timestamp": "2026-08-30T09:53:20-03:00",
+          "tree_id": "078736268707dfec79cc38923280b17a61ddeb2b",
+          "url": "https://github.com/Rullst/Rullst/commit/a88aabd66b0a52ed4e9a543a7ceefb9801574446"
+        },
+        "date": 1788095224951,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 480,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
