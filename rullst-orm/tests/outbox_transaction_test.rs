@@ -177,17 +177,20 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     );
 
     enqueue("lease-stream", "lease-1").await;
-    let lease_claim = Outbox::claim_next_at("lease-stream", "worker-one", now, 5, 3)
+    // Capture each virtual clock after its fixture is committed. Slow runners
+    // may cross a wall-clock second between independent scenarios.
+    let lease_now = unix_now();
+    let lease_claim = Outbox::claim_next_at("lease-stream", "worker-one", lease_now, 5, 3)
         .await
         .expect("claim leased event")
         .expect("leased event should exist");
     assert!(
-        Outbox::claim_next_at("lease-stream", "worker-two", now + 4, 5, 3)
+        Outbox::claim_next_at("lease-stream", "worker-two", lease_now + 4, 5, 3)
             .await
             .expect("query active lease")
             .is_none()
     );
-    let reclaimed = Outbox::claim_next_at("lease-stream", "worker-two", now + 5, 5, 3)
+    let reclaimed = Outbox::claim_next_at("lease-stream", "worker-two", lease_now + 5, 5, 3)
         .await
         .expect("reclaim expired lease")
         .expect("expired event should be reclaimable");
@@ -204,10 +207,12 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     );
 
     enqueue("expired-token-stream", "expired-token-1").await;
-    let expired = Outbox::claim_next_at("expired-token-stream", "slow-worker", now, 5, 2)
-        .await
-        .expect("claim expiration fixture")
-        .expect("expiration fixture should exist");
+    let expiration_now = unix_now();
+    let expired =
+        Outbox::claim_next_at("expired-token-stream", "slow-worker", expiration_now, 5, 2)
+            .await
+            .expect("claim expiration fixture")
+            .expect("expiration fixture should exist");
     sqlx::query("UPDATE rullst_outbox SET claim_expires_at_epoch = ? WHERE id = ?")
         .bind(1_i64)
         .bind(expired.id)
@@ -221,13 +226,14 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     );
 
     enqueue("crash-stream", "crash-1").await;
-    let crashed = Outbox::claim_next_at("crash-stream", "crashing-worker", now, 5, 1)
+    let crash_now = unix_now();
+    let crashed = Outbox::claim_next_at("crash-stream", "crashing-worker", crash_now, 5, 1)
         .await
         .expect("claim crash fixture")
         .expect("crash fixture should exist");
     assert_eq!(crashed.attempts, 1);
     assert!(
-        Outbox::claim_next_at("crash-stream", "replacement-worker", now + 5, 5, 1)
+        Outbox::claim_next_at("crash-stream", "replacement-worker", crash_now + 5, 5, 1)
             .await
             .expect("expire final crashed claim")
             .is_none()
@@ -247,9 +253,10 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     );
 
     enqueue("race-stream", "race-1").await;
+    let race_now = unix_now();
     let (left, right) = tokio::join!(
-        Outbox::claim_next_at("race-stream", "worker-left", now, 30, 3),
-        Outbox::claim_next_at("race-stream", "worker-right", now, 30, 3)
+        Outbox::claim_next_at("race-stream", "worker-left", race_now, 30, 3),
+        Outbox::claim_next_at("race-stream", "worker-right", race_now, 30, 3)
     );
     let claims = [
         left.expect("left concurrent claim should not fail"),

@@ -43,7 +43,7 @@ fn configure_rotated_key() {
 async fn encrypted_fields_round_trip_rotate_and_reject_unsafe_queries() {
     configure_primary_key();
     Orm::init_with_options(
-        "sqlite:file:encrypted_field_test?mode=memory&cache=shared",
+        "sqlite:file:encrypted_field_test.db?mode=memory&cache=shared",
         2,
         30,
     )
