@@ -114,7 +114,7 @@ amount/currency, invoice identity, replay state and fiscal documents.
 | --- | --- | --- |
 | `PAY-01` forged webhook | Verify the provider's exact signed bytes and algorithm cryptographically before parsing side effects. | Axum and Actix call the same verifier; provider-specific signature negatives plus Actix body/event preservation prove the bounded adapters. |
 | `PAY-02` replay/stale event | Enforce timestamp window and unique event ID in durable shared state before effects. | Freshness and bounded local replay are enforced before dispatch; distributed durable idempotency remains open. |
-| `PAY-03` amount/owner substitution | Derive product/currency/owner from authenticated server state, never arbitrary client values. | Generated billing identity tests; live route review remains open. |
+| `PAY-03` amount/owner substitution | Derive product/currency/owner from authenticated server state, never arbitrary client values. | Materialized SQLx/Turso billing scaffolds bind checkout to authenticated identity and deny cross-owner subscription reuse before customer binding; route/plan/provider review remains open. |
 | `PAY-04` duplicate/partial transition | Use a transactional idempotent state machine and reconcile with the provider. | Cross-instance atomic workflow remains open. |
 | `PAY-05` payout destination takeover | Require step-up authentication, allowlist/change delay and independent audit. | Application workflow remains open. |
 | `PAY-06` false fiscal authorization | Mock only explicitly; live/homologation fail `Unsupported` until XMLDSig, mTLS and SEFIN homologation exist. | Fail-closed fiscal tests. |
@@ -209,7 +209,7 @@ archives, evidence, deployment credentials and production target.
 | `DEPLOY-03` secret/local artifact leakage | Deny `.env*`, key/certificate patterns, unsafe paths and unexpected archives. | `.crate` audit gate. |
 | `DEPLOY-04` partial irreversible publish | Wait for index/checksum after each crate and resume only if the existing checksum matches. Never reuse a version. | Workflow exists; recovery runbook remains open. |
 | `DEPLOY-05` CLI command/path injection | Validate identifiers, paths and image names; avoid shell interpolation and propagate failures. | Generator injection/path tests. |
-| `DEPLOY-06` generated insecure default | Compile materialized matrices and assert production fails closed while local shortcuts are loopback debug-only. | Structural matrix/two compiled projects exist; full matrix remains open. |
+| `DEPLOY-06` generated insecure default | Compile materialized matrices and assert production fails closed while local shortcuts are loopback debug-only. | Structural/representative blueprint matrices plus materialized auth, mail, chat and SQLx/Turso billing contracts exist; final RC/multi-OS evidence remains open. |
 | `DEPLOY-07` compromised dependency/action | Pin actions, lock dependencies, audit advisories/licenses/sources and govern expiring exceptions. | Policy exists; tag-bound result remains open. |
 
 Trust boundaries are contributor/CI ↔ repository, tag ↔ artifact, artifact ↔

@@ -1,0 +1,21 @@
+use rullst::db::{FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "billing_customers")]
+pub struct BillingCustomer {
+    pub id: i32,
+    pub __FOREIGN_KEY__: i32,
+    pub email: String,
+    pub customer_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl BillingCustomer {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst::orm::Error> {
+        Self::query()
+            .where_eq("email", email.to_string())
+            .first()
+            .await
+    }
+}

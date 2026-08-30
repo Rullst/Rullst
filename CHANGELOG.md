@@ -64,6 +64,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mutating access. Both generated build paths run the mandatory mail pre-flight,
   and the materialized generator contract covers all seven variants, hostile
   markup/links, feature registration, collisions, Clippy, and runtime behavior.
+- `cargo rullst make:billing --model` now generates backend-specific SQLx or
+  Turso-primary models and reversible migrations, enables the exact facade
+  features once, registers every module and refuses existing outputs. Its
+  materialized two-backend contract runs Clippy, migrations and normalized
+  webhook persistence, including a negative proving cross-owner subscription
+  reuse is denied before the conflicting customer can be bound. Stripe and
+  LemonSqueezy are the bounded scaffold choices; route mounting, plan policy,
+  live provider validation and distributed reconciliation remain host-owned.
 - `TenantMailResolver` now accepts the trusted Core `TenantContext` directly
   for registration and delivery, validates every registry key, and returns a
   typed failure instead of treating an unavailable registry lock as a missing

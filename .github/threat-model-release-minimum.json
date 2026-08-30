@@ -275,10 +275,10 @@
     {
       "id": "DEPLOY-06",
       "crate": "cargo-rullst",
-      "target_kind": "lib",
-      "target": "lib",
-      "test_filter": "generators::billing::tests::generated_billing_binds_signed_events_to_authenticated_owners",
-      "source": "cargo-rullst/src/generators/billing.rs",
+      "target_kind": "integration",
+      "target": "billing_scaffold_cli",
+      "test_filter": "billing_scaffold_compiles_migrates_enforces_ownership_and_refuses_collisions",
+      "source": "cargo-rullst/tests/billing_scaffold_cli.rs",
       "marker": "TM-DEPLOY-06"
     },
     {

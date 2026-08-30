@@ -194,6 +194,7 @@ BILLING_PROVIDER=stripe
 BILLING_API_KEY=
 BILLING_WEBHOOK_SECRET=
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard
+BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro
 "#;
         env_content.push_str(billing_template);
         env_example_content.push_str(billing_template);

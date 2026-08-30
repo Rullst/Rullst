@@ -1,0 +1,29 @@
+use rullst::orm::polyglot::{PolyglotError, TursoMigration, TursoStatement};
+
+pub fn migration() -> Result<TursoMigration, PolyglotError> {
+    TursoMigration::new(
+        "__MIGRATION_NAME__",
+        vec![
+            TursoStatement::new(
+                "CREATE TABLE billing_customers (id INTEGER PRIMARY KEY AUTOINCREMENT, __FOREIGN_KEY__ INTEGER NOT NULL, email TEXT NOT NULL, customer_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+                vec![],
+            )?,
+            TursoStatement::new(
+                "CREATE UNIQUE INDEX billing_customers_email_unique ON billing_customers(email)",
+                vec![],
+            )?,
+            TursoStatement::new(
+                "CREATE TABLE subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, __FOREIGN_KEY__ INTEGER NOT NULL, customer_id TEXT NOT NULL, subscription_id TEXT NOT NULL, plan_id TEXT NOT NULL, status TEXT NOT NULL, ends_at INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+                vec![],
+            )?,
+            TursoStatement::new(
+                "CREATE UNIQUE INDEX subscriptions_subscription_id_unique ON subscriptions(subscription_id)",
+                vec![],
+            )?,
+        ],
+    )?
+    .with_down(vec![
+        TursoStatement::new("DROP TABLE subscriptions", vec![])?,
+        TursoStatement::new("DROP TABLE billing_customers", vec![])?,
+    ])
+}

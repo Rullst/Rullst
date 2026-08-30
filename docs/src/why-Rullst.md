@@ -185,6 +185,12 @@ Rullst tests representative generated projects and maintains structural
 matrices instead of assuming that a template is correct because its source
 file compiles inside the CLI crate.
 
+For example, `make:billing --model Workspace` now materializes distinct SQLx
+and Turso-primary persistence profiles. Both are generated, linted, migrated
+and exercised through subscription ownership and collision negatives; the
+test does not turn provider sandbox validation or distributed reconciliation
+into an automatic claim.
+
 The same CLI includes inspection, toolchain diagnostics, migration assistance,
 SBOM generation, and a bounded static route-access scanner. Generated output
 remains application code: review it, test it, and keep it under version control.

@@ -6,8 +6,20 @@ optional local Studio view without treating it as an accounting system.
 ## 1. Scaffold and configure the selected adapter
 
 ```bash
-cargo rullst make:billing
+cargo rullst make:billing --model Workspace
 ```
+
+The command detects a relational SQLx or Turso-primary project, adds the exact
+`orm` and `capital` facade features once, generates a reversible matching
+migration, registers the models/controller/page modules, and refuses to
+overwrite an earlier billing scaffold. The generated runtime supports the
+selected `stripe` or `lemonsqueezy` adapter. It deliberately does not imply
+support for every Capital adapter or mount application routes without review.
+
+Set `BILLING_ALLOWED_PLAN_IDS` to the exact comma-separated provider price or
+variant IDs the server may accept. Production startup rejects a missing
+allowlist; a query-string plan outside it is denied before creating a billing
+customer.
 
 Use the exact environment names emitted by the generated files and keep live
 credentials outside source control. Credentials beginning with `mock_` select a
@@ -38,9 +50,11 @@ async fn checkout_url() -> Result<String, String> {
 }
 ```
 
-The application still owns authenticated customer identity, return-URL policy,
-durable subscription state, idempotent reconciliation, and provider sandbox
-validation.
+The scaffold requires an authenticated `BillingIdentity` for checkout/portal,
+enforces that server-owned plan allowlist, and rejects subscription reuse across
+owners. The application still owns the identity middleware, correct plan
+configuration, return-URL policy, durable provider-event
+idempotency/reconciliation, and provider sandbox validation.
 
 ## 3. Verify webhooks before business processing
 

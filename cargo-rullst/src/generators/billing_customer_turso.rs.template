@@ -1,0 +1,19 @@
+#[derive(Debug, Clone, rullst::orm::Orm)]
+#[orm(table = "billing_customers", backend = "turso")]
+pub struct BillingCustomer {
+    pub id: i64,
+    pub __FOREIGN_KEY__: i64,
+    pub email: String,
+    pub customer_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl BillingCustomer {
+    pub async fn find_by_email(
+        email: &str,
+    ) -> Result<Option<Self>, rullst::orm::polyglot::PolyglotError> {
+        let email = email.to_string();
+        Self::query()?.where_eq("email", &email)?.first().await
+    }
+}

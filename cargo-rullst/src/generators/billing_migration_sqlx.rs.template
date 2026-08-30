@@ -1,0 +1,51 @@
+use rullst::db::async_trait;
+use rullst::db::schema::{Migration, Schema};
+use rullst::db::{Orm, sqlx};
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "__MIGRATION_NAME__"
+    }
+
+    async fn up(&self) -> Result<(), rullst::orm::Error> {
+        Schema::create("billing_customers", |table| {
+            table.id();
+            table.integer("__FOREIGN_KEY__").not_null();
+            table.string("email").not_null();
+            table.string("customer_id").nullable();
+            table.timestamps();
+        })
+        .await?;
+        Schema::create("subscriptions", |table| {
+            table.id();
+            table.integer("__FOREIGN_KEY__").not_null();
+            table.string("customer_id").not_null();
+            table.string("subscription_id").not_null();
+            table.string("plan_id").not_null();
+            table.string("status").not_null();
+            table.big_integer("ends_at").nullable();
+            table.timestamps();
+        })
+        .await?;
+        let pool = Orm::pool()?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX billing_customers_email_unique ON billing_customers(email)",
+        )
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "CREATE UNIQUE INDEX subscriptions_subscription_id_unique ON subscriptions(subscription_id)",
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("subscriptions").await?;
+        Schema::drop_if_exists("billing_customers").await
+    }
+}

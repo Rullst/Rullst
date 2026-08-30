@@ -11,7 +11,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub struct BillingIdentity {
     /// Authenticated owner ID, derived from a session plus tenant membership.
-    pub owner_id: i32,
+    pub owner_id: __OWNER_ID_TYPE__,
     /// Normalized email belonging to that authenticated owner.
     pub email: String,
 }
@@ -21,12 +21,12 @@ pub struct CheckoutQuery {
     pub plan: String,
 }
 
-#[derive(Debug)]
 struct BillingConfig {
     provider: String,
     api_key: String,
     webhook_secret: String,
     redirect_url: String,
+    allowed_plan_ids: HashSet<String>,
 }
 
 #[derive(Debug)]
@@ -53,9 +53,17 @@ fn is_mock_credential(value: &str) -> bool {
 }
 
 fn strong_webhook_secret(secret: &str) -> bool {
-    secret.as_bytes().len() >= 32
+    secret.len() >= 32
         && secret.bytes().collect::<HashSet<_>>().len() >= 12
         && !is_mock_credential(secret)
+}
+
+fn valid_plan_id(plan_id: &str) -> bool {
+    !plan_id.is_empty()
+        && plan_id.len() <= 200
+        && plan_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'))
 }
 
 fn billing_config() -> Result<BillingConfig, BillingConfigError> {
@@ -72,15 +80,33 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
     let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_default();
     let redirect_url = std::env::var("BILLING_REDIRECT_URL")
         .unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
+    let configured_plans = std::env::var("BILLING_ALLOWED_PLAN_IDS").ok();
+    let allowed_plan_ids = configured_plans
+        .as_deref()
+        .unwrap_or("price_starter,price_pro")
+        .split(',')
+        .map(str::trim)
+        .filter(|plan_id| !plan_id.is_empty())
+        .map(str::to_string)
+        .collect::<HashSet<_>>();
+    if allowed_plan_ids.is_empty()
+        || allowed_plan_ids.len() > 64
+        || allowed_plan_ids.iter().any(|plan_id| !valid_plan_id(plan_id))
+    {
+        return Err(BillingConfigError(
+            "BILLING_ALLOWED_PLAN_IDS must contain 1 to 64 comma-separated provider plan IDs",
+        ));
+    }
 
     if is_production()
         && (api_key.trim().is_empty()
             || is_mock_credential(&api_key)
             || !strong_webhook_secret(&webhook_secret)
-            || !redirect_url.starts_with("https://"))
+            || !redirect_url.starts_with("https://")
+            || configured_plans.is_none())
     {
         return Err(BillingConfigError(
-            "production billing requires real credentials, a strong webhook secret, and an HTTPS redirect URL",
+            "production billing requires real credentials, a strong webhook secret, an HTTPS redirect URL, and an explicit plan allowlist",
         ));
     }
 
@@ -89,6 +115,7 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
         api_key,
         webhook_secret,
         redirect_url,
+        allowed_plan_ids,
     })
 }
 
@@ -138,11 +165,7 @@ async fn billing_customer(
         return Err((StatusCode::UNAUTHORIZED, "Invalid billing identity".to_string()));
     }
     let email = normalize_email(&identity.email);
-    match BillingCustomer::query()
-        .where_eq("email", email.clone())
-        .first()
-        .await
-    {
+    match BillingCustomer::find_by_email(&email).await {
         Ok(Some(customer)) if customer.__FOREIGN_KEY__ != identity.owner_id => Err((
             StatusCode::FORBIDDEN,
             "Billing identity does not own this customer".to_string(),
@@ -180,18 +203,21 @@ pub async fn checkout_redirect(
     Extension(identity): Extension<BillingIdentity>,
     Query(query): Query<CheckoutQuery>,
 ) -> Response {
-    if query.plan.trim().is_empty() || query.plan.len() > 200 {
+    if !valid_plan_id(&query.plan) {
         return (StatusCode::BAD_REQUEST, "Invalid plan").into_response();
     }
-    let customer = match billing_customer(&identity).await {
-        Ok(customer) => customer,
-        Err(error) => return error.into_response(),
-    };
     let config = match billing_config() {
         Ok(config) => config,
         Err(error) => {
             return (StatusCode::SERVICE_UNAVAILABLE, error.to_string()).into_response();
         }
+    };
+    if !config.allowed_plan_ids.contains(&query.plan) {
+        return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
+    }
+    let customer = match billing_customer(&identity).await {
+        Ok(customer) => customer,
+        Err(error) => return error.into_response(),
     };
 
     let result = match config.provider.as_str() {
@@ -253,16 +279,26 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
     let email = normalize_email(&event.customer_email);
     if event.customer_id.trim().is_empty()
         || event.subscription_id.trim().is_empty()
-        || email.is_empty()
+        || event.plan_id.trim().is_empty()
+        || email.len() > 254
+        || !email.split_once('@').is_some_and(|(local, domain)| {
+            !local.is_empty() && domain.contains('.') && !domain.ends_with('.')
+        })
     {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
+    let config = match billing_config() {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("Billing webhook configuration error: {error}");
+            return StatusCode::SERVICE_UNAVAILABLE.into_response();
+        }
+    };
+    if !config.allowed_plan_ids.contains(&event.plan_id) {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
 
-    let mut customer = match BillingCustomer::query()
-        .where_eq("email", email)
-        .first()
-        .await
-    {
+    let mut customer = match BillingCustomer::find_by_email(&email).await {
         Ok(Some(customer)) => customer,
         Ok(None) => return StatusCode::CONFLICT.into_response(),
         Err(error) => {
@@ -277,21 +313,13 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
     {
         return StatusCode::CONFLICT.into_response();
     }
-    if customer.customer_id.is_none() {
-        customer.customer_id = Some(event.customer_id.clone());
-        if let Err(error) = customer.save().await {
-            eprintln!("Billing customer binding failed: {error}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    }
-
-    let existing = Subscription::query()
-        .where_eq("subscription_id", event.subscription_id.clone())
-        .first()
-        .await;
+    let existing = Subscription::find_by_subscription_id(&event.subscription_id).await;
     let mut subscription = match existing {
         Ok(Some(subscription)) if subscription.__FOREIGN_KEY__ != customer.__FOREIGN_KEY__ => {
             return StatusCode::FORBIDDEN.into_response();
+        }
+        Ok(Some(subscription)) if subscription.customer_id != event.customer_id => {
+            return StatusCode::CONFLICT.into_response();
         }
         Ok(Some(subscription)) => subscription,
         Ok(None) => Subscription {
@@ -310,6 +338,15 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
+
+    if customer.customer_id.is_none() {
+        customer.customer_id = Some(event.customer_id.clone());
+        if let Err(error) = customer.save().await {
+            eprintln!("Billing customer binding failed: {error}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    }
+
     subscription.customer_id = event.customer_id;
     subscription.plan_id = event.plan_id;
     subscription.status = event.status.as_str().to_string();
