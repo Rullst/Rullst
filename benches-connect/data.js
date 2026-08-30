@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788079818860,
+  "lastUpdate": 1788082738608,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2665,6 +2665,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 534,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9005dcd38a603e1ec15f61d8a87a9fed8d5d2fbe",
+          "message": "fix(orm): isolate remembered query caches",
+          "timestamp": "2026-08-30T06:23:37-03:00",
+          "tree_id": "06e98092aabdaa644a4771d30d9af9ce423751d3",
+          "url": "https://github.com/Rullst/Rullst/commit/9005dcd38a603e1ec15f61d8a87a9fed8d5d2fbe"
+        },
+        "date": 1788082737842,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 525,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
