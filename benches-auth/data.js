@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788057573900,
+  "lastUpdate": 1788061179203,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -3919,6 +3919,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 477,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3599d0adb6652a0d4d482f9fd3e152f535b6c711",
+          "message": "fix(orm): make implicit cascades atomic",
+          "timestamp": "2026-08-30T00:29:55-03:00",
+          "tree_id": "e2093ed5d7b1cdc59acbf5827b5ca349d46d9519",
+          "url": "https://github.com/Rullst/Rullst/commit/3599d0adb6652a0d4d482f9fd3e152f535b6c711"
+        },
+        "date": 1788061178713,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 478,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
