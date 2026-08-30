@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788108805857,
+  "lastUpdate": 1788114785218,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4369,6 +4369,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 411,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "353ebaec07c44723509d9239c7dc061b680f3d9b",
+          "message": "feat(capital): add bounded nfse preparation",
+          "timestamp": "2026-08-30T15:24:50-03:00",
+          "tree_id": "47831ab5878bc7a0e895f9c6920d7e700d43e307",
+          "url": "https://github.com/Rullst/Rullst/commit/353ebaec07c44723509d9239c7dc061b680f3d9b"
+        },
+        "date": 1788114784842,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 487,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
