@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788126118050,
+  "lastUpdate": 1788127959984,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -11335,6 +11335,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2275,
             "range": "± 98",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbec614909d9a5e414ccb9b9a219014b8e7440a8",
+          "message": "fix(cli): render billing blueprint scaffold",
+          "timestamp": "2026-08-30T19:09:40-03:00",
+          "tree_id": "f4582fed0e26359f7bf222b8886dfa29c17f5748",
+          "url": "https://github.com/Rullst/Rullst/commit/fbec614909d9a5e414ccb9b9a219014b8e7440a8"
+        },
+        "date": 1788127958542,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 723,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 662,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2292,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
