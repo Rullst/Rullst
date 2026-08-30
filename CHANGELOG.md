@@ -58,6 +58,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mutating access. Both generated build paths run the mandatory mail pre-flight,
   and the materialized generator contract covers all seven variants, hostile
   markup/links, feature registration, collisions, Clippy, and runtime behavior.
+- `TenantMailResolver` now accepts the trusted Core `TenantContext` directly
+  for registration and delivery, validates every registry key, and returns a
+  typed failure instead of treating an unavailable registry lock as a missing
+  tenant. Its regression contract proves that two membership-derived contexts
+  select separate drivers. Credential persistence, encryption, rotation, and
+  distribution between processes remain application/deployment concerns.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested
@@ -528,7 +534,8 @@ release gate has completed.
   - **Native REST Delivery Drivers for Postmark & AWS SES v2**: Native `PostmarkDriver` and `AwsSesDriver` implementations with zero C-bindings, full RFC 8058 One-Click List-Unsubscribe compliance, and runtime environment resolution.
   - **v12 audited scope:** attachments own/copy bytes and REST transports
     Base64-encode them; scheduling fields are implemented only where the
-    provider consumes them; tenant selection is explicit and in-process. The
+    provider consumes them; tenant selection now has a direct, explicit
+    authenticated `TenantContext` bridge and remains in-process. The
     Postmark path is live, while direct SES was not valid because AWS requires
     SigV4. It now fails closed and exposes only offline fixtures or an explicit
     trusted bearer proxy until a real signed adapter is implemented.

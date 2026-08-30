@@ -16,7 +16,7 @@
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`):** Primary driver dispatch with automatic fallback across secondary drivers, atomic failure threshold triggering, cooldown circuit breakers, and structured tracing warnings.
-- **🏢 Dynamic Multi-Tenancy Resolver (`TenantMailResolver`):** Isolate credentials, custom domains, and dedicated API keys per tenant/organization in B2B SaaS applications.
+- **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
 - **⏰ Provider-specific Scheduling (`.send_at()`, `.send_in()`):** Resend and SendGrid receive their scheduling fields. Generic queue, SMTP and Postmark paths do not yet guarantee due-time dispatch.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
@@ -84,18 +84,25 @@ let failover_driver = FailoverDriver::new(primary)
 ### 3. Dynamic B2B Multi-Tenancy Routing
 
 ```rust
-use rullst_mail::resolver::TenantMailResolver;
-use rullst_mail::drivers::{ResendDriver, SmtpDriver};
-let resolver = TenantMailResolver::with_default(
-    ResendDriver::try_new("re_global...")?
-);
+use rullst_core::security::TenantMembership;
+use rullst_mail::{ResendDriver, TenantMailResolver};
 
-// Register tenant-specific dedicated SMTP or API keys
-resolver.register("tenant_globex", ResendDriver::try_new("re_globex...")?);
+let resolver = TenantMailResolver::new();
+let membership = TenantMembership::try_new(["tenant_globex"])?;
+let context = membership.select("tenant_globex")?;
 
-// Dispatches using the tenant's isolated credentials
-resolver.send_for_tenant("tenant_globex", &message).await?;
+// Register tenant-specific API credentials during application configuration.
+resolver.register_for_context(
+    &context,
+    ResendDriver::try_new("re_globex...")?,
+)?;
+
+// The context must be derived from trusted authentication/membership state.
+resolver.send_for_context(&context, &message).await?;
 ```
+
+The registry is intentionally process-local. Durable encrypted credential storage,
+rotation, and distribution between instances remain application/deployment concerns.
 
 ---
 

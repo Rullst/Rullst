@@ -76,6 +76,11 @@ impl DeliveryPipeline {
         Self::prepare_with_context(message, DeliveryContext::for_tenant(tenant_id)?)
     }
 
+    /// Validates a tenant identifier against the shared Core tenant syntax.
+    pub(crate) fn validate_tenant_id(tenant_id: &str) -> Result<(), MailError> {
+        validate_tenant_id(tenant_id)
+    }
+
     fn prepare_with_context(
         message: &Message,
         context: DeliveryContext,
@@ -171,10 +176,10 @@ fn validate_tenant_id(tenant_id: &str) -> Result<(), MailError> {
     }
     if !tenant_id
         .bytes()
-        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
     {
         return Err(MailError::ValidationError(
-            "tenant ID may contain only ASCII letters, digits, '-' and '_'".to_string(),
+            "tenant ID may contain only ASCII letters, digits, '-', '_', '.' and ':'".to_string(),
         ));
     }
     Ok(())

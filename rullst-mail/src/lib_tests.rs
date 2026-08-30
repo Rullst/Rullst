@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
+use rullst_core::security::TenantMembership;
 
 struct AlwaysFailDriver;
 
@@ -431,13 +432,25 @@ async fn test_tenant_mail_resolver() {
     let (default_driver, default_store) = MemoryDriver::isolated();
 
     let resolver = TenantMailResolver::with_default(default_driver);
-    resolver.register("tenant_acme", tenant_a_driver);
-    resolver.register("tenant_globex", tenant_b_driver);
+    resolver
+        .register("tenant_acme", tenant_a_driver)
+        .expect("tenant A registration");
+    resolver
+        .register("tenant_globex", tenant_b_driver)
+        .expect("tenant B registration");
 
-    assert_eq!(resolver.tenant_count(), 2);
-    assert!(resolver.has_tenant("tenant_acme"));
-    assert!(resolver.has_tenant("tenant_globex"));
-    assert!(!resolver.has_tenant("tenant_unknown"));
+    assert_eq!(resolver.tenant_count().expect("tenant count"), 2);
+    assert!(resolver.has_tenant("tenant_acme").expect("tenant A lookup"));
+    assert!(
+        resolver
+            .has_tenant("tenant_globex")
+            .expect("tenant B lookup")
+    );
+    assert!(
+        !resolver
+            .has_tenant("tenant_unknown")
+            .expect("unknown tenant lookup")
+    );
 
     // 1. Send for tenant A
     let msg_a = Message::new().to("admin@acme.com").subject("Acme Invoice");
@@ -487,10 +500,44 @@ async fn test_tenant_mail_resolver() {
     );
 
     // 6. Remove tenant
-    let removed = resolver.remove("tenant_acme");
+    let removed = resolver.remove("tenant_acme").expect("tenant removal");
     assert!(removed.is_some());
-    assert_eq!(resolver.tenant_count(), 1);
-    assert!(!resolver.has_tenant("tenant_acme"));
+    assert_eq!(resolver.tenant_count().expect("tenant count"), 1);
+    assert!(!resolver.has_tenant("tenant_acme").expect("tenant lookup"));
+}
+
+#[tokio::test]
+async fn tenant_context_selects_credentials_without_cross_tenant_delivery() {
+    let membership =
+        TenantMembership::try_new(["acme:prod", "globex.eu"]).expect("authenticated membership");
+    let acme_context = membership.select("acme:prod").expect("Acme membership");
+    let globex_context = membership.select("globex.eu").expect("Globex membership");
+    let (acme_driver, acme_store) = MemoryDriver::isolated();
+    let (globex_driver, globex_store) = MemoryDriver::isolated();
+    let resolver = TenantMailResolver::new();
+
+    resolver
+        .register_for_context(&acme_context, acme_driver)
+        .expect("Acme registration");
+    resolver
+        .register_for_context(&globex_context, globex_driver)
+        .expect("Globex registration");
+
+    let acme_message = Message::new().to("owner@acme.example").subject("Acme only");
+    let globex_message = Message::new()
+        .to("owner@globex.example")
+        .subject("Globex only");
+    let (acme_result, globex_result) = tokio::join!(
+        resolver.send_for_context(&acme_context, &acme_message),
+        resolver.send_for_context(&globex_context, &globex_message),
+    );
+
+    acme_result.expect("Acme delivery");
+    globex_result.expect("Globex delivery");
+    assert_eq!(acme_store.lock().expect("Acme store").len(), 1);
+    assert_eq!(globex_store.lock().expect("Globex store").len(), 1);
+
+    assert!(resolver.register("../spoofed", LogDriver).is_err());
 }
 
 #[path = "lib_feature_tests.rs"]

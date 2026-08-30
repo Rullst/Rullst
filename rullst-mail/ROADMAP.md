@@ -131,7 +131,7 @@ flowchart TD
 ---
 
 ### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
-- [~] **Explicit Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes an explicitly validated tenant ID to an in-memory driver registry. Authentication-derived tenant selection, durable encrypted credentials and distributed updates remain application work.
+- [x] **Auth-Bound Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes a trusted Core `TenantContext` to a validated in-memory driver registry, rejects invalid registration and fails closed when the registry is unavailable. The context stays explicit to avoid ambient cross-request identity; durable encrypted credentials, rotation and distributed updates remain application/deployment work.
 - [ ] **Smart Domain Warm-Up Scheduler & Provider Rate Limiter**: Automated throttling and graduated daily sending schedules (e.g. Day 1: 50 emails/day, Day 7: 2,000 emails/day) for newly provisioned domains to build sender reputation safely.
 - [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
   - `cargo rullst make:mail <Name> --welcome`: Onboarding and email verification template.
