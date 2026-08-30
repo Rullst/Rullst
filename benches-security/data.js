@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788084086667,
+  "lastUpdate": 1788086382291,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -2802,6 +2802,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32c6c2fd314c8d42dd8948d1e686d58d1054fc15",
+          "message": "ci(coverage): authenticate uploads with oidc",
+          "timestamp": "2026-08-30T07:15:30-03:00",
+          "tree_id": "809e1c3998fd3442d3db50d43d7af8a8bac16e52",
+          "url": "https://github.com/Rullst/Rullst/commit/32c6c2fd314c8d42dd8948d1e686d58d1054fc15"
+        },
+        "date": 1788086381554,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4135,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 503,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 4,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 23,
             "range": "± 0",
             "unit": "ns/iter"
           }
