@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788121685399,
+  "lastUpdate": 1788123991472,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4579,6 +4579,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 488,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "154c455a671755e029d0d087b24c2f2d177274c2",
+          "message": "feat(connect): manage oauth session challenges",
+          "timestamp": "2026-08-30T17:53:06-03:00",
+          "tree_id": "4c844527fae21e8f5423345d78028b5dfa2cc676",
+          "url": "https://github.com/Rullst/Rullst/commit/154c455a671755e029d0d087b24c2f2d177274c2"
+        },
+        "date": 1788123991090,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 482,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
