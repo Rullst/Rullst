@@ -146,7 +146,21 @@ new_user.delete().await?;
   caller-owned alternatives, not compile-time schema verification.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
 
-### 5.3. Tenant Scope Contract
+### 5.3. Generated Relationship Contract
+
+* SQLx models may declare `morph_many`, `morph_one`, and one or more explicit
+  typed `morph_to` targets. A polymorphic relation requires
+  `morph_name = "..."` (`name` remains a legacy alias).
+* `morph_to` fails macro expansion unless the source has a persisted bindable
+  `<morph_name>_id` field and a persisted `String` discriminator named
+  `<morph_name>_type`. `foreign_key` may override the ID field and
+  `related_key` may override the target key.
+* The discriminator stores the Rust target model name. Lazy loading returns
+  `None` for a different target; eager loading batches each declared target and
+  never guesses an undeclared runtime type. Target models used in eager inverse
+  loading must implement `Clone`.
+
+### 5.4. Tenant Scope Contract
 
 * A SQLx model declaring `#[orm(tenant_column = "tenant_id")]` must have a
   persisted `String`, `i32`, `f64`, or `bool` tenant field. The derive rejects a
@@ -168,7 +182,7 @@ new_user.delete().await?;
   commits, or rolls back its own transaction. Recursive descendant/cycle
   traversal and strictly post-commit external observers are separate contracts.
 
-### 5.4. Polyglot Persistence Boundary
+### 5.5. Polyglot Persistence Boundary
 
 * Optional persistence adapters are disabled by default and selected with
   `mongodb`, `duckdb`, `turso`, `surrealdb`, or the `polyglot` convenience

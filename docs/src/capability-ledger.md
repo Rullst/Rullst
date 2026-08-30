@@ -48,7 +48,7 @@ homologation, or hardware can follow the
 
 | Capability or former claim | Current status | Recommendation and reason |
 |---|---|---|
-| SQLx Active Record, transactions, migrations and relations | **Implemented / bounded** | Keep the PostgreSQL, MySQL/MariaDB and SQLite matrices. Executor-aware generated operations and explicit transaction handles have commit/rollback evidence; caller-owned raw SQL must use the supplied transaction rather than assuming pool calls are scoped. |
+| SQLx Active Record, transactions, migrations and relations | **Implemented / bounded** | Keep the PostgreSQL, MySQL/MariaDB and SQLite matrices. Executor-aware generated operations and explicit transaction handles have commit/rollback evidence; typed `morph_to` plus `morph_many`/`morph_one` cover declared SQLx polymorphic targets without a runtime type registry. Caller-owned raw SQL must use the supplied transaction rather than assuming pool calls are scoped. |
 | Compile-time query typing | **Implemented / bounded typed path** | Generated primitive-field filters require the persisted Rust value type and generated column enums reject unknown columns. Dynamic string-column builders, custom conversions and raw SQL intentionally remain runtime checked; do not describe them as SQLx `query!`-style live-schema verification. |
 | Fail-closed model tenant scopes | **Implemented / bounded** | `tenant_column` now requires a supported persisted field, denies queries/mutations without `with_tenant`, binds tenant predicates and rejects cross-tenant instance mutations. Keep `unscoped()` explicit and require application authorization/database RLS where appropriate. |
 | Stable large-table chunk traversal | **Implemented / bounded** | Use fallible `chunk_by_id` for ascending keyset traversal over generated `i32` IDs; deleting processed rows cannot shift later rows behind an offset. `chunk` remains offset-based, and neither API claims a server cursor, cross-shard snapshot or immunity to unbounded concurrent inserts. |
@@ -57,7 +57,7 @@ homologation, or hardware can follow the
 | Native external search, Qdrant and full pgvector RAG | **Partial** | Preserve the extension points and validated vector syntax. Add demand-backed adapters with live conformance rather than treating method names as proof of provider support. |
 | Polyglot MongoDB, DuckDB, Turso and SurrealDB boundary | **Implemented / bounded per adapter** | Keep document, OLAP, SQL and graph capabilities separate, with bounds and deterministic offline modes. Do not introduce a universal Active Record facade or cross-store transaction fiction. |
 | Transparent edge replication and latency guarantees | **Not implemented** | SQLx read replicas can be configured, but Turso synchronization, health/failover and consistency remain vendor/deployment concerns. Benchmark measured topology; never promise “1 ms” universally. |
-| Historical ORM roadmap completeness | **Fully classified, not fully implemented** | All 45 unique former `[x]` claims are individually classified in `v12.md`: 21 bounded integral, 23 partial and one absent. Continue from that evidence instead of restoring duplicate/absolute roadmap text. |
+| Historical ORM roadmap completeness | **Fully classified, not fully implemented** | All 45 unique former `[x]` claims are individually classified in `v12.md`: 22 bounded integral, 22 partial and one absent. Continue from that evidence instead of restoring duplicate/absolute roadmap text. |
 
 ## Capital, billing, and fiscal vision
 

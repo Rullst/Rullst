@@ -45,7 +45,8 @@ pub(super) fn validate_relation_attribute(
     span: proc_macro2::Span,
 ) -> Result<(), syn::Error> {
     match key {
-        "has_many" | "has_one" | "belongs_to" | "belongs_to_many" | "morph_many" | "morph_one" => {
+        "has_many" | "has_one" | "belongs_to" | "belongs_to_many" | "morph_many" | "morph_one"
+        | "morph_to" => {
             if value.is_empty() {
                 return Err(syn::Error::new(
                     span,
@@ -65,7 +66,7 @@ pub(super) fn validate_relation_attribute(
                 ));
             }
         }
-        "foreign_key" | "related_key" | "pivot_table" | "local_key" | "name"
+        "foreign_key" | "related_key" | "pivot_table" | "local_key" | "name" | "morph_name"
             if value.is_empty() =>
         {
             return Err(syn::Error::new(
@@ -302,7 +303,7 @@ impl FieldAttributes {
         validate_relation_attribute(key, value, span)?;
         match key {
             "has_many" | "has_one" | "belongs_to" | "belongs_to_many" | "morph_many"
-            | "morph_one" => {
+            | "morph_one" | "morph_to" => {
                 self.relation_type = key.to_string();
                 self.relation_model = value.to_string();
             }
@@ -314,7 +315,7 @@ impl FieldAttributes {
             "related_key" => self.related_key = value.to_string(),
             "pivot_table" => self.pivot_table = value.to_string(),
             "local_key" => self.local_key = value.to_string(),
-            "name" => self.morph_name = value.to_string(),
+            "name" | "morph_name" => self.morph_name = value.to_string(),
             "embedding_for" => self.embedding_for = Some(value.to_string()),
             _ => {}
         }

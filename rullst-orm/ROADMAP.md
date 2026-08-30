@@ -27,7 +27,10 @@ retaining Rust typing, explicit escape hatches and parameterized values.
   filters bind the real persisted type and typed column enums reject unknown
   names at compile time. Dynamic string-column and raw SQL APIs remain explicit
   runtime-checked/caller-owned escape hatches.
-- [~] **Polymorphic Relationships**: `morphMany` and `morphOne` exist; inverse `morphTo` does not.
+- [x] **Polymorphic Relationships (bounded)**: `morph_many`, `morph_one`, and
+  explicit typed `morph_to` targets support lazy and batched eager loading. The
+  discriminator is the Rust target name; universal runtime type registries and
+  cross-store polymorphism are outside this contract.
 - [x] **Factories and Seeders**: Fluent factory `make`/`create` plus the async `Seeder` contract; applications provide deterministic fake-data generators.
 
 ## Phase 3: richer Active Record

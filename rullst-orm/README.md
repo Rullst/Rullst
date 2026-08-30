@@ -54,7 +54,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `.where_id(i32)` and `.where_name(impl Into<String>)` reject mismatched value
   types at compile time; dynamic string-column methods remain explicit escape
   hatches.
-- **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
+- **Eager Loading**: Batch supported `has_many`, `belongs_to`, `morph_many`,
+  `morph_one`, and typed `morph_to` targets. Inverse polymorphic fields use an
+  explicit target per relation and a persisted `<morph_name>_id` plus
+  `<morph_name>_type` discriminator.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
   `with_tenant`, inject the tenant predicate into generated queries, protect
   instance mutations, and reserve explicit `unscoped()` for reviewed global

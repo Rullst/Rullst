@@ -211,6 +211,27 @@ mod tests {
     }
 
     #[test]
+    fn generates_typed_inverse_polymorphic_loading() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(Orm)]
+            pub struct Comment {
+                pub id: i32,
+                pub commentable_id: i32,
+                pub commentable_type: String,
+                #[orm(morph_to = "Post", morph_name = "commentable")]
+                post: Option<Post>,
+            }
+        };
+        let (parsed, builder, models) = run_macro_generator(&input);
+
+        assert_eq!(parsed.relations[0].rel_type, "morph_to");
+        assert!(models.contains("self . commentable_type != stringify ! (Post)"));
+        assert!(models.contains("self . commentable_id . clone"));
+        assert!(builder.contains("related_by_id"));
+        assert!(builder.contains("with_post"));
+    }
+
+    #[test]
     fn generated_runtime_code_has_no_panicking_calls() {
         let input: DeriveInput = parse_quote! {
             #[derive(Orm)]

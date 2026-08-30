@@ -115,6 +115,15 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 related_key.clone()
             }
         );
+        let morph_id_ident = quote::format_ident!(
+            "{}",
+            if foreign_key.is_empty() {
+                format!("{}_id", morph_name)
+            } else {
+                foreign_key.clone()
+            }
+        );
+        let morph_type_ident = quote::format_ident!("{}_type", morph_name);
 
         let lazy_load_check = quote! {
             if rullst_orm::is_lazy_loading_prevented() {
@@ -178,8 +187,6 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 }
             });
         } else if rel_type == "morph_many" {
-            let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-            let morph_id_ident = quote::format_ident!("{}_id", morph_name);
             model_methods.push(quote! {
                 pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
@@ -202,8 +209,6 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 }
             });
         } else if rel_type == "morph_one" {
-            let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-            let morph_id_ident = quote::format_ident!("{}_id", morph_name);
             model_methods.push(quote! {
                 pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
@@ -220,6 +225,33 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         let mut q = #rel_model_ident::query()
                             .where_eq(stringify!(#morph_id_ident), self.#lk_ident.clone())
                             .where_eq(stringify!(#morph_type_ident), stringify!(#name));
+                        q = modifier(q);
+                        q.first().await
+                    })
+                }
+            });
+        } else if rel_type == "morph_to" {
+            model_methods.push(quote! {
+                pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
+                    Box::pin(async move {
+                        #lazy_load_check
+                        if self.#morph_type_ident != stringify!(#rel_model_ident) {
+                            return Ok(None);
+                        }
+                        #rel_model_ident::query()
+                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone())
+                            .first()
+                            .await
+                    })
+                }
+                pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
+                    Box::pin(async move {
+                        #lazy_load_check
+                        if self.#morph_type_ident != stringify!(#rel_model_ident) {
+                            return Ok(None);
+                        }
+                        let mut q = #rel_model_ident::query()
+                            .where_eq(stringify!(#pk_ident), self.#morph_id_ident.clone());
                         q = modifier(q);
                         q.first().await
                     })
@@ -276,7 +308,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let fk_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", name.to_string().to_lowercase()) } else { foreign_key.clone() });
         let lk_ident = quote::format_ident!("{}", if local_key.is_empty() { "id".to_string() } else { local_key.clone() });
         let pk_ident = quote::format_ident!("{}", if related_key.is_empty() { "id".to_string() } else { related_key.clone() });
-        let morph_id_ident = quote::format_ident!("{}_id", morph_name);
+        let morph_id_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", morph_name) } else { foreign_key.clone() });
 
         let eager_load_assignment = match rel_type.as_str() {
             "has_many" => generate_eager_load_assignment(true, &fk_ident, &lk_ident, &method_name),
@@ -315,9 +347,38 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                     }
                 }
             }
+        } else if rel_type == "morph_to" {
+            let morph_type_ident = quote::format_ident!("{}_type", morph_name);
+            quote! {
+                if self.#load_flag {
+                    let target_ids: Vec<_> = results
+                        .iter()
+                        .filter(|model| model.#morph_type_ident == stringify!(#rel_model_ident))
+                        .map(|model| model.#morph_id_ident.clone())
+                        .collect();
+                    if !target_ids.is_empty() {
+                        let mut query = #rel_model_ident::query()
+                            .where_in(stringify!(#pk_ident), target_ids);
+                        if let Some(ref filter) = self.#filter_flag {
+                            query = filter(query);
+                        }
+                        let all_related = Box::pin(query.get()).await?;
+                        let related_by_id: std::collections::HashMap<_, _> = all_related
+                            .into_iter()
+                            .map(|related| (related.#pk_ident.clone(), related))
+                            .collect();
+                        for model in &mut results {
+                            model.#method_name = if model.#morph_type_ident == stringify!(#rel_model_ident) {
+                                related_by_id.get(&model.#morph_id_ident).cloned()
+                            } else {
+                                None
+                            };
+                        }
+                    }
+                }
+            }
         } else {
             let morph_type_ident = quote::format_ident!("{}_type", morph_name);
-            let morph_id_ident = quote::format_ident!("{}_id", morph_name);
 
             if rel_type == "morph_many" || rel_type == "morph_one" {
                 // Batch load: one query with WHERE morph_id IN (...) AND morph_type = 'Name'

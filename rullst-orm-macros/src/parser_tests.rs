@@ -47,6 +47,7 @@ mod tests {
         assert!(validate_relation_attribute("belongs_to_many", "Role", Span::call_site()).is_ok());
         assert!(validate_relation_attribute("morph_many", "Comment", Span::call_site()).is_ok());
         assert!(validate_relation_attribute("morph_one", "Image", Span::call_site()).is_ok());
+        assert!(validate_relation_attribute("morph_to", "Post", Span::call_site()).is_ok());
 
         // Test empty model
         assert!(validate_relation_attribute("has_many", "", Span::call_site()).is_err());
@@ -82,6 +83,9 @@ mod tests {
                 #[orm(belongs_to_many = "M4", pivot_table = "piv_m4")] m4: Vec<M4>,
                 #[orm(morph_many = "M5", name = "m5_able", local_key = "custom_id")] m5: Vec<M5>,
                 #[orm(morph_one = "M6", name = "m6_able", foreign_key = "f_id", related_key = "r_id")] m6: M6,
+                m7_able_id: i32,
+                m7_able_type: String,
+                #[orm(morph_to = "M7", morph_name = "m7_able")] m7: Option<M7>,
                 #[orm(skip)] skipped: i32,
                 #[orm(hidden)] hidden: String,
                 #[orm(masked)] token: String,
@@ -108,7 +112,7 @@ mod tests {
         assert_eq!(sd.delval, "0");
 
         let r = &parsed.relations;
-        assert_eq!(r.len(), 6);
+        assert_eq!(r.len(), 7);
         assert_eq!(r[0].rel_type, "has_many");
         assert_eq!(r[1].rel_type, "has_one");
         assert_eq!(r[2].rel_type, "belongs_to");
@@ -121,9 +125,45 @@ mod tests {
         assert_eq!(r[5].morph_name, "m6_able");
         assert_eq!(r[5].foreign_key, "f_id");
         assert_eq!(r[5].related_key, "r_id");
+        assert_eq!(r[6].rel_type, "morph_to");
+        assert_eq!(r[6].morph_name, "m7_able");
 
         assert!(parsed.skipped_fields.iter().any(|i| i == "skipped"));
         assert!(parsed.hidden_fields.iter().any(|i| i == "hidden"));
+    }
+
+    #[test]
+    fn morph_to_requires_persisted_id_and_string_discriminator() {
+        use syn::parse_quote;
+
+        let missing_discriminator: DeriveInput = parse_quote! {
+            struct Comment {
+                id: i32,
+                commentable_id: i32,
+                #[orm(morph_to = "Post", morph_name = "commentable")]
+                post: Option<Post>,
+            }
+        };
+        let error = match parse(&missing_discriminator) {
+            Ok(_) => panic!("missing discriminator must fail"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("commentable_type"));
+
+        let invalid_discriminator: DeriveInput = parse_quote! {
+            struct Comment {
+                id: i32,
+                commentable_id: i32,
+                commentable_type: i32,
+                #[orm(morph_to = "Post", morph_name = "commentable")]
+                post: Option<Post>,
+            }
+        };
+        let error = match parse(&invalid_discriminator) {
+            Ok(_) => panic!("numeric discriminator must fail"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("must use String"));
     }
 
     #[test]
