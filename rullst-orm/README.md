@@ -80,9 +80,12 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   MariaDB and SQLite share the contract. Delivery is at least once, so the
   external consumer must also be idempotent.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
-- **Scout Extension Point**: Connect an application-owned search engine to the
-  generated search/save/delete hooks; live Meili/Algolia/Elastic adapters are
-  not bundled yet.
+- **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
+  Elasticsearch and Algolia update/delete/search adapters with deterministic
+  offline fallbacks. Generated projections run after commit; guaranteed crash
+  recovery requires explicit outbox composition. Meilisearch has a live pinned
+  container contract, while Elastic/Algolia have protocol fixtures rather than
+  hosted-provider certification.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.

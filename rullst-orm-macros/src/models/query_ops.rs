@@ -23,7 +23,13 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         pub async fn search(query: &str) -> #builder_name {
             let mut base_builder = #builder_name::new();
             if let Some(engine) = rullst_orm::scout::get_search_engine() {
-                let ids = engine.search(#table_name, query).await.unwrap_or_default();
+                let ids = match engine.search(#table_name, query).await {
+                    Ok(ids) => ids,
+                    Err(error) => {
+                        base_builder.errors.push(error);
+                        return base_builder;
+                    }
+                };
                 if ids.is_empty() {
                     base_builder = base_builder.where_eq("id", 0); // impossible match
                 } else {

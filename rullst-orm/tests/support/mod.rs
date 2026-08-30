@@ -1,10 +1,8 @@
-#[cfg(not(feature = "strict-sqlite"))]
 use std::fmt::Display;
 
-#[cfg(not(feature = "strict-sqlite"))]
 const REQUIRE_CONTAINERS_ENV: &str = "RULLST_REQUIRE_TESTCONTAINERS";
 
-#[cfg(not(feature = "strict-sqlite"))]
+#[allow(dead_code)]
 #[track_caller]
 pub fn handle_container_start_error(backend: &str, error: impl Display) {
     let required = std::env::var(REQUIRE_CONTAINERS_ENV)
@@ -27,6 +25,7 @@ pub fn handle_container_start_error(backend: &str, error: impl Display) {
     );
 }
 
+#[allow(dead_code)]
 pub async fn exercise_outbox() {
     use rullst_orm::{Error, Orm, Outbox};
     use serde_json::json;

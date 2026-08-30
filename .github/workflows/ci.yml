@@ -92,7 +92,7 @@ jobs:
           cargo test -p rullst-orm --no-default-features
           --test outbox_transaction_test -- --test-threads=1
 
-      - name: Run Matrix DB Tests (Testcontainers — SQL, document and edge backends)
+      - name: Run provider matrices (SQL, document, edge and search)
         # Docker testcontainers are supported on Linux runners.
         # Run without strict-* features so the relational matrix cfg
         # gates are satisfied. --test-threads=1 prevents parallel tests from
@@ -106,6 +106,7 @@ jobs:
           cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
           cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
           cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
+          cargo test -p rullst-orm --no-default-features --features scout-http --test matrix_meilisearch
 
   strict-database-features:
     name: ORM ${{ matrix.feature }}

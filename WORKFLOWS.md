@@ -61,7 +61,10 @@ ordering. A separate SQLite outbox contract runs on all three operating systems
 and covers atomicity, conflicting idempotency keys, claim races, lease expiry,
 retry and dead-letter; the relational matrix repeats the core outbox lifecycle
 against PostgreSQL, MySQL, MariaDB and strict SQLite. A dedicated job checks
-the declared MSRV, Rust 1.96.0.
+the declared MSRV, Rust 1.96.0. The Linux provider matrix also runs the
+feature-gated Scout adapter against a digest-pinned Meilisearch image; Algolia
+and Elasticsearch use bounded local protocol fixtures because no hosted
+provider account is part of CI.
 
 ## Recommended `main` branch-protection profile
 

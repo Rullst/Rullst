@@ -116,7 +116,9 @@ pub use repository::{GenericRepository, Repository};
 pub use resource::{ApiResource, JsonResource, ResourceCollection};
 pub use rullst_orm_macros::{Enum, Nexus, Orm, PersonalData, TursoModel, test};
 pub use schema::{JoinClause, SubqueryBuilder};
-pub use scout::{SearchEngine, get_search_engine, set_search_engine};
+#[cfg(feature = "scout-http")]
+pub use scout::{AlgoliaEngine, ElasticsearchEngine, MeilisearchEngine};
+pub use scout::{MockSearchEngine, SearchEngine, get_search_engine, set_search_engine};
 pub use tenant::{get_tenant_id, with_tenant};
 pub use types::Json;
 pub use value::RullstValue;

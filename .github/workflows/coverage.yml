@@ -54,6 +54,9 @@ jobs:
             --test outbox_transaction_test \
             --test matrix_postgres --test matrix_mysql \
             -- --test-threads=1
+          cargo llvm-cov --no-report -p rullst-orm \
+            --no-default-features --features scout-http \
+            --test matrix_meilisearch
 
       - name: Generate merged coverage report
         run: |

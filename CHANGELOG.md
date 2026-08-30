@@ -90,6 +90,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   PostgreSQL, MySQL and MariaDB contracts cover atomic commit/rollback and
   delivery state. Delivery remains at least once: consumers own idempotency,
   production migrations and the external dispatcher.
+- Added feature-gated Scout adapters for Meilisearch, Elasticsearch and
+  Algolia. They share bounded index/query/document/response rules, explicit
+  offline fallbacks, fail-closed one-time configuration and visible search
+  errors. Meilisearch runs against a digest-pinned live container; Elastic and
+  Algolia protocol fixtures verify request/response contracts without claiming
+  hosted-provider or cluster conformance.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

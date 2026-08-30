@@ -17,6 +17,7 @@ struct VerifyingSearchEngine {
     updates: Arc<AtomicUsize>,
     deletes: Arc<AtomicUsize>,
     fail_updates: Arc<AtomicBool>,
+    fail_search: Arc<AtomicBool>,
 }
 
 #[rullst_orm::async_trait]
@@ -55,6 +56,9 @@ impl SearchEngine for VerifyingSearchEngine {
     }
 
     async fn search(&self, _table: &str, _query: &str) -> Result<Vec<i32>, Error> {
+        if self.fail_search.load(Ordering::SeqCst) {
+            return Err(Error::Internal("simulated Scout search outage".to_string()));
+        }
         Ok(Vec::new())
     }
 }
@@ -80,11 +84,14 @@ async fn generated_scout_projection_uses_the_managed_commit_boundary() {
     let updates = Arc::new(AtomicUsize::new(0));
     let deletes = Arc::new(AtomicUsize::new(0));
     let fail_updates = Arc::new(AtomicBool::new(false));
-    set_search_engine(Box::new(VerifyingSearchEngine {
+    let fail_search = Arc::new(AtomicBool::new(false));
+    set_search_engine(VerifyingSearchEngine {
         updates: updates.clone(),
         deletes: deletes.clone(),
         fail_updates: fail_updates.clone(),
-    }));
+        fail_search: fail_search.clone(),
+    })
+    .expect("configure Scout engine once");
 
     let mut model = ScoutPostCommitModel {
         id: 0,
@@ -127,6 +134,14 @@ async fn generated_scout_projection_uses_the_managed_commit_boundary() {
     assert_eq!(persisted.0, "durable despite projection failure");
 
     fail_updates.store(false, Ordering::SeqCst);
+    fail_search.store(true, Ordering::SeqCst);
+    let search_error = ScoutPostCommitModel::search("query")
+        .await
+        .get()
+        .await
+        .expect_err("Scout search transport errors must remain visible");
+    assert!(matches!(search_error, Error::Internal(_)));
+    fail_search.store(false, Ordering::SeqCst);
     model.delete().await.expect("delete and project model");
     assert_eq!(deletes.load(Ordering::SeqCst), 1);
 

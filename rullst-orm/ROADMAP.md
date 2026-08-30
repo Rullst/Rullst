@@ -91,7 +91,12 @@ compile-time schema verified.
 - [~] **Type-Safe Partial Updates**: A typed explicit builder emits only selected fields and preserves policy/tenant checks; it is not automatic dirty tracking or a zero-overhead proof.
 - [~] **Compliance & Data Governance Foundations**: `PersonalData`, redacted `SecretString`, and AES-GCM encrypted model fields are separate bounded primitives, not automatic GDPR/LGPD compliance.
 - [~] **Audit Trails**: Diff history is fail-closed and savepoint-coupled to generated auditable instance saves/deletes; bulk per-row history, actor identity, revision restore, and durable post-commit external effects remain incomplete.
-- [~] **Full-Text Search (Scout)**: A `SearchEngine` extension point and save/delete hooks exist; Meilisearch, Algolia and Elasticsearch adapters are not included.
+- [~] **Full-Text Search (Scout)**: The `scout-http` feature supplies bounded
+  Meilisearch, Algolia and Elasticsearch update/delete/search adapters with
+  deterministic offline fallbacks. A digest-pinned Meilisearch lifecycle is
+  live; Algolia/Elasticsearch use protocol fixtures. Generated hooks remain
+  process-local unless the application explicitly composes the durable outbox;
+  hosted-provider, failover and ranking evidence remain external.
 - [x] **Sandbox Testing**: `#[rullst_orm::test]` scopes executor-aware operations to a transaction and rolls it back after the async test.
 - [~] **Model Policies**: Generated create/update/delete/restore checks exist, including partial updates; read authorization and host identity/ownership loading remain application work.
 - [~] **ORM Admin Panel**: A static dashboard shell exists; authenticated data-management CRUD belongs to Nexus.

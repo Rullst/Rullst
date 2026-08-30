@@ -61,6 +61,7 @@
 - [36. Assisted Framework Upgrades](tutorials/36-assisted-framework-upgrades.md)
 - [37. Polyglot Persistence](polyglot-persistence.md)
 - [38. Transactional Outbox & Durable Effects](tutorials/38-transactional-outbox.md)
+- [39. Scout Search Providers](tutorials/39-scout-search.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

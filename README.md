@@ -237,6 +237,9 @@ performance evidence until its versions and runs are refreshed.
   idempotent event in the same transaction. Lease/token claims, bounded retry
   and dead-letter are covered on SQLite, PostgreSQL, MySQL and MariaDB;
   delivery is at least once and consumers remain responsible for idempotency.
+- 🔎 **Scout search:** an opt-in feature provides bounded Meilisearch,
+  Elasticsearch and Algolia projections with deterministic offline fallbacks;
+  only Meilisearch currently has a live pinned service contract in CI.
 - 🔄 **Database introspection:** `cargo rullst make:models-from-db` generates
   starter model files through parameterized SQLite/PostgreSQL/MySQL metadata
   queries and fail-closed identifier validation. Table module names are
@@ -330,7 +333,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 
 **Explore the Monorepo Ecosystem:**
 - 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
-- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record and a durable opt-in outbox for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md) and [Transactional Outbox](docs/src/tutorials/38-transactional-outbox.md).
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm)**: Active Record, durable opt-in outbox and Scout search adapters for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md), [Transactional Outbox](docs/src/tutorials/38-transactional-outbox.md) and [Scout Search](docs/src/tutorials/39-scout-search.md).
 - 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
 - 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).

@@ -69,8 +69,11 @@ generated API.
 - **Field privacy:** `#[orm(encrypted)]` transparently encrypts supported
   `String` fields with a versioned AES-256-GCM envelope. Randomized ciphertext
   cannot be filtered or sorted; use a separate keyed blind index where needed.
-- **Scout hooks:** `#[orm(searchable)]` calls a configured `SearchEngine` after
-  generated writes/deletes. Delivery guarantees depend on the adapter.
+- **Scout hooks and providers:** `#[orm(searchable)]` calls a configured
+  `SearchEngine` after generated writes/deletes. `scout-http` supplies bounded
+  Meilisearch, Elasticsearch and Algolia adapters; the generated effect is
+  process-local unless the application composes the transactional outbox. See
+  [Scout Search Providers](../tutorials/39-scout-search.md).
 - **Durable opt-in outbox:** `Outbox::enqueue` commits a stream-scoped,
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.

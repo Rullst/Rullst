@@ -79,7 +79,7 @@ jobs:
           cargo test -p rullst-orm --no-default-features
           --test outbox_transaction_test -- --test-threads=1
 
-      - name: Run matrix DB tests (Testcontainers — SQL, document and edge backends)
+      - name: Run provider matrices (SQL, document, edge and search)
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
@@ -88,6 +88,7 @@ jobs:
           cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
           cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
           cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
+          cargo test -p rullst-orm --no-default-features --features scout-http --test matrix_meilisearch
 
       - name: Run live Redis distributed rate-limit contract
         env:
