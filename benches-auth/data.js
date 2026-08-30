@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788096567834,
+  "lastUpdate": 1788098992799,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4249,6 +4249,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 478,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "69c0c8fdb08ce069d05598457bf131e09b75bd2b",
+          "message": "feat(orm): add typed pgvector contract",
+          "timestamp": "2026-08-30T10:56:53-03:00",
+          "tree_id": "36b226e99264ebf14477456b3637b82eafa7c031",
+          "url": "https://github.com/Rullst/Rullst/commit/69c0c8fdb08ce069d05598457bf131e09b75bd2b"
+        },
+        "date": 1788098992103,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 437,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
