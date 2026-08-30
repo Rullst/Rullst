@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788095225585,
+  "lastUpdate": 1788096567834,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4219,6 +4219,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 480,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ef8f3aae18838f540faa893e74811f8ef90dbcf5",
+          "message": "feat(orm): add bounded scout providers",
+          "timestamp": "2026-08-30T10:22:52-03:00",
+          "tree_id": "5f59868b0609bbb2fe9443484523c6d320ef4dff",
+          "url": "https://github.com/Rullst/Rullst/commit/ef8f3aae18838f540faa893e74811f8ef90dbcf5"
+        },
+        "date": 1788096567450,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 478,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
