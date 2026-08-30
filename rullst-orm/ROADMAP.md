@@ -43,7 +43,10 @@ retaining Rust typing, explicit escape hatches and parameterized values.
 ## Phase 4: scale and observability
 
 - [~] **Edge Native & Read Replicas**: Configured SQLx reads rotate over replicas and writes use primary; transparent Turso synchronization and latency guarantees do not exist.
-- [~] **Query Chunking & Cursors**: Bounded offset-based `.chunk(...)` exists; stable keyset/database cursor semantics do not.
+- [x] **Query Chunking & Cursors (bounded)**: `.chunk(...)` preserves offset
+  compatibility, while fallible `.chunk_by_id(...)` and its transaction-aware
+  counterpart traverse the generated `i32` primary key with stable keyset
+  pagination. This is not a database-server cursor or a cross-shard snapshot.
 - [x] **Async Streams**: Query builders expose bounded `futures::Stream` row iteration.
 - [~] **Integrated Caching Layer**: `.remember(seconds)` has a Redis implementation, but no live Redis conformance/invalidation contract is currently claimed.
 - [~] **Asynchronous Reactive Event Hooks**: Async observers and optional Redis publish exist; a durable, strictly post-commit outbox does not.

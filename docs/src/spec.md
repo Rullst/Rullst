@@ -152,6 +152,11 @@ new_user.delete().await?;
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS
   remain host responsibilities.
+* SQLx builders keep offset-based `chunk(...)` for compatibility and expose
+  fallible `chunk_by_id(...)`/`chunk_by_id_with_tx(...)` for stable ascending
+  keyset traversal over the generated `i32` primary key. This prevents deletes
+  of processed rows from shifting later rows behind an offset; it is not a
+  database-server cursor or a universal cross-shard snapshot.
 
 ### 5.4. Polyglot Persistence Boundary
 

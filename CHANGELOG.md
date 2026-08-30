@@ -123,7 +123,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   all-feature Clippy plus bounded unsafe/IDOR checks, and the CycloneDX 1.5 SBOM
   uses parsed Cargo metadata, a valid UUID serial and unique component refs.
 - Audited all 45 unique historical ORM `[x]` claims and removed a duplicated
-  roadmap body. The resulting ledger records 19 bounded integral contracts, 25
+  roadmap body. The current ledger records 20 bounded integral contracts, 24
   partial foundations and one absent comparison claim; 100% means classified,
   not fully implemented.
 - SQLx models declaring `tenant_column` now fail closed outside
@@ -134,6 +134,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   columns and operators (including constrained joins); pgvector helpers reject
   empty/non-finite vectors and invalid distances; pagination/chunking reject
   zero sizes. Partial updates can no longer bypass model policies.
+- Added fallible SQLx `chunk_by_id` and `chunk_by_id_with_tx` keyset traversal
+  for generated `i32` primary keys. A SQLite regression deletes processed rows
+  while proving that later IDs are not skipped by offset drift.
 - SQLx migration tracking is written after each successful migration, so a later
   failure cannot make earlier DDL appear pending; PostgreSQL rollback uses native
   placeholders. Transaction regressions now assert database rollback state

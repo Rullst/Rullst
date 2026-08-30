@@ -72,6 +72,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   required.
 - **Typed Partial Updates**: `.update_partial()` changes only explicitly
   selected columns and preserves model policy/tenant checks.
+- **Stable Keyset Chunking**: `.chunk_by_id()` traverses ascending generated
+  `i32` IDs without offset drift when already processed rows are deleted, and
+  propagates callback errors. `.chunk()` remains available for offset-based
+  compatibility.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.

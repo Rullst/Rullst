@@ -2,6 +2,7 @@
 
 use rullst_orm::{Orm, with_tenant};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize, rullst_orm::Orm, rullst_orm::FromRow)]
 #[orm(table = "tenant_records", tenant_column = "tenant_id")]
@@ -130,4 +131,50 @@ async fn tenant_models_fail_closed_and_require_an_explicit_global_escape_hatch()
         .expect("tenant-b row should remain");
     assert_eq!(unchanged.tenant_id, "tenant-b");
     assert_eq!(unchanged.name, "beta");
+
+    let invalid_keyset = TenantRecord::unscoped()
+        .chunk_by_id(0, |_| async { Ok(()) })
+        .await;
+    assert!(matches!(
+        invalid_keyset,
+        Err(rullst_orm::Error::Validation(message)) if message.contains("greater than zero")
+    ));
+
+    let callback_error = TenantRecord::unscoped()
+        .chunk_by_id(1, |_| async {
+            Err(rullst_orm::Error::Validation(
+                "stop keyset traversal".to_string(),
+            ))
+        })
+        .await;
+    assert!(matches!(
+        callback_error,
+        Err(rullst_orm::Error::Validation(message)) if message == "stop keyset traversal"
+    ));
+
+    let observed_ids = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let delete_pool = Orm::pool()
+        .expect("ORM pool should remain available")
+        .clone();
+    TenantRecord::unscoped()
+        .chunk_by_id(1, {
+            let observed_ids = Arc::clone(&observed_ids);
+            move |rows| {
+                let observed_ids = Arc::clone(&observed_ids);
+                let delete_pool = delete_pool.clone();
+                async move {
+                    for row in rows {
+                        observed_ids.lock().await.push(row.id);
+                        rullst_orm::_sqlx::query("DELETE FROM tenant_records WHERE id = ?")
+                            .bind(row.id)
+                            .execute(&delete_pool)
+                            .await?;
+                    }
+                    Ok(())
+                }
+            }
+        })
+        .await
+        .expect("keyset traversal remains stable while processed rows are deleted");
+    assert_eq!(*observed_ids.lock().await, vec![1, 2, 3]);
 }

@@ -324,65 +324,6 @@ pub fn generate_execution_methods(
             Ok(row.0)
         }
 
-        #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self, handler))]
-        pub async fn chunk<F, Fut>(&self, size: usize, mut handler: F) -> Result<(), rullst_orm::Error>
-        where
-            F: FnMut(Vec<#name>) -> Fut + Send,
-            Fut: std::future::Future<Output = ()> + Send,
-        {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut offset = 0usize;
-            let mut builder = self.clone();
-            builder.limit = Some(size);
-            loop {
-                builder.offset = Some(offset);
-                let results = builder.get().await?;
-                let count = results.len();
-                if count == 0 { break; }
-                handler(results).await;
-                if count < size { break; }
-                offset = offset.checked_add(size).ok_or_else(|| {
-                    rullst_orm::Error::Validation(
-                        "chunk() offset exceeds the supported range".to_string()
-                    )
-                })?;
-            }
-            Ok(())
-        }
-
-        pub async fn chunk_with_tx<F, Fut>(&self, size: usize, tx: &mut rullst_orm::db::Transaction<'static>, mut handler: F) -> Result<(), rullst_orm::Error>
-        where
-            F: FnMut(Vec<#name>) -> Fut + Send,
-            Fut: std::future::Future<Output = ()> + Send,
-        {
-            if size == 0 {
-                return Err(rullst_orm::Error::Validation(
-                    "chunk_with_tx() requires a size greater than zero".to_string()
-                ));
-            }
-            let mut offset = 0usize;
-            let mut builder = self.clone();
-            builder.limit = Some(size);
-            loop {
-                builder.offset = Some(offset);
-                let results = builder.get_with_tx(tx).await?;
-                let count = results.len();
-                if count == 0 { break; }
-                handler(results).await;
-                if count < size { break; }
-                offset = offset.checked_add(size).ok_or_else(|| {
-                    rullst_orm::Error::Validation(
-                        "chunk_with_tx() offset exceeds the supported range".to_string()
-                    )
-                })?;
-            }
-            Ok(())
-        }
-
         pub fn stream<'a>(&'a self) -> impl rullst_orm::_futures::Stream<Item = Result<#name, rullst_orm::Error>> + 'a {
             rullst_orm::_async_stream::try_stream! {
                 if !self.errors.is_empty() {

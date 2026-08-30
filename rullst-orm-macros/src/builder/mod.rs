@@ -3,12 +3,14 @@
 use crate::parser::{ParsedModel, SoftDeleteConfig};
 use proc_macro2::TokenStream;
 
+pub mod chunking;
 pub mod clauses;
 pub mod execution;
 pub mod magic_methods;
 pub mod sql_assembly;
 pub mod where_clauses;
 
+pub use chunking::generate_chunk_methods;
 pub use clauses::generate_builder_struct;
 pub use execution::generate_execution_methods;
 pub use magic_methods::generate_magic_methods;
@@ -77,7 +79,8 @@ pub fn generate(
         &soft_delete_filter_unset,
         &soft_delete_filter_set,
     );
-    let execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
+    let mut execution_methods = generate_execution_methods(parsed, &builder_name, eager_loads);
+    execution_methods.extend(generate_chunk_methods(parsed));
     let magic_methods = generate_magic_methods(parsed);
 
     generate_builder_struct(
