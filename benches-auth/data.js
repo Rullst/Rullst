@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788125473635,
+  "lastUpdate": 1788126573994,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4669,6 +4669,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 487,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3ef2d55f1bef2c85886ee3a80fd2536b9a893f36",
+          "message": "feat(capital): add bounded subscription handles",
+          "timestamp": "2026-08-30T18:37:02-03:00",
+          "tree_id": "b80079c17dad3d1474a61aba5ce1daa4d9a80c72",
+          "url": "https://github.com/Rullst/Rullst/commit/3ef2d55f1bef2c85886ee3a80fd2536b9a893f36"
+        },
+        "date": 1788126573580,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 505,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
