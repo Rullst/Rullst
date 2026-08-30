@@ -100,12 +100,14 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
 
         pub fn order_by_col(mut self, col: #column_enum_name) -> Self {
             self.reject_skipped_column(col.as_str());
+            self.order_bindings.clear();
             self.order_by = Some(col.as_str().to_string());
             self
         }
 
         pub fn order_by_desc_col(mut self, col: #column_enum_name) -> Self {
             self.reject_skipped_column(col.as_str());
+            self.order_bindings.clear();
             self.order_by = Some(format!("{} DESC", col.as_str()));
             self
         }

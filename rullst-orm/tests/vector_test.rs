@@ -31,15 +31,36 @@ async fn test_vector_schema_and_query() {
     let query = Document::query()
         .order_by_l2_distance("embedding", vec![0.1, 0.2, 0.3])
         .to_sql();
-    assert!(query.contains("ORDER BY embedding <-> '[0.1,0.2,0.3]'"));
+    assert!(query.contains("ORDER BY embedding <-> CAST(? AS vector)"));
+    assert_eq!(query.matches('?').count(), 1);
 
     let query_cosine = Document::query()
         .order_by_cosine_distance("embedding", vec![0.1, 0.2, 0.3])
         .to_sql();
-    assert!(query_cosine.contains("ORDER BY embedding <=> '[0.1,0.2,0.3]'"));
+    assert!(query_cosine.contains("ORDER BY embedding <=> CAST(? AS vector)"));
 
     let query_inner = Document::query()
         .order_by_inner_product("embedding", vec![0.1, 0.2, 0.3])
         .to_sql();
-    assert!(query_inner.contains("ORDER BY embedding <#> '[0.1,0.2,0.3]'"));
+    assert!(query_inner.contains("ORDER BY embedding <#> CAST(? AS vector)"));
+
+    // ORDER BY bindings remain after WHERE bindings regardless of call order.
+    let mixed = Document::query()
+        .order_by_l2_distance("embedding", vec![0.1, 0.2, 0.3])
+        .where_eq("id", 7);
+    assert!(
+        mixed
+            .to_sql()
+            .contains("WHERE (id = ?) ORDER BY embedding <-> CAST(? AS vector)")
+    );
+    assert_eq!(mixed.bindings.len(), 1);
+    assert_eq!(mixed.order_bindings.len(), 1);
+
+    let bounded = Document::query().where_similar("embedding", vec![0.1, 0.2, 0.3], 0.5);
+    assert!(
+        bounded
+            .to_sql()
+            .contains("embedding <-> CAST(? AS vector) < ?")
+    );
+    assert_eq!(bounded.bindings.len(), 2);
 }

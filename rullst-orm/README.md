@@ -86,6 +86,11 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   recovery requires explicit outbox composition. Meilisearch has a live pinned
   container contract, while Elastic/Algolia have protocol fixtures rather than
   hosted-provider certification.
+- **Typed pgvector Search**: `pgvector` re-exports SQLx-compatible `Vector` and
+  the L2/cosine/inner-product helpers bind vector and distance values. A
+  digest-pinned PostgreSQL + pgvector lifecycle covers typed insert/read and
+  parameterized nearest-neighbor filtering/ordering; RAG orchestration and
+  production index tuning remain application concerns.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.

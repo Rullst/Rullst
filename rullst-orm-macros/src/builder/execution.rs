@@ -141,15 +141,16 @@ pub fn generate_execution_methods(
                 return Err(self.errors[0].clone());
             }
             let query_str = self.to_sql();
+            let query_bindings = self.select_bindings();
 
             #cache_read
 
             if rullst_orm::schema::is_query_log_enabled() {
-                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
+                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, query_bindings.len());
             }
             let mut results: Vec<#name> = {
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -208,12 +209,13 @@ pub fn generate_execution_methods(
             total_builder.order_by = None;
 
             let query_str = total_builder.to_sql();
+            let count_bindings = total_builder.count_bindings();
             if rullst_orm::schema::is_query_log_enabled() {
-                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, total_builder.bindings.len());
+                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, count_bindings.len());
             }
             let total_row: (i64,) = rullst_orm::dispatch_executor!(read_pool, |pool| {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (i64,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &total_builder.bindings {
+                for binding in &count_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -266,12 +268,13 @@ pub fn generate_execution_methods(
                 return Err(self.errors[0].clone());
             }
             let query_str = self.to_count_sql();
+            let count_bindings = self.count_bindings();
             if rullst_orm::schema::is_query_log_enabled() {
-                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
+                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, count_bindings.len());
             }
             let row: (i64,) = rullst_orm::dispatch_executor!(read_pool, |pool| {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (i64,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &count_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -297,13 +300,14 @@ pub fn generate_execution_methods(
                     Err(self.errors[0].clone())?;
                 }
                 let query_str = self.to_sql();
+                let query_bindings = self.select_bindings();
                 if rullst_orm::schema::is_query_log_enabled() {
-                    println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
+                    println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, query_bindings.len());
                 }
 
                 let pool = rullst_orm::Orm::try_read_pool()?;
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -328,12 +332,13 @@ pub fn generate_execution_methods(
                     Err(self.errors[0].clone())?;
                 }
                 let query_str = self.to_sql();
+                let query_bindings = self.select_bindings();
                 if rullst_orm::schema::is_query_log_enabled() {
-                    println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
+                    println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, query_bindings.len());
                 }
 
                 let mut query = rullst_orm::_sqlx::query_as::<_, #name>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -428,9 +433,10 @@ pub fn generate_execution_methods(
             }
             let is_encrypted = ENCRYPTED_STRING_COLUMNS.contains(&column);
             let query_str = self.to_pluck_sql(column);
+            let query_bindings = self.select_bindings();
             let rows: Vec<(String,)> = {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (String,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -462,9 +468,10 @@ pub fn generate_execution_methods(
             }
             let pool = rullst_orm::Orm::try_read_pool()?;
             let query_str = self.to_pluck_sql(column);
+            let query_bindings = self.select_bindings();
             let rows: Vec<(i32,)> = {
                 let mut query = rullst_orm::_sqlx::query_as::<_, (i32,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in &query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }

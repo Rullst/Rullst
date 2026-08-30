@@ -114,7 +114,11 @@ compile-time schema verified.
 ## Phase 7: future and infrastructure
 
 - [x] **Database-First Introspection**: `cargo rullst generate:models` supports bounded PostgreSQL, MySQL/MariaDB and SQLite schema-to-model generation.
-- [~] **Vector Query Helpers (`pgvector` syntax)**: Validated finite-vector helpers emit pgvector operators; extension lifecycle, live PostgreSQL conformance and full RAG orchestration remain outside the contract.
+- [x] **Vector Query Helpers (bounded pgvector contract)**: `pgvector` plus
+  `strict-postgres` exposes the typed SQLx value and parameterized L2, cosine
+  and inner-product helpers. A digest-pinned live lifecycle installs the
+  extension and proves typed inserts/queries. RAG orchestration, application
+  authorization and production ANN index tuning remain separate concerns.
 - [ ] **AI-Powered Auto Migrations**: Any future implementation must be opt-in, previewed and reviewed; autonomous production DDL is not recommended.
 - [ ] **Wasm & Edge Computing**: No supported browser/Cloudflare/Vercel ORM runtime exists.
 - [~] **ORM Sail**: `sail:install` writes a Compose starting point for Postgres, Redis, Meilisearch and pgAdmin; it does not start services or scaffold the application container.

@@ -16,7 +16,7 @@ pub fn generate_cache_read(
             Some(rullst_orm::query_cache::query_key(
                 #table_name,
                 &query_str,
-                &self.bindings,
+                &query_bindings,
             )?)
         } else {
             None

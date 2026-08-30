@@ -41,7 +41,10 @@ pub fn generate_builder_struct(
             pub joins: Vec<String>,
             pub wheres: Vec<(String, String)>,
             pub havings: Vec<(String, String)>,
+            pub cte_bindings: Vec<rullst_orm::RullstValue>,
+            pub join_bindings: Vec<rullst_orm::RullstValue>,
             pub bindings: Vec<rullst_orm::RullstValue>,
+            pub order_bindings: Vec<rullst_orm::RullstValue>,
             pub errors: Vec<rullst_orm::Error>,
             pub ctes: Vec<String>,
             pub has_recursive_cte: bool,
@@ -58,6 +61,9 @@ pub fn generate_builder_struct(
             }
             fn bindings(&self) -> &Vec<rullst_orm::RullstValue> {
                 &self.bindings
+            }
+            fn ordered_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+                self.select_bindings()
             }
         }
 
@@ -87,6 +93,25 @@ pub fn generate_builder_struct(
                 }
             }
 
+            fn select_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+                self.cte_bindings
+                    .iter()
+                    .chain(self.join_bindings.iter())
+                    .chain(self.bindings.iter())
+                    .chain(self.order_bindings.iter())
+                    .cloned()
+                    .collect()
+            }
+
+            fn count_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+                self.cte_bindings
+                    .iter()
+                    .chain(self.join_bindings.iter())
+                    .chain(self.bindings.iter())
+                    .cloned()
+                    .collect()
+            }
+
             pub fn new() -> Self {
                 Self {
                     selects: None,
@@ -98,7 +123,10 @@ pub fn generate_builder_struct(
                     joins: vec![],
                     wheres: vec![],
                     havings: vec![],
+                    cte_bindings: vec![],
+                    join_bindings: vec![],
                     bindings: vec![],
+                    order_bindings: vec![],
                     errors: vec![],
                     ctes: vec![],
                     has_recursive_cte: false,
@@ -150,8 +178,8 @@ pub fn generate_builder_struct(
             pub fn where_exists<B: rullst_orm::schema::SubqueryBuilder>(mut self, subquery: B) -> Self {
                 let sql = subquery.to_sql();
                 self.wheres.push(("AND".to_string(), format!("EXISTS ({})", sql)));
-                for binding in subquery.bindings() {
-                    self.bindings.push(binding.clone());
+                for binding in subquery.ordered_bindings() {
+                    self.bindings.push(binding);
                 }
                 self
             }
@@ -159,8 +187,8 @@ pub fn generate_builder_struct(
             pub fn or_where_exists<B: rullst_orm::schema::SubqueryBuilder>(mut self, subquery: B) -> Self {
                 let sql = subquery.to_sql();
                 self.wheres.push(("OR".to_string(), format!("EXISTS ({})", sql)));
-                for binding in subquery.bindings() {
-                    self.bindings.push(binding.clone());
+                for binding in subquery.ordered_bindings() {
+                    self.bindings.push(binding);
                 }
                 self
             }
@@ -188,8 +216,8 @@ pub fn generate_builder_struct(
                 }
                 let sql = subquery.to_sql();
                 self.ctes.push(format!("{} AS ({})", cte_name, sql));
-                for binding in subquery.bindings() {
-                    self.bindings.push(binding.clone());
+                for binding in subquery.ordered_bindings() {
+                    self.cte_bindings.push(binding);
                 }
                 self
             }
@@ -201,8 +229,8 @@ pub fn generate_builder_struct(
                 let sql = subquery.to_sql();
                 self.ctes.push(format!("{} AS ({})", cte_name, sql));
                 self.has_recursive_cte = true;
-                for binding in subquery.bindings() {
-                    self.bindings.push(binding.clone());
+                for binding in subquery.ordered_bindings() {
+                    self.cte_bindings.push(binding);
                 }
                 self
             }
@@ -241,7 +269,7 @@ pub fn generate_builder_struct(
                 self.errors.extend(clause.errors.iter().cloned());
                 self.joins.push(format!("INNER JOIN {} ON {}", table, clause.to_sql()));
                 for binding in clause.bindings {
-                    self.bindings.push(binding);
+                    self.join_bindings.push(binding);
                 }
                 self
             }
@@ -311,6 +339,7 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by() — invalid column identifier: {}", e)));
                 }
+                self.order_bindings.clear();
                 self.order_by = Some(format!("{} ASC", column));
                 self
             }
@@ -320,6 +349,7 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_desc() — invalid column identifier: {}", e)));
                 }
+                self.order_bindings.clear();
                 self.order_by = Some(format!("{} DESC", column));
                 self
             }
@@ -333,13 +363,22 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_l2_distance() — invalid column identifier: {}", e)));
                 }
+                self.order_bindings.clear();
                 if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
                     self.errors.push(rullst_orm::Error::Validation(
                         "order_by_l2_distance() requires a non-empty finite vector".to_string()
                     ));
+                    return self;
                 }
-                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
-                self.order_by = Some(format!("{} <-> '{}'", column, vec_str));
+                let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.errors.push(error.into());
+                        return self;
+                    }
+                };
+                self.order_by = Some(format!("{} <-> CAST(? AS vector)", column));
+                self.order_bindings.push(vec_str.into());
                 self
             }
 
@@ -348,13 +387,22 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_cosine_distance() — invalid column identifier: {}", e)));
                 }
+                self.order_bindings.clear();
                 if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
                     self.errors.push(rullst_orm::Error::Validation(
                         "order_by_cosine_distance() requires a non-empty finite vector".to_string()
                     ));
+                    return self;
                 }
-                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
-                self.order_by = Some(format!("{} <=> '{}'", column, vec_str));
+                let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.errors.push(error.into());
+                        return self;
+                    }
+                };
+                self.order_by = Some(format!("{} <=> CAST(? AS vector)", column));
+                self.order_bindings.push(vec_str.into());
                 self
             }
 
@@ -363,13 +411,22 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_inner_product() — invalid column identifier: {}", e)));
                 }
+                self.order_bindings.clear();
                 if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
                     self.errors.push(rullst_orm::Error::Validation(
                         "order_by_inner_product() requires a non-empty finite vector".to_string()
                     ));
+                    return self;
                 }
-                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
-                self.order_by = Some(format!("{} <#> '{}'", column, vec_str));
+                let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.errors.push(error.into());
+                        return self;
+                    }
+                };
+                self.order_by = Some(format!("{} <#> CAST(? AS vector)", column));
+                self.order_bindings.push(vec_str.into());
                 self
             }
 
@@ -388,8 +445,19 @@ pub fn generate_builder_struct(
                         "where_similar() requires a finite non-negative distance".to_string()
                     ));
                 }
-                let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
-                self.wheres.push(("AND".to_string(), format!("{} <-> '{}' < {}", column, vec_str, distance)));
+                if !self.errors.is_empty() {
+                    return self;
+                }
+                let vec_str = match rullst_orm::_serde_json::to_string(&vector) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.errors.push(error.into());
+                        return self;
+                    }
+                };
+                self.wheres.push(("AND".to_string(), format!("{} <-> CAST(? AS vector) < ?", column)));
+                self.bindings.push(vec_str.into());
+                self.bindings.push(distance.into());
                 self
             }
 

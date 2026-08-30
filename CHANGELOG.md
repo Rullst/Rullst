@@ -96,6 +96,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   errors. Meilisearch runs against a digest-pinned live container; Elastic and
   Algolia protocol fixtures verify request/response contracts without claiming
   hosted-provider or cluster conformance.
+- Added an opt-in typed `pgvector` contract. Vector and distance inputs now use
+  SQL bindings, ORDER BY bindings retain SQL-position order regardless of
+  builder call order, and a digest-pinned PostgreSQL + pgvector matrix covers
+  extension setup, typed inserts, L2 thresholds and cosine ordering. Full RAG
+  policy, provider/model evaluation and production index tuning remain outside
+  this bounded query contract.
+- Query-builder execution now assembles CTE, JOIN, WHERE/HAVING and ORDER BY
+  bindings in emitted SQL-clause order rather than method-call order. An SQLite
+  regression calls those builders in reverse order and exercises `get`,
+  `count`, and `paginate`.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

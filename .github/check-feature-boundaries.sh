@@ -54,6 +54,7 @@ rullst-orm|duckdb
 rullst-orm|turso
 rullst-orm|surrealdb
 rullst-orm|scout-http
+rullst-orm|pgvector
 rullst-orm|polyglot
 rullst-core|orm
 rullst-core|queue-sqlite
@@ -78,6 +79,7 @@ rullst|orm-duckdb
 rullst|orm-turso
 rullst|orm-surrealdb
 rullst|orm-scout
+rullst|orm-pgvector
 # `orm-polyglot` is the exact union of the four isolated forwarding rows above
 # and remains compiled by the workspace all-feature test/Clippy gates. Repeating
 # it here rebuilds bundled DuckDB for a third graph without testing a new edge.

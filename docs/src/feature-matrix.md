@@ -36,6 +36,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL over Hrana HTTP v3, transactions, reversible checked migrations, and a persistent offline fallback |
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-scout` | no | `orm` plus bounded Meilisearch, Elasticsearch and Algolia Scout HTTP adapters |
+| `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
 | `orm-polyglot` | no | Convenience feature enabling all four optional persistence adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
 | `nexus` | no | The generated Nexus administration interface |
@@ -99,6 +100,7 @@ aliases use SQLx `Any`.
 | `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
 | `surrealdb` | SurrealDB HTTP document CRUD and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
+| `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
 | `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, and `surrealdb` |
 | `strict-postgres` | Concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | Concrete MySQL paths when PostgreSQL is not also selected |

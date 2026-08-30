@@ -64,7 +64,8 @@ against PostgreSQL, MySQL, MariaDB and strict SQLite. A dedicated job checks
 the declared MSRV, Rust 1.96.0. The Linux provider matrix also runs the
 feature-gated Scout adapter against a digest-pinned Meilisearch image; Algolia
 and Elasticsearch use bounded local protocol fixtures because no hosted
-provider account is part of CI.
+provider account is part of CI. The same matrix runs typed, parameterized L2
+and cosine queries against a digest-pinned PostgreSQL + pgvector image.
 
 ## Recommended `main` branch-protection profile
 

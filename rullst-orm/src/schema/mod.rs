@@ -18,6 +18,10 @@ pub use validation::{ALLOWED_OPERATORS, validate_identifier, validate_table_name
 pub trait SubqueryBuilder {
     fn to_sql(&self) -> String;
     fn bindings(&self) -> &Vec<crate::RullstValue>;
+
+    fn ordered_bindings(&self) -> Vec<crate::RullstValue> {
+        self.bindings().clone()
+    }
 }
 
 pub static QUERY_LOGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);

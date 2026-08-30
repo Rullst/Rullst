@@ -57,6 +57,10 @@ pub use sqlx as _sqlx;
 #[doc(hidden)]
 pub use tracing as _tracing;
 
+#[cfg(feature = "pgvector")]
+#[doc(hidden)]
+pub use pgvector as _pgvector;
+
 #[cfg(feature = "redis")]
 #[doc(hidden)]
 pub use redis as _redis;
@@ -100,6 +104,8 @@ pub use database::RullstDatabase;
 pub use error::RullstError as Error;
 pub use intent::IntentAnalyzer;
 pub use outbox::{ClaimedOutboxEvent, EnqueuedOutboxEvent, Outbox, OutboxMigration};
+#[cfg(feature = "pgvector")]
+pub use pgvector::Vector;
 pub use policy::Policy;
 pub use polyglot::{
     Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,

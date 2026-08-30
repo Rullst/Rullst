@@ -26,6 +26,7 @@ mongodb = { version = "3.8.2", optional = true }
 duckdb = { version = "1.10505.0", features = ["bundled"], optional = true }
 url = { version = "2.5.8", optional = true }
 reqwest = { workspace = true, features = ["json", "rustls", "stream"], optional = true }
+pgvector = { version = "0.4.2", features = ["serde", "sqlx"], optional = true }
 aes-gcm = "0.11.0"
 base64 = { workspace = true }
 rand = { workspace = true }
@@ -46,6 +47,7 @@ duckdb = ["dep:duckdb"]
 turso = ["dep:reqwest", "dep:url", "dep:sha2"]
 surrealdb = ["dep:reqwest"]
 scout-http = ["dep:reqwest", "dep:url"]
+pgvector = ["dep:pgvector"]
 polyglot = ["mongodb", "duckdb", "turso", "surrealdb"]
 strict-postgres = []
 strict-mysql = []
