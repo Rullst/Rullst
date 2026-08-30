@@ -13,6 +13,8 @@ mod mock;
 mod duckdb;
 #[cfg(feature = "mongodb")]
 mod mongodb;
+#[cfg(feature = "qdrant")]
+mod qdrant;
 #[cfg(feature = "surrealdb")]
 mod surrealdb;
 #[cfg(feature = "turso")]
@@ -28,6 +30,11 @@ pub use error::PolyglotError;
 pub use mock::MockDocumentStore;
 #[cfg(feature = "mongodb")]
 pub use mongodb::MongoDbStore;
+#[cfg(feature = "qdrant")]
+pub use qdrant::{
+    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
+    VectorQueryLimit, VectorRepository,
+};
 #[cfg(feature = "surrealdb")]
 pub use surrealdb::{GraphQuery, GraphRepository, SurrealAuth, SurrealConfig, SurrealDbStore};
 #[cfg(feature = "turso")]

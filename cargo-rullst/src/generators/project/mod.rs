@@ -25,6 +25,7 @@ pub struct ProjectScaffoldOptions {
     pub mongodb: bool,
     pub duckdb: bool,
     pub surrealdb: bool,
+    pub qdrant: bool,
     pub database: Option<&'static str>,
 }
 
@@ -201,6 +202,9 @@ pub(crate) fn create_new_project_with_cli_options(
     }
     if options.surrealdb {
         requested_integrations.push(PolyglotIntegration::SurrealDb);
+    }
+    if options.qdrant {
+        requested_integrations.push(PolyglotIntegration::Qdrant);
     }
     let wizard_opts = wizard::run_project_wizard_with_blueprint(
         name_arg,
@@ -381,6 +385,7 @@ pub fn create_new_project(
             mongodb: false,
             duckdb: false,
             surrealdb: false,
+            qdrant: false,
             database: None,
         },
     )

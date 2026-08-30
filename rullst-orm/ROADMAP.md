@@ -103,7 +103,7 @@ compile-time schema verified.
 - [x] **API Resources & Transformers**: Explicit resource and collection transforms generate bounded JSON projections.
 - [~] **Distributed Graph Traversal**: Manual recursive CTE helpers exist; automatic relationship-graph traversal and distribution do not.
 - [x] **Polyglot Persistence (bounded v12)**: Optional MongoDB document CRUD, DuckDB parameterized/bounded OLAP, Turso/libSQL SQL/transactions/migrations and SurrealDB HTTP document/read-only GQL adapters preserve separate semantics.
-- [~] **Advanced Vector & Key-Value Stores**: Optional Redis cache/hash helpers exist; Qdrant and a general native Redis datastore contract do not.
+- [x] **Advanced Vector & Key-Value Stores (bounded)**: Qdrant exposes validated dense-cosine collection/upsert/delete/query operations; Redis exposes namespaced Hash, Set and Sorted Set operations. Both select deterministic empty/`mock_*` fallbacks and pass digest-pinned live lifecycles. Named/sparse Qdrant vectors, arbitrary filters, Redis Lists/Streams and distributed topology remain outside this contract.
 - [x] **Schema Visualizer**: `cargo rullst generate:diagram` emits Mermaid from statically inspected models.
 - [~] **Cascading Soft Deletes**: Marked `has_one`/`has_many` relations cascade;
   implicit deletes now create an atomic transaction when necessary and reuse
@@ -124,5 +124,5 @@ compile-time schema verified.
 - [~] **ORM Sail**: `sail:install` writes a Compose starting point for Postgres, Redis, Meilisearch and pgAdmin; it does not start services or scaffold the application container.
 - [ ] **Post-Quantum Field Encryption**: No production `#[orm(encrypt_pq)]` implementation exists; custom cryptography is not recommended.
 - [ ] **Automatic Distributed Graph Traversal**: Manual CTE and bounded SurrealDB read-only GQL are separate foundations, not this capability.
-- [ ] **Qdrant / General Redis Datastore**: Not implemented beyond the bounded Redis helpers above.
+- [x] **Qdrant / Redis Datastore (bounded)**: Separate capability APIs preserve vector and key-value semantics, enforce transport/resource limits and have live matrix evidence. They are not a universal Active Record backend or cluster/failover certification.
 - [x] **Edge Databases (bounded v12)**: Direct official Hrana HTTP v3 support provides parameterized Turso SQL, atomic transactions, bounded responses/materialization, checksummed migrations and a real-SQL offline fallback; transparent replicas and SQLx Active Record parity are not claimed.

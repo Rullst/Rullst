@@ -166,6 +166,10 @@ RULLST_ENV=development
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=mock_local\nSURREALDB_NAMESPACE=rullst\nSURREALDB_DATABASE=development\nSURREALDB_TOKEN=\n",
                 "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=\nSURREALDB_NAMESPACE=\nSURREALDB_DATABASE=\nSURREALDB_TOKEN=\n",
             ),
+            PolyglotIntegration::Qdrant => (
+                "\n# ── Qdrant dense-vector store ──────────────────────────────────\nQDRANT_URL=mock_local\nQDRANT_API_KEY=\n",
+                "\n# ── Qdrant dense-vector store ──────────────────────────────────\nQDRANT_URL=\nQDRANT_API_KEY=\n",
+            ),
         };
         env_content.push_str(development);
         env_example_content.push_str(example);
@@ -362,6 +366,7 @@ mod tests {
                 PolyglotIntegration::MongoDb,
                 PolyglotIntegration::DuckDb,
                 PolyglotIntegration::SurrealDb,
+                PolyglotIntegration::Qdrant,
             ],
             BLANK_BLUEPRINT_ID,
             "0123456789abcdef0123456789abcdef",
@@ -375,9 +380,11 @@ mod tests {
         assert!(development.contains("MONGODB_URL=mock_local"));
         assert!(development.contains("DUCKDB_PATH=analytics.duckdb"));
         assert!(development.contains("SURREALDB_URL=mock_local"));
+        assert!(development.contains("QDRANT_URL=mock_local"));
         assert!(example.contains("TURSO_DATABASE_URL=\n"));
         assert!(example.contains("MONGODB_URL=\n"));
         assert!(example.contains("SURREALDB_URL=\n"));
+        assert!(example.contains("QDRANT_URL=\n"));
 
         fs::remove_dir_all(root).expect("temporary project cleanup");
     }

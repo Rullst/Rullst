@@ -122,12 +122,15 @@ edition = "2021"
     cargo_toml.push_str("tracing = \"0.1\"\n");
     cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
 
-    if db_needed || !polyglot_integrations.is_empty() {
-        let orm_features = polyglot_integrations
+    if db_needed || wants_redis || !polyglot_integrations.is_empty() {
+        let mut orm_features = polyglot_integrations
             .iter()
             .map(|integration| format!("\"{}\"", integration.orm_feature()))
-            .collect::<Vec<_>>()
-            .join(", ");
+            .collect::<Vec<_>>();
+        if wants_redis {
+            orm_features.push("\"redis\"".to_owned());
+        }
+        let orm_features = orm_features.join(", ");
         let orm_source = dependency_source(current_dir, "rullst-orm", crate_version)?;
         if orm_features.is_empty() {
             cargo_toml.push_str(&format!("rullst-orm = {{ {orm_source} }}\n"));
@@ -313,6 +316,7 @@ mod tests {
                 PolyglotIntegration::MongoDb,
                 PolyglotIntegration::DuckDb,
                 PolyglotIntegration::SurrealDb,
+                PolyglotIntegration::Qdrant,
             ],
             false,
             false,
@@ -327,10 +331,12 @@ mod tests {
             "orm-mongodb",
             "orm-duckdb",
             "orm-surrealdb",
+            "orm-qdrant",
             "turso",
             "mongodb",
             "duckdb",
             "surrealdb",
+            "qdrant",
         ] {
             assert!(manifest.contains(&format!("\"{feature}\"")));
         }

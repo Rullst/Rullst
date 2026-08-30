@@ -54,6 +54,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offline modes; SurrealDB uses its public HTTP protocol rather than adding the
   BSL-licensed SDK. Umbrella `orm-mongodb`, `orm-duckdb`, `orm-turso`,
   `orm-surrealdb`, and `orm-polyglot` features mirror the lower-level flags.
+- Added bounded specialized datastore contracts to `rullst-orm`. `qdrant`
+  provides validated dense-cosine collection/upsert/delete/query operations,
+  deterministic fallback, authenticated protocol fixtures and a digest-pinned
+  live lifecycle; `cargo rullst new --qdrant` scaffolds its features and safe
+  environment boundary. `redis` now additionally provides namespaced Hash, Set
+  and Sorted Set operations with bounded inputs/reads, TLS-required remote
+  configuration, redacted ACL credentials, deterministic fallback and a pinned
+  live lifecycle. These APIs do not claim arbitrary Qdrant search, Redis
+  Lists/Streams, cluster/failover, tenant authorization or cross-store
+  transactions.
 - Replaced Turso's remote `libsql` SDK dependency with a direct, bounded Hrana
   HTTP v3 transport over the workspace Rustls client. Typed parameters, remote
   CRUD, checked migrations and conditional atomic batches retain live libSQL
@@ -117,8 +127,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   outside this bounded profile.
 - The project wizard now distinguishes the primary relational ORM database
   (SQLite, PostgreSQL, MySQL, or separately contract-tested MariaDB) from
-  optional Turso, MongoDB, DuckDB, and SurrealDB capabilities. Deterministic
-  `--database`, `--turso`, `--mongodb`, `--duckdb`, and `--surrealdb` flags
+  optional Turso, MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. Deterministic
+  `--database`, `--turso`, `--mongodb`, `--duckdb`, `--surrealdb`, and `--qdrant` flags
   generate the corresponding feature and environment configuration. This
   supersedes the earlier v12 sidecar-only Turso scaffold claim; transparent
   replication is not implied.
@@ -181,7 +191,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   all-feature Clippy plus bounded unsafe/IDOR checks, and the CycloneDX 1.5 SBOM
   uses parsed Cargo metadata, a valid UUID serial and unique component refs.
 - Audited all 45 unique historical ORM `[x]` claims and removed a duplicated
-  roadmap body. The current ledger records 22 bounded integral contracts, 22
+  roadmap body. The current ledger records 24 bounded integral contracts, 20
   partial foundations and one absent comparison claim; 100% means classified,
   not fully implemented.
 - SQLx models declaring `tenant_column` now fail closed outside

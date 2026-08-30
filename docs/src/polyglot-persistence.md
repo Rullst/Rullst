@@ -3,8 +3,9 @@
 Rullst v12 keeps explicit relational and specialized persistence contracts.
 SQLx Active Record supports SQLite, PostgreSQL, MySQL, and MariaDB. The bounded
 blank/API profile can instead use Turso/libSQL as its typed primary ORM.
-MongoDB is for documents, DuckDB is for embedded OLAP/analytics, and SurrealDB
-exposes documents plus bounded read-only graph queries. No optional adapter
+MongoDB is for documents, DuckDB is for embedded OLAP/analytics, SurrealDB
+exposes documents plus bounded read-only graph queries, Qdrant exposes dense
+vector search, and Redis exposes selected native structures. No optional adapter
 silently changes the application's primary database.
 
 ## Choose the smallest feature
@@ -17,8 +18,9 @@ rullst = { version = "12.0.0", features = ["orm-mongodb"] }
 ```
 
 Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,
-`orm-surrealdb`, and the convenience `orm-polyglot`. Direct `rullst-orm`
-users select `turso`, `mongodb`, `duckdb`, `surrealdb`, or `polyglot`.
+`orm-surrealdb`, `orm-qdrant`, `orm-redis`, and the convenience
+`orm-polyglot`. Direct `rullst-orm` users select `turso`, `mongodb`, `duckdb`,
+`surrealdb`, `qdrant`, `redis`, or `polyglot`.
 
 Features are additive. Prefer one adapter unless the application genuinely
 uses several, and inspect the final dependency graph with:
@@ -34,7 +36,7 @@ hybrid SQLx application, use one or more explicit flags:
 
 ```bash
 cargo rullst new edge_app --default --database mariadb --turso --mongodb \
-  --skip-initial-migration
+  --qdrant --skip-initial-migration
 ```
 
 MariaDB shares the SQLx MySQL protocol implementation but has its own live
@@ -260,6 +262,54 @@ values are prepared parameters; SQL text remains trusted application structure.
 Results must declare a 1–10,000 row materialization limit. Scalar, decimal,
 temporal, interval, geometry and binary values are preserved; unsupported
 complex result types fail with a typed error instead of being guessed.
+
+## Specialized Qdrant and Redis stores
+
+Qdrant has a separate dense-vector contract rather than a document or Active
+Record facade. See [RAG Systems & Vector Search](tutorials/22-rag-vector-search.md)
+for its bounded collection, upsert, delete and cosine-query API. The project
+wizard and deterministic CLI expose it as the additive `--qdrant` choice.
+
+Redis native structures are also explicit and namespaced:
+
+```rust,no_run
+use rullst_orm::{
+    RedisDataConfig, RedisDataKey, RedisDataStore, RedisField, RedisMember,
+    RedisScanLimit, RedisStructuresRepository, RedisValue,
+};
+
+# async fn redis_example() -> Result<(), Box<dyn std::error::Error>> {
+let config = RedisDataConfig::new(
+    std::env::var("REDIS_URL").unwrap_or_default(),
+    "my-application",
+    std::env::var("REDIS_USERNAME").unwrap_or_default(),
+    std::env::var("REDIS_PASSWORD").unwrap_or_default(),
+);
+let data = RedisDataStore::connect_or_mock(config).await?;
+let account = RedisDataKey::new("account:42")?;
+data.hash_set(
+    &account,
+    &RedisField::new("display_name")?,
+    &RedisValue::new("Ada")?,
+).await?;
+data.set_add(&account, &RedisMember::new("reader")?).await?;
+let roles = data
+    .set_scan(&account, RedisScanLimit::new(100)?)
+    .await?;
+# let _ = roles;
+# Ok(())
+# }
+```
+
+The adapter also supplies atomic signed hash increments, exact membership,
+Sorted Set add/top ranking and exact per-structure deletion. Empty or `mock_*`
+endpoint/ACL credentials choose the deterministic fallback. Live remote Redis
+requires `rediss://`; intentionally unauthenticated development uses the
+loopback-only constructor. Hash values are capped at 1 MiB, members at 4 KiB,
+and scans/ranges at 1–1,000 accepted rows. Redis may still allocate a protocol
+value before client-side validation, so untrusted writers require server ACLs,
+quotas and isolation. Lists, Streams, cluster/failover, eviction and durable
+Pub/Sub are not part of this datastore contract.
 
 ## What this feature does not promise
 

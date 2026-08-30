@@ -16,7 +16,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
-  MongoDB, DuckDB, and SurrealDB capabilities. Specialized adapters remain
+  MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. Specialized adapters remain
   separate from SQLx Active Record.
 * **Frontend profile:** HTMX + Tailwind SSR is the audited default. The LiveView,
   Wasm Island, Pico.css and Tera selections record compatibility intent and add
@@ -32,6 +32,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
   * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
+  * `--qdrant`: Enables bounded dense-vector Qdrant operations and generates empty/`mock_*`-compatible environment fields; it is additive, not the SQL primary.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
   * `--buildah`: Adds rootless Buildah container-build files where supported.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.

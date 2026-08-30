@@ -78,6 +78,13 @@ generated API.
   vector/distance values in L2, cosine and inner-product helpers are bound, not
   interpolated. The strict PostgreSQL matrix creates the extension and runs a
   typed live lifecycle. See [RAG Systems & Vector Search](../tutorials/22-rag-vector-search.md).
+- **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
+  collection/upsert/delete/query semantics separate from SQL Active Record,
+  with resource/transport bounds, deterministic fallback, authenticated
+  protocol fixtures and a pinned live lifecycle.
+- **Native Redis structures:** `redis` adds an immutable namespace and bounded
+  Hash, Set and Sorted Set operations in addition to `.remember`; remote
+  endpoints require TLS and live evidence covers isolation and native commands.
 - **Durable opt-in outbox:** `Outbox::enqueue` commits a stream-scoped,
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.

@@ -60,6 +60,12 @@ jobs:
           cargo llvm-cov --no-report -p rullst-orm \
             --no-default-features --features pgvector,strict-postgres \
             --test matrix_pgvector
+          cargo llvm-cov --no-report -p rullst-orm \
+            --no-default-features --features qdrant \
+            --test matrix_qdrant
+          cargo llvm-cov --no-report -p rullst-orm \
+            --no-default-features --features redis \
+            --test matrix_redis_data
 
       - name: Generate merged coverage report
         run: |

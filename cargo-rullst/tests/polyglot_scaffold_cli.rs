@@ -23,6 +23,7 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
             "--mongodb",
             "--duckdb",
             "--surrealdb",
+            "--qdrant",
             "--skip-initial-migration",
         ])
         .output()
@@ -42,7 +43,13 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
         .iter()
         .filter_map(toml::Value::as_str)
         .collect::<Vec<_>>();
-    for feature in ["orm-turso", "orm-mongodb", "orm-duckdb", "orm-surrealdb"] {
+    for feature in [
+        "orm-turso",
+        "orm-mongodb",
+        "orm-duckdb",
+        "orm-surrealdb",
+        "orm-qdrant",
+    ] {
         assert!(rullst_features.contains(&feature), "missing {feature}");
     }
     assert_eq!(
@@ -57,6 +64,7 @@ fn deterministic_cli_materializes_relational_and_specialized_persistence_choices
         "MONGODB_URL=mock_local",
         "DUCKDB_PATH=analytics.duckdb",
         "SURREALDB_URL=mock_local",
+        "QDRANT_URL=mock_local",
     ] {
         assert!(environment.contains(variable), "missing {variable}");
     }

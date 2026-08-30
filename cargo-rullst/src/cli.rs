@@ -177,6 +177,9 @@ pub enum Commands {
         /// Enables the SurrealDB document and graph adapter
         #[arg(long)]
         surrealdb: bool,
+        /// Enables the bounded Qdrant dense-vector adapter
+        #[arg(long)]
+        qdrant: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -496,6 +499,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             mongodb,
             duckdb,
             surrealdb,
+            qdrant,
         } => {
             if !lms_modules.is_empty() && !matches!(blueprint, Some(BlueprintChoice::Lms)) {
                 return Err(std::io::Error::new(
@@ -521,6 +525,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     mongodb: *mongodb,
                     duckdb: *duckdb,
                     surrealdb: *surrealdb,
+                    qdrant: *qdrant,
                     database: database.map(DatabaseChoice::provider),
                 },
                 blueprint.as_ref().map(|choice| choice.id()),
@@ -840,6 +845,7 @@ mod tests {
             "--mongodb",
             "--duckdb",
             "--surrealdb",
+            "--qdrant",
             "--skip-initial-migration",
         ])
         .expect("persistence CLI flags");
@@ -851,6 +857,7 @@ mod tests {
                 mongodb: true,
                 duckdb: true,
                 surrealdb: true,
+                qdrant: true,
                 database: Some(DatabaseChoice::Mariadb),
                 ..
             }

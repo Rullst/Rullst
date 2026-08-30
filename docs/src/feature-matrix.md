@@ -37,7 +37,9 @@ rullst = { version = "12.0.0", default-features = false }
 | `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
 | `orm-scout` | no | `orm` plus bounded Meilisearch, Elasticsearch and Algolia Scout HTTP adapters |
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
-| `orm-polyglot` | no | Convenience feature enabling all four optional persistence adapters |
+| `orm-qdrant` | no | `orm` plus bounded dense-vector Qdrant HTTP operations and offline fallback |
+| `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
+| `orm-polyglot` | no | Convenience feature enabling MongoDB, DuckDB, Turso, SurrealDB and Qdrant adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
 | `nexus` | no | The generated Nexus administration interface |
 | `studio` | no | Studio plus Core's Studio integration marker |
@@ -47,7 +49,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
-| `redis` | no | Convenience alias enabling both `queue-redis` and `cache-redis` |
+| `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `capital` | no | Payment, payout, analytics, and offline fiscal-preview APIs from `rullst-capital` |
@@ -94,14 +96,15 @@ aliases use SQLx `Any`.
 
 | Feature | Enables |
 | --- | --- |
-| `redis` | Redis connection-manager support and Redis-aware ORM errors |
+| `redis` | Redis query cache plus bounded namespaced Hash, Set and Sorted Set datastore operations |
 | `mongodb` | Official MongoDB driver plus typed document CRUD and offline fallback |
 | `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
 | `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
 | `surrealdb` | SurrealDB HTTP document CRUD and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
-| `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, and `surrealdb` |
+| `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
+| `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, `surrealdb`, and `qdrant` |
 | `strict-postgres` | Concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | Concrete MySQL paths when PostgreSQL is not also selected |
 | `strict-sqlite` | Concrete SQLite paths when PostgreSQL and MySQL are not also selected |

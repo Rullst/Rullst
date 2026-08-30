@@ -91,6 +91,16 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   digest-pinned PostgreSQL + pgvector lifecycle covers typed insert/read and
   parameterized nearest-neighbor filtering/ordering; RAG orchestration and
   production index tuning remain application concerns.
+- **Bounded Qdrant Search**: `qdrant` exposes validated dense-cosine collection,
+  single-point upsert/delete and bounded nearest-neighbor query operations with
+  deterministic fallback, authenticated protocol fixtures and a digest-pinned
+  live lifecycle. Named/sparse vectors, arbitrary filters and ANN tuning remain
+  explicit provider/application work.
+- **Native Redis Structures**: `redis` adds a separately namespaced Hash, Set
+  and Sorted Set datastore with bounded inputs/reads, TLS-required remote
+  endpoints, redacted ACL credentials and a deterministic fallback. A pinned
+  lifecycle covers increment, membership, ranking, exact deletion and namespace
+  isolation; Lists, Streams and cluster/failover remain outside the contract.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.

@@ -18,6 +18,8 @@ pub enum PolyglotIntegration {
     DuckDb,
     /// SurrealDB document and graph storage.
     SurrealDb,
+    /// Qdrant bounded dense-vector storage.
+    Qdrant,
 }
 
 impl PolyglotIntegration {
@@ -28,6 +30,7 @@ impl PolyglotIntegration {
             Self::MongoDb => "mongodb",
             Self::DuckDb => "duckdb",
             Self::SurrealDb => "surrealdb",
+            Self::Qdrant => "qdrant",
         }
     }
 
@@ -38,6 +41,7 @@ impl PolyglotIntegration {
             Self::MongoDb => "orm-mongodb",
             Self::DuckDb => "orm-duckdb",
             Self::SurrealDb => "orm-surrealdb",
+            Self::Qdrant => "orm-qdrant",
         }
     }
 }
@@ -255,6 +259,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
             "MongoDB (document CRUD)",
             "DuckDB (in-process OLAP / analytics)",
             "SurrealDB (document CRUD + bounded read-only graph queries)",
+            "Qdrant (bounded dense-vector search)",
         ];
         let persistence_selection = dialoguer::MultiSelect::with_theme(&theme)
             .with_prompt("🧩 Select optional persistence capabilities (space toggles)")
@@ -266,6 +271,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
                 1 => PolyglotIntegration::MongoDb,
                 2 => PolyglotIntegration::DuckDb,
                 3 => PolyglotIntegration::SurrealDb,
+                4 => PolyglotIntegration::Qdrant,
                 _ => continue,
             };
             if !polyglot_integrations.contains(&integration) {
@@ -365,6 +371,7 @@ mod tests {
             PolyglotIntegration::MongoDb,
             PolyglotIntegration::DuckDb,
             PolyglotIntegration::SurrealDb,
+            PolyglotIntegration::Qdrant,
         ];
         let options = run_project_wizard_with_blueprint(
             Some("polyglot-app"),

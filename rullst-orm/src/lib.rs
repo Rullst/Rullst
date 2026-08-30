@@ -82,6 +82,8 @@ pub mod privacy;
 #[doc(hidden)]
 pub mod query_cache;
 pub mod raw;
+#[cfg(feature = "redis")]
+pub mod redis_data;
 pub mod replica;
 pub mod repository;
 pub mod resource;
@@ -111,12 +113,22 @@ pub use polyglot::{
     Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
     DocumentRepository, MockDocumentStore, PolyglotError,
 };
+#[cfg(feature = "qdrant")]
+pub use polyglot::{
+    QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
+    VectorQueryLimit, VectorRepository,
+};
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,
 };
 pub use post_commit::{ModelCommittedEvent, ModelOperation, after_commit};
 pub use privacy::{ComplianceModel, PrivacyReport, SecretString};
+#[cfg(feature = "redis")]
+pub use redis_data::{
+    RedisDataConfig, RedisDataKey, RedisDataStore, RedisField, RedisMember, RedisScanLimit,
+    RedisStructure, RedisStructuresRepository, RedisValue, ScoredRedisMember,
+};
 pub use replica::ReplicaPool;
 pub use repository::{GenericRepository, Repository};
 pub use resource::{ApiResource, JsonResource, ResourceCollection};

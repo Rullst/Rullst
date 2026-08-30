@@ -90,6 +90,8 @@ jobs:
           cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
           cargo test -p rullst-orm --no-default-features --features scout-http --test matrix_meilisearch
           cargo test -p rullst-orm --no-default-features --features pgvector,strict-postgres --test matrix_pgvector
+          cargo test -p rullst-orm --no-default-features --features qdrant --test matrix_qdrant
+          cargo test -p rullst-orm --no-default-features --features redis --test matrix_redis_data
 
       - name: Run live Redis distributed rate-limit contract
         env:

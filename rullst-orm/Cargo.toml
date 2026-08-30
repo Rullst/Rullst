@@ -21,7 +21,7 @@ async-trait = { workspace = true }
 futures = "0.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
-redis = { workspace = true, features = ["tokio-comp", "connection-manager"], optional = true }
+redis = { workspace = true, features = ["tokio-rustls-comp", "connection-manager"], optional = true }
 mongodb = { version = "3.8.2", optional = true }
 duckdb = { version = "1.10505.0", features = ["bundled"], optional = true }
 url = { version = "2.5.8", optional = true }
@@ -41,14 +41,15 @@ walkdir = "2.5.0"
 
 [features]
 default = []
-redis = ["dep:redis", "dep:sha2"]
+redis = ["dep:redis", "dep:sha2", "dep:url"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
 turso = ["dep:reqwest", "dep:url", "dep:sha2"]
 surrealdb = ["dep:reqwest"]
 scout-http = ["dep:reqwest", "dep:url"]
 pgvector = ["dep:pgvector"]
-polyglot = ["mongodb", "duckdb", "turso", "surrealdb"]
+qdrant = ["dep:reqwest", "dep:url"]
+polyglot = ["mongodb", "duckdb", "turso", "surrealdb", "qdrant"]
 strict-postgres = []
 strict-mysql = []
 strict-sqlite = []
