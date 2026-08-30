@@ -14,7 +14,7 @@ Rullst Studio is the visual development environment and dashboard for managing y
 ## Phase 2: Observability & Profiling
 - [~] **Real-time Request Logger**: Bounded SSE view of method, URI, status, and latency for the routes carrying its middleware. Bodies and headers are deliberately not captured by default because they can contain credentials or personal data.
 - [ ] **N+1 Query Detection & SQL Profiling**: Visually highlight slow database queries or redundant ORM calls (N+1 problems) as they happen during development.
-- [~] **Background Jobs Monitor**: Inspect up to 50 records exposed by a supplied queue, including pending/processing/failed and any completed records retained by a custom backend, with retry and failed-job purge. The SQLite worker removes successful jobs, so it does not provide completion history.
+- [x] **Background Jobs Monitor (bounded)**: Inspect up to 50 real records exposed by a supplied queue, including pending/processing/failed/completed, with failed retry/purge and completed-history purge. SQLite removes successes by default or explicitly retains 1–100,000 with atomic pruning through `Queue::sqlite_with_completed_history`; payload access/retention remains host policy. Unsupported Redis/custom inspection operations stay visible errors.
 
 ## Phase 3: Advanced Tooling (Suggestions)
 - [x] **Visual ER Diagram Generator**: Render a read-only Mermaid diagram from parameterized SQLite, PostgreSQL, MySQL, or MariaDB schema inspection. Unsupported/unconfigured sources remain visibly unavailable and identifiers are normalized before Mermaid rendering.

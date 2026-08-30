@@ -12,6 +12,9 @@
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
+- **Explicit Completion History:** SQLite deletes successful payloads by
+  default. `Queue::sqlite_with_completed_history` opts into a bounded retained
+  history for Studio/operations, with atomic pruning and an explicit purge API.
 
 ## 🚀 Usage
 
@@ -40,6 +43,13 @@ Both built-in queue drivers implement `Queue::dispatch_at` for schedules up to
 uses a sorted set and server time, with a digest-pinned live CI contract. Custom
 drivers fail with `QueueError::Unsupported` for future jobs until they implement
 the scheduling method explicitly.
+
+Successful SQLite jobs are removed unless the application explicitly calls
+`Queue::sqlite_with_completed_history(database_url, retained_jobs)`. The limit
+must be between 1 and 100,000; completion and pruning share one transaction.
+Retained rows include the original payload, so the application must restrict
+Studio/inspection access and choose an appropriate retention policy. Use
+`Queue::purge_completed_history` to remove them.
 
 ### Minimal HTTP Server
 

@@ -81,6 +81,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   future direct delivery; offline fixtures may retain the metadata for assertions.
   Execution remains poll-dependent and at-least-once,
   not an exactly-once or provider-acceptance guarantee.
+- SQLite queues now offer explicit bounded completed-job retention through
+  `Queue::sqlite_with_completed_history`. Successes are still deleted by
+  default; opt-in completion and pruning are atomic, retained payloads are
+  visible to the real Studio snapshot, and a separate purge removes that
+  history. Redis/custom inspection and host access/retention policy remain
+  explicit boundaries.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested
@@ -357,9 +363,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   MySQL/MariaDB; Mermaid identifiers are normalized under strict rendering.
   Request-log markup is escaped, completed queue records are counted only when
   a backend retains them, and the environment page adds a secret-free typed
-  configuration projection. Browser writes, automatic OpenAPI inference,
-  secret-bearing request capture and durable SQLite completion history remain
-  explicitly outside the current contract.
+  configuration projection. SQLite now provides an explicit bounded retained
+  history while keeping deletion as the default. Browser writes, automatic
+  OpenAPI inference, secret-bearing request capture and Redis queue inspection
+  remain explicitly outside the current contract.
 - Studio's debug-only local capability now verifies the direct loopback peer and
   local `Host`, and requires same-origin `Origin` on unsafe methods. This closes
   the supported local browser boundary against direct remote access, DNS

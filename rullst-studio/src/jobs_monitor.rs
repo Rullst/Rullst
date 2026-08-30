@@ -23,6 +23,7 @@ pub fn router(queue: Queue) -> Router {
         // rullst-access: admin — composed behind LocalStudioAccess::protect_router.
         .route("/retry/{id}", post(retry_job))
         .route("/purge-failed", post(purge_failed_jobs))
+        .route("/purge-completed", post(purge_completed_history))
         .route("/purge", post(purge_failed_jobs))
         .with_state(state)
 }
@@ -62,6 +63,13 @@ async fn retry_job(State(state): State<Arc<HorizonState>>, Path(id): Path<String
 
 async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> Response {
     match state.queue.purge_failed_jobs().await {
+        Ok(()) => Redirect::to("/studio/jobs").into_response(),
+        Err(error) => queue_error_response(error),
+    }
+}
+
+async fn purge_completed_history(State(state): State<Arc<HorizonState>>) -> Response {
+    match state.queue.purge_completed_history().await {
         Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
     }
@@ -112,6 +120,7 @@ fn render_dashboard_layout(
     <dt>Completed records retained by this backend</dt><dd>{completed}</dd>
   </dl>
   <form method="post" action="/studio/jobs/purge-failed"><button type="submit">Purge failed jobs</button></form>
+  <form method="post" action="/studio/jobs/purge-completed"><button type="submit">Purge completed history</button></form>
   <p><a href="/studio/jobs">Refresh snapshot</a> · <a href="/studio">Back to Studio</a></p>
   <table>
     <caption>Up to 50 recent queue records</caption>
@@ -179,7 +188,11 @@ fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
 #[cfg(not(miri))]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request};
+    use axum::{
+        body::{Body, to_bytes},
+        http::Request,
+    };
+    use rullst_core::queue::{QueueDriver, SqliteDriver};
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -220,6 +233,56 @@ mod tests {
             .await
             .unwrap();
         assert!(legacy_purge.status().is_redirection());
+    }
+
+    #[tokio::test]
+    async fn dashboard_reads_and_purges_real_opt_in_completed_history() {
+        let driver = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(10)
+            .unwrap();
+        driver
+            .push("completed-job", "report", r#"{"scope":"daily"}"#)
+            .await
+            .unwrap();
+        let claimed = driver.pop().await.unwrap().unwrap();
+        driver.mark_complete(&claimed.id).await.unwrap();
+        let app = router(Queue::custom(Box::new(driver)));
+
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
+        let html = String::from_utf8(body.to_vec()).unwrap();
+        assert!(html.contains("Completed records retained by this backend"));
+        assert!(html.contains("<code>complete…</code>"));
+        assert!(html.contains("<dd>1</dd>"));
+        assert!(html.contains("Purge completed history"));
+
+        let purge = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/purge-completed")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(purge.status().is_redirection());
+
+        let response = app
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
+        let html = String::from_utf8(body.to_vec()).unwrap();
+        assert!(!html.contains("<code>complete…</code>"));
     }
 
     #[test]

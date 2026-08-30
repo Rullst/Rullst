@@ -76,6 +76,99 @@ pub mod driver_tests {
     }
 
     #[tokio::test]
+    async fn sqlite_completed_history_is_explicit_bounded_and_purgeable() {
+        assert!(
+            SqliteDriver::new("sqlite::memory:")
+                .await
+                .unwrap()
+                .try_with_completed_history_limit(0)
+                .is_err()
+        );
+        assert!(
+            SqliteDriver::new("sqlite::memory:")
+                .await
+                .unwrap()
+                .try_with_completed_history_limit(100_001)
+                .is_err()
+        );
+        let driver = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(2)
+            .unwrap();
+
+        for index in 1..=3 {
+            let id = format!("job-{index}");
+            driver
+                .push(&id, "report", r#"{"safe":true}"#)
+                .await
+                .unwrap();
+            let claimed = driver.pop().await.unwrap().unwrap();
+            assert_eq!(claimed.id, id);
+            driver.mark_complete(&claimed.id).await.unwrap();
+        }
+
+        let jobs = driver.list_all_jobs(10).await.unwrap();
+        assert_eq!(jobs.len(), 2);
+        assert!(jobs.iter().all(|job| job.status == "completed"));
+        assert!(jobs.iter().any(|job| job.id == "job-2"));
+        assert!(jobs.iter().any(|job| job.id == "job-3"));
+        assert!(!jobs.iter().any(|job| job.id == "job-1"));
+        assert_eq!(driver.pending_count().await.unwrap(), 0);
+
+        driver.purge_completed_history().await.unwrap();
+        assert!(driver.list_all_jobs(10).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn queue_facade_enables_completed_history_without_changing_the_default() {
+        let default_queue = Queue::sqlite("sqlite::memory:").await.unwrap();
+        assert!(matches!(
+            default_queue.purge_completed_history().await,
+            Ok(())
+        ));
+
+        let queue = Queue::sqlite_with_completed_history("sqlite::memory:", 10)
+            .await
+            .unwrap();
+        assert!(queue.purge_completed_history().await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn completed_history_prune_failure_rolls_back_the_completion_transition() {
+        let driver = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(1)
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO rullst_jobs (id, name, payload, status) VALUES ('old', 'report', '{}', 'completed')",
+        )
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+        driver.push("new", "report", "{}").await.unwrap();
+        let claimed = driver.pop().await.unwrap().unwrap();
+        assert_eq!(claimed.id, "new");
+        sqlx::query(
+            "CREATE TRIGGER reject_completed_prune BEFORE DELETE ON rullst_jobs WHEN OLD.status = 'completed' BEGIN SELECT RAISE(ABORT, 'prune unavailable'); END",
+        )
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+
+        assert!(matches!(
+            driver.mark_complete("new").await,
+            Err(QueueError::Driver(_))
+        ));
+        let status: String = sqlx::query_scalar("SELECT status FROM rullst_jobs WHERE id = 'new'")
+            .fetch_one(&driver.pool)
+            .await
+            .unwrap();
+        assert_eq!(status, "processing");
+    }
+
+    #[tokio::test]
     async fn sqlite_scheduled_jobs_are_durable_and_never_claimed_early() {
         let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
         let available_at = SystemTime::now() + Duration::from_millis(120);

@@ -162,6 +162,11 @@ Studio flag toggles also invalidate already-warm database flag drivers in the
 same process without an unbounded key registry; cross-process invalidation
 remains an explicit application transport.
 
+The queue monitor follows an explicit retention rule as well. SQLite removes
+successful payloads by default, while applications that need operational
+history can opt into a validated, atomically pruned limit and purge it from
+Studio. Rullst does not silently trade privacy for a more impressive dashboard.
+
 The ORM emits secret-free structured spans for generated and raw query
 entrypoints, streams, transaction outcomes, and Rullst-owned pool acquisition
 timing. The host owns subscriber initialization, sampling, collector security,

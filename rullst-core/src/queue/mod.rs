@@ -177,7 +177,9 @@ pub trait QueueDriver: Send + Sync {
     }
     /// Pop the next available job from the queue (FIFO).
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError>;
-    /// Mark a job as successfully completed (removes from queue).
+    /// Mark a job as successfully completed.
+    ///
+    /// Drivers may remove it immediately or retain a bounded history under an explicit policy.
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError>;
     /// Mark a job as failed, recording the error message.
     async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError>;
@@ -217,6 +219,12 @@ pub trait QueueDriver: Send + Sync {
     async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
         self.purge_completed_jobs().await
     }
+    /// Purge successful jobs retained by an explicit backend history policy.
+    async fn purge_completed_history(&self) -> Result<(), QueueError> {
+        Err(QueueError::Unsupported(
+            "this queue driver does not retain completed job history".to_string(),
+        ))
+    }
 }
 
 // ─── Queue Facade ───────────────────────────────────────────────────────────
@@ -233,6 +241,23 @@ impl Queue {
     #[cfg(feature = "queue-sqlite")]
     pub async fn sqlite(database_url: impl Into<String>) -> Result<Self, QueueError> {
         let driver = SqliteDriver::new(database_url).await?;
+        Ok(Self {
+            driver: Arc::new(Box::new(driver)),
+        })
+    }
+
+    /// Creates a SQLite queue with explicit bounded retention of successful jobs.
+    ///
+    /// Retained rows include the original payload and are visible to queue inspection. The caller
+    /// owns access control and retention policy; [`Self::sqlite`] deletes successes by default.
+    #[cfg(feature = "queue-sqlite")]
+    pub async fn sqlite_with_completed_history(
+        database_url: impl Into<String>,
+        retained_jobs: usize,
+    ) -> Result<Self, QueueError> {
+        let driver = SqliteDriver::new(database_url)
+            .await?
+            .try_with_completed_history_limit(retained_jobs)?;
         Ok(Self {
             driver: Arc::new(Box::new(driver)),
         })
@@ -317,6 +342,11 @@ impl Queue {
     /// Purge failed jobs retained by the queue backend.
     pub async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
         self.driver.purge_failed_jobs().await
+    }
+
+    /// Purges successful jobs retained by the queue backend.
+    pub async fn purge_completed_history(&self) -> Result<(), QueueError> {
+        self.driver.purge_completed_history().await
     }
 
     /// Legacy compatibility name for [`Self::purge_failed_jobs`].

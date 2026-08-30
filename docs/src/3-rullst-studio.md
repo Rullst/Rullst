@@ -66,14 +66,18 @@ overhead.
 - The request SSE records method, URI, status and latency. It deliberately does
   not capture bodies or headers, which commonly contain credentials and PII.
 - The jobs view lists the bounded snapshot exposed by a supplied queue. SQLite
-  deletes successful rows, so it has no durable completion history; a custom
-  driver may retain and expose completed records.
+  deletes successful rows by default; an application can explicitly select
+  `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
+  completion history and can purge that history from Studio. Retained payloads
+  require host-controlled access and retention policy. Other drivers expose
+  only the inspection/history contract they implement.
 - The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
   lookup values and normalizes Mermaid identifiers. An unconfigured or
   unsupported source remains visibly unavailable.
 - The feature-flags page changes the database table used by `DbFeatureDriver`.
-  Already cached evaluations can remain stale until that driver's local TTL
-  expires.
+  A successful toggle invalidates already-warm drivers in the same process;
+  other processes and direct writers converge by TTL unless the host distributes
+  an invalidation signal.
 - The environment page redacts values by default and adds only a safe projection
   of process-global `RullstConfig`; URLs, filesystem paths, secrets, cookies and
   credentials are omitted.

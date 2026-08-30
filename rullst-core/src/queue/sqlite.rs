@@ -7,12 +7,15 @@ use super::{
 use async_trait::async_trait;
 use std::time::{Duration, SystemTime};
 
+const MAX_COMPLETED_HISTORY: usize = 100_000;
+
 /// Queue driver backed by a SQLite database.
 ///
 /// Uses an auto-created `rullst_jobs` table. Perfect for local development
 /// and small-to-medium production workloads. Zero external dependencies.
 pub struct SqliteDriver {
     pub(crate) pool: sqlx::SqlitePool,
+    completed_history_limit: usize,
 }
 
 impl SqliteDriver {
@@ -79,7 +82,27 @@ impl SqliteDriver {
             QueueError::Driver(format!("Failed to create scheduled-job index: {error}"))
         })?;
 
-        Ok(Self { pool })
+        Ok(Self {
+            pool,
+            completed_history_limit: 0,
+        })
+    }
+
+    /// Enables bounded retention of successful jobs for monitoring.
+    ///
+    /// Retention is disabled by default so successful payloads are deleted. When enabled, the
+    /// completion transition and pruning are committed atomically.
+    pub fn try_with_completed_history_limit(
+        mut self,
+        retained_jobs: usize,
+    ) -> Result<Self, QueueError> {
+        if !(1..=MAX_COMPLETED_HISTORY).contains(&retained_jobs) {
+            return Err(QueueError::InvalidConfiguration(format!(
+                "completed job history must retain between 1 and {MAX_COMPLETED_HISTORY} records"
+            )));
+        }
+        self.completed_history_limit = retained_jobs;
+        Ok(self)
     }
 
     /// Returns a reference to the internal SQLite pool.
@@ -141,6 +164,17 @@ impl SqliteDriver {
             .execute(&self.pool)
             .await
             .map_err(|e| QueueError::Driver(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Purges successful jobs retained by the explicit history policy.
+    pub async fn purge_completed_history(&self) -> Result<(), QueueError> {
+        sqlx::query("DELETE FROM rullst_jobs WHERE status = 'completed'")
+            .execute(&self.pool)
+            .await
+            .map_err(|error| {
+                QueueError::Driver(format!("Failed to purge completed job history: {error}"))
+            })?;
         Ok(())
     }
 }
@@ -249,12 +283,49 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
-        let result = sqlx::query("DELETE FROM rullst_jobs WHERE id = ? AND status = 'processing'")
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| QueueError::Driver(format!("Failed to mark job complete: {}", e)))?;
+        if self.completed_history_limit == 0 {
+            let result =
+                sqlx::query("DELETE FROM rullst_jobs WHERE id = ? AND status = 'processing'")
+                    .bind(job_id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|error| {
+                        QueueError::Driver(format!("Failed to mark job complete: {error}"))
+                    })?;
+            ensure_transition(result.rows_affected(), job_id, "mark_complete")?;
+            return Ok(());
+        }
+
+        let retained_jobs = i64::try_from(self.completed_history_limit).map_err(|_| {
+            QueueError::InvalidConfiguration(
+                "completed job history exceeds SQLite integer range".to_string(),
+            )
+        })?;
+        let mut transaction = self.pool.begin().await.map_err(|error| {
+            QueueError::Driver(format!(
+                "Failed to begin job completion transaction: {error}"
+            ))
+        })?;
+        let result = sqlx::query(
+            "UPDATE rullst_jobs SET status = 'completed', error = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND status = 'processing'",
+        )
+        .bind(job_id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| QueueError::Driver(format!("Failed to retain completed job: {error}")))?;
         ensure_transition(result.rows_affected(), job_id, "mark_complete")?;
+        sqlx::query(
+            "DELETE FROM rullst_jobs WHERE status = 'completed' AND id NOT IN (SELECT id FROM rullst_jobs WHERE status = 'completed' ORDER BY updated_at DESC, rowid DESC LIMIT ?)",
+        )
+        .bind(retained_jobs)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| {
+            QueueError::Driver(format!("Failed to prune completed job history: {error}"))
+        })?;
+        transaction.commit().await.map_err(|error| {
+            QueueError::Driver(format!("Failed to commit completed job history: {error}"))
+        })?;
         Ok(())
     }
 
@@ -324,6 +395,10 @@ impl QueueDriver for SqliteDriver {
 
     async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
         SqliteDriver::purge_failed_jobs(self).await
+    }
+
+    async fn purge_completed_history(&self) -> Result<(), QueueError> {
+        SqliteDriver::purge_completed_history(self).await
     }
 }
 

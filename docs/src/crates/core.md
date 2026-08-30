@@ -16,6 +16,14 @@ mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
 `purge_completed_jobs` name is retained only as a source-compatibility alias for
 the historical operation, which actually removed failed jobs.
 
+SQLite deletes successful jobs by default. Applications that need a real
+Studio/operations history can opt in with
+`Queue::sqlite_with_completed_history(database_url, retained_jobs)`. The
+validated limit is 1–100,000 records; status transition and pruning commit in
+one transaction, and `purge_completed_history` removes the retained successes.
+Rows still contain the original payload, so access control and retention policy
+belong to the host. Redis/custom drivers do not inherit this policy implicitly.
+
 `Queue::dispatch_at` persists a due timestamp for at most 366 days through the
 built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
 milliseconds; Redis atomically promotes bounded batches using Redis server time.
@@ -41,6 +49,9 @@ they explicitly implement durable scheduling.
 - **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
   the live Redis CI contract proves that an immediate job remains claimable
   while a future job stays unavailable.
+- **Opt-in completed-job monitoring:** SQLite can retain and atomically prune a
+  configured number of successful jobs; the privacy-safe default remains
+  immediate deletion.
 
 ---
 
