@@ -392,3 +392,29 @@ assistant, not a claim that compilation proves production compatibility.
   application production-ready. Database restore/migration/rollback, the full
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
+
+---
+
+## 📱 13. Omni Packaging Contract
+
+`cargo rullst make:omni` generates an application-owned Tauri packaging shell;
+it is not a native-runtime abstraction or store-publication service.
+
+* 🟢 **`[Implemented / Bounded]` Deterministic Scaffold:** `--platform` accepts
+  desktop, Android and iOS selections without a prompt. Mobile selections
+  require `--backend-url`; HTTPS is required except for explicitly bounded
+  loopback/emulator development hosts, and embedded credentials are rejected.
+* 🟢 **`[Implemented / Bounded]` Reproducible Tooling:** the generated manifest
+  pins the Tauri CLI and Rust dependencies, emits a restrictive local CSP and
+  real source-derived platform icons, and treats npm, icon generation or
+  explicitly requested mobile initialization failures as command failures.
+  Explicit iOS initialization requires macOS/Xcode.
+* 🟢 **`[Implemented / Bounded]` Compile Evidence:** the repository's
+  path-aware macOS workflow creates a disposable Rullst host, generates the iOS
+  shell and compiles it for the runner's simulator architecture.
+* 🟠 **`[Application / Platform Boundary]`** bundle identity, signing and
+  provisioning, privacy manifest and usage declarations, native capabilities,
+  production endpoint/auth policy, physical-device testing, TestFlight,
+  metadata and App Store review belong to the generated application. Simulator
+  compilation must never be described as store acceptance or universal iPhone
+  compatibility.

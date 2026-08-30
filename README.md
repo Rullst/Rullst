@@ -55,6 +55,7 @@
 | **Bare-metal `no_std` matrix** | [![no_std](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?branch=dev&style=flat-square&label=no_std)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml?query=branch%3Adev) | Builds IoT helpers for Cortex-M and RISC-V targets; this is compile evidence, not hardware testing. |
 | **IoT integration** | [![IoT](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?branch=dev&style=flat-square&label=IoT)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml?query=branch%3Adev) | Host tests, signed OTA invariants, and a Cortex-M build. |
 | **IoT crypto containment** | [![IoT Crypto](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?branch=dev&style=flat-square&label=Crypto%20Boundary)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml?query=branch%3Adev) | Path-aware signed OTA, Vault, advisory, and simulator-boundary checks; no PQC/HSM certification claim. |
+| **Omni iOS simulator** | [![Omni iOS](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-ios.yml?branch=dev&style=flat-square&label=Omni%20iOS)](https://github.com/Rullst/Rullst/actions/workflows/omni-ios.yml?query=branch%3Adev) | Path-aware fresh scaffold generation and compilation on a macOS iOS simulator target; no device, signing or App Store claim. |
 | **PR security evidence** | [![PR Security](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ai-sentinel-pr.yml?branch=dev&style=flat-square&label=PR%20Evidence)](https://github.com/Rullst/Rullst/actions/workflows/ai-sentinel-pr.yml?query=branch%3Adev) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. |
 
 Deep or irreversible workflows are intentionally not presented as continuously
@@ -75,7 +76,7 @@ green dev gates:
 Scheduled events use the repository's default branch. While v12 remains on
 `dev`, run deep workflows manually with `dev` selected when the evidence must
 apply to v12. The recommended required-check profile and the exact scope of all
-33 workflow definitions are documented in [WORKFLOWS.md](WORKFLOWS.md).
+34 workflow definitions are documented in [WORKFLOWS.md](WORKFLOWS.md).
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/dev/WORKFLOWS.md).**
 >

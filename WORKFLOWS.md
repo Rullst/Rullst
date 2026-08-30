@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-08-28**.
+Last source-level review: **2026-08-30**.
 
 ## Status language
 
@@ -70,11 +70,12 @@ Panics, no-std Build, IoT Integration, and PR Security Evidence.
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
 never create the check context. In particular, IoT Cryptography Containment is
-blocking when relevant paths change, while Pages, benchmarks, fuzzing,
-sanitizers, Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release
-provenance belong to deeper evidence or release policy. GitHub repository
-rulesets remain the enforcement source; this document records the recommended
-profile and does not claim that the hosted setting is already enabled.
+blocking when relevant paths change, and Omni iOS Simulator is blocking when
+the Omni generator boundary changes. Pages, benchmarks, fuzzing, sanitizers,
+Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release provenance
+belong to deeper evidence or release policy. GitHub repository rulesets remain
+the enforcement source; this document records the recommended profile and does
+not claim that the hosted setting is already enabled.
 
 ## Phase 4 release-engineering status
 
@@ -171,7 +172,7 @@ was removed because its composite action downloaded an unversioned `latest`
 binary without a repository-pinned checksum, which was unsuitable for a
 blocking supply-chain gate.
 
-## Workflow inventory (33 definitions)
+## Workflow inventory (34 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -196,6 +197,7 @@ dependency graph make static estimates unreliable.
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/miri.yml) | manual | Informational | Miri package matrix with randomized layouts; failures are tolerated. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/mutants.yml) | manual | Informational | Eight cargo-mutants shards with uploaded results. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/no_std-build.yml) | main/dev push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
+| [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/omni-ios.yml) | relevant main/dev changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/pages.yml) | dev push, manual | Deploy | Builds and deploys the unreleased v12 documentation preview to GitHub Pages. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/pqc-compliance.yml) | relevant main/dev changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
 | [`proptest.yml`](https://github.com/Rullst/Rullst/blob/dev/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Release-mode property and workspace tests with configured case counts. |

@@ -40,6 +40,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The declared v12 MSRV is Rust 1.96.0. The default umbrella dependency enables
   ORM and the SQLite queue; Nexus, Studio, AI, auth, security, and other domain
   crates remain opt-in features.
+- `cargo rullst make:omni` now supports deterministic `--platform` selection
+  and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
+  real platform icons, applies a restrictive local CSP and fails when requested
+  setup commands fail. A path-aware macOS workflow generates the iOS target and
+  compiles it for the simulator. This is bounded packaging evidence, not device,
+  signing, privacy-manifest, TestFlight or App Store acceptance evidence.
 - Added an opt-in Polyglot persistence boundary to `rullst-orm`: typed document
   CRUD for MongoDB and SurrealDB, parameterized bounded OLAP queries for
   DuckDB, parameterized Turso/libSQL edge SQL with transactions and checksummed

@@ -204,10 +204,30 @@ origin reflection/wildcards and migrate to the current fail-closed allowlist.
 
 ### `cargo rullst make:omni`
 Generates a Tauri/Omni shell and development configuration for desktop, Android
-or iOS. The generated client wraps the Rullst web application; it does not by
-itself implement native plugins, offline synchronization, production network
-policy, release signing, Play Store/App Store publication or a tested `.apk`
-artifact.
+or iOS. Interactive use prompts for platforms. Automation can select one or
+more targets deterministically:
+
+```bash
+cargo rullst make:omni --platform desktop
+cargo rullst make:omni --platform android --backend-url http://10.0.2.2:3000
+cargo rullst make:omni --platform ios --backend-url https://api.example.com
+cargo rullst make:omni --platform desktop,ios --backend-url https://api.example.com
+```
+
+Mobile generation requires an explicit backend URL. HTTPS is required except
+for the bounded localhost/Android-emulator development hosts; embedded
+credentials are rejected. The generator installs an exact Tauri npm CLI,
+creates platform icons, initializes mobile targets non-interactively, emits a
+restrictive local CSP and fails if a requested prerequisite step fails. iOS
+initialization requires macOS and Xcode.
+
+The generated client wraps the Rullst web application; it does not by itself
+implement native plugins, offline synchronization, production network policy,
+release signing, privacy declarations, physical-device validation, Play
+Store/App Store publication or review acceptance. The generated README contains
+the application-owned distribution checklist. Repository CI compiles a fresh
+iOS simulator shell when the generator changes; that is packaging evidence, not
+an App Store or device guarantee.
 
 ### `cargo rullst make:iot <DeviceName>`
 Scaffolds and registers a telemetry-only IoT module in `src/iot/` using the

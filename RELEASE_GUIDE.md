@@ -81,6 +81,9 @@ Before releasing, make sure:
     package matrix.
   - `fuzzing.yml`: Bounded libFuzzer runs and OSS-Fuzz packaging/readiness.
   - `e2e-smoke.yml`: Live SSR HTML status 200 checks, CSRF, and SQLite/Postgres persistence.
+  - `omni-ios.yml`: Fresh deterministic Omni generation and iOS simulator
+    compilation on macOS; this is not device, signing, TestFlight, or App Store
+    acceptance evidence.
 - [ ] You have manually verified the mandatory local trifecta:
   `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and

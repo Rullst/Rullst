@@ -75,6 +75,25 @@ pub enum DatabaseChoice {
     Turso,
 }
 
+/// Platforms accepted by deterministic Omni scaffolding.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum OmniPlatformChoice {
+    Desktop,
+    Android,
+    Ios,
+}
+
+impl OmniPlatformChoice {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Desktop => "desktop",
+            Self::Android => "android",
+            Self::Ios => "ios",
+        }
+    }
+}
+
 impl DatabaseChoice {
     const fn provider(self) -> &'static str {
         match self {
@@ -224,7 +243,14 @@ pub enum Commands {
     },
     /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
-    MakeOmni,
+    MakeOmni {
+        /// Target platform; repeat the flag or use comma-separated values
+        #[arg(long, value_enum, value_delimiter = ',')]
+        platform: Vec<OmniPlatformChoice>,
+        /// Backend URL embedded in the shell; required when a mobile platform is selected
+        #[arg(long)]
+        backend_url: Option<String>,
+    },
     /// Scaffolds a local IoT telemetry module
     #[command(name = "make:iot")]
     MakeIot {
@@ -542,8 +568,15 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeChatSession => {
             crate::generators::chat::scaffold_chat_session()?;
         }
-        Commands::MakeOmni => {
-            scaffold_omni_system()?;
+        Commands::MakeOmni {
+            platform,
+            backend_url,
+        } => {
+            let platforms = platform
+                .iter()
+                .map(|platform| platform.as_str())
+                .collect::<Vec<_>>();
+            scaffold_omni_system(&platforms, backend_url.as_deref())?;
         }
         Commands::MakeIot { name } => {
             crate::generators::iot::run_make_iot(name)?;
@@ -997,6 +1030,28 @@ mod tests {
                 keep_on_failure: true,
                 restore: None,
             } if target == "12.0.0-rc.1"
+        ));
+    }
+
+    #[test]
+    fn parses_deterministic_omni_platforms_and_backend() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "make:omni",
+            "--platform",
+            "desktop,ios",
+            "--backend-url",
+            "https://api.example.com",
+        ])
+        .expect("deterministic Omni CLI flags");
+
+        assert!(matches!(
+            cli.command,
+            Commands::MakeOmni {
+                platform,
+                backend_url: Some(ref backend_url),
+            } if platform == vec![OmniPlatformChoice::Desktop, OmniPlatformChoice::Ios]
+                && backend_url == "https://api.example.com"
         ));
     }
 }

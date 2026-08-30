@@ -105,10 +105,18 @@ identity, authorization, TLS and network policy.
 ## Omni packaging
 
 `cargo rullst make:omni` scaffolds a Tauri-powered shell and commands for desktop
-and mobile targets. It does not automatically implement offline synchronization,
-secure remote networking, platform signing, store publication, native updater
-policy or every frontend profile. Treat the generated shell as packaging code
-that must be reviewed and tested on each target platform.
+and mobile targets. Deterministic generation pins the local Tauri CLI, requires
+an explicit validated backend URL for mobile, generates real platform icon
+assets and fails when an explicitly requested platform cannot be initialized.
+The repository compiles a freshly generated iOS simulator shell on a macOS
+runner when this boundary changes.
+
+That gate proves reproducible generation and simulator compilation only. It
+does not automatically implement offline synchronization, secure remote
+networking, platform signing, privacy declarations, physical-device behavior,
+store publication, native updater policy or every frontend profile. Treat the
+generated shell as application-owned packaging code that must be reviewed,
+signed and tested on each supported target.
 
 ## Engineering invariants
 

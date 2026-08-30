@@ -152,8 +152,23 @@ fn run_mobile(platform: &str, omni_dir: &Path) -> Result<(), Box<dyn std::error:
 }
 
 pub fn get_tauri_command(
-    _omni_dir: &Path,
+    omni_dir: &Path,
 ) -> Result<std::process::Command, Box<dyn std::error::Error>> {
+    let local_cli = omni_dir
+        .join("node_modules")
+        .join("@tauri-apps")
+        .join("cli")
+        .join("package.json");
+    if local_cli.is_file() {
+        let mut command = if cfg!(windows) {
+            std::process::Command::new("npm.cmd")
+        } else {
+            std::process::Command::new("npm")
+        };
+        command.args(["exec", "--offline", "--", "tauri"]);
+        return Ok(command);
+    }
+
     let has_tauri_cli = std::process::Command::new("cargo")
         .arg("tauri")
         .arg("--version")
@@ -167,58 +182,8 @@ pub fn get_tauri_command(
         return Ok(cmd);
     }
 
-    let has_npx = if cfg!(windows) {
-        std::process::Command::new("npx.cmd")
-            .args(["--version"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    } else {
-        std::process::Command::new("npx")
-            .arg("--version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    };
-
-    if has_npx {
-        let cmd = if cfg!(windows) {
-            let mut c = std::process::Command::new("npx.cmd");
-            c.args(["--yes", "@tauri-apps/cli"]);
-            c
-        } else {
-            let mut c = std::process::Command::new("npx");
-            c.args(["--yes", "@tauri-apps/cli"]);
-            c
-        };
-        return Ok(cmd);
-    }
-
-    println!("{}", "📦 Omni background tools not found. Installing globally via Cargo (this may take a few minutes)..."
-        .truecolor(255, 165, 0)
-        .bold());
-
-    let installed = with_spinner("🚀 Installing Omni background tools...", || {
-        std::process::Command::new("cargo")
-            .args(["install", "tauri-cli"])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    });
-
-    if installed {
-        println!(
-            "{}",
-            "✅ Omni background tools installed successfully!"
-                .green()
-                .bold()
-        );
-        let mut cmd = std::process::Command::new("cargo");
-        cmd.arg("tauri");
-        Ok(cmd)
-    } else {
-        Err("Failed to install tauri-cli automatically".into())
-    }
+    Err(
+        "Tauri CLI is unavailable; run `npm install` in omni-app or install a reviewed cargo-tauri version"
+            .into(),
+    )
 }
