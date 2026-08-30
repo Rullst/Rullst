@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788083916023,
+  "lastUpdate": 1788086231232,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4129,6 +4129,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 498,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "32c6c2fd314c8d42dd8948d1e686d58d1054fc15",
+          "message": "ci(coverage): authenticate uploads with oidc",
+          "timestamp": "2026-08-30T07:15:30-03:00",
+          "tree_id": "809e1c3998fd3442d3db50d43d7af8a8bac16e52",
+          "url": "https://github.com/Rullst/Rullst/commit/32c6c2fd314c8d42dd8948d1e686d58d1054fc15"
+        },
+        "date": 1788086230443,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 377,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
