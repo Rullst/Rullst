@@ -5,17 +5,27 @@ use crate::generators::{is_rullst_project, is_valid_rust_identifier, register_mo
 use colored::*;
 use std::fs;
 use std::io::{Error as IoError, ErrorKind};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+mod extended;
 mod names;
-use names::{to_pascal_case, to_snake_case};
+use names::{project_root_module, to_pascal_case, to_snake_case};
 
-pub fn create_new_mailable(
+/// Template family selected by the CLI after it rejects conflicting flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MailableKind {
+    Custom,
+    Welcome,
+    Reset,
+    Otp,
+    Invoice,
+    FiscalInvoice,
+    Dunning,
+}
+
+pub(crate) fn create_new_mailable(
     name: &str,
-    welcome: bool,
-    reset: bool,
-    otp: bool,
-    invoice: bool,
+    kind: MailableKind,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
         return Err(IoError::new(
@@ -24,19 +34,6 @@ pub fn create_new_mailable(
         )
         .into());
     }
-    if [welcome, reset, otp, invoice]
-        .into_iter()
-        .filter(|selected| *selected)
-        .count()
-        > 1
-    {
-        return Err(IoError::new(
-            ErrorKind::InvalidInput,
-            "make:mail accepts at most one of --welcome, --reset, --otp, or --invoice",
-        )
-        .into());
-    }
-
     let pascal_name = to_pascal_case(name);
     let snake_name = to_snake_case(&pascal_name);
     if !is_valid_rust_identifier(&pascal_name) || !is_valid_rust_identifier(&snake_name) {
@@ -98,7 +95,11 @@ pub fn create_new_mailable(
 
     let manifest_path = Path::new("Cargo.toml");
     let manifest = fs::read_to_string(manifest_path)?;
-    let updated_manifest = ensure_rullst_features(&manifest, &["mailer"])?;
+    let required_features = match kind {
+        MailableKind::FiscalInvoice => &["mailer", "capital"][..],
+        _ => &["mailer"][..],
+    };
+    let updated_manifest = ensure_rullst_features(&manifest, required_features)?;
 
     println!(
         "{}",
@@ -107,12 +108,13 @@ pub fn create_new_mailable(
             .bold()
     );
 
-    let template = if welcome {
+    let template = if kind == MailableKind::Welcome {
         r##"//! Welcome & Onboarding Mailable template.
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Welcome email sent to newly registered users with email verification CTA.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
     pub user_name: String,
@@ -184,12 +186,13 @@ impl __NAME__ {
     }
 }
 "##
-    } else if reset {
+    } else if kind == MailableKind::Reset {
         r##"//! Time-limited Password Reset Mailable.
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Secure password reset email with expiration indicator.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
     pub user_name: String,
@@ -254,12 +257,13 @@ impl __NAME__ {
     }
 }
 "##
-    } else if otp {
+    } else if kind == MailableKind::Otp {
         r##"//! High-visibility Two-Factor Authentication (OTP) Mailable.
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Two-Factor authentication OTP security code email.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
     pub otp_code: String,
@@ -310,12 +314,13 @@ impl __NAME__ {
     }
 }
 "##
-    } else if invoice {
+    } else if kind == MailableKind::Invoice {
         r##"//! SaaS Invoice / Receipt Mailable.
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Transactional invoice receipt for SaaS billing.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
     pub customer_name: String,
@@ -384,12 +389,17 @@ impl __NAME__ {
     }
 }
 "##
+    } else if kind == MailableKind::FiscalInvoice {
+        extended::FISCAL_INVOICE_TEMPLATE
+    } else if kind == MailableKind::Dunning {
+        extended::DUNNING_TEMPLATE
     } else {
         r##"//! Custom Transactional Mailable template.
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Strongly-typed mailable struct.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
     pub subject: String,
@@ -472,17 +482,4 @@ impl __NAME__ {
     );
 
     Ok(())
-}
-
-fn project_root_module() -> Result<PathBuf, IoError> {
-    ["src/lib.rs", "src/main.rs"]
-        .into_iter()
-        .map(PathBuf::from)
-        .find(|path| path.exists())
-        .ok_or_else(|| {
-            IoError::new(
-                ErrorKind::NotFound,
-                "Rullst project has neither src/lib.rs nor src/main.rs",
-            )
-        })
 }

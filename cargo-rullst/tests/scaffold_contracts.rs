@@ -376,6 +376,8 @@ fn public_cli_command_inventory_is_explicit_and_complete() {
         "make:k8s",
         "make:live",
         "make:mail",
+        "make:mail-dunning",
+        "make:mail-invoice",
         "make:mfa",
         "make:middleware",
         "make:migration",

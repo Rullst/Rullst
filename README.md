@@ -352,7 +352,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics, payment-provider adapters, and bounded checksum-pinned NFS-e DPS/XSD/XMLDSig/mTLS preparation; live Alipay RSA2 and official NFS-e authorization remain fail-closed roadmap/external-evidence work.
 - 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: OAuth2/OIDC social login with strict discovery, offline fixtures, and rotating JWKS caches. Queue transports currently live in Core.
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
-- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, and background delivery.
+- ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, background delivery, and safe scaffolds including evidence-aware fiscal receipts and explicit dunning stages.
 - 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
 - ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Registered-model Admin CMS (`/nexus`) and a local security-event view.
 - 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.

@@ -133,18 +133,19 @@ flowchart TD
 ### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
 - [~] **Explicit Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes an explicitly validated tenant ID to an in-memory driver registry. Authentication-derived tenant selection, durable encrypted credentials and distributed updates remain application work.
 - [ ] **Smart Domain Warm-Up Scheduler & Provider Rate Limiter**: Automated throttling and graduated daily sending schedules (e.g. Day 1: 50 emails/day, Day 7: 2,000 emails/day) for newly provisioned domains to build sender reputation safely.
-- [~] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
+- [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
   - `cargo rullst make:mail <Name> --welcome`: Onboarding and email verification template.
   - `cargo rullst make:mail <Name> --reset`: Secure time-limited password reset.
   - `cargo rullst make:mail <Name> --otp`: High-visibility OTP token delivery.
   - `cargo rullst make:mail <Name> --invoice`: SaaS billing and payment receipt.
-  - `make:mail-invoice`: Brazilian Receita Federal NFS-e DPS & international SaaS receipt templates.
-  - `make:mail-dunning`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
-  - **v12 bounded implementation:** the five actually exposed variants validate
-    identifiers, reject traversal/collisions, enable the umbrella `mailer`
-    feature, register modules, escape dynamic HTML and pass a materialized
-    Clippy/runtime contract. The two commands listed above without
-    `cargo rullst make:mail <Name>` syntax remain roadmap ideas.
+  - `make:mail-invoice [Name]`: Evidence-aware National NFS-e and international SaaS receipt template.
+  - `make:mail-dunning [Name]`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
+  - **v12 bounded implementation:** all seven exposed variants validate
+    identifiers, reject traversal/collisions, enable the required umbrella
+    features, register modules, escape dynamic HTML and pass a materialized
+    Clippy/runtime contract. The fiscal variant consumes typed
+    `FiscalResponse` provenance and cannot label `OfflineMock` as authorized;
+    the dunning stages do not infer account state or schedule themselves.
 
 ---
 

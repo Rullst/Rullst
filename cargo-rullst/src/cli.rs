@@ -18,7 +18,7 @@ use crate::generators::{
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     inspect::inspect_project,
     introspect::generate_models_from_db,
-    mail::create_new_mailable,
+    mail::{MailableKind, create_new_mailable},
     middleware::create_new_middleware,
     migration::create_new_migration,
     model::create_new_model,
@@ -277,6 +277,20 @@ pub enum Commands {
         /// Optional: generate a SaaS Invoice Receipt email template
         #[arg(long)]
         invoice: bool,
+    },
+    /// Scaffolds the bounded NFS-e/international receipt mailable
+    #[command(name = "make:mail-invoice")]
+    MakeMailInvoice {
+        /// Name of the generated mailable struct
+        #[arg(default_value = "FiscalInvoiceEmail")]
+        name: String,
+    },
+    /// Scaffolds the explicit D+1/D+3/D+7 payment-recovery mailable
+    #[command(name = "make:mail-dunning")]
+    MakeMailDunning {
+        /// Name of the generated mailable struct
+        #[arg(default_value = "PaymentDunningEmail")]
+        name: String,
     },
     /// Initializes a Foundry.toml manifest for a reviewed SSH deployment
     #[command(name = "foundry:init")]
@@ -593,7 +607,27 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             otp,
             invoice,
         } => {
-            create_new_mailable(name, *welcome, *reset, *otp, *invoice)?;
+            let kind = match (*welcome, *reset, *otp, *invoice) {
+                (false, false, false, false) => MailableKind::Custom,
+                (true, false, false, false) => MailableKind::Welcome,
+                (false, true, false, false) => MailableKind::Reset,
+                (false, false, true, false) => MailableKind::Otp,
+                (false, false, false, true) => MailableKind::Invoice,
+                _ => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "make:mail accepts at most one template flag",
+                    )
+                    .into());
+                }
+            };
+            create_new_mailable(name, kind)?;
+        }
+        Commands::MakeMailInvoice { name } => {
+            create_new_mailable(name, MailableKind::FiscalInvoice)?;
+        }
+        Commands::MakeMailDunning { name } => {
+            create_new_mailable(name, MailableKind::Dunning)?;
         }
         Commands::FoundryInit => {
             scaffold_foundry_config()?;

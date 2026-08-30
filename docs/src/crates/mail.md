@@ -29,7 +29,7 @@
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ Safe CLI Scaffolding (`cargo rullst make:mail`):** Generates registered facade-based Welcome, Password Reset, OTP, Invoice or custom mailables, refusing unsafe names/collisions and escaping dynamic HTML.
+- **🛠️ Safe CLI Scaffolding:** Generates registered facade-based Welcome, Password Reset, OTP, Invoice, custom, evidence-aware NFS-e/international receipt, and explicit D+1/D+3/D+7 dunning mailables, refusing unsafe names/collisions and escaping dynamic HTML.
 
 ---
 
@@ -149,7 +149,20 @@ cargo rullst make:mail OtpVerification --otp
 
 # Generate SaaS Invoice receipt email
 cargo rullst make:mail InvoiceReceipt --invoice
+
+# Generate an evidence-aware NFS-e/international receipt
+cargo rullst make:mail-invoice
+
+# Generate explicit D+1/D+3/D+7 payment-recovery stages
+cargo rullst make:mail-dunning
 ```
+
+The fiscal template enables the umbrella `capital` feature and accepts a typed
+`FiscalResponse`: an `OfflineMock` always renders as `[PREVIEW — NOT
+AUTHORIZED]`. The dunning template does not infer due dates, schedule itself,
+or mutate access. Both generated `build` paths run the mandatory mail pre-flight
+and reject unsafe links; tax provenance, billing state, scheduling, and policy
+remain application-owned.
 
 ---
 

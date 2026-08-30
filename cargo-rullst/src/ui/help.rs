@@ -70,6 +70,14 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                     "Scaffold Mailable struct & email template",
                 ),
                 (
+                    "cargo rullst make:mail-invoice [Name]",
+                    "Scaffold evidence-aware fiscal/receipt mail",
+                ),
+                (
+                    "cargo rullst make:mail-dunning [Name]",
+                    "Scaffold explicit D+1/D+3/D+7 recovery mail",
+                ),
+                (
                     "cargo rullst generate:models",
                     "Reverse-engineer live DB to Models",
                 ),

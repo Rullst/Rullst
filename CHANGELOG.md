@@ -50,6 +50,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   request/response handling, durable idempotency/audit, real A1 restricted-
   environment evidence, independent review and SEFIN homologation remain open;
   live modes still perform no network I/O.
+- `cargo rullst make:mail-invoice [Name]` and `make:mail-dunning [Name]`
+  complete the bounded transactional-mail scaffold set. The fiscal template
+  consumes typed Capital provenance and always labels `OfflineMock` as
+  `[PREVIEW — NOT AUTHORIZED]`; the dunning template exposes explicit
+  D+1/D+3/D+7 stages without inferring billing state, scheduling delivery, or
+  mutating access. Both generated build paths run the mandatory mail pre-flight,
+  and the materialized generator contract covers all seven variants, hostile
+  markup/links, feature registration, collisions, Clippy, and runtime behavior.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested

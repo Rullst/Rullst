@@ -192,6 +192,23 @@ the `rullst::mail` facade, escapes dynamic HTML and refuses invalid identifiers,
 path traversal or an existing target. Delivery credentials, URL semantics,
 tenant policy and provider operation remain application responsibilities.
 
+### `cargo rullst make:mail-invoice [Name]`
+
+Generates `FiscalInvoiceEmail` by default and enables `mailer` plus `capital`.
+The result supports an international commercial receipt and an NFS-e message
+constructed from typed `FiscalResponse` provenance. An `OfflineMock` is always
+rendered as `[PREVIEW — NOT AUTHORIZED]`; the generator cannot turn local DPS,
+XSD, or XMLDSig validity into a tax authorization. A custom valid struct name
+may be supplied positionally.
+
+### `cargo rullst make:mail-dunning [Name]`
+
+Generates `PaymentDunningEmail` by default with explicit gentle D+1,
+action-required D+3, and service-status D+7 stages. The application remains
+responsible for calculating the due state, scheduling delivery, enforcing its
+disclosed billing policy, and reconciling payment. The generated build path
+runs the mandatory pre-flight and rejects dangerous links.
+
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).
 

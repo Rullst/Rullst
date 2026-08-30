@@ -119,6 +119,28 @@ impl DeliveryPipeline {
     }
 }
 
+/// Validates an application-owned HTTP(S) action URL before it is embedded in a message.
+///
+/// URL credentials and header-breaking characters are rejected. Redirect policy, destination
+/// authorization, and the behavior of the application endpoint remain host responsibilities.
+pub fn validate_action_url(value: impl Into<String>) -> Result<(), MailError> {
+    let value = value.into();
+    validate_header("Action URL", &value)?;
+    let url = reqwest::Url::parse(&value)
+        .map_err(|_| MailError::ValidationError("Action URL is not a valid URL".to_string()))?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(MailError::ValidationError(
+            "Action URL must use HTTP or HTTPS and include a host".to_string(),
+        ));
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(MailError::ValidationError(
+            "Action URL must not contain embedded credentials".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn validate_header(name: &str, value: &str) -> Result<(), MailError> {
     if is_crlf_safe(value) {
         Ok(())
@@ -201,5 +223,19 @@ mod tests {
         );
 
         assert!(DeliveryPipeline::prepare_for_tenant("../acme", &message).is_err());
+    }
+
+    #[test]
+    fn action_urls_require_http_authority_without_credentials() {
+        assert!(validate_action_url("https://example.com/billing?id=42").is_ok());
+        for invalid in [
+            "javascript:alert(1)",
+            "ftp://example.com/file",
+            "https://",
+            "https://user:secret@example.com/billing",
+            "https://example.com/ok\r\nBcc: attacker@example.com",
+        ] {
+            assert!(validate_action_url(invalid).is_err(), "accepted {invalid}");
+        }
     }
 }

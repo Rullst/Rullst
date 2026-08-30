@@ -1,5 +1,21 @@
 //! Identifier normalization for generated mailables.
 
+use std::io::{Error as IoError, ErrorKind};
+use std::path::PathBuf;
+
+pub(super) fn project_root_module() -> Result<PathBuf, IoError> {
+    ["src/lib.rs", "src/main.rs"]
+        .into_iter()
+        .map(PathBuf::from)
+        .find(|path| path.exists())
+        .ok_or_else(|| {
+            IoError::new(
+                ErrorKind::NotFound,
+                "Rullst project has neither src/lib.rs nor src/main.rs",
+            )
+        })
+}
+
 pub(super) fn to_pascal_case(value: &str) -> String {
     let mut result = String::new();
     let mut capitalize_next = true;
