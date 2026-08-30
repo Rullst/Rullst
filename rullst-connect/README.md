@@ -44,6 +44,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔌 **Framework-neutral core**: Native callback extractors exist for Axum and
   Actix; `AuthCallback` remains a plain deserializable type for other hosts.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
+- 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Typed, network-free provider fallbacks plus an explicitly mounted embedded Mock IdP for local tests.
 
@@ -120,6 +121,29 @@ rullst-connect = { version = "12.0.0", features = ["mock"] }
 
 Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
 reserved `example.invalid` email domain.
+
+### Explicit corporate proxy
+
+Live providers can receive a first-class proxy-aware transport without relying
+on ambient `HTTP_PROXY` state:
+
+```rust
+use rullst_connect::client::ReqwestClient;
+use std::sync::Arc;
+
+let proxy = ReqwestClient::try_with_proxy_basic_auth(
+    "https://proxy.corp.example:8443",
+    "proxy-user",
+    proxy_password,
+)?;
+let github = github.with_http_client(Arc::new(proxy));
+```
+
+Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
+credentials, path, query, or fragment. Authenticated non-loopback proxies must
+use HTTPS. The configured client uses only that explicit proxy; PAC/WPAD,
+SOCKS, proxy mTLS identity and deployment certification remain outside this
+bounded transport.
 
 ### 2. Redirect the User
 Get the authorization URL and redirect your user:

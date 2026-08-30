@@ -93,6 +93,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   fields omit SQL, bindings, model values, DSNs and error strings; the existing
   opt-in Core OpenTelemetry layer exports them when the host initializes it and
   remains responsible for filters, sampling and collector policy.
+- `rullst-connect::ReqwestClient` now has first-class explicit HTTP(S)
+  corporate-proxy constructors with separately supplied Basic credentials,
+  bounded endpoint syntax, HTTPS-required remote authentication, no ambient
+  system-proxy fallback and a local protocol-level routing/auth contract.
+  PAC/WPAD, SOCKS, proxy mTLS and production network certification are not
+  claimed.
 - Replaced Turso's remote `libsql` SDK dependency with a direct, bounded Hrana
   HTTP v3 transport over the workspace Rustls client. Typed parameters, remote
   CRUD, checked migrations and conditional atomic batches retain live libSQL

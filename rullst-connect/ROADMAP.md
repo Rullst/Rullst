@@ -33,8 +33,13 @@ messaging and enterprise identity sections remain roadmap work.
 - [~] **Database Integration (rullst-orm, SQLx, Diesel):**
   `IntoDatabaseUser` defines an application adapter contract; Connect does not
   persist identities or ship ORM/Diesel implementations.
-- [~] **HTTP Proxy Support:** A custom `HttpClient` can install a reviewed proxy
-  transport. There is no first-class proxy builder on the default client.
+- [x] **Bounded HTTP(S) Corporate Proxy Support:** `ReqwestClient::try_with_proxy`
+  and `try_with_proxy_basic_auth` configure an explicit all-traffic proxy,
+  disable ambient system-proxy lookup, reject embedded URL credentials and
+  unsafe endpoint shapes, and require HTTPS for authenticated non-loopback
+  proxies. A local protocol fixture proves absolute-form routing and Basic proxy
+  authorization; PAC/WPAD, SOCKS, mTLS proxy identity and enterprise-product
+  certification remain outside this contract.
 - [~] **Refresh Token Module:** All named provider adapters expose explicit
   refresh operations where supported; automatic expiry detection, storage and
   rotation remain application-owned.
