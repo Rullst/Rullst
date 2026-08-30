@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788103505193,
+  "lastUpdate": 1788103973001,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4309,6 +4309,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 418,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4f4da233e56dbdc7aa09e9e4813931ed942782bf",
+          "message": "fix(security): box redis rate limit client",
+          "timestamp": "2026-08-30T12:25:20-03:00",
+          "tree_id": "28508b05d1583c1977cb859f7efa09bf0564a667",
+          "url": "https://github.com/Rullst/Rullst/commit/4f4da233e56dbdc7aa09e9e4813931ed942782bf"
+        },
+        "date": 1788103972277,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 422,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
