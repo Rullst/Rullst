@@ -300,7 +300,8 @@ fn extracted_rust_templates_parse_after_substitution() {
         (
             "billing controller",
             include_str!("../src/generators/billing_controller.rs.template")
-                .replace("__FOREIGN_KEY__", "user_id"),
+                .replace("__FOREIGN_KEY__", "user_id")
+                .replace("__OWNER_ID_TYPE__", "i32"),
         ),
         (
             "billing page",
@@ -327,6 +328,10 @@ fn extracted_rust_templates_parse_after_substitution() {
     ];
 
     for (name, source) in templates {
+        assert!(
+            !source.contains("__"),
+            "{name}: unresolved generator placeholder"
+        );
         syn::parse_file(&source)
             .unwrap_or_else(|error| panic!("{name} template does not parse: {error}"));
     }

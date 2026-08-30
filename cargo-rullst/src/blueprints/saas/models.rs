@@ -109,6 +109,15 @@ pub struct BillingCustomer {
     pub created_at: String,
     pub updated_at: String,
 }
+
+impl BillingCustomer {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst::orm::Error> {
+        Self::query()
+            .where_eq("email", email.to_string())
+            .first()
+            .await
+    }
+}
 "##;
     manifest.push((
         "src/models/billing_customer.rs",

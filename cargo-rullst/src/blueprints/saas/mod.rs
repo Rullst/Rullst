@@ -5,6 +5,7 @@ pub mod models;
 pub mod routes;
 
 use super::common;
+use crate::generators::{ProjectOrmBackend, billing::render_billing_controller};
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -29,8 +30,7 @@ pub fn file_manifest(
         include_str!("../../generators/auth/auth_controller.rs.template").to_string();
     manifest.push(("src/controllers/auth_controller.rs", auth_controller_code));
 
-    let billing_controller_code = include_str!("../../generators/billing_controller.rs.template")
-        .replace("__FOREIGN_KEY__", "user_id");
+    let billing_controller_code = render_billing_controller("user_id", ProjectOrmBackend::Sqlx);
     manifest.push((
         "src/controllers/billing_controller.rs",
         billing_controller_code,
