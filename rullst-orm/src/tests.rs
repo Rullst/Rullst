@@ -127,6 +127,15 @@ async fn test_init_redis_failure() {
     assert!(matches!(err, crate::Error::CacheError(_)));
 }
 
+#[cfg(feature = "redis")]
+#[tokio::test]
+async fn test_init_redis_rejects_invalid_namespace_before_connecting() {
+    let err = Orm::init_redis_with_namespace("redis://127.0.0.1:0", "shared:unsafe")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, crate::Error::Validation(_)));
+}
+
 #[test]
 fn test_orm_max_query_limit_and_timeout() {
     Orm::set_max_query_limit(15);

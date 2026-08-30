@@ -189,7 +189,26 @@ new_user.delete().await?;
   identity, revision restore, and durable post-commit delivery of observers,
   search, or Redis events are separate application or roadmap contracts.
 
-### 5.5. Polyglot Persistence Boundary
+### 5.5. Generated Redis Query Cache Contract
+
+* The optional `redis` feature enables `.remember(seconds)` for generated SQLx
+  reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
+  recommended initializer when a Redis database is shared; the compatibility
+  `init_redis(url)` initializer uses the literal namespace `default`.
+* Versioned SHA-256 cache keys bind the validated application namespace, an
+  opaque digest of the active tenant scope when present, table, generated SQL,
+  and typed bindings. Raw tenant identifiers are not emitted in keys.
+* Generated reads always bypass Redis inside explicit and task-scoped database
+  transactions, so cached state cannot replace the transaction's own view.
+  `remember(0)` is invalid. Outside transactions, explicitly requesting cache
+  without initializing Redis fails closed as a configuration error; transport
+  failures and corrupt cached JSON fail open to the authoritative database.
+* Cache writes occur only after a successful database read and retain encrypted
+  model fields as ciphertext. Automatic write invalidation and a durable
+  post-commit invalidation outbox are not implemented: callers must choose a
+  bounded TTL and accept that a remembered query can be stale until expiry.
+
+### 5.6. Polyglot Persistence Boundary
 
 * Optional persistence adapters are disabled by default and selected with
   `mongodb`, `duckdb`, `turso`, `surrealdb`, or the `polyglot` convenience

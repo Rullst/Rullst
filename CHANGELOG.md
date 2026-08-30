@@ -66,6 +66,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mutation even when the outer caller catches the error. Bulk per-row history,
   actor identity, revision restore, and durable post-commit delivery remain
   outside this contract.
+- Hardened generated `.remember(seconds)` Redis query caching with versioned
+  SHA-256 keys bound to an explicit application namespace, opaque tenant scope,
+  table, SQL and typed bindings. Explicit and task-scoped transactions bypass
+  cache, zero TTL is rejected, missing Redis configuration fails closed, and
+  Redis transport/corrupt-entry failures fall back to the database. Automatic
+  post-commit write invalidation remains roadmap work, so TTL bounds staleness.
+  CI and release gates exercise cache hits, TTL, corrupt-entry recovery and both
+  transaction APIs against a pinned live Redis service.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

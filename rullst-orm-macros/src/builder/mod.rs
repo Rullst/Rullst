@@ -7,6 +7,7 @@ pub mod chunking;
 pub mod clauses;
 pub mod execution;
 pub mod magic_methods;
+mod query_cache;
 pub mod sql_assembly;
 pub mod where_clauses;
 

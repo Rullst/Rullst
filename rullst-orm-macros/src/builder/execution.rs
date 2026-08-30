@@ -108,18 +108,33 @@ pub fn generate_execution_methods(
         .map(|field| field.name.to_string())
         .collect::<Vec<_>>();
     let delete_all_logic = generate_delete_all_logic(parsed);
+    let cache_read = super::query_cache::generate_cache_read(
+        name,
+        table_name,
+        &decrypt_results,
+        &hook_after_fetch,
+        eager_loads,
+    );
+    let cache_write = super::query_cache::generate_cache_write(name);
 
     vec![quote! {
         #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
         pub async fn get(&self) -> Result<Vec<#name>, rullst_orm::Error> {
-            rullst_orm::dispatch_executor!(read_pool, |pool| self.get_with_tx_internal(pool).await)
+            if let Ok(tx_arc) = rullst_orm::CURRENT_TX.try_with(|tx| tx.clone()) {
+                let mut tx_guard = tx_arc.lock().await;
+                if let Some(tx) = tx_guard.as_mut() {
+                    return self.get_with_tx_internal(&mut **tx, false).await;
+                }
+            }
+            let pool = rullst_orm::Orm::read_pool()?;
+            self.get_with_tx_internal(pool, true).await
         }
 
-        pub async fn get_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<Vec<#name>, rullst_orm::Error> {
-            self.get_with_tx_internal(&mut **tx).await
+        pub async fn get_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Vec<#name>, rullst_orm::Error> {
+            self.get_with_tx_internal(&mut **tx, false).await
         }
 
-        async fn get_with_tx_internal<'e, E>(&self, executor: E) -> Result<Vec<#name>, rullst_orm::Error>
+        async fn get_with_tx_internal<'e, E>(&self, executor: E, _allow_cache: bool) -> Result<Vec<#name>, rullst_orm::Error>
         where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
         {
             if !self.errors.is_empty() {
@@ -127,35 +142,7 @@ pub fn generate_execution_methods(
             }
             let query_str = self.to_sql();
 
-            #[cfg(feature = "redis")]
-            {
-                if let Some(ttl) = self.remember_ttl {
-                    use rullst_orm::_redis::AsyncCommands;
-                    use std::hash::{Hash, Hasher};
-                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                    query_str.hash(&mut hasher);
-                    for binding in &self.bindings {
-                        match binding {
-                            rullst_orm::RullstValue::String(s) => s.hash(&mut hasher),
-                            rullst_orm::RullstValue::Int(i) => i.hash(&mut hasher),
-                            rullst_orm::RullstValue::Float(f) => f.to_bits().hash(&mut hasher),
-                            rullst_orm::RullstValue::Bool(b) => b.hash(&mut hasher),
-                        }
-                    }
-                    let cache_key = format!("orm:cache:{}:{:x}", #table_name, hasher.finish());
-                    let mut conn = rullst_orm::Orm::redis_manager()?;
-                    if let Ok(cached_data) = conn.get::<_, String>(&cache_key).await {
-                        if !cached_data.is_empty() {
-                            if let Ok(mut results) = #name::from_cache_json_array(&cached_data) {
-                                #decrypt_results
-                                #hook_after_fetch
-                                #eager_loads
-                                return Ok(results);
-                            }
-                        }
-                    }
-                }
-            }
+            #cache_read
 
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
@@ -180,27 +167,7 @@ pub fn generate_execution_methods(
                 }
             };
 
-            #[cfg(feature = "redis")]
-            {
-                if let Some(ttl) = self.remember_ttl {
-                    use rullst_orm::_redis::AsyncCommands;
-                    use std::hash::{Hash, Hasher};
-                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                    query_str.hash(&mut hasher);
-                    for binding in &self.bindings {
-                        match binding {
-                            rullst_orm::RullstValue::String(s) => s.hash(&mut hasher),
-                            rullst_orm::RullstValue::Int(i) => i.hash(&mut hasher),
-                            rullst_orm::RullstValue::Float(f) => f.to_bits().hash(&mut hasher),
-                            rullst_orm::RullstValue::Bool(b) => b.hash(&mut hasher),
-                        }
-                    }
-                    let cache_key = format!("orm:cache:{}:{:x}", #table_name, hasher.finish());
-                    let serialized = #name::to_cache_json_array(&results);
-                    let mut conn = rullst_orm::Orm::redis_manager()?;
-                    let _: Result<(), rullst_orm::_redis::RedisError> = conn.set_ex(&cache_key, serialized, ttl as u64).await;
-                }
-            }
+            #cache_write
 
             #decrypt_results
             #hook_after_fetch
@@ -216,7 +183,7 @@ pub fn generate_execution_methods(
             Ok(results.into_iter().next())
         }
 
-        pub async fn first_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<Option<#name>, rullst_orm::Error> {
+        pub async fn first_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Option<#name>, rullst_orm::Error> {
             let mut builder = self.clone();
             builder.limit = Some(1);
             let results = builder.get_with_tx(tx).await?;

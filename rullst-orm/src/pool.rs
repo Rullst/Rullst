@@ -48,10 +48,14 @@ impl OrmState {
 static ORM_STATE: OnceLock<OrmState> = OnceLock::new();
 
 #[cfg(feature = "redis")]
-static REDIS_CLIENT: OnceLock<crate::_redis::Client> = OnceLock::new();
+struct RedisState {
+    client: crate::_redis::Client,
+    manager: crate::_redis::aio::ConnectionManager,
+    cache_namespace: String,
+}
 
 #[cfg(feature = "redis")]
-static REDIS_MANAGER: OnceLock<crate::_redis::aio::ConnectionManager> = OnceLock::new();
+static REDIS_STATE: OnceLock<RedisState> = OnceLock::new();
 
 static PREVENT_LAZY_LOADING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
@@ -367,37 +371,71 @@ impl Orm {
         crate::schema::set_query_timeout(secs);
     }
 
-    /// Initialize Redis connection and connection manager for caching and events
+    /// Initializes Redis with the compatibility cache namespace `default`.
+    ///
+    /// Applications sharing one Redis database should prefer
+    /// [`Orm::init_redis_with_namespace`] and choose a unique stable namespace.
     #[cfg(feature = "redis")]
     #[cfg_attr(test, mutants::skip)]
     pub async fn init_redis(redis_url: &str) -> Result<(), crate::Error> {
+        Self::init_redis_with_namespace(redis_url, "default").await
+    }
+
+    /// Initializes Redis and isolates generated `.remember(...)` query keys
+    /// under an application-specific namespace.
+    ///
+    /// The namespace must contain 1-64 ASCII letters, digits, dots, dashes or
+    /// underscores. Redis hash model helpers keep their existing key contract.
+    #[cfg(feature = "redis")]
+    #[cfg_attr(test, mutants::skip)]
+    pub async fn init_redis_with_namespace(
+        redis_url: &str,
+        cache_namespace: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        if REDIS_STATE.get().is_some() {
+            return Err(crate::Error::AlreadyInitialized);
+        }
+        let cache_namespace = cache_namespace.into();
+        crate::query_cache::validate_namespace(&cache_namespace)?;
         let client = crate::_redis::Client::open(redis_url)?;
         let manager = crate::_redis::aio::ConnectionManager::new(client.clone()).await?;
-        let _ = REDIS_CLIENT.set(client);
-        let _ = REDIS_MANAGER.set(manager);
-        Ok(())
+        REDIS_STATE
+            .set(RedisState {
+                client,
+                manager,
+                cache_namespace,
+            })
+            .map_err(|_| crate::Error::AlreadyInitialized)
     }
 
     /// Get reference to the global Redis client
     #[cfg(feature = "redis")]
     #[cfg_attr(test, mutants::skip)]
     pub fn redis_client() -> Result<&'static crate::_redis::Client, crate::Error> {
-        REDIS_CLIENT.get().ok_or_else(|| {
-            crate::Error::Internal(
-                "Orm::init_redis() must be called before using cache features".to_string(),
-            )
-        })
+        Ok(&Self::redis_state()?.client)
     }
 
     /// Get clone of the thread-safe connection manager for async Redis queries
     #[cfg(feature = "redis")]
     #[cfg_attr(test, mutants::skip)]
     pub fn redis_manager() -> Result<crate::_redis::aio::ConnectionManager, crate::Error> {
-        REDIS_MANAGER.get().cloned().ok_or_else(|| {
+        Ok(Self::redis_state()?.manager.clone())
+    }
+
+    #[cfg(feature = "redis")]
+    fn redis_state() -> Result<&'static RedisState, crate::Error> {
+        REDIS_STATE.get().ok_or_else(|| {
             crate::Error::Internal(
-                "Orm::init_redis() must be called before using cache features".to_string(),
+                "Orm::init_redis() or Orm::init_redis_with_namespace() must be called before using Redis features".to_string(),
             )
         })
+    }
+
+    /// Returns the application namespace used by generated query caches.
+    #[cfg(feature = "redis")]
+    #[doc(hidden)]
+    pub fn redis_cache_namespace() -> Result<&'static str, crate::Error> {
+        Ok(Self::redis_state()?.cache_namespace.as_str())
     }
 }
 

@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "redis")]
     {
-        if let Err(e) = Orm::init_redis(redis_url).await {
+        if let Err(e) = Orm::init_redis_with_namespace(redis_url, "products-demo").await {
             println!(
                 "⚠️ Could not connect to Redis: {}. Skipping Redis caching and Pub/Sub event demo.",
                 e
@@ -82,7 +82,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Enable query logging to verify cache hits
         Orm::enable_query_log();
 
-        // 5. Caching: fetch with .remember(10) (10 seconds cache TTL)
+        // 5. Caching: fetch with .remember(10) (10 seconds cache TTL).
+        // Writes do not automatically invalidate query cache yet, so the TTL
+        // must safely bound staleness for the application's domain.
         println!(
             "\n🔍 Fetching product for the FIRST time (should hit SQL database and cache in Redis):"
         );

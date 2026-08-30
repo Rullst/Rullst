@@ -114,7 +114,13 @@ pub fn generate_builder_struct(
 
             #[cfg(feature = "redis")]
             pub fn remember(mut self, seconds: usize) -> Self {
-                self.remember_ttl = Some(seconds);
+                if seconds == 0 {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "remember() requires a TTL greater than zero".to_string()
+                    ));
+                } else {
+                    self.remember_ttl = Some(seconds);
+                }
                 self
             }
 

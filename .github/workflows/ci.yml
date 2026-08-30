@@ -146,7 +146,7 @@ jobs:
           esac
 
   redis-rate-limit:
-    name: Redis distributed rate-limit contract
+    name: Redis live contracts
     runs-on: ubuntu-latest
     timeout-minutes: 60
     services:
@@ -170,6 +170,11 @@ jobs:
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
+
+      - name: Prove ORM query-cache isolation, TTL and transaction bypass
+        env:
+          RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: cargo test -p rullst-orm --features redis --test query_cache_live
 
   feature-boundaries:
     name: Public no-default and isolated feature boundaries

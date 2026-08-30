@@ -39,7 +39,7 @@ walkdir = "2.5.0"
 
 [features]
 default = []
-redis = ["dep:redis"]
+redis = ["dep:redis", "dep:sha2"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
 turso = ["dep:reqwest", "dep:url", "dep:sha2"]

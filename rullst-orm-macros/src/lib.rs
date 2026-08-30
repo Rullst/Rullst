@@ -186,6 +186,29 @@ mod tests {
     }
 
     #[test]
+    fn generated_query_cache_is_transaction_aware_and_strongly_namespaced() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(Orm)]
+            #[orm(table = "users", tenant = "organization_id")]
+            pub struct User {
+                pub id: i32,
+                pub organization_id: i32,
+                pub name: String,
+            }
+        };
+        let (_, builder, models) = run_macro_generator(&input);
+
+        assert!(builder.contains("query_cache :: query_key"));
+        assert!(builder.contains("CURRENT_TX"));
+        assert!(builder.contains("get_with_tx_internal (& mut * * tx , false)"));
+        assert!(builder.contains("get_with_tx_internal (pool , true)"));
+        assert!(builder.contains("TTL greater than zero"));
+        assert!(!builder.contains("DefaultHasher"));
+        assert!(models.contains("find_with_tx"));
+        assert!(models.contains("Transaction < '_ >"));
+    }
+
+    #[test]
     fn test_model_with_relations() {
         let input: DeriveInput = parse_quote! {
             #[derive(Orm)]

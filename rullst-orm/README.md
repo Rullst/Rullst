@@ -85,6 +85,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `i32` IDs without offset drift when already processed rows are deleted, and
   propagates callback errors. `.chunk()` remains available for offset-based
   compatibility.
+- **Transaction-Aware Redis Query Cache**: `.remember(seconds)` uses a
+  versioned SHA-256 key bound to the application namespace, active tenant,
+  generated SQL and typed bindings. Generated reads bypass cache inside every
+  ORM transaction so Redis cannot replace the transaction's database view.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
@@ -156,6 +160,32 @@ async fn main() -> Result<(), rullst_orm::Error> {
     Ok(())
 }
 ```
+
+### Optional Redis query cache
+
+Enable the `redis` feature and give each application sharing a Redis database a
+stable namespace:
+
+```rust
+use rullst_orm::Orm;
+
+Orm::init_redis_with_namespace(
+    "redis://127.0.0.1:6379",
+    "academy-production",
+).await?;
+
+let users = User::query().where_like("email", "%@example.com")
+    .remember(30)
+    .get()
+    .await?;
+```
+
+An explicitly remembered query outside a transaction requires Redis
+initialization. Connection/command failures and corrupt cache entries fall back
+to the database, while missing configuration fails closed. Explicit and
+task-scoped transactions always bypass the cache. Writes are not automatically
+invalidated yet, so select a TTL that safely bounds stale data; do not cache
+authorization or other freshness-critical reads.
 
 ---
 

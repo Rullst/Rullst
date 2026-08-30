@@ -105,7 +105,7 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
             Self::query().where_eq("id", id).first().await
         }
 
-        pub async fn find_with_tx(id: i32, tx: &mut rullst_orm::db::Transaction<'static>) -> Result<Option<Self>, rullst_orm::Error> {
+        pub async fn find_with_tx(id: i32, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Option<Self>, rullst_orm::Error> {
             Self::query().where_eq("id", id).first_with_tx(tx).await
         }
 
@@ -113,7 +113,7 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
             Self::query().get().await
         }
 
-        pub async fn all_with_tx(tx: &mut rullst_orm::db::Transaction<'static>) -> Result<Vec<Self>, rullst_orm::Error> {
+        pub async fn all_with_tx(tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Vec<Self>, rullst_orm::Error> {
             Self::query().get_with_tx(tx).await
         }
     }

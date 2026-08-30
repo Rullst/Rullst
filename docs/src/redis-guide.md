@@ -51,6 +51,49 @@ The built-in Redis cache prefixes keys with `rullst:cache:`. `flush()` scans and
 unlinks keys under that prefix; use dedicated credentials/database boundaries
 when multiple applications share a Redis service.
 
+## ORM `.remember(...)` queries
+
+The ORM has a separate opt-in query-cache contract behind its `redis` feature:
+
+```toml
+[dependencies]
+rullst-orm = { version = "12.0.0-rc.1", features = ["redis"] }
+```
+
+```rust
+use rullst_orm::Orm;
+
+let redis_url = std::env::var("REDIS_URL")?;
+Orm::init_redis_with_namespace(&redis_url, "academy-production").await?;
+
+let recent = User::query()
+    .where_eq("active", true)
+    .remember(30)
+    .get()
+    .await?;
+```
+
+Use a stable, unique namespace for every application that shares a Redis
+database. Query keys bind that namespace, an opaque digest of the active tenant
+scope, table, generated SQL and typed bindings. They do not expose raw tenant
+identifiers. The older `Orm::init_redis(url)` API remains available and uses
+`default`; only use it with a dedicated Redis database.
+
+The failure and consistency rules are explicit:
+
+- `remember(0)` is rejected.
+- Missing Redis initialization is a configuration error for a remembered query
+  outside a transaction.
+- Redis command failures or corrupt JSON fall back to the authoritative
+  database; a successful read is returned even if cache population fails.
+- Explicit and task-scoped ORM transactions always bypass query cache.
+- ORM writes do not automatically invalidate remembered results. Keep TTLs
+  short enough for the domain, and do not cache authorization or other reads
+  that require immediate freshness.
+
+The Core `Cache` facade and ORM query cache use different keyspaces and APIs;
+initializing one does not initialize the other.
+
 ## Queue choices
 
 Rullst provides explicit SQLite and Redis queue constructors:

@@ -72,6 +72,9 @@ pub mod policy;
 pub mod polyglot;
 pub mod pool;
 pub mod privacy;
+#[cfg(feature = "redis")]
+#[doc(hidden)]
+pub mod query_cache;
 pub mod raw;
 pub mod replica;
 pub mod repository;

@@ -54,7 +54,12 @@ retaining Rust typing, explicit escape hatches and parameterized values.
   counterpart traverse the generated `i32` primary key with stable keyset
   pagination. This is not a database-server cursor or a cross-shard snapshot.
 - [x] **Async Streams**: Query builders expose bounded `futures::Stream` row iteration.
-- [~] **Integrated Caching Layer**: `.remember(seconds)` has a Redis implementation, but no live Redis conformance/invalidation contract is currently claimed.
+- [~] **Integrated Caching Layer**: `.remember(seconds)` uses versioned
+  application/tenant-aware SHA-256 keys and bypasses explicit/task-scoped
+  transactions. Missing configuration fails closed; transport/corrupt-entry
+  failures use the database. A pinned single-node Redis gate covers hit, TTL,
+  corrupt-entry recovery and transaction bypass; automatic post-commit write
+  invalidation and cluster/failover evidence are not currently claimed.
 - [~] **Asynchronous Reactive Event Hooks**: Async observers and optional Redis publish exist; a durable, strictly post-commit outbox does not.
 - [~] **Security & Performance Static Audit**: Current gates and targeted hardening are tracked; an old third-party audit cannot become a timeless “all findings resolved” guarantee.
 - [ ] **Continuous Performance Comparison with Diesel and SeaORM**: Rullst Criterion benchmarks exist, but the historical cross-ORM comparison/proof does not.
