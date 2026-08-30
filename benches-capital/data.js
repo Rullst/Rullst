@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788096747571,
+  "lastUpdate": 1788099260158,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -2346,6 +2346,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "69c0c8fdb08ce069d05598457bf131e09b75bd2b",
+          "message": "feat(orm): add typed pgvector contract",
+          "timestamp": "2026-08-30T10:56:53-03:00",
+          "tree_id": "36b226e99264ebf14477456b3637b82eafa7c031",
+          "url": "https://github.com/Rullst/Rullst/commit/69c0c8fdb08ce069d05598457bf131e09b75bd2b"
+        },
+        "date": 1788099259384,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
