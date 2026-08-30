@@ -89,4 +89,6 @@ async fn test_matrix_mysql_crud() {
 
     let not_found = User::find(user.id).await.unwrap();
     assert!(not_found.is_none());
+
+    support::exercise_outbox().await;
 }

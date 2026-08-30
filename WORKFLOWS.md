@@ -57,7 +57,11 @@ minimal umbrella boundaries, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. Its pinned live
 Redis job also proves ORM cache hit/TTL/recovery, tenant/table invalidation,
 rollback preservation, process-local post-commit observers and Scout commit
-ordering. A dedicated job checks the declared MSRV, Rust 1.96.0.
+ordering. A separate SQLite outbox contract runs on all three operating systems
+and covers atomicity, conflicting idempotency keys, claim races, lease expiry,
+retry and dead-letter; the relational matrix repeats the core outbox lifecycle
+against PostgreSQL, MySQL, MariaDB and strict SQLite. A dedicated job checks
+the declared MSRV, Rust 1.96.0.
 
 ## Recommended `main` branch-protection profile
 
@@ -186,7 +190,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight benchmark groups with non-blocking 20% regression alerts and gh-pages history. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests, isolated strict-DB compile/runtime boundaries, and MSRV. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests including the SQLite transactional outbox contract, relational/polyglot live matrices, isolated strict-DB compile/runtime boundaries, and MSRV. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking. |

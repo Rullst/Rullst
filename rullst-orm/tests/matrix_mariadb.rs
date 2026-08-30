@@ -77,4 +77,6 @@ async fn test_matrix_mariadb_crud() {
             .expect("MariaDB select after delete should execute")
             .is_none()
     );
+
+    support::exercise_outbox().await;
 }

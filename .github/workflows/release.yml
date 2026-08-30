@@ -74,6 +74,11 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace --all-features
 
+      - name: Run portable transactional outbox contract
+        run: >-
+          cargo test -p rullst-orm --no-default-features
+          --test outbox_transaction_test -- --test-threads=1
+
       - name: Run matrix DB tests (Testcontainers — SQL, document and edge backends)
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"

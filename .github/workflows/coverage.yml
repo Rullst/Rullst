@@ -44,12 +44,14 @@ jobs:
         run: |
           cargo llvm-cov --no-report --all-features --workspace
 
-      - name: Run cargo-llvm-cov (DB matrix tests — postgres & mysql via testcontainers)
-        # Must run without strict-* features so the cfg gates are satisfied
+      - name: Run cargo-llvm-cov (outbox and DB matrix contracts)
+        # Must run without strict-* features so the cfg gates are satisfied.
+        # The outbox test uses SQLite; PostgreSQL/MySQL use testcontainers.
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
         run: |
           cargo llvm-cov --no-report -p rullst-orm \
+            --test outbox_transaction_test \
             --test matrix_postgres --test matrix_mysql \
             -- --test-threads=1
 

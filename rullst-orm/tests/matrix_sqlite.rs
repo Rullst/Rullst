@@ -5,6 +5,8 @@
 ))]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod support;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 
@@ -54,4 +56,6 @@ async fn strict_sqlite_crud_uses_the_sqlite_pool_and_dialect() {
             .expect("strict SQLite final select should work")
             .is_none()
     );
+
+    support::exercise_outbox().await;
 }

@@ -81,8 +81,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   generated save/delete or `Orm::transaction` has committed. Redis pub/sub and
   Scout projections use the same boundary, rollback discards callbacks, all
   queued callbacks are attempted, and `PostCommit` distinguishes effect failure
-  after durable persistence. This is not a crash-safe outbox/retry system, and
-  caller-owned raw SQLx transactions cannot expose their eventual commit.
+  after durable persistence. These generated callbacks remain process-local,
+  and caller-owned raw SQLx transactions cannot expose their eventual commit.
+- Added an explicit database-backed transactional outbox to `rullst-orm`.
+  Enqueue participates in the domain transaction, deduplicates exact payloads
+  by stream/event key, rejects conflicting key reuse, and exposes bounded
+  lease/token claiming, retry and dead-letter transitions. SQLite plus live
+  PostgreSQL, MySQL and MariaDB contracts cover atomic commit/rollback and
+  delivery state. Delivery remains at least once: consumers own idempotency,
+  production migrations and the external dispatcher.
 - Added a bounded Turso-primary ORM profile for blank/API applications.
   `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
   filters, ordering, pagination and count methods. `TursoOrm` initializes the

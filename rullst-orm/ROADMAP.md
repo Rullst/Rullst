@@ -64,9 +64,12 @@ retaining Rust typing, explicit escape hatches and parameterized values.
 - [~] **Asynchronous Reactive Event Hooks**: `after_commit`, generated
   `committed` observers, Redis invalidation/pub-sub and Scout projection use the
   managed transaction commit boundary. Rollback drops effects and a distinct
-  error reports failures after persistence. This is process-local; a durable,
-  idempotent outbox/retry worker is still required for guaranteed delivery, and
-  caller-owned raw SQLx transactions cannot expose their later decision.
+  error reports failures after persistence. The opt-in relational `Outbox`
+  now supplies atomic idempotent enqueue, lease/token claims, bounded retry and
+  dead-letter across PostgreSQL, MySQL/MariaDB and SQLite. Generated hooks are
+  still process-local and are not automatically serialized into application
+  events; external consumers must be idempotent and caller-owned raw SQLx
+  transactions cannot expose their later decision.
 - [~] **Security & Performance Static Audit**: Current gates and targeted hardening are tracked; an old third-party audit cannot become a timeless “all findings resolved” guarantee.
 - [ ] **Continuous Performance Comparison with Diesel and SeaORM**: Rullst Criterion benchmarks exist, but the historical cross-ORM comparison/proof does not.
 - [~] **Native OpenTelemetry**: Query spans use `tracing`; transaction/checkout coverage and an OpenTelemetry export contract are incomplete.

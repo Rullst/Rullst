@@ -208,11 +208,39 @@ new_user.delete().await?;
   `delete_with_tx` does not expose its later commit/rollback decision to the
   ORM. Use `Orm::transaction` for the strict process-local boundary.
 * These callbacks do not survive process failure and provide no retry,
-  idempotency or cross-node delivery. Irreversible effects and guaranteed
-  webhooks require an application-owned transactional outbox written in the
-  same database transaction.
+  idempotency or cross-node delivery. Use the explicit durable outbox below
+  for an irreversible or externally delivered effect; it is not enabled
+  automatically by a generated observer.
 
-### 5.6. Generated Redis Query Cache Contract
+### 5.6. Durable Transactional Outbox Contract
+
+* `Outbox::enqueue` accepts only a currently managed `Orm::transaction` and
+  writes `rullst_outbox` through that same transaction. A domain rollback also
+  removes the event. `enqueue_with_tx` provides the equivalent explicit path
+  for a caller-owned SQLx transaction. No implicit independent commit is
+  permitted.
+* `(stream, event_key)` is the database uniqueness boundary. Replaying the same
+  key and exact event kind/payload returns the existing `i64` identifier;
+  reusing the key with different content fails closed. `stream`, event key,
+  event kind and worker identifiers use a bounded ASCII grammar, and serialized
+  payloads are limited to one MiB.
+* PostgreSQL, MySQL/MariaDB and SQLite share the outbox state machine. A claim
+  increments attempts and receives a random token plus a bounded lease. Only
+  that token may acknowledge or fail the event; expiration permits another
+  worker to reclaim it. Failure schedules a bounded retry or moves the event to
+  `dead_letter` at the configured attempt limit, including a worker that dies
+  while holding its final lease.
+* Delivery is **at least once**, not exactly once. A worker may perform its
+  external effect and crash before acknowledgement, so consumers must use the
+  stable stream/event key as their own idempotency key. Ordering across retries
+  or concurrent workers is not guaranteed.
+* `Outbox::install` is an explicit setup/test convenience and never runs at
+  startup. `OutboxMigration` puts the same schema under the built-in reviewed
+  migration lifecycle. The ORM does not infer tenant authorization from
+  `stream`, automatically serialize model observers, dispatch HTTP webhooks,
+  purge delivered rows or promise cross-database transactions.
+
+### 5.7. Generated Redis Query Cache Contract
 
 * The optional `redis` feature enables `.remember(seconds)` for generated SQLx
   reads. `Orm::init_redis_with_namespace(url, application_namespace)` is the
@@ -235,7 +263,7 @@ new_user.delete().await?;
   Redis cluster/failover and durable invalidation delivery as separate
   application contracts.
 
-### 5.7. Polyglot Persistence Boundary
+### 5.8. Polyglot Persistence Boundary
 
 * Optional persistence adapters are disabled by default and selected with
   `mongodb`, `duckdb`, `turso`, `surrealdb`, or the `polyglot` convenience

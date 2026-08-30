@@ -60,6 +60,7 @@
 - [35. Performance Measurement & Resilient Operation](tutorials/35-high-performance-benchmarking.md)
 - [36. Assisted Framework Upgrades](tutorials/36-assisted-framework-upgrades.md)
 - [37. Polyglot Persistence](polyglot-persistence.md)
+- [38. Transactional Outbox & Durable Effects](tutorials/38-transactional-outbox.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

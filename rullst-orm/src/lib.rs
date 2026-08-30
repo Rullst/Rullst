@@ -68,6 +68,7 @@ pub mod database;
 pub mod db;
 pub mod error;
 pub mod intent;
+pub mod outbox;
 pub mod policy;
 pub mod polyglot;
 pub mod pool;
@@ -98,6 +99,7 @@ pub use collection::RullstCollection;
 pub use database::RullstDatabase;
 pub use error::RullstError as Error;
 pub use intent::IntentAnalyzer;
+pub use outbox::{ClaimedOutboxEvent, EnqueuedOutboxEvent, Outbox, OutboxMigration};
 pub use policy::Policy;
 pub use polyglot::{
     Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,

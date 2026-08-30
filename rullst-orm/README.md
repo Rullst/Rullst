@@ -71,9 +71,14 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
   save/delete commits. Rollback discards them, and post-commit failures use a
-  distinct error that says the database is already durable. This is
-  process-local, not a durable outbox; caller-owned raw SQLx transactions cannot
-  expose their eventual commit decision to generated hooks.
+  distinct error that says the database is already durable. These callbacks
+  remain process-local; caller-owned raw SQLx transactions cannot expose their
+  eventual commit decision to generated hooks.
+- **Durable Transactional Outbox**: opt-in `Outbox` events commit atomically
+  with domain state and use stream-scoped idempotency keys, bounded leases,
+  exact claim tokens, retries and dead-letter state. PostgreSQL, MySQL,
+  MariaDB and SQLite share the contract. Delivery is at least once, so the
+  external consumer must also be idempotent.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
 - **Scout Extension Point**: Connect an application-owned search engine to the
   generated search/save/delete hooks; live Meili/Algolia/Elastic adapters are
@@ -212,8 +217,37 @@ Orm::transaction(|_| Box::pin(async move {
 })).await?;
 ```
 
-For delivery that must survive a process crash, write an idempotent outbox row
-in the same database transaction and dispatch it from a retrying worker.
+For delivery that must survive a process crash, use the explicit outbox in the
+same managed transaction and dispatch it from a retrying worker:
+
+```rust
+use rullst_orm::{Error, Orm, Outbox};
+use serde_json::json;
+
+Orm::transaction(|_| Box::pin(async move {
+    // Persist domain state through the task-scoped transaction here.
+    Outbox::enqueue(
+        "tenant-42",
+        "invoice:123:issued:v1",
+        "invoice.issued",
+        &json!({ "invoice_id": 123 }),
+    ).await?;
+    Ok::<(), Error>(())
+})).await?;
+
+if let Some(event) = Outbox::claim_next("tenant-42", "mail-worker-1", 30, 8).await? {
+    // Deliver using (event.stream, event.event_key) as the consumer's
+    // idempotency boundary, then acknowledge the exact lease token.
+    Outbox::acknowledge(event.id, event.claim_key).await?;
+}
+# Ok::<(), Error>(())
+```
+
+`Outbox::install()` is only an explicit setup/test helper. Register
+`OutboxMigration` through the application's normal migration runner in
+production. Generated observers are not silently persisted, and an ACK lost
+after the external effect can cause redelivery; see the
+[transactional outbox tutorial](https://rullst.github.io/Rullst/book/tutorials/38-transactional-outbox.html).
 
 ---
 

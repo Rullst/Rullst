@@ -31,6 +31,7 @@ base64 = { workspace = true }
 rand = { workspace = true }
 async-stream = "0.3.5"
 tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 syn = { version = "3.0", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
 sha2 = { workspace = true, optional = true }
