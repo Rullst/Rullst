@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788079523810,
+  "lastUpdate": 1788082190015,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -10093,6 +10093,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2232,
             "range": "± 64",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9005dcd38a603e1ec15f61d8a87a9fed8d5d2fbe",
+          "message": "fix(orm): isolate remembered query caches",
+          "timestamp": "2026-08-30T06:23:37-03:00",
+          "tree_id": "06e98092aabdaa644a4771d30d9af9ce423751d3",
+          "url": "https://github.com/Rullst/Rullst/commit/9005dcd38a603e1ec15f61d8a87a9fed8d5d2fbe"
+        },
+        "date": 1788082188245,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 744,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1011,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 712,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2255,
+            "range": "± 75",
             "unit": "ns/iter"
           }
         ]
