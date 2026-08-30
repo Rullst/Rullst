@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788082642989,
+  "lastUpdate": 1788083916023,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4099,6 +4099,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 483,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "9503a16ad35d4e49e687fab1040437daae029507",
+          "message": "chore(repo): converge v5 and v12 histories",
+          "timestamp": "2026-08-30T06:45:36-03:00",
+          "tree_id": "888a1f0fb86e976b847bb103fbab54a9c9418fd7",
+          "url": "https://github.com/Rullst/Rullst/commit/9503a16ad35d4e49e687fab1040437daae029507"
+        },
+        "date": 1788083915602,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 498,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
