@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788124793582,
+  "lastUpdate": 1788125473635,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4639,6 +4639,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 485,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8a767d71dbdc789ee76a9d96ae94ba579b417f0f",
+          "message": "feat(cli): harden billing scaffold",
+          "timestamp": "2026-08-30T18:24:19-03:00",
+          "tree_id": "226a187b7daeb6cdc9b9f854236f25f91a02a55c",
+          "url": "https://github.com/Rullst/Rullst/commit/8a767d71dbdc789ee76a9d96ae94ba579b417f0f"
+        },
+        "date": 1788125472911,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 487,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
