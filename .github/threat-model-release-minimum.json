@@ -201,6 +201,15 @@
       "marker": "TM-PAY-06"
     },
     {
+      "id": "SEC-16",
+      "crate": "rullst-security",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "schema_guard::policy::tests::json_schema_policy_rejects_unexpected_shapes_and_external_refs",
+      "source": "rullst-security/src/schema_guard/policy.rs",
+      "marker": "TM-SEC-16"
+    },
+    {
       "id": "AI-01",
       "crate": "rullst-ai",
       "target_kind": "integration",

@@ -117,6 +117,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   middleware, so importing the raw browser router cannot expose writes.
   Application tenant/RBAC, durable audit, rollback and shared production access
   remain outside Studio's local developer contract.
+- Security's Schema Guard now compiles a bounded JSON Schema 2020-12 document
+  or one explicit OpenAPI 3.1 component into reusable route-scoped Axum
+  middleware. It preserves the exact media-type/syntax/duplicate-key/body/depth
+  checks, rejects external references, disables network and filesystem schema
+  retrieval, uses linear-time regexes and returns a value-free `422` on shape
+  mismatch. Authentication, ownership, domain validation and non-JSON
+  parameters remain separate application controls.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested

@@ -27,7 +27,7 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 34 abuse-case IDs to 34 exact
+`.github/threat-model-release-minimum.json` binds 35 abuse-case IDs to 35 exact
 tests across ten crates. The gate rejects missing markers, missing tests and
 zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
 Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
@@ -104,6 +104,18 @@ keys, jobs, files, logs and exports.
 
 Trust boundaries are identity ↔ membership, route ID ↔ object and application ↔
 database/cache/queue/storage.
+
+## TM-SEC-1 — declared HTTP payload contracts
+
+**Assets:** route semantics, validated request data, schema configuration and
+security telemetry.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `SEC-16` malformed, ambiguous or schema-confused JSON body | Require exact JSON media type on unsafe schema-bound requests; reject malformed, duplicate-key, oversized or deeply nested input before applying a precompiled closed schema. Never fetch attacker-selected schema references. | The bounded route policy compiles JSON Schema 2020-12 or one OpenAPI 3.1 component with local references, no network/filesystem resolver and linear-time regexes. The exact negative covers shape/additional-property confusion and external references; middleware tests cover 415/400/422 and exact body preservation. Auth, ownership, domain rules and non-JSON parameters remain separate. |
+
+Trust boundaries are application schema configuration ↔ compiled validator and
+untrusted HTTP body ↔ route handler.
 
 ## TM-PAY-1 — webhooks, billing, payouts and fiscal boundaries
 

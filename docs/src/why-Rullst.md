@@ -75,6 +75,8 @@ inputs rather than deployment footnotes. Current bounded contracts include:
 - fail-closed production environment and secret validation;
 - CSRF, secure headers, request heuristics, DLP, abuse controls, and security
   telemetry primitives;
+- route-scoped JSON Schema 2020-12 or OpenAPI 3.1-component enforcement with
+  bounded offline compilation, local-only references and linear-time regexes;
 - Argon2id password hashing, expiring encrypted sessions, RBAC, model policies,
   and explicit owner-or-role guards;
 - a typed OAuth/OIDC session transaction that keeps PKCE verifiers and OIDC

@@ -47,8 +47,11 @@
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
 - **Schema Guard:** Rejects malformed JSON, recursive duplicate keys, excessive
-  body size/depth, and ambiguous JSON content types. It is not an OpenAPI or
-  JSON Schema validator.
+  body size/depth, and ambiguous JSON content types. An application can also
+  compile one bounded JSON Schema 2020-12 document or one explicit OpenAPI 3.1
+  component into route-scoped middleware. References stay local, pattern
+  matching uses the linear-time regex engine, and schema construction performs
+  no filesystem or network retrieval.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
   AWS, and database patterns. The host must invoke it before emitting untrusted
   log fields.
@@ -149,6 +152,39 @@ fn enrollment_qr() -> Result<String, rullst_security::SecurityError> {
 
 Store the secret encrypted, show the QR only during a protected enrollment
 ceremony, and require a verified code before enabling MFA.
+
+### 6. Route-scoped JSON Schema enforcement
+
+```rust
+use axum::{Router, middleware, routing::post};
+use rullst_security::{
+    JsonSchemaPolicy, SchemaPolicyError, json_schema_guard_middleware,
+};
+use serde_json::json;
+
+fn schema_routes() -> Result<Router, SchemaPolicyError> {
+    let policy = JsonSchemaPolicy::from_schema(json!({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": { "name": { "type": "string", "minLength": 1 } },
+        "required": ["name"],
+        "additionalProperties": false
+    }))?;
+
+    Ok(Router::new().route(
+        "/users",
+        post(|| async { "accepted" }).layer(middleware::from_fn_with_state(
+            policy,
+            json_schema_guard_middleware,
+        )),
+    ))
+}
+```
+
+The compiled layer returns `415` for unsafe requests with a non-JSON media
+type, `400` for malformed/duplicate/oversized/deep JSON, and `422` for a valid
+JSON value that does not match the selected schema. Authentication,
+authorization, ownership and domain validation remain separate.
 
 ---
 

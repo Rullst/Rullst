@@ -57,7 +57,10 @@ pub use recovery_codes::{
     generate_recovery_codes, verify_recovery_code,
 };
 pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
-pub use schema_guard::{inspect_json_payload, schema_guard_middleware};
+pub use schema_guard::{
+    JsonSchemaPolicy, SchemaPolicyError, inspect_json_payload, json_schema_guard_middleware,
+    schema_guard_middleware,
+};
 pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
 pub use sri::{
     MAX_SRI_ASSET_BYTES, SriError, compute_sri_hash, sri_link_tag, sri_link_tag_from_file,

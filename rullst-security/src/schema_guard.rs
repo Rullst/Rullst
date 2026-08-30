@@ -9,6 +9,9 @@ use axum::{
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use std::{collections::HashSet, fmt};
 
+mod policy;
+pub use policy::{JsonSchemaPolicy, SchemaPolicyError};
+
 /// Default maximum JSON payload size: 2MB
 pub const DEFAULT_MAX_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 /// Default maximum object nesting depth: 32 levels
@@ -192,6 +195,73 @@ pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
     }
 }
 
+/// Route-scoped middleware that applies the strict transport checks and then a
+/// precompiled JSON Schema 2020-12 policy supplied by the application.
+///
+/// Mount this with `axum::middleware::from_fn_with_state`. The policy disables
+/// filesystem and network reference resolution and accepts only local `$ref`
+/// and `$dynamicRef` values.
+pub async fn json_schema_guard_middleware(
+    axum::extract::State(policy): axum::extract::State<JsonSchemaPolicy>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let content_type = req
+        .headers()
+        .get(axum::http::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    if !is_json_content_type(content_type) {
+        if matches!(
+            *req.method(),
+            axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+        ) {
+            return next.run(req).await;
+        }
+        SecurityStore::global().inc_schema_violations();
+        return (
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "This route requires a JSON Content-Type",
+        )
+            .into_response();
+    }
+
+    let (parts, body) = req.into_parts();
+    let bytes = match axum::body::to_bytes(body, DEFAULT_MAX_PAYLOAD_BYTES + 1).await {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            SecurityStore::global().inc_schema_violations();
+            return (
+                StatusCode::BAD_REQUEST,
+                "Failed to read JSON request body or payload too large",
+            )
+                .into_response();
+        }
+    };
+    if let Err(message) =
+        inspect_json_payload(&bytes, DEFAULT_MAX_NESTING_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES)
+    {
+        return (StatusCode::BAD_REQUEST, message).into_response();
+    }
+    let instance = match serde_json::from_slice(&bytes) {
+        Ok(instance) => instance,
+        Err(_) => {
+            SecurityStore::global().inc_schema_violations();
+            return (StatusCode::BAD_REQUEST, "Payload is not valid JSON").into_response();
+        }
+    };
+    if policy.validate(&instance).is_err() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "JSON payload does not match the configured schema",
+        )
+            .into_response();
+    }
+
+    next.run(Request::from_parts(parts, Body::from(bytes)))
+        .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,5 +385,70 @@ mod tests {
             .await
             .expect("middleware request should complete");
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    fn schema_bound_app() -> Router {
+        let policy = JsonSchemaPolicy::from_schema(serde_json::json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {"name": {"type": "string", "minLength": 1}},
+            "required": ["name"],
+            "additionalProperties": false
+        }))
+        .expect("route schema");
+        Router::new().route(
+            "/",
+            post(|body: String| async move { body }).layer(middleware::from_fn_with_state(
+                policy,
+                json_schema_guard_middleware,
+            )),
+        )
+    }
+
+    #[tokio::test]
+    async fn compiled_schema_middleware_preserves_valid_bodies_and_fails_closed() {
+        let valid = schema_bound_app()
+            .oneshot(
+                Request::post("/")
+                    .header(axum::http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"name":"Ada"}"#))
+                    .expect("valid request"),
+            )
+            .await
+            .expect("valid schema response");
+        assert_eq!(valid.status(), StatusCode::OK);
+        let returned = axum::body::to_bytes(valid.into_body(), 1_024)
+            .await
+            .expect("preserved body");
+        assert_eq!(returned, r#"{"name":"Ada"}"#);
+
+        for (content_type, body, expected) in [
+            (
+                "application/json",
+                r#"{"name":"Ada","role":"admin"}"#,
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
+            (
+                "application/json",
+                r#"{"name":"Ada","name":"Mallory"}"#,
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                "text/plain",
+                r#"{"name":"Ada"}"#,
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ),
+        ] {
+            let response = schema_bound_app()
+                .oneshot(
+                    Request::post("/")
+                        .header(axum::http::header::CONTENT_TYPE, content_type)
+                        .body(Body::from(body))
+                        .expect("schema rejection request"),
+                )
+                .await
+                .expect("schema rejection response");
+            assert_eq!(response.status(), expected);
+        }
     }
 }

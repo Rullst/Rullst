@@ -28,6 +28,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "ti
 tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+jsonschema = { workspace = true }
 dashmap = { workspace = true }
 ammonia = "4.0.0"
 rand = { workspace = true }
