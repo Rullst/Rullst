@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788073174013,
+  "lastUpdate": 1788079818860,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2635,6 +2635,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 486,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a4a9092469fbe186b0724b4dd268a8cb72257063",
+          "message": "fix(orm): make audit writes transaction atomic",
+          "timestamp": "2026-08-30T05:43:20-03:00",
+          "tree_id": "ac12ef7ef1b8114fb4d9a6dc10d9c194805d3deb",
+          "url": "https://github.com/Rullst/Rullst/commit/a4a9092469fbe186b0724b4dd268a8cb72257063"
+        },
+        "date": 1788079818488,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 534,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
