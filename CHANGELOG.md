@@ -123,7 +123,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   all-feature Clippy plus bounded unsafe/IDOR checks, and the CycloneDX 1.5 SBOM
   uses parsed Cargo metadata, a valid UUID serial and unique component refs.
 - Audited all 45 unique historical ORM `[x]` claims and removed a duplicated
-  roadmap body. The current ledger records 20 bounded integral contracts, 24
+  roadmap body. The current ledger records 21 bounded integral contracts, 23
   partial foundations and one absent comparison claim; 100% means classified,
   not fully implemented.
 - SQLx models declaring `tenant_column` now fail closed outside
@@ -140,6 +140,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Made implicit model deletes with marked direct soft-delete cascades atomic.
   Generated code reuses active transactions or creates its own transaction;
   a forced child-trigger failure proves that the parent mutation rolls back.
+- Bound generated magic filters for `String`, `i32`, `f64` and `bool` fields to
+  their persisted Rust value types. Dynamic column/raw query APIs remain
+  explicit runtime-checked escape hatches.
 - SQLx migration tracking is written after each successful migration, so a later
   failure cannot make earlier DDL appear pending; PostgreSQL rollback uses native
   placeholders. Transaction regressions now assert database rollback state

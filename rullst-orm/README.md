@@ -50,7 +50,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 
 **Key Features:**
 - **Generated CRUD**: Derive insert, update, delete, and find helpers from model metadata.
-- **Fluent Query Builder**: Chain `.where_eq()`, `.limit()`, and `.order_by()` effortlessly.
+- **Typed Fluent Query Builder**: Generated primitive filters such as
+  `.where_id(i32)` and `.where_name(impl Into<String>)` reject mismatched value
+  types at compile time; dynamic string-column methods remain explicit escape
+  hatches.
 - **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
   `with_tenant`, inject the tenant predicate into generated queries, protect

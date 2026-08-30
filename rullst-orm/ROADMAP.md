@@ -23,7 +23,10 @@ retaining Rust typing, explicit escape hatches and parameterized values.
 
 - [x] **Database Transactions**: `Orm::transaction` and explicit transaction handles cover generated/executor-aware operations with commit/rollback tests; direct caller-owned SQL must use the supplied transaction or executor macro.
 - [x] **ORM Collections**: `map`, `pluck`, `key_by` and other collection helpers.
-- [~] **Compile-Time Safety**: Generated typed column methods and strict SQLx backends exist; arbitrary/raw SQL is not compile-time schema checked.
+- [x] **Compile-Time Column/Value Safety (bounded)**: Generated primitive-field
+  filters bind the real persisted type and typed column enums reject unknown
+  names at compile time. Dynamic string-column and raw SQL APIs remain explicit
+  runtime-checked/caller-owned escape hatches.
 - [~] **Polymorphic Relationships**: `morphMany` and `morphOne` exist; inverse `morphTo` does not.
 - [x] **Factories and Seeders**: Fluent factory `make`/`create` plus the async `Seeder` contract; applications provide deterministic fake-data generators.
 

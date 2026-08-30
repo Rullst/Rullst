@@ -139,6 +139,11 @@ new_user.delete().await?;
   identifiers use the bounded ASCII grammar and pgvector helpers accept only
   finite canonical numeric vectors. Methods explicitly suffixed/named `raw`
   remain caller-owned escape hatches rather than an injection-safety claim.
+* Generated magic filters bind supported primitive fields to their Rust type at
+  compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
+  make unknown columns unrepresentable on typed paths. String-column builders,
+  custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
+  caller-owned alternatives, not compile-time schema verification.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
 
 ### 5.3. Tenant Scope Contract
