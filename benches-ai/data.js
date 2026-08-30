@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788057810930,
+  "lastUpdate": 1788061428868,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -2155,6 +2155,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 654,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3599d0adb6652a0d4d482f9fd3e152f535b6c711",
+          "message": "fix(orm): make implicit cascades atomic",
+          "timestamp": "2026-08-30T00:29:55-03:00",
+          "tree_id": "e2093ed5d7b1cdc59acbf5827b5ca349d46d9519",
+          "url": "https://github.com/Rullst/Rullst/commit/3599d0adb6652a0d4d482f9fd3e152f535b6c711"
+        },
+        "date": 1788061428378,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1671,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 358,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 762,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
