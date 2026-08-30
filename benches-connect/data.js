@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788117908326,
+  "lastUpdate": 1788118798984,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -2995,6 +2995,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 315,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8b77b3ffcbe304bcc0cfb3a279f5f398b6954232",
+          "message": "feat(mail): classify failover errors",
+          "timestamp": "2026-08-30T16:25:47-03:00",
+          "tree_id": "804787300cce2cfd09a3aca297399cdd7b46b7c5",
+          "url": "https://github.com/Rullst/Rullst/commit/8b77b3ffcbe304bcc0cfb3a279f5f398b6954232"
+        },
+        "date": 1788118798604,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 568,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
