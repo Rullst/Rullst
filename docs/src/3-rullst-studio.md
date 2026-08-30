@@ -56,6 +56,28 @@ Some panels poll HTTP JSON endpoints and the request logger uses SSE. The curren
 crate does not promise a separate WebSocket telemetry transport or zero runtime
 overhead.
 
+## Tooling boundaries
+
+- The data browser reads, searches, and paginates allowlisted SQLx identifiers;
+  it does not edit or delete records.
+- Swagger UI appears only when the application supplies its `OpenApi` document
+  with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
+  routes.
+- The request SSE records method, URI, status and latency. It deliberately does
+  not capture bodies or headers, which commonly contain credentials and PII.
+- The jobs view lists the bounded snapshot exposed by a supplied queue. SQLite
+  deletes successful rows, so it has no durable completion history; a custom
+  driver may retain and expose completed records.
+- The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
+  lookup values and normalizes Mermaid identifiers. An unconfigured or
+  unsupported source remains visibly unavailable.
+- The feature-flags page changes the database table used by `DbFeatureDriver`.
+  Already cached evaluations can remain stale until that driver's local TTL
+  expires.
+- The environment page redacts values by default and adds only a safe projection
+  of process-global `RullstConfig`; URLs, filesystem paths, secrets, cookies and
+  credentials are omitted.
+
 ## Telemetry contract
 
 Studio reads runtime state exposed by `RadarSnapshot`, `SpanCollector`, the

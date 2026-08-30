@@ -224,8 +224,15 @@ pub fn generate_builder_struct(
             pub fn join_constrained<F>(mut self, table: &str, modifier: F) -> Self
             where F: FnOnce(&mut rullst_orm::JoinClause) -> &mut rullst_orm::JoinClause
             {
-                let mut clause = rullst_orm::JoinClause::new("INNER");
+                if let Err(error) = rullst_orm::schema::validate_table_name(table) {
+                    self.errors.push(rullst_orm::Error::Validation(format!(
+                        "join_constrained() — invalid table identifier: {}",
+                        error
+                    )));
+                }
+                let mut clause = rullst_orm::JoinClause::new(table);
                 modifier(&mut clause);
+                self.errors.extend(clause.errors.iter().cloned());
                 self.joins.push(format!("INNER JOIN {} ON {}", table, clause.to_sql()));
                 for binding in clause.bindings {
                     self.bindings.push(binding);
@@ -243,6 +250,9 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(second) {
                     self.errors.push(rullst_orm::Error::Validation(format!("join() — invalid column identifier for `second`: {}", e)));
                 }
+                if !rullst_orm::schema::ALLOWED_OPERATORS.contains(&operator) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("join() — invalid operator `{}`", operator)));
+                }
                 self.joins.push(format!("INNER JOIN {} ON {} {} {}", table, first, operator, second));
                 self
             }
@@ -257,6 +267,9 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(second) {
                     self.errors.push(rullst_orm::Error::Validation(format!("left_join() — invalid column identifier for `second`: {}", e)));
                 }
+                if !rullst_orm::schema::ALLOWED_OPERATORS.contains(&operator) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("left_join() — invalid operator `{}`", operator)));
+                }
                 self.joins.push(format!("LEFT JOIN {} ON {} {} {}", table, first, operator, second));
                 self
             }
@@ -270,6 +283,9 @@ pub fn generate_builder_struct(
                 }
                 if let Err(e) = rullst_orm::schema::validate_identifier(second) {
                     self.errors.push(rullst_orm::Error::Validation(format!("right_join() — invalid column identifier for `second`: {}", e)));
+                }
+                if !rullst_orm::schema::ALLOWED_OPERATORS.contains(&operator) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("right_join() — invalid operator `{}`", operator)));
                 }
                 self.joins.push(format!("RIGHT JOIN {} ON {} {} {}", table, first, operator, second));
                 self
@@ -311,6 +327,11 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_l2_distance() — invalid column identifier: {}", e)));
                 }
+                if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "order_by_l2_distance() requires a non-empty finite vector".to_string()
+                    ));
+                }
                 let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
                 self.order_by = Some(format!("{} <-> '{}'", column, vec_str));
                 self
@@ -320,6 +341,11 @@ pub fn generate_builder_struct(
                 self.reject_skipped_column(column);
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_cosine_distance() — invalid column identifier: {}", e)));
+                }
+                if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "order_by_cosine_distance() requires a non-empty finite vector".to_string()
+                    ));
                 }
                 let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
                 self.order_by = Some(format!("{} <=> '{}'", column, vec_str));
@@ -331,6 +357,11 @@ pub fn generate_builder_struct(
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("order_by_inner_product() — invalid column identifier: {}", e)));
                 }
+                if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "order_by_inner_product() requires a non-empty finite vector".to_string()
+                    ));
+                }
                 let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
                 self.order_by = Some(format!("{} <#> '{}'", column, vec_str));
                 self
@@ -340,6 +371,16 @@ pub fn generate_builder_struct(
                 self.reject_skipped_column(column);
                 if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!("where_similar() — invalid column identifier: {}", e)));
+                }
+                if vector.is_empty() || vector.iter().any(|value| !value.is_finite()) {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "where_similar() requires a non-empty finite vector".to_string()
+                    ));
+                }
+                if !distance.is_finite() || distance < 0.0 {
+                    self.errors.push(rullst_orm::Error::Validation(
+                        "where_similar() requires a finite non-negative distance".to_string()
+                    ));
                 }
                 let vec_str = rullst_orm::_serde_json::to_string(&vector).unwrap_or_else(|_| "[]".to_string());
                 self.wheres.push(("AND".to_string(), format!("{} <-> '{}' < {}", column, vec_str, distance)));

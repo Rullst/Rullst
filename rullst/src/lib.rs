@@ -1,4 +1,5 @@
 pub use rullst_core::*;
+pub use rullst_macros::{Billable, require_role};
 
 /// Security facade for the lightweight Core middleware and, when the
 /// `security` feature is enabled, the extended `rullst-security` suite.

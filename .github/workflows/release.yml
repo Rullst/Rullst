@@ -74,10 +74,15 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace --all-features
 
-      - name: Run matrix DB tests (Testcontainers — PostgreSQL and MySQL)
+      - name: Run matrix DB tests (Testcontainers — SQL, document and edge backends)
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
-        run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
+          RULLST_REQUIRE_TESTCONTAINERS: "true"
+        run: |
+          cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
+          cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
+          cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
+          cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
 
       - name: Run live Redis distributed rate-limit contract
         env:

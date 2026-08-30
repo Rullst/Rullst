@@ -6,14 +6,93 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use std::{collections::HashSet, fmt};
 
 /// Default maximum JSON payload size: 2MB
 pub const DEFAULT_MAX_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 /// Default maximum object nesting depth: 32 levels
 pub const DEFAULT_MAX_NESTING_DEPTH: usize = 32;
+const DUPLICATE_KEY_MARKER: &str = "duplicate JSON object key";
 
-/// Inspects raw JSON bytes to verify maximum size and nesting depth to prevent JSON bomb DoS.
-/// Correctly ignores braces inside JSON quoted strings to prevent false positives on string values.
+struct StrictJson;
+
+impl<'de> Deserialize<'de> for StrictJson {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(StrictJsonVisitor)
+    }
+}
+
+struct StrictJsonVisitor;
+
+impl<'de> Visitor<'de> for StrictJsonVisitor {
+    type Value = StrictJson;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a JSON value without duplicate object keys")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut keys = HashSet::new();
+        while let Some(key) = map.next_key::<String>()? {
+            if !keys.insert(key) {
+                return Err(de::Error::custom(DUPLICATE_KEY_MARKER));
+            }
+            map.next_value::<StrictJson>()?;
+        }
+        Ok(StrictJson)
+    }
+
+    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        while sequence.next_element::<StrictJson>()?.is_some() {}
+        Ok(StrictJson)
+    }
+
+    fn visit_bool<E>(self, _value: bool) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_i64<E>(self, _value: i64) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_u64<E>(self, _value: u64) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_f64<E>(self, _value: f64) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_str<E>(self, _value: &str) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_string<E>(self, _value: String) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(StrictJson)
+    }
+}
+
+/// Validates JSON syntax, duplicate object keys, size and nesting depth.
+///
+/// This is a transport guard, not an OpenAPI/JSON Schema validator.
 pub fn inspect_json_payload(
     bytes: &[u8],
     max_depth: usize,
@@ -57,7 +136,23 @@ pub fn inspect_json_payload(
         }
     }
 
+    if let Err(error) = serde_json::from_slice::<StrictJson>(bytes) {
+        SecurityStore::global().inc_schema_violations();
+        if error.to_string().contains(DUPLICATE_KEY_MARKER) {
+            return Err("JSON object contains a duplicate key");
+        }
+        return Err("Payload is not valid JSON");
+    }
+
     Ok(())
+}
+
+fn is_json_content_type(value: &str) -> bool {
+    let media_type = value.split(';').next().map(str::trim).unwrap_or_default();
+    media_type.eq_ignore_ascii_case("application/json")
+        || media_type
+            .strip_suffix("+json")
+            .is_some_and(|prefix| prefix.starts_with("application/"))
 }
 
 /// Middleware that inspects application/json request payloads for JSON bombs and depth limits.
@@ -68,7 +163,7 @@ pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
         .and_then(|v: &HeaderValue| v.to_str().ok())
         .unwrap_or("");
 
-    if content_type.contains("application/json") {
+    if is_json_content_type(content_type) {
         let (parts, body) = req.into_parts();
 
         // Read request body up to MAX_PAYLOAD_BYTES + 1
@@ -141,6 +236,30 @@ mod tests {
         let res = inspect_json_payload(&json, 10, 1000);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), "Payload exceeds maximum allowed size");
+    }
+
+    #[test]
+    fn syntax_and_duplicate_keys_are_rejected_recursively() {
+        assert_eq!(
+            inspect_json_payload(br#"{"role":"user","role":"admin"}"#, 10, 1_024),
+            Err("JSON object contains a duplicate key")
+        );
+        assert_eq!(
+            inspect_json_payload(br#"{"outer":{"id":1,"id":2}}"#, 10, 1_024),
+            Err("JSON object contains a duplicate key")
+        );
+        assert_eq!(
+            inspect_json_payload(br#"{"unterminated":true"#, 10, 1_024),
+            Err("Payload is not valid JSON")
+        );
+    }
+
+    #[test]
+    fn content_type_matching_is_exact_and_supports_json_suffixes() {
+        assert!(is_json_content_type("application/json; charset=utf-8"));
+        assert!(is_json_content_type("application/problem+json"));
+        assert!(!is_json_content_type("text/application/json"));
+        assert!(!is_json_content_type("application/json-malicious"));
     }
 
     fn guarded_app() -> Router {

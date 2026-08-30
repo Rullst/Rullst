@@ -13,6 +13,10 @@
 - Deterministic empty/`mock_*` offline paths for supported provider capabilities.
 - Explicit separation between parseable JSON mode and provider-enforced JSON Schema output.
 - Ordered provider fallback, RAG prompt helper, vector index, and tool registry.
+- `cargo rullst make:chat-session` application scaffold with SQLx and
+  Turso-primary models, reversible migrations, bounded ordered history,
+  serialized sends, propagated persistence errors, and materialized runtime
+  contract tests.
 - Deny-by-default HTTPS egress fetcher with exact-host allowlist, validated and
   pinned DNS answers, manual redirects, peer verification, and streaming limits.
 
@@ -21,7 +25,8 @@
 - Streaming response abstraction and cancellation contract.
 - Compile-time JSON Schema derivation for Rust response types.
 - Provider-native tool invocation loop with explicit authorization boundaries.
-- Durable chat-memory adapters and ORM lifecycle hooks.
+- Reusable durable chat-memory adapters inside `rullst-ai` and transactional
+  ORM/outbox lifecycle hooks; the current CLI scaffold is application-owned.
 - Retrieval adapters for external vector databases.
 - Configurable guardrail policies and adaptive/live model-specific safety evaluations.
 

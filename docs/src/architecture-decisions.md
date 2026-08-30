@@ -22,6 +22,28 @@ operations still need parameter binding, authorization and transaction design.
 For most CRUD-oriented applications, start with Active Record and introduce a
 repository around domains that genuinely need a separate persistence boundary.
 
+## Database engines and capabilities
+
+The first database selector chooses exactly one SQL Active Record backend:
+
+| Selection | Current v12 boundary |
+| --- | --- |
+| SQLite | Local SQLx pool, migrations and relational ORM contract. |
+| PostgreSQL | SQLx PostgreSQL pool and live container CRUD/schema contract. |
+| MySQL | SQLx MySQL pool and live MySQL CRUD/schema contract. |
+| MariaDB | The same MySQL protocol implementation with a separate live MariaDB contract. |
+
+A second multi-select adds independent capabilities. Turso supplies explicit
+edge SQL, transactions and checked migrations; MongoDB supplies portable
+document CRUD; DuckDB supplies bounded analytics; SurrealDB supplies document
+CRUD and bounded read-only graph queries. Selecting one adds the precise Cargo
+features and environment keys, but does not make every model portable between
+different database families.
+
+This split prevents a Turso, MongoDB, analytics, or graph label from generating
+an application whose SQL Active Record migrations cannot run. See the
+[Polyglot Persistence guide](polyglot-persistence.md) for the APIs and limits.
+
 ## Frontend profile
 
 The current wizard exposes five selections, but they are not five complete,

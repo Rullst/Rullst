@@ -22,6 +22,11 @@ futures = "0.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
 redis = { workspace = true, features = ["tokio-comp", "connection-manager"], optional = true }
+mongodb = { version = "3.8.2", optional = true }
+duckdb = { version = "1.10505.0", features = ["bundled"], optional = true }
+libsql = { version = "0.9.30", default-features = false, features = ["remote", "tls"], optional = true }
+url = { version = "2.5.8", optional = true }
+reqwest = { workspace = true, features = ["json", "rustls", "stream"], optional = true }
 aes-gcm = "0.11.0"
 base64 = { workspace = true }
 rand = { workspace = true }
@@ -29,12 +34,18 @@ async-stream = "0.3.5"
 tracing = { workspace = true }
 syn = { version = "3.0", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
+sha2 = { workspace = true, optional = true }
 
 walkdir = "2.5.0"
 
 [features]
 default = []
 redis = ["dep:redis"]
+mongodb = ["dep:mongodb"]
+duckdb = ["dep:duckdb"]
+turso = ["dep:libsql", "dep:url", "dep:sha2"]
+surrealdb = ["dep:reqwest"]
+polyglot = ["mongodb", "duckdb", "turso", "surrealdb"]
 strict-postgres = []
 strict-mysql = []
 strict-sqlite = []
@@ -45,7 +56,7 @@ rand = { workspace = true }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
 testcontainers = "0.27.3"
-testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql"] }
+testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb", "mongo", "surrealdb"] }
 proptest = "1.11.0"
 
 [[bench]]

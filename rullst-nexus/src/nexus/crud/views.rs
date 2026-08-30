@@ -1,5 +1,6 @@
 //! HTML rendering components for Nexus CRUD views and forms.
 
+use crate::nexus::crud::batch::supports_deactivation;
 use crate::nexus::crud::query::{build_table_query, sanitize_identifier};
 use crate::nexus::types::{FieldKind, FieldMeta, NexusState, RegistryEntry};
 use std::fmt::Write as _;
@@ -9,7 +10,8 @@ pub fn render_empty_state_html(cols: usize, table: &str, q: &str) -> String {
     if q.is_empty() {
         format!(
             "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">No records found in table `{}`.</td></tr>",
-            cols, table
+            cols,
+            rullst_core::html::escape_str(table)
         )
     } else {
         format!(
@@ -157,7 +159,7 @@ pub async fn render_table_view(
 
     let th_cells = visible_fields.iter().fold(String::new(), |mut acc, f| {
         let col = f.name;
-        let lb = f.label;
+        let label = rullst_core::html::escape_str(f.label);
         let is_sorted = sort_by == Some(col);
         let next_order = if is_sorted && order == Some("asc") { "desc" } else { "asc" };
         let arrow = if is_sorted {
@@ -165,53 +167,60 @@ pub async fn render_table_view(
         } else {
             ""
         };
-        let t = entry.table;
-        let safe_q = rullst_core::html::escape_str(q);
-        let safe_col = rullst_core::html::escape_str(col);
-        let safe_order = rullst_core::html::escape_str(next_order);
+        let table_path = urlencoding::encode(entry.table);
+        let query_param = urlencoding::encode(q);
+        let column_param = urlencoding::encode(col);
+        let order_param = urlencoding::encode(next_order);
         let _ = write!(
             acc,
             "<th class=\"nexus-th\">\
-             <a href=\"/nexus/table/{t}?sort_by={safe_col}&order={safe_order}&q={safe_q}\" \
-             hx-get=\"/nexus/table/{t}?sort_by={safe_col}&order={safe_order}&q={safe_q}\" \
+             <a href=\"/nexus/table/{table_path}?sort_by={column_param}&amp;order={order_param}&amp;q={query_param}\" \
+             hx-get=\"/nexus/table/{table_path}?sort_by={column_param}&amp;order={order_param}&amp;q={query_param}\" \
              hx-target=\"#nexus-content\" hx-push-url=\"true\" style=\"color: inherit; text-decoration: none;\">\
-             {lb}{arrow}</a></th>"
+             {label}{arrow}</a></th>"
         );
         acc
     });
 
     let rows_html = render_table_rows(entry, q, page, sort_by, order).await;
 
-    let t = entry.table;
-    let lb = entry.label;
+    let table_path = urlencoding::encode(entry.table);
+    let safe_table = rullst_core::html::escape_str(entry.table);
+    let safe_label = rullst_core::html::escape_str(entry.label);
     let prev_page = if page > 1 { page - 1 } else { 1 };
     let next_page = page.saturating_add(1);
+    let deactivate_option = if supports_deactivation(entry) {
+        "<option value=\"deactivate\">Deactivate Selected</option>"
+    } else {
+        ""
+    };
 
     let mut out = String::new();
     let _ = write!(
         out,
         "<div class=\"nexus-page-header\">\
-         <div><h1 class=\"nexus-page-title\">{lb}</h1>\
-         <p class=\"nexus-page-subtitle\">Manage <code>{t}</code> collection records.</p></div>\
+         <div><h1 class=\"nexus-page-title\">{safe_label}</h1>\
+         <p class=\"nexus-page-subtitle\">Manage <code>{safe_table}</code> collection records.</p></div>\
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" \
-         hx-get=\"/nexus/table/{t}/new\" hx-target=\"#nexus-modal-body\" \
+         hx-get=\"/nexus/table/{table_path}/new\" hx-target=\"#nexus-modal-body\" \
          hx-on:htmx:after-request=\"document.getElementById('nexus-modal').showModal()\">\
-         &#43; New {lb}</button></div>"
+         &#43; New {safe_label}</button></div>"
     );
 
     let _ = write!(
         out,
-        "<form id=\"batch-form-{t}\" method=\"POST\" action=\"/nexus/table/{t}/batch\">\
+        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\">\
          <div class=\"nexus-toolbar\">\
          <div class=\"nexus-search-wrap\">\
          <span class=\"nexus-search-icon\">&#128269;</span>\
-         <input type=\"text\" class=\"nexus-search-input\" name=\"q\" value=\"{}\" placeholder=\"Search {lb}...\" \
-         hx-get=\"/nexus/table/{t}/search\" hx-trigger=\"keyup changed delay:300ms\" \
+         <input type=\"text\" class=\"nexus-search-input\" name=\"q\" value=\"{}\" placeholder=\"Search {safe_label}...\" \
+         hx-get=\"/nexus/table/{table_path}/search\" hx-trigger=\"keyup changed delay:300ms\" \
          hx-target=\"#nexus-table-body\" hx-include=\"[name='q']\" />\
          </div>\
          <select name=\"action\" class=\"nexus-btn nexus-btn-ghost\" style=\"padding: 8px 12px; font-size: 12px;\">\
          <option value=\"\">Bulk Actions</option>\
          <option value=\"delete\">Delete Selected</option>\
+         {deactivate_option}\
          </select>\
          <button type=\"submit\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"return confirm('Apply bulk action?')\">Apply</button>\
          </div>\
@@ -227,12 +236,12 @@ pub async fn render_table_view(
         rullst_core::html::escape_str(q)
     );
 
-    let safe_q = rullst_core::html::escape_str(q);
+    let query_param = urlencoding::encode(q);
     let sort_param = sort_by
-        .map(|s| format!("&sort_by={}", rullst_core::html::escape_str(s)))
+        .map(|sort| format!("&amp;sort_by={}", urlencoding::encode(sort)))
         .unwrap_or_default();
     let order_param = order
-        .map(|o| format!("&order={}", rullst_core::html::escape_str(o)))
+        .map(|order| format!("&amp;order={}", urlencoding::encode(order)))
         .unwrap_or_default();
 
     let _ = write!(
@@ -240,11 +249,11 @@ pub async fn render_table_view(
         "<div class=\"nexus-pagination\">\
          <div class=\"nexus-page-indicator\">Page {page}</div>\
          <div style=\"display: flex; gap: 8px;\">\
-         <a href=\"/nexus/table/{t}?page={prev_page}&q={safe_q}{sort_param}{order_param}\" \
-         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={prev_page}&q={safe_q}{sort_param}{order_param}\" \
+         <a href=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
+         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">&larr; Prev</a>\
-         <a href=\"/nexus/table/{t}?page={next_page}&q={safe_q}{sort_param}{order_param}\" \
-         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{t}?page={next_page}&q={safe_q}{sort_param}{order_param}\" \
+         <a href=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
+         class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">Next &rarr;</a>\
          </div></div>"
     );
@@ -425,4 +434,53 @@ pub async fn render_record_form(
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" data-nexus-save=\"true\">Save Record</button>\
          </div></form>"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn state() -> NexusState {
+        NexusState {
+            registry: Arc::new(vec![]),
+            brand: Arc::new("Nexus".to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn table_view_escapes_metadata_and_only_offers_supported_batch_actions() {
+        let entry = RegistryEntry {
+            table: "articles",
+            label: "<img src=x onerror=alert(1)>",
+            icon: "📰",
+            pk: "id",
+            fields: vec![
+                FieldMeta::new("title", "<script>alert(1)</script>", FieldKind::Text),
+                FieldMeta::new("is_active", "Active", FieldKind::Boolean),
+            ],
+        };
+        let html = render_table_view(
+            &state(),
+            &entry,
+            1,
+            "\"><svg/onload=alert(1)>",
+            Some("title"),
+            Some("asc"),
+        )
+        .await;
+
+        assert!(!html.contains("<script>"));
+        assert!(!html.contains("<img src=x"));
+        assert!(!html.contains("<svg"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("value=\"deactivate\""));
+
+        let without_active = RegistryEntry {
+            fields: vec![FieldMeta::new("title", "Title", FieldKind::Text)],
+            ..entry
+        };
+        let html = render_table_view(&state(), &without_active, 1, "", None, None).await;
+        assert!(!html.contains("value=\"deactivate\""));
+    }
 }

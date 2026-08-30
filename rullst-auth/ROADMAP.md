@@ -11,6 +11,11 @@ Rullst Auth is the core security and authentication module for the framework. Wh
 - [x] **Role-Based Access Control (RBAC)**: A native system to assign roles (e.g., `Admin`, `Editor`, `User`) and attach them seamlessly to routes via middleware (`#[require_role("Admin")]`).
 - [x] **Declarative Policies (Gates)**: Define granular authorization logic in Rust structs (e.g., `PostPolicy::can_edit(&user, &post)`) that can be invoked across controllers and templates.
 
+The verified v12 boundary includes fail-closed `RequireRoleLayer`, the facade
+attribute for async handlers with an explicit authenticated `user` binding, and
+named `Policy<User, Resource>` structs. Applications still own role persistence,
+authentication and tenant/resource lookup.
+
 ## Phase 2: Advanced Verification
 - [ ] **Two-Factor Authentication (2FA)**: Built-in TOTP generation and validation for Google Authenticator/Authy integration, including recovery codes.
 - [ ] **Magic Links**: Passwordless authentication via single-use, time-sensitive signed URLs delivered via email (`rullst-mail` integration).

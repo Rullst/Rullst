@@ -198,6 +198,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 hot_reload,
                                 *db_needed,
                                 "Sqlite",
+                                &[],
                                 false,
                                 false,
                                 spec.id,

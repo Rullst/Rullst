@@ -4,6 +4,14 @@
 models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
 telemetry, and the optional AI assistant.
 
+When used through the `rullst` umbrella with its `orm` and `nexus` features,
+`#[derive(Nexus)]` generates metadata for named-field models. Primitive widgets
+are inferred; semantic fields can use `#[nexus(kind = "textarea")]` or
+`#[nexus(kind = "enum", options = "draft, published")]`. Models may also
+implement `NexusModel` manually. Batch deactivation is exposed only for a
+writable Boolean `is_active` or `active` field; batch deletion is bounded to
+1,000 explicitly selected records.
+
 ## Secure mounting
 
 Nexus is fail-closed: `try_build()` returns an error until an explicit access policy is selected.
@@ -57,6 +65,6 @@ explicitly when testing a production topology.
 
 ## Security boundaries
 
-Nexus includes CSRF protection and escapes untrusted values rendered into admin pages. Applications
+Nexus includes CSRF protection and escapes record values and registered metadata rendered into admin pages. Applications
 must still place the complete production server behind TLS, install Rullst's secure headers and WAF,
 and apply authorization/ownership policy to any custom routes mounted next to Nexus.

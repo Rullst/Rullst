@@ -8,38 +8,57 @@
 
 Welcome to the official roadmap for `rullst-connect`! The library currently supports 11 robust core providers, dynamic token parsing, `get_user_from_token` extraction, CSRF protection (via `state`), and `scopes` customization.
 
-The crate is currently version 12. The checked items below describe implemented OAuth/OIDC
-capabilities; unchecked messaging and enterprise identity sections remain roadmap work.
+The crate is currently version 12. `[x]` means a bounded implementation exists;
+`[~]` means only part of the historical sentence is implemented. Unchecked
+messaging and enterprise identity sections remain roadmap work.
 
 ## ⏳ In Progress (Phases 3 & 4)
 
 - [x] **Boilerplate Reduction Macros:** Use `define_provider!` to drastically cut down repetitive code in provider structs, making it easier for the community to contribute new providers.
 - [x] **Native Framework Integration:** Create the optional `axum` and `actix` features, providing Extractors (like `AuthCallback`) so URL parsing of codes, states, and errors works magically.
-- [x] **Token Revocation (Logout):** Add the `revoke_token` method to the trait to allow direct logout on the supported providers' servers.
+- [~] **Token Revocation (Logout):** The trait fails closed by default; Google
+  has a reviewed adapter and the mock implements a deterministic fixture. Other
+  providers remain unsupported until individually implemented and tested.
 - [x] **Mocking Tools (TDD):** A `MockProvider` to facilitate writing unit tests for end users of the library.
 - [x] **OIDC Support:** Cryptographic `id_token` validation for Google, Apple, and custom OIDC providers using refreshed JWKS material.
-- [x] **Security Audit & PKCE:** Implement strict URL parsing, eliminate panics, and provide native `.with_pkce()` support across all providers.
+- [~] **Security Audit & PKCE:** Strict URL parsing, PKCE builders and negative
+  tests exist. Security review is continuous and no crate can promise the
+  absence of every panic or integration mistake.
 - [x] **Fail-Closed Provider Configuration:** Fallible constructors, exact loopback URL validation, and typed network-free credential modes.
 - [x] **Rotation-Aware JWKS Cache:** Per-provider TTL, refresh on an unknown `kid`, and bounded stale-if-error restricted to already-known keys.
 
 ## 🔮 Not So Distant Future
 
 - [x] **HTTP Client Agnostic:** Generic client support (via `HttpClient` trait) allowing the use of `surf`, `reqwest-middleware`, or others instead of forcing `reqwest`. (Done in v5.2.0)
-- [x] **Database Integration (rullst-orm, SQLx, Diesel):** Helper traits (e.g., `IntoDatabaseUser`) to seamlessly save the user into the database, with special focus on `rullst-orm` to keep the Laravel ecosystem vibe in Rust!
-- [x] **HTTP Proxy Support:** Allow the configuration of corporate proxies for locked-down environments. (Done in v5.2.0)
-- [x] **Refresh Token Module:** Automated `refresh_token` support in case the primary token expires. (Done in v5.1.0)
-- [x] **Universal Avatar Standardization:** Advanced parsing to guarantee optimal resolutions for returned profile pictures.
-- [x] **Leptos & Dioxus Integration:** Extractors for Fullstack / WebAssembly Rust frameworks (Leptos added in v5.2.0).
+- [~] **Database Integration (rullst-orm, SQLx, Diesel):**
+  `IntoDatabaseUser` defines an application adapter contract; Connect does not
+  persist identities or ship ORM/Diesel implementations.
+- [~] **HTTP Proxy Support:** A custom `HttpClient` can install a reviewed proxy
+  transport. There is no first-class proxy builder on the default client.
+- [~] **Refresh Token Module:** All named provider adapters expose explicit
+  refresh operations where supported; automatic expiry detection, storage and
+  rotation remain application-owned.
+- [~] **Universal Avatar Standardization:** Provider parsers normalize known
+  avatar fields, but availability and optimal resolution cannot be guaranteed.
+- [~] **Leptos & Dioxus Integration:** `AuthCallback` is framework-neutral and
+  can be deserialized by either ecosystem; only Axum and Actix have native
+  extractor implementations.
 - [x] **Integration Tests with Mock Servers (`wiremock`):** Cover the real HTTP flow to guarantee that the parser correctly handles incomplete responses, expired tokens, or network failures. (Done in v5.2.0)
 - [x] **Rate Limiting & Advanced Retry Policies:** Offer integrated wrappers (e.g., via `reqwest-middleware` and `reqwest-retry`) to perform native exponential backoff when providers reject requests due to rate limits (HTTP 429).
 - [x] **Unified Provider Error Extraction:** Map error responses from providers (like "invalid_grant") into structured enums within `ConnectError` to drastically improve debugging experience.
 
 ## 🚀 Phase 5: High-Value & Developer Experience (Immediate Value)
 
-- [x] **Strict Profile Normalization (`UniversalProfile`):** Expand on avatar standardization by guaranteeing a strictly typed and identical struct (`id`, `name`, `email`, `email_verified`, `avatar_url`) regardless of the underlying provider's payload quirks.
-- [x] **Secure State/Nonce Handling (`AuthSession`):** Native integrations (via `tower-sessions`) to automatically save and validate CSRF `state` and `nonce` securely, removing the burden from the developer.
+- [x] **Strict Profile Normalization (`UniversalProfile`):** A typed,
+  credential-free projection (`id`, `name`, `email`, `email_verified`,
+  `avatar_url`) is returned from `ConnectUser::universal_profile()`.
+- [~] **Secure State/Nonce Handling (`AuthSession`):** The Axum/tower-sessions
+  extractor consumes and validates a stored one-time CSRF state. Generating and
+  storing state plus OIDC nonce lifecycle are not yet automatic.
 - [x] **Native Apple Secret Generation:** Handle "Sign In with Apple" painlessly by accepting a `.p8` key and Key ID to generate the required JWT `client_secret` on-the-fly.
-- [x] **Embedded Local Mock IdP:** An explicitly mounted Axum access-token/userinfo test router. It does not emit unsigned tokens or pretend to validate signatures.
+- [~] **Embedded Local Mock IdP:** An explicitly mounted Axum
+  authorization/access-token/userinfo fixture. It does not issue a signed ID
+  token, expose JWKS or provide OIDC conformance and must remain local-only.
 - [x] **Enterprise-Grade Observability:** Native integration with the `tracing` crate. Emit detailed spans during token exchanges and profile fetching to simplify debugging in production and distributed systems.
 - [x] **OIDC Auto-Discovery (`.well-known`):** Create a generic `OidcProvider::discover("url")` that automatically downloads the OpenID configuration and sets up endpoints internally in a single line of code.
 - [x] **Device Authorization Flow (RFC 8628):** Support for CLI and Smart TV logins where users enter a code on a secondary device, a critical feature for headless Rust applications.

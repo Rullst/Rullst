@@ -1,4 +1,4 @@
-use crate::telemetry::SecurityStore;
+use crate::{SecurityError, telemetry::SecurityStore};
 use axum::{
     extract::{ConnectInfo, Request},
     http::StatusCode,
@@ -10,6 +10,8 @@ use std::net::SocketAddr;
 use std::sync::OnceLock;
 
 static DECEPTION_ROUTES: OnceLock<DashSet<String>> = OnceLock::new();
+/// Maximum dynamic trap paths retained by the process-local registry.
+pub const MAX_DECEPTION_TRAPS: usize = 1_024;
 
 pub fn default_deception_traps() -> DashSet<String> {
     let set = DashSet::new();
@@ -37,12 +39,36 @@ pub fn global_deception_routes() -> &'static DashSet<String> {
 
 /// Registers a custom decoy route dynamically in the deception trap registry.
 pub fn register_deception_trap(route: &str) {
+    let _ = try_register_deception_trap(route);
+}
+
+/// Validates and registers a bounded exact decoy path.
+pub fn try_register_deception_trap(route: &str) -> Result<(), SecurityError> {
     let clean = if route.starts_with('/') {
         route.to_string()
     } else {
-        format!("/{}", route)
+        format!("/{route}")
     };
-    global_deception_routes().insert(clean);
+    if clean.len() > 2_048
+        || clean.contains(['?', '#'])
+        || clean.chars().any(char::is_control)
+        || clean
+            .split('/')
+            .any(|segment| matches!(segment, "." | ".."))
+    {
+        return Err(SecurityError::General(
+            "deception traps must be exact bounded paths without traversal, queries, fragments, or control characters"
+                .to_string(),
+        ));
+    }
+    let routes = global_deception_routes();
+    if routes.len() >= MAX_DECEPTION_TRAPS && !routes.contains(&clean) {
+        return Err(SecurityError::General(format!(
+            "deception trap registry accepts at most {MAX_DECEPTION_TRAPS} paths"
+        )));
+    }
+    routes.insert(clean);
+    Ok(())
 }
 
 /// Middleware that checks incoming request URIs against dynamic deception trap routes.
@@ -77,8 +103,9 @@ mod tests {
 
     #[test]
     fn test_register_deception_trap() {
-        register_deception_trap("/api/v1/secret_test");
+        try_register_deception_trap("/api/v1/secret_test").expect("valid trap");
         assert!(global_deception_routes().contains("/api/v1/secret_test"));
+        assert!(try_register_deception_trap("../escape?token=secret").is_err());
     }
 
     #[tokio::test]

@@ -69,6 +69,8 @@ async fn render_env_viewer() -> Html<String> {
         ));
     }
 
+    let config_rows = render_safe_config_rows();
+
     Html(format!(
         r#"<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -85,6 +87,17 @@ async fn render_env_viewer() -> Html<String> {
                 <a href="/studio" class="text-slate-500 hover:text-emerald-400 transition-colors">←</a>
                 Environment Viewer
             </h1>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl mb-8">
+            <div class="px-4 py-3 border-b border-slate-800">
+                <h2 class="font-semibold text-slate-200">Runtime configuration (safe projection)</h2>
+                <p class="text-xs text-slate-500 mt-1">Secrets, connection URLs and filesystem paths are never rendered.</p>
+            </div>
+            <table class="w-full text-left border-collapse">
+                <thead><tr class="bg-slate-950/50 border-b border-slate-800"><th class="py-3 px-4 text-slate-400">Setting</th><th class="py-3 px-4 text-slate-400">Value</th></tr></thead>
+                <tbody>{config_rows}</tbody>
+            </table>
         </div>
         
         <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
@@ -105,6 +118,74 @@ async fn render_env_viewer() -> Html<String> {
 </html>"#,
         rows
     ))
+}
+
+fn render_safe_config_rows() -> String {
+    let config = rullst_core::config::RullstConfig::global();
+    let environment = config
+        .environment()
+        .map_or_else(|_| "invalid".to_string(), |value| value.to_string());
+    let port = config
+        .app
+        .port
+        .map_or_else(|| "default".to_string(), |value| value.to_string());
+    let database_driver = config
+        .database
+        .url
+        .as_deref()
+        .map(database_driver_name)
+        .unwrap_or("not configured");
+    let storage = if config.storage.root.is_some() {
+        "configured (path redacted)"
+    } else {
+        "default"
+    };
+    let settings = [
+        ("app.environment", environment),
+        ("app.port", port),
+        ("database.driver", database_driver.to_string()),
+        ("storage.root", storage.to_string()),
+        (
+            "security.cors_allow_credentials",
+            config.security.cors_allow_credentials.to_string(),
+        ),
+        (
+            "security.cors_origin_count",
+            config.security.cors_allow_origins.len().to_string(),
+        ),
+        (
+            "security.csrf_webhook_exemption_count",
+            config.security.csrf_signed_webhook_paths.len().to_string(),
+        ),
+        (
+            "security.pii_masking",
+            config.security.enable_pii_masking.to_string(),
+        ),
+    ];
+
+    settings.into_iter().fold(String::new(), |mut rows, (key, value)| {
+        rows.push_str(&format!(
+            "<tr class=\"border-b border-slate-800\"><td class=\"py-3 px-4 text-emerald-400\">{}</td><td class=\"py-3 px-4 text-slate-300\">{}</td></tr>",
+            rullst_core::html::escape_str(key),
+            rullst_core::html::escape_str(&value)
+        ));
+        rows
+    })
+}
+
+fn database_driver_name(url: &str) -> &'static str {
+    let normalized = url.trim().to_ascii_lowercase();
+    if normalized.starts_with("postgres://") || normalized.starts_with("postgresql://") {
+        "postgres"
+    } else if normalized.starts_with("mysql://") {
+        "mysql/mariadb"
+    } else if normalized.starts_with("libsql://") || normalized.starts_with("https://") {
+        "turso/libsql"
+    } else if normalized.starts_with("sqlite:") {
+        "sqlite"
+    } else {
+        "configured (unrecognized scheme)"
+    }
 }
 
 #[cfg(test)]
@@ -134,6 +215,8 @@ mod tests {
 
         let html = render_env_viewer().await.0;
         assert!(html.contains("Environment Viewer"));
+        assert!(html.contains("Runtime configuration (safe projection)"));
+        assert!(html.contains("database.driver"));
         assert!(html.contains("RullstFramework"));
         // Check that secret was masked
         assert!(!html.contains("super_secret_value_12345"));
@@ -141,5 +224,21 @@ mod tests {
         assert!(!html.contains("tok12"));
         assert!(!html.contains("postgres://admin:secret@db/app"));
         assert!(!html.contains("redis://:secret@cache/0"));
+    }
+
+    #[test]
+    fn database_config_projection_never_returns_the_connection_url() {
+        assert_eq!(
+            database_driver_name("postgres://admin:secret@example.test/app"),
+            "postgres"
+        );
+        assert_eq!(
+            database_driver_name("libsql://tenant.turso.io"),
+            "turso/libsql"
+        );
+        assert_eq!(
+            database_driver_name("file-without-scheme"),
+            "configured (unrecognized scheme)"
+        );
     }
 }

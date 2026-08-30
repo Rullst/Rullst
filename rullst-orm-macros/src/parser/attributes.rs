@@ -82,6 +82,7 @@ pub(super) fn validate_relation_attribute(
 }
 
 pub(super) struct ModelAttributes {
+    pub backend: String,
     pub table_name: String,
     pub global_scope: String,
     pub tenant_column: String,
@@ -116,6 +117,7 @@ impl ModelAttributes {
 
     fn new(table_name: String) -> Self {
         Self {
+            backend: "sqlx".to_string(),
             table_name,
             global_scope: String::new(),
             tenant_column: String::new(),
@@ -154,6 +156,15 @@ impl ModelAttributes {
             return Ok(());
         };
         match key {
+            "backend" => {
+                if !matches!(value, "sqlx" | "turso") {
+                    return Err(syn::Error::new_spanned(
+                        attribute,
+                        "ORM backend must be `sqlx` or `turso`",
+                    ));
+                }
+                self.backend = value.to_string();
+            }
             "table" | "table_name" => {
                 if value.trim().is_empty() {
                     return Err(syn::Error::new_spanned(

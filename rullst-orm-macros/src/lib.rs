@@ -12,6 +12,7 @@ mod nexus;
 mod parser;
 mod privacy;
 mod relationships;
+mod turso;
 
 #[cfg_attr(test, mutants::skip)]
 #[proc_macro_attribute]
@@ -80,6 +81,13 @@ pub fn rullst_macro(input: TokenStream) -> TokenStream {
         Err(e) => return TokenStream::from(e.to_compile_error()),
     };
 
+    if parsed.backend == "turso" {
+        return match turso::generate(&parsed, &input) {
+            Ok(expanded) => expanded.into(),
+            Err(error) => error.to_compile_error().into(),
+        };
+    }
+
     // Generate relationships
     let rels = relationships::generate(&parsed);
 
@@ -106,6 +114,21 @@ pub fn rullst_macro(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Derives the typed Turso/libSQL model contract without generating SQLx code.
+#[cfg_attr(test, mutants::skip)]
+#[proc_macro_derive(TursoModel, attributes(orm, sqlx))]
+pub fn derive_turso_model(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let parsed = match parser::parse(&input) {
+        Ok(parsed) => parsed,
+        Err(error) => return error.to_compile_error().into(),
+    };
+    match turso::generate(&parsed, &input) {
+        Ok(expanded) => expanded.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
 }
 
 #[cfg(test)]
@@ -287,6 +310,7 @@ mod tests {
             #[orm(global_scope = "active", tenant_column = "account_id", before_save = "hash_pwd", after_save = "log_evt", before_delete = "check_perm", after_delete = "clear_cache", after_fetch = "decrypt_data")]
             pub struct User {
                 pub id: i32,
+                pub account_id: String,
             }
         };
         let (parsed, _, _) = run_macro_generator(&input);

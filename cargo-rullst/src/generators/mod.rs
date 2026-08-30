@@ -42,6 +42,12 @@ pub mod schema_diff;
 pub mod ts;
 pub mod worker;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProjectOrmBackend {
+    Sqlx,
+    Turso,
+}
+
 /// Verifies if the current execution directory is a valid Rullst project
 pub fn is_rullst_project() -> bool {
     let cargo_toml_path = Path::new("Cargo.toml");
@@ -51,6 +57,43 @@ pub fn is_rullst_project() -> bool {
     match fs::read_to_string(cargo_toml_path) {
         Ok(content) => content.contains("rullst"),
         Err(_) => false,
+    }
+}
+
+pub(crate) fn project_orm_backend() -> ProjectOrmBackend {
+    let Ok(manifest) = fs::read_to_string("Cargo.toml") else {
+        return ProjectOrmBackend::Sqlx;
+    };
+    project_orm_backend_from_manifest(&manifest)
+}
+
+fn project_orm_backend_from_manifest(manifest: &str) -> ProjectOrmBackend {
+    let Ok(manifest) = toml::from_str::<toml::Value>(manifest) else {
+        return ProjectOrmBackend::Sqlx;
+    };
+    let Some(dependencies) = manifest.get("dependencies").and_then(toml::Value::as_table) else {
+        return ProjectOrmBackend::Sqlx;
+    };
+    let has_sqlx = dependencies.contains_key("sqlx");
+    let has_turso = ["rullst", "rullst-orm"].into_iter().any(|name| {
+        dependencies
+            .get(name)
+            .and_then(toml::Value::as_table)
+            .and_then(|dependency| dependency.get("features"))
+            .and_then(toml::Value::as_array)
+            .is_some_and(|features| {
+                features.iter().any(|feature| {
+                    feature
+                        .as_str()
+                        .is_some_and(|feature| matches!(feature, "orm-turso" | "turso"))
+                })
+            })
+    });
+
+    if has_turso && !has_sqlx {
+        ProjectOrmBackend::Turso
+    } else {
+        ProjectOrmBackend::Sqlx
     }
 }
 
@@ -373,6 +416,29 @@ mod tests {
         assert!(!is_valid_rust_identifier("type"));
         assert!(!is_valid_rust_identifier("bad-name"));
         assert!(!is_valid_rust_identifier(""));
+    }
+
+    #[test]
+    fn primary_turso_projects_are_distinguished_from_hybrid_projects() {
+        let turso_primary = r#"
+[dependencies]
+rullst = { version = "12", features = ["orm", "orm-turso"] }
+rullst-orm = { version = "12", features = ["turso"] }
+"#;
+        assert_eq!(
+            project_orm_backend_from_manifest(turso_primary),
+            ProjectOrmBackend::Turso
+        );
+
+        let hybrid = format!("{turso_primary}\nsqlx = \"0.9\"\n");
+        assert_eq!(
+            project_orm_backend_from_manifest(&hybrid),
+            ProjectOrmBackend::Sqlx
+        );
+        assert_eq!(
+            project_orm_backend_from_manifest("[dependencies]\nrullst = \"12\""),
+            ProjectOrmBackend::Sqlx
+        );
     }
 
     #[test]

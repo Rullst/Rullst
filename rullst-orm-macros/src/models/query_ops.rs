@@ -59,6 +59,7 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
 
 #[cfg_attr(test, mutants::skip)]
 pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -> TokenStream {
+    let table_name = &parsed.table_name;
     let global_scope_logic = if !parsed.global_scope.is_empty() {
         let name = &parsed.name;
         let method = syn::Ident::new(&parsed.global_scope, name.span());
@@ -72,6 +73,11 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
         quote! {
             if let Some(tenant) = rullst_orm::tenant::get_tenant_id() {
                 builder = builder.where_eq(#col, tenant);
+            } else {
+                builder.errors.push(rullst_orm::Error::Validation(format!(
+                    "tenant context is required to query `{}`; use with_tenant(...) or the explicit unscoped() escape hatch",
+                    #table_name
+                )));
             }
         }
     } else {
@@ -84,6 +90,15 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
             #global_scope_logic
             #tenant_scope_logic
             builder
+        }
+
+        /// Builds a query without model-wide or tenant scopes.
+        ///
+        /// This deliberately noisy escape hatch is intended for reviewed
+        /// administrative and maintenance paths. Application request handlers
+        /// should normally use [`rullst_orm::with_tenant`] and [`Self::query`].
+        pub fn unscoped() -> #builder_name {
+            #builder_name::new()
         }
 
         pub async fn find(id: i32) -> Result<Option<Self>, rullst_orm::Error> {

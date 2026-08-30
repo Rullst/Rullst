@@ -64,6 +64,29 @@ impl BlueprintChoice {
     }
 }
 
+/// Primary relational databases accepted by non-interactive generation.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DatabaseChoice {
+    Sqlite,
+    Postgres,
+    Mysql,
+    Mariadb,
+    Turso,
+}
+
+impl DatabaseChoice {
+    const fn provider(self) -> &'static str {
+        match self {
+            Self::Sqlite => "Sqlite",
+            Self::Postgres => "Postgres",
+            Self::Mysql => "MySQL",
+            Self::Mariadb => "MariaDB",
+            Self::Turso => "Turso",
+        }
+    }
+}
+
 /// Selectable modules for the bounded LMS scaffold profiles.
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LmsModuleChoice {
@@ -99,7 +122,7 @@ pub enum Commands {
         /// Optional: creates a headless REST API (no HTML)
         #[arg(long)]
         api: bool,
-        /// Optional: generates Dockerfile, docker-compose.yml, and .dockerignore for production
+        /// Optional: generates the current Dockerfile packaging scaffold
         #[arg(long)]
         docker: bool,
         /// Optional: generates rootless OCI build.sh script via Buildah
@@ -114,15 +137,27 @@ pub enum Commands {
         /// Selects a starter blueprint in deterministic/CI generation mode
         #[arg(long, value_enum, requires = "default")]
         blueprint: Option<BlueprintChoice>,
+        /// Selects the primary relational backend in deterministic/CI mode
+        #[arg(long, value_enum, requires = "default")]
+        database: Option<DatabaseChoice>,
         /// Selects a detached LMS module profile; assessment or gamification foundation
         #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
         lms_modules: Vec<LmsModuleChoice>,
         /// Skips the best-effort initial database migration after scaffolding
         #[arg(long)]
         skip_initial_migration: bool,
-        /// Optional: Scaffolds Turso/libSQL sidecar (sqld) for edge replication
+        /// Enables the Turso/libSQL edge SQL adapter and offline development fallback
         #[arg(long)]
         turso: bool,
+        /// Enables the MongoDB document adapter
+        #[arg(long)]
+        mongodb: bool,
+        /// Enables the DuckDB analytics adapter
+        #[arg(long)]
+        duckdb: bool,
+        /// Enables the SurrealDB document and graph adapter
+        #[arg(long)]
+        surrealdb: bool,
     },
     /// Creates a new Controller in the src/controllers/ folder
     #[command(name = "make:controller")]
@@ -190,10 +225,10 @@ pub enum Commands {
     /// Scaffolds Tauri desktop & mobile packaging (Omni) for your application
     #[command(name = "make:omni")]
     MakeOmni,
-    /// Scaffolds an IoT edge device module (Sensor Node, MQTT Gateway)
+    /// Scaffolds a local IoT telemetry module
     #[command(name = "make:iot")]
     MakeIot {
-        /// Name of the IoT edge device (e.g. TemperatureSensor, MqttGateway)
+        /// Name of the telemetry device type (e.g. TemperatureSensor)
         name: String,
     },
     /// Scaffolds a strongly-typed Mailable email template in src/mail/
@@ -364,12 +399,12 @@ pub enum Commands {
         /// Target item to inspect (e.g. routes, models, schema, or file path)
         target: Option<String>,
     },
-    /// Runs AI-assisted security audit for secret leaks, CVEs, IDOR/BOLA routes, unsafe code, SBOM and network posture
+    /// Runs bounded security checks for secrets, CVEs, IDOR/BOLA routes, unsafe syntax, SBOM and network posture
     Audit {
-        /// Optional: Enable AI Sentinel analysis suggestions
+        /// Optional: Print deterministic remediation suggestions (legacy --ai name)
         #[arg(long)]
         ai: bool,
-        /// Optional: Export SECURITY_COMPLIANCE.md report evaluating OWASP Top 10, SOC2, and ISO 27001
+        /// Optional: Export an evidence report without claiming compliance certification
         #[arg(long)]
         compliance: bool,
         /// Optional: Run static IDOR / BOLA vulnerability scanner on parameterized routes
@@ -428,9 +463,13 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             nix,
             default,
             blueprint,
+            database,
             lms_modules,
             skip_initial_migration,
             turso,
+            mongodb,
+            duckdb,
+            surrealdb,
         } => {
             if !lms_modules.is_empty() && !matches!(blueprint, Some(BlueprintChoice::Lms)) {
                 return Err(std::io::Error::new(
@@ -453,6 +492,10 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     nix: *nix,
                     use_defaults: *default,
                     turso: *turso,
+                    mongodb: *mongodb,
+                    duckdb: *duckdb,
+                    surrealdb: *surrealdb,
+                    database: database.map(DatabaseChoice::provider),
                 },
                 blueprint.as_ref().map(|choice| choice.id()),
                 *skip_initial_migration,
@@ -746,6 +789,58 @@ mod tests {
             Commands::New {
                 nix: false,
                 buildah: true,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_deterministic_persistence_flags_independently() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "polyglot-app",
+            "--default",
+            "--database",
+            "mariadb",
+            "--turso",
+            "--mongodb",
+            "--duckdb",
+            "--surrealdb",
+            "--skip-initial-migration",
+        ])
+        .expect("persistence CLI flags");
+
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                turso: true,
+                mongodb: true,
+                duckdb: true,
+                surrealdb: true,
+                database: Some(DatabaseChoice::Mariadb),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_turso_as_the_primary_database() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "edge-primary",
+            "--default",
+            "--database",
+            "turso",
+            "--skip-initial-migration",
+        ])
+        .expect("Turso-primary CLI flags");
+
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                database: Some(DatabaseChoice::Turso),
                 ..
             }
         ));

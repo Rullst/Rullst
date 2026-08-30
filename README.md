@@ -311,6 +311,10 @@ Evaluate only the features you intend to enable. In particular:
   access policy;
 - live NFS-e, Alipay RSA2, MQTT/HSM/PQC, S3/R2, and Connect message brokers are
   not stable capabilities in version 12.
+- persistence support is capability-specific: SQLx Active Record targets
+  SQLite/PostgreSQL/MySQL/MariaDB; the bounded blank/API profile can use
+  Turso/libSQL as a typed primary; MongoDB, DuckDB and SurrealDB retain explicit
+  optional APIs rather than a fictional universal ORM.
 
 ---
 
@@ -320,7 +324,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 
 **Explore the Monorepo Ecosystem:**
 - 🦀 **[rullst-core](https://github.com/Rullst/Rullst/tree/dev/rullst-core)**: Runtime-only-by-default HTTP server, routing engine, and telemetry kernel; ORM and SQLite queues are explicit features.
-- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record ORM, migrations, and an explicit task-local tenant context; applications must enforce tenant predicates and database policy.
+- 💾 **[rullst-orm](https://github.com/Rullst/Rullst/tree/dev/rullst-orm)**: Active Record for SQLite/PostgreSQL/MySQL/MariaDB, a bounded Turso-primary blank/API profile, and capability APIs for MongoDB, DuckDB and SurrealDB; applications still own tenant predicates and database policy. See [Polyglot Persistence](docs/src/polyglot-persistence.md).
 - 🛡️ **[rullst-auth](https://github.com/Rullst/Rullst/tree/dev/rullst-auth)**: Passkeys/WebAuthn, Argon2id, encrypted cookie sessions, opt-in application JWT policy, and RBAC authorization.
 - 🔒 **[rullst-security](https://github.com/Rullst/Rullst/tree/dev/rullst-security)**: Bounded RASP request heuristics, honeypot traps, HTML/CSP helpers, and an HMAC-chained audit log.
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/dev/rullst-ai)**: Provider-agnostic AI agent engine (Gemini, OpenAI, Claude, DeepSeek, Ollama).

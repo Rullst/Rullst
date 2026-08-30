@@ -41,7 +41,8 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🚀 **Async & Fast**: Built on top of `tokio` and `reqwest`.
 - 🧩 **Standardized**: All providers return a unified `ConnectUser` struct.
 - 🛡️ **Type-Safe**: Robust error handling using `thiserror` (`ConnectError`).
-- 🔌 **Framework Agnostic**: Works seamlessly with Rullst, Axum, Actix, Leptos, Dioxus, or any other framework.
+- 🔌 **Framework-neutral core**: Native callback extractors exist for Axum and
+  Actix; `AuthCallback` remains a plain deserializable type for other hosts.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Typed, network-free provider fallbacks plus an explicitly mounted embedded Mock IdP for local tests.
@@ -145,6 +146,23 @@ match github.get_user(params).await {
     Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user".to_string()),
 }
 ```
+
+### Safe profile serialization
+
+`ConnectUser` contains live credentials. Its Serde representation deliberately
+omits `access_token` and `refresh_token`; do not depend on serializing it as a
+token store. Use the normalized, credential-free projection for responses,
+sessions that only need identity data, or database mapping:
+
+```rust
+let user = github.get_user(params).await?;
+let profile: rullst_connect::UniversalProfile = user.universal_profile();
+let public_json = serde_json::to_string(&profile)?;
+```
+
+`UniversalProfile` contains only `id`, `name`, `email`, `email_verified`, and
+`avatar_url`. Persist provider tokens separately in an encrypted secret store
+with an application-defined rotation and revocation lifecycle.
 
 ### 🛡️ CSRF Protection (State Parameter)
 

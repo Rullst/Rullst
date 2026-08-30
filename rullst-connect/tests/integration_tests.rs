@@ -733,7 +733,7 @@ async fn test_mock_idp_router_execution() {
 }
 
 #[test]
-fn test_connect_user_serialization() {
+fn connect_user_serialization_is_credential_free() {
     use rullst_connect::user::ConnectUser;
     let user = ConnectUser {
         id: "usr_123".to_string(),
@@ -749,11 +749,14 @@ fn test_connect_user_serialization() {
 
     let serialized = serde_json::to_string(&user).unwrap();
     assert!(serialized.contains("usr_123"));
-    assert!(serialized.contains("tok_secret"));
+    assert!(!serialized.contains("tok_secret"));
+    assert!(!serialized.contains("ref_secret"));
 
-    let deserialized: ConnectUser = serde_json::from_str(&serialized).unwrap();
-    assert_eq!(deserialized.id, "usr_123");
-    assert_eq!(deserialized.name, "Test User");
+    let public = user.universal_profile();
+    let public_json = serde_json::to_value(public).unwrap();
+    assert_eq!(public_json["id"], "usr_123");
+    assert!(public_json.get("access_token").is_none());
+    assert!(public_json.get("raw_data").is_none());
 }
 
 #[test]

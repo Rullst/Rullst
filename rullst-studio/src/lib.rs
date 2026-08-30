@@ -55,24 +55,24 @@ impl Studio {
     pub fn into_router(self, access: LocalStudioAccess) -> Result<Router, StudioBuildError> {
         let logger_state = Arc::new(logger::LoggerState::new());
         let mut router = data_browser::router()
-            .nest("/requests", logger::router(logger_state.clone()))
-            .layer(axum::middleware::from_fn_with_state(
-                logger_state,
-                logger::logger_middleware,
-            ))
-            .nest("/env", env_viewer::router())
-            .nest("/features", feature_flags::router())
-            .nest("/er", er_diagram::router())
+            .nest("/studio/requests", logger::router(logger_state.clone()))
+            .nest("/studio/env", env_viewer::router())
+            .nest("/studio/features", feature_flags::router())
+            .nest("/studio/er", er_diagram::router())
             .merge(security_radar::stats_router());
 
         if let Some(openapi) = self.openapi {
-            router = router.nest("/api", api_playground::router(openapi));
+            router = router.merge(api_playground::router(openapi));
         }
 
         if let Some(queue) = self.queue {
-            router = router.nest("/jobs", jobs_monitor::router(queue));
+            router = router.nest("/studio/jobs", jobs_monitor::router(queue));
         }
 
+        router = router.layer(axum::middleware::from_fn_with_state(
+            logger_state,
+            logger::logger_middleware,
+        ));
         access.protect_router(router)
     }
 }

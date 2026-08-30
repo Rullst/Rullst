@@ -76,8 +76,30 @@ pub(crate) fn embedding(text: &str) -> Vec<f32> {
 }
 
 pub(crate) fn structured_response(schema: &StructuredOutputSchema) -> Result<String, AiError> {
-    let value = value_for_schema(schema.schema(), 0)?;
+    let value = canonicalize_json(value_for_schema(schema.schema(), 0)?);
     serde_json::to_string(&value).map_err(AiError::from)
+}
+
+fn canonicalize_json(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(object) => {
+            let mut entries = object.into_iter().collect::<Vec<_>>();
+            entries.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
+
+            let mut canonical = serde_json::Map::new();
+            for (key, value) in entries {
+                canonical.insert(key, canonicalize_json(value));
+            }
+            serde_json::Value::Object(canonical)
+        }
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(canonicalize_json)
+                .collect::<Vec<_>>(),
+        ),
+        scalar => scalar,
+    }
 }
 
 fn value_for_schema(

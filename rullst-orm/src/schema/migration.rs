@@ -291,26 +291,27 @@ async fn run_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), Error
     let next_batch = batch_row.0.unwrap_or(0) + 1;
 
     let mut count = 0;
-    let mut successful_migrations = vec![];
     for m in migrations {
         let name = m.name();
         if !executed_set.contains(name) {
             println!("Migrating: {}", name);
             m.up().await?;
-            successful_migrations.push(name);
+            let tracking_sql = if driver == "postgres" {
+                "INSERT INTO migrations (migration, batch) VALUES ($1, $2)"
+            } else {
+                "INSERT INTO migrations (migration, batch) VALUES (?, ?)"
+            };
+            sqlx::query(tracking_sql)
+                .bind(name)
+                .bind(next_batch)
+                .execute(pool)
+                .await?;
             println!("Migrated:  {}", name);
             count += 1;
         }
     }
 
-    if count > 0 {
-        let mut query_builder =
-            sqlx::query_builder::QueryBuilder::new("INSERT INTO migrations (migration, batch) ");
-        query_builder.push_values(successful_migrations, |mut b, name| {
-            b.push_bind(name).push_bind(next_batch);
-        });
-        query_builder.build().execute(pool).await?;
-    } else {
+    if count == 0 {
         println!("Nothing to migrate.");
     }
 
@@ -341,11 +342,15 @@ async fn rollback_migrations(migrations: Vec<Box<dyn Migration>>) -> Result<(), 
         }
     };
 
-    let to_rollback: Vec<(String,)> =
-        sqlx::query_as("SELECT migration FROM migrations WHERE batch = ? ORDER BY id DESC")
-            .bind(last_batch)
-            .fetch_all(pool)
-            .await?;
+    let rollback_query = if driver == "postgres" {
+        "SELECT migration FROM migrations WHERE batch = $1 ORDER BY id DESC"
+    } else {
+        "SELECT migration FROM migrations WHERE batch = ? ORDER BY id DESC"
+    };
+    let to_rollback: Vec<(String,)> = sqlx::query_as(rollback_query)
+        .bind(last_batch)
+        .fetch_all(pool)
+        .await?;
 
     let mut rollback_map = std::collections::HashMap::with_capacity(migrations.len());
     for m in migrations {

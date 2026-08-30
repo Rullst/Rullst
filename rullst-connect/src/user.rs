@@ -24,11 +24,15 @@ pub struct ConnectUser {
     pub raw_data: Value,
 
     /// The access token retrieved during the OAuth2 flow.
-    #[serde(with = "secret_serde")]
+    #[serde(skip_serializing, deserialize_with = "secret_serde::deserialize")]
     pub access_token: secrecy::SecretString,
 
     /// The refresh token retrieved during the OAuth2 flow (if provided).
-    #[serde(with = "opt_secret_serde")]
+    #[serde(
+        skip_serializing,
+        default,
+        deserialize_with = "opt_secret_serde::deserialize"
+    )]
     pub refresh_token: Option<secrecy::SecretString>,
 
     /// The token expiration time in seconds from the time it was granted (if provided).
@@ -36,15 +40,8 @@ pub struct ConnectUser {
 }
 
 mod secret_serde {
-    use secrecy::{ExposeSecret, SecretString};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S>(secret: &SecretString, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        secret.expose_secret().serialize(serializer)
-    }
+    use secrecy::SecretString;
+    use serde::{Deserialize, Deserializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<SecretString, D::Error>
     where
@@ -56,18 +53,8 @@ mod secret_serde {
 }
 
 mod opt_secret_serde {
-    use secrecy::{ExposeSecret, SecretString};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S>(secret: &Option<SecretString>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match secret {
-            Some(s) => s.expose_secret().serialize(serializer),
-            None => serializer.serialize_none(),
-        }
-    }
+    use secrecy::SecretString;
+    use serde::{Deserialize, Deserializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<SecretString>, D::Error>
     where
@@ -75,6 +62,39 @@ mod opt_secret_serde {
     {
         let opt = Option::<String>::deserialize(deserializer)?;
         Ok(opt.map(SecretString::from))
+    }
+}
+
+/// Provider-independent profile data that is safe to serialize.
+///
+/// Access and refresh tokens, expiry metadata and raw provider payloads are
+/// deliberately excluded. Persist tokens only in a dedicated encrypted secret
+/// store with an application-defined lifecycle.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UniversalProfile {
+    pub id: String,
+    pub name: String,
+    pub email: Option<String>,
+    pub email_verified: Option<bool>,
+    pub avatar_url: Option<String>,
+}
+
+impl ConnectUser {
+    /// Returns the normalized, credential-free profile projection.
+    pub fn universal_profile(&self) -> UniversalProfile {
+        UniversalProfile::from(self)
+    }
+}
+
+impl From<&ConnectUser> for UniversalProfile {
+    fn from(user: &ConnectUser) -> Self {
+        Self {
+            id: user.id.clone(),
+            name: user.name.clone(),
+            email: user.email.clone(),
+            email_verified: user.email_verified,
+            avatar_url: user.avatar_url.clone(),
+        }
     }
 }
 
@@ -107,7 +127,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_connect_user_serialization() {
+    fn connect_user_serialization_never_exposes_tokens() {
         let user = ConnectUser {
             id: "123".to_string(),
             name: "Test User".to_string(),
@@ -120,28 +140,18 @@ mod tests {
             expires_in: Some(3600),
         };
 
-        let serialized = serde_json::to_string(&user).unwrap();
-        let deserialized: ConnectUser = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_value(&user).unwrap();
+        assert_eq!(serialized["id"], "123");
+        assert!(serialized.get("access_token").is_none());
+        assert!(serialized.get("refresh_token").is_none());
+        assert!(!serialized.to_string().contains("access123"));
+        assert!(!serialized.to_string().contains("refresh123"));
 
-        assert_eq!(user.id, deserialized.id);
-        assert_eq!(user.name, deserialized.name);
-        assert_eq!(user.email, deserialized.email);
-        assert_eq!(user.email_verified, deserialized.email_verified);
-        assert_eq!(user.avatar_url, deserialized.avatar_url);
-        assert_eq!(user.raw_data, deserialized.raw_data);
-        use secrecy::ExposeSecret;
-        assert_eq!(
-            user.access_token.expose_secret(),
-            deserialized.access_token.expose_secret()
-        );
-        assert_eq!(
-            user.refresh_token.as_ref().map(|s| s.expose_secret()),
-            deserialized
-                .refresh_token
-                .as_ref()
-                .map(|s| s.expose_secret())
-        );
-        assert_eq!(user.expires_in, deserialized.expires_in);
+        let profile = user.universal_profile();
+        let public_json = serde_json::to_value(&profile).unwrap();
+        assert_eq!(public_json["email"], "test@example.com");
+        assert!(public_json.get("raw_data").is_none());
+        assert!(public_json.get("expires_in").is_none());
     }
 
     #[test]
@@ -172,9 +182,9 @@ mod tests {
         let _debug_device = format!("{:?}", device);
     }
 
-    #[derive(Debug, serde::Deserialize, serde::Serialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct TestOptSecret {
-        #[serde(with = "crate::user::opt_secret_serde")]
+        #[serde(deserialize_with = "crate::user::opt_secret_serde::deserialize")]
         pub secret: Option<secrecy::SecretString>,
     }
 

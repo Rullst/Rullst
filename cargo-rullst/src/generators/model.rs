@@ -2,8 +2,9 @@
 #![cfg_attr(mutants, mutants::skip)]
 
 use crate::generators::{
-    is_rullst_project, migration::regenerate_migrations_mod, model_to_pascal_case,
-    model_to_snake_case, pluralize,
+    ProjectOrmBackend, is_rullst_project,
+    migration::{regenerate_migrations_mod, render_migration},
+    model_to_pascal_case, model_to_snake_case, pluralize, project_orm_backend,
 };
 use colored::*;
 use std::fs;
@@ -32,6 +33,7 @@ pub fn create_new_model(
     let snake_name = model_to_snake_case(name);
     let pascal_name = model_to_pascal_case(name);
     let plural_name = pluralize(&snake_name);
+    let orm_backend = project_orm_backend();
 
     println!(
         "{}",
@@ -76,8 +78,9 @@ pub fn create_new_model(
             .yellow()
         );
     } else {
-        let template = format!(
-            r#"use rullst::db::{{Orm, RullstModel, FromRow, sqlx}};
+        let template = match orm_backend {
+            ProjectOrmBackend::Sqlx => format!(
+                r#"use rullst::db::{{Orm, RullstModel, FromRow, sqlx}};
 
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "{plural_name}")]
@@ -86,7 +89,17 @@ pub struct {pascal_name} {{
     // Add your fields here (e.g. pub name: String)
 }}
 "#
-        );
+            ),
+            ProjectOrmBackend::Turso => format!(
+                r#"#[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(table = "{plural_name}", backend = "turso")]
+pub struct {pascal_name} {{
+    pub id: i64,
+    // Add fields supported by TursoCodec (e.g. pub name: String).
+}}
+"#
+            ),
+        };
         fs::write(&model_path, template)?;
     }
 
@@ -127,34 +140,7 @@ pub struct {pascal_name} {{
         let file_stem = format!("m{}_{}", timestamp, migration_name);
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
 
-        let template = format!(
-            r#"use rullst::db::schema::{{Schema, Migration}};
-use rullst::db::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {{
-    fn name(&self) -> &'static str {{
-        "{file_stem}"
-    }}
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::create("{plural_name}", |table| {{
-            table.id();
-            // Add your fields here (e.g. table.string("title");)
-            table.timestamps();
-        }}).await
-    }}
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {{
-        Schema::drop_if_exists("{plural_name}").await
-    }}
-}}
-"#,
-            file_stem = file_stem,
-            plural_name = plural_name
-        );
+        let template = render_migration(&file_stem, &plural_name, orm_backend);
 
         fs::write(&migration_path, template)?;
         println!(

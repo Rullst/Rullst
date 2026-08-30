@@ -116,7 +116,9 @@ pub async fn fetch_tables() -> Result<Vec<String>, sqlx::Error> {
 
     let mut tables = Vec::new();
     for row in rows {
-        if let Ok(name) = row.try_get::<String, _>(0) {
+        if let Ok(name) = row.try_get::<String, _>(0)
+            && is_safe_identifier(&name)
+        {
             tables.push(name);
         }
     }
@@ -153,6 +155,11 @@ pub async fn count_table_rows(
     let pool = ensure_pool_initialized().await?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(table);
+    if clean_table != table || !is_safe_identifier(&clean_table) {
+        return Err(sqlx::Error::Configuration(
+            "Studio received an unsupported SQL identifier".into(),
+        ));
+    }
 
     let quoted_table = quote_table_name(driver, &clean_table);
 
@@ -170,7 +177,9 @@ pub async fn count_table_rows(
         {
             let mut col_names = Vec::new();
             for r in columns_rows {
-                if let Ok(name) = r.try_get::<String, _>("name") {
+                if let Ok(name) = r.try_get::<String, _>("name")
+                    && is_safe_identifier(&name)
+                {
                     col_names.push(name);
                 }
             }
@@ -194,14 +203,19 @@ pub async fn count_table_rows(
 pub fn sanitize_identifier(id: &str) -> String {
     let mut res = String::with_capacity(64);
     for c in id.chars() {
-        if c.is_alphanumeric() || c == '_' {
-            if res.len() + c.len_utf8() > 64 {
+        if c.is_ascii_alphanumeric() || c == '_' {
+            if res.len() == 64 {
                 break;
             }
             res.push(c);
         }
     }
     res
+}
+
+/// Whether an identifier is accepted by Studio's deliberately narrow dynamic-SQL boundary.
+pub fn is_safe_identifier(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && sanitize_identifier(id) == id
 }
 
 /// Helper to build a search clause taking driver syntax into account

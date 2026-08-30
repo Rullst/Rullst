@@ -21,30 +21,57 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         quote! {}
     };
 
-    let tenant_set_logic = if !parsed.tenant_column.is_empty() {
+    let tenant_prepare_logic = if !parsed.tenant_column.is_empty() {
         let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
         quote! {
-            if let Some(tenant) = rullst_orm::tenant::get_tenant_id() {
-                if let Ok(val) = tenant.try_into() {
-                    self.#col_ident = val;
-                }
-            }
+            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context is required to save `{}`",
+                    #table_name
+                ))
+            })?;
+            self.#col_ident = tenant.try_into().map_err(|_| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context type does not match `{}.{}`",
+                    #table_name,
+                    stringify!(#col_ident)
+                ))
+            })?;
         }
     } else {
         quote! {}
+    };
+
+    let audit_lookup = if !parsed.tenant_column.is_empty() {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        let col = &parsed.tenant_column;
+        quote! {
+            let query = if driver == "postgres" {
+                format!("SELECT * FROM {} WHERE id = $1 AND {} = $2", #table_name, #col)
+            } else {
+                format!("SELECT * FROM {} WHERE id = ? AND {} = ?", #table_name, #col)
+            };
+            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
+                .bind(self.id)
+                .bind(self.#col_ident.clone());
+        }
+    } else {
+        quote! {
+            let query = if driver == "postgres" {
+                format!("SELECT * FROM {} WHERE id = $1", #table_name)
+            } else {
+                format!("SELECT * FROM {} WHERE id = ?", #table_name)
+            };
+            let q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
+                .bind(self.id);
+        }
     };
 
     let audit_before_update = if parsed.auditable {
         quote! {
             let mut old_model_for_audit = if !is_new {
                 let driver = rullst_orm::Orm::driver()?;
-                let query = if driver == "postgres" {
-                    format!("SELECT * FROM {} WHERE id = $1", #table_name)
-                } else {
-                    format!("SELECT * FROM {} WHERE id = ?", #table_name)
-                };
-                let mut q = rullst_orm::_sqlx::query_as::<_, Self>(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
-                    .bind(self.id);
+                #audit_lookup
                 rullst_orm::execute_query!(q, fetch_optional, read_pool)?
             } else {
                 None
@@ -146,6 +173,29 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     let insert_placeholders_str = insert_placeholders.join(", ");
     let update_sets_str = update_sets.join(", ");
 
+    let update_tenant_clause = if !parsed.tenant_column.is_empty() {
+        format!(" AND {} = ?", parsed.tenant_column)
+    } else {
+        String::new()
+    };
+    let update_tenant_binding = if !parsed.tenant_column.is_empty() {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        quote! { .bind(self.#col_ident.clone()) }
+    } else {
+        quote! {}
+    };
+    let update_tenant_result_check = if !parsed.tenant_column.is_empty() {
+        quote! {
+            if update_result.rows_affected() != 1 {
+                return Err(rullst_orm::Error::Validation(
+                    "record is outside the active tenant scope".to_string()
+                ));
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let policy_check_create = if !parsed.policy.is_empty() {
         let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
         quote! {
@@ -182,9 +232,9 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
         where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
         {
             let is_new = self.id == 0;
+            #tenant_prepare_logic
             if is_new {
                 #policy_check_create
-                #tenant_set_logic
             } else {
                 #policy_check_update
             }
@@ -254,7 +304,12 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     obs.updating(self).await?;
                 }
                 use rullst_orm::_sqlx::Execute;
-                let mut final_sql = format!("UPDATE {} SET {} WHERE id = ?", #table_name, #update_sets_str);
+                let mut final_sql = format!(
+                    "UPDATE {} SET {} WHERE id = ?{}",
+                    #table_name,
+                    #update_sets_str,
+                    #update_tenant_clause
+                );
                 if rullst_orm::Orm::driver()? == "postgres" {
                     final_sql = rullst_orm::replace_placeholders(&final_sql);
                 }
@@ -262,15 +317,16 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     println!("[SQL Debug] {:?} | ID: {}", final_sql, self.id);
                 }
                 let query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(final_sql.as_str()));
-                let exec = query #(#bind_updates)*.bind(self.id);
+                let exec = query #(#bind_updates)*.bind(self.id) #update_tenant_binding;
                 let timeout = rullst_orm::schema::get_query_timeout();
-                if let Some(t) = timeout {
+                let update_result = if let Some(t) = timeout {
                     tokio::time::timeout(t, exec.execute(executor))
                         .await
-                        .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??;
+                        .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
                 } else {
-                    exec.execute(executor).await?;
-                }
+                    exec.execute(executor).await?
+                };
+                #update_tenant_result_check
                 let futures = observers.iter().map(|obs| obs.updated(&*self));
                 rullst_orm::_futures::future::try_join_all(futures).await?;
             }
@@ -304,6 +360,12 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
+    let tenant_field_type = parsed
+        .normal_fields
+        .iter()
+        .zip(parsed.normal_fields_types.iter())
+        .find(|(field, _)| *field == parsed.tenant_column.as_str())
+        .map(|(_, ty)| ty);
     let has_soft_deletes = parsed.has_soft_deletes;
     let soft_delete_config = if has_soft_deletes {
         let Some(config) = parsed.soft_delete.as_ref() else {
@@ -327,6 +389,55 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let hook_after_delete = if !parsed.after_delete.is_empty() {
         let method = syn::Ident::new(&parsed.after_delete, name.span());
         quote! { self.#method().await?; }
+    } else {
+        quote! {}
+    };
+
+    let tenant_guard = if let Some(tenant_field_type) = tenant_field_type {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        quote! {
+            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context is required to mutate `{}`",
+                    #table_name
+                ))
+            })?;
+            let expected_tenant: #tenant_field_type = tenant.try_into().map_err(|_| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context type does not match `{}.{}`",
+                    #table_name,
+                    stringify!(#col_ident)
+                ))
+            })?;
+            if self.#col_ident != expected_tenant {
+                return Err(rullst_orm::Error::Validation(
+                    "record is outside the active tenant scope".to_string()
+                ));
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    let tenant_where_clause = if !parsed.tenant_column.is_empty() {
+        format!(" AND {} = ?", parsed.tenant_column)
+    } else {
+        String::new()
+    };
+    let tenant_binding = if !parsed.tenant_column.is_empty() {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        quote! { .bind(self.#col_ident.clone()) }
+    } else {
+        quote! {}
+    };
+    let tenant_rows_check = if !parsed.tenant_column.is_empty() {
+        quote! {
+            if mutation_result.rows_affected() != 1 {
+                return Err(rullst_orm::Error::Validation(
+                    "record is outside the active tenant scope".to_string()
+                ));
+            }
+        }
     } else {
         quote! {}
     };
@@ -366,18 +477,20 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {
             let driver = rullst_orm::Orm::driver()?;
             let query = if driver == "postgres" {
-                format!("UPDATE {} SET {} WHERE id = $1", #table_name, #set_clause_lit)
+                let base = format!("UPDATE {} SET {} WHERE id = ?{}", #table_name, #set_clause_lit, #tenant_where_clause);
+                rullst_orm::replace_placeholders(&base)
             } else {
-                format!("UPDATE {} SET {} WHERE id = ?", #table_name, #set_clause_lit)
+                format!("UPDATE {} SET {} WHERE id = ?{}", #table_name, #set_clause_lit, #tenant_where_clause)
             };
         }
     } else {
         quote! {
             let driver = rullst_orm::Orm::driver()?;
             let query = if driver == "postgres" {
-                format!("DELETE FROM {} WHERE id = $1", #table_name)
+                let base = format!("DELETE FROM {} WHERE id = ?{}", #table_name, #tenant_where_clause);
+                rullst_orm::replace_placeholders(&base)
             } else {
-                format!("DELETE FROM {} WHERE id = ?", #table_name)
+                format!("DELETE FROM {} WHERE id = ?{}", #table_name, #tenant_where_clause)
             };
         }
     };
@@ -394,14 +507,11 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("UPDATE ");
             query_builder.push(#table_name);
-            if rullst_orm::Orm::driver()? == "postgres" {
-                query_builder.push(format!(" SET {} WHERE id = $1", #set_clause_lit));
-            } else {
-                query_builder.push(format!(" SET {} WHERE id = ?", #set_clause_lit));
-            }
+            query_builder.push(format!(" SET {} WHERE id = ?{}", #set_clause_lit, #tenant_where_clause));
             let query = query_builder.build();
-            let mut exec = query.bind(self.id);
-            rullst_orm::execute_query!(exec, execute, pool)?;
+            let exec = query.bind(self.id) #tenant_binding;
+            let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
+            #tenant_rows_check
         }
     } else {
         quote! {}
@@ -489,6 +599,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         async fn delete_with_tx_internal<'e, E>(&self, executor: E) -> Result<(), rullst_orm::Error>
         where E: rullst_orm::_sqlx::Executor<'e, Database = rullst_orm::RullstDatabase>
         {
+            #tenant_guard
             #policy_check_delete
             #hook_before_delete
             let observers = {
@@ -501,15 +612,17 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
             }
-            let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str())).bind(self.id);
+            let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
+                .bind(self.id) #tenant_binding;
             let timeout = rullst_orm::schema::get_query_timeout();
-            if let Some(t) = timeout {
+            let mutation_result = if let Some(t) = timeout {
                 tokio::time::timeout(t, exec.execute(executor))
                     .await
-                    .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??;
+                    .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
             } else {
-                exec.execute(executor).await?;
-            }
+                exec.execute(executor).await?
+            };
+            #tenant_rows_check
             let futures = observers.iter().map(|obs| obs.deleted(&*self));
             rullst_orm::_futures::future::try_join_all(futures).await?;
             #[cfg(feature = "redis")]
@@ -529,6 +642,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
 
         #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
+            #tenant_guard
             #policy_check_restore
             #restore_logic
             Ok(())
@@ -536,19 +650,17 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
 
         #[rullst_orm::_tracing::instrument(name = "rullst_query", skip(self))]
         pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
+            #tenant_guard
             #policy_check_force_delete
             let pool = rullst_orm::Orm::try_pool()?;
             use rullst_orm::_sqlx::query_builder::QueryBuilder;
             let mut query_builder = QueryBuilder::new("DELETE FROM ");
             query_builder.push(#table_name);
-            if rullst_orm::Orm::driver()? == "postgres" {
-                query_builder.push(" WHERE id = $1");
-            } else {
-                query_builder.push(" WHERE id = ?");
-            }
+            query_builder.push(format!(" WHERE id = ?{}", #tenant_where_clause));
             let query = query_builder.build();
-            let mut exec = query.bind(self.id);
-            rullst_orm::execute_query!(exec, execute, pool)?;
+            let exec = query.bind(self.id) #tenant_binding;
+            let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
+            #tenant_rows_check
             Ok(())
         }
     }

@@ -4,6 +4,7 @@ use super::super::db::*;
 use super::super::layout::*;
 use axum::{
     extract::{Path, Query},
+    http::StatusCode,
     response::{Html, IntoResponse},
 };
 use sqlx::{QueryBuilder, Row};
@@ -17,40 +18,62 @@ pub async fn handle_table(
     let is_htmx = headers.contains_key("hx-request");
     let pool = match ensure_pool_initialized().await {
         Ok(p) => p,
-        Err(e) => return Html(format!("Database Error: {}", e)).into_response(),
+        Err(error) => {
+            return table_error_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                &format!("Database unavailable: {error}"),
+                is_htmx,
+                None,
+                &[],
+            );
+        }
     };
 
-    let tables = fetch_tables().await.unwrap_or_default();
+    let tables = match fetch_tables().await {
+        Ok(tables) => tables,
+        Err(error) => {
+            return table_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Could not inspect database tables: {error}"),
+                is_htmx,
+                None,
+                &[],
+            );
+        }
+    };
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let clean_table = sanitize_identifier(&table);
 
-    if !tables.contains(&clean_table) {
-        let not_found_html = format!("Table '{}' not found.", clean_table);
-        if is_htmx {
-            return Html(not_found_html).into_response();
-        } else {
-            return Html(studio_layout(not_found_html, None, &tables)).into_response();
-        }
+    if clean_table != table || !is_safe_identifier(&clean_table) || !tables.contains(&clean_table) {
+        return table_error_response(
+            StatusCode::NOT_FOUND,
+            "The requested table is unavailable or uses an unsupported identifier.",
+            is_htmx,
+            None,
+            &tables,
+        );
     }
 
     let (col_names, primary_keys) = match fetch_table_schema(pool, driver, &clean_table).await {
         Ok(res) => res,
         Err(err) => {
-            let err_html = format!("Error loading schema: {}", err);
-            if is_htmx {
-                return Html(err_html).into_response();
-            } else {
-                return Html(studio_layout(err_html, Some(&clean_table), &tables)).into_response();
-            }
+            return table_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Could not inspect the table schema: {err}"),
+                is_htmx,
+                Some(&clean_table),
+                &tables,
+            );
         }
     };
 
     let search_str = query.search.as_deref().unwrap_or("").trim();
-    let page = query.page.unwrap_or(1).max(1);
+    const MAX_PAGE: usize = 1_000_000;
+    let page = query.page.unwrap_or(1).clamp(1, MAX_PAGE);
     let per_page = 25;
-    let offset = (page - 1) * per_page;
+    let offset = (page - 1).saturating_mul(per_page);
 
-    let total_records = count_table_rows(
+    let total_records = match count_table_rows(
         &clean_table,
         if search_str.is_empty() {
             None
@@ -59,12 +82,45 @@ pub async fn handle_table(
         },
     )
     .await
-    .unwrap_or(0);
+    {
+        Ok(total) => total,
+        Err(error) => {
+            return table_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Could not count table records: {error}"),
+                is_htmx,
+                Some(&clean_table),
+                &tables,
+            );
+        }
+    };
     let total_pages = total_records.div_ceil(per_page);
 
+    if col_names.is_empty() {
+        return table_error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "This table has no columns inside Studio's supported identifier boundary.",
+            is_htmx,
+            Some(&clean_table),
+            &tables,
+        );
+    }
+
     let quoted_table = quote_table_name(driver, &clean_table);
+    let selected_columns = col_names
+        .iter()
+        .map(|column| {
+            let quoted = quote_table_name(driver, column);
+            if driver == "mysql" {
+                format!("CAST({quoted} AS CHAR) AS {quoted}")
+            } else {
+                format!("CAST({quoted} AS TEXT) AS {quoted}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
     let mut qb: QueryBuilder<rullst_orm::RullstDatabase> =
-        QueryBuilder::new(format!("SELECT * FROM {}", quoted_table));
+        QueryBuilder::new(format!("SELECT {selected_columns} FROM {quoted_table}"));
 
     if !search_str.is_empty() && !col_names.is_empty() {
         qb.push(" WHERE ");
@@ -80,7 +136,18 @@ pub async fn handle_table(
     qb.push(" OFFSET ");
     qb.push_bind(offset as i64);
 
-    let records = qb.build().fetch_all(pool).await.unwrap_or_default();
+    let records = match qb.build().fetch_all(pool).await {
+        Ok(records) => records,
+        Err(error) => {
+            return table_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Could not load table records: {error}"),
+                is_htmx,
+                Some(&clean_table),
+                &tables,
+            );
+        }
+    };
 
     let headers_html = build_headers_html(&col_names, &primary_keys);
     let rows_html = build_rows_html(&records, &col_names);
@@ -153,6 +220,25 @@ pub async fn handle_table(
     }
 }
 
+fn table_error_response(
+    status: StatusCode,
+    message: &str,
+    is_htmx: bool,
+    active_table: Option<&str>,
+    tables: &[String],
+) -> axum::response::Response {
+    let message = format!(
+        "<p class=\"p-8 text-sm text-red-300\">{}</p>",
+        rullst_core::html::escape_str(message)
+    );
+    let body = if is_htmx {
+        message
+    } else {
+        studio_layout(message, active_table, tables)
+    };
+    (status, Html(body)).into_response()
+}
+
 pub(crate) async fn fetch_table_schema(
     pool: &rullst_orm::RullstPool,
     driver: &str,
@@ -186,9 +272,13 @@ pub(crate) async fn fetch_table_schema(
     let mut col_names = Vec::new();
     let mut primary_keys = Vec::new();
 
-    for (idx, r) in columns_rows.into_iter().enumerate() {
+    for r in columns_rows {
         let name: String = r.try_get("name").unwrap_or_default();
+        if !is_safe_identifier(&name) {
+            continue;
+        }
         let is_pk: i32 = r.try_get("pk").unwrap_or(0);
+        let idx = col_names.len();
         col_names.push(name);
         if is_pk == 1 {
             primary_keys.push(idx);

@@ -131,8 +131,9 @@ impl LoginGuard {
             store.push_local_event(LiveSecurityEvent::local(
                 "LOGIN_JAIL_TRIGGERED",
                 format!(
-                    "Identity/IP '{}' placed in 15min jail after {} failed login attempts",
+                    "Identity/IP '{}' placed in a {}s jail after {} failed login attempts",
                     bounded_identity_for_log(identity),
+                    self.jail_duration.as_secs(),
                     current_count
                 ),
                 bounded_identity_for_log(identity),
@@ -148,6 +149,18 @@ impl LoginGuard {
             3 => Duration::from_secs(2),
             _ => Duration::from_secs(4),
         }
+    }
+
+    /// Records a failed login and applies the returned progressive delay.
+    ///
+    /// Prefer this method in authentication handlers so the tarpit cannot be
+    /// accidentally reduced to a duration that the caller forgets to await.
+    pub async fn record_login_failure_and_wait(&self, identity: &str) -> Duration {
+        let delay = self.record_login_failure(identity);
+        if !delay.is_zero() {
+            tokio::time::sleep(delay).await;
+        }
+        delay
     }
 
     /// Records a successful authentication, resetting the failure history.
@@ -283,6 +296,19 @@ mod tests {
         assert!(bounded.ends_with('…'));
         assert!(bounded.len() <= 131);
         assert!(!bounded.contains("tail"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn async_failure_api_applies_the_progressive_delay() {
+        let guard = LoginGuard::new();
+        assert_eq!(
+            guard.record_login_failure_and_wait("async-user").await,
+            Duration::ZERO
+        );
+        assert_eq!(
+            guard.record_login_failure_and_wait("async-user").await,
+            Duration::from_secs(1)
+        );
     }
 }
 

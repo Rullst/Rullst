@@ -39,7 +39,7 @@ snapshot. Os identificadores `M*` apontam para a classificação detalhada no
 | CLI completa, generators, `make:resource`, docs hub (mdBook) e SDK TypeScript | `[~] Parcial` — vale concluir com matriz de projetos gerados e um schema de API canônico; inferência AST isolada não basta. | M1, M4, M5 e M34 |
 | Recompilação sub-100 ms com mold/lld/Cranelift | `[~] Parcial` — vale otimizar e publicar benchmarks por máquina; não vale garantir um tempo universal. | M2 |
 | Zero lock-in, eject para Axum/Tokio e módulos totalmente opcionais | `[~] Parcial` — escape hatches são valiosos; migração sem custo e opcionalidade universal não são garantias honestas. | M3 e M32 |
-| Active Record, Repository, Turso/libSQL e réplicas SQLite transparentes | `[~] Parcial` — os padrões ORM existem; drivers e replicação precisam de semântica vendor-specific e testes reais. | M6 e M38 |
+| Active Record, Repository, Turso/libSQL e réplicas SQLite transparentes | `[~] Parcial` — os padrões SQLx existem e o perfil Turso-primary blank/API possui derive, CRUD/query, migrations/generators e contratos local/live. Paridade com relações/hooks/demais blueprints e replicação transparente continuam ausentes. | M6 e M38 |
 | Edge/Wasm distribuído e upgrades autônomos | `[~] Parcial` — o runtime portátil vale evoluir; atualização autônoma só com artefato assinado, aprovação e rollback. | M7 |
 | Modelagem por intenção e índices de produção auto-otimizados | `[ ] Não implementado` — vale como recomendação explicável e aprovada; DDL autônomo em produção não vale o risco. | M8 |
 | Auth local, OAuth/OIDC, TOTP, passkeys e WebAuthn completo | `[~] Parcial` — prioridade alta; exige conformance WebAuthn, recovery, revogação e política de sessão/JWT. | M9 |

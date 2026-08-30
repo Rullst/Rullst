@@ -9,7 +9,7 @@ use std::time::Duration;
 
 #[test]
 fn test_zero_trust_fingerprint_generation_and_verification() {
-    let key = b"my_secret_key_zero_trust_123";
+    let key = b"my_secret_key_zero_trust_12345678";
 
     let fp1 = generate_fingerprint(
         key,

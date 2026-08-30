@@ -1,6 +1,7 @@
 // cargo-rullst/src/generators/project/env_config.rs — Environment, gitignore, Nix, and Buildah configuration.
 
 use crate::blueprints::{BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::generators::project::PolyglotIntegration;
 use crate::generators::project::has_binary;
 use colored::*;
 use rand::distr::{Alphanumeric, SampleString};
@@ -11,7 +12,7 @@ pub fn generate_env_and_configs(
     path: &Path,
     db_needed: bool,
     db_provider: &str,
-    turso: bool,
+    polyglot_integrations: &[PolyglotIntegration],
     blueprint_selection: usize,
     app_key: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -71,11 +72,10 @@ rustflags = ["-C", "split-debuginfo=unpacked"]
     fs::write(cargo_dir.join("config.toml"), config_toml)?;
 
     let mut rullst_toml = String::new();
-    if db_needed {
+    if db_needed && db_provider != "Turso" {
         let db_url = match db_provider {
             "Postgres" => "postgres://user:password@localhost:5432/db",
-            "MySQL" => "mysql://user:password@localhost:3306/db",
-            "Turso" => "libsql://[your-database-id].turso.io?authToken=[your-token]",
+            "MySQL" | "MariaDB" => "mysql://user:password@localhost:3306/db",
             _ => "sqlite://db.sqlite",
         };
         rullst_toml.push_str(&format!(
@@ -122,8 +122,7 @@ csrf_signed_webhook_paths = ["/billing/webhook"]
 
     let db_url = match db_provider {
         "Postgres" => "postgres://user:password@localhost:5432/db".to_string(),
-        "MySQL" => "mysql://user:password@localhost:3306/db".to_string(),
-        "Turso" => "sqlite://turso_local.db?mode=rwc".to_string(),
+        "MySQL" | "MariaDB" => "mysql://user:password@localhost:3306/db".to_string(),
         _ => "sqlite://db.sqlite?mode=rwc".to_string(),
     };
 
@@ -140,19 +139,36 @@ RULLST_ENV=development
 "#
     .to_string();
 
-    if db_needed {
+    if db_needed && db_provider != "Turso" {
         let db_env_str = format!(
             "\n# ── Database ──────────────────────────────────────────────────\nDATABASE_URL={}\n",
             db_url
         );
         env_content.push_str(&db_env_str);
         env_example_content.push_str(&db_env_str);
+    }
 
-        if turso {
-            let turso_env = "\n# ── Turso Credentials ─────────────────────────\n# TURSO_DATABASE_URL=libsql://your-db-name.turso.io\n# TURSO_AUTH_TOKEN=your-auth-token\n";
-            env_content.push_str(turso_env);
-            env_example_content.push_str(turso_env);
-        }
+    for integration in polyglot_integrations {
+        let (development, example) = match integration {
+            PolyglotIntegration::Turso => (
+                "\n# ── Turso / libSQL edge SQL ───────────────────────────────────\nTURSO_DATABASE_URL=mock_local\nTURSO_AUTH_TOKEN=\nTURSO_OFFLINE_PATH=turso-development.db\n",
+                "\n# ── Turso / libSQL edge SQL ───────────────────────────────────\nTURSO_DATABASE_URL=\nTURSO_AUTH_TOKEN=\nTURSO_OFFLINE_PATH=turso-development.db\n",
+            ),
+            PolyglotIntegration::MongoDb => (
+                "\n# ── MongoDB document store ─────────────────────────────────────\nMONGODB_URL=mock_local\nMONGODB_DATABASE=rullst_development\n",
+                "\n# ── MongoDB document store ─────────────────────────────────────\nMONGODB_URL=\nMONGODB_DATABASE=\n",
+            ),
+            PolyglotIntegration::DuckDb => (
+                "\n# ── DuckDB analytics ───────────────────────────────────────────\nDUCKDB_PATH=analytics.duckdb\n",
+                "\n# ── DuckDB analytics ───────────────────────────────────────────\nDUCKDB_PATH=analytics.duckdb\n",
+            ),
+            PolyglotIntegration::SurrealDb => (
+                "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=mock_local\nSURREALDB_NAMESPACE=rullst\nSURREALDB_DATABASE=development\nSURREALDB_TOKEN=\n",
+                "\n# ── SurrealDB document and graph store ─────────────────────────\nSURREALDB_URL=\nSURREALDB_NAMESPACE=\nSURREALDB_DATABASE=\nSURREALDB_TOKEN=\n",
+            ),
+        };
+        env_content.push_str(development);
+        env_example_content.push_str(example);
     }
 
     if blueprint_selection != BLANK_BLUEPRINT_ID {
@@ -315,7 +331,7 @@ mod tests {
             &root,
             false,
             "Sqlite",
-            false,
+            &[],
             BLANK_BLUEPRINT_ID,
             "0123456789abcdef0123456789abcdef",
         )
@@ -327,6 +343,69 @@ mod tests {
             assert!(generated.contains("RULLST_ENV=development"));
             assert!(!generated.contains("APP_ENV="));
         }
+
+        fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn selected_persistence_integrations_get_offline_safe_development_values() {
+        let root =
+            std::env::temp_dir().join(format!("rullst-polyglot-env-{}", rand::random::<u64>()));
+        fs::create_dir_all(&root).expect("temporary project");
+
+        generate_env_and_configs(
+            &root,
+            true,
+            "MariaDB",
+            &[
+                PolyglotIntegration::Turso,
+                PolyglotIntegration::MongoDb,
+                PolyglotIntegration::DuckDb,
+                PolyglotIntegration::SurrealDb,
+            ],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("polyglot environment scaffold");
+
+        let development = fs::read_to_string(root.join(".env")).expect("development env");
+        let example = fs::read_to_string(root.join(".env.example")).expect("example env");
+        assert!(development.contains("DATABASE_URL=mysql://"));
+        assert!(development.contains("TURSO_DATABASE_URL=mock_local"));
+        assert!(development.contains("MONGODB_URL=mock_local"));
+        assert!(development.contains("DUCKDB_PATH=analytics.duckdb"));
+        assert!(development.contains("SURREALDB_URL=mock_local"));
+        assert!(example.contains("TURSO_DATABASE_URL=\n"));
+        assert!(example.contains("MONGODB_URL=\n"));
+        assert!(example.contains("SURREALDB_URL=\n"));
+
+        fs::remove_dir_all(root).expect("temporary project cleanup");
+    }
+
+    #[test]
+    fn turso_primary_has_no_fictitious_sqlx_database_url() {
+        let root = std::env::temp_dir().join(format!("rullst-turso-env-{}", rand::random::<u64>()));
+        fs::create_dir_all(&root).expect("temporary project");
+
+        generate_env_and_configs(
+            &root,
+            true,
+            "Turso",
+            &[PolyglotIntegration::Turso],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("Turso-primary environment scaffold");
+
+        let development = fs::read_to_string(root.join(".env")).expect("development env");
+        assert!(
+            !development
+                .lines()
+                .any(|line| line.starts_with("DATABASE_URL="))
+        );
+        assert!(development.contains("TURSO_DATABASE_URL=mock_local"));
+        assert!(development.contains("TURSO_OFFLINE_PATH=turso-development.db"));
+        assert!(!root.join("Rullst.toml").exists());
 
         fs::remove_dir_all(root).expect("temporary project cleanup");
     }

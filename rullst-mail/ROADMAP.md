@@ -42,13 +42,15 @@ flowchart TD
 ### Phase 1: Core Sending, Resilient Drivers & Background Queues 🚀 *(Completed / In Progress)*
 - [x] **Unified `MailDriver` Trait**: Decoupled async interface supporting `LogDriver`, `SmtpDriver`, `ResendDriver`, and `SendGridDriver`.
 - [x] **Fluent `Message` Builder**: Zero-cost API for constructing recipients, subjects, HTML bodies, and plain-text fallback variants.
-- [x] **Zero-Panic Formal Verification**: Kani proofs and property-based tests eliminating runtime panics on email formatting.
+- [~] **Scoped Panic Checks**: A small Kani harness and ordinary tests exist;
+  they do not prove panic-freedom across every driver, parser, dependency, or
+  generated application.
 - [x] **Async Background Job Integration**: Automatic non-blocking dispatch through `rullst-core::queue::Queue` with configurable retry backoff.
-- [x] **Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`)**: If primary driver (e.g. Resend) fails with 5xx or rate limit, automatically fallback to secondary driver (e.g. SendGrid or SMTP) with circuit breaker cooldown and telemetry alerts.
-- [x] **AWS SES REST & Postmark Drivers**: Native HTTP client implementations with zero C-binding dependencies (`AwsSesDriver`, `PostmarkDriver`).
-- [x] **Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: Precision future delivery scheduled natively via `rullst::queue` (Tokio + SQLite/Redis) or downstream provider scheduling APIs (e.g. Resend/SendGrid timestamps).
-- [x] **Zero-Copy Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: High-throughput attachment pipeline with Base64 encoding for Resend, SendGrid, and Postmark, plus Content-ID (`CID`) inline image embedding (`<img src="cid:logo">`).
-- [x] **Pre-Flight Deliverability & Disposable Email Filter (`DisposableEmailFilter` / `.validate_deliverability()`)**: Proactively verify syntax and filter over 150 disposable/temporary email services (`mailinator.com`, `tempmail.com`, etc.) prior to queueing to protect sender quotas.
+- [~] **Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`)**: In-process fallback, cooldown and tracing exist. Provider-specific transient/permanent classification, durable state and an alert sink remain open.
+- [~] **Postmark REST plus bounded AWS SES adapter**: Postmark uses its live HTTP API. `AwsSesDriver` is offline-mock or an explicit bearer-authenticated custom proxy; direct AWS SES fails closed until SigV4 is implemented.
+- [~] **Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: Resend/SendGrid receive provider scheduling fields. The generic queue/SMTP/Postmark paths do not yet guarantee due-time dispatch.
+- [~] **Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: Fluent owned-byte helpers and REST serialization exist for named providers; encoding copies memory and SMTP parity is incomplete.
+- [~] **Pre-Flight Syntax & Disposable Email Filter**: A bounded local syntax check and static list of 150+ domains run before dispatch. This is not DNS/MX verification or a deliverability guarantee.
 - [x] **Mandatory Dispatch Pipeline**: Facade, queue worker, tenant resolver, failover, and official drivers consistently enforce CRLF, deliverability, content-security, and DLP checks.
 - [x] **Deterministic Provider Mocks**: Empty and `mock_*` credentials select an explicit, inspectable offline transport without HTTP or SMTP I/O.
 - [ ] **Inbound Email Webhook & MIME Parser (`rullst-mail::inbound`)**: Processing incoming transactional replies (ticket comments, approval replies) with zero-copy multipart MIME parsing and SPF/DKIM verification.
@@ -90,15 +92,15 @@ flowchart TD
 
 ### Phase 4: Enterprise Security, DLP, Deliverability & Compliance 🛡️
 - [x] **Outbound DLP Email Secret Interceptor**: Scans both email subject, HTML/plain-text bodies (`redact_email_secrets` & `.sanitize_secrets()`) to prevent accidental leaks of AWS keys (`AKIA...`), database passwords, private keys, API keys, and bearer tokens.
-- [x] **Outbound Phishing & Homograph URL Interceptor (`.validate_security()`)**: Scans email content for dangerous URI schemes (`javascript:`, `data:text/html`) and mixed-script Unicode IDN homograph domain spoofing (e.g. Cyrillic `а` in `pаypal.com`).
-- [x] **RFC 8058 One-Click List-Unsubscribe**: Mandatory header generation (`List-Unsubscribe` & `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) to comply with Google & Yahoo deliverability requirements.
+- [~] **Outbound Phishing & Homograph URL Interceptor (`.validate_security()`)**: Bounded URL heuristics reject selected schemes and mixed Latin/Cyrillic/Greek domains; this is not a complete HTML/URL parser or phishing guarantee.
+- [~] **RFC 8058 One-Click List-Unsubscribe**: Supported providers emit the headers when an HTTPS unsubscribe URL is explicitly configured. Application policy and mailbox-provider compliance remain external.
 - [ ] **DMARC, SPF & MTA-STS Live Ingestion Parser**: Automated ingestion endpoint for DMARC aggregate XML reports (`rua`/`ruf`) sent by major mailbox providers (Google, Microsoft, Yahoo), alerting against domain spoofing attempts in real time.
 - [ ] **S/MIME X.509 Digital Signatures & PGP Envelope Encryption (`rullst-mail::crypto`)**: Native cryptographic signatures and payload encryption for high-assurance enterprise communications (banking receipts, medical reports, government alerts).
 - [ ] **Tenant Outbound Quota Jail & Velocity Anomaly Tarpit**: Real-time anomalous sending rate detection (e.g. 500 emails/min from a compromised tenant account), automatically jailing the tenant and notifying the SOC before burning domain reputation.
 - [ ] **Anti-Phishing Invisible Watermarking & Recipient Leak Tracing**: Steganographic zero-width token injection unique per recipient, enabling irrefutable tracing if confidential internal emails are leaked.
 - [ ] **Strict TLS 1.3 / DANE / MTA-STS Delivery Enforcement**: Enforce opportunistic or strict TLS encryption, aborting SMTP handshakes on attempted plain-text downgrade attacks (STARTTLS stripping).
 - [ ] **Unified Webhook Ingestion & Auto-Suppression Shield (`rullst-mail::webhooks`)**: Universal webhook handler endpoint for Resend, SendGrid, Postmark, and AWS SES with persistent `SuppressionList` for hard bounces and spam complaints.
-- [x] **Authenticated Open & Click Tracking (`TrackingEngine`)**: Versioned and purpose-bound HMAC-SHA256 tokens, strong-secret validation, constant-time verification, default TTL/future-skew checks, and optional bounded replay rejection through `TrackingVerifier`.
+- [~] **Authenticated Open & Click Tracking (`TrackingEngine`)**: Versioned purpose-bound HMAC tokens, TTL/skew and bounded local replay checks exist. Tokens are authenticated, not encrypted, and expose their email/URL payload after base64 decoding; consent, minimization and durable replay state remain application work.
 - [ ] **BIMI & Verified Brand Mark Embedder**: Validation and certificate embedding (SVG Tiny P/S format and VMC) for Gmail & Apple Mail verified blue checkmarks and logos.
 - [ ] **Native DKIM Signer (RSA & Ed25519)**: Native Rust cryptographic signing of headers and body hashes using `ring` / `rsa` for direct server-to-server SMTP deliverability without external mail relays.
 - [ ] **Deliverability & DNS Health Scanner (`cargo rullst audit:mail`)**: Static and runtime CLI validator checking DNS records for SPF (`v=spf1`), DKIM public keys, DMARC policies (`p=reject`), and BIMI visual brand indicators.
@@ -129,15 +131,20 @@ flowchart TD
 ---
 
 ### Phase 6: Multi-Tenant SaaS & Fiscal Blueprints 🏢
-- [x] **Dynamic Multi-Tenancy Resolver (`TenantMailResolver`)**: Automatically select SMTP credentials, custom domain sender addresses, or API keys based on the active `TenantContext` in multi-tenant B2B SaaS architectures.
+- [~] **Explicit Multi-Tenancy Resolver (`TenantMailResolver`)**: Routes an explicitly validated tenant ID to an in-memory driver registry. Authentication-derived tenant selection, durable encrypted credentials and distributed updates remain application work.
 - [ ] **Smart Domain Warm-Up Scheduler & Provider Rate Limiter**: Automated throttling and graduated daily sending schedules (e.g. Day 1: 50 emails/day, Day 7: 2,000 emails/day) for newly provisioned domains to build sender reputation safely.
-- [x] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
+- [~] **SaaS & Transactional Scaffolding Blueprints (`cargo rullst make:mail`)**:
   - `cargo rullst make:mail <Name> --welcome`: Onboarding and email verification template.
   - `cargo rullst make:mail <Name> --reset`: Secure time-limited password reset.
   - `cargo rullst make:mail <Name> --otp`: High-visibility OTP token delivery.
   - `cargo rullst make:mail <Name> --invoice`: SaaS billing and payment receipt.
   - `make:mail-invoice`: Brazilian Receita Federal NFS-e DPS & international SaaS receipt templates.
   - `make:mail-dunning`: Progressive payment recovery sequence (D+1 gentle, D+3 action required, D+7 service paused).
+  - **v12 bounded implementation:** the five actually exposed variants validate
+    identifiers, reject traversal/collisions, enable the umbrella `mailer`
+    feature, register modules, escape dynamic HTML and pass a materialized
+    Clippy/runtime contract. The two commands listed above without
+    `cargo rullst make:mail <Name>` syntax remain roadmap ideas.
 
 ---
 
@@ -151,28 +158,16 @@ flowchart TD
 
 ---
 
-## 📊 Comprehensive Matrix of Competitive Advantages
+## Current capability boundary
 
-| Feature & Capability | `lettre` (Rust Crate) | `Loco.rs` (Rust MVC) | `Laravel` (PHP) | Node.js (`React Email` / `Resend`) | `Rails` (`ActionMailer`) | **`rullst-mail`** 🚀 |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Type-Safe Rust API** | ✅ | ✅ | ❌ (PHP) | ❌ (TypeScript/JS) | ❌ (Ruby) | ✅ **Zero-Panic Verified** |
-| **Async Background Queues** | ❌ (Manual) | ⚠️ (Requires Redis/Worker) | ⚠️ (Requires Redis/Queue) | ⚠️ (Requires BullMQ/Celery) | ⚠️ (Requires Sidekiq) | ✅ **Built-in (`rullst::queue`)** |
-| **Zero-Bundle SSR Templating** | ❌ | ⚠️ (Tera/Askama string templates) | ⚠️ (Blade runtime) | ❌ (Heavy Node.js / React) | ⚠️ (ERB runtime) | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Zero-Cost CSS Inliner** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Node.js runtime parsing) | ⚠️ (Roadie gem) | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Multi-Driver Circuit Breaker** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native `FailoverDriver`** |
-| **Attachments & Inline CID Assets** | ⚠️ (Manual MIME) | ⚠️ (Manual MIME) | ✅ | ✅ | ✅ | ✅ **Fluent Zero-Copy API** |
-| **Delayed / Scheduled Delivery** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ **Native `.send_at()` / `.send_in()`** |
-| **DLP Outbound Secret Scanner** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native (`redact_email_secrets`)** |
-| **Homograph & Anti-Phishing Filter**| ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Native IDN Scanner** |
-| **OpenTelemetry Distributed Traces**| ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ⏳ *(Not implemented yet - In Roadmap)* |
-| **AI Smart Dunning Recovery** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Live Studio Inspector & MailTrap** | ❌ | ❌ | ⚠️ (External Mailpit/Mailtrap) | ⚠️ (Local dev server) | ⚠️ (LetterOpener gem) | ⚠️ **`MailTrap` & `MemoryDriver`** *(Studio UI Not implemented yet)* |
-| **Dynamic Multi-Tenancy Resolver** | ❌ | ❌ (Manual) | ⚠️ (Custom MailManager) | ❌ (Manual) | ❌ (Manual) | ✅ **Native `TenantMailResolver`** |
-| **Unified Webhook & Auto-Suppression** | ❌ | ❌ | ⚠️ (Third-party package) | ⚠️ (Manual webhook handler) | ⚠️ (Manual) | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Zero-Cookie Privacy Tracking** | ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Built-in (`TrackingEngine`)** |
-| **Disposable Email & Deliverability Filter** | ❌ | ❌ | ⚠️ (Third-party) | ⚠️ (Third-party) | ⚠️ (Third-party) | ✅ **Built-in (`DisposableEmailFilter`)** |
-| **Transactional Mail Fixtures** | ❌ | ❌ | ⚠️ (Manual Factories) | ⚠️ (Manual) | ⚠️ (Manual) | ✅ **Native `MailFactory`** |
-| **Domain Warm-Up Scheduler** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Formal Panic-Freedom (Kani)** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
-| **Brazilian SPED / NFS-e Receipts** | ❌ | ❌ | ❌ | ❌ | ❌ | ⏳ *(Not implemented yet - In Roadmap)* |
-| **RFC 8058 1-Click Unsubscribe** | ❌ (Manual) | ❌ (Manual) | ⚠️ (Manual Headers) | ⚠️ (Manual Headers) | ❌ (Manual) | ✅ **Automatic Engine Injection** |
+The former unsourced competitor matrix is preserved in the immutable historical
+snapshot referenced by `docs/src/v12.md`; it is not maintained as technical
+evidence because external ecosystems change. The current Rullst-only status is:
+
+| Capability | Current status |
+| :--- | :--- |
+| Message API, mandatory pipeline, queue envelope, offline mocks, MailTrap and factories | Implemented in the bounded scopes above |
+| Resend, SendGrid and Postmark REST; optional SMTP | Implemented per provider, without universal method parity |
+| Failover, scheduling, attachments, tenant routing, URL/DLP checks and tracking | Useful partial foundations with the named limits above |
+| Direct AWS SES/SigV4, inbound MIME, suppression webhooks, DKIM/DMARC, Studio Mail Radar and AI dunning | Not implemented |
+| Universal deliverability, privacy/compliance, panic-freedom or competitor superiority | Not claimed |

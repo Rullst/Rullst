@@ -18,6 +18,10 @@ cryptographic implementations.
   monotonic anti-rollback counter.
 - [x] Fail-closed OTA state transition: commit is rejected until verification.
 - [x] Negative tests and fuzz coverage for malformed/untrusted OTA input.
+- [x] Safe `make:iot` telemetry scaffold with feature/module registration,
+  collision refusal, identifier validation, and a materialized compile test.
+- [x] Escaped local HTML snapshot cards and fail-closed anomaly handling for
+  non-finite sensor/configuration values.
 
 ## Required for an end-to-end OTA implementation
 

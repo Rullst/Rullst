@@ -98,7 +98,8 @@ mod tests {
         let event = LiveSecurityEvent::local("RBAC_DENIAL", "denied", "192.0.2.4");
         let value = serde_json::to_value(&event).expect("serialize event");
         let object = value.as_object().expect("event object");
-        let keys = object.keys().map(String::as_str).collect::<Vec<_>>();
+        let mut keys = object.keys().map(String::as_str).collect::<Vec<_>>();
+        keys.sort_unstable();
         assert_eq!(
             keys,
             [

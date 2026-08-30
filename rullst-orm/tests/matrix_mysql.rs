@@ -1,5 +1,7 @@
 #![cfg(not(any(feature = "strict-sqlite", feature = "strict-postgres")))]
 
+mod support;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 use testcontainers::ImageExt;
@@ -27,10 +29,7 @@ async fn test_matrix_mysql_crud() {
     {
         Ok(c) => c,
         Err(e) => {
-            eprintln!(
-                "⚠️ Skipping MySQL matrix container test (Docker unavailable): {}",
-                e
-            );
+            support::handle_container_start_error("MySQL", e);
             return;
         }
     };

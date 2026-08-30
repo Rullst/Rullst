@@ -17,12 +17,10 @@ pub struct PaginationParams {
 }
 
 /// Form payload for batch actions (e.g. bulk deletion).
-#[derive(Deserialize)]
 pub struct BatchActionForm {
     /// Action verb (e.g. `delete`).
     pub action: String,
     /// Selected record IDs.
-    #[serde(default)]
     pub selected_ids: Vec<String>,
 }
 

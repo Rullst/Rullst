@@ -31,6 +31,11 @@ rullst = { version = "12.0.0", default-features = false }
 | Feature | Default | Enables |
 | --- | :---: | --- |
 | `orm` | yes | `rullst-orm` and Core's ORM integration |
+| `orm-mongodb` | no | `orm` plus the MongoDB document adapter |
+| `orm-duckdb` | no | `orm` plus the in-process DuckDB analytics adapter |
+| `orm-turso` | no | `orm` plus typed Turso-primary CRUD/query, parameterized remote libSQL SQL, transactions, reversible checked migrations, and a persistent offline fallback |
+| `orm-surrealdb` | no | `orm` plus SurrealDB HTTP document and bounded graph adapters |
+| `orm-polyglot` | no | Convenience feature enabling all four optional persistence adapters |
 | `queue-sqlite` | yes | Core's durable SQLite queue backend |
 | `nexus` | no | The generated Nexus administration interface |
 | `studio` | no | Studio plus Core's Studio integration marker |
@@ -88,6 +93,11 @@ aliases use SQLx `Any`.
 | Feature | Enables |
 | --- | --- |
 | `redis` | Redis connection-manager support and Redis-aware ORM errors |
+| `mongodb` | Official MongoDB driver plus typed document CRUD and offline fallback |
+| `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
+| `turso` | Official remote libSQL driver, typed primary CRUD/query facade, parameterized SQL, transactions, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
+| `surrealdb` | SurrealDB HTTP document CRUD and bounded read-only ISO GQL; no embedded SDK |
+| `polyglot` | Convenience feature enabling `mongodb`, `duckdb`, `turso`, and `surrealdb` |
 | `strict-postgres` | Concrete PostgreSQL pool, database, query-result, and query paths |
 | `strict-mysql` | Concrete MySQL paths when PostgreSQL is not also selected |
 | `strict-sqlite` | Concrete SQLite paths when PostgreSQL and MySQL are not also selected |
@@ -96,6 +106,12 @@ The strict backend selection rules and precedence are the same as the umbrella
 crate. SQLx drivers remain implementation dependencies; `strict-*` selects
 concrete public types and query paths rather than acting as a driver download
 switch.
+
+The Polyglot features expose capability-specific APIs under
+`rullst_orm::polyglot`; they do not participate in a shared cross-backend
+transaction. Turso can additionally be selected explicitly by
+`#[orm(backend = "turso")]` and the blank/API scaffold. See the
+[Polyglot Persistence guide](polyglot-persistence.md).
 
 ### `rullst-orm-macros`
 

@@ -109,6 +109,7 @@ fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
         case.hot_reload,
         case.db_needed,
         "Sqlite",
+        &[],
         false,
         false,
         case.blueprint,

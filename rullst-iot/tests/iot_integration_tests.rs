@@ -271,7 +271,8 @@ fn test_iot_micro_dashboard_rendering() {
     assert!(card_html.contains("solar_node_1"));
     assert!(card_html.contains("3.3"));
     assert!(card_html.contains("voltage"));
-    assert!(card_html.contains("ONLINE"));
+    assert!(card_html.contains("SNAPSHOT"));
+    assert!(!card_html.contains("ONLINE"));
 }
 
 #[test]

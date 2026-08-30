@@ -15,21 +15,21 @@
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
-  - **AWS SES v2** (`AwsSesDriver`) — Native REST API v2 with custom endpoints & region selection.
+  - **AWS SES boundary** (`AwsSesDriver`) — offline fixture or explicit trusted bearer proxy; direct SES fails closed until SigV4 exists.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`):** Primary driver dispatch with automatic fallback across secondary drivers, atomic failure threshold triggering, cooldown circuit breakers, and structured tracing warnings.
 - **🏢 Dynamic Multi-Tenancy Resolver (`TenantMailResolver`):** Isolate credentials, custom domains, and dedicated API keys per tenant/organization in B2B SaaS applications.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
-- **⏰ Precision Scheduled Delivery (`.send_at()`, `.send_in()`):** Deliver messages at exact UTC timestamps or relative durations.
+- **⏰ Provider-specific Scheduling (`.send_at()`, `.send_in()`):** Resend and SendGrid receive scheduling fields; generic queue/SMTP/Postmark due-time dispatch is not implied.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Generates starting mailables for Welcome, Password Reset, OTP, and Invoice flows.
+- **🛠️ Safe CLI Scaffolding (`cargo rullst make:mail`):** Generates registered facade-based Welcome, Password Reset, OTP, Invoice or custom mailables, refusing unsafe names/collisions and escaping dynamic HTML.
 
 ---
 
@@ -71,16 +71,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### 2. Resilient Multi-Driver Failover (Circuit Breaker)
 
 ```rust
-use rullst_mail::drivers::{AwsSesDriver, FailoverDriver, PostmarkDriver, ResendDriver};
+use rullst_mail::drivers::{FailoverDriver, PostmarkDriver, ResendDriver};
 use std::time::Duration;
 
 let primary = ResendDriver::try_new("re_...")?;
 let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
-let fallback_2 = AwsSesDriver::try_new("us-east-1", "ses_token_...")?;
 
 let failover_driver = FailoverDriver::new(primary)
     .with_fallback(fallback_1)
-    .with_fallback(fallback_2)
     .with_threshold(3) // Trip circuit after 3 consecutive failures
     .with_cooldown(Duration::from_secs(60)); // Cooldown for 60s
 ```
@@ -178,9 +176,13 @@ if msg.is_disposable() {
 
 ---
 
-### 7. Zero-Cookie Privacy-Preserving Tracking Engine
+### 7. Authenticated open/click tracking primitives
 
-Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory 32-byte secret and bounded validity. Applications remain responsible for consent, retention, redirects, and all applicable privacy-law obligations.
+Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
+32-byte secret and bounded validity. HMAC authenticates but does not encrypt:
+recipient and target URL remain base64-readable in the current token. The
+application owns consent, minimization, retention, redirects and applicable
+privacy-law decisions.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
@@ -235,12 +237,18 @@ Environment variables:
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
-- `AWS_REGION`: AWS region for SES (e.g. `us-east-1`).
-- `AWS_SES_BEARER_TOKEN`: Auth token for AWS SES REST v2.
+- `AWS_REGION`: Region metadata used by the SES proxy/mock adapter.
+- `AWS_SES_BEARER_TOKEN`: Bearer token for an explicit trusted proxy; this is
+  not AWS SigV4.
+- `AWS_SES_ENDPOINT`: Required HTTPS proxy endpoint for non-mock mode; HTTP is
+  accepted only on loopback for local tests.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, AWS SES, and authenticated SMTP, an empty credential or one beginning with `mock_` selects the deterministic offline fallback. Use `driver.delivery_mode()` and `OfflineMailMock::deliveries()` to assert this explicitly in tests.
+For Resend, SendGrid, Postmark, the SES proxy fixture, and authenticated SMTP,
+an empty credential or one beginning with `mock_` selects the deterministic
+offline fallback. Use `driver.delivery_mode()` and
+`OfflineMailMock::deliveries()` to assert this explicitly in tests.
 
 ---
 
@@ -251,14 +259,15 @@ claim that third-party delivery infrastructure is unnecessary.
 
 Implemented building blocks include:
 
-- typed message construction and templates;
-- explicit SMTP, Resend, SendGrid, Postmark, SES, log, and memory drivers;
+- typed message construction and escaped generated templates;
+- explicit SMTP, Resend, SendGrid, Postmark, log and memory drivers, plus the
+  bounded SES proxy/mock adapter;
 - deterministic offline mode for empty or `mock_*` provider credentials;
 - an in-memory `MailTrap` and `MailFactory` fixtures;
 - bounded retry/failover helpers, tenant-driver resolution, attachments, and
   provider-specific scheduling fields;
-- HMAC-authenticated tracking tokens with expiry/replay helpers, URL checks,
-  and bounded secret-redaction heuristics.
+- HMAC-authenticated (not encrypted) tracking tokens with expiry/replay helpers,
+  URL checks, and bounded secret-redaction heuristics.
 
 These components do not provide deliverability, sender-domain reputation,
 legal consent, unsubscribe policy, durable campaign orchestration, a visual

@@ -63,7 +63,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst make:iot <Name>",
-                    "Scaffold bare-metal IoT edge sensor node",
+                    "Scaffold a local IoT telemetry module",
                 ),
                 (
                     "cargo rullst make:mail <Name>",
@@ -112,7 +112,7 @@ pub fn get_help_groups() -> Vec<(&'static str, Vec<(&'static str, &'static str)>
                 ),
                 (
                     "cargo rullst audit [--ai] [--compliance] [--idor] [--geiger]",
-                    "Run AI vulnerability, IDOR, Geiger unsafe & SOC2 audit",
+                    "Run bounded vulnerability, IDOR, unsafe and evidence checks",
                 ),
                 ("cargo rullst make:billing", "Scaffold Stripe billing"),
                 ("cargo rullst make:cors", "Add CORS middleware"),

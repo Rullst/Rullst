@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use crate::blueprints::{BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
+use crate::generators::project::PolyglotIntegration;
 
 fn dependency_source(
     current_dir: &Path,
@@ -38,6 +39,7 @@ pub fn build_cargo_toml(
     hot_reload: bool,
     db_needed: bool,
     db_provider: &str,
+    polyglot_integrations: &[PolyglotIntegration],
     wants_ai: bool,
     wants_redis: bool,
     blueprint_selection: usize,
@@ -59,6 +61,9 @@ pub fn build_cargo_toml(
     }
     if wants_redis {
         rullst_features.push("redis");
+    }
+    for integration in polyglot_integrations {
+        rullst_features.push(integration.rullst_feature());
     }
 
     rullst_features.push("studio");
@@ -117,10 +122,26 @@ edition = "2021"
     cargo_toml.push_str("tracing = \"0.1\"\n");
     cargo_toml.push_str("tracing-subscriber = \"0.3\"\n");
 
-    if db_needed {
+    if db_needed || !polyglot_integrations.is_empty() {
+        let orm_features = polyglot_integrations
+            .iter()
+            .map(|integration| format!("\"{}\"", integration.orm_feature()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let orm_source = dependency_source(current_dir, "rullst-orm", crate_version)?;
+        if orm_features.is_empty() {
+            cargo_toml.push_str(&format!("rullst-orm = {{ {orm_source} }}\n"));
+        } else {
+            cargo_toml.push_str(&format!(
+                "rullst-orm = {{ {orm_source}, features = [{orm_features}] }}\n"
+            ));
+        }
+    }
+
+    if db_needed && db_provider != "Turso" {
         let sqlx_driver_feature = match db_provider {
             "Postgres" => "postgres",
-            "MySQL" => "mysql",
+            "MySQL" | "MariaDB" => "mysql",
             _ => "sqlite",
         };
         let sqlx_features = format!(
@@ -128,14 +149,15 @@ edition = "2021"
             sqlx_driver_feature
         );
 
-        let orm_dep = dependency_line(current_dir, "rullst-orm", crate_version)?;
-
         cargo_toml.push_str(&format!(
-            r#"{orm_dep}sqlx = {{ version = "0.9", default-features = false, features = [{sqlx_features}] }}
+            r#"sqlx = {{ version = "0.9", default-features = false, features = [{sqlx_features}] }}
 "#,
-            orm_dep = orm_dep,
             sqlx_features = sqlx_features
         ));
+    }
+
+    if db_provider == "Turso" {
+        cargo_toml.push_str("dotenvy = \"0.15\"\n");
     }
 
     if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
@@ -189,6 +211,7 @@ mod tests {
             false,
             false,
             "Sqlite",
+            &[],
             false,
             false,
             BLANK_BLUEPRINT_ID,
@@ -206,6 +229,7 @@ mod tests {
             false,
             true,
             "Sqlite",
+            &[],
             false,
             false,
             SAAS_BLUEPRINT_ID,
@@ -218,6 +242,7 @@ mod tests {
             false,
             true,
             "Sqlite",
+            &[],
             false,
             false,
             BLOG_BLUEPRINT_ID,
@@ -230,6 +255,7 @@ mod tests {
             false,
             true,
             "Sqlite",
+            &[],
             false,
             false,
             LMS_BLUEPRINT_ID,
@@ -273,5 +299,63 @@ mod tests {
             crate::blueprints::common::frontend_cargo_dependency("Tera Templates"),
             "tera = \"2.2\"\n"
         );
+    }
+
+    #[test]
+    fn selected_persistence_integrations_enable_only_their_features() {
+        let manifest = build_cargo_toml(
+            "polyglot-app",
+            false,
+            true,
+            "MariaDB",
+            &[
+                PolyglotIntegration::Turso,
+                PolyglotIntegration::MongoDb,
+                PolyglotIntegration::DuckDb,
+                PolyglotIntegration::SurrealDb,
+            ],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("polyglot manifest");
+
+        for feature in [
+            "orm-turso",
+            "orm-mongodb",
+            "orm-duckdb",
+            "orm-surrealdb",
+            "turso",
+            "mongodb",
+            "duckdb",
+            "surrealdb",
+        ] {
+            assert!(manifest.contains(&format!("\"{feature}\"")));
+        }
+        assert!(manifest.contains("\"mysql\""));
+    }
+
+    #[test]
+    fn turso_primary_uses_libsql_features_without_a_direct_sqlx_driver() {
+        let manifest = build_cargo_toml(
+            "edge-primary",
+            false,
+            true,
+            "Turso",
+            &[PolyglotIntegration::Turso],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("Turso-primary manifest");
+
+        assert!(manifest.contains("\"orm-turso\""));
+        assert!(manifest.contains("features = [\"turso\"]"));
+        assert!(manifest.contains("dotenvy = \"0.15\""));
+        assert!(!manifest.lines().any(|line| line.starts_with("sqlx = ")));
     }
 }

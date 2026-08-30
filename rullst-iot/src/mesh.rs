@@ -31,7 +31,10 @@ impl MeshNode {
     }
 }
 
-/// Self-healing P2P mesh network topology manager.
+/// In-memory topology registry with RSSI-based relay recommendation.
+///
+/// This type does not route packets, detect failures, or control a self-healing
+/// P2P mesh transport.
 pub struct MeshTopology {
     pub nodes: Vec<MeshNode>,
 }
@@ -46,7 +49,7 @@ impl MeshTopology {
         self.nodes.push(node);
     }
 
-    /// Resolves the best relay path by RSSI strength (highest signal = closest).
+    /// Recommends the online node with the strongest recorded RSSI.
     pub fn best_relay(&self) -> Option<&MeshNode> {
         self.nodes
             .iter()

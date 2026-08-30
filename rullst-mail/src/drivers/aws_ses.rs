@@ -8,7 +8,11 @@ use crate::message::Message;
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
-/// An AWS SES v2 HTTP REST API driver.
+/// An offline AWS SES fixture or bearer-authenticated custom proxy adapter.
+///
+/// Direct AWS SES v2 delivery requires AWS Signature Version 4, which this
+/// adapter does not implement. Real credentials therefore require an explicit
+/// custom proxy endpoint and never get sent to the official AWS endpoint.
 pub struct AwsSesDriver {
     /// AWS Region (e.g. `"us-east-1"`, `"sa-east-1"`).
     pub region: String,
@@ -61,7 +65,7 @@ impl AwsSesDriver {
         Ok(self)
     }
 
-    /// Returns whether delivery will use AWS SES or the offline mock fallback.
+    /// Returns whether delivery will use a custom proxy or the offline mock fallback.
     pub fn delivery_mode(&self) -> DeliveryMode {
         credential_mode(&self.auth_token)
     }
@@ -91,6 +95,13 @@ impl MailDriver for AwsSesDriver {
         let message = prepared.message();
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("aws_ses", message);
+        }
+
+        if self.endpoint_override.is_none() {
+            return Err(MailError::ConfigError(
+                "direct AWS SES v2 delivery requires AWS SigV4, which is not implemented; configure a trusted bearer-authenticated proxy endpoint or use another driver"
+                    .to_string(),
+            ));
         }
 
         static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
@@ -188,11 +199,40 @@ fn validate_region(region: &str) -> Result<(), MailError> {
 fn validate_endpoint(endpoint: &str) -> Result<(), MailError> {
     let url = reqwest::Url::parse(endpoint)
         .map_err(|_| MailError::ConfigError("AWS SES endpoint is not a valid URL".to_string()))?;
-    if matches!(url.scheme(), "http" | "https") && url.host_str().is_some() {
+    let is_loopback_http = url.scheme() == "http"
+        && url
+            .host_str()
+            .is_some_and(|host| matches!(host, "localhost" | "127.0.0.1" | "[::1]" | "::1"));
+    if (url.scheme() == "https" || is_loopback_http) && url.host_str().is_some() {
         Ok(())
     } else {
         Err(MailError::ConfigError(
-            "AWS SES endpoint must use HTTP or HTTPS and include a host".to_string(),
+            "AWS SES proxy endpoint must use HTTPS, except for explicit loopback HTTP".to_string(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn direct_live_mode_fails_before_sending_unsigned_aws_requests() {
+        let driver = AwsSesDriver::try_new("us-east-1", "real-looking-secret")
+            .expect("structurally valid configuration");
+        let message = Message::new()
+            .to("user@example.com")
+            .from("sender@example.com")
+            .subject("subject")
+            .text("body");
+        let error = driver.send(&message).await.expect_err("SigV4 is absent");
+        assert!(matches!(error, MailError::ConfigError(_)));
+    }
+
+    #[test]
+    fn proxy_endpoint_requires_https_or_loopback() {
+        assert!(validate_endpoint("https://mail-proxy.example.com/send").is_ok());
+        assert!(validate_endpoint("http://127.0.0.1:3000/send").is_ok());
+        assert!(validate_endpoint("http://mail-proxy.example.com/send").is_err());
     }
 }

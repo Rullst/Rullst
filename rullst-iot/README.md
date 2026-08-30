@@ -9,6 +9,8 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 - Modbus frame/CRC helpers, BLE GATT data structures, I2C frame builders, and
   simulated GPIO state. These are not operating-system or hardware drivers.
 - Statistical anomaly evaluation, power policy helpers, and topology models.
+- An escaped HTML snapshot-card renderer. It deliberately labels the card as a
+  snapshot rather than inferring device connectivity.
 - Ed25519 verification of domain-separated OTA manifests. A signed manifest
   binds the device target, version, monotonic rollback counter, firmware length,
   and SHA-256 digest.
@@ -17,6 +19,19 @@ The OTA state machine only verifies an artifact and selects the inactive boot
 partition. Integrators must still download and flash the image, validate the
 written bank, durably persist the rollback counter, and configure/recover the
 platform bootloader.
+
+## CLI telemetry scaffold
+
+Inside a Rullst application, the CLI creates and registers a local telemetry
+module and enables the umbrella `iot` feature:
+
+```console
+cargo rullst make:iot TemperatureSensor
+```
+
+The command validates Rust identifiers, refuses path traversal and existing
+files, and generates code through `rullst::iot::SensorTelemetry`. It does not
+install a HAL, MQTT/CoAP transport, firmware or broker configuration.
 
 ## Signed OTA gate
 
@@ -81,5 +96,6 @@ There are intentionally no aliases named `HsmDevice`, `PqcKeyPair`, or
 - ML-KEM or any other post-quantum cryptographic primitive.
 - Firmware download, delta patching, flash writes, bootloader control, or
   persistent anti-rollback storage.
+- Bidirectional Digital Twin transport or Studio/Nexus device synchronization.
 
 See [ROADMAP.md](ROADMAP.md) for the remaining integration work.

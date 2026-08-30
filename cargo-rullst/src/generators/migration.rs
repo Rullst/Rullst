@@ -1,7 +1,7 @@
 // src/generators/migration.rs — Migration generator.
 #![cfg_attr(mutants, mutants::skip)]
 
-use crate::generators::is_rullst_project;
+use crate::generators::{ProjectOrmBackend, is_rullst_project, project_orm_backend};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -40,7 +40,37 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
     let migration_path = migrations_dir.join(format!("{}.rs", file_stem));
     let table_name = get_table_name_from_migration(&snake_name);
 
-    let template = format!(
+    let template = render_migration(&file_stem, &table_name, project_orm_backend());
+
+    fs::write(&migration_path, template)?;
+    println!(
+        "{}",
+        format!(
+            "✨ Rust migration successfully created at '{}'!",
+            migration_path.display()
+        )
+        .green()
+        .bold()
+    );
+
+    regenerate_migrations_mod()?;
+
+    Ok(())
+}
+
+pub(crate) fn render_migration(
+    file_stem: &str,
+    table_name: &str,
+    backend: ProjectOrmBackend,
+) -> String {
+    match backend {
+        ProjectOrmBackend::Sqlx => render_sqlx_migration(file_stem, table_name),
+        ProjectOrmBackend::Turso => render_turso_migration(file_stem, table_name),
+    }
+}
+
+fn render_sqlx_migration(file_stem: &str, table_name: &str) -> String {
+    format!(
         r#"use rullst_orm::schema::{{Schema, Migration}};
 use rullst_orm::async_trait;
 
@@ -67,22 +97,30 @@ impl Migration for MigrationImpl {{
 "#,
         file_stem = file_stem,
         table_name = table_name
-    );
+    )
+}
 
-    fs::write(&migration_path, template)?;
-    println!(
-        "{}",
-        format!(
-            "✨ Rust migration successfully created at '{}'!",
-            migration_path.display()
-        )
-        .green()
-        .bold()
-    );
+fn render_turso_migration(file_stem: &str, table_name: &str) -> String {
+    format!(
+        r#"use rullst_orm::polyglot::{{
+    PolyglotError, TursoMigration, TursoStatement,
+}};
 
-    regenerate_migrations_mod()?;
-
-    Ok(())
+pub fn migration() -> Result<TursoMigration, PolyglotError> {{
+    TursoMigration::new(
+        "{file_stem}",
+        vec![TursoStatement::new(
+            "CREATE TABLE {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT)",
+            vec![],
+        )?],
+    )?
+    .with_down(vec![TursoStatement::new(
+        "DROP TABLE {table_name}",
+        vec![],
+    )?])
+}}
+"#
+    )
 }
 
 fn get_table_name_from_migration(name: &str) -> String {
@@ -125,13 +163,28 @@ pub fn regenerate_migrations_mod() -> Result<(), Box<dyn std::error::Error>> {
     for m in &modules {
         mod_content.push_str(&format!("pub mod {};\n", m));
     }
-    mod_content
-        .push_str("\npub fn get_migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> {\n");
-    mod_content.push_str("    vec![\n");
-    for m in &modules {
-        mod_content.push_str(&format!("        Box::new({}::MigrationImpl),\n", m));
+    match project_orm_backend() {
+        ProjectOrmBackend::Sqlx => {
+            mod_content.push_str(
+                "\npub fn get_migrations() -> Vec<Box<dyn rullst_orm::schema::Migration>> {\n",
+            );
+            mod_content.push_str("    vec![\n");
+            for m in &modules {
+                mod_content.push_str(&format!("        Box::new({}::MigrationImpl),\n", m));
+            }
+            mod_content.push_str("    ]\n");
+        }
+        ProjectOrmBackend::Turso => {
+            mod_content.push_str(
+                "\npub fn get_migrations() -> Result<\n    Vec<rullst_orm::polyglot::TursoMigration>,\n    rullst_orm::polyglot::PolyglotError,\n> {\n",
+            );
+            mod_content.push_str("    Ok(vec![\n");
+            for m in &modules {
+                mod_content.push_str(&format!("        {}::migration()?,\n", m));
+            }
+            mod_content.push_str("    ])\n");
+        }
     }
-    mod_content.push_str("    ]\n");
     mod_content.push_str("}\n");
 
     fs::write(migrations_dir.join("mod.rs"), mod_content)?;
@@ -151,6 +204,15 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
                 .bold()
         );
         std::process::exit(1);
+    }
+
+    if project_orm_backend() == ProjectOrmBackend::Turso {
+        println!(
+            "{}",
+            "Automatic schema diff is not available for Turso-primary projects. Use `cargo rullst make:migration <name>` and review the generated reversible SQL."
+                .yellow()
+        );
+        return Ok(());
     }
 
     let dotenv_path = Path::new(".env");
@@ -324,4 +386,23 @@ impl Migration for MigrationImpl {{
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn turso_migration_template_is_reversible_and_panic_free() {
+        let source = render_migration(
+            "m20260829000000_create_widgets",
+            "widgets",
+            ProjectOrmBackend::Turso,
+        );
+        assert!(source.contains("TursoMigration::new"));
+        assert!(source.contains("CREATE TABLE widgets"));
+        assert!(source.contains("DROP TABLE widgets"));
+        assert!(!source.contains("unwrap("));
+        syn::parse_file(&source).expect("generated Turso migration should parse");
+    }
 }

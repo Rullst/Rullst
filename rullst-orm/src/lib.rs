@@ -69,6 +69,7 @@ pub mod db;
 pub mod error;
 pub mod intent;
 pub mod policy;
+pub mod polyglot;
 pub mod pool;
 pub mod privacy;
 pub mod raw;
@@ -94,6 +95,10 @@ pub use database::RullstDatabase;
 pub use error::RullstError as Error;
 pub use intent::IntentAnalyzer;
 pub use policy::Policy;
+pub use polyglot::{
+    Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
+    DocumentRepository, MockDocumentStore, PolyglotError,
+};
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,
@@ -102,7 +107,7 @@ pub use privacy::{ComplianceModel, PrivacyReport, SecretString};
 pub use replica::ReplicaPool;
 pub use repository::{GenericRepository, Repository};
 pub use resource::{ApiResource, JsonResource, ResourceCollection};
-pub use rullst_orm_macros::{Enum, Nexus, Orm, PersonalData, test};
+pub use rullst_orm_macros::{Enum, Nexus, Orm, PersonalData, TursoModel, test};
 pub use schema::{JoinClause, SubqueryBuilder};
 pub use scout::{SearchEngine, get_search_engine, set_search_engine};
 pub use tenant::{get_tenant_id, with_tenant};

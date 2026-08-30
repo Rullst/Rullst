@@ -323,12 +323,12 @@ pub fn run_security_audit(
     sbom_mode: bool,
     network_mode: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "{}",
-        "🛡️ Running Rullst AI Security Audit..."
-            .bright_cyan()
-            .bold()
-    );
+    let title = if ai_mode {
+        "🛡️ Running Rullst Security Audit with deterministic recommendations..."
+    } else {
+        "🛡️ Running Rullst Security Audit..."
+    };
+    println!("{}", title.bright_cyan().bold());
 
     let mut issues_found = 0;
     let mut weak_secret_findings = 0usize;
@@ -373,6 +373,7 @@ pub fn run_security_audit(
                     error
                 );
                 secret_scan_error = Some(error.to_string());
+                issues_found += 1;
             }
         }
     } else {
@@ -411,7 +412,10 @@ pub fn run_security_audit(
                         stderr
                     })
                 }
-                Err(error) => EvidenceStatus::Error(error.to_string()),
+                Err(error) => {
+                    issues_found += 1;
+                    EvidenceStatus::Error(error.to_string())
+                }
             }
         }
         Ok(_) | Err(_) => {
@@ -447,17 +451,36 @@ pub fn run_security_audit(
             .arg("--version")
             .output();
 
-        if geiger_status.is_ok() {
+        if geiger_status.is_ok_and(|output| output.status.success()) {
             println!(
                 "  {} Running full dependency tree unsafe analysis (cargo geiger)...",
                 "[GEIGER]".cyan()
             );
-            let _ = std::process::Command::new("cargo").arg("geiger").status();
+            match std::process::Command::new("cargo").arg("geiger").status() {
+                Ok(status) if status.success() => {}
+                Ok(status) => {
+                    println!(
+                        "  {} cargo-geiger reported findings or failed with status {}.",
+                        "[ERROR]".red().bold(),
+                        status
+                    );
+                    issues_found += 1;
+                }
+                Err(error) => {
+                    println!(
+                        "  {} cargo-geiger could not run: {}",
+                        "[ERROR]".red().bold(),
+                        error
+                    );
+                    issues_found += 1;
+                }
+            }
         } else {
             println!(
-                "  {} cargo-geiger not installed. Run 'cargo install cargo-geiger' for dependency tree unsafe scanning.",
-                "[NOTE]".yellow()
+                "  {} cargo-geiger is unavailable although --geiger was requested. Run 'cargo install cargo-geiger'.",
+                "[ERROR]".red().bold()
             );
+            issues_found += 1;
         }
     }
 
@@ -517,6 +540,7 @@ pub fn run_security_audit(
                     e
                 );
                 sbom_evidence = EvidenceStatus::Error(e.to_string());
+                issues_found += 1;
             }
         }
     }
@@ -550,7 +574,9 @@ pub fn run_security_audit(
     if ai_mode {
         println!(
             "\n🤖 {}",
-            "AI Security Sentinel Analysis:".bright_purple().bold()
+            "Deterministic Security Recommendations:"
+                .bright_purple()
+                .bold()
         );
         if issues_found == 0 {
             println!(
@@ -618,6 +644,13 @@ pub fn run_security_audit(
     if idor_mode && idor_count > 0 {
         return Err(std::io::Error::other(format!(
             "IDOR/BOLA audit found {idor_count} unclassified or unguarded parameterized route(s)"
+        ))
+        .into());
+    }
+
+    if issues_found > 0 {
+        return Err(std::io::Error::other(format!(
+            "security audit reported {issues_found} finding(s) or incomplete requested check(s)"
         ))
         .into());
     }

@@ -7,11 +7,20 @@ set -euo pipefail
 while IFS='|' read -r package features; do
   [[ -z "$package" || "$package" == \#* ]] && continue
 
+  targets=(--all-targets)
+  if [[ "$package" == "rullst" && -n "$features" ]]; then
+    # These rows verify the umbrella library's public feature forwarding. Its
+    # tests/benches bring unrelated dev-dependencies into each isolated graph
+    # and can rebuild large native adapters (notably DuckDB) for no extra
+    # boundary coverage; the no-feature row above still checks all targets.
+    targets=(--lib)
+  fi
+
   command=(
     cargo check
     --locked
     --package "$package"
-    --all-targets
+    "${targets[@]}"
     --no-default-features
   )
   if [[ -n "$features" ]]; then
@@ -40,6 +49,11 @@ cargo-rullst|
 
 # Independent infrastructure and adapter boundaries.
 rullst-orm|redis
+rullst-orm|mongodb
+rullst-orm|duckdb
+rullst-orm|turso
+rullst-orm|surrealdb
+rullst-orm|polyglot
 rullst-core|orm
 rullst-core|queue-sqlite
 rullst-core|queue-redis
@@ -58,6 +72,13 @@ rullst-auth|jwt
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
+rullst|orm-mongodb
+rullst|orm-duckdb
+rullst|orm-turso
+rullst|orm-surrealdb
+# `orm-polyglot` is the exact union of the four isolated forwarding rows above
+# and remains compiled by the workspace all-feature test/Clippy gates. Repeating
+# it here rebuilds bundled DuckDB for a third graph without testing a new edge.
 rullst|queue-sqlite
 rullst|queue-redis
 rullst|cache-redis

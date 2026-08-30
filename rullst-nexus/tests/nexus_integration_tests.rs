@@ -294,6 +294,13 @@ fn test_sanitize_identifier_multibyte() {
 
 #[tokio::test]
 async fn test_nexus_with_sqlite_db_backed_crud() {
+    #[cfg(not(any(
+        feature = "strict-postgres",
+        feature = "strict-mysql",
+        feature = "strict-sqlite"
+    )))]
+    use rullst_orm::_sqlx::Row;
+
     let _ = rullst_orm::Orm::init("sqlite:file:memdb_nexus_shared?mode=memory&cache=shared").await;
 
     if let Some(pool) = rullst_core::db::safe_pool() {
@@ -312,6 +319,18 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         )
         .execute(pool)
         .await;
+        #[cfg(not(any(
+            feature = "strict-postgres",
+            feature = "strict-mysql",
+            feature = "strict-sqlite"
+        )))]
+        {
+            let _ = rullst_orm::_sqlx::query(
+                "INSERT OR REPLACE INTO users (id, username, is_active) VALUES (100, 'batch', 1), (101, 'remove', 1)",
+            )
+            .execute(pool)
+            .await;
+        }
     }
 
     let nexus = Nexus::new()
@@ -400,4 +419,56 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
             || res.status().is_redirection()
             || res.status().is_server_error()
     );
+
+    #[cfg(not(any(
+        feature = "strict-postgres",
+        feature = "strict-mysql",
+        feature = "strict-sqlite"
+    )))]
+    {
+        // 8. Batch deactivate a model that explicitly exposes a writable is_active flag.
+        let req = Request::builder()
+            .method("POST")
+            .uri("/table/users/batch")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Cookie", format!("rullst_csrf={}", csrf))
+            .header("X-CSRF-Token", csrf)
+            .body(Body::from("action=deactivate&selected_ids=100"))
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        let status = res.status();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .expect("batch deactivate response body");
+        assert!(
+            status.is_redirection(),
+            "batch deactivate returned {status}: {}",
+            String::from_utf8_lossy(&body)
+        );
+
+        let pool = rullst_core::db::safe_pool().expect("test pool remains initialized");
+        let row = rullst_orm::_sqlx::query("SELECT is_active FROM users WHERE id = 100")
+            .fetch_one(pool)
+            .await
+            .expect("deactivated fixture remains present");
+        assert_eq!(row.get::<i64, _>("is_active"), 0);
+
+        // 9. Batch delete remains bound and removes only the selected record.
+        let req = Request::builder()
+            .method("POST")
+            .uri("/table/users/batch")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Cookie", format!("rullst_csrf={}", csrf))
+            .header("X-CSRF-Token", csrf)
+            .body(Body::from("action=delete&selected_ids=101"))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        assert!(res.status().is_redirection());
+
+        let row = rullst_orm::_sqlx::query("SELECT COUNT(*) AS total FROM users WHERE id = 101")
+            .fetch_one(pool)
+            .await
+            .expect("batch delete count query");
+        assert_eq!(row.get::<i64, _>("total"), 0);
+    }
 }

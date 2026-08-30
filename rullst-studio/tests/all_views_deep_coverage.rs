@@ -41,7 +41,7 @@ async fn test_studio_all_views_and_interactive_actions() {
 
     // 1. Feature flags view & toggles
     let req = Request::builder()
-        .uri("/features")
+        .uri("/studio/features")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -49,7 +49,7 @@ async fn test_studio_all_views_and_interactive_actions() {
 
     let toggle_req = Request::builder()
         .method("POST")
-        .uri("/features/toggle/beta_feature")
+        .uri("/studio/features/toggle/beta_feature")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(toggle_req).await.unwrap();
@@ -60,18 +60,24 @@ async fn test_studio_all_views_and_interactive_actions() {
     );
 
     // 2. Env viewer
-    let req = Request::builder().uri("/env").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/studio/env")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
     // 3. ER Diagram
-    let req = Request::builder().uri("/er").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/studio/er")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
     // 4. Requests / Logger view
     let req = Request::builder()
-        .uri("/requests")
+        .uri("/studio/requests")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();

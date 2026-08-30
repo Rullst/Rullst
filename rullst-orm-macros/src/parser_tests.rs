@@ -75,6 +75,7 @@ mod tests {
             #[orm(soft_delete(column = "del_at", value = "1", delval = "0"))]
             struct TestModel {
                 id: i32,
+                tenant_id: String,
                 #[orm(has_many = "M1")] m1: Vec<M1>,
                 #[orm(has_one = "M2")] m2: M2,
                 #[orm(belongs_to = "M3")] m3: M3,
@@ -123,6 +124,69 @@ mod tests {
 
         assert!(parsed.skipped_fields.iter().any(|i| i == "skipped"));
         assert!(parsed.hidden_fields.iter().any(|i| i == "hidden"));
+    }
+
+    #[test]
+    fn parses_supported_orm_backends_and_defaults_to_sqlx() {
+        use syn::parse_quote;
+
+        let default_backend: DeriveInput = parse_quote! {
+            struct DefaultModel { id: i64 }
+        };
+        assert_eq!(
+            parse(&default_backend)
+                .expect("default backend should parse")
+                .backend,
+            "sqlx"
+        );
+
+        let turso_backend: DeriveInput = parse_quote! {
+            #[orm(table = "users", backend = "turso")]
+            struct TursoModel { id: i64, name: String }
+        };
+        assert_eq!(
+            parse(&turso_backend)
+                .expect("Turso backend should parse")
+                .backend,
+            "turso"
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_orm_backend() {
+        use syn::parse_quote;
+
+        let input: DeriveInput = parse_quote! {
+            #[orm(backend = "mongodb")]
+            struct UnsupportedModel { id: i64 }
+        };
+        let error = parse(&input)
+            .err()
+            .expect("unknown backend must be rejected");
+        assert!(error.to_string().contains("`sqlx` or `turso`"));
+    }
+
+    #[test]
+    fn tenant_column_must_reference_a_supported_persisted_field() {
+        use syn::parse_quote;
+
+        let missing: DeriveInput = parse_quote! {
+            #[orm(table = "records", tenant_column = "tenant_id")]
+            struct Record { id: i32, name: String }
+        };
+        let error = parse(&missing)
+            .err()
+            .expect("missing tenant field must fail");
+        assert!(error.to_string().contains("must name a persisted field"));
+
+        let unsupported: DeriveInput = parse_quote! {
+            #[orm(table = "records", tenant_column = "tenant_id")]
+            struct Record { id: i32, tenant_id: i64 }
+        };
+        let error = parse(&unsupported)
+            .err()
+            .expect("unsupported tenant type must fail");
+        assert!(error.to_string().contains("String, i32, f64, or bool"));
     }
 
     #[test]

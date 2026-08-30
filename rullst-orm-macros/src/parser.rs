@@ -7,6 +7,7 @@ use syn::{Data, DeriveInput, Fields, spanned::Spanned};
 
 pub struct ParsedModel {
     pub name: syn::Ident,
+    pub backend: String,
     pub table_name: String,
     pub global_scope: String,
     pub tenant_column: String,
@@ -229,6 +230,39 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
     }
 
+    if !model_attributes.tenant_column.is_empty() {
+        let Some((_, tenant_type)) = normal_fields
+            .iter()
+            .zip(normal_fields_types.iter())
+            .find(|(field, _)| *field == model_attributes.tenant_column.as_str())
+        else {
+            return Err(syn::Error::new_spanned(
+                input,
+                format!(
+                    "tenant_column `{}` must name a persisted field on the model",
+                    model_attributes.tenant_column
+                ),
+            ));
+        };
+        let supported = match tenant_type {
+            syn::Type::Path(path) if path.qself.is_none() => {
+                path.path.segments.last().is_some_and(|segment| {
+                    matches!(
+                        segment.ident.to_string().as_str(),
+                        "String" | "i32" | "f64" | "bool"
+                    )
+                })
+            }
+            _ => false,
+        };
+        if !supported {
+            return Err(syn::Error::new_spanned(
+                tenant_type,
+                "tenant_column supports String, i32, f64, or bool so it can be bound without lossy conversion",
+            ));
+        }
+    }
+
     // Synthesise a default `SoftDeleteConfig` for legacy models that
     // declared a `deleted_at` field without an explicit
     // `#[orm(soft_delete(...))]`. The defaults match the historical
@@ -245,6 +279,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
 
     Ok(ParsedModel {
         name,
+        backend: model_attributes.backend,
         table_name: model_attributes.table_name,
         global_scope: model_attributes.global_scope,
         tenant_column: model_attributes.tenant_column,

@@ -25,6 +25,7 @@ fn materialize_and_test(
         false,
         true,
         "Sqlite",
+        &[],
         false,
         false,
         LMS_BLUEPRINT_ID,

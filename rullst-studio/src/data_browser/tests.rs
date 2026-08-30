@@ -16,6 +16,11 @@ fn test_sanitize_identifier() {
     assert_eq!(sanitize_identifier("valid_table_123"), "valid_table_123");
     assert_eq!(sanitize_identifier("invalid-table!@#"), "invalidtable");
     assert_eq!(sanitize_identifier("drop table users;--"), "droptableusers");
+    assert_eq!(sanitize_identifier("usuários"), "usurios");
+    assert!(is_safe_identifier("valid_table_123"));
+    assert!(!is_safe_identifier("invalid-table"));
+    assert!(!is_safe_identifier("usuários"));
+    assert!(!is_safe_identifier(""));
 
     let long_id = "a".repeat(100);
     assert_eq!(sanitize_identifier(&long_id).len(), 64);

@@ -11,21 +11,21 @@
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
-  - **AWS SES v2** (`AwsSesDriver`) — Native REST API v2 with custom endpoints & region selection.
+  - **AWS SES boundary** (`AwsSesDriver`) — deterministic offline fixture or an explicit trusted bearer-authenticated proxy. Direct SES v2 fails closed until SigV4 is implemented.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`):** Primary driver dispatch with automatic fallback across secondary drivers, atomic failure threshold triggering, cooldown circuit breakers, and structured tracing warnings.
 - **🏢 Dynamic Multi-Tenancy Resolver (`TenantMailResolver`):** Isolate credentials, custom domains, and dedicated API keys per tenant/organization in B2B SaaS applications.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
-- **⏰ Precision Scheduled Delivery (`.send_at()`, `.send_in()`):** Deliver messages at exact UTC timestamps or relative durations.
+- **⏰ Provider-specific Scheduling (`.send_at()`, `.send_in()`):** Resend and SendGrid receive their scheduling fields. Generic queue, SMTP and Postmark paths do not yet guarantee due-time dispatch.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
 - **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
-- **🛠️ CLI Scaffolding (`cargo rullst make:mail`):** Generates starting mailables for Welcome, Password Reset, OTP, and Invoice flows.
+- **🛠️ Safe CLI Scaffolding (`cargo rullst make:mail`):** Generates registered, facade-based mailables for Welcome, Password Reset, OTP, Invoice and custom flows; validates names, refuses collisions and escapes dynamic HTML.
 
 ---
 
@@ -67,17 +67,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### 2. Resilient Multi-Driver Failover (Circuit Breaker)
 
 ```rust
-use rullst_mail::drivers::{AwsSesDriver, FailoverDriver, PostmarkDriver, ResendDriver};
-use std::sync::Arc;
+use rullst_mail::drivers::{FailoverDriver, PostmarkDriver, ResendDriver};
 use std::time::Duration;
 
 let primary = ResendDriver::try_new("re_...")?;
 let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
-let fallback_2 = AwsSesDriver::try_new("us-east-1", "ses_token_...")?;
 
 let failover_driver = FailoverDriver::new(primary)
     .with_fallback(fallback_1)
-    .with_fallback(fallback_2)
     .with_threshold(3) // Trip circuit after 3 consecutive failures
     .with_cooldown(Duration::from_secs(60)); // Cooldown for 60s
 ```
@@ -174,9 +171,13 @@ if msg.is_disposable() {
 
 ---
 
-### 7. Zero-Cookie Privacy-Preserving Tracking Engine
+### 7. Authenticated Open/Click Tracking Primitives
 
-Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory 32-byte secret and bounded validity. Applications remain responsible for consent, retention, and other privacy-law obligations.
+Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
+32-byte secret and bounded validity. HMAC authenticates but does not encrypt:
+the current token payload contains the recipient address and destination URL in
+base64-readable form. Applications must decide whether to use tracking at all
+and own consent, minimization, retention, redirects and applicable law.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
@@ -231,52 +232,33 @@ Environment variables:
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
-- `AWS_REGION`: AWS region for SES (e.g. `us-east-1`).
-- `AWS_SES_BEARER_TOKEN`: Auth token for AWS SES REST v2.
+- `AWS_REGION`: Region metadata used by the SES proxy/mock adapter.
+- `AWS_SES_BEARER_TOKEN`: Token for an explicitly configured trusted proxy;
+  it is not an AWS SigV4 credential implementation.
+- `AWS_SES_ENDPOINT`: Required HTTPS proxy endpoint for non-mock SES mode;
+  loopback HTTP is allowed for local integration tests.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, AWS SES, and authenticated SMTP, an empty credential or one beginning with `mock_` selects the deterministic offline fallback. Use `driver.delivery_mode()` and `OfflineMailMock::deliveries()` to assert this explicitly in tests.
+For Resend, SendGrid, Postmark, the SES proxy fixture, and authenticated SMTP,
+an empty credential or one beginning with `mock_` selects the deterministic
+offline fallback. Use `driver.delivery_mode()` and
+`OfflineMailMock::deliveries()` to assert this explicitly in tests.
 
 ---
 
-## ⚖️ Rullst Mail vs Marketing Automation Platforms (RD Station / Mailchimp)
+## Scope boundary
 
-A common architectural question when building web applications and SaaS platforms is: **"Does `rullst-mail` replace services like RD Station or Mailchimp?"**
+`rullst-mail` is a transactional composition, dispatch and testing library. It
+does not replace delivery providers, marketing CRMs, domain reputation,
+bounce/complaint ingestion, consent management or an operational inbox. A
+provider accepting a request is not proof that a message reached the inbox.
 
-The answer depends on the use case. `rullst-mail` is designed as a **high-throughput, sovereign, transactional email & backend delivery engine**, replacing the need for expensive third-party transactional tiers while allowing seamless optional integration with marketing automation tools.
-
-### ⚔️ What `rullst-mail` Replaces Directly:
-1. **Transactional Email Services**: Replaces **Resend**, **SendGrid Transactional**, **Postmark**, **AWS SES SDKs**, **Mailgun**, and **Mailtrap**.
-2. **Backend Notification & Dunning Workflows**:
-   - Authentication ceremonies (account activation, password reset, 2FA/OTP tokens).
-   - Real-time security alerts and system events.
-   - SaaS invoices and payment receipts. NFS-e output is limited to a clearly marked offline DPS preview until live fiscal issuance is validated.
-   - **AI Smart Dunning**: Empathetic sales recovery and automated dunning sequences powered by `rullst-ai` and `rullst-capital`.
-3. **Local Testing Environments**: Eliminates paid email sandbox subscriptions by providing a zero-I/O in-memory `MailTrap` with visual inspection in Rullst Studio (`/studio/mail`).
-4. **B2B SaaS Multi-Tenancy**: Lets every tenant organization configure their own isolated custom domains, SMTP servers, or API keys (`TenantMailResolver`).
-
----
-
-### 📊 Comparative Matrix: `rullst-mail` vs RD Station / Mailchimp
-
-| Feature / Capability | `rullst-mail` (Native Framework Engine) | RD Station / Mailchimp / ActiveCampaign |
-| :--- | :---: | :---: |
-| **Transactional Emails (Password reset, 2FA, receipts)** | ✅ **Native, sub-millisecond, zero-markup** | ❌ Expensive add-on or restricted |
-| **Multi-Driver Delivery with Automatic Failover** | ✅ **Yes (`FailoverDriver` with Circuit Breaker)** | ❌ Vendor-locked to proprietary IP pools |
-| **Attachments & Inline CID Assets** | ✅ **Yes (transport may copy/encode)** | ⚠️ Heavily capped file sizes |
-| **Zero-Cookie Privacy Tracking** | ✅ **Native (`TrackingEngine` HMAC)** | ⚠️ Third-party cookie dependency |
-| **Disposable Email & Deliverability Filter** | ✅ **Native (`DisposableEmailFilter`)** | ⚠️ Expensive external addons |
-| **Security: Anti-Phishing & Homograph URL Scanner** | ✅ **Native pre-flight IDN inspection** | ⚠️ Basic link scanning |
-| **Outbound DLP Secret Scanner (AWS tokens, keys)** | ✅ **Native (`redact_email_secrets`)** | ❌ No credential leak prevention |
-| **Dynamic B2B SaaS Multi-Tenancy** | ✅ **Yes (Dedicated credentials per tenant)** | ❌ Single-account flat tenancy |
-| **Scheduled Delivery (`.send_at()`, `.send_in()`)** | ✅ **Yes (Native UTC & relative delays)** | ✅ Yes |
-| **In-Memory MailTrap & Test Fixtures** | ✅ **Native (`MailTrap` & `MailFactory`)** | ⚠️ Manual sandbox configuration |
-| **Code-Driven Automated Sequences & Dunning** | ✅ **Yes (Tokio background queue integration)** | ✅ Yes |
-| **Live Studio Web Inspector (`/studio/mail`)** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Proprietary dashboard |
-| **AI Smart Dunning Revenue Recovery** | ⏳ *(Not implemented yet - In Roadmap)* | ⚠️ Rule-based workflows only |
-| **Drag-and-Drop No-Code Visual Builder** | ❌ *(Code/Template-first: HTML, Jinja2, Tailwind)* | ✅ **Yes (Visual WYSIWYG for marketers)** |
-| **No-Code Landing Pages & Commercial Sales CRM** | ❌ *(Built with `rullst-core` / `rullst-nexus`)* | ✅ **Yes (Integrated lead scoring CRM)** |
+The security and deliverability checks are bounded heuristics: they help reject
+known disposable domains, CRLF injection, selected dangerous schemes,
+mixed-script domains and recognized secret patterns. They do not parse every
+valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
+phishing, absence of data leakage or legal compliance.
 
 ---
 

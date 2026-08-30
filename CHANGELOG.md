@@ -40,12 +40,68 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The declared v12 MSRV is Rust 1.96.0. The default umbrella dependency enables
   ORM and the SQLite queue; Nexus, Studio, AI, auth, security, and other domain
   crates remain opt-in features.
+- Added an opt-in Polyglot persistence boundary to `rullst-orm`: typed document
+  CRUD for MongoDB and SurrealDB, parameterized bounded OLAP queries for
+  DuckDB, parameterized Turso/libSQL edge SQL with transactions and checksummed
+  migrations, and bounded read-only ISO GQL for SurrealDB. The SQL Active
+  Record API remains unchanged. Remote adapters support explicit deterministic
+  offline modes; SurrealDB uses its public HTTP protocol rather than adding the
+  BSL-licensed SDK. Umbrella `orm-mongodb`, `orm-duckdb`, `orm-turso`,
+  `orm-surrealdb`, and `orm-polyglot` features mirror the lower-level flags.
+- Added a bounded Turso-primary ORM profile for blank/API applications.
+  `#[derive(Orm)] #[orm(backend = "turso")]` generates typed CRUD, equality
+  filters, ordering, pagination and count methods. `TursoOrm` initializes the
+  configured local or remote store; generated projects support persistent
+  offline development plus checked `db:migrate`, `db:status`, and
+  `db:rollback`. `make:model --migration` and `make:migration` retain the
+  selected libSQL backend. SQLx-specific non-blank blueprints, relation/hook
+  parity, schema auto-diff, seed generation, and transparent replication remain
+  outside this bounded profile.
+- The project wizard now distinguishes the primary relational ORM database
+  (SQLite, PostgreSQL, MySQL, or separately contract-tested MariaDB) from
+  optional Turso, MongoDB, DuckDB, and SurrealDB capabilities. Deterministic
+  `--database`, `--turso`, `--mongodb`, `--duckdb`, and `--surrealdb` flags
+  generate the corresponding feature and environment configuration. This
+  supersedes the earlier v12 sidecar-only Turso scaffold claim; transparent
+  replication is not implied.
+- Clarified SQLite, PostgreSQL, MySQL, and MariaDB as SQLx Active Record
+  primaries and Turso/libSQL as a separate typed primary for the bounded
+  blank/API profile. Turso is relational, but the framework does not imply
+  universal SQLx feature parity or transparent replica synchronization.
 
 #### Safer application and administration boundaries
 
+- `rullst-connect::UniversalProfile` now provides the credential-free normalized
+  OAuth identity projection. `ConnectUser` serialization no longer emits access
+  or refresh tokens; applications must store credentials through an explicit
+  encrypted lifecycle.
+- `#[derive(rullst::Billable)]` is now exported by the umbrella facade,
+  preserves generic model parameters, and emits a focused compile error when a
+  named e-mail field is absent. Invoice HTML escapes all application-supplied
+  text fields before rendering.
+- `cargo rullst make:iot` now validates device identifiers, refuses traversal
+  and collisions, enables the umbrella `iot` feature, registers generated
+  modules, and is checked by compiling a materialized application. IoT HTML
+  cards escape untrusted labels and report `SNAPSHOT` instead of inventing an
+  online state; anomaly evaluation fails closed for non-finite inputs and
+  Digital Twin serialization exposes a fallible API with a safe JSON fallback.
+  These changes do not add hardware, network, firmware or realtime drivers.
+- `cargo rullst make:mail` now generates all five exposed variants through the
+  public facade, enables `mailer`, validates identifiers, refuses traversal and
+  collisions, registers modules and escapes dynamic HTML. A materialized
+  application passes strict Clippy and adversarial rendering. `MailFactory`
+  fixtures use the same escaping primitive. The former direct AWS SES path now
+  fails closed before network I/O because it lacked required SigV4; the adapter
+  retains only deterministic offline mode and an explicit HTTPS/loopback bearer
+  proxy boundary. Tracking tokens are documented as authenticated but not
+  encrypted, and provider-specific scheduling/attachment limits stay explicit.
 - Nexus fails closed unless an access policy is selected. Its local convenience
   policy is limited to debug builds and a verified loopback peer; generated
-  release applications require valid credentials.
+  release applications require valid credentials. `#[derive(Nexus)]` now has
+  compile-checked model/field metadata for labels, icons, primary keys and
+  explicit semantic widgets. Registered views escape model metadata, and
+  bounded parameterized batch actions support deletion plus deactivation only
+  for writable Boolean `is_active`/`active` fields.
 - Generated projects use explicit CORS allowlists, exact CSRF webhook
   exemptions, ownership checks on parameterized data routes, and bounded WAF
   body inspection. Existing generated applications must apply the
@@ -56,6 +112,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   [security claims ledger](docs/src/v12-security-claims.md) links each announced
   behavior to code, tests, and a known limit. These controls are defense in
   depth, not certification or universal attack prevention.
+- `rullst-security` now rejects weak fingerprint keys, invalid client networks,
+  unsafe deception paths, malformed/duplicate-key JSON and nested unsafe LLM
+  prompts. Log redaction handles repeated Bearer and assignment values. MFA uses
+  OS randomness for 160-bit TOTP secrets and can render an actual bounded SVG
+  QR; Login Jail offers an async API that applies its progressive delay.
+- Security CLI evidence was made fail-closed: an explicitly requested Geiger or
+  SBOM check can no longer silently fail, the doctor parses the installed Rust
+  version against MSRV and verifies autofix results, the managed hook runs
+  all-feature Clippy plus bounded unsafe/IDOR checks, and the CycloneDX 1.5 SBOM
+  uses parsed Cargo metadata, a valid UUID serial and unique component refs.
+- Audited all 45 unique historical ORM `[x]` claims and removed a duplicated
+  roadmap body. The resulting ledger records 19 bounded integral contracts, 25
+  partial foundations and one absent comparison claim; 100% means classified,
+  not fully implemented.
+- SQLx models declaring `tenant_column` now fail closed outside
+  `with_tenant(...)`, validate the tenant field/type during macro expansion,
+  inject scoped reads and reject cross-tenant full/partial updates and instance
+  mutations. Reviewed global maintenance paths use explicit `unscoped()`.
+- Hardened ORM structural/value boundaries: join builders reject invalid tables,
+  columns and operators (including constrained joins); pgvector helpers reject
+  empty/non-finite vectors and invalid distances; pagination/chunking reject
+  zero sizes. Partial updates can no longer bypass model policies.
+- SQLx migration tracking is written after each successful migration, so a later
+  failure cannot make earlier DDL appear pending; PostgreSQL rollback uses native
+  placeholders. Transaction regressions now assert database rollback state
+  rather than merely checking that an error value was returned.
 
 #### AI contracts
 
@@ -111,6 +193,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Studio Radar reports real process CPU on Windows after a sampling interval,
   refreshes KPIs from `/api/radar`, and keeps unavailable probes visibly
   unavailable.
+- Audited all seven historical Studio roadmap claims. The data browser now
+  rejects non-ASCII dynamic identifiers, reports query failures instead of
+  rendering fake empty success and casts inspected values portably through
+  SQLx Any. ER metadata lookups are parameterized for SQLite, PostgreSQL,
+  MySQL/MariaDB; Mermaid identifiers are normalized under strict rendering.
+  Request-log markup is escaped, completed queue records are counted only when
+  a backend retains them, and the environment page adds a secret-free typed
+  configuration projection. Browser writes, automatic OpenAPI inference,
+  secret-bearing request capture and durable SQLite completion history remain
+  explicitly outside the current contract.
 - Studio's debug-only local capability now verifies the direct loopback peer and
   local `Host`, and requires same-origin `Origin` on unsafe methods. This closes
   the supported local browser boundary against direct remote access, DNS
@@ -274,6 +366,10 @@ release gate has completed.
   - **`DisposableEmailFilter` & Pre-Flight Deliverability (`rullst-mail::validator`)**: High-speed in-memory syntax validation (`validate_email_syntax`, `validate_email_deliverability`) and disposable domain filter blocking 150+ temporary email providers (`mailinator.com`, `tempmail.com`, `guerrillamail.com`, etc.) directly on `Message` (`.validate_deliverability()`, `.is_disposable()`).
   - **Zero-Cookie Privacy Tracking Engine (`rullst-mail::tracking`)**: Cryptographic HMAC-SHA256 open/click tracking token generator and verifier (`TrackingEngine::generate_open_token`, `verify_open_token`, `generate_click_token`, `verify_click_token`), 43-byte static transparent GIF slice (`PIXEL_1X1_GIF`), open pixel injection, and fluent link rewriting with IP privacy preservation (`.with_open_tracking()`, `.with_click_tracking()`).
   - **Transactional Test Fixtures & Mail Factory (`rullst-mail::factory`)**: Pre-built transactional email blueprints on `MailFactory` (`fake_welcome`, `fake_password_reset`, `fake_otp`, `fake_invoice`, `fake_security_alert`) for local dev, load testing, and fixture generation.
+  - **v12 audited scope:** “deliverability” here means bounded syntax plus a
+    static disposable-domain list, not DNS/mailbox/inbox verification. Tracking
+    uses no cookie and authenticates its payload, but does not encrypt the
+    base64-readable email/target URL or establish privacy-law compliance.
 - **Sub-Module Modularization & Architectural Refactoring (`rullst-orm` & `rullst-core::security`)**: Continued framework-wide modularization decomposing monolithic files into clean, decoupled sub-modules conforming to Rullst's strict standard (< 500 lines target per file):
   - **v12 audited interpretation of the pass-rate claims below:** The recorded
     test counts and “100% test pass rate” phrases describe development runs at
@@ -314,6 +410,12 @@ release gate has completed.
   - **Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`)**: Primary driver dispatch with automatic cascading failover across secondary backends, atomic failure counters (`AtomicUsize`), threshold triggering, cooldown circuit breakers, and telemetry warnings (`tracing::warn!`).
   - **Dynamic Multi-Tenancy Resolver (`TenantMailResolver`)**: Dynamic per-tenant email driver routing engine (`register`, `send_for_tenant`) enabling dedicated API keys, SMTP credentials, and custom domains per organization.
   - **Native REST Delivery Drivers for Postmark & AWS SES v2**: Native `PostmarkDriver` and `AwsSesDriver` implementations with zero C-bindings, full RFC 8058 One-Click List-Unsubscribe compliance, and runtime environment resolution.
+  - **v12 audited scope:** attachments own/copy bytes and REST transports
+    Base64-encode them; scheduling fields are implemented only where the
+    provider consumes them; tenant selection is explicit and in-process. The
+    Postmark path is live, while direct SES was not valid because AWS requires
+    SigV4. It now fails closed and exposes only offline fixtures or an explicit
+    trusted bearer proxy until a real signed adapter is implemented.
 - **Sovereign Modular Frontend Engines Matrix (`cargo-rullst` & `rullst-core::frontend`)**: Replaced third-party framework scaffolding wrappers with **5 clean, standalone, native frontend engines** in `cargo-rullst` wizard (`wizard.rs`) and `rullst-core`:
   - **1. Zero-Bundle HTMX + Tailwind SSR**: Declarative compile-time `rullst::html!` macro with 0 KB JavaScript bundle overhead.
   - **2. LiveView Server-Driven UI (`rullst::live`)**: Real-time state synchronization over persistent Tokio WebSockets (Phoenix & Dioxus pattern).
@@ -376,20 +478,20 @@ release gate has completed.
 - **`examples/blog` Documentation (`examples/blog/README.md`)**: Complete architectural overview, local execution guide (`cargo run`), interactive route catalog (`/`, `/live-counter`, `/wasm-counter`), multi-tenant testing via `X-Tenant-ID` headers, and CI/CD integration details.
 - **Contained NFS-e Preview (`rullst-capital::fiscal`)**: Added deterministic offline DPS-shaped fixtures. The earlier direct-issuance/XMLDSig wording was not backed by a conforming implementation; homologation and production now return `Unsupported` until the official protocol is implemented and independently validated.
 - **Secure Headers Suite (`rullst-security::headers`)**: Unified middleware for HSTS, dynamic CSP nonces, Permissions-Policy, COOP, COEP, and CORP. Scanner grades depend on the deployed page and infrastructure; no A+ result is guaranteed.
-- **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: In-memory progressive async delay engine (`LoginGuard`) applying progressive delay (0s to 5s) and 15-minute temporary jail bans after 5 consecutive authentication failures.
+- **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: Bounded in-memory delay/jail engine; `record_login_failure_and_wait` applies the progressive async delay directly while the compatibility API returns the decision to the caller.
 - **RASP Deep Request & Header Inspector (`rullst-security::rasp`)**: Enhanced runtime application self-protection with `inspect_text` and `inspect_headers` intercepting JNDI/Log4j, RCE, and advanced SQL injection vectors before handler dispatch.
 - **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Data Loss Prevention middleware (`DlpResponseLayer`, `mask_response_payload`) intercepting outgoing HTTP response streams to neutralize accidental leakage of private keys, AWS credentials, and database passwords.
 - **CLI IDOR / BOLA Static Audit Scanner (`cargo rullst audit --idor`)**: Static AST analyzer in `cargo-rullst` scanning parameterized routes (`/:id`, `/{id}`, `/users/:user_id`) to verify that ownership validation (`RbacGuard::authorize_owner_or_role`) is enforced.
-- **Multi-Factor Authentication Engine (`rullst-security::mfa` & `cargo rullst make:mfa`)**: Native RFC 6238 TOTP engine (`generate_mfa_secret`, `generate_totp_code`, `verify_totp_code`, `build_otpauth_uri`) and CLI subcommand `make:mfa` for 2FA TOTP scaffolding.
+- **Multi-Factor Authentication Engine (`rullst-security::mfa` & `cargo rullst make:mfa`)**: OS-random 160-bit secrets, RFC 6238 TOTP generation/constant-time verification, `otpauth://` enrollment, bounded SVG QR rendering and the `make:mfa` scaffold.
 - **Dynamic Threat Deception Traps (`rullst-security::deception`)**: Dynamic decoy route registry (`register_deception_trap`, `deception_trap_middleware`) baiting automated scanners (`/api/v1/admin/debug`, `/graphql/v1`) and triggering instant WAF IP bans.
 - **Cross-Site WebSocket Hijacking Guard (`rullst-security::cswsh`)**: WebSocket upgrade handshake validator (`cswsh_guard_middleware`) verifying Origin and Host headers to prevent unauthorized cross-origin WebSocket streams.
 - **Sliding-Window Rate Limiter (`rullst-security::rate_limit`)**: In-memory sliding-window IP rate limiter (`rate_limit_middleware`, `is_rate_limited`) protecting sensitive login, password reset, and API endpoints from brute-force attacks.
-- **SIEM & SOC Alert Streamer (`rullst-security::siem`)**: Security incident alert exporter (`format_cef_event`, `dispatch_siem_alert`) formatting events into Common Event Format (CEF) or JSON webhooks for external SOC tools (Datadog, Splunk, Elastic, Slack).
+- **SIEM Evidence Boundary (`rullst-security::siem`)**: `format_cef_event` safely escapes CEF fields and `dispatch_siem_alert` records process-local events. External Datadog, Splunk, Elastic, Slack and Syslog transports are not implemented.
 - **Log & Secret Redaction Engine (`rullst-security::log_redactor`)**: Bounded best-effort sanitizer (`redact_secrets`) for recognized Authorization Bearer tokens, passwords, AWS access keys, and API-secret patterns. It is defense-in-depth, not a zero-leak guarantee.
-- **Subresource Integrity (SRI) Signer (`rullst-security::sri`)**: SHA-384 asset integrity calculator (`compute_sri_hash`, `sri_script_tag`, `sri_link_tag`) injecting subresource integrity attributes to prevent static asset supply chain tampering.
-- **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**: Cryptographic session binding (`generate_fingerprint`, `verify_fingerprint`) matching client `User-Agent`, IP subnets, and language headers to prevent stolen JWT session hijacking.
-- **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**: Middleware (`schema_guard_middleware`, `inspect_json_payload`) enforcing JSON payload size limits and maximum object nesting depth to block JSON bomb DoS attacks.
-- **Automated Security Compliance Exporter (`cargo rullst audit --compliance`)**: Automated compliance scanning CLI flag exporting a Markdown `SECURITY_COMPLIANCE.md` report evaluating OWASP Top 10, SOC2 Type II, and ISO 27001 control requirements.
+- **Subresource Integrity (SRI) Signer (`rullst-security::sri`)**: SHA-384 hashes and escaped script/link tags can be generated from bytes or explicitly selected bounded local asset files.
+- **Zero-Trust Client Fingerprinting (`rullst-security::zero_trust`)**: HMAC binding rejects weak keys/invalid IPs and normalizes IPv4/IPv6 subnets plus caller-supplied observations. TLS/JA3/JA4 collection and host session invalidation are not automatic.
+- **Strict API Payload & JSON Bomb Guard (`rullst-security::schema_guard`)**: Middleware enforces exact JSON media types, syntax, recursive duplicate-key rejection, payload size and nesting depth; it is not OpenAPI/JSON Schema conformance.
+- **Security Evidence Exporter (`cargo rullst audit --compliance`)**: Exports a Markdown record of executed, failed and unassessed checks without claiming OWASP, SOC 2, HIPAA or ISO certification.
   - **v12 audited scope:** The exporter creates a self-assessment/evidence
     worksheet. It neither evaluates every control nor grants OWASP, SOC 2 or ISO
     certification; external scope, operational evidence and an authorized
@@ -455,7 +557,7 @@ release gate has completed.
   - **`rullst-sanitizer`**: XSS/SVG HTML sanitization engine powered by `ammonia`, plus `CspSecurityLayer` middleware generating dynamic per-request CSP nonces and Clickjacking headers (`X-Frame-Options: DENY`).
   - **`rullst-rbac`**: Declarative Role-Based Access Control (`UserContext`, `RbacGuard`) natively preventing BOLA / IDOR attacks via `authorize_owner_or_role`.
   - **`rullst-audit-log`**: Canonically encoded HMAC chain with sequence verification. It is tamper-evident when records and keys are protected, not tamper-proof.
-- **AI Vulnerability Auditor (`cargo rullst audit --ai`)**: Added CLI security scanner command in `cargo-rullst` to analyze `.env` secret leaks, dependency CVEs via `cargo audit`, and generate AI Sentinel remediation suggestions.
+- **Security Auditor (`cargo rullst audit --ai`)**: Added bounded `.env`, dependency, unsafe-source and IDOR checks plus deterministic remediation suggestions. The legacy `--ai` flag does not invoke an LLM or certify the project.
 - **Automated TypeScript SDK Sync (`cargo rullst dev --ts-sync`)**: Added `--ts-sync` flag to `cargo rullst dev` to automatically regenerate `sdk.ts` on file changes during development.
 - **Object Storage Boundary (`rullst::storage`)**: Added a contained local driver. Unimplemented S3/R2 and media operations fail with typed `Unsupported` errors rather than reporting success.
 - **Dynamic Package Manager CLI (`cargo rullst pkg`)**: Added `cargo rullst pkg add <name>` and `cargo rullst pkg list` to inspect and inject `RullstPackage` community dependencies.
@@ -484,13 +586,26 @@ release gate has completed.
 - **RAG Prompts:** Added `rullst_ai::ai::rag::build_rag_prompt` to prevent LLM hallucinations by injecting contexts explicitly.
 - **Resilient AI Routing (`FallbackProvider`):** Introduced a high-availability AI router. The framework automatically scans for multiple keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.) and seamlessly fails over to fallback models if the primary provider goes down or times out.
 - **Zero-Boilerplate Vision API:** Added `prompt_with_image` to the `AiClient` with automatic *Magic Byte Inference*. Developers can pass any raw buffer (`&[u8]`) and the framework instantly detects if it's a PNG, JPEG, WEBP or GIF, encoding it without manual MIME type specification.
-- **Chat Memory CLI:** Added `cargo rullst make:chat-session` to scaffold AI memory in seconds. It generates `ChatSession` and `ChatMessage` models, along with a `StatefulChat` service that automatically feeds database conversation history into the `ChatBuilder`.
+- **Chat Memory CLI:** `cargo rullst make:chat-session` now emits compiling
+  SQLx or Turso-primary `ChatSession`/`ChatMessage` models, a reversible schema
+  migration and a bounded `StatefulChat` service. The generator enables the
+  required umbrella features, registers modules, serializes sends per service,
+  propagates database/provider errors, rejects unknown stored roles and refuses
+  to overwrite an existing scaffold. Materialized tests exercise migration and
+  persistent mock-provider conversations on both backends.
 - Auto Migration (`make:migration:auto`): Automatically generate SQL migration scripts by diffing `#[derive(Orm)]` structs against the database schema. Destructive operations (DROP COLUMN/TABLE) are generated as commented-out code by default for safety.
 - Turso Integration: Added `--turso` flag to `cargo rullst new` wizard. Generates a Docker Compose configuration with an embedded LibSQL `sqld` replica sidecar that syncs with your Turso remote database, allowing standard `sqlite` macros and drivers to continue working normally via local loopback. 🚀
 
 - **Buildah Support (SecOps)**: Added the `--buildah` flag to `cargo rullst new` which generates a `build_buildah.sh` script for daemonless and rootless OCI image building, catering to extreme enterprise security requirements.
-- **Role-Based Access Control (RBAC)**: Added `HasRole` trait and `RequireRoleLayer` Axum middleware to `rullst-auth` for declarative role enforcement, as well as a new procedural macro `#[require_role("Admin")]` in `rullst-macros` to secure route handlers intuitively.
-- **Declarative Policies (Gates)**: Introduced the `Gate<Resource>` trait in `rullst-auth` to cleanly centralize application authorization logic inside domain structs.
+- **Role-Based Access Control (RBAC)**: Added the fail-closed `HasRole` /
+  `RequireRoleLayer` boundary. The umbrella facade now exports
+  `#[rullst::require_role("Admin")]`; it validates async handler shape and role
+  literals at compile time, preserves arguments/generics/where clauses and
+  requires an explicit authenticated `user` binding before returning 403.
+- **Declarative Policies (Gates)**: Added fail-closed named
+  `Policy<User, Resource>` structs for calls such as
+  `PostPolicy::can_edit(&user, &post)`, while retaining the legacy
+  `Gate<Resource>` user-implemented trait for compatibility.
 - **Background Mail Queues**: Integrated `rullst-mail` seamlessly with `rullst-core::queue`. Invoking `rullst::mail::init_queue()` now automatically configures `Mail::send()` to dispatch emails asynchronously via the background worker, preventing main-thread blocking. Added `Mail::send_now()` to bypass the queue when synchronous delivery is explicitly required.
 - **Capital `Billable` Trait**: Added `#[derive(Billable)]` to `rullst-macros` enabling models to seamlessly integrate with `rullst-capital`'s payment engine via a global `BillingProvider` registry.
 - **Capital Webhooks Middleware**: Introduced `verify_webhook` Axum middleware to intercept, cryptographically verify, and parse Stripe/LemonSqueezy webhooks automatically before they hit your handlers.

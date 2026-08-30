@@ -205,7 +205,6 @@ impl Mail {
             "ses" | "aws_ses" => {
                 let auth_token = std::env::var("AWS_SES_TOKEN")
                     .or_else(|_| std::env::var("AWS_SES_BEARER_TOKEN"))
-                    .or_else(|_| std::env::var("AWS_ACCESS_KEY"))
                     .unwrap_or_default();
                 let region =
                     std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());

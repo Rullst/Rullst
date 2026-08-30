@@ -1,63 +1,14 @@
 // src/generators/mail.rs — Mailable Struct and Email Template generator (`cargo rullst make:mail`).
 
-use crate::generators::{is_rullst_project, register_mod_ast};
+use crate::generators::chat::ensure_rullst_features;
+use crate::generators::{is_rullst_project, is_valid_rust_identifier, register_mod_ast};
 use colored::*;
 use std::fs;
-use std::path::Path;
+use std::io::{Error as IoError, ErrorKind};
+use std::path::{Path, PathBuf};
 
-pub fn to_pascal_case(s: &str) -> String {
-    let mut result = String::new();
-    let mut capitalize_next = true;
-
-    for c in s.chars() {
-        if c == '_' || c == '-' || c.is_whitespace() {
-            capitalize_next = true;
-        } else if capitalize_next {
-            result.push(c.to_ascii_uppercase());
-            capitalize_next = false;
-        } else {
-            result.push(c);
-        }
-    }
-    result
-}
-
-pub fn to_snake_case(s: &str) -> String {
-    let mut result = String::new();
-    let mut prev_is_lower = false;
-
-    for c in s.chars() {
-        if c == '_' || c == '-' || c.is_whitespace() {
-            result.push('_');
-            prev_is_lower = false;
-        } else if c.is_uppercase() {
-            if prev_is_lower {
-                result.push('_');
-            }
-            result.push(c.to_ascii_lowercase());
-            prev_is_lower = false;
-        } else {
-            result.push(c);
-            prev_is_lower = true;
-        }
-    }
-
-    // Clean multiple consecutive underscores
-    let mut clean_result = String::new();
-    let mut prev_is_underscore = false;
-    for c in result.chars() {
-        if c == '_' {
-            if !prev_is_underscore {
-                clean_result.push(c);
-            }
-            prev_is_underscore = true;
-        } else {
-            clean_result.push(c);
-            prev_is_underscore = false;
-        }
-    }
-    clean_result.trim_matches('_').to_string()
-}
+mod names;
+use names::{to_pascal_case, to_snake_case};
 
 pub fn create_new_mailable(
     name: &str,
@@ -67,17 +18,87 @@ pub fn create_new_mailable(
     invoice: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "make:mail must be run inside a Rullst project",
+        )
+        .into());
+    }
+    if [welcome, reset, otp, invoice]
+        .into_iter()
+        .filter(|selected| *selected)
+        .count()
+        > 1
+    {
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "make:mail accepts at most one of --welcome, --reset, --otp, or --invoice",
+        )
+        .into());
     }
 
     let pascal_name = to_pascal_case(name);
     let snake_name = to_snake_case(&pascal_name);
+    if !is_valid_rust_identifier(&pascal_name) || !is_valid_rust_identifier(&snake_name) {
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "mailable name must produce valid non-keyword Rust identifiers",
+        )
+        .into());
+    }
+
+    let root = project_root_module()?;
+    let root_content = fs::read_to_string(&root)?;
+    syn::parse_file(&root_content).map_err(|error| {
+        IoError::new(
+            ErrorKind::InvalidData,
+            format!("{} is not valid Rust: {error}", root.display()),
+        )
+    })?;
+
+    let mail_dir = Path::new("src/mail");
+    let mod_path = mail_dir.join("mod.rs");
+    let file_path = mail_dir.join(format!("{snake_name}.rs"));
+    if file_path.exists() {
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            format!("refusing to overwrite {}", file_path.display()),
+        )
+        .into());
+    }
+
+    let mut mod_content = if mod_path.exists() {
+        fs::read_to_string(&mod_path)?
+    } else {
+        String::new()
+    };
+    syn::parse_file(&mod_content).map_err(|error| {
+        IoError::new(
+            ErrorKind::InvalidData,
+            format!("{} is not valid Rust: {error}", mod_path.display()),
+        )
+    })?;
+    let module_declaration = format!("pub mod {snake_name};");
+    if mod_content
+        .lines()
+        .any(|line| line.trim() == module_declaration)
+    {
+        return Err(IoError::new(
+            ErrorKind::AlreadyExists,
+            format!("mailable module {snake_name} is already registered"),
+        )
+        .into());
+    }
+    if !mod_content.is_empty() && !mod_content.ends_with('\n') {
+        mod_content.push('\n');
+    }
+    mod_content.push_str(&format!(
+        "pub mod {snake_name};\npub use {snake_name}::{pascal_name};\n"
+    ));
+
+    let manifest_path = Path::new("Cargo.toml");
+    let manifest = fs::read_to_string(manifest_path)?;
+    let updated_manifest = ensure_rullst_features(&manifest, &["mailer"])?;
 
     println!(
         "{}",
@@ -86,39 +107,9 @@ pub fn create_new_mailable(
             .bold()
     );
 
-    let mail_dir = Path::new("src/mail");
-    if !mail_dir.exists() {
-        fs::create_dir_all(mail_dir)?;
-    }
-
-    let mod_path = mail_dir.join("mod.rs");
-    if !mod_path.exists() {
-        fs::write(&mod_path, "")?;
-    }
-
-    // Add module declaration to src/mail/mod.rs
-    let mut mod_content = fs::read_to_string(&mod_path)?;
-    let mod_decl = format!(
-        "pub mod {};\npub use {}::{};\n",
-        snake_name, snake_name, pascal_name
-    );
-    if !mod_content.contains(&format!("pub mod {};", snake_name)) {
-        mod_content.push_str(&mod_decl);
-        fs::write(&mod_path, &mod_content)?;
-    }
-
-    // Register mail module in src/lib.rs or src/main.rs
-    if Path::new("src/lib.rs").exists() {
-        let _ = register_mod_ast(Path::new("src/lib.rs"), "mail");
-    } else if Path::new("src/main.rs").exists() {
-        let _ = register_mod_ast(Path::new("src/main.rs"), "mail");
-    }
-
-    let file_path = mail_dir.join(format!("{}.rs", snake_name));
-
     let template = if welcome {
         r##"//! Welcome & Onboarding Mailable template.
-use rullst_mail::{Message, Mail, MailError};
+use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Welcome email sent to newly registered users with email verification CTA.
 #[derive(Debug, Clone)]
@@ -144,8 +135,11 @@ impl __NAME__ {
         }
     }
 
-    /// Builds the `rullst_mail::Message` with HTML layout, plain-text fallback and RFC 8058 headers.
+    /// Builds the `rullst::mail::Message` with an escaped HTML layout and plain-text fallback.
     pub fn build(&self) -> Message {
+        let user_name = escape_html(&self.user_name);
+        let verification_url = escape_html(&self.verification_url);
+        let unsubscribe_url = escape_html(&self.unsubscribe_url);
         let html_content = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -173,7 +167,7 @@ impl __NAME__ {
   </div>
 </body>
 </html>"#,
-            self.user_name, self.verification_url, self.unsubscribe_url
+            user_name, verification_url, unsubscribe_url
         );
 
         Message::new()
@@ -192,7 +186,7 @@ impl __NAME__ {
 "##
     } else if reset {
         r##"//! Time-limited Password Reset Mailable.
-use rullst_mail::{Message, Mail, MailError};
+use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Secure password reset email with expiration indicator.
 #[derive(Debug, Clone)]
@@ -219,6 +213,8 @@ impl __NAME__ {
     }
 
     pub fn build(&self) -> Message {
+        let user_name = escape_html(&self.user_name);
+        let reset_url = escape_html(&self.reset_url);
         let html_content = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -243,7 +239,7 @@ impl __NAME__ {
   </div>
 </body>
 </html>"#,
-            self.user_name, self.expires_in_minutes, self.reset_url
+            user_name, self.expires_in_minutes, reset_url
         );
 
         Message::new()
@@ -260,7 +256,7 @@ impl __NAME__ {
 "##
     } else if otp {
         r##"//! High-visibility Two-Factor Authentication (OTP) Mailable.
-use rullst_mail::{Message, Mail, MailError};
+use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Two-Factor authentication OTP security code email.
 #[derive(Debug, Clone)]
@@ -280,6 +276,7 @@ impl __NAME__ {
     }
 
     pub fn build(&self) -> Message {
+        let otp_code = escape_html(&self.otp_code);
         let html_content = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -298,7 +295,7 @@ impl __NAME__ {
   </div>
 </body>
 </html>"#,
-            self.expires_in_minutes, self.otp_code
+            self.expires_in_minutes, otp_code
         );
 
         Message::new()
@@ -315,7 +312,7 @@ impl __NAME__ {
 "##
     } else if invoice {
         r##"//! SaaS Invoice / Receipt Mailable.
-use rullst_mail::{Message, Mail, MailError};
+use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Transactional invoice receipt for SaaS billing.
 #[derive(Debug, Clone)]
@@ -345,6 +342,10 @@ impl __NAME__ {
     }
 
     pub fn build(&self) -> Message {
+        let customer_name = escape_html(&self.customer_name);
+        let invoice_id = escape_html(&self.invoice_id);
+        let amount = escape_html(&self.amount);
+        let invoice_url = escape_html(&self.invoice_url);
         let html_content = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -368,7 +369,7 @@ impl __NAME__ {
   </div>
 </body>
 </html>"#,
-            self.customer_name, self.invoice_id, self.amount, self.invoice_url
+            customer_name, invoice_id, amount, invoice_url
         );
 
         Message::new()
@@ -385,7 +386,7 @@ impl __NAME__ {
 "##
     } else {
         r##"//! Custom Transactional Mailable template.
-use rullst_mail::{Message, Mail, MailError};
+use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Strongly-typed mailable struct.
 #[derive(Debug, Clone)]
@@ -412,6 +413,8 @@ impl __NAME__ {
     }
 
     pub fn build(&self) -> Message {
+        let subject = escape_html(&self.subject);
+        let message_body = escape_html(&self.message_body);
         let html_content = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -423,7 +426,7 @@ impl __NAME__ {
   </div>
 </body>
 </html>"#,
-            self.subject, self.message_body
+            subject, message_body
         );
 
         let mut msg = Message::new()
@@ -446,7 +449,18 @@ impl __NAME__ {
     };
 
     let content = template.replace("__NAME__", &pascal_name);
+    syn::parse_file(&content).map_err(|error| {
+        IoError::new(
+            ErrorKind::InvalidData,
+            format!("generated mailable is not valid Rust: {error}"),
+        )
+    })?;
+
+    fs::create_dir_all(mail_dir)?;
     fs::write(&file_path, content)?;
+    fs::write(manifest_path, updated_manifest)?;
+    fs::write(&mod_path, mod_content)?;
+    register_mod_ast(&root, "mail")?;
 
     println!(
         "{}",
@@ -460,15 +474,15 @@ impl __NAME__ {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_to_pascal_and_snake_case() {
-        assert_eq!(to_pascal_case("welcome_email"), "WelcomeEmail");
-        assert_eq!(to_pascal_case("reset-password"), "ResetPassword");
-        assert_eq!(to_snake_case("WelcomeEmail"), "welcome_email");
-        assert_eq!(to_snake_case("ResetPassword"), "reset_password");
-    }
+fn project_root_module() -> Result<PathBuf, IoError> {
+    ["src/lib.rs", "src/main.rs"]
+        .into_iter()
+        .map(PathBuf::from)
+        .find(|path| path.exists())
+        .ok_or_else(|| {
+            IoError::new(
+                ErrorKind::NotFound,
+                "Rullst project has neither src/lib.rs nor src/main.rs",
+            )
+        })
 }

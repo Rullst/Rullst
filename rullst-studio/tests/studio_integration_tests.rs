@@ -56,6 +56,10 @@ async fn test_studio_core_routes() {
         "/studio/capital",
         "/traces",
         "/studio/traces",
+        "/studio/env",
+        "/studio/features",
+        "/studio/er",
+        "/studio/requests",
     ];
 
     for path in routes {
@@ -72,6 +76,10 @@ async fn test_studio_core_routes() {
         "/tools/revenue",
         "/tools/traces",
         "/studio/tools/radar",
+        "/env",
+        "/features",
+        "/er",
+        "/requests",
     ] {
         let req = Request::builder()
             .uri(legacy_path)
@@ -160,11 +168,12 @@ async fn test_studio_table_browser_and_schema_inspection() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    let status = res.status();
     let body = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
         .unwrap();
     let body_str = String::from_utf8_lossy(&body);
+    assert_eq!(status, StatusCode::OK, "{body_str}");
     assert!(body_str.contains("alice") || body_str.contains("studio_users"));
 
     // 2. Search query and pagination
@@ -190,21 +199,27 @@ async fn test_studio_table_browser_and_schema_inspection() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // 5. ER diagram generation with schema populated
-    let req = Request::builder().uri("/er").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/studio/er")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let body = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
         .unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    assert!(body_str.contains("erDiagram") || body_str.contains("studio_users"));
+    assert!(body_str.contains("erDiagram"));
+    assert!(body_str.contains("studio_users"), "{body_str}");
+    assert!(body_str.contains("orders"), "{body_str}");
+    assert!(!body_str.contains("Schema unavailable"), "{body_str}");
 
     // 6. Feature Flags
     let req = Request::builder()
-        .uri("/features")
+        .uri("/studio/features")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -225,11 +240,15 @@ async fn test_studio_table_browser_and_schema_inspection() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/features/toggle/dark_mode")
+        .uri("/studio/features/toggle/dark_mode")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_redirection());
+    assert_eq!(
+        res.headers().get(axum::http::header::LOCATION).unwrap(),
+        "/studio/features"
+    );
 
     // 7. Migration Manager Handlers
     use rullst_studio::migration_manager::*;
@@ -280,12 +299,15 @@ async fn test_studio_horizon_jobs_and_purge() {
     let queue = rullst_core::Queue::sqlite(":memory:").await.unwrap();
     let app = local_studio(Studio::new().with_horizon(queue));
 
-    let req = Request::builder().uri("/jobs").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/studio/jobs")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
     let req = Request::builder()
-        .uri("/jobs/jobs-table")
+        .uri("/studio/jobs/jobs-table")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -293,7 +315,7 @@ async fn test_studio_horizon_jobs_and_purge() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/jobs/retry/job_123")
+        .uri("/studio/jobs/retry/job_123")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -301,11 +323,47 @@ async fn test_studio_horizon_jobs_and_purge() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/jobs/purge")
+        .uri("/studio/jobs/purge")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_redirection());
+    assert_eq!(
+        res.headers().get(axum::http::header::LOCATION).unwrap(),
+        "/studio/jobs"
+    );
+}
+
+#[tokio::test]
+async fn test_studio_openapi_uses_canonical_routes() {
+    let app = local_studio(Studio::new().with_openapi(utoipa::openapi::OpenApi::default()));
+
+    let redirect = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/studio/api")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(redirect.status().is_redirection());
+
+    for path in ["/studio/api/", "/studio/api/openapi.json"] {
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "failed route: {path}");
+    }
+
+    let legacy = app
+        .oneshot(Request::builder().uri("/api").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(legacy.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -332,7 +390,10 @@ async fn test_studio_db_helpers_and_serializers() {
 async fn test_studio_env_viewer_endpoint() {
     let app = local_studio(Studio::new());
 
-    let req = Request::builder().uri("/env").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/studio/env")
+        .body(Body::empty())
+        .unwrap();
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
@@ -348,7 +409,7 @@ async fn test_studio_logger_requests_flow() {
     let _ = app.clone().oneshot(req).await.unwrap();
 
     let req = Request::builder()
-        .uri("/requests")
+        .uri("/studio/requests")
         .body(Body::empty())
         .unwrap();
     let res = app.oneshot(req).await.unwrap();

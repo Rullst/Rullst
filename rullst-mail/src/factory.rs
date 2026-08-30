@@ -1,6 +1,6 @@
 //! Transactional email fixtures & factory generator for testing, preview, and local development.
 
-use crate::message::Message;
+use crate::message::{Message, escape_html};
 
 /// Factory generator for common transactional email blueprints.
 pub struct MailFactory;
@@ -9,6 +9,8 @@ impl MailFactory {
     /// Generates a welcome and onboarding verification email.
     pub fn fake_welcome(to: &str, user_name: &str, app_name: &str) -> Message {
         let subject = format!("Welcome to {}!", app_name);
+        let safe_user_name = escape_html(user_name);
+        let safe_app_name = escape_html(app_name);
         let html = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -24,8 +26,8 @@ impl MailFactory {
   </div>
 </body>
 </html>"#,
-            app_name = app_name,
-            user_name = user_name
+            app_name = safe_app_name,
+            user_name = safe_user_name
         );
 
         Message::new().to(to).subject(subject).html(html)
@@ -34,6 +36,7 @@ impl MailFactory {
     /// Generates a time-limited password reset email.
     pub fn fake_password_reset(to: &str, reset_url: &str, expires_in_mins: u32) -> Message {
         let subject = "Reset your account password".to_string();
+        let safe_reset_url = escape_html(reset_url);
         let html = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -49,7 +52,7 @@ impl MailFactory {
   </div>
 </body>
 </html>"#,
-            url = reset_url,
+            url = safe_reset_url,
             expires = expires_in_mins
         );
 
@@ -59,6 +62,7 @@ impl MailFactory {
     /// Generates a high-visibility OTP authentication code email.
     pub fn fake_otp(to: &str, code: &str, expires_in_mins: u32) -> Message {
         let subject = format!("Your verification code: {}", code);
+        let safe_code = escape_html(code);
         let html = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -74,7 +78,7 @@ impl MailFactory {
   </div>
 </body>
 </html>"#,
-            code = code,
+            code = safe_code,
             expires = expires_in_mins
         );
 
@@ -97,6 +101,8 @@ impl MailFactory {
             "Receipt for Invoice #{} ({})",
             invoice_number, formatted_amount
         );
+        let safe_invoice_number = escape_html(invoice_number);
+        let safe_amount = escape_html(&formatted_amount);
         let html = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -115,8 +121,8 @@ impl MailFactory {
   </div>
 </body>
 </html>"#,
-            num = invoice_number,
-            amount = formatted_amount
+            num = safe_invoice_number,
+            amount = safe_amount
         );
 
         Message::new().to(to).subject(subject).html(html)
@@ -125,6 +131,9 @@ impl MailFactory {
     /// Generates a suspicious login / security alert email.
     pub fn fake_security_alert(to: &str, action: &str, ip_address: &str, device: &str) -> Message {
         let subject = format!("Security Alert: {} detected", action);
+        let safe_action = escape_html(action);
+        let safe_ip_address = escape_html(ip_address);
+        let safe_device = escape_html(device);
         let html = format!(
             r#"<!DOCTYPE html>
 <html>
@@ -141,9 +150,9 @@ impl MailFactory {
   </div>
 </body>
 </html>"#,
-            action = action,
-            ip = ip_address,
-            dev = device
+            action = safe_action,
+            ip = safe_ip_address,
+            dev = safe_device
         );
 
         Message::new().to(to).subject(subject).html(html)
@@ -185,5 +194,20 @@ mod tests {
         );
         assert!(sec.subject.contains("Security Alert"));
         assert!(sec.body_html.unwrap().contains("192.0.2.1"));
+    }
+
+    #[test]
+    fn factory_escapes_untrusted_template_values() {
+        let message = MailFactory::fake_security_alert(
+            "user@example.com",
+            "<script>alert(1)</script>",
+            "\"><img src=x>",
+            "browser & client",
+        );
+        let html = message.body_html.expect("HTML fixture");
+        assert!(!html.contains("<script>"));
+        assert!(!html.contains("<img"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("browser &amp; client"));
     }
 }

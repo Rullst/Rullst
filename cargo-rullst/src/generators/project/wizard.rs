@@ -7,6 +7,41 @@ use crate::blueprints::{
     PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
 
+/// Optional persistence capabilities that complement the primary SQL ORM.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PolyglotIntegration {
+    /// Turso/libSQL edge SQL.
+    Turso,
+    /// MongoDB document storage.
+    MongoDb,
+    /// DuckDB OLAP and analytics.
+    DuckDb,
+    /// SurrealDB document and graph storage.
+    SurrealDb,
+}
+
+impl PolyglotIntegration {
+    /// Returns the `rullst-orm` feature selected by this integration.
+    pub const fn orm_feature(self) -> &'static str {
+        match self {
+            Self::Turso => "turso",
+            Self::MongoDb => "mongodb",
+            Self::DuckDb => "duckdb",
+            Self::SurrealDb => "surrealdb",
+        }
+    }
+
+    /// Returns the umbrella `rullst` feature selected by this integration.
+    pub const fn rullst_feature(self) -> &'static str {
+        match self {
+            Self::Turso => "orm-turso",
+            Self::MongoDb => "orm-mongodb",
+            Self::DuckDb => "orm-duckdb",
+            Self::SurrealDb => "orm-surrealdb",
+        }
+    }
+}
+
 pub struct ProjectWizardOptions {
     pub name: String,
     pub api: bool,
@@ -17,6 +52,7 @@ pub struct ProjectWizardOptions {
     pub wants_ai: bool,
     pub wants_redis: bool,
     pub turso: bool,
+    pub polyglot_integrations: Vec<PolyglotIntegration>,
     pub orm_pattern: String,
     pub frontend_engine: String,
 }
@@ -27,16 +63,34 @@ pub fn run_project_wizard(
     use_defaults: bool,
     turso: bool,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
-    run_project_wizard_with_blueprint(name_arg, api, use_defaults, turso, None)
+    let integrations = if turso {
+        vec![PolyglotIntegration::Turso]
+    } else {
+        Vec::new()
+    };
+    run_project_wizard_with_blueprint(name_arg, api, use_defaults, &integrations, None, None)
 }
 
 pub(crate) fn run_project_wizard_with_blueprint(
     name_arg: Option<&str>,
     mut api: bool,
     use_defaults: bool,
-    turso: bool,
+    requested_integrations: &[PolyglotIntegration],
+    db_provider_override: Option<&str>,
     blueprint_override: Option<usize>,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    if db_provider_override.is_some_and(|provider| {
+        !matches!(
+            provider,
+            "Sqlite" | "Postgres" | "MySQL" | "MariaDB" | "Turso"
+        )
+    }) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "unknown relational database provider",
+        )
+        .into());
+    }
     if blueprint_override.is_some_and(|id| {
         !matches!(
             id,
@@ -58,17 +112,23 @@ pub(crate) fn run_project_wizard_with_blueprint(
     if use_defaults {
         let name = name_arg.unwrap_or("app").to_string();
         let blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
+        let db_provider = db_provider_override.unwrap_or("Sqlite").to_string();
         return Ok(ProjectWizardOptions {
             name,
             api,
-            db_provider: "sqlite".to_string(),
+            orm_pattern: if db_provider == "Turso" {
+                "Turso Active Record".to_string()
+            } else {
+                "Active Record".to_string()
+            },
+            db_provider,
             db_needed: true,
             hot_reload: false,
             blueprint_selection,
             wants_ai: false,
             wants_redis: false,
-            turso,
-            orm_pattern: "Active Record".to_string(),
+            turso: requested_integrations.contains(&PolyglotIntegration::Turso),
+            polyglot_integrations: requested_integrations.to_vec(),
             frontend_engine: "Zero-Bundle HTMX".to_string(),
         });
     }
@@ -120,6 +180,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
     let mut db_needed = true;
     let mut hot_reload = false;
     let mut blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
+    let mut polyglot_integrations = requested_integrations.to_vec();
 
     if name_arg.is_none() {
         let portfolio_title = format!(
@@ -166,8 +227,9 @@ pub(crate) fn run_project_wizard_with_blueprint(
             let db_options = &[
                 "Sqlite (Zero setup)",
                 "Postgres (Requires localhost:5432 running)",
-                "MySQL/MariaDB (Requires localhost:3306 running)",
-                "Turso / libSQL (Edge Database)",
+                "MySQL (Requires localhost:3306 running)",
+                "MariaDB (MySQL protocol; separately contract-tested)",
+                "Turso / libSQL (primary edge SQL; explicit typed model API)",
             ];
             let db_selection = dialoguer::Select::with_theme(&theme)
                 .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
@@ -177,21 +239,54 @@ pub(crate) fn run_project_wizard_with_blueprint(
             db_provider = match db_selection {
                 1 => "Postgres".to_string(),
                 2 => "MySQL".to_string(),
-                3 => "Turso".to_string(),
+                3 => "MariaDB".to_string(),
+                4 => "Turso".to_string(),
                 _ => "Sqlite".to_string(),
             };
+            if db_provider == "Turso"
+                && !polyglot_integrations.contains(&PolyglotIntegration::Turso)
+            {
+                polyglot_integrations.push(PolyglotIntegration::Turso);
+            }
         }
 
-        hot_reload = dialoguer::Confirm::with_theme(&theme)
-            .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
-            .default(true)
+        let persistence_options = &[
+            "Turso / libSQL (edge SQL; remote driver + offline fallback)",
+            "MongoDB (document CRUD)",
+            "DuckDB (in-process OLAP / analytics)",
+            "SurrealDB (document CRUD + bounded read-only graph queries)",
+        ];
+        let persistence_selection = dialoguer::MultiSelect::with_theme(&theme)
+            .with_prompt("🧩 Select optional persistence capabilities (space toggles)")
+            .items(&persistence_options[..])
             .interact()?;
+        for selected in persistence_selection {
+            let integration = match selected {
+                0 => PolyglotIntegration::Turso,
+                1 => PolyglotIntegration::MongoDb,
+                2 => PolyglotIntegration::DuckDb,
+                3 => PolyglotIntegration::SurrealDb,
+                _ => continue,
+            };
+            if !polyglot_integrations.contains(&integration) {
+                polyglot_integrations.push(integration);
+            }
+        }
+
+        if db_provider == "Turso" {
+            hot_reload = false;
+        } else {
+            hot_reload = dialoguer::Confirm::with_theme(&theme)
+                .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
+                .default(true)
+                .interact()?;
+        }
     }
 
     let mut orm_pattern = "Active Record".to_string();
     let mut frontend_engine = "Zero-Bundle HTMX".to_string();
 
-    if db_needed {
+    if db_needed && db_provider != "Turso" {
         let orm_options = &[
             "Active Record Mode (Recommended — User::find(id), concise model-oriented CRUD)",
             "Data Mapper / Repository (For Enterprise DDD — UserRepository::find(), decoupled domain structs)",
@@ -207,6 +302,8 @@ pub(crate) fn run_project_wizard_with_blueprint(
             2 => "Hybrid".to_string(),
             _ => "Active Record".to_string(),
         };
+    } else if db_provider == "Turso" {
+        orm_pattern = "Turso Active Record".to_string();
     }
 
     if !api && blueprint_selection != BLANK_BLUEPRINT_ID {
@@ -250,8 +347,37 @@ pub(crate) fn run_project_wizard_with_blueprint(
         blueprint_selection,
         wants_ai,
         wants_redis,
-        turso,
+        turso: polyglot_integrations.contains(&PolyglotIntegration::Turso),
+        polyglot_integrations,
         orm_pattern,
         frontend_engine,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deterministic_wizard_preserves_requested_persistence_features() {
+        let selected = [
+            PolyglotIntegration::Turso,
+            PolyglotIntegration::MongoDb,
+            PolyglotIntegration::DuckDb,
+            PolyglotIntegration::SurrealDb,
+        ];
+        let options = run_project_wizard_with_blueprint(
+            Some("polyglot-app"),
+            false,
+            true,
+            &selected,
+            Some("MariaDB"),
+            Some(BLANK_BLUEPRINT_ID),
+        )
+        .expect("deterministic wizard");
+
+        assert_eq!(options.db_provider, "MariaDB");
+        assert_eq!(options.polyglot_integrations, selected);
+        assert!(options.turso);
+    }
 }

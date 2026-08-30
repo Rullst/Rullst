@@ -181,7 +181,7 @@ fn handle_auth_billing(
     let choices = [
         "🔐  Scaffold Full Auth System  (cargo rullst auth)",
         "📲  Scaffold 2FA TOTP System   (cargo rullst make:mfa)",
-        "🛡️  Run Security & IDOR Audit  (cargo rullst audit --ai --compliance --idor --geiger)",
+        "🛡️  Run Security & IDOR Audit  (bounded evidence; optional Geiger)",
         "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
         "🌐  Add CORS Middleware        (cargo rullst make:cors)",
         "🔑  Add JWT Middleware         (cargo rullst make:jwt)",

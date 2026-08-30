@@ -32,10 +32,12 @@ async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> Response {
         Ok((jobs, pending)) => {
             let failed = jobs.iter().filter(|job| job.status == "failed").count();
             let processing = jobs.iter().filter(|job| job.status == "processing").count();
+            let completed = jobs.iter().filter(|job| job.status == "completed").count();
             Html(render_dashboard_layout(
                 pending,
                 failed,
                 processing,
+                completed,
                 render_table_rows(&jobs),
             ))
             .into_response()
@@ -53,14 +55,14 @@ async fn jobs_table(State(state): State<Arc<HorizonState>>) -> Response {
 
 async fn retry_job(State(state): State<Arc<HorizonState>>, Path(id): Path<String>) -> Response {
     match state.queue.retry_failed_job(&id).await {
-        Ok(()) => Redirect::to("/jobs").into_response(),
+        Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
     }
 }
 
 async fn purge_failed_jobs(State(state): State<Arc<HorizonState>>) -> Response {
     match state.queue.purge_failed_jobs().await {
-        Ok(()) => Redirect::to("/jobs").into_response(),
+        Ok(()) => Redirect::to("/studio/jobs").into_response(),
         Err(error) => queue_error_response(error),
     }
 }
@@ -92,6 +94,7 @@ fn render_dashboard_layout(
     pending: u64,
     failed: usize,
     processing: usize,
+    completed: usize,
     table_rows: String,
 ) -> String {
     format!(
@@ -106,9 +109,10 @@ fn render_dashboard_layout(
     <dt>Pending jobs</dt><dd>{pending}</dd>
     <dt>Jobs marked processing</dt><dd>{processing}</dd>
     <dt>Jobs marked failed</dt><dd>{failed}</dd>
+    <dt>Completed records retained by this backend</dt><dd>{completed}</dd>
   </dl>
-  <form method="post" action="/jobs/purge-failed"><button type="submit">Purge failed jobs</button></form>
-  <p><a href="/jobs">Refresh snapshot</a> · <a href="/studio">Back to Studio</a></p>
+  <form method="post" action="/studio/jobs/purge-failed"><button type="submit">Purge failed jobs</button></form>
+  <p><a href="/studio/jobs">Refresh snapshot</a> · <a href="/studio">Back to Studio</a></p>
   <table>
     <caption>Up to 50 recent queue records</caption>
     <thead><tr><th>ID / type</th><th>Payload preview</th><th>Status</th><th>Attempts</th><th>Created</th><th>Action</th></tr></thead>
@@ -142,7 +146,7 @@ fn render_table_rows(jobs: &[QueuedJobDetail]) -> String {
             .map(|error| bounded_preview(error, 512));
         let action = if job.status == "failed" {
             format!(
-                "<form method=\"post\" action=\"/jobs/retry/{}\"><button type=\"submit\">Retry job</button></form>",
+                "<form method=\"post\" action=\"/studio/jobs/retry/{}\"><button type=\"submit\">Retry job</button></form>",
                 urlencoding::encode(&job.id)
             )
         } else {
@@ -236,5 +240,13 @@ mod tests {
         assert!(html.contains("&lt;img&gt;"));
         assert!(html.contains("&lt;b&gt;failure&lt;/b&gt;"));
         assert!(!html.contains("<script>"));
+    }
+
+    #[test]
+    fn dashboard_reports_completed_records_without_inventing_history() {
+        let html = render_dashboard_layout(2, 1, 3, 4, String::new());
+
+        assert!(html.contains("Completed records retained by this backend"));
+        assert!(html.contains("<dd>4</dd>"));
     }
 }

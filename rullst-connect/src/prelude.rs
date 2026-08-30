@@ -9,7 +9,7 @@
 pub use crate::error::ConnectError;
 pub use crate::provider::Provider;
 pub use crate::providers::*;
-pub use crate::user::ConnectUser;
+pub use crate::user::{ConnectUser, UniversalProfile};
 pub use secrecy::{ExposeSecret, SecretString};
 
 #[cfg(any(feature = "axum", feature = "actix"))]

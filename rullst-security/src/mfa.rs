@@ -1,5 +1,7 @@
 use crate::telemetry::SecurityStore;
 use hmac::{Hmac, KeyInit, Mac};
+use qrcode::{QrCode, render::svg};
+use rand::{TryRng, rngs::SysRng};
 use sha1::Sha1;
 use std::time::{SystemTime, UNIX_EPOCH};
 use subtle::ConstantTimeEq;
@@ -8,15 +10,25 @@ type HmacSha1 = Hmac<Sha1>;
 
 /// Base32 character set for RFC 4648 encoding
 const BASE32_ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+/// Minimum decoded TOTP secret length recommended for HMAC-SHA1.
+pub const MIN_TOTP_SECRET_BYTES: usize = 20;
+const MAX_MFA_LABEL_BYTES: usize = 256;
+
+/// Generates a random Base32 encoded 160-bit TOTP secret from the OS RNG.
+pub fn try_generate_mfa_secret() -> Result<String, crate::SecurityError> {
+    let mut entropy = [0_u8; 32];
+    SysRng.try_fill_bytes(&mut entropy).map_err(|_| {
+        crate::SecurityError::General("operating-system randomness is unavailable".to_string())
+    })?;
+    Ok(entropy
+        .iter()
+        .map(|byte| BASE32_ALPHABET[(byte & 31) as usize] as char)
+        .collect())
+}
 
 /// Generates a random Base32 encoded 160-bit (20 byte) TOTP secret key.
 pub fn generate_mfa_secret() -> String {
-    let mut secret = String::with_capacity(32);
-    for _ in 0..32 {
-        let idx = (rand::random::<u8>() as usize) % BASE32_ALPHABET.len();
-        secret.push(BASE32_ALPHABET[idx] as char);
-    }
-    secret
+    try_generate_mfa_secret().unwrap_or_default()
 }
 
 /// Decodes a Base32 string into a raw byte vector.
@@ -48,6 +60,9 @@ pub fn decode_base32(b32: &str) -> Option<Vec<u8>> {
 
 /// Computes an RFC 6238 6-digit TOTP code for a secret at a specific counter step.
 pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
+    if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
+        return 0;
+    }
     let mut mac = match HmacSha1::new_from_slice(secret_bytes) {
         Ok(mac) => mac,
         Err(_) => return 0,
@@ -67,6 +82,9 @@ pub fn generate_totp_at_counter(secret_bytes: &[u8], counter: u64) -> u32 {
 /// Computes the current 6-digit TOTP code for a Base32 secret.
 pub fn generate_totp_code(base32_secret: &str) -> Option<String> {
     let secret_bytes = decode_base32(base32_secret)?;
+    if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
+        return None;
+    }
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -84,6 +102,9 @@ pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
     let Some(secret_bytes) = decode_base32(base32_secret) else {
         return false;
     };
+    if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
+        return false;
+    }
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -117,6 +138,44 @@ pub fn build_otpauth_uri(issuer: &str, account_name: &str, base32_secret: &str) 
         "otpauth://totp/{}:{}?secret={}&issuer={}&algorithm=SHA1&digits=6&period=30",
         encoded_issuer, encoded_account, encoded_secret, encoded_issuer
     )
+}
+
+/// Builds a self-contained SVG QR code for authenticator enrollment.
+///
+/// Labels are bounded and the TOTP secret must decode to at least 160 bits.
+pub fn build_mfa_qr_svg(
+    issuer: &str,
+    account_name: &str,
+    base32_secret: &str,
+) -> Result<String, crate::SecurityError> {
+    if issuer.trim().is_empty()
+        || account_name.trim().is_empty()
+        || issuer.len() > MAX_MFA_LABEL_BYTES
+        || account_name.len() > MAX_MFA_LABEL_BYTES
+    {
+        return Err(crate::SecurityError::General(
+            "MFA issuer and account labels must be non-empty and at most 256 bytes".to_string(),
+        ));
+    }
+    let secret = decode_base32(base32_secret).ok_or_else(|| {
+        crate::SecurityError::General("MFA secret is not valid Base32".to_string())
+    })?;
+    if secret.len() < MIN_TOTP_SECRET_BYTES {
+        return Err(crate::SecurityError::General(
+            "MFA secret must contain at least 160 bits".to_string(),
+        ));
+    }
+
+    let uri = build_otpauth_uri(issuer.trim(), account_name.trim(), base32_secret.trim());
+    let code = QrCode::new(uri.as_bytes()).map_err(|_| {
+        crate::SecurityError::General("MFA enrollment data is too large for a QR code".to_string())
+    })?;
+    Ok(code
+        .render::<svg::Color<'_>>()
+        .min_dimensions(256, 256)
+        .dark_color(svg::Color("#020617"))
+        .light_color(svg::Color("#ffffff"))
+        .build())
 }
 
 #[cfg(test)]
@@ -163,5 +222,19 @@ mod tests {
         assert!(!verify_totp_code(&secret, "0123456"));
         assert!(!verify_totp_code(&secret, " 12345"));
         assert!(!verify_totp_code(&secret, "１２３４５６"));
+        assert!(generate_totp_code("JBSWY3DPEHPK3PXP").is_none());
+        assert!(!verify_totp_code("JBSWY3DPEHPK3PXP", "000000"));
+    }
+
+    #[test]
+    fn enrollment_qr_is_real_svg_and_rejects_weak_inputs() {
+        let secret = generate_mfa_secret();
+        let svg = build_mfa_qr_svg("Rullst", "user@example.com", &secret)
+            .expect("valid enrollment data should render");
+        assert!(svg.starts_with("<?xml"));
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("#020617"));
+        assert!(build_mfa_qr_svg("", "user@example.com", &secret).is_err());
+        assert!(build_mfa_qr_svg("Rullst", "user@example.com", "ABC").is_err());
     }
 }

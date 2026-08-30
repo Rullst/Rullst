@@ -4,8 +4,12 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
+#[cfg(test)]
+mod billable_tests;
 mod html_parser;
 mod live_parser;
+#[cfg(test)]
+mod require_role_tests;
 
 /// A macro for writing HTML inline in Rust.
 /// It compiles down to highly optimized string concatenations at compile time,
@@ -308,57 +312,129 @@ fn expand_server_function(input_fn: syn::ItemFn) -> syn::Result<proc_macro2::Tok
 
 #[proc_macro_attribute]
 pub fn require_role(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let role = parse_macro_input!(attr as syn::LitStr);
     let input_fn = parse_macro_input!(item as syn::ItemFn);
+    match expand_require_role(&role, &input_fn) {
+        Ok(expanded) => expanded.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+fn expand_require_role(
+    role: &syn::LitStr,
+    input_fn: &syn::ItemFn,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
+    if input_fn.sig.asyncness.is_none() {
+        return Err(syn::Error::new_spanned(
+            input_fn.sig.fn_token,
+            "#[require_role] supports async handlers only",
+        ));
+    }
+    let role_value = role.value();
+    if role_value.trim().is_empty()
+        || role_value.chars().count() > 128
+        || role_value.chars().any(char::is_control)
+    {
+        return Err(syn::Error::new_spanned(
+            role,
+            "#[require_role] needs a non-empty role of at most 128 characters without controls",
+        ));
+    }
+    let has_user = input_fn.sig.inputs.iter().any(|argument| match argument {
+        syn::FnArg::Receiver(_) => false,
+        syn::FnArg::Typed(argument) => pattern_binds_user(&argument.pat),
+    });
+    if !has_user {
+        return Err(syn::Error::new_spanned(
+            &input_fn.sig.inputs,
+            "#[require_role] requires a handler parameter that binds an authenticated `user`",
+        ));
+    }
+
+    let attributes = &input_fn.attrs;
     let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let name = &sig.ident;
-    let inputs = &sig.inputs;
+    let mut signature = input_fn.sig.clone();
+    signature.output = syn::parse_quote!(-> rullst::response::Response);
     let body = &input_fn.block;
 
-    let role_lit = parse_macro_input!(attr as syn::LitStr);
-    let role_str = role_lit.value();
-
     let expanded = quote::quote! {
-        #vis async fn #name(#inputs) -> axum::response::Response {
-            if !rullst::auth::HasRole::has_role(&user, #role_str) {
-                return axum::response::IntoResponse::into_response((
-                    axum::http::StatusCode::FORBIDDEN,
+        #(#attributes)*
+        #vis #signature {
+            if !rullst::auth::HasRole::has_role(&user, #role) {
+                return rullst::response::IntoResponse::into_response((
+                    rullst::http::StatusCode::FORBIDDEN,
                     "Forbidden: Insufficient privileges",
                 ));
             }
 
             let result = async move { #body }.await;
-            axum::response::IntoResponse::into_response(result)
+            rullst::response::IntoResponse::into_response(result)
         }
     };
+    Ok(expanded)
+}
 
-    expanded.into()
+fn pattern_binds_user(pattern: &syn::Pat) -> bool {
+    match pattern {
+        syn::Pat::Ident(binding) => {
+            binding.ident == "user"
+                || binding
+                    .subpat
+                    .as_ref()
+                    .is_some_and(|(_, pattern)| pattern_binds_user(pattern))
+        }
+        syn::Pat::Or(pattern) => pattern.cases.iter().any(pattern_binds_user),
+        syn::Pat::Paren(pattern) => pattern_binds_user(&pattern.pat),
+        syn::Pat::Reference(pattern) => pattern_binds_user(&pattern.pat),
+        syn::Pat::Slice(pattern) => pattern.elems.iter().any(pattern_binds_user),
+        syn::Pat::Struct(pattern) => pattern
+            .fields
+            .iter()
+            .any(|field| pattern_binds_user(&field.pat)),
+        syn::Pat::Tuple(pattern) => pattern.elems.iter().any(pattern_binds_user),
+        syn::Pat::TupleStruct(pattern) => pattern.elems.iter().any(pattern_binds_user),
+        syn::Pat::Type(pattern) => pattern_binds_user(&pattern.pat),
+        _ => false,
+    }
 }
 
 #[proc_macro_derive(Billable)]
 pub fn derive_billable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
+    match expand_billable(&input) {
+        Ok(expanded) => expanded.into(),
+        Err(error) => error.into_compile_error().into(),
+    }
+}
+
+fn expand_billable(input: &syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &input.ident;
-
-    let mut has_sub_id = false;
-    let mut has_tier = false;
-
-    if let syn::Data::Struct(data_struct) = &input.data
-        && let syn::Fields::Named(fields) = &data_struct.fields
-    {
-        for field in &fields.named {
-            if let Some(ident) = &field.ident {
-                if ident == "subscription_id" {
-                    has_sub_id = true;
-                }
-                if ident == "tier" {
-                    has_tier = true;
-                }
-            }
-        }
+    let syn::Data::Struct(data_struct) = &input.data else {
+        return Err(syn::Error::new_spanned(
+            input,
+            "Billable can only be derived for a struct with named fields",
+        ));
+    };
+    let syn::Fields::Named(fields) = &data_struct.fields else {
+        return Err(syn::Error::new_spanned(
+            &data_struct.fields,
+            "Billable requires a struct with a named `email: String` field",
+        ));
+    };
+    let has_field = |expected: &str| {
+        fields
+            .named
+            .iter()
+            .any(|field| field.ident.as_ref().is_some_and(|ident| ident == expected))
+    };
+    if !has_field("email") {
+        return Err(syn::Error::new_spanned(
+            fields,
+            "Billable requires a named `email: String` field",
+        ));
     }
 
-    let sub_id_fn = if has_sub_id {
+    let sub_id_fn = if has_field("subscription_id") {
         quote::quote! {
             fn subscription_id(&self) -> Option<String> {
                 self.subscription_id.clone()
@@ -368,7 +444,7 @@ pub fn derive_billable(input: TokenStream) -> TokenStream {
         quote::quote! {}
     };
 
-    let tier_fn = if has_tier {
+    let tier_fn = if has_field("tier") {
         quote::quote! {
             fn tier(&self) -> Option<String> {
                 self.tier.clone()
@@ -378,9 +454,9 @@ pub fn derive_billable(input: TokenStream) -> TokenStream {
         quote::quote! {}
     };
 
-    let expanded = quote::quote! {
-        #[async_trait::async_trait]
-        impl rullst::capital::Billable for #name {
+    let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
+    Ok(quote::quote! {
+        impl #impl_generics rullst::capital::Billable for #name #type_generics #where_clause {
             fn email(&self) -> String {
                 self.email.clone()
             }
@@ -388,7 +464,5 @@ pub fn derive_billable(input: TokenStream) -> TokenStream {
             #sub_id_fn
             #tier_fn
         }
-    };
-
-    expanded.into()
+    })
 }

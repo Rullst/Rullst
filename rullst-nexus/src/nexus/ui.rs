@@ -1,19 +1,43 @@
 use crate::nexus::types::NexusState;
 
+pub(crate) fn safe_icon_html(icon: &str) -> String {
+    let mut decoded = String::with_capacity(icon.len());
+    let mut remainder = icon;
+
+    while let Some(start) = remainder.find("&#") {
+        decoded.push_str(&remainder[..start]);
+        let entity = &remainder[start + 2..];
+        let Some(end) = entity.find(';') else {
+            decoded.push_str(&remainder[start..]);
+            remainder = "";
+            break;
+        };
+        let digits = &entity[..end];
+        match digits.parse::<u32>().ok().and_then(char::from_u32) {
+            Some(character) => decoded.push(character),
+            None => decoded.push_str(&remainder[start..start + end + 3]),
+        }
+        remainder = &entity[end + 1..];
+    }
+    decoded.push_str(remainder);
+
+    rullst_core::html::escape_str(&decoded).into_owned()
+}
+
 pub fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
     let mut out = String::new();
     for m in state.registry.iter() {
         let is_active = active_table == Some(m.table);
         let active_class = if is_active { " nexus-nav-active" } else { "" };
-        let t = m.table;
-        let lb = m.label;
-        let ic = m.icon;
+        let table_path = urlencoding::encode(m.table);
+        let label = rullst_core::html::escape_str(m.label);
+        let icon = safe_icon_html(m.icon);
         let _ = std::fmt::Write::write_fmt(
             &mut out,
             format_args!(
-                "<a href=\"/nexus/table/{t}\" class=\"nexus-nav-link{active_class}\" \
-             hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
-             <span class=\"nexus-nav-icon\">{ic}</span><span>{lb}</span></a>"
+                "<a href=\"/nexus/table/{table_path}\" class=\"nexus-nav-link{active_class}\" \
+             hx-get=\"/nexus/table/{table_path}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
+             <span class=\"nexus-nav-icon\">{icon}</span><span>{label}</span></a>"
             ),
         );
     }
@@ -378,3 +402,17 @@ html, body { height: 100%; }
     .nexus-fields-grid { grid-template-columns: 1fr; }
 }
 ";
+
+#[cfg(test)]
+mod icon_tests {
+    use super::safe_icon_html;
+
+    #[test]
+    fn icon_renderer_decodes_numeric_entities_and_escapes_markup() {
+        assert_eq!(safe_icon_html("&#128196;"), "📄");
+        assert_eq!(
+            safe_icon_html("<img src=x onerror=alert(1)>&#60;"),
+            "&lt;img src=x onerror=alert(1)&gt;&lt;"
+        );
+    }
+}

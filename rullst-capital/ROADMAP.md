@@ -9,16 +9,22 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 1: Payment Gateways Integration
 - [x] **Unified Payment Drivers**: First-class support for Stripe and LemonSqueezy with a standard Rust Trait interface.
-- [x] **The `Billable` Trait**: Add `#[derive(Billable)]` to your User model to instantly gain methods like `user.charge(50.00).await` or `user.subscribe("pro_plan").await`.
+- [~] **The `Billable` Trait**: `#[derive(rullst::Billable)]` now preserves
+  generics and exposes checkout subscriptions through the facade. The historic
+  `charge(amount)` shorthand is not implemented because a safe charge also
+  needs currency, customer/payment-method identity and an idempotency policy.
 
 ## Phase 2: Billing Operations
 - [x] **Fail-closed Axum Webhooks**: Supported provider signatures reject empty secrets; timestamped protocols enforce freshness and middleware provides bounded TTL replay protection.
 - [ ] **Distributed Idempotency Store**: Persist accepted event keys across processes and deployments before billing side effects.
 - [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
-- [x] **Invoicing Generation**: Generate beautiful invoices (HTML/PDF) natively in Rust and email them directly to the customer when a payment succeeds.
+- [~] **Invoicing Generation**: Generates escaped invoice HTML and converts a
+  paid invoice into an offline DPS preview. Native PDF rendering and automatic
+  delivery after payment are not implemented.
 
 ## Phase 3: Advanced Subscription Management
-- [x] **Grace Periods & Pausing**: Manage subscriptions grace periods, cancellations, and pausing natively through the trait (`user.subscription("pro").cancel().await`).
+- [~] **Grace Periods & Pausing**: Cancellation and pausing exist on the trait;
+  grace-period state and the historic subscription-handle API do not.
 - [ ] **Proration Handling**: Automatically handle prorations when users upgrade or downgrade their tiers mid-billing cycle.
 - [x] **Metered Billing (Usage-Based)**: API to report consumption (`user.report_usage("api_requests", 100).await`) for Stripe/LemonSqueezy metered limits.
 
@@ -31,14 +37,21 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 - [ ] **Global Tax Management**: Simplified support for VAT / Sales Tax calculations at checkout time, natively integrating with Stripe Tax.
 
 ## Phase 6: B2B & Team Billing (Organizations)
-- [x] **Team Subscriptions**: Shift the `Billable` paradigm so that an entire `Workspace` or `Team` model can hold a single subscription, sharing limits among multiple `User` accounts seamlessly.
+- [~] **Team Subscriptions**: Any suitable struct can derive `Billable`,
+  including a Team/Workspace, but membership lookup and shared usage accounting
+  remain application-owned.
 
 ## Phase 7: Quotas & Feature Limits
-- [x] **Strict Resource Limits**: Extend the `Billable` trait with `user.check_quota("max_projects")`. The framework integrates with the DB to automatically block creations if a user exceeds their tier limits.
+- [~] **Strict Resource Limits**: `check_quota(feature, current_usage)` is a
+  fail-closed pure entitlement check. It does not query the database or
+  automatically intercept resource creation.
 
 ## Phase 8: Coupons & Trial Management
-- [x] **Native Discount APIs**: Methods to programmatically validate and apply discounts (`user.apply_coupon("BLACKFRIDAY").await`).
-- [x] **Trial Extensions**: Easily manage and artificially extend trial periods (`user.extend_trial(15).await`) through code.
+- [~] **Native Discount APIs**: The typed operation and Stripe adapter exist;
+  live support is provider-specific and LemonSqueezy currently exposes only a
+  validated mock/foundation path.
+- [~] **Trial Extensions**: The typed timestamp operation and Stripe adapter
+  exist; live support is provider-specific rather than uniform.
 
 ## Phase 9: Multi-Currency (Localized Pricing)
 - [ ] **Dynamic Geolocation Checkout**: Automatically detect a user's country/IP and resolve the correct gateway Price ID (e.g., charging in BRL for Brazil and USD for the USA) natively through the `Billable` trait.

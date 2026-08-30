@@ -14,6 +14,10 @@ documents the principal version 12 commands and their security boundaries.
 Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
 * **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
+* **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
+  MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
+  MongoDB, DuckDB, and SurrealDB capabilities. Specialized adapters remain
+  separate from SQLx Active Record.
 * **Frontend profile:** HTMX + Tailwind SSR is the audited default. The LiveView,
   Wasm Island, Pico.css and Tera selections record compatibility intent and add
   limited dependencies/scaffold markers; they do not yet generate four complete,
@@ -23,12 +27,16 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API project (no HTML view rendering).
-  * `--docker`: Adds multi-stage `Dockerfile`, `docker-compose.yml`, and `.dockerignore`.
-  * `--turso`: Scaffolds Turso/libSQL sidecar (`sqld`) configuration. It does not implement Core's currently unsupported replication manager.
+  * `--docker`: Adds the current multi-stage `Dockerfile` packaging scaffold; Compose services and deployment hardening remain explicit project work.
+  * `--turso`: Adds the official remote Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
+  * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
+  * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.
+  * `--surrealdb`: Enables SurrealDB HTTP document CRUD and bounded read-only graph queries.
   * `--nix`: Adds `flake.nix` and `.envrc` (direnv) starting points; reproducibility still depends on pinned inputs and external services.
   * `--buildah`: Adds rootless Buildah container-build files where supported.
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
+  * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
   * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
@@ -122,10 +130,36 @@ Generates a new Controller in the `src/controllers/` directory. It creates the s
   * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.
 
 ### `cargo rullst make:model <name>`
-Creates a Model Struct in the `src/models/` directory with the ORM annotations (`#[derive(Model)]`).
+Creates a model struct in `src/models/` with the ORM annotations. SQLx projects
+receive `FromRow` plus `Orm`; Turso-primary projects receive
+`#[derive(rullst_orm::Orm)] #[orm(backend = "turso")]` and an `i64` primary
+key. Backend detection reads the generated manifest and does not treat an
+additive `--turso` integration as the primary ORM.
 * **Arguments:** `<name>` (e.g., `BlogPost`).
 * **Optional Flags:**
-  * `--migration` or `-m`: Simultaneously generates an empty SQL migration file (`src/migrations/YYYYMMDD_create_blog_posts.sql`) with the correctly pluralized table name.
+  * `--migration` or `-m`: Simultaneously generates a reversible migration with the correctly pluralized table name.
+
+### `cargo rullst make:chat-session`
+
+Adds application-owned conversational memory for the project's primary ORM.
+It generates and registers `ChatSession` and `ChatMessage`, a reversible
+migration, and `StatefulChat`. SQLx and the bounded Turso-primary profile receive
+backend-specific code; the command also enables the `orm` and `ai` umbrella
+features if necessary.
+
+```bash
+cargo rullst make:chat-session
+cargo rullst db:migrate
+```
+
+Save the generated `ChatSession` before constructing `StatefulChat`. Each
+service instance serializes concurrent sends, restores at most the newest 100
+messages in chronological order, persists the user message before provider
+dispatch and persists the assistant response only after success. Database and
+provider failures are returned as `StatefulChatError`; they are never silently
+discarded. Multi-process ordering, tenant authorization, retention and deletion
+remain application responsibilities. The command refuses to overwrite an
+existing chat scaffold.
 
 ### `cargo rullst make:middleware <name>`
 Generates a standard Axum/Rullst Middleware struct in `src/middlewares/`. Perfect for injecting headers, checking authentication, rate limiting, or logging.
@@ -139,14 +173,23 @@ backends currently implemented in Core (memory, SQLite, and optional Redis).
 RabbitMQ is not generated by this command.
 
 ### `cargo rullst make:migration <name>`
-Generates a raw SQL migration file (Up and Down) prefixed with a timestamp. The
-database migration table, clock discipline, and deployment process determine
-actual execution order.
+Generates a timestamped reversible Rust migration for the project's primary
+backend. SQLx projects use the schema DSL; Turso-primary projects use
+`TursoMigration` and parameterized `TursoStatement` values, and regenerate a
+fallible typed migration registry.
 
 ### `cargo rullst make:billing`
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
+
+### `cargo rullst make:mail <Name>`
+Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`
+and `--invoice` select the bounded built-in variants; without a flag the command
+generates a custom message type. It enables the umbrella `mailer` feature, uses
+the `rullst::mail` facade, escapes dynamic HTML and refuses invalid identifiers,
+path traversal or an existing target. Delivery credentials, URL semantics,
+tenant policy and provider operation remain application responsibilities.
 
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).
@@ -167,8 +210,11 @@ policy, release signing, Play Store/App Store publication or a tested `.apk`
 artifact.
 
 ### `cargo rullst make:iot <DeviceName>`
-Scaffolds a telemetry-only IoT module in `src/iot/` using `SensorTelemetry`.
-It does not install an MQTT/CoAP transport or claim broker connectivity.
+Scaffolds and registers a telemetry-only IoT module in `src/iot/` using the
+public `rullst::iot::SensorTelemetry` facade, and enables the `iot` feature in
+the application manifest. Unsafe identifiers/path traversal and existing target
+files are rejected. It does not install an MQTT/CoAP transport, HAL, firmware,
+or claim broker connectivity.
 
 ### `cargo rullst make:k8s`
 Scaffolds cloud-native Kubernetes manifest files in the `k8s/` directory (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `hpa.yaml`, `ingress.yaml`, and `all-in-one.yaml`) pre-configured with liveness (`/health`) and readiness (`/ready`) HTTP probes.

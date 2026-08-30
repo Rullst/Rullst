@@ -22,19 +22,19 @@ if ! cargo fmt --all -- --check; then
 fi
 
 echo "  🔍 Running Clippy with zero-warnings policy..."
-if ! cargo clippy --workspace --all-targets -- -D warnings; then
+if ! cargo clippy --workspace --all-features --all-targets -- -D warnings; then
     echo "❌ Clippy warnings detected. Fix all warnings before committing."
     exit 1
 fi
 
-echo "  🛡️ Running Rullst static IDOR / BOLA route audit..."
+echo "  🛡️ Running Rullst bounded unsafe and IDOR / BOLA source audit..."
 if [ -f "cargo-rullst/Cargo.toml" ]; then
     cargo run --quiet -p cargo-rullst --bin rullst -- audit --idor
 else
     cargo rullst audit --idor
 fi
 if [ $? -ne 0 ]; then
-    echo "❌ IDOR / BOLA authorization check failed. Classify each parameterized route and enforce its owner, role, or admin boundary."
+    echo "❌ Source security check failed. Remove undocumented unsafe code and classify parameterized routes with enforced owner, role, or admin boundaries."
     exit 1
 fi
 

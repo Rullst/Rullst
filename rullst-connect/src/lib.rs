@@ -21,7 +21,7 @@ pub use configuration::CredentialMode;
 pub use error::ConnectError;
 
 pub use provider::Provider;
-pub use user::ConnectUser;
+pub use user::{ConnectUser, UniversalProfile};
 
 /// The main entry point for the rullst-connect library.
 pub struct Connect;

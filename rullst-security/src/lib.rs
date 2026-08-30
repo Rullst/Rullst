@@ -29,7 +29,10 @@ pub use ai_firewall::{
 };
 pub use audit::{AuditChain, AuditLogger, AuditRecord, MIN_AUDIT_KEY_BYTES, StdoutAuditLogger};
 pub use cswsh::{CswsPolicy, CswsPolicyError, cswsh_guard_middleware};
-pub use deception::{deception_trap_middleware, register_deception_trap};
+pub use deception::{
+    MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
+    try_register_deception_trap,
+};
 pub use dlp::{DlpLayer, DlpResponseLayer, DlpResponseService, DlpService, mask_response_payload};
 pub use headers::{CspNonce, SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
 pub use honey::{
@@ -39,7 +42,8 @@ pub use honey::{
 pub use log_redactor::redact_secrets;
 pub use login_guard::LoginGuard;
 pub use mfa::{
-    build_otpauth_uri, decode_base32, generate_mfa_secret, generate_totp_code, verify_totp_code,
+    MIN_TOTP_SECRET_BYTES, build_mfa_qr_svg, build_otpauth_uri, decode_base32, generate_mfa_secret,
+    generate_totp_code, try_generate_mfa_secret, verify_totp_code,
 };
 pub use rasp::{RaspInspector, RaspSecurityLayer, RaspSecurityService};
 pub use rate_limit::{
@@ -55,7 +59,10 @@ pub use recovery_codes::{
 pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
 pub use schema_guard::{inspect_json_payload, schema_guard_middleware};
 pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
-pub use sri::{compute_sri_hash, sri_link_tag, sri_script_tag};
+pub use sri::{
+    MAX_SRI_ASSET_BYTES, SriError, compute_sri_hash, sri_link_tag, sri_link_tag_from_file,
+    sri_script_tag, sri_script_tag_from_file,
+};
 pub use telemetry::{
     LIVE_SECURITY_EVENT_V1_JSON_SCHEMA, LiveSecurityEvent, SECURITY_EVENT_SCHEMA_VERSION,
     SecurityStore, SecurityTelemetry, TelemetrySnapshot, current_timestamp_str,
@@ -66,4 +73,6 @@ pub use timing_guard::{
     timing_guard_middleware,
 };
 pub use vault::{FieldEncryptor, VaultError, VaultSecret};
-pub use zero_trust::{generate_fingerprint, verify_fingerprint};
+pub use zero_trust::{
+    MIN_FINGERPRINT_KEY_BYTES, generate_fingerprint, try_generate_fingerprint, verify_fingerprint,
+};

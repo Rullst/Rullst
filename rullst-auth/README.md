@@ -67,6 +67,47 @@ Implement `HasRole` for the authenticated user type and install
 `RequireRoleLayer::<User>::new("Admin")`. Authentication middleware must insert that user into
 Axum request extensions before the role layer executes.
 
+Applications using the umbrella crate may alternatively place
+`#[rullst::require_role("Admin")]` on an async handler whose authenticated
+extractor binds the inner value as `user`:
+
+```rust,no_run
+# use rullst::auth::HasRole;
+# use rullst::server::Extension;
+# #[derive(Clone)] struct User { admin: bool }
+# impl HasRole for User { fn has_role(&self, role: &str) -> bool { self.admin && role == "Admin" } }
+#[rullst::require_role("Admin")]
+async fn admin_dashboard(Extension(user): Extension<User>) -> &'static str {
+    "authorized"
+}
+```
+
+The macro validates its role and handler shape at compile time and returns 403
+before the body for a missing role. It does not authenticate the request;
+install authentication before either this attribute or `RequireRoleLayer`.
+
+For resource-specific decisions, implement the fail-closed named `Policy`:
+
+```rust
+# use rullst_auth::Policy;
+# struct User { id: i64, admin: bool }
+# struct Post { owner_id: i64 }
+struct PostPolicy;
+
+impl Policy<User, Post> for PostPolicy {
+    fn can_edit(user: &User, post: &Post) -> bool {
+        user.admin || user.id == post.owner_id
+    }
+}
+
+# let user = User { id: 7, admin: false };
+# let post = Post { owner_id: 7 };
+assert!(PostPolicy::can_edit(&user, &post));
+```
+
+The legacy `Gate<Resource>` implemented directly on the user remains available
+for compatibility. Named policy structs are preferred for new application code.
+
 ## OAuth2/OIDC
 
 Enable `oauth` for the `rullst_auth::connect` re-export. Provider configuration, discovery,

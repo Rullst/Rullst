@@ -14,7 +14,7 @@
 
 ### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
 *XSS Prevention & Dynamic CSP Nonces*
-- **HTML/SVG Sanitization:** Uses `ammonia` to strip malicious `<script>` tags, inline event handlers, and unsafe attributes.
+- **Allowlisted HTML Sanitization:** Uses `ammonia` to strip scripts, inline event handlers, unsafe attributes, and unsupported SVG/HTML instead of trying to make arbitrary markup safe.
 - **Dynamic Content Security Policy (CSP):** Generates cryptographically secure base64 nonces (`nonce-<random>`) per HTTP request.
 - **Clickjacking & Security Headers:** Enforces `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and strict `Referrer-Policy`.
 
@@ -34,6 +34,26 @@
 - **One-time plaintext:** 80-bit codes are returned only during enrollment and zeroized on drop.
 - **Storage-safe records:** Persist only the subject-bound salted HMAC-SHA256 verifiers.
 - **Single-use contract:** `consume_recovery_code` removes one verifier; database-backed callers must make compare-and-delete transactional.
+
+### 📲 6. MFA & Login Abuse Controls
+
+- **TOTP enrollment:** OS-random 160-bit secrets, RFC 6238 code generation,
+  constant-time six-digit verification, `otpauth://` URIs, and bounded SVG QR
+  generation through `build_mfa_qr_svg`.
+- **Applied tarpit:** `LoginGuard::record_login_failure_and_wait` records a
+  failure and awaits its progressive delay; jail state is bounded and local to
+  the process.
+
+### 🔎 7. Bounded Payload, Log & Asset Guards
+
+- **Schema Guard:** Rejects malformed JSON, recursive duplicate keys, excessive
+  body size/depth, and ambiguous JSON content types. It is not an OpenAPI or
+  JSON Schema validator.
+- **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
+  AWS, and database patterns. The host must invoke it before emitting untrusted
+  log fields.
+- **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS
+  files with `sri_script_tag_from_file` and `sri_link_tag_from_file`.
 
 ---
 
@@ -116,8 +136,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### 5. TOTP Enrollment QR
+
+```rust
+use rullst_security::{build_mfa_qr_svg, try_generate_mfa_secret};
+
+fn enrollment_qr() -> Result<String, rullst_security::SecurityError> {
+    let secret = try_generate_mfa_secret()?;
+    build_mfa_qr_svg("My Rullst App", "alice@example.com", &secret)
+}
+```
+
+Store the secret encrypted, show the QR only during a protected enrollment
+ceremony, and require a verified code before enabling MFA.
+
 ---
 
 ## 📖 License
 
-Dual-licensed under MIT License. Part of the **Rullst Monorepo Framework**.
+Licensed under the MIT License. Part of the **Rullst Monorepo Framework**.

@@ -2,6 +2,8 @@
 
 use super::common;
 
+mod turso;
+
 pub fn file_manifest(
     project_name: &str,
     project_name_safe: &str,
@@ -20,14 +22,19 @@ pub fn file_manifest(
         hot_reload,
         frontend_engine,
     );
+    let turso_primary = orm_pattern == "Turso Active Record";
 
-    let db_model_code = if db_needed {
+    let db_model_code = if turso_primary {
+        "// Primary Turso/libSQL model. The familiar Orm derive targets libSQL explicitly.\n#[derive(Debug, Clone, rullst_orm::Orm)]\n#[orm(table = \"users\", backend = \"turso\")]\npub struct User {\n    pub id: i64,\n    pub name: String,\n}\n"
+    } else if db_needed {
         "use rullst::db::{Orm, FromRow};\n\n// 1. Define your database model using the built-in rullst-orm ORM!\n#[derive(Debug, Clone, FromRow, Orm)]\n#[orm(table = \"users\")]\npub struct User {\n    pub id: i32,\n    pub name: String,\n}\n"
     } else {
         ""
     };
 
-    let db_status_code = if db_needed {
+    let db_status_code = if turso_primary {
+        "    // Typed Turso Active Record query through the primary libSQL driver.\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Turso connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Turso offline or not migrated: {}\", e),\n    };"
+    } else if db_needed {
         "    // ORM usage example: Fetch active users from database\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Database connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Database offline or not configured: {}\", e),\n    };"
     } else {
         "    let db_status = \"Database features are disabled for this project.\".to_string();"
@@ -39,7 +46,47 @@ pub fn file_manifest(
         ""
     };
 
-    let artisan_call = if db_needed {
+    let artisan_call = if turso_primary {
+        r#"    // Turso is initialized before routes use the global typed model facade.
+    let _ = dotenvy::dotenv();
+    rullst_orm::polyglot::TursoOrm::init_from_env().await?;
+    if let Some(command) = std::env::args().nth(1) {
+        match command.as_str() {
+            "db:migrate" => {
+                let report = rullst_orm::polyglot::TursoOrm::migrate(
+                    crate::migrations::get_migrations()?,
+                ).await?;
+                println!("Applied {} Turso migration(s); {} already current.", report.applied.len(), report.skipped.len());
+                return Ok(());
+            }
+            "db:rollback" => {
+                let report = rullst_orm::polyglot::TursoOrm::rollback_last(
+                    crate::migrations::get_migrations()?,
+                ).await?;
+                match report.rolled_back {
+                    Some(name) => println!("Rolled back Turso migration {name}."),
+                    None => println!("No Turso migrations to roll back."),
+                }
+                return Ok(());
+            }
+            "db:status" => {
+                let applied = rullst_orm::polyglot::TursoOrm::migration_status().await?;
+                if applied.is_empty() {
+                    println!("No Turso migrations applied.");
+                } else {
+                    for name in applied { println!("[applied] {name}"); }
+                }
+                return Ok(());
+            }
+            "db:seed" => {
+                println!("No Turso seeders are configured in this blank starter.");
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
+"#
+    } else if db_needed {
         "    // 1. Intercept Artisan commands (e.g. cargo rullst db:migrate) before starting server\n    rullst::artisan!(crate::migrations::get_migrations());\n"
     } else {
         ""
@@ -250,7 +297,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     } else {
         let main_rs = if api {
             format!(
-                r##"use rullst::{{routes, Server, Router, response::IntoResponse}};
+                r##"use rullst::{{routes, Server, response::IntoResponse}};
 use serde::Serialize;
 
 {migrations_mod_declaration}
@@ -385,7 +432,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         manifest.push(("src/main.rs", main_rs));
     }
 
-    if db_needed {
+    if turso_primary {
+        manifest.extend(turso::migration_files());
+    } else if db_needed {
         let migration = r##"use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
 

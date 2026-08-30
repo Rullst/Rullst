@@ -1,6 +1,28 @@
 use colored::Colorize;
 use std::process::Command;
 
+const RULLST_MSRV: RustVersion = RustVersion(1, 96, 0);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct RustVersion(u32, u32, u32);
+
+fn parse_rustc_version(output: &str) -> Option<RustVersion> {
+    let raw = output.split_whitespace().nth(1)?;
+    let core = raw.split_once('-').map_or(raw, |(version, _)| version);
+    let mut parts = core.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    let patch = parts.next().unwrap_or("0").parse().ok()?;
+    Some(RustVersion(major, minor, patch))
+}
+
+fn tool_available(program: &str, args: &[&str]) -> bool {
+    Command::new(program)
+        .args(args)
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
 pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
@@ -30,8 +52,30 @@ pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(output) = Command::new("rustc").arg("--version").output() {
         if output.status.success() {
             let ver_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            println!("{} ({})", "[OK]".bright_green().bold(), ver_str);
-            passed += 1;
+            match parse_rustc_version(&ver_str) {
+                Some(version) if version >= RULLST_MSRV => {
+                    println!("{} ({})", "[OK]".bright_green().bold(), ver_str);
+                    passed += 1;
+                }
+                Some(_) => {
+                    println!("{} ({})", "[OUTDATED]".bright_red().bold(), ver_str);
+                    warnings += 1;
+                    fix_suggestions.push(
+                        "Run 'rustup update stable' because Rullst requires Rust 1.96.0 or newer."
+                            .to_string(),
+                    );
+                }
+                None => {
+                    println!(
+                        "{} ({})",
+                        "[UNRECOGNIZED VERSION]".bright_yellow().bold(),
+                        ver_str
+                    );
+                    warnings += 1;
+                    fix_suggestions
+                        .push("Verify manually that rustc is version 1.96.0 or newer.".to_string());
+                }
+            }
         } else {
             println!("{}", "[FAIL]".bright_red().bold());
             warnings += 1;
@@ -46,18 +90,8 @@ pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Cargo Components: rustfmt, clippy, llvm-tools
     print!("  🎨 Rustfmt & Clippy Linters... ");
-    let fmt_ok = Command::new("cargo")
-        .arg("fmt")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    let clippy_ok = Command::new("cargo")
-        .arg("clippy")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let fmt_ok = tool_available("cargo", &["fmt", "--version"]);
+    let clippy_ok = tool_available("cargo", &["clippy", "--version"]);
     if fmt_ok && clippy_ok {
         println!("{}", "[OK] (Installed)".bright_green().bold());
         passed += 1;
@@ -68,14 +102,29 @@ pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
                 .bright_yellow()
                 .bold()
         );
-        let _ = Command::new("rustup")
+        let fixed = Command::new("rustup")
             .args(["component", "add", "rustfmt", "clippy"])
-            .output();
-        println!(
-            "  🎨 Rustfmt & Clippy Linters... {}",
-            "[FIXED]".bright_green().bold()
-        );
-        passed += 1;
+            .status()
+            .is_ok_and(|status| status.success())
+            && tool_available("cargo", &["fmt", "--version"])
+            && tool_available("cargo", &["clippy", "--version"]);
+        if fixed {
+            println!(
+                "  🎨 Rustfmt & Clippy Linters... {}",
+                "[FIXED]".bright_green().bold()
+            );
+            passed += 1;
+        } else {
+            println!(
+                "  🎨 Rustfmt & Clippy Linters... {}",
+                "[FIX FAILED]".bright_red().bold()
+            );
+            warnings += 1;
+            fix_suggestions.push(
+                "Install rustfmt and clippy manually with 'rustup component add rustfmt clippy'."
+                    .to_string(),
+            );
+        }
     } else {
         println!("{}", "[WARNING]".bright_yellow().bold());
         warnings += 1;
@@ -273,4 +322,23 @@ pub fn run_doctor(auto_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rustc_version_parser_enforces_the_declared_msrv() {
+        assert_eq!(
+            parse_rustc_version("rustc 1.96.0 (abcdef 2026-01-01)"),
+            Some(RULLST_MSRV)
+        );
+        assert_eq!(
+            parse_rustc_version("rustc 1.97.1-nightly (abcdef 2026-01-01)"),
+            Some(RustVersion(1, 97, 1))
+        );
+        assert!(parse_rustc_version("not-rustc").is_none());
+        assert!(RustVersion(1, 95, 9) < RULLST_MSRV);
+    }
 }

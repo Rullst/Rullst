@@ -1,5 +1,7 @@
 #![cfg(not(any(feature = "strict-sqlite", feature = "strict-mysql")))]
 
+mod support;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
@@ -19,10 +21,7 @@ async fn test_matrix_postgres_crud() {
     let container = match Postgres::default().start().await {
         Ok(c) => c,
         Err(e) => {
-            eprintln!(
-                "⚠️ Skipping Postgres matrix container test (Docker unavailable): {}",
-                e
-            );
+            support::handle_container_start_error("PostgreSQL", e);
             return;
         }
     };

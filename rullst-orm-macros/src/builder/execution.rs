@@ -228,6 +228,12 @@ pub fn generate_execution_methods(
             if !self.errors.is_empty() {
                 return Err(self.errors[0].clone());
             }
+            if per_page == 0 {
+                return Err(rullst_orm::Error::Validation(
+                    "paginate() requires per_page greater than zero".to_string()
+                ));
+            }
+            let current_page = page.max(1);
             let mut total_builder = self.clone();
             total_builder.selects = Some("COUNT(*)".to_string());
             total_builder.limit = None;
@@ -258,12 +264,23 @@ pub fn generate_execution_methods(
                 }
             });
             let total = total_row.0;
-            let last_page = (total as f64 / per_page as f64).ceil() as usize;
+            let total_for_pages = usize::try_from(total).map_err(|_| {
+                rullst_orm::Error::DatabaseError(
+                    "paginate() received a negative or unsupported row count".to_string()
+                )
+            })?;
+            let last_page = total_for_pages.div_ceil(per_page);
 
             let mut data_builder = self.clone();
             data_builder.limit = Some(per_page);
-            if page > 1 {
-                data_builder.offset = Some((page - 1) * per_page);
+            if current_page > 1 {
+                data_builder.offset = Some(
+                    (current_page - 1).checked_mul(per_page).ok_or_else(|| {
+                        rullst_orm::Error::Validation(
+                            "paginate() page offset exceeds the supported range".to_string()
+                        )
+                    })?
+                );
             }
             let data = data_builder.get().await?;
 
@@ -271,7 +288,7 @@ pub fn generate_execution_methods(
                 data,
                 total,
                 per_page,
-                current_page: if page == 0 { 1 } else { page },
+                current_page,
                 last_page,
             })
         }
@@ -313,17 +330,26 @@ pub fn generate_execution_methods(
             F: FnMut(Vec<#name>) -> Fut + Send,
             Fut: std::future::Future<Output = ()> + Send,
         {
-            let mut page = 1;
+            if size == 0 {
+                return Err(rullst_orm::Error::Validation(
+                    "chunk() requires a size greater than zero".to_string()
+                ));
+            }
+            let mut offset = 0usize;
             let mut builder = self.clone();
             builder.limit = Some(size);
             loop {
-                builder.offset = Some((page - 1) * size);
+                builder.offset = Some(offset);
                 let results = builder.get().await?;
                 let count = results.len();
                 if count == 0 { break; }
                 handler(results).await;
                 if count < size { break; }
-                page += 1;
+                offset = offset.checked_add(size).ok_or_else(|| {
+                    rullst_orm::Error::Validation(
+                        "chunk() offset exceeds the supported range".to_string()
+                    )
+                })?;
             }
             Ok(())
         }
@@ -333,17 +359,26 @@ pub fn generate_execution_methods(
             F: FnMut(Vec<#name>) -> Fut + Send,
             Fut: std::future::Future<Output = ()> + Send,
         {
-            let mut page = 1;
+            if size == 0 {
+                return Err(rullst_orm::Error::Validation(
+                    "chunk_with_tx() requires a size greater than zero".to_string()
+                ));
+            }
+            let mut offset = 0usize;
             let mut builder = self.clone();
             builder.limit = Some(size);
             loop {
-                builder.offset = Some((page - 1) * size);
+                builder.offset = Some(offset);
                 let results = builder.get_with_tx(tx).await?;
                 let count = results.len();
                 if count == 0 { break; }
                 handler(results).await;
                 if count < size { break; }
-                page += 1;
+                offset = offset.checked_add(size).ok_or_else(|| {
+                    rullst_orm::Error::Validation(
+                        "chunk_with_tx() offset exceeds the supported range".to_string()
+                    )
+                })?;
             }
             Ok(())
         }

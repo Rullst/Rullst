@@ -38,6 +38,46 @@ impl Seeder for DummySeeder {
     }
 }
 
+struct TrackedBeforeFailureMigration;
+#[async_trait]
+impl Migration for TrackedBeforeFailureMigration {
+    fn name(&self) -> &'static str {
+        "m20260820_000002_tracked_before_failure"
+    }
+
+    async fn up(&self) -> Result<(), Error> {
+        let pool = Orm::pool()?;
+        sqlx::query("CREATE TABLE tracked_before_failure (id INTEGER PRIMARY KEY)")
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), Error> {
+        let pool = Orm::pool()?;
+        sqlx::query("DROP TABLE IF EXISTS tracked_before_failure")
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+}
+
+struct FailingMigration;
+#[async_trait]
+impl Migration for FailingMigration {
+    fn name(&self) -> &'static str {
+        "m20260820_000003_intentional_failure"
+    }
+
+    async fn up(&self) -> Result<(), Error> {
+        Err(Error::Internal("intentional migration failure".to_string()))
+    }
+
+    async fn down(&self) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 #[tokio::test]
 async fn test_migration_and_pool_suite() {
     let _ = Orm::init("sqlite:file:migration_suite_db?mode=memory&cache=shared").await;
@@ -47,6 +87,32 @@ async fn test_migration_and_pool_suite() {
     // 1. CLI help (no args)
     let res = run_artisan_with_args(&["artisan".into()], vec![], vec![]).await;
     assert!(res.is_ok());
+
+    // A successful migration preceding a later failure must be recorded
+    // immediately, otherwise the next run would try to apply it twice.
+    let failed_batch = run_artisan_with_args(
+        &["artisan".into(), "migrate".into()],
+        vec![
+            Box::new(TrackedBeforeFailureMigration),
+            Box::new(FailingMigration),
+        ],
+        vec![],
+    )
+    .await;
+    assert!(failed_batch.is_err());
+    let tracked: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM migrations WHERE migration = ?")
+        .bind(TrackedBeforeFailureMigration.name())
+        .fetch_one(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("read migration tracking row");
+    assert_eq!(tracked.0, 1);
+    run_artisan_with_args(
+        &["artisan".into(), "db:rollback".into()],
+        vec![Box::new(TrackedBeforeFailureMigration)],
+        vec![],
+    )
+    .await
+    .expect("rollback tracked successful migration");
 
     // 2. make:migration without name
     let res =
@@ -137,11 +203,9 @@ async fn test_migration_and_pool_suite() {
     // Transaction success
     let res: Result<i32, Error> = Orm::transaction(|_| {
         Box::pin(async {
-            let pool = Orm::pool().map_err(|error| error.to_string())?;
-            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_ok')")
-                .execute(pool)
-                .await;
-            Ok::<i32, String>(42)
+            let query = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_ok')");
+            rullst_orm::execute_query!(query, execute, pool)?;
+            Ok::<i32, Error>(42)
         })
     })
     .await;
@@ -150,15 +214,18 @@ async fn test_migration_and_pool_suite() {
     // Transaction failure & rollback
     let err_res: Result<i32, Error> = Orm::transaction(|_| {
         Box::pin(async {
-            let pool = Orm::pool().map_err(|error| error.to_string())?;
-            let _ = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_fail')")
-                .execute(pool)
-                .await;
-            Err::<i32, String>("intentional error".to_string())
+            let query = sqlx::query("INSERT INTO tx_items (val) VALUES ('tx_fail')");
+            rullst_orm::execute_query!(query, execute, pool)?;
+            Err::<i32, Error>(Error::Internal("intentional error".to_string()))
         })
     })
     .await;
     assert!(err_res.is_err());
+    let failed_rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM tx_items WHERE val = 'tx_fail'")
+        .fetch_one(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("count rolled-back rows");
+    assert_eq!(failed_rows.0, 0);
 }
 
 #[test]

@@ -7,26 +7,37 @@ registered Rullst models.
 panel. Rullst builds CRUD, search, pagination, and batch routes from that
 registration; it does not discover an arbitrary database schema automatically.
 
-## How it Works
+## Derive and register a model
 
-All you need to do is implement the `NexusModel` trait on your ORM `struct`:
+The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
+infers booleans, numbers, dates and ordinary text; semantic widgets that Rust's
+type alone cannot reveal are selected explicitly:
 
 ```rust
-use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
+use rullst::db::{FromRow, Nexus, Orm};
 
-impl NexusModel for User {
-    fn nexus_table() -> &'static str { "users" }
-    fn nexus_label() -> &'static str { "Users" }
-    fn nexus_icon() -> &'static str { "👥" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "name", label: "Name", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "email", label: "Email", kind: FieldKind::Text, hidden: false, readonly: false },
-        ]
-    }
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "users")]
+#[nexus(label = "Users", icon = "👥")]
+pub struct User {
+    pub id: i64,
+    pub name: String,
+    #[nexus(kind = "email")]
+    pub email: String,
+    #[nexus(kind = "textarea", label = "Biography")]
+    pub bio: String,
+    #[nexus(kind = "enum", options = "invited, active, suspended")]
+    pub status: String,
+    pub is_active: bool,
 }
 ```
+
+`id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
+`#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
+also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,
+`url`, `number`, `boolean`, `date`, `datetime`, `password`, `json`, and `enum`
+widget kinds. Implementing `NexusModel` manually remains available when an
+application needs metadata that cannot be derived.
 
 Then select an explicit access policy in your routing file (usually `src/lib.rs`
 or `src/main.rs`) and mount the resulting router:
@@ -87,6 +98,10 @@ let nexus = rullst::nexus::Nexus::new()
 Administrators can edit the registered profile fields at `/nexus`. A blueprint
 that reads those fields on each request can show the persisted values without a
 code change or redeployment; cache policy remains application-owned.
+
+Batch deletion is available for every registered model. Batch deactivation is
+shown only when the model declares a writable Boolean `is_active` or `active`
+field; Nexus never guesses which arbitrary status value means inactive.
 
 ## Benefits of Nexus
 

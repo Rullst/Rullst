@@ -409,7 +409,7 @@ fn test_mfa_totp_rfc6238_generation_and_verification() {
 fn test_zero_trust_fingerprinting() {
     use rullst_security::{generate_fingerprint, verify_fingerprint};
 
-    let secret = b"super-secret-zero-trust-key";
+    let secret = b"super-secret-zero-trust-key-32bytes";
     let fp1 = generate_fingerprint(
         secret,
         Some("Mozilla/5.0"),

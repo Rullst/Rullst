@@ -8,16 +8,16 @@
 Rullst Studio is the visual development environment and dashboard for managing your Rullst applications. It aims to bridge the gap between code and data management, providing an experience similar to Prisma Studio but native to Rust.
 
 ## Phase 1: Data & API Management
-- [x] **Visual Data Browser**: A fast, web-based graphical user interface (GUI) to view, filter, edit, and delete records directly from your database without writing SQL.
-- [x] **API Playground**: Auto-generated Swagger/OpenAPI interface to test your REST endpoints interactively while developing.
+- [~] **Visual Data Browser**: Read and filter allowlisted SQLx tables with bounded pagination and escaped output. Edit/delete UI is not implemented; Studio must not be described as general database CRUD.
+- [~] **API Playground**: Interactive Swagger UI for an `OpenApi` document explicitly supplied through `Studio::with_openapi`. Studio does not infer a complete specification from arbitrary Axum routes.
 
 ## Phase 2: Observability & Profiling
-- [x] **Real-time Request Logger**: Intercept and display incoming HTTP requests, payloads, headers, and response times in real-time.
+- [~] **Real-time Request Logger**: Bounded SSE view of method, URI, status, and latency for the routes carrying its middleware. Bodies and headers are deliberately not captured by default because they can contain credentials or personal data.
 - [ ] **N+1 Query Detection & SQL Profiling**: Visually highlight slow database queries or redundant ORM calls (N+1 problems) as they happen during development.
-- [x] **Background Jobs Monitor**: A dashboard interface to monitor pending, failed, and completed background tasks (integration with `cargo-rullst` worker scaffolding).
+- [~] **Background Jobs Monitor**: Inspect up to 50 records exposed by a supplied queue, including pending/processing/failed and any completed records retained by a custom backend, with retry and failed-job purge. The SQLite worker removes successful jobs, so it does not provide completion history.
 
 ## Phase 3: Advanced Tooling (Suggestions)
-- [x] **Visual ER Diagram Generator**: Automatically render a beautiful, interactive Entity-Relationship diagram based on the database schema.
-- [x] **Feature Flags Manager**: A UI to view, toggle, and manage feature flags in real-time (integrating with `DbFeatureDriver`).
+- [x] **Visual ER Diagram Generator**: Render a read-only Mermaid diagram from parameterized SQLite, PostgreSQL, MySQL, or MariaDB schema inspection. Unsupported/unconfigured sources remain visibly unavailable and identifiers are normalized before Mermaid rendering.
+- [~] **Feature Flags Manager**: View and toggle rows in the same `rullst_feature_flags` table used by `DbFeatureDriver`. Existing process-local driver caches can remain stale until their configured TTL expires.
 - [ ] **Cache & Redis Inspector**: Explore cached keys, view their contents, and manually invalidate or flush cache entries from the Studio.
-- [x] **Environment & Config Viewer**: Safely inspect which environment variables and configuration settings the application is currently using in development.
+- [x] **Environment & Config Viewer**: Inspect environment keys with deny-by-default value redaction plus a safe projection of the process-global typed `RullstConfig`; database URLs, filesystem paths, secrets, cookies and credentials are never rendered.

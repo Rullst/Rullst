@@ -20,7 +20,10 @@ pub enum HarvesterState {
     Critical,
 }
 
-/// Embedded power consumption governor.
+/// Pure voltage-policy evaluator.
+///
+/// It recommends a mode but does not control platform sleep, wake, charging,
+/// or solar-harvesting hardware.
 pub struct PowerGovernor {
     pub mode: PowerMode,
     pub battery_mv: u32,

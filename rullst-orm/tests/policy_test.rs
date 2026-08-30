@@ -82,6 +82,23 @@ async fn test_policy_enforcement() {
     doc_ok.title = "unlocked".to_string();
     doc_ok.save().await.unwrap();
 
+    // Partial updates must not bypass the model policy.
+    let res = doc_ok
+        .update_partial()
+        .title("locked".to_string())
+        .save()
+        .await;
+    assert!(matches!(
+        res,
+        Err(rullst_orm::Error::Validation(message))
+            if message == "Policy prevents updating this record"
+    ));
+    let persisted = Document::find(doc_ok.id)
+        .await
+        .unwrap()
+        .expect("document should remain persisted");
+    assert_eq!(persisted.title, "unlocked");
+
     // 5. Deleting - should fail
     doc_ok.user_id = 2; // change user id to test deletion policy
     let res = doc_ok.delete().await;

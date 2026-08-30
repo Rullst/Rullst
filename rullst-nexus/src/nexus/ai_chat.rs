@@ -2,13 +2,36 @@ use axum::{extract::State, response::Html};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::nexus::crud::field_kind_label;
+use crate::nexus::crud::{field_kind_label, sanitize_identifier};
 use crate::nexus::types::NexusState;
 use crate::nexus::ui::{render_shell, render_sidebar};
 
 #[derive(Deserialize, Serialize)]
 pub struct ChatRequest {
     pub message: String,
+}
+
+fn schema_summary(state: &NexusState) -> String {
+    state
+        .registry
+        .iter()
+        .map(|model| {
+            let columns = model
+                .fields
+                .iter()
+                .map(|field| {
+                    format!(
+                        "{} ({})",
+                        sanitize_identifier(field.name),
+                        field_kind_label(&field.kind)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("* {}: {columns}", sanitize_identifier(model.table))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 pub fn detect_ai_provider() -> (bool, String) {
@@ -59,7 +82,13 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
     });
 
     if let Some(entry) = matched_table {
-        let cols: Vec<String> = entry.fields.iter().map(|f| f.name.to_string()).collect();
+        let table = sanitize_identifier(entry.table);
+        let label = rullst_core::html::escape_str(entry.label);
+        let cols: Vec<String> = entry
+            .fields
+            .iter()
+            .map(|field| sanitize_identifier(field.name))
+            .collect();
         let cols_str = if cols.is_empty() {
             "*".to_string()
         } else {
@@ -75,14 +104,14 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
                 "<p><strong>📊 Count Query for <code>{}</code>:</strong></p>\
                  <pre class=\"nexus-schema-pre\" style=\"padding: 0.75rem;\">SELECT COUNT(*) AS total_{} FROM {};</pre>\
                  <p style=\"font-size: 0.8rem; color: var(--text-300);\">⚡ <em>Offline Schema Assistant analyzed your <code>{}</code> model!</em></p>",
-                entry.table, entry.table, entry.table, entry.label
+                table, table, table, label
             )
         } else {
             format!(
                 "<p><strong>🔍 Suggested SQL Query for <code>{}</code>:</strong></p>\
                  <pre class=\"nexus-schema-pre\" style=\"padding: 0.75rem;\">SELECT {} FROM {} ORDER BY id DESC LIMIT 20;</pre>\
                  <p style=\"font-size: 0.8rem; color: var(--text-300);\">⚡ <em>Offline Schema Assistant extracted columns: <code>{}</code></em></p>",
-                entry.table, cols_str, entry.table, cols_str
+                table, cols_str, table, cols_str
             )
         }
     } else if msg_lower.contains("count")
@@ -94,9 +123,11 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
             "<p><strong>📊 Total Record Count Queries for Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">",
         );
         for entry in state.registry.iter() {
+            let label = rullst_core::html::escape_str(entry.label);
+            let table = sanitize_identifier(entry.table);
             list_html.push_str(&format!(
                 "<li><strong>{}</strong>: <code class=\"nexus-code\">SELECT COUNT(*) AS total_{} FROM {};</code></li>",
-                entry.label, entry.table, entry.table
+                label, table, table
             ));
         }
         list_html.push_str("</ul><p style=\"font-size: 0.8rem; color: var(--text-300);\">⚡ <em>Offline Schema Assistant generated count queries for all registered tables!</em></p>");
@@ -110,32 +141,38 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
             "<p><strong>📊 Registered Database Models:</strong></p><ul style=\"margin: 0.5rem 0; padding-left: 1.25rem;\">",
         );
         for entry in state.registry.iter() {
-            let field_names: Vec<String> =
-                entry.fields.iter().map(|f| f.name.to_string()).collect();
+            let field_names: Vec<String> = entry
+                .fields
+                .iter()
+                .map(|f| sanitize_identifier(f.name))
+                .collect();
+            let label = rullst_core::html::escape_str(entry.label);
+            let table = sanitize_identifier(entry.table);
             list_html.push_str(&format!(
                 "<li><strong>{}</strong> (table: <code>{}</code>) &mdash; fields: <code>{}</code></li>",
-                entry.label, entry.table, field_names.join(", ")
+                label, table, field_names.join(", ")
             ));
         }
         list_html.push_str("</ul>");
         list_html
     } else {
         if let Some(first_entry) = state.registry.first() {
+            let table = sanitize_identifier(first_entry.table);
             let cols: Vec<String> = first_entry
                 .fields
                 .iter()
-                .map(|f| f.name.to_string())
+                .map(|f| sanitize_identifier(f.name))
                 .collect();
             format!(
                 "<p>I analyzed your query relative to your schema.</p>\
                  <p>Here is an example query for your <strong><code>{}</code></strong> model:</p>\
                  <pre class=\"nexus-schema-pre\" style=\"padding: 0.75rem;\">SELECT {} FROM {} LIMIT 10;</pre>\
                  <p style=\"font-size: 0.8rem; color: var(--text-300);\">💡 <em>Tip: You can ask about any table directly (e.g. \"show {}\" or \"count {}\").</em></p>",
-                first_entry.table,
+                table,
                 cols.join(", "),
-                first_entry.table,
-                first_entry.table,
-                first_entry.table
+                table,
+                table,
+                table
             )
         } else {
             format!(
@@ -152,19 +189,7 @@ pub async fn nexus_chat_page(
     State(state): State<Arc<NexusState>>,
     headers: axum::http::HeaderMap,
 ) -> Html<String> {
-    let schema_summary: String = state
-        .registry
-        .iter()
-        .map(|m| {
-            let cols: Vec<String> = m
-                .fields
-                .iter()
-                .map(|f| format!("{} ({})", f.name, field_kind_label(&f.kind)))
-                .collect();
-            format!("* {} ({}): {}", m.label, m.table, cols.join(", "))
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    let schema_summary = schema_summary(&state);
 
     let mut content = String::new();
     content.push_str("<div class=\"nexus-page-header\">");
@@ -247,19 +272,7 @@ pub async fn nexus_chat_query(
 
     let (has_provider, _provider_name) = detect_ai_provider();
     let ai_response = if has_provider {
-        let schema_summary: String = state
-            .registry
-            .iter()
-            .map(|m| {
-                let cols: Vec<String> = m
-                    .fields
-                    .iter()
-                    .map(|f| format!("{} ({})", f.name, field_kind_label(&f.kind)))
-                    .collect();
-                format!("* {} ({}): {}", m.label, m.table, cols.join(", "))
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        let schema_summary = schema_summary(&state);
 
         let system_prompt = format!(
             "You are Nexus AI Assistant for a Rust web application built with Rullst Framework.\n\
@@ -359,6 +372,31 @@ mod tests {
             resp_fallback.contains("analyzed your query")
                 || resp_fallback.contains("example query")
         );
+    }
+
+    #[test]
+    fn schema_metadata_cannot_inject_markup_or_sql_into_fallback_output() {
+        let state = NexusState {
+            registry: Arc::new(vec![RegistryEntry {
+                table: "products<script>",
+                label: "<img src=x onerror=alert(1)>",
+                icon: "📄",
+                pk: "id",
+                fields: vec![FieldMeta::new(
+                    "title FROM secrets;--",
+                    "Title",
+                    FieldKind::Text,
+                )],
+            }]),
+            brand: Arc::new("Admin".to_string()),
+        };
+
+        let response = generate_smart_nexus_ai_response("list every table", &state);
+        assert!(!response.contains("<script>"));
+        assert!(!response.contains("<img"));
+        assert!(!response.contains("FROM secrets"));
+        assert!(response.contains("&lt;img"));
+        assert!(response.contains("productsscript"));
     }
 
     #[tokio::test]

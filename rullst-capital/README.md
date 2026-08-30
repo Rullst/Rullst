@@ -45,6 +45,30 @@ Add `rullst-capital` to your `Cargo.toml`:
 rullst-capital = "12.0.0"
 ```
 
+Applications using the umbrella crate can derive the bounded billing facade on
+any named struct with an `email: String` field. Optional
+`subscription_id: Option<String>` and `tier: Option<String>` fields enable the
+corresponding helpers; provider initialization remains explicit:
+
+```rust
+use rullst::capital::Billable as _;
+
+#[derive(rullst::Billable)]
+struct Workspace {
+    email: String,
+    subscription_id: Option<String>,
+    tier: Option<String>,
+}
+
+fn has_pro_access(workspace: &Workspace) -> bool {
+    workspace.can_access("pro")
+}
+```
+
+`Billable` does not infer membership, usage from a database, currency or a
+payment method. Applications must establish those identities before invoking a
+provider operation.
+
 ### Initializing a Provider
 
 ```rust

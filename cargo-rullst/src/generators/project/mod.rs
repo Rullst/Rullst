@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use crate::blueprints::BLANK_BLUEPRINT_ID;
 
 pub use env_config::{generate_buildah_script, generate_nix_files};
-pub use wizard::{ProjectWizardOptions, run_project_wizard};
+pub use wizard::{PolyglotIntegration, ProjectWizardOptions, run_project_wizard};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ProjectScaffoldOptions {
@@ -22,6 +22,10 @@ pub struct ProjectScaffoldOptions {
     pub nix: bool,
     pub use_defaults: bool,
     pub turso: bool,
+    pub mongodb: bool,
+    pub duckdb: bool,
+    pub surrealdb: bool,
+    pub database: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,11 +189,25 @@ pub(crate) fn create_new_project_with_cli_options(
     skip_initial_migration: bool,
     lms_modules: Option<&[crate::blueprints::lms::LmsModule]>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut requested_integrations = Vec::new();
+    if options.turso || options.database == Some("Turso") {
+        requested_integrations.push(PolyglotIntegration::Turso);
+    }
+    if options.mongodb {
+        requested_integrations.push(PolyglotIntegration::MongoDb);
+    }
+    if options.duckdb {
+        requested_integrations.push(PolyglotIntegration::DuckDb);
+    }
+    if options.surrealdb {
+        requested_integrations.push(PolyglotIntegration::SurrealDb);
+    }
     let wizard_opts = wizard::run_project_wizard_with_blueprint(
         name_arg,
         options.api,
         options.use_defaults,
-        options.turso,
+        &requested_integrations,
+        options.database,
         blueprint_override,
     )?;
 
@@ -203,6 +221,7 @@ pub(crate) fn create_new_project_with_cli_options(
     let blueprint_selection = wizard_opts.blueprint_selection;
     let wants_ai = wizard_opts.wants_ai;
     let wants_redis = wizard_opts.wants_redis;
+    let polyglot_integrations = wizard_opts.polyglot_integrations.clone();
 
     if let Some(modules) = lms_modules {
         if blueprint_selection != crate::blueprints::LMS_BLUEPRINT_ID {
@@ -217,6 +236,14 @@ pub(crate) fn create_new_project_with_cli_options(
 
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         db_needed = true;
+    }
+
+    if db_provider == "Turso" && blueprint_selection != BLANK_BLUEPRINT_ID {
+        return Err(IoError::new(
+            ErrorKind::InvalidInput,
+            "Turso-primary currently requires the blank starter while the SQLx-specific blueprints are being ported",
+        )
+        .into());
     }
 
     let path = identity.destination_path();
@@ -236,6 +263,7 @@ pub(crate) fn create_new_project_with_cli_options(
         hot_reload,
         db_needed,
         &db_provider,
+        &polyglot_integrations,
         wants_ai,
         wants_redis,
         blueprint_selection,
@@ -249,7 +277,7 @@ pub(crate) fn create_new_project_with_cli_options(
         path,
         db_needed,
         &db_provider,
-        options.turso,
+        &polyglot_integrations,
         blueprint_selection,
         &app_key,
     )?;
@@ -350,6 +378,10 @@ pub fn create_new_project(
             nix,
             use_defaults,
             turso,
+            mongodb: false,
+            duckdb: false,
+            surrealdb: false,
+            database: None,
         },
     )
 }

@@ -24,7 +24,7 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 | **OSSF Scorecard** | <a href="https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=" alt="OSSF Scorecard" /></a> | Supply-chain security & best practices |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=" alt="Codecov" /></a> | Strict code coverage enforcement |
-| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Dockerized PostgreSQL & MySQL integration tests |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, MongoDB, SurrealDB and libSQL contracts, plus in-process DuckDB tests |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
 | **Property Testing** | <a href="https://github.com/Rullst/Rullst/actions/workflows/proptest.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?style=flat-square&label=" alt="Proptest" /></a> | Validating complex logic against edge cases |
 | **Miri UB Detection** | <a href="https://github.com/Rullst/Rullst/actions/workflows/miri.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?style=flat-square&label=" alt="Miri" /></a> | Detecting Undefined Behavior and memory leaks |
@@ -52,19 +52,40 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Generated CRUD**: Derive insert, update, delete, and find helpers from model metadata.
 - **Fluent Query Builder**: Chain `.where_eq()`, `.limit()`, and `.order_by()` effortlessly.
 - **Eager Loading**: Solve N+1 problems with robust `has_many`, `belongs_to`, and `morph_many` relations.
-- **Tenant Context Primitive**: `with_tenant` carries an explicit task-local
-  tenant value. It does not inject SQL predicates; applications must bind tenant
-  filters, ownership checks, and database policy themselves.
-- **Automated Audit Logs**: Track `old_values` and `new_values` history natively.
+- **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
+  `with_tenant`, inject the tenant predicate into generated queries, protect
+  instance mutations, and reserve explicit `unscoped()` for reviewed global
+  paths. Authentication and permission to use that escape hatch remain the
+  application's responsibility.
+- **Audit Log Foundation**: Opt-in auditable models can record bounded
+  `old_values`/`new_values` diffs; actor identity, strict transaction coupling
+  and revision restore remain application/roadmap work.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
-- **Scout Search**: Seamlessly sync models to full-text search engines.
+- **Scout Extension Point**: Connect an application-owned search engine to the
+  generated search/save/delete hooks; live Meili/Algolia/Elastic adapters are
+  not bundled yet.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
-- **Declarative Struct-Based Migrations**: Safely auto-generate additive SQL migrations (`make:migration:auto`) directly from your Rust struct definitions.
-- **Cascading Soft Deletes**: Configure relationships to automatically soft-delete dependent children records in a single transaction.
-- **Type-Safe Partial Updates**: Virtual dirty checking with `.update_partial()` to intelligently modify only changed columns.
+- **Declarative Migration Preview**: `make:migration:auto` offers a bounded
+  SQLite AST/schema diff; review generated SQL before applying it.
+- **Cascading Soft Deletes**: Mark generated has-one/has-many relationships for
+  cascade; use the explicit transaction path when parent/child atomicity is
+  required.
+- **Typed Partial Updates**: `.update_partial()` changes only explicitly
+  selected columns and preserves model policy/tenant checks.
 - **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
+- **Optional Polyglot Persistence**: Feature-gated MongoDB document CRUD,
+  DuckDB OLAP queries, Turso/libSQL edge SQL, and SurrealDB document/read-only
+  graph operations live behind explicit capability APIs instead of pretending
+  to be one universal Active Record interface. See the
+  [Polyglot guide](../docs/src/polyglot-persistence.md).
+- **Bounded Turso Primary Profile**: `#[derive(Orm)]` with
+  `#[orm(backend = "turso")]` exposes typed CRUD/query methods through
+  `TursoOrm`, reversible checked migrations, and a persistent offline or remote
+  libSQL store. The CLI currently guarantees this primary path for the
+  blank/API starter; SQLx-specific relations, hooks, schema auto-diff and the
+  other blueprints are not claimed as parity.
 
 ---
 
@@ -85,18 +106,18 @@ cargo add tokio -F full
 use rullst_orm::{Orm, FromRow};
 
 // 1. Just add the Orm macro to your struct!
-#[derive(Debug, Clone, FromRow, Orm)]
+#[derive(Clone, FromRow, Orm)]
 pub struct User {
     pub id: i32, // ID = 0 means it hasn't been saved yet
     pub name: String,
     pub email: String,
-    #[orm(hidden)] // Won't be exposed in JSON responses
+    #[orm(hidden)] // Excluded from the ORM's generated to_json() projection
     pub password: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), rullst_orm::Error> {
-    // 2. Initialize the connection pool (Supports SQLite, Postgres, MySQL)
+    // 2. Initialize the connection pool (SQLite, Postgres, MySQL/MariaDB)
     Orm::init("sqlite::memory:").await?;
 
     // 3. Create a new user magically
@@ -117,7 +138,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         .get()
         .await?;
 
-    println!("Found users: {:?}", active_users);
+    println!("Found {} user(s)", active_users.len());
 
     Ok(())
 }

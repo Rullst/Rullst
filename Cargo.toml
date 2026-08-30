@@ -84,3 +84,18 @@ tracing-opentelemetry = { version = "0.33.0", default-features = false }
 
 [workspace.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+
+# DuckDB's bundled C++ archive is portable, but DWARF for the engine consumes
+# several GiB and is not useful when debugging the Rust adapter boundary.
+[profile.dev.package.libduckdb-sys]
+debug = 0
+
+[profile.test]
+# The all-feature workspace gate links many integration-test binaries against
+# DuckDB. Keeping full DWARF in every binary can exhaust both local and CI
+# runners without improving test diagnostics; backtraces still retain symbols.
+debug = 0
+incremental = false
+
+[profile.test.package.libduckdb-sys]
+debug = 0

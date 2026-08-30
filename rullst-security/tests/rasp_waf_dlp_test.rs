@@ -75,7 +75,7 @@ fn test_log_redaction() {
     let bearer_log = "API request Authorization: Bearer eyJhbGciOiJIUzI1NiJ9_secret_token";
     let redacted_bearer = redact_secrets(bearer_log);
     assert!(!redacted_bearer.contains("eyJhbGciOiJIUzI1NiJ9_secret_token"));
-    assert!(redacted_bearer.contains("..."));
+    assert!(redacted_bearer.contains("Bearer [REDACTED]"));
 
     // 3. AWS Key
     let aws_log = "Uploaded to S3 using key AKIAIOSFODNN7EXAMPLE safely";

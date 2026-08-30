@@ -1,6 +1,29 @@
 use crate::telemetry::SecurityStore;
 use base64::Engine;
 use sha2::{Digest, Sha384};
+use std::path::{Path, PathBuf};
+
+/// Maximum asset size accepted by file-backed SRI helpers (64 MiB).
+pub const MAX_SRI_ASSET_BYTES: u64 = 64 * 1024 * 1024;
+
+/// File-backed SRI generation failure.
+#[derive(Debug, thiserror::Error)]
+pub enum SriError {
+    #[error("failed to inspect SRI asset `{path}`: {source}")]
+    Inspect {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("SRI asset `{path}` exceeds the {MAX_SRI_ASSET_BYTES}-byte limit")]
+    TooLarge { path: PathBuf },
+    #[error("failed to read SRI asset `{path}`: {source}")]
+    Read {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+}
 
 /// Computes the SHA-384 Subresource Integrity (SRI) hash for a byte slice.
 pub fn compute_sri_hash(content: &[u8]) -> String {
@@ -32,6 +55,32 @@ pub fn sri_link_tag(url: &str, content: &[u8]) -> String {
     )
 }
 
+/// Reads a bounded local JavaScript asset and emits its SRI-protected tag.
+pub fn sri_script_tag_from_file(url: &str, path: impl AsRef<Path>) -> Result<String, SriError> {
+    read_bounded_asset(path.as_ref()).map(|content| sri_script_tag(url, &content))
+}
+
+/// Reads a bounded local stylesheet and emits its SRI-protected tag.
+pub fn sri_link_tag_from_file(url: &str, path: impl AsRef<Path>) -> Result<String, SriError> {
+    read_bounded_asset(path.as_ref()).map(|content| sri_link_tag(url, &content))
+}
+
+fn read_bounded_asset(path: &Path) -> Result<Vec<u8>, SriError> {
+    let metadata = std::fs::metadata(path).map_err(|source| SriError::Inspect {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    if metadata.len() > MAX_SRI_ASSET_BYTES {
+        return Err(SriError::TooLarge {
+            path: path.to_path_buf(),
+        });
+    }
+    std::fs::read(path).map_err(|source| SriError::Read {
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,6 +100,17 @@ mod tests {
         assert!(tag.contains("src=\"/assets/app.js\""));
         assert!(tag.contains("integrity=\"sha384-"));
         assert!(tag.contains("crossorigin=\"anonymous\""));
+    }
+
+    #[test]
+    fn file_backed_helpers_hash_real_assets_and_escape_urls() {
+        let path = std::env::temp_dir().join(format!("rullst-sri-{}.js", rand::random::<u64>()));
+        std::fs::write(&path, b"console.log('safe');").expect("temporary asset");
+        let tag =
+            sri_script_tag_from_file("/asset.js?x=\"unsafe", &path).expect("file-backed SRI tag");
+        assert!(tag.contains("integrity=\"sha384-"));
+        assert!(tag.contains("src=\"/asset.js?x=&quot;unsafe\""));
+        std::fs::remove_file(path).expect("temporary asset cleanup");
     }
 }
 

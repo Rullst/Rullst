@@ -87,15 +87,20 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Run Matrix DB Tests (Testcontainers — PostgreSQL & MySQL)
+      - name: Run Matrix DB Tests (Testcontainers — SQL, document and edge backends)
         # Docker testcontainers are supported on Linux runners.
-        # Run without strict-* features so the matrix_postgres/matrix_mysql cfg
+        # Run without strict-* features so the relational matrix cfg
         # gates are satisfied. --test-threads=1 prevents parallel tests from
         # overwriting the global Orm::init() connection pool.
         if: runner.os == 'Linux'
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
-        run: cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql -- --test-threads=1
+          RULLST_REQUIRE_TESTCONTAINERS: "true"
+        run: |
+          cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
+          cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
+          cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb
+          cargo test -p rullst-orm --no-default-features --features turso --test matrix_turso
 
   strict-database-features:
     name: ORM ${{ matrix.feature }}

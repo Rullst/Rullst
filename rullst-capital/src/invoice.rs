@@ -20,13 +20,15 @@ pub struct Invoice {
 }
 
 impl Invoice {
-    /// Generates a beautiful HTML string for the invoice that can be emailed or rendered.
+    /// Generates an escaped HTML string for the invoice that can be emailed or rendered.
     pub fn generate_html(&self) -> String {
         let mut items_html = String::new();
         for item in &self.items {
             items_html.push_str(&format!(
                 "<tr><td style='padding: 8px; border-bottom: 1px solid #ddd;'>{}</td><td style='padding: 8px; border-bottom: 1px solid #ddd; text-align: right;'>{:.2} {}</td></tr>",
-                item.description, item.amount, self.currency
+                escape_html(&item.description),
+                item.amount,
+                escape_html(&self.currency)
             ));
         }
 
@@ -69,12 +71,12 @@ impl Invoice {
             </body>
             </html>
             "#,
-            self.invoice_id,
-            self.customer_email,
+            escape_html(&self.invoice_id),
+            escape_html(&self.customer_email),
             self.date.format("%Y-%m-%d"),
             items_html,
             self.total,
-            self.currency
+            escape_html(&self.currency)
         )
     }
 
@@ -114,6 +116,48 @@ impl Invoice {
             iss_retained: false,
             service_city_ibge: service_city_ibge.to_string(),
         }
+    }
+}
+
+fn escape_html(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '&' => escaped.push_str("&amp;"),
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&#x27;"),
+            _ => escaped.push(character),
+        }
+    }
+    escaped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invoice_html_escapes_every_untrusted_text_field() {
+        let invoice = Invoice {
+            invoice_id: "<INV&1>".to_string(),
+            customer_email: "a\"b@example.com".to_string(),
+            date: Utc::now(),
+            items: vec![InvoiceItem {
+                description: "<script>alert('x')</script>".to_string(),
+                amount: 1.5,
+            }],
+            total: 1.5,
+            currency: "U&SD".to_string(),
+        };
+
+        let html = invoice.generate_html();
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;"));
+        assert!(html.contains("&lt;INV&amp;1&gt;"));
+        assert!(html.contains("a&quot;b@example.com"));
+        assert!(html.contains("U&amp;SD"));
     }
 }
 

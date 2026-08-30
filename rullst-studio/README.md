@@ -6,8 +6,16 @@ telemetry views from the sources explicitly supplied by the application.
 
 ## ✨ Features
 
-- **Database inspector:** Browse configured tables and schema information. This is not a general production CRUD guarantee.
-- **Worker queue monitoring:** Inspect a supplied Rullst queue and request retries through the local dashboard.
+- **Database inspector:** Read and filter configured SQLx tables and inspect a
+  live ER diagram. Record editing/deletion is not implemented.
+- **API playground:** Mount interactive Swagger UI from an `OpenApi` document
+  explicitly supplied by the application; Studio does not infer arbitrary Axum
+  routes.
+- **Worker queue monitoring:** Inspect up to 50 records exposed by a supplied
+  Rullst queue and request retries. SQLite removes successful jobs, so the view
+  is not durable completion history.
+- **Safe configuration view:** Environment values are deny-by-default redacted;
+  typed runtime configuration is projected without URLs, paths, or secrets.
 - **Tracing and telemetry:** Visualize in-process sources exposed by `rullst-core`; disconnected probes remain `Unavailable`.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority, and requires same-origin `Origin`
@@ -53,6 +61,12 @@ Migration actions remain CLI-driven because standalone Studio has no migration
 registry. Queue, revenue, security, AI, and telemetry views expose only supplied
 process-local sources; unsupported operations or disconnected integrations are
 reported explicitly.
+
+The SSE request view records method, URI, status and latency only. It does not
+capture bodies or headers by default because those can contain authentication,
+session, payment, and personal data. `DbFeatureDriver` has a process-local TTL
+cache, so a database flag toggled in Studio can take up to that TTL to affect an
+already cached evaluation.
 
 ## 📚 Documentation
 

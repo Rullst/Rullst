@@ -9,6 +9,12 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let update_builder_name = quote::format_ident!("{}UpdateBuilder", name);
     let normal_fields = &parsed.normal_fields;
     let normal_fields_types = &parsed.normal_fields_types;
+    let tenant_column = parsed.tenant_column.as_str();
+    let tenant_field_type = normal_fields
+        .iter()
+        .zip(normal_fields_types.iter())
+        .find(|(field, _)| *field == tenant_column)
+        .map(|(_, ty)| ty);
 
     let mut builder_fields = vec![];
     let mut builder_methods = vec![];
@@ -18,7 +24,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let mut builder_inits = vec![];
 
     for (field, ty) in normal_fields.iter().zip(normal_fields_types.iter()) {
-        if field == "id" {
+        if field == "id" || (!tenant_column.is_empty() && field == tenant_column) {
             continue;
         }
 
@@ -86,6 +92,64 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
         });
     }
 
+    let policy_check = if !parsed.policy.is_empty() {
+        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
+        quote! {
+            if !<#policy_type as rullst_orm::Policy<#name>>::can_update(self.model).await? {
+                return Err(rullst_orm::Error::Validation(
+                    "Policy prevents updating this record".to_string()
+                ));
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    let tenant_guard = if let Some(tenant_field_type) = tenant_field_type {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        let col = &parsed.tenant_column;
+        quote! {
+            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context is required to update `{}`",
+                    #table_name
+                ))
+            })?;
+            let expected_tenant: #tenant_field_type = tenant.try_into().map_err(|_| {
+                rullst_orm::Error::Validation(format!(
+                    "tenant context type does not match `{}.{}`",
+                    #table_name,
+                    stringify!(#col_ident)
+                ))
+            })?;
+            if self.model.#col_ident != expected_tenant {
+                return Err(rullst_orm::Error::Validation(
+                    "record is outside the active tenant scope".to_string()
+                ));
+            }
+            sql.push_str(concat!(" AND ", #col, " = ?"));
+        }
+    } else {
+        quote! {}
+    };
+    let tenant_binding = if !parsed.tenant_column.is_empty() {
+        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
+        quote! { exec = exec.bind(self.model.#col_ident.clone()); }
+    } else {
+        quote! {}
+    };
+    let tenant_rows_check = if !parsed.tenant_column.is_empty() {
+        quote! {
+            if result.rows_affected() != 1 {
+                return Err(rullst_orm::Error::Validation(
+                    "record is outside the active tenant scope".to_string()
+                ));
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let struct_def = quote! {
         pub struct #update_builder_name<'a> {
             model: &'a mut #name,
@@ -105,8 +169,11 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
 
                 #(#apply_to_model)*
 
+                #policy_check
+
                 let driver = rullst_orm::Orm::driver()?;
                 let mut sql = format!("UPDATE {} SET {} WHERE id = ?", #table_name, sets.join(", "));
+                #tenant_guard
                 if driver == "postgres" {
                     sql = rullst_orm::replace_placeholders(&sql);
                 }
@@ -122,7 +189,9 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                 #(#update_bindings)*
 
                 exec = exec.bind(self.model.id);
-                rullst_orm::execute_query!(exec, execute, pool)?;
+                #tenant_binding
+                let result = rullst_orm::execute_query!(exec, execute, pool)?;
+                #tenant_rows_check
 
                 Ok(())
             }

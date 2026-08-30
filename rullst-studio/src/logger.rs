@@ -111,17 +111,24 @@ async fn logger_stream(
             500..=599 => "text-red-400",
             _ => "text-slate-400",
         };
-        let html = format!(
-            "<div class=\"p-2 rounded bg-slate-800 flex justify-between\">\
-             <span><span class=\"font-bold {}\">{}</span> <span class=\"text-slate-300\">{}</span></span>\
-             <span class=\"text-slate-500\">{}ms</span>\
-             </div>",
-            color, log.method, log.uri, log.latency_ms
-        );
+        let html = render_log_entry(&log, color);
         Some(Ok(Event::default().data(html)))
     });
 
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default())
+}
+
+fn render_log_entry(log: &RequestLog, color: &str) -> String {
+    format!(
+        "<div class=\"p-2 rounded bg-slate-800 flex justify-between\">\
+         <span><span class=\"font-bold {}\">{}</span> <span class=\"text-slate-300\">{}</span></span>\
+         <span class=\"text-slate-500\">{}ms</span>\
+         </div>",
+        color,
+        rullst_core::html::escape_str(&log.method),
+        rullst_core::html::escape_str(&log.uri),
+        log.latency_ms
+    )
 }
 
 #[cfg(test)]
@@ -148,5 +155,24 @@ mod tests {
             latency_ms: 12,
             timestamp: "2026-08-22T00:00:00Z".to_string(),
         });
+    }
+
+    #[test]
+    fn request_log_markup_escapes_untrusted_method_and_uri() {
+        let html = render_log_entry(
+            &RequestLog {
+                method: "<script>".to_string(),
+                uri: "/?<img src=x onerror=alert(1)>".to_string(),
+                status: 200,
+                latency_ms: 5,
+                timestamp: "2026-08-29T00:00:00Z".to_string(),
+            },
+            "text-green-400",
+        );
+
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
+        assert!(!html.contains("<script>"));
+        assert!(!html.contains("<img"));
     }
 }

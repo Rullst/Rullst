@@ -8,14 +8,10 @@ use axum::{
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::nexus::crud::query::{
-    BatchActionForm, PaginationParams, find_entry, sanitize_identifier,
-};
+use crate::nexus::crud::query::{PaginationParams, find_entry, sanitize_identifier};
 use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
 use crate::nexus::types::NexusState;
-use crate::nexus::ui::{render_shell, render_sidebar};
-
-const MAX_BATCH_RECORDS: usize = 1_000;
+use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html};
 
 /// GET /nexus — Dashboard overview.
 pub async fn nexus_dashboard(
@@ -27,15 +23,15 @@ pub async fn nexus_dashboard(
     let stats_cards = state.registry.iter().fold(
         String::with_capacity(state.registry.len().saturating_mul(256).min(64 * 1024)),
         |mut acc, m| {
-            let t = m.table;
-            let ic = m.icon;
-            let lb = m.label;
+            let table_path = urlencoding::encode(m.table);
+            let icon = safe_icon_html(m.icon);
+            let label = rullst_core::html::escape_str(m.label);
             let _ = write!(
                 acc,
-                "<a href=\"/nexus/table/{t}\" class=\"nexus-stat-card\" \
-                 hx-get=\"/nexus/table/{t}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
-                 <div class=\"nexus-stat-icon\">{ic}</div>\
-                 <div class=\"nexus-stat-label\">{lb}</div>\
+                "<a href=\"/nexus/table/{table_path}\" class=\"nexus-stat-card\" \
+                 hx-get=\"/nexus/table/{table_path}\" hx-target=\"#nexus-content\" hx-push-url=\"true\">\
+                 <div class=\"nexus-stat-icon\">{icon}</div>\
+                 <div class=\"nexus-stat-label\">{label}</div>\
                  <div class=\"nexus-stat-hint\">Click to manage &rarr;</div>\
                  </a>"
             );
@@ -434,72 +430,13 @@ pub async fn nexus_delete_record(
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to delete {} #{}: {}", entry.label, id, err_msg),
+            format!(
+                "Failed to delete {} #{}: {}",
+                rullst_core::html::escape_str(entry.label),
+                rullst_core::html::escape_str(&id),
+                rullst_core::html::escape_str(&err_msg)
+            ),
         )
             .into_response()
     }
-}
-
-/// POST /nexus/table/{table}/batch — Apply bulk operations across selected records.
-#[cfg_attr(mutants, mutants::skip)]
-pub async fn nexus_batch_action(
-    State(state): State<Arc<NexusState>>,
-    Path(table): Path<String>,
-    axum::extract::Form(form): axum::extract::Form<BatchActionForm>,
-) -> Response {
-    if form.selected_ids.is_empty() {
-        return axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response();
-    }
-    if form.selected_ids.len() > MAX_BATCH_RECORDS {
-        return (
-            StatusCode::PAYLOAD_TOO_LARGE,
-            "Too many records selected for one batch operation",
-        )
-            .into_response();
-    }
-
-    let entry = match find_entry(&state, &table) {
-        Some(e) => e,
-        None => return (StatusCode::NOT_FOUND, "Table not found").into_response(),
-    };
-
-    let Some(pool) = rullst_core::db::safe_pool() else {
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Database not configured").into_response();
-    };
-
-    let clean_table = sanitize_identifier(entry.table);
-    let clean_pk = sanitize_identifier(entry.pk);
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-
-    let mut placeholders = Vec::new();
-    for i in 1..=form.selected_ids.len() {
-        if driver == "postgres" {
-            placeholders.push(format!("${}", i));
-        } else {
-            placeholders.push("?".to_string());
-        }
-    }
-    let placeholders_str = placeholders.join(",");
-
-    if form.action != "delete" {
-        return (StatusCode::BAD_REQUEST, "Unsupported batch action").into_response();
-    }
-
-    let sql = format!(
-        "DELETE FROM {} WHERE {} IN ({})",
-        clean_table, clean_pk, placeholders_str
-    );
-    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    for id in &form.selected_ids {
-        query = query.bind(id);
-    }
-    if let Err(error) = query.execute(pool).await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Batch delete failed: {error}"),
-        )
-            .into_response();
-    }
-
-    axum::response::Redirect::to(&format!("/nexus/table/{}", table)).into_response()
 }
