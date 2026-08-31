@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788164457714,
+  "lastUpdate": 1788170872797,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -3451,6 +3451,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 782,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "45798985404c430d17ceda81b9afb1ba1fe9fe7b",
+          "message": "feat(connect): add signed local oidc fixture",
+          "timestamp": "2026-08-31T06:45:08-03:00",
+          "tree_id": "05e5646046e36859d7ccab14825f99da1ff146e8",
+          "url": "https://github.com/Rullst/Rullst/commit/45798985404c430d17ceda81b9afb1ba1fe9fe7b"
+        },
+        "date": 1788170872371,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1646,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 368,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 768,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
