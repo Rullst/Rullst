@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788179482935,
+  "lastUpdate": 1788186840993,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -3689,6 +3689,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 667,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "40de8fb554e5bb837bc0daf43bc77d7ced2ac26e",
+          "message": "feat(capital): add shared transactional quotas",
+          "timestamp": "2026-08-31T11:20:53-03:00",
+          "tree_id": "44ae582dc622e45242c2e96f9b297e6696fdf4d2",
+          "url": "https://github.com/Rullst/Rullst/commit/40de8fb554e5bb837bc0daf43bc77d7ced2ac26e"
+        },
+        "date": 1788186840552,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1655,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 366,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 710,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
