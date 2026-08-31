@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788191147128,
+  "lastUpdate": 1788194708432,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -12899,6 +12899,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2275,
             "range": "± 72",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8d4dc9bbd60a654db127e6a4ae26357e8e67a0f2",
+          "message": "feat(mail): add native AWS SES delivery",
+          "timestamp": "2026-08-31T13:42:10-03:00",
+          "tree_id": "52d8aaae6698e730e3c484633a4ee4287e942fb9",
+          "url": "https://github.com/Rullst/Rullst/commit/8d4dc9bbd60a654db127e6a4ae26357e8e67a0f2"
+        },
+        "date": 1788194707490,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 759,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 987,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 635,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2273,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
