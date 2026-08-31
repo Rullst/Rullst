@@ -20,6 +20,10 @@
   Turso-primary models, reversible migrations, bounded ordered history,
   serialized sends, propagated persistence errors, and materialized runtime
   contract tests.
+- Static-dispatch tenant-aware `ChatMemory` and `StatefulChat` contracts with a
+  bounded offline implementation plus an opt-in durable SQLx adapter for
+  SQLite, PostgreSQL, MySQL, and MariaDB. SQL exchanges commit atomically and a
+  revision compare-and-swap rejects stale cross-process writers.
 - Deny-by-default HTTPS egress fetcher with exact-host allowlist, validated and
   pinned DNS answers, manual redirects, peer verification, and streaming limits.
 
@@ -28,8 +32,9 @@
 - Streaming response abstraction and cancellation contract.
 - Compile-time JSON Schema derivation for Rust response types.
 - Provider-native tool invocation loop with explicit authorization boundaries.
-- Reusable durable chat-memory adapters inside `rullst-ai` and transactional
-  ORM/outbox lifecycle hooks; the current CLI scaffold is application-owned.
+- Optional transactional ORM/outbox hooks around application-specific chat
+  effects; the reusable SQL memory and CLI-owned Turso/custom scaffold remain
+  separate choices.
 - First-party `RagRetriever` adapters for external vector databases; applications can already
   implement the public static-dispatch boundary over ORM pgvector or Qdrant.
 - Configurable guardrail policies and adaptive/live model-specific safety evaluations.

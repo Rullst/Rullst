@@ -27,7 +27,7 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 35 abuse-case IDs to 35 exact
+`.github/threat-model-release-minimum.json` binds 36 abuse-case IDs to 36 exact
 tests across ten crates. The gate rejects missing markers, missing tests and
 zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
 Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
@@ -148,6 +148,7 @@ credentials, destructive operations and audit evidence.
 | `AI-05` SSRF/egress exfiltration | Validate destinations, block private/link-local/metadata networks and cap redirects/content/time. | `EgressPolicy::strict()` denies all hosts until an exact allowlist is configured. The opt-in `EgressFetcher` resolves under deadline, validates every answer, pins them into a proxy-free client, verifies the peer, revalidates manual redirects and bounds declared/streamed bytes; deterministic negatives stop private/mixed DNS before transport. It does not automatically wrap provider/application clients, and tenant-aware destination authorization, response validation plus a successful live-origin redirect/stream contract remain open. |
 | `AI-06` unbounded cost/availability | Enforce body/token/time/concurrency budgets, cancellation and circuit breaking. | Built-in transports have configurable request deadlines and local tools have call/payload budgets; provider-neutral cancellation, concurrency limits and circuit breaking remain open. |
 | `AI-07` hallucinated structured result | Require schema and authoritative server-side validation; prose is never authorization. | Structured-output foundations exist. |
+| `AI-08` cross-tenant, reordered or incompletely erased chat memory | Select storage only from trusted tenant/conversation context, commit complete exchanges atomically, reject stale writers and erase the exact key. | The reusable stores bind tenant plus validated conversation ID and enforce bounded consecutive user/assistant pairs. The SQL adapter uses transactional revision CAS; its exact SQLite negative proves isolation, a single winner, deletion with foreign keys disabled and no orphaned messages, while live matrices cover PostgreSQL/MySQL/MariaDB protocols. Authentication/ownership inside a tenant, encryption, retention deadlines and backup erasure remain host policy. |
 
 Trust boundaries are content ↔ model context, application ↔ provider, model
 output ↔ tool dispatcher and retriever ↔ network/data sources.

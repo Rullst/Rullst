@@ -69,6 +69,7 @@ rullst-connect|axum-session
 rullst-iot|std
 rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
+rullst-ai|sql-memory
 rullst-capital|axum
 rullst-capital|actix
 rullst-capital|nfse
@@ -95,6 +96,7 @@ rullst|mail-smtp
 rullst|auth-jwt
 rullst|oauth
 rullst|ai
+rullst|ai-sql-memory
 rullst|capital
 rullst|capital-actix
 rullst|capital-nfse

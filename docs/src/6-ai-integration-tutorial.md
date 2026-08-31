@@ -165,3 +165,62 @@ must still enforce document authorization before retrieval, prevent SSRF in any
 fetcher, bound document and prompt sizes, identify tenant provenance, and avoid
 sending secrets to a provider. Similarity is a ranking signal, not an access
 control decision.
+
+## 8. Durable chat memory
+
+Enable the dedicated SQL memory feature when the application wants the
+framework-owned fixed schema rather than generated models:
+
+```toml
+rullst = {
+    version = "12.0.0-rc.1",
+    default-features = false,
+    features = ["ai-sql-memory"]
+}
+```
+
+The same adapter supports SQLite, PostgreSQL, MySQL, and MariaDB URLs:
+
+```rust,no_run
+use rullst::{
+    ai::{
+        AiClient, ChatMemoryConfig, ConversationId, SqlChatMemory, StatefulChat,
+        providers::openai::OpenAiProvider,
+    },
+    security::TenantContext,
+};
+
+async fn chat_service(
+    database_url: String,
+    api_key: String,
+) -> Result<
+    (StatefulChat<SqlChatMemory>, TenantContext, ConversationId),
+    Box<dyn std::error::Error>,
+> {
+    let memory = SqlChatMemory::connect(database_url, ChatMemoryConfig::default()).await?;
+    memory.prepare_schema().await?;
+    let service = StatefulChat::new(
+        AiClient::new(OpenAiProvider::new(api_key)),
+        memory,
+    );
+    let tenant = TenantContext::try_new("tenant-42")?;
+    let conversation = ConversationId::try_new("support:case-7")?;
+    service.ensure_conversation(&tenant, &conversation).await?;
+    Ok((service, tenant, conversation))
+}
+```
+
+`service.send(&tenant, &conversation, text).await` loads only the configured
+recent message pairs, applies the ordinary AI guardrails, and stores the user
+and assistant messages in one transaction. If another process committed from
+the same observed revision, the slower `StatefulChat` call receives
+`StatefulChatError::Memory(ChatMemoryError::RevisionConflict)`. Decide
+explicitly whether the UI asks the user to retry; the library will not repeat a
+potentially billable provider call.
+
+The table stores raw message text. Production code must authenticate
+conversation ownership inside the selected tenant, decide encryption and key
+management, implement retention/erasure and backup policy, audit provider use
+without logging secrets, and manage schema changes through its release process.
+Use `cargo rullst make:chat-session` instead when you need application-owned
+models/migrations or the Turso-primary profile.

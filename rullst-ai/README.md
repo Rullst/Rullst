@@ -40,6 +40,49 @@ The guardrail blocks deterministic injection patterns and invisible Unicode cont
 classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
 a defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
+## Tenant-aware durable chat memory
+
+`StatefulChat<M>` uses static dispatch over the `ChatMemory` contract. It loads
+bounded recent history, performs the normal guarded provider call, then appends
+the user and assistant messages atomically. Every conversation is selected by a
+trusted `TenantContext` plus a validated `ConversationId`.
+
+`InMemoryChatMemory` is a deterministic bounded offline implementation. The
+opt-in `sql-memory` feature adds `SqlChatMemory` for SQLite, PostgreSQL, MySQL,
+and MariaDB. Its fixed schema uses a monotonically increasing even revision;
+the update and both message inserts share one transaction. A stale concurrent
+writer receives `ChatMemoryError::RevisionConflict` instead of silently
+reordering history or automatically repeating a billable provider call.
+
+```rust,no_run
+# use rullst_ai::{AiClient, ChatMemoryConfig, ConversationId, SqlChatMemory, StatefulChat, providers::openai::OpenAiProvider};
+# use rullst_core::security::TenantContext;
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let memory = SqlChatMemory::connect(
+    "sqlite://chat.db?mode=rwc",
+    ChatMemoryConfig::default(),
+).await?;
+memory.prepare_schema().await?;
+let chat = StatefulChat::new(
+    AiClient::new(OpenAiProvider::new("mock_local")),
+    memory,
+);
+let tenant = TenantContext::try_new("tenant-42")?;
+let conversation = ConversationId::try_new("support:case-7")?;
+chat.ensure_conversation(&tenant, &conversation).await?;
+let turn = chat.send(&tenant, &conversation, "What changed?").await?;
+# let _ = turn;
+# Ok(())
+# }
+```
+
+The SQL adapter stores message text as supplied by the application. Encryption,
+retention, erasure policy, authenticated conversation ownership inside a
+tenant, provider-call audit, backups, and conflict retry UX remain host
+responsibilities. The generated `make:chat-session` scaffold remains useful
+when the application wants to own or customize its models, migrations, or the
+Turso-primary implementation.
+
 ## Tenant-aware RAG pipeline
 
 `RagPipeline::answer` composes guarded embedding, application-provided retrieval, Unicode-safe

@@ -96,6 +96,7 @@ jobs:
           cargo test -p rullst-studio --no-default-features --features strict-postgres --test data_browser_mutation_postgres -- --test-threads=1
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mysql -- --test-threads=1
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
+          cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
 
       - name: Run live Redis distributed rate-limit contract
         env:

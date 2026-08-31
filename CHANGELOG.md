@@ -124,6 +124,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retrieval, uses linear-time regexes and returns a value-free `422` on shape
   mismatch. Authentication, ownership, domain validation and non-JSON
   parameters remain separate application controls.
+- `rullst-ai` now exposes static-dispatch `ChatMemory` and `StatefulChat`
+  contracts. The bounded tenant-partitioned in-memory implementation supports
+  deterministic offline work; opt-in `sql-memory` atomically persists each
+  user/assistant exchange on SQLite, PostgreSQL, MySQL, or MariaDB. An even
+  monotonic revision and transactional compare-and-swap reject stale
+  cross-process writers without automatically repeating a provider call. Raw
+  message encryption/retention, ownership within a tenant, provider audit,
+  backups, migrations and conflict UX remain application concerns.
 - `cargo rullst make:omni` now supports deterministic `--platform` selection
   and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
   real platform icons, applies a restrictive local CSP and fails when requested

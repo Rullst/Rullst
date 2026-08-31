@@ -52,6 +52,13 @@ ungrounded generation when retrieval is empty. The included cosine retriever is
 clearly process-local; production datastore authorization and durability are
 not hidden behind an “automatic AI” claim.
 
+Conversational memory follows that explicit model too: a static-dispatch
+tenant-bound contract has a bounded offline store and an opt-in SQL adapter for
+SQLite, PostgreSQL, MySQL, and MariaDB. Each successful turn commits the user
+and assistant messages atomically, while revision compare-and-swap rejects
+stale cross-process writers instead of silently scrambling history or
+automatically repeating a billable model request.
+
 ### 2. A broad platform that keeps its foundations visible
 
 Rullst coordinates a large backend surface in one versioned workspace, but it

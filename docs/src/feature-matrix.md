@@ -52,6 +52,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
+| `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, and rustls mTLS preparation |

@@ -9,6 +9,8 @@ mod egress_fetch;
 mod egress_host;
 /// Mandatory prompt-injection detection and outbound PII masking.
 pub mod guardrails;
+/// Bounded tenant-aware conversational memory and orchestration.
+pub mod memory;
 mod mock;
 /// Individual AI model API provider clients.
 pub mod providers;
@@ -25,6 +27,12 @@ pub use egress_fetch::{
     EgressFetchError, EgressFetcher, EgressResolver, FetchedResource, SystemEgressResolver,
 };
 pub use guardrails::{AiGuardrails, GuardrailReport, PromptThreat};
+pub use memory::{
+    ChatHistory, ChatMemory, ChatMemoryConfig, ChatMemoryEntry, ChatMemoryError, ChatTurn,
+    ConversationId, InMemoryChatMemory, StatefulChat, StatefulChatError,
+};
+#[cfg(feature = "sql-memory")]
+pub use memory::{SqlChatBackend, SqlChatMemory};
 pub use structured::StructuredOutputSchema;
 pub use tools::*;
 pub use vector::{VectorDocument, VectorIndex, cosine_similarity};

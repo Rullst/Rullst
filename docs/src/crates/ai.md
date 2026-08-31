@@ -48,6 +48,21 @@ outbound transmission. This is a bounded heuristic control, not proof that arbit
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
 
+## Tenant-aware chat memory
+
+`StatefulChat<M>` is a static-dispatch orchestration boundary over
+`ChatMemory`. It binds every conversation to trusted `TenantContext`, loads a
+bounded even history, calls the guarded client, and atomically appends the user
+and assistant halves after successful generation. `InMemoryChatMemory` is a
+bounded deterministic offline store.
+
+With the opt-in umbrella `ai-sql-memory` feature, `SqlChatMemory` supplies a
+dedicated SQLx Any pool and fixed schema for SQLite, PostgreSQL, MySQL, and
+MariaDB. Its revision compare-and-swap rejects stale cross-process writers. It
+does not retry the provider call, because doing so could duplicate cost or side
+effects. The [AI integration tutorial](../6-ai-integration-tutorial.md#8-durable-chat-memory)
+shows the complete setup and application-owned security/retention boundary.
+
 ## Tenant-aware RAG pipeline
 
 `RagPipeline::answer` performs guarded embedding, calls a static-dispatch `RagRetriever`, applies
@@ -140,6 +155,8 @@ semantic validation.
 
 ## Current boundaries
 
-Streaming responses, durable chat memory, provider-native tool execution loops, first-party external
+Streaming responses, provider-native tool execution loops, first-party external
 vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
-in-memory vector utilities and tool registry do not create an authorization boundary by themselves.
+SQL memory does not supply raw-text encryption, ownership within a tenant,
+retention or provider auditing; the in-memory vector utilities and tool registry
+do not create an authorization boundary by themselves.

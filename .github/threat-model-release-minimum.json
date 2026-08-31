@@ -264,6 +264,15 @@
       "marker": "TM-AI-06"
     },
     {
+      "id": "AI-08",
+      "crate": "rullst-ai",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "ai::memory::sql::tests::sqlite_history_is_atomic_tenant_bound_and_deletable",
+      "source": "rullst-ai/src/ai/memory/sql.rs",
+      "marker": "TM-AI-08"
+    },
+    {
       "id": "IOT-01",
       "crate": "rullst-iot",
       "target_kind": "integration",
