@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788160420339,
+  "lastUpdate": 1788161412746,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3325,6 +3325,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 488,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "18e58b940a430f78593b825806295a85ee67f9ec",
+          "message": "feat(academy): add deterministic review scheduling",
+          "timestamp": "2026-08-31T04:22:24-03:00",
+          "tree_id": "c61ec69b9df27995660fa5a33c7864ffb9d06cce",
+          "url": "https://github.com/Rullst/Rullst/commit/18e58b940a430f78593b825806295a85ee67f9ec"
+        },
+        "date": 1788161412133,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 490,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
