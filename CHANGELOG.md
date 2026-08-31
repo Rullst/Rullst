@@ -259,6 +259,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   JWKS discovery and issued-bearer userinfo. Its deterministic key and
   credentials are public test material; it is neither a production IdP nor an
   OIDC conformance claim.
+- Nexus semantic forms now fail closed against their registered metadata.
+  Startup bounds and validates model/field identifiers, primary keys, labels,
+  relations and enum options; mutation forms cap pair/value sizes, reject
+  unknown or protected fields and duplicate non-Boolean inputs, normalize
+  checkbox values, and validate enum, JSON, number, date, e-mail and HTTP(S)
+  URL values before executing bound SQL. Boolean inference remains automatic;
+  enum variants and multiline intent remain explicit metadata because Rust
+  field types alone do not expose those semantics to the model derive.
 - `rullst-connect::ReqwestClient` now has first-class explicit HTTP(S)
   corporate-proxy constructors with separately supplied Basic credentials,
   bounded endpoint syntax, HTTPS-required remote authentication, no ambient

@@ -59,6 +59,8 @@ pub enum NexusBuildError {
     InvalidCredentialEncoding { variable: &'static str },
     /// Unauthenticated local access is never available in release builds.
     LocalAccessRequiresDebugBuild,
+    /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
+    InvalidModelMetadata { reason: &'static str },
 }
 
 impl fmt::Display for NexusBuildError {
@@ -94,6 +96,9 @@ impl fmt::Display for NexusBuildError {
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
                 "Nexus loopback-only access is restricted to debug builds; configure an authenticated policy for release builds",
             ),
+            Self::InvalidModelMetadata { reason } => {
+                write!(formatter, "Nexus rejected registered model metadata: {reason}")
+            }
         }
     }
 }

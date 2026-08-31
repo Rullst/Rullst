@@ -1,6 +1,7 @@
 mod access;
 pub mod ai_chat;
 pub mod crud;
+mod metadata;
 pub mod security;
 pub mod telemetry;
 pub mod types;
@@ -115,6 +116,7 @@ impl Nexus {
             }
             None => return Err(NexusBuildError::MissingAuthenticationPolicy),
         };
+        metadata::validate_registry(&self.registry)?;
 
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
@@ -189,6 +191,28 @@ mod tests {
         }
         fn nexus_fields() -> Vec<FieldMeta> {
             vec![]
+        }
+    }
+
+    struct InvalidMetadataModel;
+    impl NexusModel for InvalidMetadataModel {
+        fn nexus_table() -> &'static str {
+            "invalid_metadata"
+        }
+        fn nexus_label() -> &'static str {
+            "Invalid Metadata"
+        }
+        fn nexus_fields() -> Vec<FieldMeta> {
+            vec![
+                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+                FieldMeta::new(
+                    "status",
+                    "Status",
+                    FieldKind::Enum {
+                        options: Vec::new(),
+                    },
+                ),
+            ]
         }
     }
 
@@ -344,6 +368,19 @@ mod tests {
             Err(error) => assert_eq!(error, NexusBuildError::MissingAuthenticationPolicy),
             Ok(_) => panic!("Nexus must not build without an authentication policy"),
         }
+    }
+
+    #[test]
+    fn nexus_rejects_invalid_registered_metadata_during_build() {
+        let result = Nexus::new()
+            .register::<InvalidMetadataModel>()
+            .with_local_access(LocalNexusAccess::loopback_only())
+            .try_build();
+
+        assert!(matches!(
+            result,
+            Err(NexusBuildError::InvalidModelMetadata { .. })
+        ));
     }
 
     #[tokio::test]

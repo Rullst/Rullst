@@ -4,9 +4,10 @@
 implement `NexusModel`, either manually or through `#[derive(Nexus)]`. The
 derive infers primitive widgets and accepts explicit semantic metadata such as
 `kind = "textarea"` and `kind = "enum", options = "draft, published"`. Nexus
-provides registered-model CRUD, search, pagination, typed form widgets, bounded
-selected-record delete/deactivate actions, telemetry, a security view and an
-optional AI query page. The current interface uses server-side HTML and HTMX; Wasm islands,
+provides registered-model CRUD, search, pagination, semantically validated form
+widgets, bounded selected-record delete/deactivate actions, telemetry, a
+security view and an optional AI query page. The current interface uses
+server-side HTML and HTMX; Wasm islands,
 drag-and-drop media management and automatic relationship discovery described by
 older documentation were not implemented. They remain worthwhile separate
 features, but must not be presented as current behavior.
@@ -49,15 +50,19 @@ mutations.
 
 - Implemented: explicit model registration and a compile-tested derive;
   server-rendered tables/forms;
-  parameterized and sanitized SQL identifiers; bound record values; CRUD,
-  search, pagination, sort and batch operations; CSRF middleware; fail-closed
-  loopback/Basic access; bounded Basic Auth failure throttling.
+  bounded/validated registry metadata; parameterized and allowlisted SQL
+  identifiers; bound record values; server-side pair/byte limits and semantic
+  validation for Boolean, enum, JSON, number, date, e-mail and HTTP(S) URL
+  fields; CRUD, search, pagination, sort and batch operations; CSRF middleware;
+  fail-closed loopback/Basic access; bounded Basic Auth failure throttling.
 - Batch boundary: at most 1,000 explicitly selected IDs; deactivation is
   available only for a writable Boolean `is_active` or `active` field.
 - Application responsibility: model/field authorization policy, database
   privileges, trusted proxy and TLS configuration, secret rotation, audit-log
-  durability, tenant isolation and any ownership rules beyond the panel-wide
-  administrator boundary.
+  durability, schema/type compatibility, tenant isolation and any ownership
+  rules beyond the panel-wide administrator boundary. Multiline intent and
+  variants from an unrelated Rust enum require explicit `#[nexus]` metadata;
+  the struct derive does not invent them.
 - Not implemented: a generic `NexusLayer`, automatic ORM schema reflection,
   automatic `HasMany`/`BelongsTo` widgets, full rich-media management and a
   shared-production authentication service. These ideas may be implemented when

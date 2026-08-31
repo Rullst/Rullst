@@ -6,8 +6,9 @@
 #![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 
 use base64::Engine;
-use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
+use rullst::nexus::{FieldKind, FieldMeta, Nexus, NexusModel, NexusVerifiedTls};
 use rullst::testing::TestApp;
+use std::net::SocketAddr;
 
 struct TestUser;
 
@@ -125,6 +126,20 @@ impl NexusModel for TestPost {
 
 static INIT_DB: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
 
+fn trusted_nexus_app(nexus: Nexus) -> TestApp {
+    let peer = "192.0.2.50:443"
+        .parse::<SocketAddr>()
+        .expect("valid Nexus test peer");
+    let router = nexus
+        .try_build()
+        .expect("valid Nexus configuration")
+        .layer(axum::Extension(
+            NexusVerifiedTls::from_trusted_tls_termination(),
+        ))
+        .layer(axum::Extension(axum::extract::ConnectInfo(peer)));
+    TestApp::new(router)
+}
+
 async fn init_test_db() {
     INIT_DB.get_or_init(|| async {
         let db_path = "sqlite:file:nexus_test.db?mode=rwc";
@@ -173,7 +188,7 @@ async fn test_nexus_full_flow() {
         .with_brand("Nexus Custom App")
         .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = trusted_nexus_app(nexus);
 
     // 1. UNAUTHORIZED access without auth headers
     let res_unauth = app.get("/").await;
@@ -197,8 +212,8 @@ async fn test_nexus_full_flow() {
     res_table.assert_status(200);
     res_table.assert_see("Alice");
     res_table.assert_see("bob@example.com");
-    res_table.assert_see("id=\"row-1\"");
-    res_table.assert_see("id=\"row-2\"");
+    res_table.assert_see("data-nexus-row-id=\"1\"");
+    res_table.assert_see("data-nexus-row-id=\"2\"");
 
     // 4. Search view
     let res_search = app
@@ -207,7 +222,7 @@ async fn test_nexus_full_flow() {
         .await;
     res_search.assert_status(200);
     res_search.assert_see("Alice");
-    res_search.assert_see("id=\"row-1\"");
+    res_search.assert_see("data-nexus-row-id=\"1\"");
     res_search.assert_dont_see("Bob");
 
     // 5. New Form rendering
@@ -282,7 +297,7 @@ async fn test_nexus_foreign_key_and_kinds() {
         .register::<TestPost>()
         .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = trusted_nexus_app(nexus);
     let auth_header = format!(
         "Basic {}",
         base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")
@@ -359,7 +374,7 @@ async fn test_nexus_invalid_tables_and_errors() {
         .register::<TestUser>()
         .with_auth("admin", "unique-test-secret-42");
 
-    let app = TestApp::new(nexus.try_build().expect("valid Nexus configuration"));
+    let app = trusted_nexus_app(nexus);
     let auth_header = format!(
         "Basic {}",
         base64::engine::general_purpose::STANDARD.encode("admin:unique-test-secret-42")

@@ -8,9 +8,10 @@ use axum::{
 use std::fmt::Write as _;
 use std::sync::Arc;
 
+use crate::nexus::crud::input::{FormInputError, FormMode, validate_form_values};
 use crate::nexus::crud::query::{PaginationParams, find_entry, sanitize_identifier};
 use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
-use crate::nexus::types::NexusState;
+use crate::nexus::types::{NexusState, RegistryEntry};
 use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html};
 
 /// GET /nexus — Dashboard overview.
@@ -144,27 +145,19 @@ pub async fn nexus_create_record(
         }
     };
 
-    let mut data = std::collections::HashMap::new();
-    for (k, v) in data_vec {
-        if !v.is_empty() || !data.contains_key(&k) {
-            data.insert(k, v);
-        }
-    }
+    let data = match validate_form_values(entry, data_vec, FormMode::Create) {
+        Ok(data) => data,
+        Err(error) => return invalid_form_response(entry, error),
+    };
 
     let mut keys = Vec::new();
     let mut values = Vec::new();
-    for f in entry
-        .fields
-        .iter()
-        .filter(|field| !field.hidden && !field.readonly)
-    {
-        if let Some(val) = data.get(f.name) {
-            if f.name == entry.pk && val.trim().is_empty() {
-                continue;
-            }
-            keys.push(f.name);
-            values.push(val);
+    for value in data {
+        if value.field.name == entry.pk && value.value.trim().is_empty() {
+            continue;
         }
+        keys.push(value.field.name);
+        values.push(value.value);
     }
 
     if keys.is_empty() {
@@ -200,7 +193,7 @@ pub async fn nexus_create_record(
     );
 
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    for v in values {
+    for v in &values {
         query = query.bind(v);
     }
 
@@ -273,32 +266,24 @@ pub async fn nexus_update_record(
         }
     };
 
-    let mut data = std::collections::HashMap::new();
-    for (k, v) in data_vec {
-        if !v.is_empty() || !data.contains_key(&k) {
-            data.insert(k, v);
-        }
-    }
+    let data = match validate_form_values(entry, data_vec, FormMode::Update) {
+        Ok(data) => data,
+        Err(error) => return invalid_form_response(entry, error),
+    };
 
     let clean_table = sanitize_identifier(&table);
     let clean_pk = sanitize_identifier(entry.pk);
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
     let mut updates = Vec::new();
     let mut values = Vec::new();
-    for f in &entry.fields {
-        if !f.hidden
-            && !f.readonly
-            && f.name != entry.pk
-            && let Some(val) = data.get(f.name)
-        {
-            let clean_field = sanitize_identifier(f.name);
-            if driver == "postgres" {
-                updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
-            } else {
-                updates.push(format!("{} = ?", clean_field));
-            }
-            values.push(val);
+    for value in data {
+        let clean_field = sanitize_identifier(value.field.name);
+        if driver == "postgres" {
+            updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
+        } else {
+            updates.push(format!("{} = ?", clean_field));
         }
+        values.push(value.value);
     }
 
     if updates.is_empty() {
@@ -323,7 +308,7 @@ pub async fn nexus_update_record(
         pk_placeholder
     );
     let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    for v in values {
+    for v in &values {
         query = query.bind(v);
     }
     if let Ok(num_id) = id.parse::<i64>() {
@@ -374,6 +359,20 @@ pub async fn nexus_update_record(
             ))
         ).into_response()
     }
+}
+
+fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
+    (
+        StatusCode::UNPROCESSABLE_ENTITY,
+        Html(format!(
+            "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
+             &#10060; Invalid {} form: {}\
+             </div>",
+            rullst_core::html::escape_str(entry.label),
+            rullst_core::html::escape_str(&error.to_string())
+        )),
+    )
+        .into_response()
 }
 
 /// DELETE /nexus/table/{table}/{id} — Delete a record.

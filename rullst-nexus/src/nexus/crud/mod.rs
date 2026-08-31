@@ -2,6 +2,7 @@
 
 pub mod batch;
 pub mod handlers;
+mod input;
 pub mod proofs;
 pub mod query;
 pub mod views;

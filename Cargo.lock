@@ -6595,6 +6595,7 @@ dependencies = [
  "subtle",
  "tokio",
  "tower",
+ "url",
  "urlencoding",
 ]
 

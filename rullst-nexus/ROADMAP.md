@@ -10,7 +10,13 @@ Rullst Nexus is the official Admin Panel for the Rullst ecosystem. It aims to pr
 ## Phase 1: Core CRUD (Next Priority)
 - [x] **Full CRUD Auto-generation**: Generate registered-model Create, Edit, and Delete forms for named-field structs deriving `#[derive(Nexus)]`, with explicit metadata for semantics the Rust type cannot reveal.
 - [x] **Data Tables**: Implement server-side pagination, searching, and column sorting.
-- [~] **Data Types Formatting**: Infer primitive widgets and render Boolean checkboxes plus explicit Enum dropdown/Textarea metadata. Automatic discovery of variants from an unrelated Rust enum type is not implemented.
+- [x] **Data Types Formatting (bounded)**: Infer Boolean widgets and render
+  checkboxes plus explicitly declared Enum dropdown/Textarea metadata. Startup
+  validates and bounds the registered metadata; mutation handlers bound form
+  pairs/bytes, reject unknown/protected/duplicate fields, normalize Boolean
+  controls and allow only the registered enum values before bound SQL.
+  Automatic discovery of variants or multiline intent from an unrelated Rust
+  type is deliberately not claimed.
 
 ## Phase 2: Advanced Features
 - [x] **Batch Actions**: Delete explicitly selected records or deactivate them when the model exposes a writable Boolean `is_active`/`active` field, with a 1,000-record bound.
