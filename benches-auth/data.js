@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788146793615,
+  "lastUpdate": 1788148432159,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4909,6 +4909,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 499,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "afcc8bb1cf4edb2711c09d508bcfbbb934765b79",
+          "message": "feat(core): add versioned client contract",
+          "timestamp": "2026-08-31T00:41:26-03:00",
+          "tree_id": "7bbe6e2a217d52dd1f6575b964045fa920c7e9c3",
+          "url": "https://github.com/Rullst/Rullst/commit/afcc8bb1cf4edb2711c09d508bcfbbb934765b79"
+        },
+        "date": 1788148431685,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 500,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
